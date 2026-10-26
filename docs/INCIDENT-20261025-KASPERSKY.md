@@ -1,5 +1,7 @@
 # 2026-10-25 卡巴斯基告警与执行限制
 
+2026-10-26最新执行边界：用户明确授权的固定日常S1离线构建及独立核验后的有限S2已完成，详见[S1/S2记录](VALIDATION-S1-S2-20261026.md)。此例外不恢复退休样本、不运行旧selftest、不改变AV，不解释旧检测原因；下文原停止状态保留为事件经过，其余入口继续停止。
+
 ## 已确认事实
 
 - 用户截图显示检测名 `PDM:Trojan.Win32.Generic`，对象为 `C:\Users\simple\ClaudeCode-Protection\bin\current\ClaudeProtection.exe`，显示时间 2026-10-25 11:43 AM。

@@ -15,7 +15,16 @@ production vertical slice over additional dormant classes/protocols. Do not
 claim background execution when a session stops. Do not create another chat,
 worktree or project copy. Use subagents only if separately authorized.
 
-The Kaspersky incident remains unresolved. Keep all build/launch hard stops.
+The Kaspersky incident remains unresolved. Keep all ordinary build/launch hard stops.
+The user's explicit 2026-10-26 S1/S2 authorization permits only the frozen daily
+CLI one-shot offline build and, after independent qualification, ordinary-user
+system-proxy-baseline and offline audit. That S1 grant has now been consumed.
+scripts/Invoke-S1DailyBuild.ps1 records the fixed historical attempt; it is not
+a general unlock or permission to build newer sources or other projects.
+The S2 .NET-host selection failure and reviewed patch-selection correction are
+preserved in work/s2-offline and work/s2-offline-recovery. Both read commands
+completed; their FAIL/UNKNOWN observations are not protection acceptance.
+No later managed-source change inherits those artifacts' BUILD/runtime evidence.
 Do not restore the retired binary, run the old aggregate selftest, add AV
 exclusions, rename/repackage to evade detection, or change AV policy. A new
 alert stops validation immediately. Compile/execute blocked work must be

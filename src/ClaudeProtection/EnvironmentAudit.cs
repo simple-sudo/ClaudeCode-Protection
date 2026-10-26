@@ -35,6 +35,10 @@ internal static class EnvironmentAudit
         if (child.ExitCode != 0) throw new InvalidOperationException("Environment audit worker failed; launch refused");
         var audit = JsonSerializer.Deserialize<Audit>(data, Files.Json) ?? throw new InvalidDataException("Missing audit report");
         if (audit.SchemaVersion != 1 || audit.Checks is null) throw new InvalidDataException("Unsupported audit report");
+        // The daily CLI must report the same machine-proxy admission fact as
+        // the GUI's separate baseline step. Listener/settings checks alone do
+        // not establish agreement between the Windows proxy APIs.
+        audit.Checks.Add(ReadSystemProxy());
         audit.Checks.RemoveAll(check => check.Name == "proxy-owner-path");
         audit.Checks.Add(ReadProxyOwner(audit.ProxyListenerPid));
         if (online)
@@ -48,6 +52,21 @@ internal static class EnvironmentAudit
             audit.Checks.Add(new("proxy-egress-country", "UNKNOWN", "Online egress test not requested"));
         }
         return audit;
+    }
+
+    private static Check ReadSystemProxy()
+    {
+        try
+        {
+            var snapshot = UserProxyBaseline.Read();
+            return new("system-proxy-baseline", snapshot.ExpectedFlClashProxy ? "PASS" : "FAIL",
+                $"Enabled={snapshot.ProxyEnabled}; APIsAgree={snapshot.APIsAgree}; ExpectedFlClash={snapshot.ExpectedFlClashProxy}; SHA256={snapshot.Fingerprint}; read-only snapshot, not network isolation evidence");
+        }
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException or
+            UnauthorizedAccessException or System.Security.SecurityException or ArgumentException)
+        {
+            return new("system-proxy-baseline", "UNKNOWN", "Windows proxy baseline unavailable: " + ex.GetType().Name);
+        }
     }
 
     private static Check ReadProxyOwner(uint? pid)

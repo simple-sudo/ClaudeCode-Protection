@@ -1,6 +1,8 @@
 ﻿param([string]$WorkingDirectory)
 $ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding($false)
+# Only inbox modules in this worker. No profile or user module is an audit input.
+$env:PSModulePath = Join-Path $PSHOME 'Modules'
 $checks = New-Object System.Collections.Generic.List[object]
 $proxyListenerPid = $null
 function Add-Check([string]$Name, [string]$Status, [string]$Detail, [bool]$Required = $true) {
@@ -15,10 +17,10 @@ $expectedProxy = 'http://127.0.0.1:7890'
 Read-Check 'claude-executable' {
     if (Test-Path -LiteralPath $exe -PathType Leaf) {
         Add-Check 'claude-executable' 'PASS' ((Get-FileHash -LiteralPath $exe -Algorithm SHA256).Hash)
-        $sig = Get-AuthenticodeSignature -LiteralPath $exe
-        if ($sig.Status -eq 'Valid' -and $sig.SignerCertificate.Subject -match 'O="?Anthropic, PBC') {
-            Add-Check 'claude-signature' 'PASS' 'Valid Anthropic signature'
-        } else { Add-Check 'claude-signature' 'FAIL' 'Expected a valid Anthropic signature' }
+        # WinTrust/certificate revocation retrieval is not qualified as offline.
+        # A local file hash does not establish signer trust. Do not invoke the
+        # executable or the signature provider just to turn this into PASS.
+        Add-Check 'claude-signature' 'UNKNOWN' 'Signer trust not evaluated by offline audit; local hash only'
     } else { Add-Check 'claude-executable' 'FAIL' 'Executable missing' }
 }
 Read-Check 'user-proxy-settings' {
