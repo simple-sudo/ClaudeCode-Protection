@@ -3,7 +3,7 @@ using System.Text.Json;
 namespace ClaudeProtection;
 
 internal sealed record Check(string Name, string Status, string Detail, bool Required = true);
-internal sealed record Audit(int SchemaVersion, string AtUtc, List<Check> Checks);
+internal sealed record Audit(int SchemaVersion, string AtUtc, List<Check> Checks, uint? ProxyListenerPid = null);
 internal static class Files
 {
     internal static readonly JsonSerializerOptions Json = new() { PropertyNameCaseInsensitive = true, WriteIndented = true };

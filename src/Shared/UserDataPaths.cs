@@ -1,6 +1,5 @@
 using System.Security.AccessControl;
 using System.Security.Principal;
-using System.Text.Json;
 
 namespace ClaudeProtection.Storage;
 
@@ -46,13 +45,5 @@ internal static class UserDataPaths
                 rule.InheritanceFlags!=(InheritanceFlags.ContainerInherit|InheritanceFlags.ObjectInherit) || rule.PropagationFlags!=PropagationFlags.None || !remaining.Remove(rule.IdentityReference.Value))
                 throw new InvalidDataException("User data grant differs");
         if(remaining.Count!=0)throw new InvalidDataException("User data grants incomplete");
-    }
-    internal static void PublishLatestBackup(string name)
-    {
-        if(!System.Text.RegularExpressions.Regex.IsMatch(name,"^settings-[a-f0-9]{32}\\.json$"))throw new InvalidDataException("Invalid backup identifier");
-        var root=ProxyBackups;var temporary=Path.Combine(root,"latest-"+Guid.NewGuid().ToString("N")+".tmp");
-        var bytes=JsonSerializer.SerializeToUtf8Bytes(new{backup=name});
-        using(var stream=new FileStream(temporary,FileMode.CreateNew,FileAccess.Write,FileShare.None)){stream.Write(bytes);stream.Flush(true);}
-        File.Move(temporary,Path.Combine(root,"latest-repair.json"),true); // Preserve pending file on failure.
     }
 }

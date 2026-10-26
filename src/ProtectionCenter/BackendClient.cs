@@ -35,7 +35,7 @@ internal static class BackendClient
     }
     internal static string SaveReport(string name, BackendResult result)
     {
-        if(name is not ("environment" or "config-repair"))throw new InvalidDataException("Unknown report kind");
+        if(name is not ("environment" or "config-repair" or "config-restore"))throw new InvalidDataException("Unknown report kind");
         var directory = ClaudeProtection.Storage.UserDataPaths.Reports;
         var file = Path.Combine(directory, name + "-" + DateTime.UtcNow.ToString("yyyyMMdd-HHmmss") + "-" + Guid.NewGuid().ToString("N")[..6] + ".json");
         using(var stream=new FileStream(file,FileMode.CreateNew,FileAccess.Write,FileShare.Read))

@@ -4,6 +4,10 @@ The user's 2026-10-26 autonomous-development instruction supersedes the earlier
 ban on local Git initialization/commits. Work in this existing checkout. Local,
 scoped commits are authorized; do not publish, configure a remote or push.
 Preserve historical evidence, backups, credentials and failure/UNKNOWN records.
+The user has published the private repository at
+https://github.com/simple-sudo/ClaudeCode-Protection (main). Preserve the existing
+origin configuration; remote pushes remain user-managed. Do not describe the
+current checkout as having no remote.
 
 Do not make the user a routine stage-approval or message-forwarding dependency.
 Choose implementation and reuse approaches autonomously. Prefer a small

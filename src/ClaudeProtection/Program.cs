@@ -29,25 +29,11 @@ internal static class Program
                 case "repair-proxy":
                     if (args.Length != 2 || !System.Text.RegularExpressions.Regex.IsMatch(args[1], "^[A-Fa-f0-9]{64}$")) return 64;
                     var backupRoot = Storage.UserDataPaths.ProxyBackups;
-                    var backup = ProxySettings.Apply(SettingsPath, args[1].ToUpperInvariant(), backupRoot);
-                    if (backup != "UNCHANGED") Storage.UserDataPaths.PublishLatestBackup(Path.GetFileName(backup));
-                    Console.WriteLine(JsonSerializer.Serialize(new { status = backup == "UNCHANGED" ? "UNCHANGED" : "REPAIRED", backup = backup == "UNCHANGED" ? null : backup, systemProxyModified = false }, Files.Json));
-                    return 0;
+                    return WriteMaintenance(ProxySettings.Apply(SettingsPath, args[1].ToUpperInvariant(), backupRoot));
                 case "restore-proxy":
                     if (args.Length != 1) return 64;
                     var restoreRoot = Storage.UserDataPaths.ProxyBackups;
-                    var pointer = Path.Combine(restoreRoot, "latest-repair.json");
-                    byte[] pointerBytes;
-                    try { pointerBytes=File.ReadAllBytes(pointer); }
-                    catch(FileNotFoundException) { Console.WriteLine("{\"status\":\"NO_CURRENT_USER_BACKUP\",\"legacyBackupsMigrated\":false}");return 0; }
-                    using (var document = JsonDocument.Parse(pointerBytes))
-                    {
-                        var name = document.RootElement.GetProperty("backup").GetString() ?? "";
-                        if (!System.Text.RegularExpressions.Regex.IsMatch(name, "^settings-[a-f0-9]{32}\\.json$")) throw new InvalidDataException("Invalid backup identifier");
-                        var reverse = ProxySettings.Restore(SettingsPath, Path.Combine(restoreRoot, name), restoreRoot);
-                        Console.WriteLine(JsonSerializer.Serialize(new { status = "RESTORED", reverseBackup = reverse, systemProxyModified = false }, Files.Json));
-                    }
-                    return 0;
+                    return WriteMaintenance(ProxySettings.RestoreLatest(SettingsPath, restoreRoot));
                 case "system-proxy-baseline":
                     if (args.Length != 1) return 64;
                     Console.WriteLine(JsonSerializer.Serialize(UserProxyBaseline.Read(), Files.Json)); return 0;
@@ -72,6 +58,13 @@ internal static class Program
             Console.Error.WriteLine("Operation failed: " + ex.GetType().Name + "; code=" + code + "; stage=" + ex.Data["Stage"]);
             return 125;
         }
+    }
+    private static int WriteMaintenance(ProxySettings.Result result)
+    {
+        Console.WriteLine(JsonSerializer.Serialize(new { status = result.Status, backup = result.Backup,
+            recoveryRequired = result.RecoveryRequired, settingsMayHaveChanged = result.SettingsMayHaveChanged,
+            errorType = result.ErrorType, systemProxyModified = false, legacyBackupsMigrated = false }, Files.Json));
+        return result.RecoveryRequired ? 3 : result.Status.StartsWith("REFUSED_", StringComparison.Ordinal) ? 2 : 0;
     }
     private static string SettingsPath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".claude", "settings.json");
 }

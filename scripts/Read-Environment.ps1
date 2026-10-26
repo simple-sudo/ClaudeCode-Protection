@@ -2,6 +2,7 @@
 $ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding($false)
 $checks = New-Object System.Collections.Generic.List[object]
+$proxyListenerPid = $null
 function Add-Check([string]$Name, [string]$Status, [string]$Detail, [bool]$Required = $true) {
     $checks.Add([pscustomobject]@{ Name=$Name; Status=$Status; Detail=$Detail; Required=$Required })
 }
@@ -58,17 +59,11 @@ Read-Check 'proxy-listener' {
     $owner = Get-Process -Id $listeners[0].OwningProcess
     if ($owner.ProcessName -ne 'FlClashCore') { Add-Check 'proxy-listener' 'FAIL' 'Listener is not FlClashCore'; return }
     Add-Check 'proxy-listener' 'PASS' ('FlClashCore PID=' + $owner.Id)
-    try {
-        $identityTool=Join-Path $PSScriptRoot 'ClaudeProtection.exe'
-        if(-not(Test-Path -LiteralPath $identityTool)){$identityTool=Join-Path (Split-Path -Parent $PSScriptRoot) 'bin\current\ClaudeProtection.exe'}
-        $identityText=@(& $identityTool process-identity $owner.Id 2>$null)
-        if($LASTEXITCODE -ne 0){throw 'Limited-information process identity query failed'}
-        $core=($identityText -join "`n")|ConvertFrom-Json
-        if(-not $core.ImagePath -or -not $core.Running -or $core.Pid -ne $owner.Id) { Add-Check 'proxy-owner-path' 'UNKNOWN' 'Running process identity was not established' }
-        elseif ($core.ImagePath -ieq 'E:\program\FlClash\FlClashCore.exe') { Add-Check 'proxy-owner-path' 'PASS' ('Exact configured image using limited-information rights; createdUtc='+$core.CreatedUtc) }
-        else { Add-Check 'proxy-owner-path' 'FAIL' 'Unexpected proxy process path; value withheld' }
-    } catch {Add-Check 'proxy-owner-path' 'UNKNOWN' 'Limited-information identity query unavailable at current privilege; no name-only admission'}
+    # Return an observation to the already-running managed caller, never launch
+    # a second backend from a guessed installation or development path.
+    $script:proxyListenerPid = [uint32]$owner.Id
 }
+Add-Check 'proxy-owner-path' 'UNKNOWN' 'Requires managed limited-information identity query; name alone is insufficient'
 Read-Check 'flclash-tun' {
     $tun = @(Get-NetAdapter -Name 'FlClash' -ErrorAction SilentlyContinue)
     if ($tun.Count -eq 1 -and $tun[0].Status -eq 'Up') { Add-Check 'flclash-tun' 'PASS' 'Exact FlClash adapter is Up' }
@@ -107,4 +102,4 @@ Add-Check 'dns-isolation' 'UNKNOWN' 'OS resolver/service traffic has not been ca
 Add-Check 'stun-webrtc' 'UNKNOWN' 'No live direct UDP probe sent; timeout must never mean safe'
 Add-Check 'ipv6-functional' 'UNKNOWN' 'IPv6 direct-block behavior has not been functionally verified'
 Add-Check 'child-network-isolation' 'UNKNOWN' 'Executable firewall rules do not establish child/MCP/browser isolation'
-[pscustomobject]@{ SchemaVersion=1; AtUtc=[DateTime]::UtcNow.ToString('o'); Checks=@($checks.ToArray()) } | ConvertTo-Json -Depth 6 -Compress
+[pscustomobject]@{ SchemaVersion=1; AtUtc=[DateTime]::UtcNow.ToString('o'); Checks=@($checks.ToArray()); ProxyListenerPid=$proxyListenerPid } | ConvertTo-Json -Depth 6 -Compress

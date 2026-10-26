@@ -68,8 +68,10 @@ internal sealed class CenterWindow : Window
 
         var lower = new Grid { Margin = new Thickness(0, 18, 0, 0) }; lower.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); lower.RowDefinitions.Add(new RowDefinition());
         var buttons = new WrapPanel { Margin = new Thickness(0, 0, 0, 12) };
-        AddAction(buttons, "检查环境", Inspect);
+        AddAction(buttons, "检查环境", () => Inspect(false));
+        AddAction(buttons, "检查代理连通性", () => Inspect(true));
         AddAction(buttons, "修复 Claude 代理配置", Repair);
+        AddAction(buttons, "撤销上次配置修改", Restore);
         lower.Children.Add(buttons);
         var report = Card(details); report.Padding = new Thickness(0); Grid.SetRow(report, 1); lower.Children.Add(report);
         details.Text = "检查结果会显示在这里。\r\n\r\n日常入口不提供故障注入或进程终止测试。\r\n日志中保留失败和未知项，不保存提示词或登录凭据。";
@@ -92,7 +94,7 @@ internal sealed class CenterWindow : Window
         };
         actions.Add(button); panel.Children.Add(button);
     }
-    private async Task Inspect()
+    private async Task Inspect(bool online)
     {
         activity.Text = "正在核对代理配置和环境……";
         var baseline = await BackendClient.Command("system-proxy-baseline");
@@ -102,7 +104,7 @@ internal sealed class CenterWindow : Window
             proxy.Text = json.RootElement.GetProperty("ExpectedFlClashProxy").GetBoolean() ? "配置一致" : "需要检查";
         }
         else proxy.Text = "检查未完成";
-        var result = await BackendClient.Command("audit", "--online");
+        var result = online ? await BackendClient.Command("audit", "--online") : await BackendClient.Command("audit");
         var file = BackendClient.SaveReport("environment", result);
         details.Text = result.Output + "\r\n" + result.Error;
         activity.Text = "环境检查记录已保存。正式启动的必要项可能仍显示失败或未知；本阶段保持未激活。\n" + file;
@@ -115,9 +117,42 @@ internal sealed class CenterWindow : Window
         using var json = JsonDocument.Parse(plan.Output);
         var hash = json.RootElement.GetProperty("sha256").GetString() ?? throw new InvalidDataException();
         var result = await BackendClient.Command("repair-proxy", hash);
-        var file = BackendClient.SaveReport("config-repair", result);
+        ShowMaintenance(result, "config-repair");
+    }
+    private async Task Restore()
+    {
+        activity.Text = "正在核对上次修改记录；有后续编辑时拒绝覆盖。";
+        ShowMaintenance(await BackendClient.Command("restore-proxy"), "config-restore");
+    }
+    private void ShowMaintenance(BackendResult result, string reportKind)
+    {
+        // Display the operation outcome before report I/O: report failure must
+        // never turn an already-applied change into an apparent no-op.
         details.Text = result.Output + "\r\n" + result.Error;
-        activity.Text = result.ExitCode == 0 ? "配置维护已完成。只合并 Claude 代理字段；原始内容在需要修改时保留私有备份。" : "配置未完成修复，已停止以保留原设置。记录：" + file;
+        string message;
+        try
+        {
+            using var json = JsonDocument.Parse(result.Output);
+            message = json.RootElement.GetProperty("status").GetString() switch
+            {
+                "APPLIED" => reportKind == "config-restore" ? "已恢复修改前的配置；本次恢复也已备份，可再次撤销。" : "已修复 Claude 的三个代理字段；修改前的完整内容已私有备份。",
+                "UNCHANGED" => "配置已符合要求，无需修改；原有恢复记录保留。",
+                "NO_CURRENT_USER_BACKUP" => "当前用户没有本工具的恢复记录；未迁移或使用旧项目备份。",
+                "REFUSED_LATER_EDIT" => "检测到修改后的用户编辑，已拒绝恢复，未覆盖当前配置。",
+                "REFUSED_STALE_PLAN" or "REFUSED_CONCURRENT_EDIT" => "配置在核对后发生变化，已停止本次修改。请重新检查当前配置。",
+                "RECOVERED_APPLIED" => "上次中断的配置修改已核实完成，恢复入口已补齐。本次未再修改配置。",
+                "RECOVERED_NOT_APPLIED" => "上次中断的操作未应用，配置与修改前一致。本次未再修改配置；可重新选择操作。",
+                "RECOVERY_CONFLICT" => "中断记录与当前配置冲突，已停止自动修改；备份和失败记录保留。",
+                "RECOVERY_REQUIRED" => "配置可能已改变，尚未核实完成。请保留备份和中断记录；后续维护会先核对，不会盲目覆盖。",
+                _ => "配置操作未确认完成，请查看诊断结果。"
+            };
+        }
+        catch (Exception ex) when (ex is JsonException or KeyNotFoundException or InvalidOperationException)
+        { message = "配置操作未确认完成，请查看诊断结果；不要假定配置保持原样。"; }
+        activity.Text = message;
+        try { activity.Text += "\n记录：" + BackendClient.SaveReport(reportKind, result); }
+        catch (Exception ex)
+        { activity.Text = message + "\n诊断报告未能保存：" + ex.GetType().Name + "。操作结果如上，已有备份与记录保留。"; }
     }
 }
 
