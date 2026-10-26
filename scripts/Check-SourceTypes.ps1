@@ -11,11 +11,33 @@ Add-Type -Path (Join-Path $compiler 'Microsoft.CodeAnalysis.dll')
 Add-Type -Path (Join-Path $compiler 'Microsoft.CodeAnalysis.CSharp.dll')
 $globalUsings='global using System; global using System.Collections.Generic; global using System.IO; global using System.Linq; global using System.Net.Http; global using System.Threading; global using System.Threading.Tasks;'
 $parse=[Microsoft.CodeAnalysis.CSharp.CSharpParseOptions]::Default.WithLanguageVersion([Microsoft.CodeAnalysis.CSharp.LanguageVersion]::CSharp12)
-$results=@(foreach($project in Get-ChildItem -LiteralPath (Join-Path $root 'src') -Recurse -File -Filter '*.csproj'){
+$projects=@(Get-ChildItem -LiteralPath (Join-Path $root 'src') -Recurse -File -Filter '*.csproj')
+$projectIndex=@{};foreach($project in $projects){$projectIndex[$project.FullName]=$project}
+$compilations=@{};$results=[Collections.Generic.List[object]]::new();$pending=$projects
+while($pending.Count){
+ $remaining=@()
+ foreach($project in $pending){
     [xml]$xml=[IO.File]::ReadAllText($project.FullName)
     if($xml.SelectNodes('//*[@Condition or @Remove or @Update or @Exclude]').Count -or $xml.SelectNodes('//PackageReference|//Reference|//Analyzer|//AdditionalFiles|//Import|//Target|//UsingTask|//FrameworkReference|//DefineConstants').Count){throw 'Unsupported conditional/custom build input; use an appropriately cleared real build'}
     if([string]$xml.Project.PropertyGroup.TargetFramework -ne 'net8.0-windows'){throw 'Unsupported target framework in bounded checker'}
-    if(@($xml.Project.ItemGroup.ProjectReference).Where({$null -ne $_}).Count){throw 'Project references require explicit metadata composition'}
+    # Compose only explicit, unconditional references to local library leaves.
+    # Roslyn CompilationReference never emits/loads a project assembly. Target
+    # metadata/options and unsupported graphs must not silently disappear.
+    if($xml.SelectNodes('//ProjectReference').Count -ne $xml.SelectNodes('/Project/ItemGroup/ProjectReference').Count){throw 'Unsupported ProjectReference declaration location'}
+    $projectReferences=@()
+    foreach($node in $xml.SelectNodes('/Project/ItemGroup/ProjectReference')){
+        if($node.Attributes.Count -ne 1 -or !$node.HasAttribute('Include') -or $node.InnerXml.Trim() -or
+            $node.Include -match '[*?;]'){throw 'Unsupported ProjectReference metadata or wildcard'}
+        $target=[IO.Path]::GetFullPath((Join-Path $project.DirectoryName $node.Include))
+        if(!$projectIndex.ContainsKey($target) -or $target -eq $project.FullName){throw 'Unknown/external/self project reference'}
+        [xml]$dependency=[IO.File]::ReadAllText($target)
+        if([string]$dependency.Project.PropertyGroup.OutputType -ne 'Library' -or
+            [string]$dependency.Project.PropertyGroup.TargetFramework -ne 'net8.0-windows' -or
+            $dependency.SelectNodes('//ProjectReference').Count){throw 'Only direct local net8.0-windows library leaf references are supported'}
+        if($projectReferences -contains $target){throw 'Duplicate project reference'}
+        $projectReferences+= $target
+    }
+    if(@($projectReferences|Where-Object {!$compilations.ContainsKey($_)}).Count){$remaining+= $project;continue}
     $paths=@(foreach($node in @($xml.Project.ItemGroup.Compile)){if($null -ne $node){foreach($relative in $node.Include.Split(';')){if($relative){[IO.Path]::GetFullPath((Join-Path $project.DirectoryName $relative))}}}})
     if([string]$xml.Project.PropertyGroup.EnableDefaultCompileItems -ne 'false'){$paths+=@(Get-ChildItem -LiteralPath $project.DirectoryName -Recurse -File -Filter '*.cs'|Where-Object {$_.FullName -notmatch '\\(obj|bin)\\'}|ForEach-Object FullName)}
     $paths=@($paths|Sort-Object -Unique)
@@ -31,15 +53,20 @@ $results=@(foreach($project in Get-ChildItem -LiteralPath (Join-Path $root 'src'
     if([string]$xml.Project.PropertyGroup.UseWPF -eq 'true'){foreach($reference in Get-ChildItem -LiteralPath $desktop -File -Filter '*.dll'){$assemblyPaths[$reference.Name]=$reference.FullName}}
     $references=[Collections.Generic.List[Microsoft.CodeAnalysis.MetadataReference]]::new()
     foreach($path in $assemblyPaths.Values){$references.Add([Microsoft.CodeAnalysis.MetadataReference]::CreateFromFile($path))}
+    foreach($target in $projectReferences){$references.Add($compilations[$target].ToMetadataReference())}
     $kind=switch([string]$xml.Project.PropertyGroup.OutputType){'Exe'{[Microsoft.CodeAnalysis.OutputKind]::ConsoleApplication};'WinExe'{[Microsoft.CodeAnalysis.OutputKind]::WindowsApplication};'Library'{[Microsoft.CodeAnalysis.OutputKind]::DynamicallyLinkedLibrary};default{throw 'Unknown output kind'}}
     $options=[Microsoft.CodeAnalysis.CSharp.CSharpCompilationOptions]::new($kind).WithPlatform([Microsoft.CodeAnalysis.Platform]::X64).WithNullableContextOptions([Microsoft.CodeAnalysis.NullableContextOptions]::Enable)
     if([string]$xml.Project.PropertyGroup.TreatWarningsAsErrors -eq 'true'){$options=$options.WithGeneralDiagnosticOption([Microsoft.CodeAnalysis.ReportDiagnostic]::Error)}
     $name=[string]$xml.Project.PropertyGroup.AssemblyName;if(-not $name){$name=$project.BaseName}
     $analysis=[Microsoft.CodeAnalysis.CSharp.CSharpCompilation]::Create($name,$trees,$references,$options)
+    $compilations[$project.FullName]=$analysis
     $diagnostics=@($analysis.GetDiagnostics([Threading.CancellationToken]::None)|Where-Object {$_.Severity -eq [Microsoft.CodeAnalysis.DiagnosticSeverity]::Error -or $_.Severity -eq [Microsoft.CodeAnalysis.DiagnosticSeverity]::Warning}|ForEach-Object {[pscustomobject]@{Id=$_.Id;Severity=$_.Severity.ToString();Diagnostic=$_.ToString()}})
-    [pscustomobject]@{Project=$project.FullName;SourceFiles=$paths.Count;ReferenceFiles=$references.Count;Errors=@($diagnostics|Where-Object {$_.Severity -eq 'Error'}).Count;Warnings=@($diagnostics|Where-Object {$_.Severity -eq 'Warning'}).Count;Diagnostics=$diagnostics}
-})
-$report=[pscustomobject]@{AtUtc=[DateTime]::UtcNow.ToString('o');Scope='NON_EMITTING_CSHARP_SEMANTIC_ANALYSIS';CompilerVersion='SDK8.0.422';ReferenceVersion='8.0.28';LanguageVersion='CSharp12';Projects=$results;EmitCalled=$false;ProjectAssemblyLoaded=$false;MSBuildCalled=$false;RestoreCalled=$false;AnalyzersOrGeneratorsExecuted=$false;NativeApisCalled=$false;BuildQualified=$false;RuntimeQualified=$false}
+    $results.Add([pscustomobject]@{Project=$project.FullName;SourceFiles=$paths.Count;ReferenceFiles=$references.Count;ProjectReferences=$projectReferences;Errors=@($diagnostics|Where-Object {$_.Severity -eq 'Error'}).Count;Warnings=@($diagnostics|Where-Object {$_.Severity -eq 'Warning'}).Count;Diagnostics=$diagnostics})
+ }
+ if($remaining.Count -eq $pending.Count){throw 'Unresolved project reference graph; no project omitted'}
+ $pending=$remaining
+}
+$report=[pscustomobject]@{AtUtc=[DateTime]::UtcNow.ToString('o');Scope='NON_EMITTING_CSHARP_SEMANTIC_ANALYSIS';CompilerVersion='SDK8.0.422';ReferenceVersion='8.0.28';LanguageVersion='CSharp12';Projects=$results.ToArray();EmitCalled=$false;ProjectAssemblyLoaded=$false;ProjectReferenceMode='ROSLYN_COMPILATION_REFERENCE_DIRECT_LOCAL_LIBRARY_LEAVES_ONLY';MSBuildCalled=$false;RestoreCalled=$false;AnalyzersOrGeneratorsExecuted=$false;NativeApisCalled=$false;BuildQualified=$false;RuntimeQualified=$false}
 if($ReportPath){$report|ConvertTo-Json -Depth 7|Set-Content -LiteralPath $ReportPath -Encoding utf8}
 $results|Select-Object Project,SourceFiles,ReferenceFiles,Errors,Warnings|ConvertTo-Json
 foreach($result in $results){$result.Diagnostics|Select-Object -First 15|ConvertTo-Json -Depth 3}

@@ -10,7 +10,7 @@
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="PackagePolicy.cs;FixedLayout.cs;WindowsPathSeal.cs;ProtectedState.cs;Lifecycle.cs;BrokerProtocol.cs;VersionStore.cs;LifecycleRecovery.cs;ExactUninstall.cs;RemovalPolicy.cs;CreationIdentity.cs;PendingFileAuthority.cs;CompletionRecovery.cs;KernelJobSeal.cs;OwnedJobs.cs;PrivateJobNamespace.cs;WfpNative.cs;FencePlan.cs;PersistentFence.cs" />
+    <Compile Include="PackagePolicy.cs;FixedLayout.cs;WindowsPathSeal.cs;ProtectedState.cs;Lifecycle.cs;BrokerProtocol.cs;VersionStore.cs;LifecycleRecovery.cs;ExactUninstall.cs;RemovalPolicy.cs;CreationIdentity.cs;PendingFileAuthority.cs;CompletionRecovery.cs;KernelJobSeal.cs;OwnedJobs.cs;PrivateJobNamespace.cs;WfpNative.cs;FencePlan.cs;PersistentFence.cs;InstalledBroker.cs" />
     <EmbeddedResource Include="LifecycleProtocol.json" />
     <EmbeddedResource Include="BrokerProtocol.json" />
     <EmbeddedResource Include="RecoveryProtocol.json" />

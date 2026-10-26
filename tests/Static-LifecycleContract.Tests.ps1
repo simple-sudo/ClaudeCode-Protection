@@ -52,7 +52,7 @@ function Assert-Lifecycle($Protocol){
 function Assert-Broker($Protocol){
     Assert ($Protocol.SchemaVersion -eq 1 -and $Protocol.MaximumBytes -eq 2048) 'Broker size/schema changed'
     Assert (($Protocol.Fields -join ',') -ceq 'SchemaVersion,InstallationId,RequestId,Operation,Target') 'Unrestricted broker field'
-    $expected=@('inspect|none','recover|operation-id','update|staged-release-id','rollback|owned-release-id','uninstall|none')
+    $expected=@('inspect|none','quarantine|none','recover|operation-id','update|staged-release-id','rollback|owned-release-id','uninstall|none')
     $actual=@($Protocol.Operations|ForEach-Object {$_.Name+'|'+$_.Target})
     Assert (($actual -join ',') -ceq ($expected -join ',')) 'Broker permits an unreviewed capability'
 }
@@ -62,6 +62,7 @@ function Reject([scriptblock]$Body){$failed=$false;try{& $Body}catch{$failed=$tr
 function Clone($Value){return ($Value|ConvertTo-Json -Depth 12|ConvertFrom-Json)}
 Test 'all actual lifecycle paths require complete ordered evidence' {Assert-Lifecycle $lifecycle}
 Test 'actual broker surface is bounded and data-only' {Assert-Broker $broker}
+Test 'quarantine cannot acquire a caller-selected process/path target' {foreach($target in @('pid','path','sid','operation-id')){$p=Clone $broker;($p.Operations|Where-Object Name -ceq 'quarantine').Target=$target;Reject {Assert-Broker $p}}}
 Test 'install shortcut without staging/verification rejected' {$p=Clone $lifecycle;$p.Transitions+=@([pscustomobject]@{Operation='install';From='planned';Event='shortcut';To='completed-inactive';Proof='pointer-readback'});Reject {Assert-Lifecycle $p}}
 Test 'uninstall shortcut before resource cleanup rejected' {$p=Clone $lifecycle;$p.Transitions+=@([pscustomobject]@{Operation='uninstall';From='quiescent';Event='shortcut';To='completed-removed';Proof='removal-readback'});Reject {Assert-Lifecycle $p}}
 Test 'activation terminal rejected' {$p=Clone $lifecycle;($p.Transitions|Where-Object {$_.Operation -ceq 'update' -and $_.Event -ceq 'finish'}).To='completed-active';Reject {Assert-Lifecycle $p}}

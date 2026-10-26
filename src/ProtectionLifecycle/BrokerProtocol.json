@@ -4,6 +4,7 @@
   "Fields": ["SchemaVersion", "InstallationId", "RequestId", "Operation", "Target"],
   "Operations": [
     {"Name":"inspect", "Target":"none"},
+    {"Name":"quarantine", "Target":"none"},
     {"Name":"recover", "Target":"operation-id"},
     {"Name":"update", "Target":"staged-release-id"},
     {"Name":"rollback", "Target":"owned-release-id"},

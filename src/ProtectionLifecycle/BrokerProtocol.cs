@@ -5,7 +5,8 @@ namespace ProtectionLifecycle;
 
 // Data-only, fixed operations. No commands, scripts, paths, provider/filter GUIDs,
 // SIDs, process IDs, URLs, endpoint overrides or activation supplied by a caller.
-// Transport authentication and real OS owners are still required and not built.
+// The installed fixed quarantine command supplies concrete WFP/Job owners.
+// General broker transport authentication and lifecycle adapters remain absent.
 internal sealed class BrokerRequest
 {
     internal string InstallationId { get; }

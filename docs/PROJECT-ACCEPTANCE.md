@@ -145,3 +145,13 @@ S2独立读取新PE元数据及调用树，移除worker离线资格不明的签�
 后续将现有UserProxyBaseline.Read直接接入CLI audit必需检查，避免只有GUI分步/独立命令才报告代理API不一致。该新managed变更仅SOURCE；四项目非生成语义分析0错误/0警告，未重编译，S1/S2不覆盖此修改。首次类型检查仅因报告父目录缺失退出1，建立目录后成功，不冒充产品故障通过。
 
 证据、精确工件身份和剩余BLOCKED/DEFERRED见[本次记录](VALIDATION-S1-S2-20261026.md)及STATUS。常规停止和空包pin保持；单次S1已消耗，维护写入/故障、GUI、生产宿主/WFP/生命周期仍需各自资格与集成，完整目标未完成，尚非DELIVERABLE。没有修改或推送origin。
+
+## 2026-10-26接续：固定隔离管理动作接入现有owner（SOURCE）
+
+新增ProtectionBroker的单一quarantine入口，直接引用ProtectionLifecycle；不复制owner或工程源、不引入第三方依赖。请求不接受路径/SID/PID/命令/脚本/网络端点或激活参数；只用现有管理员上下文，不触发UAC。私有固定状态及互斥锁、当前指针、整版payload租约和自身EXE/入口DLL/生命周期DLL安装路径核对后，先写请求和before记录，再进入现有PersistentFence与RegisteredJobSet。
+
+先核验全部已登记WFP对象归属，再在原事务owner中恢复隔离；尚无隔离计划时由原owner建立。独立提交回读之后尝试停止已核验Job，隔离失败亦保留失败并尝试所属Job；不存在按进程名/PID杀进程的后备。停止后再次回读WFP，前后观察分开保存。Job名字打不开/缺失不计作全进程清零；未确认输出3，前置资格/日志异常输出125，不能产生生命周期清理或准入证明。持久过滤器不因关闭句柄而删除。
+
+非生成检查扩展为当前唯一新项目引用形状：直接、本地、无额外元数据的net8.0-windows库叶，以Roslyn CompilationReference检查公开API，不Emit、加载项目程序集或运行MSBuild。五个合成输入检查实际覆盖公开跨项目调用、内部不可见CS0122、额外引用选项、缺失目标及多层图拒绝；未复制产品工程。11项嵌入协议数据检查通过，含quarantine不能携带调用者目标。最终五项目类型检查0错误/0警告。原始静态报告在outputs/20261026-broker-quarantine，合成负例日志在其reference-checks.json所指work目录；均不入Git。
+
+此项只增加生产源码调用点，不授予INTEGRATED/VERIFIED/BUILD。管理入口、WFP ABI/语义/崩溃、Job生命周期及安装路径均未运行；当前构建与执行BLOCKED于独立安全资格，不重用已消耗S1。包批准pin仍空，首次可信bootstrap、完整进程创建/准入、代理审核/开放、Watchdog、ILifecycleRuntimeLease、最终卸载仍缺失。没有提权、安装、项目程序执行、网络/AV策略变更、真实Claude启动或推送，完整产品尚非DELIVERABLE。
