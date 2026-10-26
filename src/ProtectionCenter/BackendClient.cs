@@ -35,9 +35,11 @@ internal static class BackendClient
     }
     internal static string SaveReport(string name, BackendResult result)
     {
-        var directory = Path.Combine(Root, "reports"); Directory.CreateDirectory(directory);
+        if(name is not ("environment" or "config-repair"))throw new InvalidDataException("Unknown report kind");
+        var directory = ClaudeProtection.Storage.UserDataPaths.Reports;
         var file = Path.Combine(directory, name + "-" + DateTime.UtcNow.ToString("yyyyMMdd-HHmmss") + "-" + Guid.NewGuid().ToString("N")[..6] + ".json");
-        File.WriteAllText(file, JsonSerializer.Serialize(new { atUtc = DateTimeOffset.UtcNow, result.ExitCode, result.Output, result.Error }, new JsonSerializerOptions { WriteIndented = true }));
+        using(var stream=new FileStream(file,FileMode.CreateNew,FileAccess.Write,FileShare.Read))
+        {JsonSerializer.Serialize(stream,new { atUtc = DateTimeOffset.UtcNow, result.ExitCode, result.Output, result.Error },new JsonSerializerOptions{WriteIndented=true});stream.Flush(true);}
         return file;
     }
 }

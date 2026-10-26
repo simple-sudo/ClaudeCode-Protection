@@ -23,21 +23,24 @@ internal static class Program
                     return 125;
                 case "repair-proxy-plan":
                     if (args.Length != 1) return 64;
+                    Storage.UserDataPaths.AssertUserContext();
                     Console.WriteLine(JsonSerializer.Serialize(ProxySettings.Plan(SettingsPath), Files.Json));
                     return 0;
                 case "repair-proxy":
                     if (args.Length != 2 || !System.Text.RegularExpressions.Regex.IsMatch(args[1], "^[A-Fa-f0-9]{64}$")) return 64;
-                    var backupRoot = Path.Combine(Files.Root, "state", "proxy-backups");
+                    var backupRoot = Storage.UserDataPaths.ProxyBackups;
                     var backup = ProxySettings.Apply(SettingsPath, args[1].ToUpperInvariant(), backupRoot);
-                    if (backup != "UNCHANGED") File.WriteAllText(Path.Combine(backupRoot, "latest-repair.json"), JsonSerializer.Serialize(new { backup = Path.GetFileName(backup) }));
+                    if (backup != "UNCHANGED") Storage.UserDataPaths.PublishLatestBackup(Path.GetFileName(backup));
                     Console.WriteLine(JsonSerializer.Serialize(new { status = backup == "UNCHANGED" ? "UNCHANGED" : "REPAIRED", backup = backup == "UNCHANGED" ? null : backup, systemProxyModified = false }, Files.Json));
                     return 0;
                 case "restore-proxy":
                     if (args.Length != 1) return 64;
-                    var restoreRoot = Path.Combine(Files.Root, "state", "proxy-backups");
+                    var restoreRoot = Storage.UserDataPaths.ProxyBackups;
                     var pointer = Path.Combine(restoreRoot, "latest-repair.json");
-                    if (!File.Exists(pointer)) { Console.WriteLine("{\"status\":\"NO_BACKUP\"}"); return 0; }
-                    using (var document = JsonDocument.Parse(File.ReadAllText(pointer)))
+                    byte[] pointerBytes;
+                    try { pointerBytes=File.ReadAllBytes(pointer); }
+                    catch(FileNotFoundException) { Console.WriteLine("{\"status\":\"NO_CURRENT_USER_BACKUP\",\"legacyBackupsMigrated\":false}");return 0; }
+                    using (var document = JsonDocument.Parse(pointerBytes))
                     {
                         var name = document.RootElement.GetProperty("backup").GetString() ?? "";
                         if (!System.Text.RegularExpressions.Regex.IsMatch(name, "^settings-[a-f0-9]{32}\\.json$")) throw new InvalidDataException("Invalid backup identifier");
