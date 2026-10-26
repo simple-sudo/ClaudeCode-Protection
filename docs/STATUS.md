@@ -9,13 +9,14 @@
 | 版本管理 | VERIFIED，仅本地Git配置范围 | 已有origin指向`simple-sudo/ClaudeCode-Protection`；本组开发起点HEAD与本地origin/main均为`00caa98`，后续本地提交见git log。Private与上传同步由用户提供；未fetch或推送。源码白名单、凭据/运行状态/备份/产物排除，原始资料保留。 |
 | 当前日常CLI、GUI、工程后端、生命周期库、管理入口源码 | SOURCE，已类型检查 | 五项目非生成语义分析0错误/0警告。新增管理入口1源，生命周期20源；当前源码不继承下面冻结工件的运行证据。 |
 | 冻结日常CLI c419a6e | BUILD | 用户明确S1授权后，固定SDK8.0.422/引用8.0.28、本地空源restore及单次Release构建成功，0错误/0警告。7源、87个SDK/项目导入，无第三方包；工件/日志在work/s1-daily-c419。不是完整SDK闭包或安全兼容鉴定。 |
+| 管理入口及生命周期库 8a9c4b1 | BUILD，未执行 | 用户独立明确授权一次离线构建后完成27项输入/两项目图，restore/build均0，编译0错误/0警告。4个实际嵌入协议与源字节一致，库副本一致；仅PE元数据读取。证据在work/broker-offline-build，详见[范围与结果](BROKER-OFFLINE-BUILD-SCOPE.md)。不授予WFP/Job运行资格。 |
 | 有限普通权限只读调用 | INTEGRATED，仅两条实测调用链；VERIFIED仅执行/结果范围 | S2独立审查并将worker签名检查改为离线UNKNOWN后，baseline退出0但APIsAgree=false；audit退出2，9 PASS/2 FAIL/8 UNKNOWN。首个.NET宿主版本选择失败及明确修正均保留；未改真实设置或联网。见[实测记录](VALIDATION-S1-S2-20261026.md)。 |
 | 用户配置维护切片 | SOURCE，生产调用点已接线 | 在`a085761`私有目录基础上，GUI接入撤销；CLI修复/撤销共用独占文件锁、刷盘备份/回执、写入前pending记录和完成后latest发布。中断只核对前/后哈希；冲突、缺失或不可读停止自动修改。恢复动作本身有反向备份，后续编辑拒绝覆盖。移除跨层分散发布和重复ACL改写。尚无运行验收，不授予INTEGRATED。 |
 | 日常审计行为收敛 | SOURCE，已类型检查 | 默认环境检查离线，连通性另选；PowerShell仅返回监听PID，由现有managed进程查询身份，不再从猜测目录递归启动EXE；移除执行策略Bypass和树状终止，超时仅停止自建审计worker。现有路径快照仍不是持续代理身份或启动准入。 |
 | 固定管理入口与Job/WFP组合 | SOURCE，调用点已接线；未运行集成 | ProtectionBroker仅接受quarantine；固定已安装当前版本/管理员上下文→私有状态锁与整版核验→记录请求→精确持久隔离及回读→所属Job停止→再次隔离回读→保留分阶段记录。隔离失败仍尝试已核验Job；打不开/缺失不计清零。没有提权器、任意参数管理通道或代理开放。 |
 | 安装/恢复/卸载及完整保护宿主 | SOURCE，未贯通 | 固定quarantine尚非完整宿主。原子进程创建、代理审核/开放、完整runtime lease、准入/Watchdog/漂移、可信bootstrap/通用broker transport及最终清理仍缺失。所属Job观察不冒充全进程所有权或ILifecycleRuntimeLease。 |
 | 原纯协议数据检查 | 保留历史有限证据 | 既有协议测试及失败/UNKNOWN记录保留；本轮不重复执行，不扩展为原生阻断或当前程序通过。 |
-| 其余构建与程序/故障验收 | BLOCKED | 原Assert/Build/cmd停止及空包pin保持；单次S1已消耗。固定管理入口、配置维护/合成故障、GUI、工程/native/生命周期及新managed修正未获构建/运行资格；没有以S1/S2外推。 |
+| 其余构建与程序/故障验收 | BLOCKED | 原Assert/Build/cmd停止及空包pin保持；日常S1及管理组件两次独立构建授权均已消耗。quarantine/Job/WFP/安装与配置维护/合成故障未获运行资格；GUI/工程/native及日常后续修正未获构建资格。没有以既有BUILD或S1/S2外推。 |
 | 真实Claude登录/推理/启动 | DEFERRED_BY_USER | 不计通过，也不阻碍其余独立工具能力开发。 |
 | 完整产品 | 尚非DELIVERABLE | 没有可运行、可安装并完成故障验收的整体交付。 |
 
@@ -37,7 +38,7 @@ INTEGRATED要求实际调用链的集成证据；VERIFIED要求规定功能/负�
 - 缺少代理审核/开放、原子进程绑定、完整runtime lease、Watchdog/漂移、可信broker/bootstrap和WFP最终清理。未建立可安装的可信发布包；包批准pin仍为空。真实Claude启动仍延期。
 - 新管理入口只允许既有提升上下文，核对自身EXE、入口DLL、生命周期DLL均位于被整版核验租约持有的当前安装版本。开发目录运行会拒绝；它不是可信首次安装引导或运行前代码签名根。实际安装、WFP ABI、崩溃/持久过滤器及Job故障结果均未验证；阻塞路径不以继续外围扩展替代。
 - 已修正管理停止链首个Job超时就跳过其余Job的源码缺口：所有对象预检完成后逐项停止并逐项回读，保留各Job停止/最终观察失败；全局状态锁/清单权限丢失仍立即停止。预期数量、缺失、失败和清零全部纳入结果，后续观察为零不抹去先前失败。错误记录保留实际Win32错误码。五项目非生成类型检查0错误/0警告；未运行故障分支，原记录不升级。
-- 下一项证据动作是[管理组件首次离线构建](BROKER-OFFLINE-BUILD-SCOPE.md)，只生成两个组件、不执行或安装。它是不同于日常S1的新范围，目前尚未获准；不移除常规停止、不把编译阻塞替换为更多外围源码。当前静态记录在outputs/20261026-broker-stop-errors。
+- [管理组件首次离线构建](BROKER-OFFLINE-BUILD-SCOPE.md)已获独立明确授权并实际成功，不再保留“该构建待批准”的当前阻塞。quarantine运行、WFP ABI/功能/故障、所属Job停止及可信安装依然未获运行资格；不为取得绿色结果调用它们。静态记录在outputs/20261026-broker-stop-errors，独立构建/工件在work/broker-offline-build。
 - 卡巴斯基具体行为触发点、原DLL执行身份和系统影响仍UNKNOWN。本轮尝试只读查询原`avp`事件：provider不可解析；按Application/4662查询仅得2条事件、0条项目匹配，未恢复原告警内容，不能推导事件不存在或安全恢复。
 - 已完成限定S1/S2，不能再使用“未获S1授权”作为阻塞。S2发现Windows代理API结果不一致，尚未判定具体差异来源；不自动重设日常代理。audit现已在SOURCE接入该必需基线观察，当前S1 DLL不含此后续修改。其余运行资格缺口保持明确，不借助外围源码数量掩盖。
 

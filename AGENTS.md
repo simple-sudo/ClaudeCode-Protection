@@ -25,6 +25,12 @@ The S2 .NET-host selection failure and reviewed patch-selection correction are
 preserved in work/s2-offline and work/s2-offline-recovery. Both read commands
 completed; their FAIL/UNKNOWN observations are not protection acceptance.
 No later managed-source change inherits those artifacts' BUILD/runtime evidence.
+The user subsequently explicitly authorized one offline build of the submitted
+ProtectionBroker + ProtectionLifecycle slice at 8a9c4b1 (21 C# source files).
+That separate grant is now consumed: restore/build succeeded, no product ran.
+scripts/Invoke-BrokerOfflineBuild.ps1 records that fixed attempt, not a reusable
+unlock. Its artifacts remain in work/broker-offline-build and are not approved
+for execution, installation, escalation, quarantine or network/AV changes.
 Do not restore the retired binary, run the old aggregate selftest, add AV
 exclusions, rename/repackage to evade detection, or change AV policy. A new
 alert stops validation immediately. Compile/execute blocked work must be

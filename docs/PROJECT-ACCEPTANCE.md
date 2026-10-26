@@ -161,3 +161,11 @@ S2独立读取新PE元数据及调用树，移除worker离线资格不明的签�
 审查固定入口实际消费方发现：全部Job预检后，首个StopAndVerifyZero失败会抛出并跳过后续对象。现保留每个Job的停止错误，继续其余已核验对象，再逐项最终观察；全局私有锁/登记清单断言仍在每一步catch之外，不把失去权限当作可忽略的局部错误。新集合观察schema 2记录预期数量、缺失项、成功观察和按Job/阶段的失败，原schema 1不改写；数量不齐、名称缺失、任一失败或非零均非成功，后续零观察不能抹掉先前停止失败。管理输出显式给出预期数和Job失败数。通用错误描述保留Win32.NativeErrorCode及固定Stage，不输出异常消息/私有路径。
 
 最终五项目非生成类型检查0错误/0警告；SDK与引用168项原摘要一致，没有编译、加载或执行项目/native代码。单Job失败后继续、后续重新非零、全局权限丢失及记录失败均尚无运行验收。具体下一动作收敛为管理组件两个项目首次离线构建，见BROKER-OFFLINE-BUILD-SCOPE.md；尚未执行或授予资格，不重新请求已完成的日常S1、不恢复旧sample、不开放quarantine运行。当前仍SOURCE，完整目标未完成。
+
+### 同日独立明确授权后：管理组件首次BUILD
+
+用户在当前聊天明确选择“授权这一次离线构建”，范围仅ProtectionBroker＋ProtectionLifecycle的21源，不执行/安装/提权/网络或AV变更。随后固定8a9c4b13711598187cde8845794f24d455ea0004、27项源/项目/资源，核对提交blob与SHA并持有防改写共享句柄。唯一图离线restore及Release/no-restore build均退出0，0错误/0警告；obj/bin按SDK项目名隔离，两个Csc调用，恢复后各89导入，无第三方包。未更改原Build/Assert/cmd或包pin，不复制工程，不恢复退休样本。
+
+只读PE元数据确认4嵌入协议与源字节SHA一致、引用库与独立库摘要一致，无模块初始化方法或旧工程类型；未加载/执行项目程序集、调用WFP/Job/进程控制。卡巴斯基/BFE运行、两真实规则禁用、FlClash/Core PID不变；有限Application观察未见新AV事件，完整厂商覆盖UNKNOWN。原始4文件和旧S2工件不变。唯一入口记录、原日志、全工件和导入/路径/嵌入数据检查在work/broker-offline-build；精确主要工件SHA见BROKER-OFFLINE-BUILD-SCOPE.md。
+
+此项将两个组件在8a9c4b1的证据提升为BUILD；前述“尚未构建”仅为历史阶段。其余运行/安装资格不继承，不授予INTEGRATED/VERIFIED/DELIVERABLE，不证明旧AV事件误报、原生ABI、全流/即时阻断、Job故障、重启或完整生产闭环。单次授权已消耗，原失败与UNKNOWN保留，完整目标仍未完成。
