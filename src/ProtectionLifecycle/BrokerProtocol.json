@@ -1,0 +1,12 @@
+{
+  "SchemaVersion": 1,
+  "MaximumBytes": 2048,
+  "Fields": ["SchemaVersion", "InstallationId", "RequestId", "Operation", "Target"],
+  "Operations": [
+    {"Name":"inspect", "Target":"none"},
+    {"Name":"recover", "Target":"operation-id"},
+    {"Name":"update", "Target":"staged-release-id"},
+    {"Name":"rollback", "Target":"owned-release-id"},
+    {"Name":"uninstall", "Target":"none"}
+  ]
+}

@@ -1,0 +1,2 @@
+# Preserve current source bytes; introducing Git must not normalize snapshots.
+* -text

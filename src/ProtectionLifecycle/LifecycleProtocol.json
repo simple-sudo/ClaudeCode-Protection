@@ -1,0 +1,25 @@
+{
+  "SchemaVersion": 1,
+  "DefaultActivation": "INACTIVE",
+  "PreserveUserConfig": true,
+  "PreserveEvidence": true,
+  "AllowedOperations": ["install", "update", "rollback", "uninstall"],
+  "Transitions": [
+    {"Operation":"install","From":"planned","Event":"stage","To":"staged","Proof":"reviewed-package"},
+    {"Operation":"install","From":"staged","Event":"verify","To":"verified","Proof":"verified-payload"},
+    {"Operation":"install","From":"verified","Event":"switch","To":"switched","Proof":"quiescent-pointer"},
+    {"Operation":"install","From":"switched","Event":"finish","To":"completed-inactive","Proof":"pointer-readback"},
+    {"Operation":"update","From":"planned","Event":"stage","To":"staged","Proof":"reviewed-package"},
+    {"Operation":"update","From":"staged","Event":"verify","To":"verified","Proof":"verified-payload"},
+    {"Operation":"update","From":"verified","Event":"switch","To":"switched","Proof":"quiescent-pointer"},
+    {"Operation":"update","From":"switched","Event":"finish","To":"completed-inactive","Proof":"pointer-readback"},
+    {"Operation":"rollback","From":"planned","Event":"verify","To":"verified","Proof":"owned-prior-payload"},
+    {"Operation":"rollback","From":"verified","Event":"switch","To":"switched","Proof":"quiescent-pointer"},
+    {"Operation":"rollback","From":"switched","Event":"finish","To":"completed-inactive","Proof":"pointer-readback"},
+    {"Operation":"uninstall","From":"planned","Event":"quiesce","To":"quiescent","Proof":"owned-processes-zero"},
+    {"Operation":"uninstall","From":"quiescent","Event":"clear-resources","To":"resources-cleared","Proof":"owned-resources-absent"},
+    {"Operation":"uninstall","From":"resources-cleared","Event":"remove-pointer","To":"pointer-removed","Proof":"pointer-absent"},
+    {"Operation":"uninstall","From":"pointer-removed","Event":"remove-payload","To":"payload-removed","Proof":"exact-owned-files-absent"},
+    {"Operation":"uninstall","From":"payload-removed","Event":"finish","To":"completed-removed","Proof":"removal-readback"}
+  ]
+}

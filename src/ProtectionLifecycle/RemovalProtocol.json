@@ -1,0 +1,16 @@
+{
+  "SchemaVersion": 1,
+  "DefaultAction": "REFUSE",
+  "RecursiveDelete": false,
+  "PreserveUserConfig": true,
+  "PreserveEvidence": true,
+  "MaximumVersions": 512,
+  "Files": [
+    {"Presence":"present","Identity":"same","Content":"same","Action":"DELETE"},
+    {"Presence":"absent","Identity":"not-applicable","Content":"not-applicable","Action":"SKIP"}
+  ],
+  "Directories": [
+    {"Presence":"present","Identity":"same","Content":"empty","Action":"DELETE"},
+    {"Presence":"absent","Identity":"not-applicable","Content":"not-applicable","Action":"SKIP"}
+  ]
+}

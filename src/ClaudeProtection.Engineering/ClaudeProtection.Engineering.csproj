@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <!-- Same assembly basename preserves probe staging names. Output is separate;
+         this is source/build separation, not AV compatibility or evasion. -->
+    <AssemblyName>ClaudeProtection</AssemblyName>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Program.cs" />
+    <Compile Include="../ClaudeProtection/Models.cs;../ClaudeProtection/EnvironmentAudit.cs;../ClaudeProtection/ProcessIdentity.cs;../ClaudeProtection/ProxySettings.cs;../ClaudeProtection/UserProxyBaseline.cs" />
+    <Compile Include="../ClaudeProtection/NativeJob.cs;../ClaudeProtection/SandboxToken.cs;../ClaudeProtection/ControlledLoopback.cs;../ClaudeProtection/ExperimentMonitor.cs;../ClaudeProtection/IsolationExperiment.cs" />
+    <!-- Historical aggregate SelfTests.cs remains evidence, never compiled here. -->
+    <None Include="../../scripts/Read-Environment.ps1" Link="Read-Environment.ps1" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

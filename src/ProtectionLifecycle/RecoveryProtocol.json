@@ -1,0 +1,15 @@
+{
+  "SchemaVersion": 1,
+  "DefaultAction": "REFUSE",
+  "AllowedOperations": ["install", "update", "rollback"],
+  "RequireRuntimeQuiescence": true,
+  "RetainOriginalLedger": true,
+  "MutatePointer": false,
+  "MutateNetwork": false,
+  "Rules": [
+    {"Ledger":"incomplete","Pointer":"target","Payload":"verified","Action":"RECONCILE_TARGET_INACTIVE"},
+    {"Ledger":"incomplete","Pointer":"prior","Payload":"verified","Action":"ABORT_PRIOR_UNCHANGED_RETAIN_PAYLOAD"},
+    {"Ledger":"incomplete","Pointer":"absent","Payload":"not-applicable","Action":"ABORT_UNCOMMITTED_RETAIN_PAYLOAD"},
+    {"Ledger":"completed","Pointer":"target","Payload":"verified","Action":"VERIFY_COMPLETED_CURRENT_INACTIVE"}
+  ]
+}

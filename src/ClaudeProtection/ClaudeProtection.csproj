@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <AssemblyName>ClaudeProtection</AssemblyName>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- Explicit daily boundary: no Job, sandbox workers or fault injection. -->
+    <Compile Include="Program.cs;Models.cs;EnvironmentAudit.cs;ProcessIdentity.cs;ProxySettings.cs;UserProxyBaseline.cs" />
+    <None Include="../../scripts/Read-Environment.ps1" Link="Read-Environment.ps1" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>
