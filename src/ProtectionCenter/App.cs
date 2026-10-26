@@ -100,20 +100,33 @@ internal sealed class CenterWindow : Window
         var baseline = await BackendClient.Command("system-proxy-baseline");
         if (baseline.ExitCode == 0)
         {
-            using var json = JsonDocument.Parse(baseline.Output);
-            proxy.Text = json.RootElement.GetProperty("ExpectedFlClashProxy").GetBoolean() ? "配置一致" : "需要检查";
+            try
+            {
+                using var json = JsonDocument.Parse(baseline.Output);
+                proxy.Text = json.RootElement.GetProperty("ExpectedFlClashProxy").GetBoolean() ? "配置一致" : "需要检查";
+            }
+            catch (Exception ex) when (ex is JsonException or KeyNotFoundException or InvalidOperationException)
+            { proxy.Text = "结果无法读取"; }
         }
         else proxy.Text = "检查未完成";
-        var result = online ? await BackendClient.Command("audit", "--online") : await BackendClient.Command("audit");
-        var file = BackendClient.SaveReport("environment", result);
-        details.Text = result.Output + "\r\n" + result.Error;
-        activity.Text = "环境检查记录已保存。正式启动的必要项可能仍显示失败或未知；本阶段保持未激活。\n" + file;
+        // Show the first stage before dispatching the next. A later backend or
+        // report failure must not erase the baseline failure/output.
+        details.Text = "Windows 代理配置：\r\n" + baseline.Output + "\r\n" + baseline.Error;
+        BackendResult result;
+        try { result = online ? await BackendClient.Command("audit", "--online") : await BackendClient.Command("audit"); }
+        catch (Exception ex) { result = new(125, "", "Environment audit invocation failed: " + ex.GetType().Name); }
+        details.Text += "\r\n\r\n环境检查：\r\n" + result.Output + "\r\n" + result.Error;
+        var message = result.ExitCode == 125 ? "环境检查未能完成，阶段结果如下；保护仍未激活。" : "环境检查已返回。失败和未知项保留；保护仍未激活。";
+        activity.Text = message;
+        try { activity.Text += "\n记录：" + BackendClient.SaveReport("environment", result, baseline); }
+        catch (Exception ex)
+        { activity.Text = message + "\n完整报告未能保存：" + ex.GetType().Name + "。已显示的阶段结果保留。"; }
     }
     private async Task Repair()
     {
         activity.Text = "核对 Claude 的三个代理字段；Windows 全局代理保持原样。";
         var plan = await BackendClient.Command("repair-proxy-plan");
-        if (plan.ExitCode != 0) throw new InvalidOperationException("配置计划无法读取");
+        if (plan.ExitCode != 0) { ShowMaintenance(plan, "config-repair"); return; }
         using var json = JsonDocument.Parse(plan.Output);
         var hash = json.RootElement.GetProperty("sha256").GetString() ?? throw new InvalidDataException();
         var result = await BackendClient.Command("repair-proxy", hash);
@@ -140,6 +153,7 @@ internal sealed class CenterWindow : Window
                 "NO_CURRENT_USER_BACKUP" => "当前用户没有本工具的恢复记录；未迁移或使用旧项目备份。",
                 "REFUSED_LATER_EDIT" => "检测到修改后的用户编辑，已拒绝恢复，未覆盖当前配置。",
                 "REFUSED_STALE_PLAN" or "REFUSED_CONCURRENT_EDIT" => "配置在核对后发生变化，已停止本次修改。请重新检查当前配置。",
+                "REFUSED_UNVERIFIABLE_BACKUP" => "恢复记录或备份无法核验，已拒绝覆盖当前配置；原有文件保留。",
                 "RECOVERED_APPLIED" => "上次中断的配置修改已核实完成，恢复入口已补齐。本次未再修改配置。",
                 "RECOVERED_NOT_APPLIED" => "上次中断的操作未应用，配置与修改前一致。本次未再修改配置；可重新选择操作。",
                 "RECOVERY_CONFLICT" => "中断记录与当前配置冲突，已停止自动修改；备份和失败记录保留。",

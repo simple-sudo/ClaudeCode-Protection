@@ -66,9 +66,10 @@ S1-S5 均未执行。它们不是一次性全套自检；每阶段必须按实�
 | pending发布前中断 | 配置不变，旧latest可用；保留已产生备份/临时文件，不自动清理证据 |
 | pending后、替换前中断 | 当前匹配BeforeHash时只返回RECOVERED_NOT_APPLIED，保留原latest，不顺带修复/撤销 |
 | 替换后、latest前中断 | 当前匹配AfterHash且备份/回执完整时补齐latest，只返回RECOVERED_APPLIED |
-| 中断后内容冲突/文件缺失/回执损坏 | 非成功、保留记录，禁止猜测或自动写回 |
+| 中断后内容冲突/文件缺失/回执损坏 | 非成功、保留记录，禁止猜测或自动写回；损坏pending返回RECOVERY_REQUIRED，无法核验latest/备份返回REFUSED_UNVERIFIABLE_BACKUP |
+| 输入包含无效UTF-8字节 | 修复计划/修复拒绝；不将解码替代字符写入配置，不覆盖原文 |
 | 替换API失败/共享冲突 | 不声称原名或原内容必然不变；pending和临时文件保留，报告RECOVERY_REQUIRED |
-| 重解析路径/提升上下文/报告写失败 | 拒绝重解析或提升维护；报告失败不能抹去已显示的真实配置操作结果 |
+| 重解析路径/提升上下文/报告写失败 | 拒绝重解析或提升维护；报告失败不能抹去已显示的真实配置操作结果或环境阶段结果；审计调度失败仍保留代理基线及独立失败结果 |
 
 微软[ReplaceFileW说明](https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-replacefilew)列明部分失败会改变原路径状态，且WRITE_THROUGH标志不受支持。应用层Flush(true)与写前记录因此只作为恢复实现手段；在真实故障验收前，不宣称目录发布断电持久性、跨编辑器原子CAS或恶意同用户替换安全。该说明也是本轮取消无条件删除临时文件的依据。
 

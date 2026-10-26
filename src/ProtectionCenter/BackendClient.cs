@@ -33,13 +33,13 @@ internal static class BackendClient
         await process.WaitForExitAsync();
         return new(process.ExitCode, await output, await error);
     }
-    internal static string SaveReport(string name, BackendResult result)
+    internal static string SaveReport(string name, BackendResult result, BackendResult? baseline = null)
     {
         if(name is not ("environment" or "config-repair" or "config-restore"))throw new InvalidDataException("Unknown report kind");
         var directory = ClaudeProtection.Storage.UserDataPaths.Reports;
         var file = Path.Combine(directory, name + "-" + DateTime.UtcNow.ToString("yyyyMMdd-HHmmss") + "-" + Guid.NewGuid().ToString("N")[..6] + ".json");
         using(var stream=new FileStream(file,FileMode.CreateNew,FileAccess.Write,FileShare.Read))
-        {JsonSerializer.Serialize(stream,new { atUtc = DateTimeOffset.UtcNow, result.ExitCode, result.Output, result.Error },new JsonSerializerOptions{WriteIndented=true});stream.Flush(true);}
+        {JsonSerializer.Serialize(stream,new { atUtc = DateTimeOffset.UtcNow, result.ExitCode, result.Output, result.Error, baseline },new JsonSerializerOptions{WriteIndented=true});stream.Flush(true);}
         return file;
     }
 }

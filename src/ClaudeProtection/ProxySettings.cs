@@ -24,7 +24,7 @@ internal static class ProxySettings
     internal static string Hash(byte[] bytes) => Convert.ToHexString(SHA256.HashData(bytes));
     internal static byte[] Merge(byte[] original)
     {
-        var text = System.Text.Encoding.UTF8.GetString(original).TrimStart('\ufeff');
+        var text = new System.Text.UTF8Encoding(false, true).GetString(original).TrimStart('\ufeff');
         var node = JsonNode.Parse(text) as JsonObject ?? throw new InvalidDataException("Settings must be a JSON object");
         var environment = node["env"] as JsonObject;
         if (node["env"] is not null && environment is null) throw new InvalidDataException("env must be an object");
@@ -65,10 +65,17 @@ internal static class ProxySettings
         var recovery = RecoverPending(path, backupRoot);
         if (recovery is not null) return recovery;
         var pointer = Path.Combine(backupRoot, "latest-repair.json");
-        string name;
-        try { name = ReadPointer(pointer); }
-        catch (FileNotFoundException) { return new("NO_CURRENT_USER_BACKUP"); }
-        var (receipt, original) = ReadBackup(path, backupRoot, name);
+        Receipt receipt;
+        byte[] original;
+        try
+        {
+            string name;
+            try { name = ReadPointer(pointer); }
+            catch (FileNotFoundException) { return new("NO_CURRENT_USER_BACKUP"); }
+            (receipt, original) = ReadBackup(path, backupRoot, name);
+        }
+        catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or JsonException)
+        { return new("REFUSED_UNVERIFIABLE_BACKUP", ErrorType: ex.GetType().Name); }
         // A user edit after repair must not be replaced by an older full snapshot.
         if (Hash(ReadChecked(path)) != receipt.AfterHash) return new("REFUSED_LATER_EDIT");
         return Replace(path, receipt.AfterHash, original, backupRoot);
@@ -103,7 +110,7 @@ internal static class ProxySettings
             File.Delete(Path.Combine(backupRoot, "pending-repair.json"));
             return new("APPLIED", backup, SettingsMayHaveChanged: true);
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
+        catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or InvalidOperationException)
         {
             // ReplaceFile failures do not all leave the original names intact.
             // Never remove the temporary or claim the settings were unchanged.
@@ -114,11 +121,11 @@ internal static class ProxySettings
     private static Result? RecoverPending(string path, string backupRoot)
     {
         var pending = Path.Combine(backupRoot, "pending-repair.json");
-        string name;
-        try { name = ReadPointer(pending); }
-        catch (FileNotFoundException) { return null; }
+        string? name = null;
         try
         {
+            try { name = ReadPointer(pending); }
+            catch (FileNotFoundException) { return null; }
             var (receipt, _) = ReadBackup(path, backupRoot, name);
             var current = Hash(ReadChecked(path));
             if (current == receipt.AfterHash)
@@ -131,8 +138,8 @@ internal static class ProxySettings
             return new(current == receipt.AfterHash ? "RECOVERED_APPLIED" : "RECOVERED_NOT_APPLIED", Path.Combine(backupRoot, name),
                 SettingsMayHaveChanged: current == receipt.AfterHash);
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException or JsonException)
-        { return new("RECOVERY_REQUIRED", Path.Combine(backupRoot, name), true, true, ex.GetType().Name); }
+        catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or InvalidOperationException or JsonException)
+        { return new("RECOVERY_REQUIRED", name is null ? null : Path.Combine(backupRoot, name), true, true, ex.GetType().Name); }
     }
 
     private static (Receipt Receipt, byte[] Original) ReadBackup(string path, string root, string name)

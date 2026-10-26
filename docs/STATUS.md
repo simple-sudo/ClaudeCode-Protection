@@ -6,7 +6,7 @@
 
 | 工作 | 级别 | 证据与限制 |
 |---|---|---|
-| 版本管理 | VERIFIED，仅本地Git配置范围 | 已有origin指向`simple-sudo/ClaudeCode-Protection`；本轮起点HEAD与本地origin/main均为`00caa98`。Private与上传同步由用户提供；本轮未fetch或推送。源码白名单、凭据/运行状态/备份/产物排除，原始资料保留。 |
+| 版本管理 | VERIFIED，仅本地Git配置范围 | 已有origin指向`simple-sudo/ClaudeCode-Protection`；本组开发起点HEAD与本地origin/main均为`00caa98`，后续本地提交见git log。Private与上传同步由用户提供；未fetch或推送。源码白名单、凭据/运行状态/备份/产物排除，原始资料保留。 |
 | 日常CLI、GUI、工程后端、生命周期库 | SOURCE，已类型检查 | 四个net8.0-windows项目无产物语义分析0错误/0警告；没有Emit、项目程序集加载、MSBuild、restore、分析器/生成器或原生调用。不是BUILD。 |
 | 用户配置维护切片 | SOURCE，生产调用点已接线 | 在`a085761`私有目录基础上，GUI接入撤销；CLI修复/撤销共用独占文件锁、刷盘备份/回执、写入前pending记录和完成后latest发布。中断只核对前/后哈希；冲突、缺失或不可读停止自动修改。恢复动作本身有反向备份，后续编辑拒绝覆盖。移除跨层分散发布和重复ACL改写。尚无运行验收，不授予INTEGRATED。 |
 | 日常审计行为收敛 | SOURCE，已类型检查 | 默认环境检查离线，连通性另选；PowerShell仅返回监听PID，由现有managed进程查询身份，不再从猜测目录递归启动EXE；移除执行策略Bypass和树状终止，超时仅停止自建审计worker。现有路径快照仍不是持续代理身份或启动准入。 |
@@ -26,6 +26,8 @@ INTEGRATED要求实际调用链的集成证据；VERIFIED要求规定功能/负�
 
 既有四上游固定源码、许可、边界、依赖与复用决定见[复用审查](UPSTREAM-REUSE-20261026.md)。本轮没有引入Go/Python/WDK依赖、下载/运行上游二进制或安装器。
 
+`cbc0717`后复核修正（SOURCE）：损坏pending的读取与回执校验均纳入恢复结果，显式捕获不继承IOException的InvalidDataException，保持RECOVERY_REQUIRED/非成功结果和原文件。latest/备份无法核验时返回REFUSED_UNVERIFIABLE_BACKUP；输入无效UTF-8拒绝解码替换。GUI保留代理基线和后续审计两个阶段的结果，第二阶段调度失败同样进入报告；报告保存失败不遮住屏幕结果，修复计划失败也显示/记录后端输出。四项目无产物检查仍0错误/0警告，未执行这些分支或渲染GUI，不能授予运行资格。
+
 ## 当前明确缺口与下一步
 
 - 配置维护仍需真实正向/负向/中断/双进程/报告失败验证。锁只串行化本工具实例，哈希检查不是对外部编辑器的原子CAS；路径检查尚非句柄绑定防替换，硬链接/恶意同用户竞争、目录持久性和断电行为未验证。`File.Replace`失败不保证原文件名完整，当前保留临时文件和备份、报告可能已改变，不自动回写。
@@ -38,6 +40,6 @@ INTEGRATED要求实际调用链的集成证据；VERIFIED要求规定功能/负�
 - `AGENTS.md`记录当前自主开发与安全约束；本地提交已获授权，禁止擅自远程公开/推送。
 - `pwsh -NoProfile -File scripts/Check-SourceTypes.ps1`仅做无产物语义检查。固定SDK8.0.422/引用包8.0.28；不自动下载，不执行构建任务。它不是通用MSBuild替代器。
 - 原始配置、认证、备份、历史失败与证据保留。FlClash Global、系统代理、TUN/BFE不停止或重设；AV开启、新告警即停；UAC由本人确认；IPv6仅阻断和必要负向测试。
-- 历史逐项验收和旧范围保持在[验收账本](PROJECT-ACCEPTANCE.md)。本轮无产物检查原始JSON位于`outputs/20261026-maintenance-delivery/source-types.json`（本地忽略，不入Git）；较早convergence资料和上游快照保留原位置。
+- 历史逐项验收和旧范围保持在[验收账本](PROJECT-ACCEPTANCE.md)。`cbc0717`检查原始JSON位于`outputs/20261026-maintenance-delivery/source-types.json`，后续异常路径修正位于`outputs/20261026-maintenance-errors/source-types.json`（本地忽略，不入Git）；较早convergence资料和上游快照保留原位置。
 
 会话停止时，以Git状态和本页接续；不声称后台仍在运行。
