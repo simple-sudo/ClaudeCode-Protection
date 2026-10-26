@@ -155,3 +155,9 @@ S2独立读取新PE元数据及调用树，移除worker离线资格不明的签�
 非生成检查扩展为当前唯一新项目引用形状：直接、本地、无额外元数据的net8.0-windows库叶，以Roslyn CompilationReference检查公开API，不Emit、加载项目程序集或运行MSBuild。五个合成输入检查实际覆盖公开跨项目调用、内部不可见CS0122、额外引用选项、缺失目标及多层图拒绝；未复制产品工程。11项嵌入协议数据检查通过，含quarantine不能携带调用者目标。最终五项目类型检查0错误/0警告。原始静态报告在outputs/20261026-broker-quarantine，合成负例日志在其reference-checks.json所指work目录；均不入Git。
 
 此项只增加生产源码调用点，不授予INTEGRATED/VERIFIED/BUILD。管理入口、WFP ABI/语义/崩溃、Job生命周期及安装路径均未运行；当前构建与执行BLOCKED于独立安全资格，不重用已消耗S1。包批准pin仍空，首次可信bootstrap、完整进程创建/准入、代理审核/开放、Watchdog、ILifecycleRuntimeLease、最终卸载仍缺失。没有提权、安装、项目程序执行、网络/AV策略变更、真实Claude启动或推送，完整产品尚非DELIVERABLE。
+
+### 同日停止链失败处理修正（SOURCE）
+
+审查固定入口实际消费方发现：全部Job预检后，首个StopAndVerifyZero失败会抛出并跳过后续对象。现保留每个Job的停止错误，继续其余已核验对象，再逐项最终观察；全局私有锁/登记清单断言仍在每一步catch之外，不把失去权限当作可忽略的局部错误。新集合观察schema 2记录预期数量、缺失项、成功观察和按Job/阶段的失败，原schema 1不改写；数量不齐、名称缺失、任一失败或非零均非成功，后续零观察不能抹掉先前停止失败。管理输出显式给出预期数和Job失败数。通用错误描述保留Win32.NativeErrorCode及固定Stage，不输出异常消息/私有路径。
+
+最终五项目非生成类型检查0错误/0警告；SDK与引用168项原摘要一致，没有编译、加载或执行项目/native代码。单Job失败后继续、后续重新非零、全局权限丢失及记录失败均尚无运行验收。具体下一动作收敛为管理组件两个项目首次离线构建，见BROKER-OFFLINE-BUILD-SCOPE.md；尚未执行或授予资格，不重新请求已完成的日常S1、不恢复旧sample、不开放quarantine运行。当前仍SOURCE，完整目标未完成。

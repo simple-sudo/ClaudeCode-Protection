@@ -208,7 +208,15 @@ internal sealed class OwnedKernelJob : IDisposable
     [DllImport("kernel32.dll",SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)] private static extern bool TerminateJobObject(SafeJobHandle handle,uint exitCode);
 }
 
-internal sealed record RegisteredJobObservation(string[] NamesAbsentAtOpen,JobSnapshot[] PresentJobs,string Scope,bool CompleteProcessOwnershipQualified,bool AdmissionOrNetworkQualified);
+internal sealed record RegisteredJobFailure(string JobId,string Stage,WfpErrorEvidence[] Errors);
+internal sealed record RegisteredJobObservation(int ExpectedJobs,string[] NamesAbsentAtOpen,JobSnapshot[] PresentJobs,RegisteredJobFailure[] Failures,
+    string Scope,bool CompleteProcessOwnershipQualified,bool AdmissionOrNetworkQualified)
+{
+    // A later zero observation never repairs a failed stop, an unavailable job
+    // or a missing observation. All recorded intent entries remain in scope.
+    internal bool AllRegisteredMembersZeroObserved=>NamesAbsentAtOpen.Length==0 && Failures.Length==0 &&
+        PresentJobs.Length==ExpectedJobs && PresentJobs.All(s=>s.ObservedZero);
+}
 
 // Holds all recovered handles before terminating any members. This is useful
 // to the future runtime owner, but is deliberately NOT ILifecycleRuntimeLease:
@@ -249,12 +257,33 @@ internal sealed class RegisteredJobSet : IDisposable
     }
     internal RegisteredJobObservation StopAndObserveRegisteredMembers()
     {
-        AssertHeld();foreach(var job in jobs){AssertHeld();_=job.StopAndVerifyZero();}
-        AssertHeld();var snapshots=jobs.Select(j=>j.Observe()).ToArray();
-        if(snapshots.Any(s=>!s.ObservedZero))throw new InvalidOperationException("A registered job became nonempty during final observation");
-        var result=new RegisteredJobObservation(absent.ToArray(),snapshots,"REGISTERED_JOB_MEMBERS_ONLY",false,false);
+        var failures=new List<RegisteredJobFailure>();
+        AssertHeld();
+        foreach(var job in jobs)
+        {
+            // Loss of the protected inventory/lock is a global authority error,
+            // not a per-job error that permits more termination operations.
+            AssertHeld();
+            try{_=job.StopAndVerifyZero();}
+            catch(Exception ex){failures.Add(new(job.JobId,"stop",WfpNative.Describe(ex)));}
+        }
+        var snapshots=new List<JobSnapshot>();
+        foreach(var job in jobs)
+        {
+            AssertHeld();
+            try
+            {
+                var snapshot=job.Observe();snapshots.Add(snapshot);
+                if(!snapshot.ObservedZero)failures.Add(new(job.JobId,"final-observation",WfpNative.Describe(
+                    new InvalidOperationException("A registered job is nonempty during final observation"))));
+            }
+            catch(Exception ex){failures.Add(new(job.JobId,"final-observation",WfpNative.Describe(ex)));}
+        }
+        AssertHeld();
+        var result=new RegisteredJobObservation(intents.Count,absent.ToArray(),snapshots.ToArray(),failures.ToArray(),"REGISTERED_JOB_MEMBERS_ONLY",false,false);
         state.WriteNew("job-set-observed-"+Guid.NewGuid().ToString("N")+".json",JsonSerializer.SerializeToUtf8Bytes(new {
-            SchemaVersion=1,InstallationId=state.InstallationId,Observation=result,AtUtc=DateTime.UtcNow.ToString("o")
+            SchemaVersion=2,InstallationId=state.InstallationId,Status=result.AllRegisteredMembersZeroObserved?"REGISTERED_JOB_MEMBERS_ZERO_OBSERVED":"REGISTERED_JOB_STOP_NOT_CONFIRMED",
+            Observation=result,AtUtc=DateTime.UtcNow.ToString("o")
         }));
         return result;
     }

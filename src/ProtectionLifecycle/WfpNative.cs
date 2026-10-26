@@ -77,7 +77,9 @@ internal static class WfpNative
     internal static WfpErrorEvidence[] Describe(Exception failure)
     {
         var errors=failure is AggregateException group?group.Flatten().InnerExceptions.AsEnumerable():new[]{failure};
-        return errors.Select(ex=>new WfpErrorEvidence(ex.GetType().Name,ex is WfpFailure native?native.Status:unchecked((uint)ex.HResult),ex is WfpFailure failed?failed.Stage:null)).ToArray();
+        return errors.Select(ex=>new WfpErrorEvidence(ex.GetType().Name,
+            ex is WfpFailure native?native.Status:ex is Win32Exception win32?unchecked((uint)win32.NativeErrorCode):unchecked((uint)ex.HResult),
+            ex is WfpFailure failed?failed.Stage:ex.Data["Stage"] as string)).ToArray();
     }
     internal static T Transaction<T>(SafeWfpEngine engine,bool readOnly,Func<T> body)
     {

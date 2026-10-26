@@ -94,8 +94,7 @@ public static class InstalledBroker
                 catch (Exception ex) { failures.Add(Failure("post-stop-quarantine", ex)); }
             }
 
-            var registeredZeroObserved = jobs is not null && jobs.NamesAbsentAtOpen.Length == 0 &&
-                jobs.PresentJobs.All(j => j.ObservedZero);
+            var registeredZeroObserved = jobs is not null && jobs.AllRegisteredMembersZeroObserved;
             // A name absent at open is a bounded observation, not proof that
             // all installation processes/escaped processes are absent.
             var status = quarantineObserved && registeredZeroObserved && failures.Count == 0
@@ -103,8 +102,9 @@ public static class InstalledBroker
             var output = JsonSerializer.Serialize(new {
                 SchemaVersion = 1, state.InstallationId, RequestId = requestId, Status = status,
                 QuarantineObserved = quarantineObserved, RegisteredJobMembersZeroObserved = registeredZeroObserved,
-                FenceCount = fences.Count, RegisteredJobsObserved = jobs?.PresentJobs.Length,
+                FenceCount = fences.Count, RegisteredJobsExpected = jobs?.ExpectedJobs, RegisteredJobsObserved = jobs?.PresentJobs.Length,
                 NamesAbsentAtOpen = jobs?.NamesAbsentAtOpen.Length, FailedStages = failures.Count,
+                RegisteredJobFailures = jobs?.Failures.Length,
                 CompleteProcessOwnershipQualified = false, ImmediateDisconnectQualified = false,
                 LaunchQualified = false, ProxyQualified = false, RebootQualified = false
             });
