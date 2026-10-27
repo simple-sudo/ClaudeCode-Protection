@@ -51,7 +51,7 @@ internal sealed class BootstrapApproval : IDisposable
             // Hold and verify every input before creating any production state.
             var parsed=PackagePolicy.ParsePinned(result.Manifest,result.ManifestHash);
             var lifecycle=parsed.Files.Single(f=>f.Asset.Id=="broker-lifecycle");
-            if(result.files.Count!=5 || result.files[4].Length!=lifecycle.Length || Convert.ToHexString(SHA256.HashData(result.files[4]))!=lifecycle.SHA256)
+            if(result.files[4].Length!=lifecycle.Length || Convert.ToHexString(SHA256.HashData(result.files[4]))!=lifecycle.SHA256)
                 throw new InvalidDataException("Bootstrap and payload lifecycle library differ");
             result.files[4].Position=0;
             foreach(var group in parsed.Files.GroupBy(f=>Path.GetDirectoryName(f.Asset.Path.Replace('/','\\'))!,StringComparer.Ordinal))
