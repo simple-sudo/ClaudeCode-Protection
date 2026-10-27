@@ -23,6 +23,40 @@ internal static class KernelJobSeal
             new(){Length=Marshal.SizeOf<SecurityAttributes>(),Descriptor=value,Inherit=0};
         public void Dispose(){if(value!=IntPtr.Zero){LocalFree(value);value=IntPtr.Zero;}}
     }
+    // Used only for the new fixed suspended session root and its primary
+    // thread. Default creator-token ACLs must not leave an ordinary same-user
+    // process able to resume/inject into the root before full admission.
+    internal sealed class SessionObjectDescriptor : IDisposable
+    {
+        private const int AllRights=0x001fffff;
+        private IntPtr value;
+        internal SessionObjectDescriptor()
+        {
+            if(!ConvertStringSecurityDescriptorToSecurityDescriptor("O:BAD:P(A;;0x001fffff;;;SY)(A;;0x001fffff;;;BA)",1,out value,out _))
+                throw Error("CreateSuspendedSessionObjectDescriptor");
+        }
+        internal SecurityAttributes Attributes=>value==IntPtr.Zero?throw new ObjectDisposedException(nameof(SessionObjectDescriptor)):
+            new(){Length=Marshal.SizeOf<SecurityAttributes>(),Descriptor=value,Inherit=0};
+        internal static void AssertSeal(SafeHandle handle)
+        {
+            if(handle.IsClosed || handle.IsInvalid)throw new InvalidOperationException("Held session object required");
+            var sized=GetKernelObjectSecurity(handle,1|4,null,0,out var needed);
+            var error=Marshal.GetLastWin32Error();
+            if(sized || error!=122 || needed is <20 or >65536)throw new InvalidDataException("SessionObjectDescriptorSizeUnconfirmed");
+            var bytes=new byte[checked((int)needed)];
+            if(!GetKernelObjectSecurity(handle,1|4,bytes,needed,out var actual))throw Error("ReadSuspendedSessionObjectDescriptor");
+            if(actual!=needed)throw new InvalidDataException("SessionObjectDescriptorChanged");
+            var descriptor=new RawSecurityDescriptor(bytes,0);
+            if(descriptor.Owner?.Value!=AdminsSid || descriptor.DiscretionaryAcl is null || descriptor.DiscretionaryAcl.Count!=2 ||
+                (descriptor.ControlFlags&ControlFlags.DiscretionaryAclProtected)==0)throw new InvalidDataException("SessionObjectSecurityBroadened");
+            var remaining=new HashSet<string>(new[]{SystemSid,AdminsSid},StringComparer.Ordinal);
+            foreach(GenericAce entry in descriptor.DiscretionaryAcl)
+                if(entry is not CommonAce ace || ace.IsCallback || ace.AceFlags!=AceFlags.None || ace.AceQualifier!=AceQualifier.AccessAllowed ||
+                    ace.AccessMask!=AllRights || !remaining.Remove(ace.SecurityIdentifier.Value))throw new InvalidDataException("SessionObjectUnexpectedAccessGrant");
+            if(remaining.Count!=0)throw new InvalidDataException("SessionObjectRequiredOwnerMissing");
+        }
+        public void Dispose(){if(value!=IntPtr.Zero){LocalFree(value);value=IntPtr.Zero;}}
+    }
     internal static void AssertOwned(SafeJobHandle handle,CreationTag expected)
     {
         if(handle.IsInvalid || handle.IsClosed || expected.Role!=CreationRole.OwnedJob)throw new InvalidOperationException("Owned job handle required");
@@ -52,5 +86,7 @@ internal static class KernelJobSeal
     [return:MarshalAs(UnmanagedType.Bool)] private static extern bool ConvertStringSecurityDescriptorToSecurityDescriptor(string text,uint revision,out IntPtr descriptor,out uint length);
     [DllImport("advapi32.dll")] private static extern uint GetSecurityInfo(SafeJobHandle handle,int type,uint info,out IntPtr owner,out IntPtr group,out IntPtr dacl,out IntPtr sacl,out IntPtr descriptor);
     [DllImport("advapi32.dll")] private static extern uint GetSecurityDescriptorLength(IntPtr descriptor);
+    [DllImport("advapi32.dll",ExactSpelling=true,SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetKernelObjectSecurity(SafeHandle handle,uint information,[Out] byte[]? descriptor,uint length,out uint needed);
     [DllImport("kernel32.dll")] private static extern IntPtr LocalFree(IntPtr memory);
 }

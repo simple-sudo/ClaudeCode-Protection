@@ -1,6 +1,25 @@
 # 当前开发状态
 
-## 2026-10-27 首条可信会话主链接线：当前结论
+## 2026-10-27 挂起准备与实时环境证据接线：当前结论
+
+上一轮progress为 `04e7419`。本轮修正“需要根Job/SID证据才能创建根对象”的准备依赖：
+同一所有者以一次Preparation只创建固定挂起程序、完整隔离和原租约监督；实际Job/映像/token核对后，
+仍须全14项和独立安全条件满足，才签发另一个不可替代的首次执行许可。失败走原封闭/零成员/清理。
+新建进程/主线程对象在创建时提供管理侧DACL并回读，避免仅凭默认ACL假定外部不能提前恢复。
+
+环境预期的检查/配置进入当前安装Broker管理接口，固定私有状态、实际人类Owner SID、旧摘要比较与前后回执；
+没有PASS、豁免或启动参数，不更改OS设置。时区/用户与系统Locale、分阶段路由及启动监督已接入当前采集源码，
+环境观察10秒刷新、创建/恢复前强制刷新，策略摘要改变即失效；没有配置或读失败仍拒绝。
+本轮没有运行配置、采集器、进程创建、对象ACL或网络代码；事故停止与Claude延期不变。
+
+SOURCE：六产品项目0错误/0警告（生命周期33输入）；八个测试源输入仅语义核对。
+报告 `outputs/session-preparation-delivery-source-types.json`、
+`outputs/session-preparation-maintenance-policy-source-types.json` 不入Git。新增用例没有执行结果。
+BUILD/VERIFIED没有本轮新增，完整产品非DELIVERABLE。当前系统安全与其余环境采集、受审查控制探针、
+旧屏障迁移、宿主资源/工作区/工具/GPU授权及实机集中验收仍缺，不能签发正向正式会话许可。
+详细调用链与边界见[主链说明](PROTECTED-SESSION-CHAIN.md)。
+
+## 上一轮主链接线记录（历史窗口）
 
 上一轮属于progress，提交 `b18d5cc`；本轮继续同一分支，不改变完整产品目标。
 SOURCE / INTEGRATED：正式Broker launch和受阻断的session-synthetic进入同一ProtectedSession所有者；

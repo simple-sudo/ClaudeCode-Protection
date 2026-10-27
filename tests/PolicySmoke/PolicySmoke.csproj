@@ -16,6 +16,7 @@
     <Compile Include="../../src/ClaudeProtection/DiagnosticNetworkTargetPolicy.cs" Link="DiagnosticNetworkTargetPolicy.cs" />
     <Compile Include="../../src/Shared/ProxyDestinationPolicy.cs" Link="ProxyDestinationPolicy.cs" />
     <Compile Include="../../src/Shared/StrictEnvironmentRequirements.cs" Link="StrictEnvironmentRequirements.cs" />
+    <Compile Include="../../src/Shared/EnvironmentExpectations.cs" Link="EnvironmentExpectations.cs" />
     <Compile Include="../../src/ProtectionCenter/PreflightDisplay.cs" Link="PreflightDisplay.cs" />
   </ItemGroup>
 </Project>

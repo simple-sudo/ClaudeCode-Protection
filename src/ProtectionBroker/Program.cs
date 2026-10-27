@@ -6,9 +6,19 @@ internal static class Program
 {
     private static int Main(string[] args)
     {
-        if (args.Length != 1 || args[0] is not ("launch" or "session-synthetic" or "quarantine" or "inspect-runtime" or "inspect-wfp" or "qualify-wfp-objects" or "inspect-installed-fence" or "qualify-admission" or "qualify-network" or "qualify-gpu" or "qualify-watchdog" or "admission-child"))
+        if(args.Length==5 && args[0]=="configure-session-environment")
+        {
+            try
+            {
+                var configured=ProtectionLifecycle.InstalledBroker.ConfigureEnvironmentExpectations(args[1],args[2],args[3],args[4]);
+                Console.WriteLine(configured.Report);return configured.ExitCode;
+            }
+            catch(Exception ex){Console.Error.WriteLine("Environment intent not confirmed: "+ex.GetType().Name+"; code="+ex.HResult);return 125;}
+        }
+        if (args.Length != 1 || args[0] is not ("inspect-session-environment" or "launch" or "session-synthetic" or "quarantine" or "inspect-runtime" or "inspect-wfp" or "qualify-wfp-objects" or "inspect-installed-fence" or "qualify-admission" or "qualify-network" or "qualify-gpu" or "qualify-watchdog" or "admission-child"))
         {
             Console.Error.WriteLine("ProtectionBroker inspect-runtime | inspect-wfp; inspect-installed-fence (installed read-only); quarantine | qualify-admission | qualify-network | qualify-gpu | qualify-watchdog (installed); qualify-wfp-objects (protected qualification host). Management requires existing elevation.");
+            Console.Error.WriteLine("Installed intent management: inspect-session-environment | configure-session-environment EXPECTED_SHA_OR_none WINDOWS_TIMEZONE USER_LOCALE SYSTEM_LOCALE. This never changes Windows settings or grants launch.");
             return 64;
         }
         // Incident hold precedes elevation, installed-state access and every
@@ -24,6 +34,7 @@ internal static class Program
             if(args[0]=="admission-child")return ProtectionLifecycle.InstalledBroker.RunAdmissionCanary();
             var result = args[0] switch {
                 "launch" => ProtectionLifecycle.InstalledBroker.LaunchDevelopmentSession(),
+                "inspect-session-environment" => ProtectionLifecycle.InstalledBroker.InspectEnvironmentExpectations(),
                 "session-synthetic" => ProtectionLifecycle.InstalledBroker.RunSyntheticSession(),
                 "inspect-runtime" => ProtectionLifecycle.InstalledBroker.InspectRuntime(),
                 "inspect-wfp" => ProtectionLifecycle.InstalledBroker.InspectWfp(),

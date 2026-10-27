@@ -102,8 +102,10 @@ internal sealed class AtomicChild : IDisposable
     private readonly string image,packageSid;
     private readonly NetworkProbePlan? network;
     private readonly bool gpuWorkload;
-    private readonly ProtectedSession.Admission? sessionAdmission;
+    private readonly ProtectedSession.Preparation? sessionPreparation;
+    private ProtectedSession.Admission? sessionAdmission;
     private bool resumed,disposed;
+    internal bool ResumeAttempted {get;private set;}
     internal uint Pid {get;}
     internal string ExpectedPackageSid=>packageSid;
     internal string ExpectedImagePath=>image;
@@ -116,6 +118,19 @@ internal sealed class AtomicChild : IDisposable
         }
     }
     internal bool IsRunning=>!disposed && WaitForSingleObject(process,0)==0x102;
+    internal void AssertSuspendedSessionIdentity(ProtectedSession.Preparation exactPreparation)
+    {
+        if(!ReferenceEquals(sessionPreparation,exactPreparation) || disposed || resumed || !IsRunning)throw WfpNative.Contract("LiveSuspendedSessionRootRequired");
+        var snapshot=job.Observe();
+        if(!snapshot.ExpectedLimits || snapshot.ActiveBefore!=1 || snapshot.ActiveAfter!=1 || snapshot.ProcessIds.Length!=1 || snapshot.ProcessIds[0]!=Pid ||
+            !job.ContainsProcess(process) || GetProcessId(process)!=Pid)throw WfpNative.Contract("SuspendedSessionRootJobMismatch");
+        var path=new StringBuilder(32768);uint length=(uint)path.Capacity;
+        if(!QueryFullProcessImageName(process,0,path,ref length))throw Error("ReadSuspendedSessionImage");
+        var token=ReadToken(process);
+        if(!string.Equals(WindowsPathSeal.Canonical(path.ToString()),image,StringComparison.OrdinalIgnoreCase) ||
+            !token.IsAppContainer || token.PackageSid!=packageSid || token.CapabilityCount!=0 || token.IntegritySid!="S-1-16-4096")
+            throw WfpNative.Contract("SuspendedSessionRootImageOrTokenMismatch");
+    }
     internal static SafeProcessHandle HoldSessionPeer(OwnedKernelJob job,string sid,int sourcePort)
     {
         var process=OpenProcess(0x101000,false,ProxyChannelLease.SessionPeerOwner(sourcePort));
@@ -162,23 +177,30 @@ internal sealed class AtomicChild : IDisposable
         }
         finally{foreach(var handle in held)handle.Dispose();}
     }
-    private AtomicChild(ProtectedState state,VerifiedVersion version,OwnedKernelJob job,ProcessInfo info,string image,string sid,NetworkProbePlan? network,bool gpuWorkload,ProtectedSession.Admission? sessionAdmission)
+    private AtomicChild(ProtectedState state,VerifiedVersion version,OwnedKernelJob job,ProcessInfo info,string image,string sid,NetworkProbePlan? network,bool gpuWorkload,ProtectedSession.Preparation? preparation)
     {
         this.state=state;this.version=version;this.job=job;this.image=image;packageSid=sid;Pid=info.ProcessId;this.network=network;this.gpuWorkload=gpuWorkload;
-        process=new(info.Process,true);thread=new(info.Thread,true);this.sessionAdmission=sessionAdmission;
+        process=new(info.Process,true);thread=new(info.Thread,true);sessionPreparation=preparation;
     }
     internal static AtomicChild CreateCanary(FixedLayout layout,ProtectedState state,VerifiedVersion version,OwnedKernelJob job,InstallationProfileLease profile,
         NetworkProbePlan? network=null,IntPtr output=default,GpuProbePlan? gpu=null)
         =>CreateCore(layout,state,version,job,profile,network,output,gpu,null);
     internal static AtomicChild CreateSession(FixedLayout layout,ProtectedState state,VerifiedVersion version,OwnedKernelJob job,InstallationProfileLease profile,
-        ProtectedSession.Admission admission)=>CreateCore(layout,state,version,job,profile,null,default,null,admission);
+        ProtectedSession.Preparation preparation)
+    {
+        var child=CreateCore(layout,state,version,job,profile,null,default,null,preparation);
+        try{preparation.BindCreated(child);return child;}catch{child.Dispose();throw;}
+    }
     private static AtomicChild CreateCore(FixedLayout layout,ProtectedState state,VerifiedVersion version,OwnedKernelJob job,InstallationProfileLease profile,
-        NetworkProbePlan? network,IntPtr output,GpuProbePlan? gpu,ProtectedSession.Admission? admission)
+        NetworkProbePlan? network,IntPtr output,GpuProbePlan? gpu,ProtectedSession.Preparation? preparation)
     {
         ProtectedState.RequireAdministrator();state.AssertHeld();version.AssertHeld(state);
-        admission?.BeforeCreate(job,version);
+        preparation?.BeforeCreate(job,version);
+        if(preparation is not null && (network is not null || gpu is not null))throw WfpNative.Contract("SuspendedSessionCannotBorrowQualificationPlan");
         if(!Environment.Is64BitProcess || Marshal.SizeOf<StartupInfo>()!=104 || Marshal.SizeOf<StartupInfoEx>()!=112 || Marshal.SizeOf<SecurityCapabilities>()!=24)
             throw new PlatformNotSupportedException("Atomic admission requires the declared x64 layout");
+        if(preparation is not null && Marshal.SizeOf<KernelJobSeal.SecurityAttributes>()!=24)
+            throw new PlatformNotSupportedException("Suspended session security attributes require the declared x64 layout");
         var image=WindowsPathSeal.Child(layout.Version(version.Package.Release),"bin/admin/ProtectionBroker.exe");
         network?.Validate();gpu?.Validate();if(network is not null && gpu is not null)throw WfpNative.Contract("OneFixedQualificationWorkloadRequired");
         var report=network is not null || gpu is not null;if(report!=(output!=IntPtr.Zero))throw WfpNative.Contract("ReportHandleRequiredExactlyForQualificationWorkload");
@@ -206,7 +228,7 @@ internal sealed class AtomicChild : IDisposable
                 if(!UpdateProcThreadAttribute(attributes,0,(IntPtr)0x20002,handles,(nuint)IntPtr.Size,IntPtr.Zero,IntPtr.Zero))throw Error("AtomicSetOnlyReportHandleInheritance");
             }
             var env=new SortedDictionary<string,string>(StringComparer.OrdinalIgnoreCase);
-            var inherited=admission is null?new[]{"SystemRoot","windir","SystemDrive","ProgramFiles","ProgramFiles(x86)","ProgramW6432","PROCESSOR_ARCHITECTURE","LOCALAPPDATA","USERPROFILE","TEMP","TMP"}:
+            var inherited=preparation is null?new[]{"SystemRoot","windir","SystemDrive","ProgramFiles","ProgramFiles(x86)","ProgramW6432","PROCESSOR_ARCHITECTURE","LOCALAPPDATA","USERPROFILE","TEMP","TMP"}:
                 new[]{"SystemRoot","windir","SystemDrive","ProgramFiles","ProgramFiles(x86)","ProgramW6432","PROCESSOR_ARCHITECTURE"};
             foreach(var name in inherited)
             {var value=Environment.GetEnvironmentVariable(name);if(value is not null)env[name]=value;}
@@ -214,10 +236,10 @@ internal sealed class AtomicChild : IDisposable
             env["DOTNET_ROOT"]="C:\\Program Files\\dotnet";env["DOTNET_ROLL_FORWARD"]="LatestPatch";
             if(network is not null)env["CPC_NETWORK_PLAN"]=JsonSerializer.Serialize(network);
             if(gpu is not null){env["CPC_GPU_PLAN"]=JsonSerializer.Serialize(gpu);env["CUDA_CACHE_DISABLE"]="1";}
-            if(admission is not null)
+            if(preparation is not null)
             {
-                env["CPC_SESSION_ID"]=admission.SessionId;env["CPC_SESSION_SECRET"]=admission.Gateway.Secret;
-                var endpoint="http://"+admission.SessionId+":"+admission.Gateway.Secret+"@127.0.0.1:"+SessionProxy.Port;
+                env["CPC_SESSION_ID"]=preparation.SessionId;env["CPC_SESSION_SECRET"]=preparation.Gateway.Secret;
+                var endpoint="http://"+preparation.SessionId+":"+preparation.Gateway.Secret+"@127.0.0.1:"+SessionProxy.Port;
                 foreach(var name in new[]{"HTTP_PROXY","HTTPS_PROXY","ALL_PROXY"})env[name]=endpoint;
                 env["NO_PROXY"]="";
             }
@@ -228,9 +250,23 @@ internal sealed class AtomicChild : IDisposable
             // The OS binds BOTH identity and Job before returning a suspended
             // initial thread. No inheritable handles or breakaway are enabled.
             profile.BeforeProcessCreation(job.JobId);
-            if(!CreateProcess(image,command,IntPtr.Zero,IntPtr.Zero,report,0x08080404,environment,Path.GetDirectoryName(image)!,ref startup,out var info))
+            ProcessInfo info;
+            if(preparation is not null)
+            {
+                using var descriptor=new KernelJobSeal.SessionObjectDescriptor();
+                var processAttributes=descriptor.Attributes;var threadAttributes=descriptor.Attributes;
+                if(!CreateSealedProcess(image,command,ref processAttributes,ref threadAttributes,false,0x08080404,environment,Path.GetDirectoryName(image)!,ref startup,out info))
+                    throw Error("AtomicCreateSealedSuspendedSession");
+            }
+            else if(!CreateProcess(image,command,IntPtr.Zero,IntPtr.Zero,report,0x08080404,environment,Path.GetDirectoryName(image)!,ref startup,out info))
                 throw Error("AtomicCreateSuspendedWithPackageAndJob");
-            return new(state,version,job,info,image,package.Value,network,gpu is not null,admission);
+            var child=new AtomicChild(state,version,job,info,image,package.Value,network,gpu is not null,preparation);
+            try
+            {
+                if(preparation is not null){KernelJobSeal.SessionObjectDescriptor.AssertSeal(child.process);KernelJobSeal.SessionObjectDescriptor.AssertSeal(child.thread);}
+                return child;
+            }
+            catch{child.Dispose();throw;}
         }
         finally
         {
@@ -243,9 +279,17 @@ internal sealed class AtomicChild : IDisposable
             if(handleHeld)jobHandle.DangerousRelease();
         }
     }
-    internal object ResumeQuarantined(ProxyChannelLease? proxy=null)
+    internal object ResumeQuarantined(ProxyChannelLease? proxy=null,ProtectedSession.Admission? sessionPermit=null)
     {
         if(disposed || resumed)throw new InvalidOperationException("Canary resume is one-shot");
+        if(sessionPreparation is not null)
+        {
+            if(sessionPermit is null || !sessionPermit.Matches(sessionPreparation))throw WfpNative.Contract("FullSessionPermitRequiredBeforeFirstInstruction");
+            AssertSuspendedSessionIdentity(sessionPreparation);
+            KernelJobSeal.SessionObjectDescriptor.AssertSeal(process);KernelJobSeal.SessionObjectDescriptor.AssertSeal(thread);
+            sessionAdmission=sessionPermit;
+        }
+        else if(sessionPermit is not null)throw WfpNative.Contract("SessionPermitCannotAuthorizeLegacyCanary");
         state.AssertHeld();version.AssertHeld(state);
         sessionAdmission?.AssertCurrent();
         var snapshot=job.Observe();
@@ -279,6 +323,7 @@ internal sealed class AtomicChild : IDisposable
             Scope=sessionAdmission is not null?"AUTHENTICATED_SESSION_GATEWAY":network?.Kind==NetworkProbeKind.Control?"UNFENCED_OWNED_LOOPBACK_CONTROL":proxyOnly?"COMPILED_IPV4_PROXY_ONLY":gpuWorkload?"FIXED_CUDA_FULL_QUARANTINE":"FULL_QUARANTINE"};
         state.WriteNew("admission-before-resume-"+job.JobId+".json",JsonSerializer.SerializeToUtf8Bytes(proof));
         sessionAdmission?.BeforeResume(this);
+        ResumeAttempted=true;
         var previous=ResumeThread(thread);if(previous==uint.MaxValue)throw Error("AtomicResumePrimaryThread");
         if(previous!=1)throw WfpNative.Contract("AtomicInitialSuspendCountMismatch");
         resumed=true;return proof;
@@ -362,6 +407,7 @@ internal sealed class AtomicChild : IDisposable
     [DllImport("kernel32.dll",SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)] private static extern bool UpdateProcThreadAttribute(IntPtr list,uint flags,IntPtr attribute,IntPtr value,nuint size,IntPtr previous,IntPtr returned);
     [DllImport("kernel32.dll")] private static extern void DeleteProcThreadAttributeList(IntPtr list);
     [DllImport("kernel32.dll",EntryPoint="CreateProcessW",CharSet=CharSet.Unicode,SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)] private static extern bool CreateProcess(string image,StringBuilder command,IntPtr processSecurity,IntPtr threadSecurity,[MarshalAs(UnmanagedType.Bool)] bool inherit,uint flags,IntPtr environment,string cwd,ref StartupInfoEx startup,out ProcessInfo info);
+    [DllImport("kernel32.dll",EntryPoint="CreateProcessW",CharSet=CharSet.Unicode,SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)] private static extern bool CreateSealedProcess(string image,StringBuilder command,ref KernelJobSeal.SecurityAttributes processSecurity,ref KernelJobSeal.SecurityAttributes threadSecurity,[MarshalAs(UnmanagedType.Bool)] bool inherit,uint flags,IntPtr environment,string cwd,ref StartupInfoEx startup,out ProcessInfo info);
     [DllImport("kernel32.dll",SetLastError=true)] private static extern uint ResumeThread(SafeWaitHandle thread);
     [DllImport("kernel32.dll",SetLastError=true)] private static extern uint WaitForSingleObject(SafeProcessHandle process,uint milliseconds);
     [DllImport("kernel32.dll",SetLastError=true)] private static extern uint GetProcessId(SafeProcessHandle process);

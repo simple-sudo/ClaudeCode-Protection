@@ -158,4 +158,23 @@ var cname=doh.Replace("\"Answer\":[","\"Answer\":[{\"name\":\"www.microsoft.com.
 Require(ProxyDestinationPolicy.ParseResolution("www.microsoft.com",DnsBytes(cname)).Length==1,"CNAME chain bound to the matching question");
 Refuse(()=>ProxyDestinationPolicy.ParseResolution("www.microsoft.com",DnsBytes(cname.Replace("cdn.microsoft.com.","router.local."))),"private CNAME refused");
 
+// Only configuration intent is parsed here. It must never accept observations,
+// status values, a different installation/policy or an implicit machine default.
+var policyInstallation=new string('a',32);var networkPolicy=new string('A',64);
+var expectationsJson=System.Text.Json.JsonSerializer.Serialize(new {SchemaVersion=1,InstallationId=policyInstallation,
+    NetworkPolicySHA256=networkPolicy,OwnerSid="S-1-5-21-1-2-3-1001",TimeZoneId="Eastern Standard Time",UserLocale="en-US",SystemLocale="en-US"});
+var expectations=EnvironmentExpectations.Parse(DnsBytes(expectationsJson),policyInstallation,networkPolicy);
+Require(EnvironmentExpectations.ReadForMaintenance(DnsBytes(expectationsJson.Replace(networkPolicy,new string('B',64))),policyInstallation).NetworkPolicySHA256==new string('B',64),
+    "historical intent remains inspectable without becoming current launch evidence");
+Require(expectations.TimeZoneId=="Eastern Standard Time" && expectations.UserLocale=="en-US" && expectations.SHA256.Length==64,
+    "explicit expectation values retained without reading host defaults");
+foreach(var badIntent in new[]{expectationsJson.Replace("\"SchemaVersion\":1","\"SchemaVersion\":2"),
+    expectationsJson.Replace("\"SchemaVersion\":1","\"SchemaVersion\":1,\"SchemaVersion\":1"),
+    expectationsJson.Replace("\"SchemaVersion\":1","\"SchemaVersion\":1,\"LaunchAuthorized\":true"),
+    expectationsJson.Replace("\"SchemaVersion\":1","\"SchemaVersion\":1,\"Status\":\"PASS\""),
+    expectationsJson.Replace(policyInstallation,new string('b',32)),expectationsJson.Replace(networkPolicy,new string('B',64)),
+    expectationsJson.Replace("S-1-5-21-1-2-3-1001","S-1-5-18"),expectationsJson.Replace("S-1-5-21-1-2-3-1001","S-1-5-21-01-2-3-1001"),
+    expectationsJson.Replace("Eastern Standard Time",""),expectationsJson.Replace("en-US",""),expectationsJson.Replace("en-US","en-us")})
+    Refuse(()=>EnvironmentExpectations.Parse(DnsBytes(badIntent),policyInstallation,networkPolicy),"malformed, implicit or authoritative-looking environment intent refused");
+
 Console.WriteLine("PolicySmoke: bounded pure policy cases passed. No product entry point, native API or network request was executed.");

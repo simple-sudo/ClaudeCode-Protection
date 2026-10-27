@@ -11,6 +11,49 @@ namespace ProtectionLifecycle;
 // development build. Neither diagnostic opens the installed mutation path.
 public static class InstalledBroker
 {
+    public static (int ExitCode,string Report) InspectEnvironmentExpectations()=>WithCurrentInstallation((_,state,_)=>
+    {
+        var raw=state.ReadOptional("session-environment-policy.json");
+        var selected=raw is null?null:ClaudeCodeProtection.Security.EnvironmentExpectations.ReadForMaintenance(raw.Bytes,state.InstallationId);
+        return(raw is null?2:0,JsonSerializer.Serialize(new {SchemaVersion=1,Scope="PROTECTED_ENVIRONMENT_INTENT_ONLY",state.InstallationId,
+            NetworkPolicySHA256=SessionProxy.PolicySHA256,ConfiguredNetworkPolicySHA256=selected?.NetworkPolicySHA256,
+            ExpectedPreviousSHA256=raw?.SHA256??"none",Status=raw is null?"MISSING":selected?.NetworkPolicySHA256==SessionProxy.PolicySHA256?"CONFIGURED":"REQUIRES_EXPLICIT_RECONFIGURATION",
+            selected?.TimeZoneId,selected?.UserLocale,selected?.SystemLocale,LaunchAuthorized=false,ObservedEnvironmentVerified=false,SystemSettingsModified=false}));
+    });
+    public static (int ExitCode,string Report) ConfigureEnvironmentExpectations(string expectedPreviousSHA256,string zone,string userLocale,string systemLocale)
+        =>WithCurrentInstallation((_,state,_)=>
+    {
+        var expected=expectedPreviousSHA256=="none"?null:Identifiers.Hash(expectedPreviousSHA256);
+        var old=state.ReadOptional("session-environment-policy.json");
+        if((old?.SHA256)!=expected)throw new InvalidOperationException("Environment intent changed; inspect before retrying");
+        using var identity=System.Security.Principal.WindowsIdentity.GetCurrent();
+        var ownerSid=identity.User?.Value??throw new InvalidOperationException("Explicit human policy owner required");
+        if(old is not null && ClaudeCodeProtection.Security.EnvironmentExpectations.ReadForMaintenance(old.Bytes,state.InstallationId).OwnerSid!=ownerSid)
+            throw new InvalidOperationException("Environment intent belongs to another human owner");
+        var bytes=JsonSerializer.SerializeToUtf8Bytes(new {SchemaVersion=1,state.InstallationId,NetworkPolicySHA256=SessionProxy.PolicySHA256,
+            OwnerSid=ownerSid,TimeZoneId=zone,UserLocale=userLocale,SystemLocale=systemLocale});
+        var selected=ClaudeCodeProtection.Security.EnvironmentExpectations.Parse(bytes,state.InstallationId,SessionProxy.PolicySHA256);
+        _=TimeZoneInfo.FindSystemTimeZoneById(selected.TimeZoneId); // validate intent, never set the OS
+        var request=Guid.NewGuid().ToString("N");
+        state.WriteNew("environment-policy-before-"+request+".json",JsonSerializer.SerializeToUtf8Bytes(new {SchemaVersion=1,state.InstallationId,
+            ExpectedPreviousSHA256=expected,NextSHA256=selected.SHA256,PreviousBytesBase64=old is null?null:Convert.ToBase64String(old.Bytes),
+            Scope="ENVIRONMENT_EXPECTATIONS_ONLY_NOT_EVIDENCE",SystemSettingsModified=false}));
+        var hash=state.ReplacePointer("session-environment-policy.json",expected,bytes);
+        if(hash!=selected.SHA256)throw new IOException("Environment intent readback differs");
+        state.WriteNew("environment-policy-after-"+request+".json",JsonSerializer.SerializeToUtf8Bytes(new {SchemaVersion=1,state.InstallationId,
+            Status="CONFIGURED",PolicySHA256=hash,SystemSettingsModified=false,LaunchAuthorized=false}));
+        return(0,JsonSerializer.Serialize(new {SchemaVersion=1,Status="CONFIGURED",PolicySHA256=hash,SystemSettingsModified=false,
+            LaunchAuthorized=false,ObservedEnvironmentVerified=false}));
+    });
+    private static (int ExitCode,string Report) WithCurrentInstallation(Func<FixedLayout,ProtectedState,VerifiedVersion,(int ExitCode,string Report)> operation)
+    {
+        ProtectedState.RequireAdministrator();var layout=FixedLayout.FromWindows();using var state=ProtectedState.OpenExisting(layout);
+        var current=CurrentPointer.Parse(state.Read("current.json",4096),state.InstallationId);
+        using var version=VerifiedVersion.Open(layout,state,current.Release);
+        if(version.Package.ManifestHash!=current.ManifestSHA256)throw WfpNative.Contract("InstalledPointerManifestMismatch");
+        AssertInstalledHost(layout,state,version);LifecycleRecovery.AssertNoPending(state);
+        return operation(layout,state,version);
+    }
     // The sole production development-session entry. It deliberately has no
     // target/script/report input and no fallback to a qualification command.
     // There is no positive issuer until current trusted collectors, a confined
