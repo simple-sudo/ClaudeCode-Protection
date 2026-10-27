@@ -78,7 +78,7 @@ foreach(var denied in new[]{"0.0.0.0","10.0.0.1","100.64.0.1","127.1.2.3","169.2
  "::","::1","::ffff:8.8.8.8","fe80::1","fc00::1","ff02::1","2001:db8::1","2002::1","2001::1",
  "2001:2::1","2001:10::1","2001:20::1","3fff::1","2606:4700:4700::1111%12"})
     Require(!ProxyDestinationPolicy.IsPublicAddressCandidate(IP(denied)),"special address denied "+denied);
-foreach(var accepted in new[]{"1.1.1.1","8.8.8.8","93.184.216.34","2606:4700:4700::1111"})
+foreach(var accepted in new[]{"1.1.1.1","8.8.8.8","93.184.216.34","2606:4700:4700::1111","3ffe::1","3fff:1000::1"})
     Require(ProxyDestinationPolicy.IsPublicAddressCandidate(IP(accepted)),"public candidate "+accepted);
 var selectedHost="api.anthropic.com";var good=IP("1.1.1.1");var other=IP("8.8.8.8");var internalIp=IP("127.0.0.1");
 Require(ProxyDestinationPolicy.AuthorizePinnedHttps(selectedHost,443,new[]{good},good).Allowed,"known public literal candidate");

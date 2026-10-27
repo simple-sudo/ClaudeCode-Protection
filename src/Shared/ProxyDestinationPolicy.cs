@@ -63,7 +63,7 @@ internal static class ProxyDestinationPolicy
            (b[0]==0x20 && b[1]==0x01 && b[2]==0x0d && b[3]==0xb8) ||
            (b[0]==0x20 && b[1]==0x01 && b[2]<2) || // special-purpose 2001::/23
            (b[0]==0x20 && b[1]==0x02) ||
-           (b[0]==0x3f && (b[1]&0xf0)==0xf0)) // documentation 3fff::/20
+           (b[0]==0x3f && b[1]==0xff && (b[2]&0xf0)==0)) // documentation 3fff::/20
             return false;
         return true;
     }
