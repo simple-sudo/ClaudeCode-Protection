@@ -191,3 +191,17 @@ fc113de独立restore/build均0，0错误/0警告；普通.NET8.0.28/x64布局检
 随后连接首次未激活安装SOURCE：独立ProtectionBootstrap持有嵌入包批准，库内自引用包pin删除；固定受保护宿主、预检全部输入后才创建全新私有状态，复用原版本/指针/账本。fresh租约不冒充通用进程/清理权。默认嵌入拒绝占位符，无批准包不创建状态；六项目非生成语义检查0错误/0警告。真实安装须继续独立构建/资格/实测，不将SOURCE写为通过。用户完整产品指导与870c4ca固定上游审查已接入文档。
 
 2026-10-26当前四项目产品图674fd76离线restore均0；broker/lifecycle及日常CLI编译成功，GUI因共享UserDataPaths缺少显式System.IO出现14个错误，保留work/product-payload-build。WPF实际SDK默认global usings不含IO/Http，原非生成checker使用超集漏检；已修共享源码及checker按项目选择默认集合。修正类型检查另存，须新构建，不覆盖失败。
+
+## 2026-10-26晚：当前包首次未激活安装及GUI实际调用
+
+当前产品图457d22d的40输入、CLI/WPF GUI/broker/lifecycle离线restore及build全部0，0错误/0警告。bootstrap62986ed单独构建，BuildProjectReferences=false复用已构建生命周期DLL并持有其文件句柄；实际PE内嵌批准清单与源一致，未执行模块初始化。十四资产批准发布806b2b6997c84e0da4db46c9d267d7a0、清单SHA256为1D83FA034A65DC58D1FFEB9C4F3A54EA52F1C3B7AF6156A54C752FA5D8801BAC；完整包自引用由独立bootstrap解决，不接受用户侧摘要作为批准根。
+
+普通权限install-inactive退出125/UnauthorizedAccessException，附加--activate退出64。第一次固定辅助脚本因生成时误改一个载荷EXE名，在创建目录前停止，原脚本/终态保留。修正全部20项与原计划一致后，普通父进程持有原始库字节及全部目录/文件租约、本人UAC确认、新ProgramFiles受保护bootstrap复制并运行，实际安装退出0。现有stager/VerifiedVersion/CurrentPointer/ledger真实执行，Activation=INACTIVE。没有WFP、Job、Claude或用户配置修改；全新身份fresh租约不授予更新/卸载权。原始资料在work/product-install-control及product-install-recovery-control；不把第一次失败记成成功。
+
+安装后14文件长度/摘要与批准包一致、管理员owner/受保护DACL，普通用户逐项写打开均拒绝；私有current.json读取拒绝。所有原始基线文件及settings摘要复核未变。权限结果只限当前身份与此时文件，不是抗管理员、断电或重启证明。
+
+普通用户已安装WPF界面实际打开，点击“检查环境”，调用已安装CLI与inbox PowerShell，显示两阶段结果并在用户LocalAppData保存报告。baseline退出0且APIsAgree=false/ExpectedFlClashProxy=false；audit退出2，9 PASS/3 FAIL/8 UNKNOWN。原S2的9/2/8另存；当前多出的系统代理必需检查FAIL不修饰旧证据。配置修复/撤销和在线按钮未点击。GUI记录保存完成后，正常关闭的computer-use激活失败，重新绑定仍报failed to activate captured window，停止UI重试；窗口保留，无其他产品进程常驻，不表示后台保护开启。当前界面文字、启动、摘要/统计在outputs/installed-gui-*。
+
+AVP/BFE保持运行、两条真实Claude规则禁用；本窗口FlClash/Core PID一致，未更改AV或日常网络。有限Application未见AV事件，完整厂商告警覆盖UNKNOWN。首次安装和GUI离线调用可计INTEGRATED；14资产/当前ACL负向及先前只读WFP路径分别计限定VERIFIED；未激活、不计完整DELIVERABLE。持续保护、原子准入、代理审核、Watchdog及故障/更新/卸载仍须继续。用户全机设置新方向只作为受控高级能力设计，本轮未修改。
+
+2026-10-27用户明确要求新会话使用目标模式继续，并自行关闭不用的Protection界面。核对自建GUI进程37436的路径/创建时间/文件摘要、无日常CLI或管理动作仍在运行、报告摘要不变后，精确结束该GUI进程；退出已回读，报告保留。未按名批量结束、未终止FlClash/Core、未涉及Claude。证据outputs/installed-gui-close.json。随后在现有项目中新建本地会话接续；不复制仓库或工作树。

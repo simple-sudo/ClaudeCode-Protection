@@ -56,6 +56,12 @@ Keep FlClash Global, system proxy, TUN and BFE running without reconfiguration.
 Real Claude login/inference/launch is DEFERRED_BY_USER. Prioritize IPv4 forced
 proxy, direct-egress prevention, Kill-Switch, Watchdog and safe lifecycle.
 IPv6 scope is blocking and necessary negative tests, not forwarding.
+The user's full 2026-10-26 product guidance permits carefully controlled
+system-wide timezone, IPv6, DNS and related settings as explicit advanced
+capabilities when justified, impact-reviewed, authorized and recoverable.
+This is not a default blanket-disable or reset policy; prefer protected-process
+restrictions and preserve FlClash and ordinary use. This development slice has
+not changed those system settings. See docs/PRODUCT-DIRECTION-20261026.md.
 UAC remains human-controlled. Daily user maintenance must not run elevated.
 
 Update docs/STATUS.md with SOURCE / BUILD / INTEGRATED / VERIFIED /

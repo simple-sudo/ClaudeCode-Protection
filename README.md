@@ -1,43 +1,39 @@
 # Claude Code Protection
 
-Windows Claude Code网络保护工具，当前开发中，未提供可执行交付。真实Claude登录、推理和正式启动按用户要求延期；独立保护工具及探针的功能、故障和安装生命周期仍须完成。
+Windows Claude网络保护与环境管理工具，正在开发。已完成本机首次未激活安装及普通用户GUI离线检查；持续网络保护、故障恢复和安全卸载尚未交付。真实Claude登录、推理和正式会话按用户要求延期。
 
-当前状态以[开发状态](docs/STATUS.md)为准；历史证据与范围保留在[验收账本](docs/PROJECT-ACCEPTANCE.md)。[工作规则](AGENTS.md)落实2026-10-26的自主开发要求：本地小范围提交，用户不作为日常阶段审批节点。用户已上传至[GitHub 私有仓库](https://github.com/simple-sudo/ClaudeCode-Protection)，分支为 main；保留既有 origin，由用户按需推送。
+当前事实见[开发状态](docs/STATUS.md)，历史逐项证据见[验收账本](docs/PROJECT-ACCEPTANCE.md)，产品原则见[完整指导落实](docs/PRODUCT-DIRECTION-20261026.md)。现有[GitHub私有仓库](https://github.com/simple-sudo/ClaudeCode-Protection)及origin保持；本地小范围提交，不代用户推送。
 
-## 当前已落实
+## 当前可用切片
 
-- 已建立本地Git基线，状态、日志、PID、备份、凭据与构建产物不入库；原始资料未清理。
-- 日常CLI、GUI、工程后端、生命周期库及固定管理入口五个C#项目完成无产物语义检查，0错误/0警告；不是当前源码BUILD或运行通过。
-- 用户明确授权的冻结日常CLI已完成一次离线BUILD；限定S2两个普通权限只读命令完成，代理API不一致与保护FAIL/UNKNOWN如实保留。后续audit接入该基线仍为SOURCE；见[S1/S2实测及工件边界](docs/VALIDATION-S1-S2-20261026.md)。
-- 实际CLI/GUI维护调用点共用当前用户私有目录，备份与报告不再写安装目录；旧项目备份不自动迁移。
-- GUI已接入撤销上次配置修改；CLI修复/撤销共用独占锁、刷盘备份和先行中断记录。后续用户编辑拒绝覆盖，中断冲突保留文件并停止。仅SOURCE，尚无故障运行证据。
-- 环境检查默认离线，代理连通性另选；审计脚本不再反向启动后端，不指定执行策略绕过。策略限制导致不能执行时报告失败，不自动重试绕过。
-- [四个上游的固定源码复用审查](docs/UPSTREAM-REUSE-20261026.md)已完成，不引入Go/Python/WDK整包依赖。
-- 固定管理动作quarantine已接入现有持久隔离与所属Job停止，保存前后观察及失败；仅接受被核验当前安装版本与已有管理员上下文。当前已完成限定构建，尚未运行，不能计作Kill-Switch已交付。
-- 管理入口和生命周期库获独立单次离线构建授权，提交8a9c4b1的两项目已BUILD，0错误/0警告；嵌入协议字节及库引用一致。未运行/安装，不代表Kill-Switch生效，详见[管理构建记录](docs/BROKER-OFFLINE-BUILD-SCOPE.md)。
+- CLI、WPF界面、broker及生命周期库完成当前离线构建，0错误/0警告；独立bootstrap嵌入14文件批准清单并单独构建。六项目源码类型检查通过，工程后端本轮未构建/运行。
+- 本机经人类UAC完成首次安装：受保护代码与私有状态、版本整包核验、INACTIVE指针及完成账本。14文件摘要与权限已回读，普通用户不能改写、不能读取私有指针。没有服务、自启动或启用保护策略。
+- 已安装GUI的“检查环境”实际调用已安装CLI并保存当前用户报告。此次结果9 PASS/3 FAIL/8 UNKNOWN；代理API不一致、禁用规则和其他未知项如实展示，不代表网络保护通过。
+- 用户配置维护已构建并接入GUI：当前用户私有备份、独占锁、先行中断记录和摘要冲突拒绝；修复、撤销及故障分支尚未实测。在线按钮尚未运行。
+- 当前固定quarantine已构建并安装，尚未进行WFP/Job隔离功能验收；只读WFP资格副本成功不替代它。
 
-## 安全与交付边界
+本机界面位于`C:\Program Files\ClaudeCodeProtection\versions\806b2b6997c84e0da4db46c9d267d7a0\bin\center\ProtectionCenter.exe`，用普通权限打开。当前实测入口为“检查环境”；界面明确显示保护尚未启用。文件布局与本次批准包专属于当前机器/发布，尚非通用安装发行版。
 
-卡巴斯基曾在旧综合selftest期间报告PDM:Trojan.Win32.Generic。用户报告清除完成、未重启且当前显示正常；原因和整机影响仍未鉴定。原二进制已删除，不恢复或重跑，不通过排除、改名、重包装或关闭防护绕过。
+## 下一开发主线
 
-常规构建/运行停止条件保持，当前无批准包；有限S1/S2授权已执行，不开放其他入口。FlClash Global、系统代理、TUN/BFE不停止或重设。IPv6只实现阻断和必要负向测试。当前Job/WFP/lifecycle源码尚未贯通完整生产宿主，不能称为保护已启用、即时断网或跨重启验收成功。
+复用现有Job/WFP和生命周期，实现原子进程准入、代理通道审核与精确身份网络限制，使用自有合成进程验证失效/崩溃/恢复，再接Watchdog、更新及安全卸载。Claude Code子进程、独立组件、Desktop和网页逐步纳入，不能粗暴阻断共享浏览器或按名称判定可信进程。
 
-## 开发检查
+[上游复用审查](docs/UPSTREAM-REUSE-20261026.md)已补充claude-switcher的383f927→870c4ca共18提交。借鉴运行中规则回读及检查/修复体验；不复制Direct成功标签、盲目回滚、全局关闭或按名终止，不引入Go/Python/驱动整包依赖。
 
-在已有PowerShell7.4+、SDK8.0.422和引用包8.0.28的环境中：
+## 安全与证据边界
+
+卡巴斯基曾报告PDM:Trojan.Win32.Generic，原因及整机影响仍未鉴定。不恢复退休二进制、不跑旧聚合selftest、不添加排除/关闭防护/规避检测；新告警即停。当前有限窗口未观察到新Application AV事件，完整厂商告警覆盖UNKNOWN。
+
+用户已批准原阻塞部分继续推进；每个新构建/运行仍核验具体输入与作用范围，不反复申请相同许可。原Build/Assert/cmd停止保留防误用。FlClash Global、系统代理及TUN/BFE保持日常状态，UAC由本人确认。时区、全机IPv6、DNS等允许设计为用户明确选择、必要性/影响可说明且可安全恢复的高级能力，本轮未实施全机修改。
+
+## 源码检查
+
+已有PowerShell7.4+、SDK8.0.422与引用8.0.28时：
 
 ```powershell
 pwsh -NoProfile -File scripts/Check-SourceTypes.ps1
 ```
 
-该检查仅读取源码与SDK元数据，不运行MSBuild/restore/分析器/生成器，不Emit或加载项目程序集，不调用产品/原生API。它是当前简单项目声明的有界语义检查，不是通用MSBuild替代器；真实构建和运行仍受安全许可约束。
+检查器只读源码/SDK元数据；不MSBuild、restore、Emit或加载项目程序集，不运行分析器/生成器或产品原生API。按真实WPF默认集合处理隐式引用，使用内存CompilationReference支持直接本地库叶引用，不支持的工程声明拒绝。SOURCE不替代BUILD或功能验收。
 
-日常后端显式编译7份文件（含与GUI共享的用户目录策略）；工程后端11份，保留独立输出位置，旧SelfTests.cs不进入任何编译清单。生命周期库20份源码，管理入口1份源码，通过直接ProjectReference调用现有owner；完整保护宿主仍未完成。类型检查使用内存CompilationReference，不Emit或加载项目程序集；不支持的引用选项或多层依赖明确拒绝。
-
-未来获准运行后的维护语义：`repair-proxy-plan`只读；`repair-proxy SHA256`显式合并三个代理字段；`restore-proxy`撤销当前用户最近一次成功配置修改，恢复动作本身也可撤销。退出码0还可能表示无需修改或仅完成上次中断核对，必须读取`status`；2为过期计划/编辑冲突拒绝，3为恢复未完成，125为其他失败。失败不承诺配置未改变。当前不要执行这些入口。
-
-## 专项资料
-
-- [安全事件](docs/INCIDENT-20261025-KASPERSKY.md)、[本机验证计划](docs/LOCAL-VALIDATION-PLAN.md)、[日常网络基线](docs/LOCAL-OPERATING-BASELINE.md)、[网络范围](docs/NETWORK-SCOPE.md)。
-- [生命周期源码](docs/SECURE-LIFECYCLE-SOURCE.md)、[恢复](docs/LIFECYCLE-RECOVERY-SOURCE.md)、[精确卸载](docs/EXACT-UNINSTALL-SOURCE.md)、[Job成员](docs/OWNED-JOB-SOURCE.md)、[WFP屏障](docs/PERSISTENT-FENCE-SOURCE.md)。
-- 这些专项文档包含按时间追加的SOURCE记录；较早的源码数量/未完成项不替代当前STATUS，也不授予运行资格。
+状态、日志、PID、备份、凭据、原始报告和构建产物不入Git；旧失败及UNKNOWN保留。专项资料见[安全事件](docs/INCIDENT-20261025-KASPERSKY.md)、[网络范围](docs/NETWORK-SCOPE.md)、[生命周期](docs/SECURE-LIFECYCLE-SOURCE.md)、[Job](docs/OWNED-JOB-SOURCE.md)及[WFP](docs/PERSISTENT-FENCE-SOURCE.md)。较早文档的未完成状态按时间保留，由STATUS说明当前进展。

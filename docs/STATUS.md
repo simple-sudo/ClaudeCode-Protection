@@ -1,65 +1,50 @@
 # 当前开发状态
 
-日期：2026-10-26（America/New_York）。完整产品目标不变；本地自主开发，不逐阶段等待批准，不推送。最新提交以`git log -1`为准。
-
-当前方向以用户完整指导落实的[产品目标](PRODUCT-DIRECTION-20261026.md)为准。870c4ca上游18新增提交已固定复核，见[复用补充](UPSTREAM-REUSE-20261026.md)。全机时区/IPv6等是允许设计的受控高级能力，当前没有实施其全机修改。
-
-最新实测：fc113de独立离线构建成功；.NET8.0.28/x64布局13项符合。普通用户GetByKey仍返回Code5/ReadBuiltinConnectLayer，原事务Code5另留。两个拒绝用例退出64/125。人类UAC后，在独立受保护资格副本只读获取V4/V6层成功（各42字段，Id48/50），没有过滤器/Job操作；这只验证本机只读native调用，不证明防直连。第一资格目录创建后因PowerShell5.1枚举误用中止，空目录保留；修正显式ReadData|WriteData并用新目录成功，不覆盖旧失败。记录在work/broker-elevated-readonly-control及-recovery-control，受保护资格副本不是正式安装。
-
-正在贯通首次未激活安装：独立ProtectionBootstrap嵌入批准清单，避免把含生命周期DLL的整包摘要嵌入同一DLL造成自引用。固定受保护宿主和所有输入租约→全包哈希预检→全新私有安装身份→现有版本stager/核验/INACTIVE指针/完成账本。fresh租约只证明新身份从未开放准入，不授权更新/卸载或冒充一般进程所有权。目前SOURCE、六项目非生成检查0错误/0警告；仓库批准清单为拒绝安装的占位符，尚无正式安装实测。
-
-最新人类授权：2026-10-26用户明确批准阻塞部分继续推进，替代上一轮仅构建范围的等待状态；不再重复申请相同许可。完整目标仍未完成，旧完成性审计及52产物/27输入核对在outputs/20261026-completion-audit/audit.json保留为当时事实。当前先接通并独立核验固定只读管理诊断，再推进可信安装前置条件；普通旧停止入口保留，真实Claude延期、AV及日常网络不变，UAC由本人确认。不同源码/工件须重新核验，不回填旧BUILD/VERIFIED。
+日期：2026-10-27（America/New_York）；以下安装/界面实测发生于10月26日晚。用户已批准阻塞部分继续推进，并补充[完整产品方向](PRODUCT-DIRECTION-20261026.md)。本地自主开发与小范围提交，既有origin保留，不推送。不同源码与工件不互相继承运行证据。
 
 ## 当前成果与证据级别
 
-| 工作 | 级别 | 证据与限制 |
+| 工作 | 级别 | 当前事实及限制 |
 |---|---|---|
-| 版本管理 | VERIFIED，仅本地Git配置范围 | 已有origin指向`simple-sudo/ClaudeCode-Protection`；本组开发起点HEAD与本地origin/main均为`00caa98`，后续本地提交见git log。Private与上传同步由用户提供；未fetch或推送。源码白名单、凭据/运行状态/备份/产物排除，原始资料保留。 |
-| 当前日常CLI、GUI、工程后端、生命周期库、管理入口源码 | SOURCE，已类型检查 | 五项目非生成语义分析0错误/0警告。新增管理入口1源，生命周期20源；当前源码不继承下面冻结工件的运行证据。 |
-| 冻结日常CLI c419a6e | BUILD | 用户明确S1授权后，固定SDK8.0.422/引用8.0.28、本地空源restore及单次Release构建成功，0错误/0警告。7源、87个SDK/项目导入，无第三方包；工件/日志在work/s1-daily-c419。不是完整SDK闭包或安全兼容鉴定。 |
-| 管理入口及生命周期库 8a9c4b1 | BUILD，未执行 | 用户独立明确授权一次离线构建后完成27项输入/两项目图，restore/build均0，编译0错误/0警告。4个实际嵌入协议与源字节一致，库副本一致；仅PE元数据读取。证据在work/broker-offline-build，详见[范围与结果](BROKER-OFFLINE-BUILD-SCOPE.md)。不授予WFP/Job运行资格。 |
-| 有限普通权限只读调用 | INTEGRATED，仅两条实测调用链；VERIFIED仅执行/结果范围 | S2独立审查并将worker签名检查改为离线UNKNOWN后，baseline退出0但APIsAgree=false；audit退出2，9 PASS/2 FAIL/8 UNKNOWN。首个.NET宿主版本选择失败及明确修正均保留；未改真实设置或联网。见[实测记录](VALIDATION-S1-S2-20261026.md)。 |
-| 用户配置维护切片 | SOURCE，生产调用点已接线 | 在`a085761`私有目录基础上，GUI接入撤销；CLI修复/撤销共用独占文件锁、刷盘备份/回执、写入前pending记录和完成后latest发布。中断只核对前/后哈希；冲突、缺失或不可读停止自动修改。恢复动作本身有反向备份，后续编辑拒绝覆盖。移除跨层分散发布和重复ACL改写。尚无运行验收，不授予INTEGRATED。 |
-| 日常审计行为收敛 | SOURCE，已类型检查 | 默认环境检查离线，连通性另选；PowerShell仅返回监听PID，由现有managed进程查询身份，不再从猜测目录递归启动EXE；移除执行策略Bypass和树状终止，超时仅停止自建审计worker。现有路径快照仍不是持续代理身份或启动准入。 |
-| 固定管理入口与Job/WFP组合 | SOURCE，调用点已接线；未运行集成 | ProtectionBroker仅接受quarantine；固定已安装当前版本/管理员上下文→私有状态锁与整版核验→记录请求→精确持久隔离及回读→所属Job停止→再次隔离回读→保留分阶段记录。隔离失败仍尝试已核验Job；打不开/缺失不计清零。没有提权器、任意参数管理通道或代理开放。 |
-| 安装/恢复/卸载及完整保护宿主 | SOURCE，未贯通 | 固定quarantine尚非完整宿主。原子进程创建、代理审核/开放、完整runtime lease、准入/Watchdog/漂移、可信bootstrap/通用broker transport及最终清理仍缺失。所属Job观察不冒充全进程所有权或ILifecycleRuntimeLease。 |
-| 原纯协议数据检查 | 保留历史有限证据 | 既有协议测试及失败/UNKNOWN记录保留；本轮不重复执行，不扩展为原生阻断或当前程序通过。 |
-| 其余构建与程序/故障验收 | BLOCKED | 原Assert/Build/cmd停止及空包pin保持；日常S1及管理组件两次独立构建授权均已消耗。quarantine/Job/WFP/安装与配置维护/合成故障未获运行资格；GUI/工程/native及日常后续修正未获构建资格。没有以既有BUILD或S1/S2外推。 |
-| 真实Claude登录/推理/启动 | DEFERRED_BY_USER | 不计通过，也不阻碍其余独立工具能力开发。 |
-| 完整产品 | 尚非DELIVERABLE | 没有可运行、可安装并完成故障验收的整体交付。 |
+| 当前六个项目 | SOURCE | 非生成语义检查0错误/0警告。日常CLI7源、GUI3源、工程11源、生命周期21源、broker1源、bootstrap1源；共享源重复计入其消费者。工程项目本轮未构建/运行。 |
+| 当前产品四项目图 | BUILD | 457d22d的CLI、WPF GUI、broker及生命周期库离线restore/build成功，0错误/0警告。40项源/项目/资源，固定SDK8.0.422及引用8.0.28，无第三方包。work/product-final-build。 |
+| 独立安装引导 | BUILD | 62986ed嵌入14资产批准清单，bootstrap单独离线构建成功，未重编生命周期库；共享同一已构建DLL。实际PE资源摘要与源清单一致、无模块初始化器。work/bootstrap-build及product-install-control/plan.json。 |
+| 首次未激活安装 | INTEGRATED，成功路径已运行 | 人类UAC→固定摘要/全路径及文件租约→新受保护bootstrap→全包预检→全新私有状态→现有stager/版本核验/INACTIVE指针/完成账本，实际退出0。没有WFP/Job/Claude或用户配置修改。中断/重启/重复安装/卸载未据此通过。 |
+| 安装后字节与权限 | VERIFIED，仅14文件与当前权限负向 | 14资产摘要/长度与批准包一致，管理员owner/受保护DACL；普通用户写打开全部被拒绝，私有current.json读取被拒绝。outputs/installed-package-readback.json。不是抗管理员攻击或断电验收。 |
+| 已安装GUI离线检查 | INTEGRATED，当前真实调用链 | 普通用户界面“检查环境”→已安装CLI→inbox PowerShell→显示两阶段结果→当前用户报告。baseline退出0但APIsAgree=false；audit退出2，9 PASS/3 FAIL/8 UNKNOWN。保护仍未激活。配置修复/撤销按钮及在线按钮未运行。 |
+| .NET/WFP只读诊断 | VERIFIED，仅只读native路径 | fc113de的.NET8.0.28/x64布局13项符合；普通用户GetByKey仍Code5。独立受保护资格副本人类UAC后读取固定V4/V6内置层成功，各42字段、Id48/50。没有过滤器、Job或跨对象原子策略快照。 |
+| 固定管理隔离 | BUILD；quarantine功能未运行 | 当前已安装broker接受固定quarantine及两个只读诊断。quarantine核对管理员、固定私有状态、当前整版和自身路径后调用既有精确WFP/Job owner；停止/最终观察错误保留。尚非已交付Kill-Switch。 |
+| 用户配置维护 | BUILD，尚无功能/故障运行验收 | GUI/CLI共享当前用户目录、独占锁、刷盘备份、先行pending及摘要冲突拒绝。未迁移旧备份、未修改真实设置。 |
+| 原S1/S2及8a9c4b1构建 | 历史限定证据 | 原日志、失败、修正和UNKNOWN均留原处；见[原S1/S2](VALIDATION-S1-S2-20261026.md)与[首次broker构建](BROKER-OFFLINE-BUILD-SCOPE.md)。当前安装不升级这些历史结论。 |
+| 全量保护宿主/故障/卸载 | 尚未完成；集成受缺失实现阻塞 | 原子进程准入、代理审核/开放、完整运行租约、Watchdog/漂移、资源最终清理及相应故障矩阵未贯通。首次fresh租约只适用新身份从未开放准入，不能授权更新/卸载或冒充一般进程所有权。 |
+| 真实Claude登录/推理/会话 | DEFERRED_BY_USER | 不计通过，不阻碍独立工具能力。 |
+| 完整产品 | 尚非DELIVERABLE | 已有本机安装后的离线检查切片；持续防直连、故障恢复和安全卸载仍须交付。 |
 
-INTEGRATED要求实际调用链的集成证据；VERIFIED要求规定功能/负向/故障测试；DELIVERABLE要求当前交付范围全部成立。SOURCE和无产物类型检查不得越级。
+INTEGRATED是实际调用链；VERIFIED只适用于表中明确功能及负向；BUILD和SOURCE不能替代保护验收。用户授权是推进权限，不是功能通过。
 
-## 正在收敛的纵向主线
+## 本机安装及证据位置
 
-1. 本轮已接通配置修复→撤销→中断核对的日常调用点并缩短审计进程链，没有增加项目、后台宿主或协议测试框架。备份/回执兼容原schema 1、只使用当前用户目录，不迁移旧证据。
-2. 已将现有Job/WFP接入固定管理动作quarantine的实际源调用点，未引入第二套owner。完整准入、代理核验/开放、原子进程绑定、Watchdog和生命周期关闭顺序仍须继续；当前没有新增运行资格，不能以这个SOURCE入口宣称Kill-Switch生效。
-3. 在安全许可存在后执行最小独立工具切片的真实构建与运行，再做指定故障验收；现有安全阻塞持续时优先重新评估/修正既有链路，不用外围源码掩盖。
+- 包发布标识：`806b2b6997c84e0da4db46c9d267d7a0`；manifest SHA256：`1D83FA034A65DC58D1FFEB9C4F3A54EA52F1C3B7AF6156A54C752FA5D8801BAC`。批准清单在src/ProtectionBootstrap/ApprovedPackage.json；它是当前精确包的身份，不是任意新构建许可或AV安全结论。
+- 受保护引导：`C:\Program Files\ClaudeCodeProtection-Bootstrap`；正式代码：`C:\Program Files\ClaudeCodeProtection\versions\806b2b6997c84e0da4db46c9d267d7a0`；私有状态：`C:\Program Files\ClaudeCodeProtection-State`。无服务、计划任务、自启动、全局PATH或快捷方式注册。
+- 普通用户GUI：上述版本内`bin\center\ProtectionCenter.exe`；当前只实测“检查环境”。此前UI正常关闭因computer-use激活失败而保留窗口。10月27日用户明确要求不用就关闭后，核对该自建测试进程PID/创建时间/路径/摘要、后台操作已结束与报告已保存，精确结束此GUI进程；未按名称或进程树批量终止。关闭记录在outputs/installed-gui-close.json。没有保护后台运行。
+- 实际安装记录在受保护bootstrap的install.stdout.txt/result.json/completed.json。原始控制、pins与源码/工件记录在work/product-install-control、product-install-recovery-control、bootstrap-build及product-final-build，不入Git。
+- GUI报告在当前用户LocalAppData下ClaudeCodeProtection/reports；本次文件environment-20261027-035756-c34de8.json。摘要与状态汇总在outputs/installed-gui-audit-summary.json，界面文字在outputs/installed-gui-after.txt。报告及原始数据不入Git。
 
-既有四上游固定源码、许可、边界、依赖与复用决定见[复用审查](UPSTREAM-REUSE-20261026.md)。本轮没有引入Go/Python/WDK依赖、下载/运行上游二进制或安装器。
+## 失败与修正
 
-`cbc0717`后复核修正（SOURCE）：损坏pending的读取与回执校验均纳入恢复结果，显式捕获不继承IOException的InvalidDataException，保持RECOVERY_REQUIRED/非成功结果和原文件。latest/备份无法核验时返回REFUSED_UNVERIFIABLE_BACKUP；输入无效UTF-8拒绝解码替换。GUI保留代理基线和后续审计两个阶段的结果，第二阶段调度失败同样进入报告；报告保存失败不遮住屏幕结果，修复计划失败也显示/记录后端输出。四项目无产物检查仍0错误/0警告，未执行这些分支或渲染GUI，不能授予运行资格。
+1. WFP首版普通用户事务Code5/BeginWfpTransaction保留；固定内置元数据改为独立GetByKey后仍Code5/ReadBuiltinConnectLayer。管理员只读成功不覆盖这两次普通用户失败。读API与事务分别要求layer READ和engine BEGIN_READ_TXN，见微软[LayerGetByKey](https://learn.microsoft.com/en-us/windows/win32/api/fwpmu/nf-fwpmu-fwpmlayergetbykey0)及[TransactionBegin](https://learn.microsoft.com/en-us/windows/win32/api/fwpmu/nf-fwpmu-fwpmtransactionbegin0)。
+2. 首次资格复制因PowerShell5.1不存在的FileSystemRights.ReadWrite枚举失败，原空资格目录保留；显式ReadData|WriteData经自建单字节文件验证，在新的-r1资格目录成功。资格目录不是正式产品根。
+3. 产品图首次构建GUI因共享源码缺少System.IO失败；真实WPF默认global usings不含IO/Http，原checker超集漏检。修复共享源和checker后新目录完整构建成功。失败在work/product-payload-build；修正版在product-payload-recovery-build，最后输入绑定修正另在product-final-build。
+4. 首次安装辅助脚本生成时误改载荷EXE名，固定输入核对在创建目录前失败；原脚本/终态保留。修正全部20项与计划逐一一致后，新控制目录运行成功，没有改名任何实际工件、没有用重包装绕过AV。
 
-## 当前明确缺口与下一步
+## 下一主线及安全边界
 
-- 配置维护仍需真实正向/负向/中断/双进程/报告失败验证。锁只串行化本工具实例，哈希检查不是对外部编辑器的原子CAS；路径检查尚非句柄绑定防替换，硬链接/恶意同用户竞争、目录持久性和断电行为未验证。`File.Replace`失败不保证原文件名完整，当前保留临时文件和备份、报告可能已改变，不自动回写。
-- 缺少代理审核/开放、原子进程绑定、完整runtime lease、Watchdog/漂移、可信broker/bootstrap和WFP最终清理。未建立可安装的可信发布包；包批准pin仍为空。真实Claude启动仍延期。
-- 新管理入口只允许既有提升上下文，核对自身EXE、入口DLL、生命周期DLL均位于被整版核验租约持有的当前安装版本。开发目录运行会拒绝；它不是可信首次安装引导或运行前代码签名根。实际安装、WFP ABI、崩溃/持久过滤器及Job故障结果均未验证；阻塞路径不以继续外围扩展替代。
-- 已修正管理停止链首个Job超时就跳过其余Job的源码缺口：所有对象预检完成后逐项停止并逐项回读，保留各Job停止/最终观察失败；全局状态锁/清单权限丢失仍立即停止。预期数量、缺失、失败和清零全部纳入结果，后续观察为零不抹去先前失败。错误记录保留实际Win32错误码。五项目非生成类型检查0错误/0警告；未运行故障分支，原记录不升级。
-- [管理组件首次离线构建](BROKER-OFFLINE-BUILD-SCOPE.md)已获独立明确授权并实际成功，不再保留“该构建待批准”的当前阻塞。quarantine运行、WFP ABI/功能/故障、所属Job停止及可信安装依然未获运行资格；不为取得绿色结果调用它们。静态记录在outputs/20261026-broker-stop-errors，独立构建/工件在work/broker-offline-build。
-- 上述运行范围随后已获用户批准推进，仍须具体资格核验，不能把授权当作功能通过。新普通权限inspect-runtime仅检查进程内Marshal布局；inspect-wfp仅在布局守卫后打开本机WFP、使用只读事务读取固定内置IPv4/IPv6连接层并释放内存/句柄。无过滤器/Job/安装状态操作，quarantine的可信安装与权限核验不变。当前新源码五项目非生成检查0错误/0警告，旧8a9c4b1工件不包含这两个入口；新资格/构建/运行记录使用outputs/20261026-broker-readonly-runtime及独立work目录。
-- 6e116d7独立构建及安全核验后，普通权限运行inspect-runtime退出0：实际.NET8.0.28/x64，13项尺寸/偏移符合声明；不证明native过滤器功能。首个inspect-wfp退出2，保留WfpFailure/Code5/BeginWfpTransaction，未改策略。按微软LayerGetByKey与TransactionBegin文档分别核对READ及BEGIN_READ_TXN权限后，将仅此固定内置元数据诊断改为独立GetByKey读取；不改权限、不请求提升、不声称跨对象策略原子快照。原生产quarantine/归属/修改事务保持。首次失败在work/broker-readonly-runtime，修正须新构建及新资格，不能覆盖旧结果。
-- 卡巴斯基具体行为触发点、原DLL执行身份和系统影响仍UNKNOWN。本轮尝试只读查询原`avp`事件：provider不可解析；按Application/4662查询仅得2条事件、0条项目匹配，未恢复原告警内容，不能推导事件不存在或安全恢复。
-- 已完成限定S1/S2，不能再使用“未获S1授权”作为阻塞。S2发现Windows代理API结果不一致，尚未判定具体差异来源；不自动重设日常代理。audit现已在SOURCE接入该必需基线观察，当前S1 DLL不含此后续修改。其余运行资格缺口保持明确，不借助外围源码数量掩盖。
+继续复用当前生产owner，实现精确身份的原子进程准入与代理限制；优先用自有合成进程独立验证IPv4/DNS/UDP/IPv6阻断、代理失效、控制器崩溃和恢复，随后接Watchdog及精确卸载。不得把轮询停止、配置正确或代理响应当无直连证明。
 
-2026-10-26最新人类明确S1及有条件S2授权已核对，并完成上述实际执行。旧冻结、待决定执行单及原失败在原位置保留，属于历史状态。完整授权范围、精确工件身份、首失败/修正、运行结果及后续SOURCE差异见[实测记录](VALIDATION-S1-S2-20261026.md)；当前源码类型检查在本项目outputs/20261026-s1-s2，原始运行证据在work/s1-daily-c419、work/s2-offline及work/s2-offline-recovery，均不入Git。
+当前API不一致仍需只读分项定位；代理owner路径不可读保留UNKNOWN，不能按名称放行。UI离线检查的FAIL/UNKNOWN与旧S2各自独立。配置维护的冲突、中断、备份损坏分支仍需有界实测。
 
-## 约束与复核入口
+卡巴斯基事件未解决，不执行退休EXE/旧聚合selftest，不改AV或规避拦截。有限Application观察未见新AV事件，完整厂商告警覆盖UNKNOWN。AVP/BFE保持运行，当前窗口FlClash/Core PID一致，真实Claude规则仍禁用，原settings摘要未变。出现新告警立即停止。
 
-- `AGENTS.md`记录当前自主开发与安全约束；本地提交已获授权，禁止擅自远程公开/推送。
-- `pwsh -NoProfile -File scripts/Check-SourceTypes.ps1`仅做无产物语义检查。固定SDK8.0.422/引用包8.0.28；不自动下载，不执行构建任务。它不是通用MSBuild替代器。
-- 管理入口对生命周期库的显式ProjectReference采用Roslyn内存CompilationReference检查，不生成/加载项目程序集；只支持直接、本地、无附加选项的net8.0-windows库叶引用。五个合成引用正负检查及11项嵌入数据检查通过，仅证明检查器/数据边界，不证明管理动作运行。证据在outputs/20261026-broker-quarantine及其reference-checks.json指向的work合成输入目录；未复制产品工程。
-- 原始配置、认证、备份、历史失败与证据保留。FlClash Global、系统代理、TUN/BFE不停止或重设；AV开启、新告警即停；UAC由本人确认；IPv6仅阻断和必要负向测试。
-- 历史逐项验收和旧范围保持在[验收账本](PROJECT-ACCEPTANCE.md)。`cbc0717`检查原始JSON位于`outputs/20261026-maintenance-delivery/source-types.json`，后续异常路径修正位于`outputs/20261026-maintenance-errors/source-types.json`（本地忽略，不入Git）；较早convergence资料和上游快照保留原位置。
+FlClash Global、系统代理及TUN保持当前日常状态；全机时区/IPv6等可按用户新指导设计为有必要性、影响说明、明确选择与冲突安全恢复的高级能力，本轮没有实施。普通旧Build/Assert/cmd硬停止仍留作防误用；已授权且具体核验的当前路径不再以“等待相同许可”阻塞。UAC由本人确认，日常GUI与维护保持普通权限。
 
-会话停止时，以Git状态和本页接续；不声称后台仍在运行。
+[上游复用审查](UPSTREAM-REUSE-20261026.md)已补充383f927→870c4ca的18提交；不复制Direct成功标签、盲目回滚或轮询无泄漏结论。历史逐项账本见[PROJECT-ACCEPTANCE](PROJECT-ACCEPTANCE.md)。会话停止不声称后台继续开发或持续保护。
