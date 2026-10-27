@@ -156,7 +156,7 @@ internal static class NetworkQualification
 
     internal static (int ExitCode,string Report) Run(FixedLayout layout,ProtectedState state,VerifiedVersion version)
     {
-        state.AssertHeld();version.AssertHeld(state);LifecycleRecovery.AssertNoPending(state);
+        state.AssertHeld();version.AssertHeld(state);LifecycleRecovery.AssertNoPending(state);InstallationLoopbackLease.AssertClosedHistory(state);
         foreach(var intent in OwnedJobIntent.ReadAll(state))if(AtomicJobCompletion.ReadClosed(state,intent) is null)throw WfpNative.Contract("NetworkQualificationRequiresAllPriorAdmissionsClosed");
         var plans=FencePlan.ReadAll(state);if(plans.Count==0)throw WfpNative.Contract("NetworkQualificationRequiresFence");
         var fences=new List<PersistentFence>();var results=new List<object>();Exception? failure=null;

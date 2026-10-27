@@ -22,7 +22,7 @@ internal sealed class BootstrapApproval : IDisposable
         var result=new BootstrapApproval();
         try
         {
-            var root=WindowsPathSeal.Canonical(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),inactiveUpdate?"ClaudeCodeProtection-Update-20261027-network":"ClaudeCodeProtection-Bootstrap"));
+            var root=WindowsPathSeal.Canonical(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),inactiveUpdate?"ClaudeCodeProtection-Update-20261027-network-r2":"ClaudeCodeProtection-Bootstrap"));
             var entry=Assembly.GetEntryAssembly()??throw new InvalidOperationException("Bootstrap entry missing");
             if(entry.GetName().Name!="ProtectionBootstrap" ||
                 !Same(Environment.ProcessPath,Path.Combine(root,"ProtectionBootstrap.exe")) ||
@@ -121,7 +121,8 @@ public static class BootstrapInstaller
         }; // Exact reviewed packages expose no launch/admission command.
         private static readonly string[] OneShotAdmissionManifests={
             "F68329165AAAD7BF5C8CBB4B44111B715439395B850F9653C80D687843A006FA",
-            "9A3AFFC424CCB1D05691891A0F5EA99BFFECE30EDA801594825076C2DBB9E32F"
+            "9A3AFFC424CCB1D05691891A0F5EA99BFFECE30EDA801594825076C2DBB9E32F",
+            "978CE60499B05D76E2820F7ADD214727E3F417716A2EABD1EA34EB90FC14C5B4"
         };
         private readonly ProtectedState state;
         private readonly BootstrapApproval approval;
@@ -154,6 +155,7 @@ public static class BootstrapInstaller
         public void AssertNoOwnedProcesses()
         {
             AssertLaunchAdmissionClosed();
+            InstallationLoopbackLease.AssertClosedHistory(state);
             var jobs=OwnedJobIntent.ReadAll(state);
             if(NoAdmissionManifests.Contains(prior.Package.ManifestHash,StringComparer.Ordinal) && jobs.Count!=0)
                 throw new InvalidOperationException("Job history is outside the pinned no-admission package");

@@ -86,6 +86,17 @@ internal static class WindowsPathSeal
         try{VerifyObject(handle,path,directory);AssertAcl(handle,true);return handle;}
         catch{handle.Dispose();throw;}
     }
+    // Windows servicing legitimately hardlinks this fixed OS executable into
+    // WinSxS. Product/source payloads keep their single-link requirement. The
+    // exception has no path parameter, write access or ACL-repair behavior.
+    internal static SafeFileHandle OpenCheckNetIsolation()
+    {
+        var path=Child(Environment.GetFolderPath(Environment.SpecialFolder.System),"CheckNetIsolation.exe");
+        var handle=CreateFile(path,ReadControl|ReadAttributes|0x80000000u,1,IntPtr.Zero,3,OpenReparse,IntPtr.Zero);
+        if(handle.IsInvalid){var error=Error("OpenFixedWindowsLoopbackUtility");handle.Dispose();throw error;}
+        try{VerifyObjectCore(handle,path,false,true);AssertAcl(handle,false,true);return handle;}
+        catch(Exception ex){handle.Dispose();if(ex.Data["Stage"] is null)ex.Data["Stage"]="VerifyFixedWindowsLoopbackUtility";throw;}
+    }
     internal static string Identity(SafeFileHandle handle)
     {
         if(!GetFileInformationByHandle(handle,out var info))throw Error("ReadExactIdentity");
@@ -98,9 +109,12 @@ internal static class WindowsPathSeal
         if(!SetFileInformationByHandle(handle,4,ref disposition,(uint)Marshal.SizeOf<DeleteDisposition>()))throw Error("MarkExactDelete");
     }
     internal static void VerifyObject(SafeFileHandle handle, string expected, bool directory)
+        =>VerifyObjectCore(handle,expected,directory,false);
+    private static void VerifyObjectCore(SafeFileHandle handle,string expected,bool directory,bool allowSystemHardlinks)
     {
         if (!GetFileInformationByHandle(handle, out var info)) throw Error("ReadBoundIdentity");
-        if ((info.Attributes & 0x400) != 0 || ((info.Attributes & 0x10) != 0) != directory || (!directory && info.Links != 1))
+        if ((info.Attributes & 0x400) != 0 || ((info.Attributes & 0x10) != 0) != directory ||
+            (!directory && (info.Links==0 || (!allowSystemHardlinks && info.Links!=1))))
             throw new InvalidDataException("Reparse, object type or hardlink count refused");
         var buffer = new StringBuilder(32768);
         var length = GetFinalPathNameByHandle(handle, buffer, (uint)buffer.Capacity, 0);

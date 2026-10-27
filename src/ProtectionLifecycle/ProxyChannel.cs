@@ -106,7 +106,23 @@ internal sealed class InstallationLoopbackLease : IDisposable
     private readonly ProtectedState state;
     private readonly string sid,id;
     private readonly LoopbackEntry[] prior;
-    private bool disposed;
+    private bool disposed,toolStopped=true;
+    internal static void AssertClosedHistory(ProtectedState state)
+    {
+        state.AssertHeld();using var target=new InstallationPackageSid(state);using var control=InstallationPackageSid.ForNetworkControl(state);
+        foreach(var leaf in state.ListLeaves("loopback-intent-"))
+        {
+            if(leaf.Length!=53)throw WfpNative.Contract("LoopbackIntentLeafShape");
+            var id=Identifiers.Hex32(leaf.Substring(16,32));
+            using var before=JsonDocument.Parse(state.Read(leaf).Bytes);var b=before.RootElement;
+            if(b.GetProperty("SchemaVersion").GetInt32()!=1 || StrictJson.Text(b,"InstallationId")!=state.InstallationId ||
+                StrictJson.Text(b,"Sid") is not string sid || (sid!=target.Value && sid!=control.Value))throw WfpNative.Contract("LoopbackIntentScopeMismatch");
+            var closed=state.ReadOptional("loopback-cleanup-"+id+".json");if(closed is null)throw WfpNative.Contract("PendingOwnedLoopbackOperationRequiresRecovery");
+            using var doc=JsonDocument.Parse(closed.Bytes);var c=doc.RootElement;
+            if(c.GetProperty("SchemaVersion").GetInt32()!=1 || StrictJson.Text(c,"InstallationId")!=state.InstallationId || StrictJson.Text(c,"Sid")!=sid ||
+                !c.GetProperty("ExactSidAbsent").GetBoolean() || !c.GetProperty("UnrelatedEntriesPreserved").GetBoolean())throw WfpNative.Contract("OwnedLoopbackCleanupNotConfirmed");
+        }
+    }
     private InstallationLoopbackLease(ProtectedState state,string sid,string id,LoopbackEntry[] prior)
     {this.state=state;this.sid=sid;this.id=id;this.prior=prior;}
     internal static InstallationLoopbackLease Enable(ProtectedState state,bool control)
@@ -120,7 +136,7 @@ internal sealed class InstallationLoopbackLease : IDisposable
         var lease=new InstallationLoopbackLease(state,package.Value,id,before);
         try
         {
-            Invoke("-a",package.Value);var after=Read();
+            Invoke("-a",package.Value,ref lease.toolStopped);var after=Read();
             if(after.Count(e=>e.Sid==package.Value)!=1 || !Others(after,package.Value).SequenceEqual(before))throw WfpNative.Contract("LoopbackAddOrOtherEntriesChanged");
             state.WriteNew("loopback-added-"+id+".json",JsonSerializer.SerializeToUtf8Bytes(new {SchemaVersion=1,state.InstallationId,Sid=package.Value,Status="EXACT_SID_PRESENT_OTHERS_UNCHANGED"}));
             return lease;
@@ -130,7 +146,8 @@ internal sealed class InstallationLoopbackLease : IDisposable
     public void Dispose()
     {
         if(disposed)return;disposed=true;state.AssertHeld();
-        var before=Read();if(before.Any(e=>e.Sid==sid))Invoke("-d",sid);
+        if(!toolStopped)throw WfpNative.Contract("LoopbackUtilityLifetimeUnknownNoCleanupProof");
+        var before=Read();if(before.Any(e=>e.Sid==sid))Invoke("-d",sid,ref toolStopped);
         var after=Read();var absent=after.All(e=>e.Sid!=sid);var othersSame=Others(before,sid).SequenceEqual(after);
         state.WriteNew("loopback-cleanup-"+id+".json",JsonSerializer.SerializeToUtf8Bytes(new {SchemaVersion=1,state.InstallationId,Sid=sid,
             ExactSidAbsent=absent,UnrelatedEntriesPreserved=othersSame,OriginalOthersUnchanged=after.SequenceEqual(prior),AtUtc=DateTime.UtcNow.ToString("o")}));
@@ -162,19 +179,22 @@ internal sealed class InstallationLoopbackLease : IDisposable
             }
         }
     }
-    private static void Invoke(string operation,string sid)
+    private static void Invoke(string operation,string sid,ref bool stopped)
     {
         if(operation is not ("-a" or "-d") || !sid.StartsWith("S-1-15-2-",StringComparison.Ordinal))throw WfpNative.Contract("ExactLoopbackCommandRequired");
         var system=Environment.GetFolderPath(Environment.SpecialFolder.System);using var path=WindowsPathSeal.LockDirectory(system,PathPolicy.TrustedAncestor);
-        using var executable=WindowsPathSeal.Open(Path.Combine(system,"CheckNetIsolation.exe"),false,true);WindowsPathSeal.AssertAcl(executable,false,true);
+        using var executable=WindowsPathSeal.OpenCheckNetIsolation();
         var start=new ProcessStartInfo(Path.Combine(system,"CheckNetIsolation.exe")){UseShellExecute=false,CreateNoWindow=true,WorkingDirectory=system,
             RedirectStandardOutput=true,RedirectStandardError=true};
         start.Environment.Clear();foreach(var name in new[]{"SystemRoot","windir","SystemDrive","USERPROFILE","LOCALAPPDATA"})
         {var value=Environment.GetEnvironmentVariable(name);if(value is not null)start.Environment[name]=value;}
         start.ArgumentList.Add("LoopbackExempt");start.ArgumentList.Add(operation);start.ArgumentList.Add("-p="+sid);
         using var process=Process.Start(start)??throw WfpNative.Contract("LoopbackCommandNotStarted");
+        stopped=false;
         var output=process.StandardOutput.ReadToEndAsync();var error=process.StandardError.ReadToEndAsync();
-        if(!process.WaitForExit(10000)){process.Kill();throw new TimeoutException("Exact loopback command timeout");}
+        if(!process.WaitForExit(10000))
+        {process.Kill();stopped=process.WaitForExit(5000);throw new TimeoutException("Exact loopback command timeout; termination status retained");}
+        stopped=true;
         _=output.GetAwaiter().GetResult();_=error.GetAwaiter().GetResult();
         if(process.ExitCode!=0)throw WfpNative.Contract("ExactLoopbackCommandFailed");
     }

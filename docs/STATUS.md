@@ -60,6 +60,10 @@ INTEGRATED是实际调用链；VERIFIED只适用于表中明确功能及负向�
 
 ## 下一主线及安全边界
 
+466a包已实际INACTIVE更新（operation ae397c94caeb48aca2bbde4e502c74e0）。首次qualify-network退出3，request24808d3065e24cb0adb3ee17988cc1dc：当前FlClash监听PID14268、E:\program\FlClash\FlClashCore.exe及创建时刻/磁盘hash已持有核对，主机显式HTTPS Microsoft200；6个TCP/UDP/IPv6/UDP53接收端基线全部返回成功且各1份nonce收据。此为限定真实基线，不是受保护网络矩阵通过。
+
+运行在专属控制profile创建后、回环豁免添加前失败。原private记录与ProgramFiles/ClaudeCodeProtection-Network-20261027保留；loopback cleanup独立确认本次SID不存在、其他原1项未变，profile Delete API0，6规则完整回读。只读fsutil发现System32/CheckNetIsolation.exe实际有4条Windows servicing硬链接，原单链接payload校验误用于该系统工具，导致InvalidDataException。当前SOURCE增加唯一固定无参数OS工具打开方法，保持所有产品/源码/删除路径单链接限制、系统目录祖先/owner/DACL/无写入共享和最终路径核验；不改ACL、不拷贝改名系统工具。新增回环历史闭合检查及子工具终态未知不签发清理证明，待新构建/资格。未打开代理门、未恢复受保护网络子进程，无Claude/AV/FlClash/TUN变更。
+
 49863d4的32输入管理图离线restore/build成功，0错误/0警告。元数据无module initializer；普通inspect-runtime0，admission-child/qualify-admission/inspect-installed-fence/qualify-network均125拒绝，没有网络或Job动作。下一批准包466a04443a294ba7a0aa7cff90ebd525，manifest978CE60499B05D76E2820F7ADD214727E3F417716A2EABD1EA34EB90FC14C5B4；待独立bootstrap构建/安装。当前5b正式包及隔离没有因SOURCE/BUILD改变。
 
 网络矩阵纵向切片当前SOURCE：固定已安装`qualify-network`复用AtomicChild/OwnedKernelJob/PersistentFence，先精确持有既有FlClash Core进程/磁盘映像及127.0.0.1:7890监听身份，显式代理HTTPS Microsoft、默认TLS校验并开启吊销检查。只对工具安装SID或独立短名对照SID添加/移除精确回环豁免，保存其他项快照并核对不变，不恢复整张全局列表；现有豁免拒绝接管。Windows工具固定System32路径、ACL/文件句柄及最小环境，无Shell/UAC自动确认，不调整FlClash/系统代理/TUN。
