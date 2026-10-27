@@ -26,7 +26,13 @@ outputs/session-tls-target-source-types-final.json、session-tls-target-policy-s
 66428c7的Broker/Lifecycle（42输入）及12源纯测试均离线构建0错误/0警告；首次纯测试退出-532462766，
 堆栈为网关正确拒绝明文输入后的InitialTlsRecordRefused。原因是测试辅助器仅捕获IOException，
 漏掉InvalidDataException；修正辅助器异常分类，未放宽产品条件。首次policy-tls-result.json与程序集/脚本保持原样。
-当前修正后的测试尚待执行，不能把首次失败写成通过；本次产品工件仍未安装或执行。
+随后16329f9的修正测试独立离线构建0错误/0警告，实际执行退出0；
+程序集SHA256 7906217AB70D4C504AEF25AF395D43B69BE51B6C1A170B680CE76E1B2863BEA8。
+原失败没有覆写；新结果policy-tls-r2-result.json与work/session-tls-policy-r2-16329f9-build分别保留。
+最终产品的42个构建输入逐一与66428c7构建摘要核对一致，只复用相同产品输入的BUILD证据，不推导运行资格。
+work/session-tls-broker-66428c7-build、session-tls-policy-66428c7-build及固定控制脚本/导入/输入/工件摘要均保留。
+两次测试均无native入口/module initializer；本次产品工件仍未安装或执行。
+内存用例不证明真实TLS互操作/ECH兼容、当前FlClash的字面目的地保持或真实出口隔离；相关资格仍NOT_RUN/UNKNOWN。
 本轮未恢复WFP/Job/Watchdog实验、未安装或执行新产品、未启动真实Claude；完整产品仍非DELIVERABLE。
 
 ## 2026-10-27 会话许可直接约束网关转发（本轮）
