@@ -42,14 +42,14 @@ internal static class StrictPreflight
     {
         var samples=audit.Checks??new List<Check>();
         var unique=samples.All(c=>c is not null && !string.IsNullOrWhiteSpace(c.Name)) &&
-            samples.Select(c=>c.Name).Distinct(StringComparer.Ordinal).Count()==samples.Count;
+            samples.Where(c=>c is not null).Select(c=>c.Name).Distinct(StringComparer.Ordinal).Count()==samples.Count && audit.SchemaVersion==1;
         var fresh=DateTimeOffset.TryParse(audit.AtUtc,CultureInfo.InvariantCulture,
-            DateTimeStyles.RoundtripKind,out var observed) &&
+            DateTimeStyles.None,out var observed) &&
             now-observed>=TimeSpan.FromSeconds(-30) && now-observed<=TimeSpan.FromMinutes(2);
         var checks=Required.Select(def=>
         {
-            var present=def.Sources.Where(name=>samples.Any(c=>c.Name==name)).ToArray();
-            var selected=samples.Where(c=>def.Sources.Contains(c.Name,StringComparer.Ordinal)).ToArray();
+            var present=def.Sources.Where(name=>samples.Any(c=>c is not null && c.Name==name)).ToArray();
+            var selected=samples.Where(c=>c is not null && def.Sources.Contains(c.Name,StringComparer.Ordinal)).ToArray();
             var complete=def.Sources.Length>0 && present.Length==def.Sources.Length;
             var invalid=selected.Any(c=>c.Status is not ("PASS" or "FAIL" or "UNKNOWN"));
             var status=selected.Any(c=>c.Status=="FAIL")?"FAIL":
