@@ -179,3 +179,5 @@ S2独立读取新PE元数据及调用树，移除worker离线资格不明的签�
 ### 后续人类明确批准阻塞部分继续
 
 用户随后明确“阻塞部分我批准你有权限继续，你有权向下推进目标”。该指示更新此前等待状态，不是AV误报结论，也不移除AV/日常网络/UAC/真实Claude限制。实施固定inspect-runtime/inspect-wfp管理诊断源码，直接消费当前.NET8组件的Marshal布局及只读WFP事务/内置层读取；普通权限，不接受可变键/路径/目标，不创建或删除策略、Job或安装状态。FWPM_LAYER0与GetByKey声明按本机SDK10.0.26100.0头文件复核。quarantine仍要求可信已安装当前版本，不以诊断入口绕过。五项目非生成语义检查0错误/0警告，新产物及运行证据待独立核验，不升级旧工件或旧失败。
+
+首次新构建6e116d7成功且资格核验后，inspect-runtime在.NET8.0.28/x64实际执行，13项Marshal尺寸/偏移符合声明，退出0；inspect-wfp在BeginWfpTransaction返回错误码5，退出2，原失败保留。微软[LayerGetByKey](https://learn.microsoft.com/en-us/windows/win32/api/fwpmu/nf-fwpmu-fwpmlayergetbykey0)要求layer READ，[TransactionBegin](https://learn.microsoft.com/en-us/windows/win32/api/fwpmu/nf-fwpmu-fwpmtransactionbegin0)另需engine BEGIN_READ_TXN；本次元数据诊断无跨对象策略原子性需求。因此仅将诊断改为固定内置层独立读取，仍受对象READ检查，不改ACL/权限、不提权，原隔离owner事务不动。现行修正待新产物复核，不能将其赋给旧6e116d7失败。原始记录位于work/broker-readonly-runtime；AV/BFE运行、规则禁用、FlClash/Core PID及settings摘要在当前窗口一致。

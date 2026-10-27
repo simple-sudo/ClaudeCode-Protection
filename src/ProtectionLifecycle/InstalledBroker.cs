@@ -36,9 +36,13 @@ public static class InstalledBroker
             // ABI guard precedes the first WFP call. No install/private state,
             // caller-provided key, filter changes or process handles are used.
             using var engine=WfpNative.Open();
-            var layers=WfpNative.Transaction(engine,true,()=>new[]{ReadLayer(WfpNative.ConnectV4),ReadLayer(WfpNative.ConnectV6)});
+            // These are independent fixed builtin metadata reads, not a
+            // multi-object policy/admission snapshot. Each GetByKey enforces
+            // layer READ rights; an explicit engine transaction unnecessarily
+            // requires BEGIN_READ_TXN even for this ordinary-user diagnostic.
+            var layers=new[]{ReadLayer(WfpNative.ConnectV4),ReadLayer(WfpNative.ConnectV6)};
             return (0,JsonSerializer.Serialize(new {SchemaVersion=1,Scope="LOCAL_WFP_READ_ONLY_BUILTIN_LAYER_QUERY",Status="BUILTIN_LAYERS_OBSERVED",
-                Runtime=Environment.Version.ToString(),Layers=layers,ReadOnlyTransaction=true,
+                Runtime=Environment.Version.ToString(),Layers=layers,ExplicitTransaction=false,ObservationConsistency="INDEPENDENT_BUILTIN_METADATA_READS",
                 PolicyModified=false,JobApiCalled=false,NativeFilterFunctionalityQualified=false,ProtectionQualified=false,RebootQualified=false}));
 
             object ReadLayer(Guid key)

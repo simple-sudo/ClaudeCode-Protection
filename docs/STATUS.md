@@ -42,6 +42,7 @@ INTEGRATED要求实际调用链的集成证据；VERIFIED要求规定功能/负�
 - 已修正管理停止链首个Job超时就跳过其余Job的源码缺口：所有对象预检完成后逐项停止并逐项回读，保留各Job停止/最终观察失败；全局状态锁/清单权限丢失仍立即停止。预期数量、缺失、失败和清零全部纳入结果，后续观察为零不抹去先前失败。错误记录保留实际Win32错误码。五项目非生成类型检查0错误/0警告；未运行故障分支，原记录不升级。
 - [管理组件首次离线构建](BROKER-OFFLINE-BUILD-SCOPE.md)已获独立明确授权并实际成功，不再保留“该构建待批准”的当前阻塞。quarantine运行、WFP ABI/功能/故障、所属Job停止及可信安装依然未获运行资格；不为取得绿色结果调用它们。静态记录在outputs/20261026-broker-stop-errors，独立构建/工件在work/broker-offline-build。
 - 上述运行范围随后已获用户批准推进，仍须具体资格核验，不能把授权当作功能通过。新普通权限inspect-runtime仅检查进程内Marshal布局；inspect-wfp仅在布局守卫后打开本机WFP、使用只读事务读取固定内置IPv4/IPv6连接层并释放内存/句柄。无过滤器/Job/安装状态操作，quarantine的可信安装与权限核验不变。当前新源码五项目非生成检查0错误/0警告，旧8a9c4b1工件不包含这两个入口；新资格/构建/运行记录使用outputs/20261026-broker-readonly-runtime及独立work目录。
+- 6e116d7独立构建及安全核验后，普通权限运行inspect-runtime退出0：实际.NET8.0.28/x64，13项尺寸/偏移符合声明；不证明native过滤器功能。首个inspect-wfp退出2，保留WfpFailure/Code5/BeginWfpTransaction，未改策略。按微软LayerGetByKey与TransactionBegin文档分别核对READ及BEGIN_READ_TXN权限后，将仅此固定内置元数据诊断改为独立GetByKey读取；不改权限、不请求提升、不声称跨对象策略原子快照。原生产quarantine/归属/修改事务保持。首次失败在work/broker-readonly-runtime，修正须新构建及新资格，不能覆盖旧结果。
 - 卡巴斯基具体行为触发点、原DLL执行身份和系统影响仍UNKNOWN。本轮尝试只读查询原`avp`事件：provider不可解析；按Application/4662查询仅得2条事件、0条项目匹配，未恢复原告警内容，不能推导事件不存在或安全恢复。
 - 已完成限定S1/S2，不能再使用“未获S1授权”作为阻塞。S2发现Windows代理API结果不一致，尚未判定具体差异来源；不自动重设日常代理。audit现已在SOURCE接入该必需基线观察，当前S1 DLL不含此后续修改。其余运行资格缺口保持明确，不借助外围源码数量掩盖。
 
