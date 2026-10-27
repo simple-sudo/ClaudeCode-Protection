@@ -27,6 +27,14 @@ internal sealed class FencePlan
     internal Guid Key(int role)=>keys[role];
     internal static string Leaf(string id)=>"fence-intent-"+Identifiers.Hex32(id)+".json";
     internal string Name(int role)=>"CPC:"+Data.InstallationId+":"+Data.FenceId+":"+(role<0?"layer":CompiledFencePolicy.Roles[role]);
+    internal static FencePlan ForObjectContractQualification()
+    {
+        var data=new FenceDocument(1,Guid.NewGuid().ToString("N"),Guid.NewGuid().ToString("N"),Guid.NewGuid().ToString("N"),new string('0',64),
+            CompiledFencePolicy.SHA256,CompiledFencePolicy.ProxyPort,Guid.NewGuid().ToString("N"),
+            CompiledFencePolicy.Roles.Select(r=>new FenceFilterKey(r,Guid.NewGuid().ToString("N"))).ToArray(),"QUALIFICATION_UNCOMMITTED_ONLY");
+        return new(data,Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(data))),
+            Guid.ParseExact(data.SubLayerKey,"N"),data.Filters.Select(f=>Guid.ParseExact(f.Key,"N")).ToArray());
+    }
     internal byte[] Marker(int role)=>Encoding.ASCII.GetBytes("CPCF1").Concat(Convert.FromHexString(Data.InstallationId)).Concat(Convert.FromHexString(Data.FenceId))
         .Concat(Convert.FromHexString(SHA256)).Append(checked((byte)(role<0?255:role))).ToArray();
     internal static FencePlan Create(ProtectedState state,VerifiedVersion version)

@@ -2,6 +2,8 @@
 
 ## 2026-10-27 首次安装后隔离实际失败
 
+固定未激活更新真实成功：faa9136470ae4ec8ba6273c10a91d19b，manifest BB0A619C10B53ECF4AC4E79578C9DF4A058E1758B3B111836A5172F46488E9FD，operation54bc6986cc7f4905b0c6b1d7ebd9683d。旧版仍保留，14资产摘要/当前权限负向核对通过。新包quarantine仍返回3：REINSTATE_QUARANTINE抛InvalidDataException，保留原失败，INDEXED单规则修正不能覆盖整套策略失败。扩展专用合成资格直接复用六角色生产定义及身份/策略匹配，逐角色输出而不提交或打开安装状态。此扩展当前SOURCE，不回填INTEGRATED/防泄漏通过。
+
 c1ab0dc修正独立BUILD后，-r2受保护资格副本实际退出0：同一生产策略函数接受当前BFE 65，16项标志组合仅1/65接受，Abort后两对象独立回读不存在，AV/BFE与日常FlClash保持。生产安装原失败仍保留。下一纵向切片为固定原始无准入包的未激活更新入口，禁止活动更新/资源删除/空Job推断：固定旧manifest、旧版租约、私有锁、INACTIVE、零Job历史及所有fence对象实查不存在。SOURCE通过，需独立BUILD/真实安装后再运行quarantine，不能提前升级验收。
 
 后续1104c4e的29输入离线构建成功，独立受保护合成native资格经本人UAC成功：返回INDEXED|PERSISTENT=65、安全描述符形状正常，Abort后两随机对象均独立回读不存在。真实失败定位为生产Flags==1与BFE索引标志不兼容，不是已证实隔离成功。限定资格路径work/wfp-object-contract-build及runtime-recovery；原始生成控制路径/目的地leaf两次前置失败留存，未被后来的成功覆盖。修正只认可PERSISTENT及PERSISTENT|INDEXED；仍拒绝其他标志，新增同一生产函数的16项负向资格待新构建实测，当前安装旧包及首次quarantine退出3不变。
