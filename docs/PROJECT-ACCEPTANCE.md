@@ -1,5 +1,11 @@
 # 完整项目验收账本
 
+## 2026-10-27 首次安装后隔离实际失败
+
+目标模式在新接续会话实际建立。本人UAC后，以5个固定已安装工件摘要、最小运行环境和受保护报告目录运行固定quarantine；退出3、QuarantineObserved=false。事务内抛InvalidDataException，原失败/意图/前后记录保留，Job登记0不是完整进程清零或保护验收。原始记录C:\Program Files\ClaudeCodeProtection-Quarantine-20261027，控制work/installed-quarantine-control。没有启动Claude或改动FlClash/系统代理/TUN/AV；AV/BFE运行，FlClash/Core PID20944/14268一致，有限AV观察0而完整覆盖UNKNOWN。
+
+为定位失败新增独立固定qualify-wfp-objects：受保护资格宿主与专用合成SID、随机键，未提交事务内观察安全描述符及标量，finally中止并独立回读两对象不存在。不接触安装状态，不使用生产SID、不创建进程/Job、不提交策略。当前仅SOURCE，六项目非生成语义检查0错误/0警告；checker首次缺报告父目录的退出1保留，非产品运行失败。下一步限定离线构建及具体资格，不把失败当作已隔离。
+
 本文件保持原始目标范围；探针成功或单元测试通过不得替代真实部署验收。当前项目未完成，正式 Claude 保护启动入口仍拒绝。
 
 ## 当前安全闸门

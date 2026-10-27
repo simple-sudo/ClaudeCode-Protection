@@ -22,9 +22,15 @@ internal sealed class InstallationPackageSid : IDisposable
 {
     internal IntPtr Pointer { get; private set; }
     internal string Value { get; }
-    internal InstallationPackageSid(ProtectedState state)
+    internal InstallationPackageSid(ProtectedState state):this(Name(state)){}
+    private static string Name(ProtectedState state)
     {
-        state.AssertHeld();var status=DeriveAppContainerSidFromAppContainerName("ClaudeCodeProtection."+Identifiers.Hex32(state.InstallationId),out var pointer);
+        state.AssertHeld();return "ClaudeCodeProtection."+Identifiers.Hex32(state.InstallationId);
+    }
+    internal static InstallationPackageSid ForObjectContractQualification()=>new("ClaudeCodeProtection.ObjectContractQualification.20261027");
+    private InstallationPackageSid(string name)
+    {
+        var status=DeriveAppContainerSidFromAppContainerName(name,out var pointer);
         if(status!=0){if(pointer!=IntPtr.Zero)FreeSid(pointer);throw new WfpFailure("DeriveFixedInstallationPackageSid",unchecked((uint)status));}
         Pointer=pointer;
         try{if(pointer==IntPtr.Zero || !WfpNative.IsValidSid(pointer))throw new InvalidDataException("Derived package SID invalid");Value=new SecurityIdentifier(pointer).Value;}
@@ -149,9 +155,9 @@ internal static class WfpNative
     }
     [DllImport("fwpuclnt.dll",CharSet=CharSet.Unicode,ExactSpelling=true)] private static extern uint FwpmEngineOpen0(string? server,uint authentication,IntPtr identity,IntPtr session,out SafeWfpEngine engine);
     [DllImport("fwpuclnt.dll",ExactSpelling=true)] internal static extern uint FwpmEngineClose0(IntPtr engine);
-    [DllImport("fwpuclnt.dll",ExactSpelling=true)] private static extern uint FwpmTransactionBegin0(SafeWfpEngine engine,uint flags);
+    [DllImport("fwpuclnt.dll",ExactSpelling=true)] internal static extern uint FwpmTransactionBegin0(SafeWfpEngine engine,uint flags);
     [DllImport("fwpuclnt.dll",ExactSpelling=true)] private static extern uint FwpmTransactionCommit0(SafeWfpEngine engine);
-    [DllImport("fwpuclnt.dll",ExactSpelling=true)] private static extern uint FwpmTransactionAbort0(SafeWfpEngine engine);
+    [DllImport("fwpuclnt.dll",ExactSpelling=true)] internal static extern uint FwpmTransactionAbort0(SafeWfpEngine engine);
     [DllImport("fwpuclnt.dll",ExactSpelling=true)] internal static extern uint FwpmSubLayerAdd0(SafeWfpEngine engine,in SubLayer layer,IntPtr security);
     [DllImport("fwpuclnt.dll",ExactSpelling=true)] internal static extern uint FwpmSubLayerGetByKey0(SafeWfpEngine engine,in Guid key,out IntPtr layer);
     [DllImport("fwpuclnt.dll",ExactSpelling=true)] internal static extern uint FwpmSubLayerDeleteByKey0(SafeWfpEngine engine,in Guid key);

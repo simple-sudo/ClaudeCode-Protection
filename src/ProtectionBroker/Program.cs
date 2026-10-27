@@ -6,9 +6,9 @@ internal static class Program
 {
     private static int Main(string[] args)
     {
-        if (args.Length != 1 || args[0] is not ("quarantine" or "inspect-runtime" or "inspect-wfp"))
+        if (args.Length != 1 || args[0] is not ("quarantine" or "inspect-runtime" or "inspect-wfp" or "qualify-wfp-objects"))
         {
-            Console.Error.WriteLine("ProtectionBroker inspect-runtime | inspect-wfp (read-only); quarantine (installed current broker and existing elevated token required)");
+            Console.Error.WriteLine("ProtectionBroker inspect-runtime | inspect-wfp (read-only); quarantine (installed current broker); qualify-wfp-objects (fixed protected qualification host). Mutations require existing elevation.");
             return 64;
         }
         try
@@ -16,6 +16,7 @@ internal static class Program
             var result = args[0] switch {
                 "inspect-runtime" => ProtectionLifecycle.InstalledBroker.InspectRuntime(),
                 "inspect-wfp" => ProtectionLifecycle.InstalledBroker.InspectWfp(),
+                "qualify-wfp-objects" => ProtectionLifecycle.WfpObjectContract.Qualify(),
                 _ => ProtectionLifecycle.InstalledBroker.Quarantine()
             };
             Console.WriteLine(result.Report);

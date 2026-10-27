@@ -32,6 +32,10 @@ INTEGRATED是实际调用链；VERIFIED只适用于表中明确功能及负向�
 
 ## 失败与修正
 
+2026-10-27接续目标模式已实际建立。已安装固定`quarantine`首次经本人UAC执行，返回3：安装专属WFP事务内校验抛InvalidDataException，QuarantineObserved=false；登记Job为0，不能据此计保护成功。原记录在`C:\Program Files\ClaudeCodeProtection-Quarantine-20261027`及work/installed-quarantine-control。无Claude启动、FlClash/Core PID20944/14268不变、AV/BFE运行，有限Application观察无AV事件，完整告警覆盖UNKNOWN。当前异常缺固定细分阶段，根因待原生对象契约资格核验；不放宽检查或重复盲试。
+
+新增固定`qualify-wfp-objects`仅SOURCE：受保护独立资格宿主、专用合成package SID及随机对象键，只在未提交事务内观察本次对象安全描述符/标量，必须Abort并独立回读两对象不存在；不打开安装状态，不进入生产quarantine或只读inspect命令。六项目非生成检查0错误/0警告；首次checker因报告父目录不存在退出1，建目录后通过。此项用于定位本次真实失败，不是防泄漏验收。当前生产安装仍为旧包。
+
 1. WFP首版普通用户事务Code5/BeginWfpTransaction保留；固定内置元数据改为独立GetByKey后仍Code5/ReadBuiltinConnectLayer。管理员只读成功不覆盖这两次普通用户失败。读API与事务分别要求layer READ和engine BEGIN_READ_TXN，见微软[LayerGetByKey](https://learn.microsoft.com/en-us/windows/win32/api/fwpmu/nf-fwpmu-fwpmlayergetbykey0)及[TransactionBegin](https://learn.microsoft.com/en-us/windows/win32/api/fwpmu/nf-fwpmu-fwpmtransactionbegin0)。
 2. 首次资格复制因PowerShell5.1不存在的FileSystemRights.ReadWrite枚举失败，原空资格目录保留；显式ReadData|WriteData经自建单字节文件验证，在新的-r1资格目录成功。资格目录不是正式产品根。
 3. 产品图首次构建GUI因共享源码缺少System.IO失败；真实WPF默认global usings不含IO/Http，原checker超集漏检。修复共享源和checker后新目录完整构建成功。失败在work/product-payload-build；修正版在product-payload-recovery-build，最后输入绑定修正另在product-final-build。
