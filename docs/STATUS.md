@@ -13,9 +13,16 @@ SOURCE / INTEGRATED：同一ProtectedSession.Admission一次绑定同一SessionP
 策略摘要已包含新约束，旧策略配置不会自动获得本次权限。
 
 六项目SOURCE语义0错误/0警告（Lifecycle35源），11源纯测试语义无诊断；
-outputs/session-forwarding-admission-source-types-final.json、session-forwarding-admission-policy-source-types-r1.json保留。
+outputs/session-forwarding-admission-final-owner-source-types.json、session-forwarding-admission-policy-source-types-r1.json保留。
 新增实际复制器+实际健康期对象的内存用例：阻塞读时撤销/过期、零字节写出、双方排空、
-迟到心跳不复活、运行剩余时间收紧。当前尚无本轮BUILD/执行结果。
+迟到心跳不复活、运行剩余时间收紧。
+BUILD：3a3c1c5的Broker/Lifecycle（42固定输入）与11源纯测试分别离线还原/编译成功，0错误/0警告。
+有限VERIFIED：同提交纯测试实际退出0；程序集SHA256
+3CB4C15C7AB2D7306C2BF88D43504F7A5878B768C149CECD1CEC2720AE12793E；无native入口/module initializer。
+固定工件/导入/输入/前后观察和原始结果在忽略的work/session-forwarding-broker-3a3c1c5-build、
+session-forwarding-policy-3a3c1c5-build、session-validation-reopened-control中保留。
+内存用例验证实际复制器与健康期类；安装后的Broker/Job/进程身份绑定、2秒实际时序、物理出口隔离仍NOT_RUN。
+新产品工件未执行/安装，未改变原系统测试入口限制；没有从上述纯测试签发任何正式许可。
 这是网关写入前的检查，不能撤回已交给内核/上游的字节，也不是独立进程Watchdog或Broker挂起时的CPU/文件撤销。
 完整门禁、功能性网络/DNS、宿主资源/工具/GPU及集中实机证据仍缺，完整产品仍非DELIVERABLE。
 本轮不恢复WFP/Job/Watchdog实验、不重试调试器审批、不启动真实Claude、不改AV/FlClash/系统网络。
