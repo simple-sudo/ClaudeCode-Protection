@@ -30,6 +30,8 @@ internal sealed record NetworkProbePlan(NetworkProbeKind Kind,int TcpPort,int Ot
 internal sealed record SocketProbe(string Role,bool SocketCallSucceeded,int? SocketError,string? FailureType);
 internal sealed record NetworkChildReport(int SchemaVersion,int Pid,NetworkProbeKind Kind,string Nonce,SocketProbe[] Cases,int? ProxyHttpStatus,
     SocketProbe? ProxySocket,string? ProxyFailure,int FailureMask,bool SystemResolverQualified);
+internal sealed record NetworkPhaseReport(NetworkProbeKind Kind,string JobId,NetworkChildReport? Child,int[]? IndependentReceiverCounts,
+    int ReceiptObservationMs,bool Matched,WfpErrorEvidence[] Failures,bool ProfileDeleteAbsenceQualified);
 
 // Receiver-side nonce receipts are independent of child Send return values.
 // All listeners are freshly bound, exclusive, and loopback-only. Port 53 is
@@ -101,6 +103,11 @@ internal sealed class NetworkReceivers : IDisposable
     }
     internal int[] ReceiptCounts(NetworkProbePlan plan)=>Roles.Select(role=>receipts.Count(r=>r.Role==role &&
         r.Data.AsSpan().SequenceEqual(role==Roles[5]?plan.DnsQuery:plan.Payload))).ToArray();
+    internal void AssertCollecting()
+    {
+        if(stop.IsCancellationRequested || collectors.Count!=Roles.Length || collectors.Any(t=>t.IsCompleted))
+            throw WfpNative.Contract("NetworkReceiverCollectorNotHealthy");
+    }
     public void Dispose()
     {
         stop.Cancel();foreach(var socket in sockets)socket.Dispose();
@@ -141,7 +148,7 @@ internal static class NetworkQualification
     internal static async Task<NetworkChildReport> RunChild(NetworkProbePlan plan)
     {
         var cases=await RawCases(plan);var mask=0;
-        for(var i=0;i<cases.Length;i++)if(plan.Kind==NetworkProbeKind.Control?!cases[i].SocketCallSucceeded:!Denied(cases[i]))mask|=1<<i;
+        for(var i=0;i<cases.Length;i++)if(plan.Kind==NetworkProbeKind.Control?!cases[i].SocketCallSucceeded:!EligibleNegative(cases[i],i))mask|=1<<i;
         int? http=null;SocketProbe? proxy=null;string? failure=null;
         if(plan.Kind==NetworkProbeKind.Proxy)
         {
@@ -153,13 +160,19 @@ internal static class NetworkQualification
         return new(1,Environment.ProcessId,plan.Kind,plan.Nonce,cases,http,proxy,failure,mask,false);
     }
     private static bool Denied(SocketProbe probe)=>!probe.SocketCallSucceeded && probe.SocketError==(int)System.Net.Sockets.SocketError.AccessDenied;
+    // UDP send completion only means the local call accepted the datagram. It
+    // neither proves delivery nor denial. The trusted parent must independently
+    // observe zero nonce receipts with healthy, positively controlled receivers.
+    // Unknown errors/timeouts remain failures; TCP still requires AccessDenied.
+    private static bool EligibleNegative(SocketProbe probe,int index)=>Denied(probe) ||
+        (index>=3 && probe.SocketCallSucceeded && probe.SocketError is null && probe.FailureType is null);
 
     internal static (int ExitCode,string Report) Run(FixedLayout layout,ProtectedState state,VerifiedVersion version)
     {
         state.AssertHeld();version.AssertHeld(state);LifecycleRecovery.AssertNoPending(state);InstallationLoopbackLease.AssertClosedHistory(state);
         foreach(var intent in OwnedJobIntent.ReadAll(state))if(AtomicJobCompletion.ReadClosed(state,intent) is null)throw WfpNative.Contract("NetworkQualificationRequiresAllPriorAdmissionsClosed");
         var plans=FencePlan.ReadAll(state);if(plans.Count==0)throw WfpNative.Contract("NetworkQualificationRequiresFence");
-        var fences=new List<PersistentFence>();var results=new List<object>();Exception? failure=null;
+        var fences=new List<PersistentFence>();var results=new List<object>();var protectedPlans=new List<NetworkProbePlan>();Exception? failure=null;
         var id=Guid.NewGuid().ToString("N");
         state.WriteNew("network-before-"+id+".json",JsonSerializer.SerializeToUtf8Bytes(new {SchemaVersion=1,state.InstallationId,version.Package.Release,
             Scope="OWNED_LOOPBACK_CONTROLS_AND_EXPLICIT_FLCLASH_HTTPS",Target="https://www.microsoft.com/",ClaudeLaunchAllowed=false,AtUtc=DateTime.UtcNow.ToString("o")}));
@@ -175,14 +188,23 @@ internal static class NetworkQualification
             if(transport is <200 or >=400)throw WfpNative.Contract("HostExplicitProxyTransportNotQualified");
             using var receivers=new NetworkReceivers();
             var host=receivers.Plan(NetworkProbeKind.Control);var baseline=RawCases(host).GetAwaiter().GetResult();Thread.Sleep(150);
-            var hostReceipts=receivers.ReceiptCounts(host);
+            receivers.AssertCollecting();var hostReceipts=receivers.ReceiptCounts(host);
             state.WriteNew("network-host-control-"+id+".json",JsonSerializer.SerializeToUtf8Bytes(new {Cases=baseline,ReceiptCounts=hostReceipts,ProxyHttpStatus=transport,ProxyIdentity=proxy.Evidence}));
             if(baseline.Any(c=>!c.SocketCallSucceeded) || hostReceipts.Any(c=>c<1))throw WfpNative.Contract("OwnedNetworkReceiversNotReachableFromHost");
             foreach(var kind in new[]{NetworkProbeKind.Control,NetworkProbeKind.Quarantine,NetworkProbeKind.Proxy,NetworkProbeKind.ProxyDenied})
             {
                 var result=RunPhase(kind,receivers,proxy);results.Add(result);
                 state.WriteNew("network-phase-"+id+"-"+((int)kind)+".json",JsonSerializer.SerializeToUtf8Bytes(result));
+                if(!result.Matched)throw WfpNative.Contract("NetworkChildOrIndependentReceiptsDidNotMatch");
             }
+            // Verify receivers still deliver after the negative phases and
+            // reject any late protected nonce receipt before ending the scope.
+            var finalHost=receivers.Plan(NetworkProbeKind.Control);var finalCases=RawCases(finalHost).GetAwaiter().GetResult();Thread.Sleep(250);
+            receivers.AssertCollecting();var finalCounts=receivers.ReceiptCounts(finalHost);
+            var late=protectedPlans.Select(p=>new {p.Kind,p.Nonce,ReceiptCounts=receivers.ReceiptCounts(p)}).ToArray();
+            state.WriteNew("network-final-control-"+id+".json",JsonSerializer.SerializeToUtf8Bytes(new {Cases=finalCases,ReceiptCounts=finalCounts,ProtectedReceipts=late}));
+            if(finalCases.Any(c=>!c.SocketCallSucceeded) || finalCounts.Any(c=>c<1) || late.Any(p=>p.ReceiptCounts.Any(c=>c!=0)))
+                throw WfpNative.Contract("NetworkFinalReceiverControlOrLateReceiptsFailed");
         }
         catch(Exception ex){failure=ex;}
         finally
@@ -199,7 +221,7 @@ internal static class NetworkQualification
             SystemResolverQualified=false,ExternalPhysicalEgressQualified=false,ProxyProcessCrashQualified=false,ControllerCrashQualified=false,ClaudeLaunched=false});
         state.WriteNew("network-after-"+id+".json",Encoding.UTF8.GetBytes(report));return(failure is null?0:3,report);
 
-        object RunPhase(NetworkProbeKind kind,NetworkReceivers receivers,ProxyChannelLease proxy)
+        NetworkPhaseReport RunPhase(NetworkProbeKind kind,NetworkReceivers receivers,ProxyChannelLease proxy)
         {
             var control=kind==NetworkProbeKind.Control;var plan=receivers.Plan(kind);
             using var profile=InstallationProfileLease.Create(state,control);
@@ -226,9 +248,11 @@ internal static class NetworkQualification
                 observed=JsonSerializer.Deserialize<NetworkChildReport>(json)??throw WfpNative.Contract("MissingNetworkChildReport");
                 if(observed.SchemaVersion!=1 || observed.Pid!=child.Pid || observed.Kind!=kind || observed.Nonce!=plan.Nonce || observed.Cases is null ||
                     !observed.Cases.Select(c=>c.Role).SequenceEqual(NetworkReceivers.Roles))throw WfpNative.Contract("NetworkReportIdentityOrCasesMismatch");
-                Thread.Sleep(150);delivered=receivers.ReceiptCounts(plan);
-                state.WriteNew("network-observed-"+job.JobId+".json",JsonSerializer.SerializeToUtf8Bytes(new {Child=observed,ExitCode=exit,ReceiverCounts=delivered}));
-                var rawMatched=control?observed.Cases.All(c=>c.SocketCallSucceeded):observed.Cases.All(Denied);
+                var observationMs=control?250:2000;Thread.Sleep(observationMs);receivers.AssertCollecting();delivered=receivers.ReceiptCounts(plan);
+                if(!control)protectedPlans.Add(plan);
+                state.WriteNew("network-observed-"+job.JobId+".json",JsonSerializer.SerializeToUtf8Bytes(new {Child=observed,ExitCode=exit,ReceiverCounts=delivered,
+                    ReceiptObservationMs=observationMs,ReceiverCollectorsHealthy=true,UdpSendSuccessIsDeliveryProof=false,ExternalEgressQualified=false}));
+                var rawMatched=control?observed.Cases.All(c=>c.SocketCallSucceeded):observed.Cases.Select(EligibleNegative).All(v=>v);
                 var proxyMatched=control || (kind==NetworkProbeKind.Proxy?observed.ProxyHttpStatus is >=200 and <400:
                     observed.ProxySocket is not null && Denied(observed.ProxySocket));
                 if(exit!=0 || observed.FailureMask!=0 || !rawMatched || !proxyMatched ||
@@ -251,8 +275,8 @@ internal static class NetworkQualification
                 {try{_=exited.WaitAsync(TimeSpan.FromSeconds(3)).GetAwaiter().GetResult();}catch(Exception ex){phaseFailure=Combine(phaseFailure,ex);}}
                 pipe.DisposeLocalCopyOfClientHandle();
             }
-            if(phaseFailure is not null)throw phaseFailure;
-            return new {Kind=kind,JobId=job.JobId,Child=observed,IndependentReceiverCounts=delivered,ProfileDeleteAbsenceQualified=false};
+            return new(kind,job.JobId,observed,delivered,control?250:2000,phaseFailure is null,
+                phaseFailure is null?Array.Empty<WfpErrorEvidence>():WfpNative.Describe(phaseFailure),false);
         }
     }
     private static async Task<string> ReadBounded(StreamReader reader)

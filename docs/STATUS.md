@@ -2,6 +2,10 @@
 
 **最新统一目标：**已接入[用户2026-10-27完整指导](PRODUCT-DIRECTION-20261027.md)。严格十四项可信门禁、系统安全准入、宿主敏感信息隔离、完整开发工具/子进程能力及本机NVIDIA GPU与网络保护共同构成交付条件，不能以任何局部成功代替。网络矩阵继续。只读已发现RTX4060 Laptop GPU/驱动DLL/Toolkit13.3，隔离计算仍UNKNOWN。远端两次README改写已安全合并49ac5c1，源码/冻结构建输入未变，未推送。
 
+**最新实际安装与网络结果（2026-10-27 06:37Z）：**626a6ff8672142c8ae9363e2f99a87eb，manifest D1B1982E41107A988E719BC8779CE66F62BE7FD1C9F28D8673557BC416B3EF87，INACTIVE更新成功，operation a8a2a085080e410eaa902e777e0d03f5。下面较早“当前”版本描述均为历史记录。网络请求f600d38b276745d1b081420799c26064退出3：独立AppContainer对照6路成功且接收nonce各1；完整隔离下TCP4端口/地址、TCP6及代理端口均10013，UDP4/UDP6/UDP53调用返回成功但独立接收均0。原判据要求全部10013，FailureMask56，矩阵仍FAIL，尚未执行代理开放两阶段。原始私有回执及ProgramFiles/ClaudeCodeProtection-Network-20261027-r3保留。
+
+退出后6规则102370–102375全匹配，所属两Job封闭/零成员回执与本次两SID豁免精确移除、其他项保持记录保留；profile Delete API0，独立profile不存在仍UNKNOWN。FlClash20944/Core14268、AV/BFE运行，有限Application告警0、完整告警覆盖UNKNOWN。新SOURCE将UDP调用成功和投递分开，不把调用成功叫拒绝或泄漏：TCP仍需10013，UDP仅允许10013或完整send成功进入独立投递核对，未知错误/超时拒绝；接收器任务健康、2秒负向窗口、末尾主机正向与迟到nonce核对，失败阶段亦纳入汇总。微软sendto契约见[文档](https://learn.microsoft.com/en-us/windows/win32/api/winsock2/nf-winsock2-sendto)。这是有限本地投递观察，不是物理外网/系统解析器或全产品证明。6项目非生成检查0错误0警告，新产物尚无BUILD/runtime证据。
+
 日期：2026-10-27（America/New_York）；最初安装/GUI实测发生于10月26日晚，本轮WFP与原子准入实测发生于10月27日。目标模式已建立且仍active，完整产品目标未完成。用户已批准阻塞部分继续推进，并补充[完整产品方向](PRODUCT-DIRECTION-20261026.md)。本地自主开发与小范围提交，既有origin保留，不推送。不同源码与工件不互相继承运行证据。
 
 ## 当前成果与证据级别

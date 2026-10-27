@@ -253,3 +253,9 @@ fc113de独立restore/build均0，0错误/0警告；普通.NET8.0.28/x64布局检
 AVP/BFE保持运行、两条真实Claude规则禁用；本窗口FlClash/Core PID一致，未更改AV或日常网络。有限Application未见AV事件，完整厂商告警覆盖UNKNOWN。首次安装和GUI离线调用可计INTEGRATED；14资产/当前ACL负向及先前只读WFP路径分别计限定VERIFIED；未激活、不计完整DELIVERABLE。持续保护、原子准入、代理审核、Watchdog及故障/更新/卸载仍须继续。用户全机设置新方向只作为受控高级能力设计，本轮未修改。
 
 2026-10-27用户明确要求新会话使用目标模式继续，并自行关闭不用的Protection界面。核对自建GUI进程37436的路径/创建时间/文件摘要、无日常CLI或管理动作仍在运行、报告摘要不变后，精确结束该GUI进程；退出已回读，报告保留。未按名批量结束、未终止FlClash/Core、未涉及Claude。证据outputs/installed-gui-close.json。随后在现有项目中新建本地会话接续；不复制仓库或工作树。
+
+### 2026-10-27：626a安装与首个真实隔离网络阶段，保留FAIL
+
+固定33输入bootstrap构建成功后，人类UAC受保护更新实际0：626a6ff8672142c8ae9363e2f99a87eb/D1B1982E41107A988E719BC8779CE66F62BE7FD1C9F28D8673557BC416B3EF87，operation a8a2a085080e410eaa902e777e0d03f5，INACTIVE。网络请求f600d38b276745d1b081420799c26064实际3，独立AppContainer对照6路成功/收据各1；完整隔离TCP三路和代理端口10013，UDP三路send成功/收据均0，原10013统一判据FailureMask56。未进入代理开放/再阻断两阶段，不计矩阵通过。原始ProgramFiles/ClaudeCodeProtection-Network-20261027-r3及私有state保留，6持久规则完整；精确豁免删除及其他项保持，Job零/封闭、profile Delete API0，profile独立缺席仍UNKNOWN。AV/BFE/FlClash未改，完整AV覆盖UNKNOWN。
+
+后续SOURCE区别UDP本地send完成与独立接收，保持TCP强拒绝判据、未知/超时失败；增加接收任务健康、2秒观察、最终正向接收对照和迟到包核对；失败阶段保留在报告。固定仅允许626a旧包闭合回执迁移，新bootstrap目标network-r4，普通生命周期边界保持。非生成6项目0错误/警告，尚非新BUILD或网络验收。旧FAIL不改写。
