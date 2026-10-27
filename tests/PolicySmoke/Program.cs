@@ -8,8 +8,8 @@ static void Require(bool truth,string reason)
 }
 static StrictPreflightCheck Find(StrictPreflightReport report,string name)=>
     report.Checks.Single(c=>c.Id==name);
-const now=DateTimeOffset.UtcNow;
-const sample=new List<Check>();
+var now=DateTimeOffset.UtcNow;
+var sample=new List<Check>();
 foreach(var name in new[]{
     "proxy-listener","proxy-owner-path","system-proxy-baseline","user-proxy-settings",
     "flclash-tun","host-timezone","host-locale","ipv6-functional","dns-isolation",
