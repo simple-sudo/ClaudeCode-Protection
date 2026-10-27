@@ -57,14 +57,14 @@ internal static class DiagnosticNetworkTargetPolicy
         {
             var a=bytes[0];var b=bytes[1];var c=bytes[2];
             return !(a==0 || a==10 || a==127 || a>=224 ||
-                a==100 && b is >=64 and <=127 ||
+                (a==100 && b>=64 && b<=127) ||
                 a==169 && b==254 ||
-                a==172 && b is >=16 and <=31 ||
+                (a==172 && b>=16 && b<=31) ||
                 a==192 && b==168 ||
                 a==192 && b==0 && c==0 ||
                 a==192 && b==0 && c==2 ||
                 a==192 && b==88 && c==99 ||
-                a==198 && b is 18 or 19 ||
+                (a==198 && (b==18 || b==19)) ||
                 a==198 && b==51 && c==100 ||
                 a==203 && b==0 && c==113);
         }
