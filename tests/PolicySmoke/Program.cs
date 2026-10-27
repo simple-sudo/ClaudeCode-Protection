@@ -76,17 +76,17 @@ foreach(var denied in new[]{"0.0.0.0","10.0.0.1","100.64.0.1","127.1.2.3","169.2
     Require(!ProxyDestinationPolicy.IsPublicAddressCandidate(IP(denied)),"special address denied "+denied);
 foreach(var accepted in new[]{"1.1.1.1","8.8.8.8","93.184.216.34","2606:4700:4700::1111"})
     Require(ProxyDestinationPolicy.IsPublicAddressCandidate(IP(accepted)),"public candidate "+accepted);
-var host="api.anthropic.com";var good=IP("1.1.1.1");var other=IP("8.8.8.8");var internalIp=IP("127.0.0.1");
-Require(ProxyDestinationPolicy.AuthorizePinnedHttps(host,443,new[]{good},good).Allowed,"known public literal candidate");
-Require(!ProxyDestinationPolicy.AuthorizePinnedHttps(host,443,new[]{good,internalIp},good).Allowed,
+var selectedHost="api.anthropic.com";var good=IP("1.1.1.1");var other=IP("8.8.8.8");var internalIp=IP("127.0.0.1");
+Require(ProxyDestinationPolicy.AuthorizePinnedHttps(selectedHost,443,new[]{good},good).Allowed,"known public literal candidate");
+Require(!ProxyDestinationPolicy.AuthorizePinnedHttps(selectedHost,443,new[]{good,internalIp},good).Allowed,
     "mixed public/private DNS answers fail closed");
-Require(!ProxyDestinationPolicy.AuthorizePinnedHttps(host,443,new[]{good},internalIp).Allowed,
+Require(!ProxyDestinationPolicy.AuthorizePinnedHttps(selectedHost,443,new[]{good},internalIp).Allowed,
     "selected private address not in verified answer");
-Require(!ProxyDestinationPolicy.AuthorizePinnedHttps(host,443,new[]{good},other).Allowed,
+Require(!ProxyDestinationPolicy.AuthorizePinnedHttps(selectedHost,443,new[]{good},other).Allowed,
     "selected address not in response rejected");
-Require(!ProxyDestinationPolicy.AuthorizePinnedHttps(host,443,Array.Empty<IPAddress>(),good).Allowed,
+Require(!ProxyDestinationPolicy.AuthorizePinnedHttps(selectedHost,443,Array.Empty<IPAddress>(),good).Allowed,
     "missing DNS resolution refused");
-Require(!ProxyDestinationPolicy.AuthorizePinnedHttps(host,80,new[]{good},good).Allowed,
+Require(!ProxyDestinationPolicy.AuthorizePinnedHttps(selectedHost,80,new[]{good},good).Allowed,
     "non-HTTPS port refused");
 Require(!ProxyDestinationPolicy.AuthorizePinnedHttps("api.anthropic.com.evil.internal",443,new[]{good},good).Allowed,
     "internal-looking name refused even with public answer");
