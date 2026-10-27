@@ -12,6 +12,7 @@
     <!-- Explicit daily boundary: no Job, sandbox workers or fault injection. -->
     <Compile Include="Program.cs;Models.cs;EnvironmentAudit.cs;ProcessIdentity.cs;ProxySettings.cs;UserProxyBaseline.cs;StrictPreflight.cs;DiagnosticNetworkTargetPolicy.cs" />
     <Compile Include="../Shared/UserDataPaths.cs" Link="UserDataPaths.cs" />
+    <Compile Include="../Shared/ProxyDestinationPolicy.cs" Link="ProxyDestinationPolicy.cs" />
     <None Include="../../scripts/Read-Environment.ps1" Link="Read-Environment.ps1" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>
