@@ -7,6 +7,9 @@ on:
       - 'src/ClaudeProtection/StrictPreflight.cs'
       - 'src/ClaudeProtection/DiagnosticNetworkTargetPolicy.cs'
       - 'src/ClaudeProtection/Models.cs'
+      - 'src/ClaudeProtection/EnvironmentAudit.cs'
+      - 'src/ClaudeProtection/Program.cs'
+      - 'src/ClaudeProtection/ClaudeProtection.csproj'
       - 'src/Shared/ProxyDestinationPolicy.cs'
       - 'tests/PolicySmoke/**'
   workflow_dispatch:
@@ -30,3 +33,20 @@ jobs:
           dotnet-version: '8.0.x'
       - name: Run only source-linked managed policy smoke
         run: dotnet run --project tests/PolicySmoke/PolicySmoke.csproj --configuration Release
+
+  hosted-daily-compile:
+    name: Compile daily CLI only (never execute product)
+    runs-on: windows-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Compile user-level daily project
+        shell: pwsh
+        run: dotnet build src/ClaudeProtection/ClaudeProtection.csproj --configuration Release --nologo
