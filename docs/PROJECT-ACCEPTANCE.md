@@ -321,3 +321,14 @@ STATUS.md改为唯一当前事实/剩余缺口索引；整理前旧内容按原�
 ### 2026-10-27：实际系统bugcheck与运行验证停止
 
 07:56Z测试窗口Windows bugcheck0x1e、WER1001/Kernel-Power41，转储102726-15281-01.dmp存在但普通用户读取AccessDenied。未发重启命令，测试关联UNKNOWN；查明前再次诊断的决定过早，第二次08:00Z退出3、无存活产品进程，停止所有新增产品build/install/run/fault injection，只读定位。重启后6持久角色完整、历史22Job/20豁免cleanup存在是有限观察，不计完整重启验收。当前814cf已安装INACTIVE，原失败/中断/转储保留。详见INCIDENT-20261027-SYSTEM-CRASH.md。
+
+
+### 2026-10-27：蓝屏只读证据、异常helper精确停止及调试器阻断
+
+## 蓝屏只读定位接续（08:12Z）
+
+原转储SHA已取得：C38F6F02C3CEEBC6FD2A9628C76E2D671D0C8D855E6AAD5997291989D3A1FC92，7030648字节；WER确认BlueScreen/0x1E参数，无驱动栈。已有成员诊断确认额外conhost同Job/同AppContainer，不证明它导致蓝屏，未放宽准入或恢复测试。
+
+WER目录读取辅助进程曾异常增长；首次停止UAC取消后，经用户明确允许重显UAC，仅精确终止PID18080/创建时刻匹配的helper，停止回执08:06:15.580Z，当前不存在。单个WER的有界读取替代路径已退出0；原失败/取消/资源异常保留，原因未猜测。
+
+微软官方WinDbg工具已下载/签名核验，未系统安装/执行；离线分析调试器的启动被自动审批拒绝（仅blocked by policy），没有换入口绕过。故障模块、内核栈及测试因果仍UNKNOWN，产品构建/安装/运行/故障注入保持BLOCKED。完整事件/工具来源/证据及手动离线诊断步骤见INCIDENT-20261027-SYSTEM-CRASH.md。无产品测试进程，AV/BFE/日常FlClash保持；目标未完成。
