@@ -5,8 +5,8 @@ namespace ClaudeProtection;
 // Read-only diagnostics are NOT an admission credential. A real launch
 // decision belongs to the installed Broker with fresh, bound kernel evidence.
 internal sealed record StrictPreflightCheck(
-    string Id,string Status,string[] ObservedSources,string FailureReason,
-    string RepairHint,string Applicability,bool RequiredForStrictMode,
+    string Id,string Status,string[] ObservedSources,string EvidenceAtUtc,string EvidenceScope,
+    string FailureReason,string RepairHint,string Applicability,bool RequiredForStrictMode,
     bool TrustedForLaunchAdmission);
 
 internal sealed record StrictPreflightReport(
@@ -42,7 +42,7 @@ internal static class StrictPreflight
     {
         var samples=audit.Checks??new List<Check>();
         var unique=samples.All(c=>c is not null && !string.IsNullOrWhiteSpace(c.Name)) &&
-            samples.Where(c=>c is not null).Select(c=>c.Name).Distinct(StringComparer.Ordinal).Count()==samples.Count && audit.SchemaVersion==1;
+            samples.Where(c=>c is not null).Select(c=>c.Name).Distinct(StringComparer.OrdinalIgnoreCase).Count()==samples.Count && audit.SchemaVersion==1;
         var fresh=DateTimeOffset.TryParse(audit.AtUtc,CultureInfo.InvariantCulture,
             DateTimeStyles.None,out var observed) &&
             now-observed>=TimeSpan.FromSeconds(-30) && now-observed<=TimeSpan.FromMinutes(2);
@@ -59,7 +59,8 @@ internal static class StrictPreflight
                 !unique?"DUPLICATE_OR_INVALID_AUDIT_CHECK":
                 !fresh?"AUDIT_EVIDENCE_STALE_OR_INVALID":
                 !complete?"REQUIRED_COLLECTOR_MISSING":"OBSERVATION_UNKNOWN_OR_INVALID";
-            return new StrictPreflightCheck(def.Id,status,present,reason,def.RepairHint,
+            return new StrictPreflightCheck(def.Id,status,present,audit.AtUtc,"DAILY_AUDIT_NONAUTHORITATIVE",
+                reason,def.RepairHint,
                 "STRICT_CLAUDE_CODE_POLICY",true,false);
         }).ToArray();
         if(checks.Length!=14 || checks.Select(c=>c.Id).Distinct(StringComparer.Ordinal).Count()!=14)
