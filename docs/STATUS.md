@@ -1,28 +1,37 @@
 # 当前开发状态
 
-日期：2026-10-27（America/New_York）；以下安装/界面实测发生于10月26日晚。用户已批准阻塞部分继续推进，并补充[完整产品方向](PRODUCT-DIRECTION-20261026.md)。本地自主开发与小范围提交，既有origin保留，不推送。不同源码与工件不互相继承运行证据。
+日期：2026-10-27（America/New_York）；最初安装/GUI实测发生于10月26日晚，本轮WFP与原子准入实测发生于10月27日。目标模式已建立且仍active，完整产品目标未完成。用户已批准阻塞部分继续推进，并补充[完整产品方向](PRODUCT-DIRECTION-20261026.md)。本地自主开发与小范围提交，既有origin保留，不推送。不同源码与工件不互相继承运行证据。
 
 ## 当前成果与证据级别
 
 | 工作 | 级别 | 当前事实及限制 |
 |---|---|---|
-| 当前六个项目 | SOURCE | 非生成语义检查0错误/0警告。日常CLI7源、GUI3源、工程11源、生命周期22源、broker1源、bootstrap1源；共享源重复计入其消费者。工程项目本轮未构建/运行。 |
+| 当前六个项目 | SOURCE | 非生成语义检查0错误/0警告。日常CLI7源、GUI3源、工程11源、生命周期23源、broker1源、bootstrap1源；共享源重复计入其消费者。工程项目本轮未构建/运行。 |
+| 当前管理图及bootstrap | BUILD | b5243ef管理图30输入、19fb254独立bootstrap31输入均离线restore/build0，0错0警告，SDK8.0.422/ref8.0.28。bootstrap复用冻结生命周期库且内嵌批准与实包一致；work/atomic-profile-recovery-*。旧构建/失败分别保留。 |
 | 当前产品四项目图 | BUILD | 457d22d的CLI、WPF GUI、broker及生命周期库离线restore/build成功，0错误/0警告。40项源/项目/资源，固定SDK8.0.422及引用8.0.28，无第三方包。work/product-final-build。 |
 | 独立安装引导 | BUILD | 62986ed嵌入14资产批准清单，bootstrap单独离线构建成功，未重编生命周期库；共享同一已构建DLL。实际PE资源摘要与源清单一致、无模块初始化器。work/bootstrap-build及product-install-control/plan.json。 |
 | 首次未激活安装 | INTEGRATED，成功路径已运行 | 人类UAC→固定摘要/全路径及文件租约→新受保护bootstrap→全包预检→全新私有状态→现有stager/版本核验/INACTIVE指针/完成账本，实际退出0。没有WFP/Job/Claude或用户配置修改。中断/重启/重复安装/卸载未据此通过。 |
 | 安装后字节与权限 | VERIFIED，仅14文件与当前权限负向 | 14资产摘要/长度与批准包一致，管理员owner/受保护DACL；普通用户写打开全部被拒绝，私有current.json读取被拒绝。outputs/installed-package-readback.json。不是抗管理员攻击或断电验收。 |
 | 已安装GUI离线检查 | INTEGRATED，当前真实调用链 | 普通用户界面“检查环境”→已安装CLI→inbox PowerShell→显示两阶段结果→当前用户报告。baseline退出0但APIsAgree=false；audit退出2，9 PASS/3 FAIL/8 UNKNOWN。保护仍未激活。配置修复/撤销按钮及在线按钮未运行。 |
 | .NET/WFP只读诊断 | VERIFIED，仅只读native路径 | fc113de的.NET8.0.28/x64布局13项符合；普通用户GetByKey仍Code5。独立受保护资格副本人类UAC后读取固定V4/V6内置层成功，各42字段、Id48/50。没有过滤器、Job或跨对象原子策略快照。 |
-| 固定管理隔离 | INTEGRATED，六规则提交与回读限定VERIFIED | 083d97b7当前已安装broker固定quarantine实际退出0，精确安装package SID的6条持久规则事务提交，独立最终回读均匹配，子层实际weight65533。登记Job0；尚未创建受保护进程，不计网络阻断/Kill-Switch验收。此前两次失败原样保留。 |
+| 固定管理隔离与跨进程观察 | INTEGRATED，六规则提交/回读限定VERIFIED | 083d版本首次提交成功，后续只读安装诊断确认跨进程/更新/准入测试窗口6个filterId一致；当前5b版本quarantine维护再成功。精确安装SID、持久规则完整，子层实际weight65533；不是网络行为或重启证明。原两次失败保留。 |
+| 原子准入有限canary | INTEGRATED，限定VERIFIED | 当前已安装5b版本真实CreateProcess同时绑定安装AppContainer SID和Job、挂起核对低完整性/零capability/确切镜像/唯一Job成员/完整隔离，先行记录后首次resume，canary退出42。随后准入封闭、Job零、profile精确Delete API0。无网络动作，不授予Claude/代理/崩溃资格。 |
+| 已完成Job的后续维护 | INTEGRATED，限定VERIFIED | 新进程quarantine返回0：历史2个Job均核对绑定不可复用准入摘要的完成回执，不重新打开已终结namespace，CompletedAdmissionJobs=2，缺失项0。不是任意missing Job的零证明。 |
 | 用户配置维护 | BUILD，尚无功能/故障运行验收 | GUI/CLI共享当前用户目录、独占锁、刷盘备份、先行pending及摘要冲突拒绝。未迁移旧备份、未修改真实设置。 |
 | 原S1/S2及8a9c4b1构建 | 历史限定证据 | 原日志、失败、修正和UNKNOWN均留原处；见[原S1/S2](VALIDATION-S1-S2-20261026.md)与[首次broker构建](BROKER-OFFLINE-BUILD-SCOPE.md)。当前安装不升级这些历史结论。 |
-| 全量保护宿主/故障/卸载 | 尚未完成；集成受缺失实现阻塞 | 原子进程准入、代理审核/开放、完整运行租约、Watchdog/漂移、资源最终清理及相应故障矩阵未贯通。首次fresh租约只适用新身份从未开放准入，不能授权更新/卸载或冒充一般进程所有权。 |
+| 全量保护宿主/故障/卸载 | 尚未完成；代理开放/网络行为/完整生命周期缺失 | 原子准入已贯通有限无网络canary；生产代理审核/开放、DNS/UDP/IPv6旁路负向、代理失效、控制器崩溃、完整运行租约、Watchdog/漂移与最终清理仍未贯通。限定inactive迁移仅消费固定旧包及严格关闭证明；不是活动升级/卸载或一般进程所有权。 |
 | 真实Claude登录/推理/会话 | DEFERRED_BY_USER | 不计通过，不阻碍独立工具能力。 |
 | 完整产品 | 尚非DELIVERABLE | 已有本机安装后的离线检查切片；持续防直连、故障恢复和安全卸载仍须交付。 |
 
 INTEGRATED是实际调用链；VERIFIED只适用于表中明确功能及负向；BUILD和SOURCE不能替代保护验收。用户授权是推进权限，不是功能通过。
 
 ## 本机安装及证据位置
+
+**当前选择：**`5bcaa958304246a78e8a4631dc9ae3a1`，manifest `9A3AFFC424CCB1D05691891A0F5EA99BFFECE30EDA801594825076C2DBB9E32F`，operation `18032154127b41d9893233e4f330b34b`，INACTIVE。原4版/原bootstrap均保留；以下083d/c810等条目是中间历史。正式目录为CodeRoot/versions/上述release；当前GUI/daily字节沿用原9资产，当前目录GUI未打开；没有常驻产品进程。
+
+实际canary成功请求`ed43b46382474185bd80b002cecda550`，Job `ffa645dc222248ab86cd6068641813b1`，子进程43600；先行记录中是安装SID、Low4096、capability0、唯一Job成员且完整隔离；随后退出42、清零和封闭回执。ProgramFiles/ClaudeCodeProtection-Atomic-20261027-r2及work/atomic-profile-canary-control保留全记录。profile Delete API0，独立残留/中断清理仍UNKNOWN。首次Code2失败及其已封闭空Job记录保留。
+
+后续新进程维护请求`c842dcd601ed40c897c6c8cf777a2e45`返回0，预期Job2、已完成准入Job2、名称缺失0、阶段错误0，完整隔离再回读。ProgramFiles/ClaudeCodeProtection-CompletedJobs-20261027及work/completed-job-maintenance-control。所有用户配置/AV/FlClash/TUN保持，真实Claude仍未启动。
 
 当前选择已更新为`083d97b7e544434cbb0d900004035657`，manifest SHA256 `D21A7D9F39A93E82087062EAD14F49329E7DBDD2743B2DC12DE98CAB6DC691F1`；操作`24d00c69110d4b5b91598069edfd5e06`。两次更新都为INACTIVE，旧806b包和中间faa包完整保留，原bootstrap未改写；下面806b条目为最初安装历史。当前GUI/daily字节与原始一致，GUI尚未在当前目录重新运行。新14资产摘要/长度、管理员owner/保护DACL及普通写拒绝已核对。更新helper/嵌入批准检查在work/inactive-update-r2-*，结果在ProgramFiles/ClaudeCodeProtection-Update-20261027-r2。
 
