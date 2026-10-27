@@ -1,10 +1,12 @@
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Formats.Asn1;
 using System.Net;
 using System.Net.Security;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Security.Principal;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Text.Json;
 using Microsoft.Win32.SafeHandles;
@@ -12,6 +14,7 @@ using Microsoft.Win32.SafeHandles;
 namespace ProtectionLifecycle;
 
 internal sealed record TlsValidationObservation(int PolicyErrors,int[] ChainStatus,bool CertificatePresent,bool ChainPresent);
+internal sealed record TlsCertificateObservation(string SHA256,int[] ChainStatus,string[] CrlDistributionPoints,string? ExtensionFailure);
 // Holds the existing proxy process and its on-disk image, without starting,
 // stopping or reconfiguring it. Path/hash are observations, not AV clearance or
 // proof that every byte in the already-running image equals the disk image.
@@ -54,14 +57,14 @@ internal sealed class ProxyChannelLease : IDisposable
         directory.AssertHeld();WindowsPathSeal.VerifyObject(image.SafeFileHandle,ExpectedImage,false);
         if(WaitForSingleObject(process,0)!=0x102 || ListenerOwner()!=pid)throw WfpNative.Contract("ProxyProcessOrListenerIdentityDrift");
     }
-    internal static async Task<int> CheckTransport(Action<TlsValidationObservation>? observe=null)
+    internal static async Task<int> CheckTransport(Action<TlsValidationObservation>? observe=null,Action<TlsCertificateObservation[]>? observeCertificates=null)
     {
         using var handler=new HttpClientHandler{UseProxy=true,Proxy=new WebProxy("http://127.0.0.1:7890"),AllowAutoRedirect=false,
             UseCookies=false,UseDefaultCredentials=false,CheckCertificateRevocationList=true};
-        if(observe is not null)handler.ServerCertificateCustomValidationCallback=(_,certificate,chain,errors)=>
+        if(observe is not null || observeCertificates is not null)handler.ServerCertificateCustomValidationCallback=(_,certificate,chain,errors)=>
         {
             var result=new TlsValidationObservation((int)errors,chain?.ChainStatus.Select(s=>(int)s.Status).ToArray()??Array.Empty<int>(),certificate is not null,chain is not null);
-            observe(result);return AcceptObservedTls(result);
+            observe?.Invoke(result);observeCertificates?.Invoke(ObserveCertificates(chain));return AcceptObservedTls(result);
         };
         using var client=new HttpClient(handler){Timeout=TimeSpan.FromSeconds(8)};
         using var response=await client.GetAsync("https://www.microsoft.com/",HttpCompletionOption.ResponseHeadersRead);
@@ -71,6 +74,47 @@ internal sealed class ProxyChannelLease : IDisposable
     // trust or availability errors. Revocation checking remains enabled.
     internal static bool AcceptObservedTls(TlsValidationObservation result)=>result.CertificatePresent && result.ChainPresent &&
         result.PolicyErrors==(int)SslPolicyErrors.None && result.ChainStatus.All(s=>s==0);
+    private static TlsCertificateObservation[] ObserveCertificates(X509Chain? chain)
+    {
+        if(chain is null)return Array.Empty<TlsCertificateObservation>();
+        if(chain.ChainElements.Count>8)throw WfpNative.Contract("DiagnosticCertificateChainCapacity");
+        return chain.ChainElements.Select(element=>
+        {
+            string? failure=null;string[] points=Array.Empty<string>();
+            try
+            {
+                var extensions=element.Certificate.Extensions.Where(e=>e.Oid?.Value=="2.5.29.31").ToArray();
+                if(extensions.Length>1)throw new InvalidDataException("DuplicateCrlDistributionExtension");
+                if(extensions.Length==1)points=ReadCrlUris(extensions[0].RawData);
+            }
+            catch(Exception ex) when(ex is AsnContentException or InvalidDataException){failure=ex.GetType().Name;}
+            return new TlsCertificateObservation(Convert.ToHexString(SHA256.HashData(element.Certificate.RawData)),
+                element.ChainElementStatus.Select(s=>(int)s.Status).ToArray(),points,failure);
+        }).ToArray();
+    }
+    // Observation only. A certificate-provided URI is untrusted data, never an
+    // authorized destination. No retrieval, trust-store or cache change occurs.
+    internal static string[] ReadCrlUris(byte[] encoded)
+    {
+        if(encoded.Length is <2 or >16384)throw new InvalidDataException("CrlExtensionSize");
+        var source=new AsnReader(encoded,AsnEncodingRules.DER);var points=source.ReadSequence();source.ThrowIfNotEmpty();
+        var uris=new List<string>();Walk(points,0);return uris.ToArray();
+        void Walk(AsnReader reader,int depth)
+        {
+            if(depth>8)throw new InvalidDataException("CrlExtensionDepth");
+            while(reader.HasData)
+            {
+                var tag=reader.PeekTag();
+                if(tag.TagClass==TagClass.ContextSpecific && tag.TagValue==6 && !tag.IsConstructed)
+                {
+                    var uri=reader.ReadCharacterString(UniversalTagNumber.IA5String,tag);
+                    if(uri.Length is <1 or >1024 || uris.Count>=16)throw new InvalidDataException("CrlUriCapacity");uris.Add(uri);
+                }
+                else if(tag.IsConstructed)Walk(reader.ReadSequence(tag),depth+1);
+                else _=reader.ReadEncodedValue();
+            }
+        }
+    }
     private static uint ListenerOwner()
     {
         uint size=0;var first=GetExtendedTcpTable(IntPtr.Zero,ref size,false,2,5,0);

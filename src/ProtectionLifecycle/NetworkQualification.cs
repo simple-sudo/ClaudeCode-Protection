@@ -38,7 +38,7 @@ internal sealed record NetworkTransportFailure(string Type,int Code,string? Http
     }
 }
 internal sealed record NetworkChildReport(int SchemaVersion,int Pid,NetworkProbeKind Kind,string Nonce,SocketProbe[] Cases,int? ProxyHttpStatus,
-    SocketProbe? ProxySocket,NetworkTransportFailure? ProxyFailure,TlsValidationObservation? TlsValidation,int FailureMask,bool SystemResolverQualified);
+    SocketProbe? ProxySocket,NetworkTransportFailure? ProxyFailure,TlsValidationObservation? TlsValidation,TlsCertificateObservation[]? CertificateChain,int FailureMask,bool SystemResolverQualified);
 internal sealed record NetworkPhaseReport(NetworkProbeKind Kind,string JobId,NetworkChildReport? Child,int[]? IndependentReceiverCounts,
     int ReceiptObservationMs,bool Matched,WfpErrorEvidence[] Failures,bool ProfileDeleteAbsenceQualified);
 
@@ -158,17 +158,17 @@ internal static class NetworkQualification
     {
         var cases=await RawCases(plan);var mask=0;
         for(var i=0;i<cases.Length;i++)if(plan.Kind==NetworkProbeKind.Control?!cases[i].SocketCallSucceeded:!EligibleNegative(cases[i],i))mask|=1<<i;
-        int? http=null;SocketProbe? proxy=null;NetworkTransportFailure? failure=null;TlsValidationObservation? tls=null;
+        int? http=null;SocketProbe? proxy=null;NetworkTransportFailure? failure=null;TlsValidationObservation? tls=null;TlsCertificateObservation[]? certificates=null;
         if(plan.Kind==NetworkProbeKind.Proxy)
         {
             proxy=await Probe("compiled-proxy-port",IPAddress.Loopback,CompiledFencePolicy.ProxyPort,false,Array.Empty<byte>());
             if(!proxy.SocketCallSucceeded)mask|=64;
-            try{http=await ProxyChannelLease.CheckTransport(result=>tls=result);if(http is <200 or >=400)mask|=64;}
+            try{http=await ProxyChannelLease.CheckTransport(result=>tls=result,result=>certificates=result);if(http is <200 or >=400)mask|=64;}
             catch(Exception ex) when(ex is HttpRequestException or OperationCanceledException){failure=NetworkTransportFailure.From(ex);mask|=64;}
         }
         else if(plan.Kind!=NetworkProbeKind.Control)
         {proxy=await Probe("compiled-proxy-port",IPAddress.Loopback,CompiledFencePolicy.ProxyPort,false,Array.Empty<byte>());if(!Denied(proxy))mask|=64;}
-        return new(1,Environment.ProcessId,plan.Kind,plan.Nonce,cases,http,proxy,failure,tls,mask,false);
+        return new(1,Environment.ProcessId,plan.Kind,plan.Nonce,cases,http,proxy,failure,tls,certificates,mask,false);
     }
     private static bool Denied(SocketProbe probe)=>!probe.SocketCallSucceeded && probe.SocketError==(int)System.Net.Sockets.SocketError.AccessDenied;
     // UDP send completion only means the local call accepted the datagram. It
@@ -195,12 +195,14 @@ internal static class NetworkQualification
                 if(!fence.Observe().FullQuarantineObserved)throw WfpNative.Contract("NetworkQualificationRequiresInitialFullQuarantine");
             }
             using var proxy=ProxyChannelLease.Open(state);
-            var transport=ProxyChannelLease.CheckTransport().GetAwaiter().GetResult();proxy.AssertHealthy();
+            TlsValidationObservation? hostTls=null;TlsCertificateObservation[]? hostCertificates=null;
+            var transport=ProxyChannelLease.CheckTransport(t=>hostTls=t,c=>hostCertificates=c).GetAwaiter().GetResult();proxy.AssertHealthy();
             if(transport is <200 or >=400)throw WfpNative.Contract("HostExplicitProxyTransportNotQualified");
             using var receivers=new NetworkReceivers();
             var host=receivers.Plan(NetworkProbeKind.Control);var baseline=RawCases(host).GetAwaiter().GetResult();Thread.Sleep(150);
             receivers.AssertCollecting();var hostReceipts=receivers.ReceiptCounts(host);
-            state.WriteNew("network-host-control-"+id+".json",JsonSerializer.SerializeToUtf8Bytes(new {Cases=baseline,ReceiptCounts=hostReceipts,ProxyHttpStatus=transport,ProxyIdentity=proxy.Evidence}));
+            state.WriteNew("network-host-control-"+id+".json",JsonSerializer.SerializeToUtf8Bytes(new {Cases=baseline,ReceiptCounts=hostReceipts,ProxyHttpStatus=transport,ProxyIdentity=proxy.Evidence,
+                TlsValidation=hostTls,CertificateChain=hostCertificates}));
             if(baseline.Any(c=>!c.SocketCallSucceeded) || hostReceipts.Any(c=>c<1))throw WfpNative.Contract("OwnedNetworkReceiversNotReachableFromHost");
             foreach(var kind in new[]{NetworkProbeKind.Control,NetworkProbeKind.Quarantine,NetworkProbeKind.Proxy,NetworkProbeKind.ProxyDenied})
             {
