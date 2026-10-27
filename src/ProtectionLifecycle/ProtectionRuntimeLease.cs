@@ -28,25 +28,22 @@ internal sealed class ProtectionRuntimeLease
     private bool activated,closed;
     private RuntimeStop? stopped;
     internal ProtectionRuntimeLease(ProtectedState state,VerifiedVersion version,OwnedKernelJob job,IReadOnlyList<PersistentFence> fences,ProxyChannelLease proxy,
-        SessionProxy? gateway=null,ProtectedSession.Admission? admission=null,ProtectedSession.Preparation? preparation=null)
+        SessionProxy? gateway=null,ProtectedSession.Preparation? preparation=null)
     {
         this.state=state;this.version=version;this.job=job;this.fences=fences;this.proxy=proxy;
-        if(gateway is null?(admission is not null || preparation is not null):(admission is null)==(preparation is null))
-            throw WfpNative.Contract("SessionGatewayAndExactlyOneOwnerAuthorityRequired");
-        if(admission is not null && !ReferenceEquals(gateway,admission.Gateway))throw WfpNative.Contract("SessionRuntimeGatewayMismatch");
+        if((gateway is null)!=(preparation is null))throw WfpNative.Contract("SessionGatewayAndPreparationRequiredTogether");
         if(preparation is not null && !ReferenceEquals(gateway,preparation.Gateway))throw WfpNative.Contract("StartupGatewayMismatch");
-        admission?.AssertRuntimeObjects(job,version,fences);
         preparation?.AssertRuntimeObjects(job,version,fences);
-        this.gateway=gateway;this.admission=admission;this.preparation=preparation;
+        this.gateway=gateway;this.preparation=preparation;
         if(gateway is not null)id=gateway.SessionId;
         pointerSHA256=state.Read("current.json",4096).SHA256;
         if(fences.Count==0 || !job.AtomicAdmissionReserved)throw WfpNative.Contract("RuntimeRequiresAtomicAdmissionAndFence");
         AssertHealthy();
         state.WriteNew("session-open-"+id+".json",JsonSerializer.SerializeToUtf8Bytes(new {SchemaVersion=1,state.InstallationId,SessionId=id,job.JobId,
             version.Package.Release,version.Package.ManifestHash,CurrentPointerSHA256=pointerSHA256,StartupDeadlineMs=deadlineMs,
-            Scope=gateway is null?"SINGLE_ATOMIC_JOB_COMPILED_PROXY":admission is null?"QUARANTINED_SUSPENDED_SESSION_STARTUP":"SINGLE_AUTHORIZED_SESSION_GATEWAY",
-            FormalSessionResumeAuthorized=admission is not null,AdmissionReusable=false,
-            SessionBindingSHA256=admission?.BindingSHA256,AtUtc=DateTime.UtcNow.ToString("o")}));
+            Scope=gateway is null?"SINGLE_ATOMIC_JOB_COMPILED_PROXY":"QUARANTINED_SUSPENDED_SESSION_STARTUP",
+            FormalSessionResumeAuthorized=false,AdmissionReusable=false,
+            SessionBindingSHA256=(string?)null,AtUtc=DateTime.UtcNow.ToString("o")}));
     }
     internal void AssertHealthy()
     {
