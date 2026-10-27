@@ -60,6 +60,8 @@ INTEGRATED是实际调用链；VERIFIED只适用于表中明确功能及负向�
 
 ## 下一主线及安全边界
 
+95d修正版bootstrap33输入构建成功、受保护update-inactive实际125拒绝，未创建新正式版本/切换指针；current-readback仍466a/978CE/ae397c94。原因是新增AssertClosedHistory消费loopback-intent前缀，但ProtectedState固定枚举白名单漏加该项。系统工具资格仍有效于原限定产物，不能把它当安装成功。当前SOURCE只增加该固定前缀，其他未知前缀继续拒绝；历史helper/结果在work/network-utility-recovery-*与ProgramFiles/ClaudeCodeProtection-Update-20261027-network-r2。未启动新的网络矩阵，预备运行脚本因新版本不存在停止；不冒充产品矩阵故障。旧隔离/AV/BFE/FlClash保持。
+
 766e01f修正管理图32输入BUILD0；独立普通权限、固定库字节快照及无module initializer后，仅调用只读OS工具句柄资格：OpenCheckNetIsolation成功，通用Open对同一4硬链接文件仍以原单链接错误拒绝。工具没有执行、无WFP/Job修改，限定VERIFIED为这两条路径。普通runtime/拒绝检查仍按预期。新批准95d24323588440989b3ee726bc4a75a8，manifest E9F06ED86C5C2245B79152402FE7CE8DF33A12BFACB58B69BBDCB8D73F964F4F，待独立bootstrap及真实更新/矩阵；466a首次失败不覆盖。
 
 466a包已实际INACTIVE更新（operation ae397c94caeb48aca2bbde4e502c74e0）。首次qualify-network退出3，request24808d3065e24cb0adb3ee17988cc1dc：当前FlClash监听PID14268、E:\program\FlClash\FlClashCore.exe及创建时刻/磁盘hash已持有核对，主机显式HTTPS Microsoft200；6个TCP/UDP/IPv6/UDP53接收端基线全部返回成功且各1份nonce收据。此为限定真实基线，不是受保护网络矩阵通过。
