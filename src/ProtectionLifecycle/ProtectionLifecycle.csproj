@@ -17,6 +17,7 @@
     <Compile Include="GpuQualification.cs" />
     <Compile Include="ProcessLocalRevocation.cs" />
     <Compile Include="ProtectionRuntimeLease.cs" />
+    <Compile Include="../Shared/ProxyDestinationPolicy.cs" Link="ProxyDestinationPolicy.cs" />
     <EmbeddedResource Include="LifecycleProtocol.json" />
     <EmbeddedResource Include="BrokerProtocol.json" />
     <EmbeddedResource Include="RecoveryProtocol.json" />
