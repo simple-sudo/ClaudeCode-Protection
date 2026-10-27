@@ -2,6 +2,8 @@
 
 Windows Claude网络保护与环境管理工具，正在开发。已完成本机首次未激活安装及普通用户GUI离线检查；持续网络保护、故障恢复和安全卸载尚未交付。真实Claude登录、推理和正式会话按用户要求延期。
 
+2026-10-27已将修正更新到正式未激活版本，固定隔离入口实际提交并回读6条安装专属持久WFP规则。尚未创建受保护进程，不能据此计实际网络防泄漏通过。首次两次失败及更新历史均保留，具体当前安装见开发状态。
+
 当前事实见[开发状态](docs/STATUS.md)，历史逐项证据见[验收账本](docs/PROJECT-ACCEPTANCE.md)，产品原则见[完整指导落实](docs/PRODUCT-DIRECTION-20261026.md)。现有[GitHub私有仓库](https://github.com/simple-sudo/ClaudeCode-Protection)及origin保持；本地小范围提交，不代用户推送。
 
 ## 当前可用切片

@@ -6,14 +6,14 @@
 
 | 工作 | 级别 | 当前事实及限制 |
 |---|---|---|
-| 当前六个项目 | SOURCE | 非生成语义检查0错误/0警告。日常CLI7源、GUI3源、工程11源、生命周期21源、broker1源、bootstrap1源；共享源重复计入其消费者。工程项目本轮未构建/运行。 |
+| 当前六个项目 | SOURCE | 非生成语义检查0错误/0警告。日常CLI7源、GUI3源、工程11源、生命周期22源、broker1源、bootstrap1源；共享源重复计入其消费者。工程项目本轮未构建/运行。 |
 | 当前产品四项目图 | BUILD | 457d22d的CLI、WPF GUI、broker及生命周期库离线restore/build成功，0错误/0警告。40项源/项目/资源，固定SDK8.0.422及引用8.0.28，无第三方包。work/product-final-build。 |
 | 独立安装引导 | BUILD | 62986ed嵌入14资产批准清单，bootstrap单独离线构建成功，未重编生命周期库；共享同一已构建DLL。实际PE资源摘要与源清单一致、无模块初始化器。work/bootstrap-build及product-install-control/plan.json。 |
 | 首次未激活安装 | INTEGRATED，成功路径已运行 | 人类UAC→固定摘要/全路径及文件租约→新受保护bootstrap→全包预检→全新私有状态→现有stager/版本核验/INACTIVE指针/完成账本，实际退出0。没有WFP/Job/Claude或用户配置修改。中断/重启/重复安装/卸载未据此通过。 |
 | 安装后字节与权限 | VERIFIED，仅14文件与当前权限负向 | 14资产摘要/长度与批准包一致，管理员owner/受保护DACL；普通用户写打开全部被拒绝，私有current.json读取被拒绝。outputs/installed-package-readback.json。不是抗管理员攻击或断电验收。 |
 | 已安装GUI离线检查 | INTEGRATED，当前真实调用链 | 普通用户界面“检查环境”→已安装CLI→inbox PowerShell→显示两阶段结果→当前用户报告。baseline退出0但APIsAgree=false；audit退出2，9 PASS/3 FAIL/8 UNKNOWN。保护仍未激活。配置修复/撤销按钮及在线按钮未运行。 |
 | .NET/WFP只读诊断 | VERIFIED，仅只读native路径 | fc113de的.NET8.0.28/x64布局13项符合；普通用户GetByKey仍Code5。独立受保护资格副本人类UAC后读取固定V4/V6内置层成功，各42字段、Id48/50。没有过滤器、Job或跨对象原子策略快照。 |
-| 固定管理隔离 | BUILD；quarantine功能未运行 | 当前已安装broker接受固定quarantine及两个只读诊断。quarantine核对管理员、固定私有状态、当前整版和自身路径后调用既有精确WFP/Job owner；停止/最终观察错误保留。尚非已交付Kill-Switch。 |
+| 固定管理隔离 | INTEGRATED，六规则提交与回读限定VERIFIED | 083d97b7当前已安装broker固定quarantine实际退出0，精确安装package SID的6条持久规则事务提交，独立最终回读均匹配，子层实际weight65533。登记Job0；尚未创建受保护进程，不计网络阻断/Kill-Switch验收。此前两次失败原样保留。 |
 | 用户配置维护 | BUILD，尚无功能/故障运行验收 | GUI/CLI共享当前用户目录、独占锁、刷盘备份、先行pending及摘要冲突拒绝。未迁移旧备份、未修改真实设置。 |
 | 原S1/S2及8a9c4b1构建 | 历史限定证据 | 原日志、失败、修正和UNKNOWN均留原处；见[原S1/S2](VALIDATION-S1-S2-20261026.md)与[首次broker构建](BROKER-OFFLINE-BUILD-SCOPE.md)。当前安装不升级这些历史结论。 |
 | 全量保护宿主/故障/卸载 | 尚未完成；集成受缺失实现阻塞 | 原子进程准入、代理审核/开放、完整运行租约、Watchdog/漂移、资源最终清理及相应故障矩阵未贯通。首次fresh租约只适用新身份从未开放准入，不能授权更新/卸载或冒充一般进程所有权。 |
@@ -23,6 +23,10 @@
 INTEGRATED是实际调用链；VERIFIED只适用于表中明确功能及负向；BUILD和SOURCE不能替代保护验收。用户授权是推进权限，不是功能通过。
 
 ## 本机安装及证据位置
+
+当前选择已更新为`083d97b7e544434cbb0d900004035657`，manifest SHA256 `D21A7D9F39A93E82087062EAD14F49329E7DBDD2743B2DC12DE98CAB6DC691F1`；操作`24d00c69110d4b5b91598069edfd5e06`。两次更新都为INACTIVE，旧806b包和中间faa包完整保留，原bootstrap未改写；下面806b条目为最初安装历史。当前GUI/daily字节与原始一致，GUI尚未在当前目录重新运行。新14资产摘要/长度、管理员owner/保护DACL及普通写拒绝已核对。更新helper/嵌入批准检查在work/inactive-update-r2-*，结果在ProgramFiles/ClaudeCodeProtection-Update-20261027-r2。
+
+当前安装专属隔离已真实创建：fence `3c4038f45a0e4dad8a4ab4d209d77d09`，6条持久filter，第三次quarantine请求`f1f5f82efd67435bb64a477448478699`退出0。提交后独立WFP回读全部匹配，原进程退出不主动清理持久规则；尚待新进程只读观察持续存在/真实负向网络与重启。无受保护进程、无Job，也不称后台保护已交付。原始记录ProgramFiles/ClaudeCodeProtection-Quarantine-20261027-r3及work/installed-quarantine-r3-control；前两次失败目录不变。当前普通GUI均关闭。
 
 - 包发布标识：`806b2b6997c84e0da4db46c9d267d7a0`；manifest SHA256：`1D83FA034A65DC58D1FFEB9C4F3A54EA52F1C3B7AF6156A54C752FA5D8801BAC`。批准清单在src/ProtectionBootstrap/ApprovedPackage.json；它是当前精确包的身份，不是任意新构建许可或AV安全结论。
 - 受保护引导：`C:\Program Files\ClaudeCodeProtection-Bootstrap`；正式代码：`C:\Program Files\ClaudeCodeProtection\versions\806b2b6997c84e0da4db46c9d267d7a0`；私有状态：`C:\Program Files\ClaudeCodeProtection-State`。无服务、计划任务、自启动、全局PATH或快捷方式注册。
