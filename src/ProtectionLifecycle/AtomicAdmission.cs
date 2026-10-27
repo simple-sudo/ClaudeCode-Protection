@@ -7,6 +7,54 @@ using Microsoft.Win32.SafeHandles;
 
 namespace ProtectionLifecycle;
 
+// A fresh, exact current-user profile lease. Existing profiles are never
+// adopted/deleted. Deletion requires this process's successful creation and a
+// subsequent owned-Job zero observation once process creation was attempted.
+internal sealed class InstallationProfileLease : IDisposable
+{
+    private readonly ProtectedState state;
+    private readonly string name,id;
+    private string? jobId;
+    private bool mayDelete=true,disposed;
+    private InstallationProfileLease(ProtectedState state,string name,string id){this.state=state;this.name=name;this.id=id;}
+    internal static InstallationProfileLease Create(ProtectedState state)
+    {
+        state.AssertHeld();using var expected=new InstallationPackageSid(state);var id=Guid.NewGuid().ToString("N");
+        state.WriteNew("profile-intent-"+id+".json",JsonSerializer.SerializeToUtf8Bytes(new {SchemaVersion=1,state.InstallationId,Name=expected.Name,Sid=expected.Value,
+            Status="FRESH_PROFILE_CREATION_PLANNED",ExistingProfileAdoptionAllowed=false,AtUtc=DateTime.UtcNow.ToString("o")}));
+        var status=CreateAppContainerProfile(expected.Name,"ClaudeCodeProtection synthetic session","Finite tool-owned no-network admission qualification",IntPtr.Zero,0,out var sid);
+        try
+        {
+            if(status!=0)throw new WfpFailure("CreateFreshInstallationAppContainerProfile",unchecked((uint)status));
+            var owner=new InstallationProfileLease(state,expected.Name,id);
+            try
+            {
+                if(sid==IntPtr.Zero || !WfpNative.IsValidSid(sid) || new SecurityIdentifier(sid).Value!=expected.Value)throw WfpNative.Contract("CreatedProfileSidMismatch");
+                state.WriteNew("profile-created-"+id+".json",JsonSerializer.SerializeToUtf8Bytes(new {SchemaVersion=1,state.InstallationId,Name=expected.Name,Sid=expected.Value,Status="CREATED_IN_THIS_PROCESS"}));
+                return owner;
+            }
+            catch(Exception failure)
+            {try{owner.Dispose();}catch(Exception cleanup){throw new AggregateException("Profile creation qualification and exact cleanup failed",failure,cleanup);}throw;}
+        }
+        finally{if(sid!=IntPtr.Zero)FreeSid(sid);}
+    }
+    internal void BeforeProcessCreation(string boundJobId){state.AssertHeld();if(disposed)throw new ObjectDisposedException(nameof(InstallationProfileLease));jobId=Identifiers.Hex32(boundJobId);mayDelete=false;}
+    internal void AfterOwnedJobZero(JobSnapshot snapshot)
+    {state.AssertHeld();if(snapshot.JobId!=jobId || !snapshot.ExpectedLimits || !snapshot.ObservedZero)throw WfpNative.Contract("ProfileCleanupRequiresOwnedJobZero");mayDelete=true;}
+    public void Dispose()
+    {
+        if(disposed)return;disposed=true;state.AssertHeld();
+        if(!mayDelete)throw WfpNative.Contract("ProfileCleanupBlockedWithoutOwnedJobZero");
+        var status=DeleteAppContainerProfile(name);
+        state.WriteNew("profile-cleanup-"+id+".json",JsonSerializer.SerializeToUtf8Bytes(new {SchemaVersion=1,state.InstallationId,Name=name,
+            Status=status==0?"EXACT_PROFILE_DELETE_API_SUCCEEDED":"PROFILE_CLEANUP_NOT_CONFIRMED",HResult=status,ProfileAbsenceQualified=false,AtUtc=DateTime.UtcNow.ToString("o")}));
+        if(status!=0)throw new WfpFailure("DeleteExactCreatedInstallationProfile",unchecked((uint)status));
+    }
+    [DllImport("userenv.dll",CharSet=CharSet.Unicode,ExactSpelling=true)] private static extern int CreateAppContainerProfile(string name,string display,string description,IntPtr capabilities,uint count,out IntPtr sid);
+    [DllImport("userenv.dll",CharSet=CharSet.Unicode,ExactSpelling=true)] private static extern int DeleteAppContainerProfile(string name);
+    [DllImport("advapi32.dll")] private static extern IntPtr FreeSid(IntPtr sid);
+}
+
 // A completed one-shot admission cannot accept another process. Recovery may
 // use its durable zero-members proof; arbitrary missing Jobs remain UNKNOWN.
 internal sealed record AtomicJobCompletion(int SchemaVersion,string InstallationId,string JobId,string Release,string ManifestSHA256,
@@ -53,7 +101,7 @@ internal sealed class AtomicChild : IDisposable
         this.state=state;this.version=version;this.job=job;this.image=image;packageSid=sid;Pid=info.ProcessId;
         process=new(info.Process,true);thread=new(info.Thread,true);
     }
-    internal static AtomicChild CreateCanary(FixedLayout layout,ProtectedState state,VerifiedVersion version,OwnedKernelJob job)
+    internal static AtomicChild CreateCanary(FixedLayout layout,ProtectedState state,VerifiedVersion version,OwnedKernelJob job,InstallationProfileLease profile)
     {
         ProtectedState.RequireAdministrator();state.AssertHeld();version.AssertHeld(state);
         if(!Environment.Is64BitProcess || Marshal.SizeOf<StartupInfo>()!=104 || Marshal.SizeOf<StartupInfoEx>()!=112 || Marshal.SizeOf<SecurityCapabilities>()!=24)
@@ -76,7 +124,7 @@ internal sealed class AtomicChild : IDisposable
             jobList=Marshal.AllocHGlobal(IntPtr.Size);Marshal.WriteIntPtr(jobList,jobHandle.DangerousGetHandle());
             if(!UpdateProcThreadAttribute(attributes,0,(IntPtr)0x2000d,jobList,(nuint)IntPtr.Size,IntPtr.Zero,IntPtr.Zero))throw Error("AtomicSetJobListAtCreation");
             var env=new SortedDictionary<string,string>(StringComparer.OrdinalIgnoreCase);
-            foreach(var name in new[]{"SystemRoot","windir","SystemDrive","ProgramFiles","ProgramFiles(x86)","ProgramW6432","PROCESSOR_ARCHITECTURE"})
+            foreach(var name in new[]{"SystemRoot","windir","SystemDrive","ProgramFiles","ProgramFiles(x86)","ProgramW6432","PROCESSOR_ARCHITECTURE","LOCALAPPDATA","USERPROFILE","TEMP","TMP"})
             {var value=Environment.GetEnvironmentVariable(name);if(value is not null)env[name]=value;}
             env["PATH"]="C:\\Program Files\\dotnet;C:\\Windows\\System32;C:\\Windows";
             env["DOTNET_ROOT"]="C:\\Program Files\\dotnet";env["DOTNET_ROLL_FORWARD"]="LatestPatch";
@@ -85,6 +133,7 @@ internal sealed class AtomicChild : IDisposable
             var command=new StringBuilder("\""+image+"\" admission-child");
             // The OS binds BOTH identity and Job before returning a suspended
             // initial thread. No inheritable handles or breakaway are enabled.
+            profile.BeforeProcessCreation(job.JobId);
             if(!CreateProcess(image,command,IntPtr.Zero,IntPtr.Zero,false,0x08080404,environment,Path.GetDirectoryName(image)!,ref startup,out var info))
                 throw Error("AtomicCreateSuspendedWithPackageAndJob");
             return new(state,version,job,info,image,package.Value);

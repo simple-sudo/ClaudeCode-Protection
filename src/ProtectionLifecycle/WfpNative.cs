@@ -22,14 +22,16 @@ internal sealed class InstallationPackageSid : IDisposable
 {
     internal IntPtr Pointer { get; private set; }
     internal string Value { get; }
-    internal InstallationPackageSid(ProtectedState state):this(Name(state)){}
-    private static string Name(ProtectedState state)
+    internal string Name { get; }
+    internal InstallationPackageSid(ProtectedState state):this(NameFor(state)){}
+    private static string NameFor(ProtectedState state)
     {
         state.AssertHeld();return "ClaudeCodeProtection."+Identifiers.Hex32(state.InstallationId);
     }
     internal static InstallationPackageSid ForObjectContractQualification()=>new("ClaudeCodeProtection.ObjectContractQualification.20261027");
     private InstallationPackageSid(string name)
     {
+        Name=name;
         var status=DeriveAppContainerSidFromAppContainerName(name,out var pointer);
         if(status!=0){if(pointer!=IntPtr.Zero)FreeSid(pointer);throw new WfpFailure("DeriveFixedInstallationPackageSid",unchecked((uint)status));}
         Pointer=pointer;

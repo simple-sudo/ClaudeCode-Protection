@@ -22,7 +22,7 @@ internal sealed class BootstrapApproval : IDisposable
         var result=new BootstrapApproval();
         try
         {
-            var root=WindowsPathSeal.Canonical(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),inactiveUpdate?"ClaudeCodeProtection-Update-20261027-r3":"ClaudeCodeProtection-Bootstrap"));
+            var root=WindowsPathSeal.Canonical(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),inactiveUpdate?"ClaudeCodeProtection-Update-20261027-r4":"ClaudeCodeProtection-Bootstrap"));
             var entry=Assembly.GetEntryAssembly()??throw new InvalidOperationException("Bootstrap entry missing");
             if(entry.GetName().Name!="ProtectionBootstrap" ||
                 !Same(Environment.ProcessPath,Path.Combine(root,"ProtectionBootstrap.exe")) ||
@@ -88,9 +88,9 @@ internal sealed class BootstrapApproval : IDisposable
 
 public static class BootstrapInstaller
 {
-    // Migration from independently verified pinned no-admission packages.
-    // package. This is not an active-runtime update or generic empty-job lease.
-    public static (int ExitCode,string Report) UpdateNeverAdmitted()
+    // Migration from pinned reviewed packages with no admission or completed
+    // one-shot admissions. This is not a generic empty-job/runtime lease.
+    public static (int ExitCode,string Report) UpdatePinnedInactive()
     {
         ProtectedState.RequireAdministrator();
         using var approval=BootstrapApproval.Open(true);
@@ -99,45 +99,48 @@ public static class BootstrapInstaller
         using var state=ProtectedState.OpenExisting(layout);
         var current=CurrentPointer.Parse(state.Read("current.json",4096),state.InstallationId);
         using var prior=VerifiedVersion.Open(layout,state,current.Release);
-        using var runtime=new NeverAdmittedUpdateLease(state,approval,prior,package);
+        using var runtime=new PinnedInactiveUpdateLease(state,approval,prior,package);
         var operation=VersionLifecycle.InstallOrUpdate(layout,state,package,approval.PayloadDirectory,"update",runtime);
         using var verified=VerifiedVersion.Open(layout,state,package.Release);
         var after=CurrentPointer.Parse(state.Read("current.json",4096),state.InstallationId);
         if(after.Release!=package.Release || after.ManifestSHA256!=package.ManifestHash || after.OperationId!=operation)
             throw new InvalidDataException("Updated inactive selection differs");
         runtime.AssertNoOwnedProcesses();verified.AssertHeld(state);
-        return (0,JsonSerializer.Serialize(new {SchemaVersion=1,Status="NEVER_ADMITTED_INACTIVE_UPDATE_COMPLETED",state.InstallationId,
+        return (0,JsonSerializer.Serialize(new {SchemaVersion=1,Status="PINNED_INACTIVE_UPDATE_COMPLETED",state.InstallationId,
             PriorRelease=current.Release,package.Release,package.ManifestHash,OperationId=operation,Activation="INACTIVE",
-            RuntimeLeaseScope="PINNED_NO_ADMISSION_PACKAGE_ZERO_JOB_HISTORY_AND_ABSENT_OR_QUARANTINED_FENCE",WfpModified=false,JobCreated=false,
+            RuntimeLeaseScope="PINNED_NO_ADMISSION_OR_CLOSED_ONE_SHOT_JOBS_AND_ABSENT_OR_QUARANTINED_FENCE",WfpModified=false,JobCreated=false,
             ClaudeLaunched=false,UserConfigurationModified=false,ProtectionQualified=false}));
     }
 
-    private sealed class NeverAdmittedUpdateLease : ILifecycleRuntimeLease
+    private sealed class PinnedInactiveUpdateLease : ILifecycleRuntimeLease
     {
         private static readonly string[] NoAdmissionManifests={
             "1D83FA034A65DC58D1FFEB9C4F3A54EA52F1C3B7AF6156A54C752FA5D8801BAC",
             "BB0A619C10B53ECF4AC4E79578C9DF4A058E1758B3B111836A5172F46488E9FD",
             "D21A7D9F39A93E82087062EAD14F49329E7DBDD2743B2DC12DE98CAB6DC691F1"
         }; // Exact reviewed packages expose no launch/admission command.
+        private static readonly string[] OneShotAdmissionManifests={"F68329165AAAD7BF5C8CBB4B44111B715439395B850F9653C80D687843A006FA"};
         private readonly ProtectedState state;
         private readonly BootstrapApproval approval;
         private readonly VerifiedVersion prior;
         private readonly ReviewedPackage next;
         private bool disposed;
-        internal NeverAdmittedUpdateLease(ProtectedState state,BootstrapApproval approval,VerifiedVersion prior,ReviewedPackage next)
+        internal PinnedInactiveUpdateLease(ProtectedState state,BootstrapApproval approval,VerifiedVersion prior,ReviewedPackage next)
         {
             this.state=state;this.approval=approval;this.prior=prior;this.next=next;
             var current=CurrentPointer.Parse(state.Read("current.json",4096),state.InstallationId);
-            if(current.Release!=prior.Package.Release || current.ManifestSHA256!=prior.Package.ManifestHash || !NoAdmissionManifests.Contains(prior.Package.ManifestHash,StringComparer.Ordinal) ||
+            if(current.Release!=prior.Package.Release || current.ManifestSHA256!=prior.Package.ManifestHash ||
+                !(NoAdmissionManifests.Contains(prior.Package.ManifestHash,StringComparer.Ordinal) || OneShotAdmissionManifests.Contains(prior.Package.ManifestHash,StringComparer.Ordinal)) ||
                 next.Release==prior.Package.Release || next.ManifestHash==prior.Package.ManifestHash)
-                throw new InvalidOperationException("Only a pinned reviewed no-admission package can migrate");
+                throw new InvalidOperationException("Only pinned reviewed inactive packages can migrate");
             AssertNoOwnedProcesses();
         }
         public void AssertLaunchAdmissionClosed()
         {
-            if(disposed)throw new ObjectDisposedException(nameof(NeverAdmittedUpdateLease));
+            if(disposed)throw new ObjectDisposedException(nameof(PinnedInactiveUpdateLease));
             state.AssertHeld();approval.AssertHeld();prior.AssertHeld(state);
-            // The original package has no launch command. Every installed
+            // Pinned packages have no launch command or one-shot admission
+            // with mandatory closed-admission completion. Every installed
             // admission/mutation owner must hold this same exclusive lock.
             // New payload stays INACTIVE throughout this one update operation.
             var current=CurrentPointer.Parse(state.Read("current.json",4096),state.InstallationId);
@@ -148,7 +151,11 @@ public static class BootstrapInstaller
         public void AssertNoOwnedProcesses()
         {
             AssertLaunchAdmissionClosed();
-            if(state.ListLeaves("job-intent-").Length!=0)throw new InvalidOperationException("Job history is outside never-admitted update authority");
+            var jobs=OwnedJobIntent.ReadAll(state);
+            if(NoAdmissionManifests.Contains(prior.Package.ManifestHash,StringComparer.Ordinal) && jobs.Count!=0)
+                throw new InvalidOperationException("Job history is outside the pinned no-admission package");
+            foreach(var job in jobs)if(AtomicJobCompletion.ReadClosed(state,job) is null)
+                throw new InvalidOperationException("Every one-shot Job needs a closed admission and zero-members proof");
             // A failed intent is not absence. Every exact plan must be absent
             // or fully quarantined; no resource is removed during this update.
             foreach(var plan in FencePlan.ReadAll(state))

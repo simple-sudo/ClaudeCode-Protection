@@ -43,11 +43,12 @@ public static class InstalledBroker
         var request=Guid.NewGuid().ToString("N");
         state.WriteNew("atomic-before-"+request+".json",JsonSerializer.SerializeToUtf8Bytes(new {SchemaVersion=1,state.InstallationId,
             current.Release,current.ManifestSHA256,Scope="FIXED_INSTALLED_NO_NETWORK_CANARY",AtUtc=DateTime.UtcNow.ToString("o")}));
+        using var profile=InstallationProfileLease.Create(state);
         using var job=OwnedKernelJob.CreateEmpty(state,version);
         Exception? failure=null;uint? childExit=null;bool resumed=false;JobSnapshot? final=null;
         try
         {
-            using var child=AtomicChild.CreateCanary(layout,state,version,job);
+            using var child=AtomicChild.CreateCanary(layout,state,version,job,profile);
             _=child.ResumeQuarantined();resumed=true;childExit=child.WaitForCanaryExit();
             if(childExit!=42)throw WfpNative.Contract("AtomicCanaryExitMismatch");
         }
@@ -56,7 +57,7 @@ public static class InstalledBroker
         {
             try
             {
-                if(job.AtomicAdmissionReserved)final=job.CloseAtomicAdmissionAndStop();
+                if(job.AtomicAdmissionReserved){final=job.CloseAtomicAdmissionAndStop();profile.AfterOwnedJobZero(final);}
                 else
                 {
                     _=job.StopAndVerifyZero();

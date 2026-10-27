@@ -2,6 +2,8 @@
 
 ## 2026-10-27 首次安装后隔离实际失败
 
+307aa1a批准c810包经31输入bootstrap独立构建及20项资格后，真实未激活update退出0。已安装inspect-installed-fence前后0，跨原quarantine进程退出、更新及canary失败窗口6个filterId一致。首次qualify-admission退出3、CreateProcess Win32=2，尚未恢复任何子进程；原失败保留。真实私有命名Job创建/ACL/tag/limits及封闭准入/成员零证明已走通，但进程/网络未通过。补充此前缺失的AppContainer profile前置及同一Job零后精确删除SOURCE；已有profile不接管/不删，Delete API成功不冒充独立不存在。限定迁移仅增加c810精确包并要求全部一次性Job关闭回执，绝不把missing Job当零或授权活动更新；待新构建/运行。
+
 39cea24管理图30输入首次BUILD成功、0错0警告；元数据无module initializer，普通inspect-runtime0及三个新命令普通上下文125拒绝已实测；没有Job/网络动作，不计真正原子准入通过。新批准c81055a2849c4c86a9d7f07524cc77d6，manifest F68329165AAAD7BF5C8CBB4B44111B715439395B850F9653C80D687843A006FA，保留当前083d安装及持久隔离，接续独立bootstrap构建/资格/更新。
 
 原子准入首个实际消费者已接固定安装broker源码：同次创建绑定package/job，挂起后核对身份、唯一成员及完整隔离，刷盘先行记录后才resume有限无网络canary。结束封闭一次性准入并保存清零完成回执，完成证明绑定原Job意图/版本/不可复用准入摘要；未完成或缺失名称不推断零。公开代码新增AppContainer只读执行ACE、私有状态不变；只读安装隔离观察独立。当前仅SOURCE、生命周期23源及其他项目语义检查0错误/0警告，须独立构建/资格/更新/实测，不继承前述WFP对象证据。真实Claude及联网canary均未执行。
