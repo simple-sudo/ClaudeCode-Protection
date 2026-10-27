@@ -28,8 +28,17 @@ internal sealed record NetworkProbePlan(NetworkProbeKind Kind,int TcpPort,int Ot
     }
 }
 internal sealed record SocketProbe(string Role,bool SocketCallSucceeded,int? SocketError,string? FailureType);
+internal sealed record NetworkTransportFailure(string Type,int Code,string? HttpError,int? SocketError,string? InnerType,int? InnerCode)
+{
+    internal static NetworkTransportFailure From(Exception error)
+    {
+        SocketException? socket=null;for(Exception? e=error;e is not null;e=e.InnerException)if(e is SocketException s){socket=s;break;}
+        return new(error.GetType().Name,error.HResult,(error as HttpRequestException)?.HttpRequestError.ToString(),
+            socket is null?null:(int)socket.SocketErrorCode,error.InnerException?.GetType().Name,error.InnerException?.HResult);
+    }
+}
 internal sealed record NetworkChildReport(int SchemaVersion,int Pid,NetworkProbeKind Kind,string Nonce,SocketProbe[] Cases,int? ProxyHttpStatus,
-    SocketProbe? ProxySocket,string? ProxyFailure,int FailureMask,bool SystemResolverQualified);
+    SocketProbe? ProxySocket,NetworkTransportFailure? ProxyFailure,int FailureMask,bool SystemResolverQualified);
 internal sealed record NetworkPhaseReport(NetworkProbeKind Kind,string JobId,NetworkChildReport? Child,int[]? IndependentReceiverCounts,
     int ReceiptObservationMs,bool Matched,WfpErrorEvidence[] Failures,bool ProfileDeleteAbsenceQualified);
 
@@ -149,11 +158,13 @@ internal static class NetworkQualification
     {
         var cases=await RawCases(plan);var mask=0;
         for(var i=0;i<cases.Length;i++)if(plan.Kind==NetworkProbeKind.Control?!cases[i].SocketCallSucceeded:!EligibleNegative(cases[i],i))mask|=1<<i;
-        int? http=null;SocketProbe? proxy=null;string? failure=null;
+        int? http=null;SocketProbe? proxy=null;NetworkTransportFailure? failure=null;
         if(plan.Kind==NetworkProbeKind.Proxy)
         {
+            proxy=await Probe("compiled-proxy-port",IPAddress.Loopback,CompiledFencePolicy.ProxyPort,false,Array.Empty<byte>());
+            if(!proxy.SocketCallSucceeded)mask|=64;
             try{http=await ProxyChannelLease.CheckTransport();if(http is <200 or >=400)mask|=64;}
-            catch(Exception ex) when(ex is HttpRequestException or OperationCanceledException){failure=ex.GetType().Name;mask|=64;}
+            catch(Exception ex) when(ex is HttpRequestException or OperationCanceledException){failure=NetworkTransportFailure.From(ex);mask|=64;}
         }
         else if(plan.Kind!=NetworkProbeKind.Control)
         {proxy=await Probe("compiled-proxy-port",IPAddress.Loopback,CompiledFencePolicy.ProxyPort,false,Array.Empty<byte>());if(!Denied(proxy))mask|=64;}
@@ -253,7 +264,7 @@ internal static class NetworkQualification
                 state.WriteNew("network-observed-"+job.JobId+".json",JsonSerializer.SerializeToUtf8Bytes(new {Child=observed,ExitCode=exit,ReceiverCounts=delivered,
                     ReceiptObservationMs=observationMs,ReceiverCollectorsHealthy=true,UdpSendSuccessIsDeliveryProof=false,ExternalEgressQualified=false}));
                 var rawMatched=control?observed.Cases.All(c=>c.SocketCallSucceeded):observed.Cases.Select(EligibleNegative).All(v=>v);
-                var proxyMatched=control || (kind==NetworkProbeKind.Proxy?observed.ProxyHttpStatus is >=200 and <400:
+                var proxyMatched=control || (kind==NetworkProbeKind.Proxy?observed.ProxyHttpStatus is >=200 and <400 && observed.ProxySocket?.SocketCallSucceeded==true:
                     observed.ProxySocket is not null && Denied(observed.ProxySocket));
                 if(exit!=0 || observed.FailureMask!=0 || !rawMatched || !proxyMatched ||
                     (control?delivered.Any(c=>c<1):delivered.Any(c=>c!=0)))throw WfpNative.Contract("NetworkChildOrIndependentReceiptsDidNotMatch");

@@ -98,21 +98,23 @@ internal sealed class AtomicChild : IDisposable
     private readonly SafeWaitHandle thread;
     private readonly string image,packageSid;
     private readonly NetworkProbePlan? network;
+    private readonly bool gpuWorkload;
     private bool resumed,disposed;
     internal uint Pid {get;}
-    private AtomicChild(ProtectedState state,VerifiedVersion version,OwnedKernelJob job,ProcessInfo info,string image,string sid,NetworkProbePlan? network)
+    private AtomicChild(ProtectedState state,VerifiedVersion version,OwnedKernelJob job,ProcessInfo info,string image,string sid,NetworkProbePlan? network,bool gpuWorkload)
     {
-        this.state=state;this.version=version;this.job=job;this.image=image;packageSid=sid;Pid=info.ProcessId;this.network=network;
+        this.state=state;this.version=version;this.job=job;this.image=image;packageSid=sid;Pid=info.ProcessId;this.network=network;this.gpuWorkload=gpuWorkload;
         process=new(info.Process,true);thread=new(info.Thread,true);
     }
     internal static AtomicChild CreateCanary(FixedLayout layout,ProtectedState state,VerifiedVersion version,OwnedKernelJob job,InstallationProfileLease profile,
-        NetworkProbePlan? network=null,IntPtr output=default)
+        NetworkProbePlan? network=null,IntPtr output=default,GpuProbePlan? gpu=null)
     {
         ProtectedState.RequireAdministrator();state.AssertHeld();version.AssertHeld(state);
         if(!Environment.Is64BitProcess || Marshal.SizeOf<StartupInfo>()!=104 || Marshal.SizeOf<StartupInfoEx>()!=112 || Marshal.SizeOf<SecurityCapabilities>()!=24)
             throw new PlatformNotSupportedException("Atomic admission requires the declared x64 layout");
         var image=WindowsPathSeal.Child(layout.Version(version.Package.Release),"bin/admin/ProtectionBroker.exe");
-        network?.Validate();if((network is null)!=(output==IntPtr.Zero))throw WfpNative.Contract("NetworkReportHandleRequiredExactlyForNetworkCanary");
+        network?.Validate();gpu?.Validate();if(network is not null && gpu is not null)throw WfpNative.Contract("OneFixedQualificationWorkloadRequired");
+        var report=network is not null || gpu is not null;if(report!=(output!=IntPtr.Zero))throw WfpNative.Contract("ReportHandleRequiredExactlyForQualificationWorkload");
         using var package=network?.Kind==NetworkProbeKind.Control?InstallationPackageSid.ForNetworkControl(state):new InstallationPackageSid(state);
         profile.AssertPackage(package);
         var jobHandle=job.ReserveAtomicAdmission(version);
@@ -121,7 +123,7 @@ internal sealed class AtomicChild : IDisposable
         try
         {
             jobHandle.DangerousAddRef(ref handleHeld);
-            var count=network is null?2:3;
+            var count=report?3:2;
             nuint size=0;_=InitializeProcThreadAttributeList(IntPtr.Zero,count,0,ref size);
             if(size is 0 or >65536)throw Error("AtomicAttributeListSize");
             attributes=Marshal.AllocHGlobal(checked((int)size));
@@ -131,7 +133,7 @@ internal sealed class AtomicChild : IDisposable
             if(!UpdateProcThreadAttribute(attributes,0,(IntPtr)0x20009,capabilities,(nuint)Marshal.SizeOf<SecurityCapabilities>(),IntPtr.Zero,IntPtr.Zero))throw Error("AtomicSetPackageAtCreation");
             jobList=Marshal.AllocHGlobal(IntPtr.Size);Marshal.WriteIntPtr(jobList,jobHandle.DangerousGetHandle());
             if(!UpdateProcThreadAttribute(attributes,0,(IntPtr)0x2000d,jobList,(nuint)IntPtr.Size,IntPtr.Zero,IntPtr.Zero))throw Error("AtomicSetJobListAtCreation");
-            if(network is not null)
+            if(report)
             {
                 handles=Marshal.AllocHGlobal(IntPtr.Size);Marshal.WriteIntPtr(handles,output);
                 if(!UpdateProcThreadAttribute(attributes,0,(IntPtr)0x20002,handles,(nuint)IntPtr.Size,IntPtr.Zero,IntPtr.Zero))throw Error("AtomicSetOnlyReportHandleInheritance");
@@ -142,16 +144,17 @@ internal sealed class AtomicChild : IDisposable
             env["PATH"]="C:\\Program Files\\dotnet;C:\\Windows\\System32;C:\\Windows";
             env["DOTNET_ROOT"]="C:\\Program Files\\dotnet";env["DOTNET_ROLL_FORWARD"]="LatestPatch";
             if(network is not null)env["CPC_NETWORK_PLAN"]=JsonSerializer.Serialize(network);
+            if(gpu is not null){env["CPC_GPU_PLAN"]=JsonSerializer.Serialize(gpu);env["CUDA_CACHE_DISABLE"]="1";}
             environment=Marshal.StringToHGlobalUni(string.Join('\0',env.Select(p=>p.Key+"="+p.Value))+"\0\0");
             var startup=new StartupInfoEx{Basic=new(){Size=Marshal.SizeOf<StartupInfoEx>()},Attributes=attributes};
-            if(network is not null){startup.Basic.Flags=0x100;startup.Basic.Output=output;startup.Basic.Error=output;}
+            if(report){startup.Basic.Flags=0x100;startup.Basic.Output=output;startup.Basic.Error=output;}
             var command=new StringBuilder("\""+image+"\" admission-child");
             // The OS binds BOTH identity and Job before returning a suspended
             // initial thread. No inheritable handles or breakaway are enabled.
             profile.BeforeProcessCreation(job.JobId);
-            if(!CreateProcess(image,command,IntPtr.Zero,IntPtr.Zero,network is not null,0x08080404,environment,Path.GetDirectoryName(image)!,ref startup,out var info))
+            if(!CreateProcess(image,command,IntPtr.Zero,IntPtr.Zero,report,0x08080404,environment,Path.GetDirectoryName(image)!,ref startup,out var info))
                 throw Error("AtomicCreateSuspendedWithPackageAndJob");
-            return new(state,version,job,info,image,package.Value,network);
+            return new(state,version,job,info,image,package.Value,network,gpu is not null);
         }
         finally
         {
@@ -189,7 +192,7 @@ internal sealed class AtomicChild : IDisposable
         var proof=new {SchemaVersion=1,state.InstallationId,job.JobId,Pid,CreatedFileTime=created.ToString("X16"),Token=token,
             ImageSHA256=version.Package.Files.Single(f=>f.Asset.Id=="broker-exe").SHA256,Job=snapshot,Fences=observations,
             Binding="SECURITY_CAPABILITIES_AND_JOB_LIST_AT_CREATION",Status="BEFORE_FIRST_RESUME",NetworkBehaviorQualified=false,
-            Scope=network?.Kind==NetworkProbeKind.Control?"UNFENCED_OWNED_LOOPBACK_CONTROL":proxyOnly?"COMPILED_IPV4_PROXY_ONLY":"FULL_QUARANTINE"};
+            Scope=network?.Kind==NetworkProbeKind.Control?"UNFENCED_OWNED_LOOPBACK_CONTROL":proxyOnly?"COMPILED_IPV4_PROXY_ONLY":gpuWorkload?"FIXED_CUDA_FULL_QUARANTINE":"FULL_QUARANTINE"};
         state.WriteNew("admission-before-resume-"+job.JobId+".json",JsonSerializer.SerializeToUtf8Bytes(proof));
         var previous=ResumeThread(thread);if(previous==uint.MaxValue)throw Error("AtomicResumePrimaryThread");
         if(previous!=1)throw WfpNative.Contract("AtomicInitialSuspendCountMismatch");
@@ -198,7 +201,7 @@ internal sealed class AtomicChild : IDisposable
     internal uint WaitForCanaryExit()
     {
         if(!resumed || disposed)throw new InvalidOperationException("Canary has not resumed");
-        var status=WaitForSingleObject(process,network is null?15000u:30000u);
+        var status=WaitForSingleObject(process,network is not null || gpuWorkload?30000u:15000u);
         if(status==0x102)throw new TimeoutException("Finite atomic canary did not exit");
         if(status!=0)throw Error("AtomicCanaryWait");
         if(!GetExitCodeProcess(process,out var code))throw Error("AtomicCanaryExitCode");return code;
@@ -208,6 +211,13 @@ internal sealed class AtomicChild : IDisposable
         using var current=new SafeProcessHandle((IntPtr)(-1),false);var token=ReadToken(current);
         if(!token.IsAppContainer || token.CapabilityCount!=0 || token.IntegritySid!="S-1-16-4096")return 125;
         var plan=Environment.GetEnvironmentVariable("CPC_NETWORK_PLAN");
+        var gpuPlan=Environment.GetEnvironmentVariable("CPC_GPU_PLAN");if(plan is not null && gpuPlan is not null)return 125;
+        if(gpuPlan is not null)
+        {
+            if(gpuPlan.Length>256)throw WfpNative.Contract("GpuPlanSizeRefused");
+            var gpu=JsonSerializer.Deserialize<GpuProbePlan>(gpuPlan)??throw WfpNative.Contract("GpuPlanMissing");gpu.Validate();
+            var computed=GpuQualification.Compute(gpu,"APPCONTAINER_LOW_ZERO_CAPABILITIES");Console.WriteLine(JsonSerializer.Serialize(computed));return GpuQualification.Qualified(computed)?0:3;
+        }
         if(plan is not null)
         {
             if(plan.Length>8192)throw WfpNative.Contract("NetworkPlanSizeRefused");

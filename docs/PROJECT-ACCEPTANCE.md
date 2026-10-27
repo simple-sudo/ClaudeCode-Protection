@@ -259,3 +259,9 @@ AVP/BFE保持运行、两条真实Claude规则禁用；本窗口FlClash/Core PID
 固定33输入bootstrap构建成功后，人类UAC受保护更新实际0：626a6ff8672142c8ae9363e2f99a87eb/D1B1982E41107A988E719BC8779CE66F62BE7FD1C9F28D8673557BC416B3EF87，operation a8a2a085080e410eaa902e777e0d03f5，INACTIVE。网络请求f600d38b276745d1b081420799c26064实际3，独立AppContainer对照6路成功/收据各1；完整隔离TCP三路和代理端口10013，UDP三路send成功/收据均0，原10013统一判据FailureMask56。未进入代理开放/再阻断两阶段，不计矩阵通过。原始ProgramFiles/ClaudeCodeProtection-Network-20261027-r3及私有state保留，6持久规则完整；精确豁免删除及其他项保持，Job零/封闭、profile Delete API0，profile独立缺席仍UNKNOWN。AV/BFE/FlClash未改，完整AV覆盖UNKNOWN。
 
 后续SOURCE区别UDP本地send完成与独立接收，保持TCP强拒绝判据、未知/超时失败；增加接收任务健康、2秒观察、最终正向接收对照和迟到包核对；失败阶段保留在报告。固定仅允许626a旧包闭合回执迁移，新bootstrap目标network-r4，普通生命周期边界保持。非生成6项目0错误/警告，尚非新BUILD或网络验收。旧FAIL不改写。
+
+### 2026-10-27：07ac本地隔离阶段与代理HTTPS失败
+
+**最新实测（06:44Z）：**07aca932e74843c682ce7eacda492994/9AE1DBF15E05AC67E5E4EE73E216BFDB36FE1819ABC49E4A7C4FC5D060C37E10已INACTIVE更新0，operation718c8f52ff54489297c1daf750b4b6a6。网络请求f785c12d92d244a4ba6a8ab9dd261189退出3：独立AppContainer对照成功；完整隔离阶段TCP/代理端口10013，UDP4/6/DNS各0收据、2秒窗口且collector健康，限定本地阶段匹配。代理开放前5个保留角色/同一AppContainer低4096零capability/唯一Job成员已核对，旁路仍阻断，但HTTPS为HttpRequestException/FailureMask64；没有取得代理通道成功或第四阶段。错误当前缺内层码，不能猜作WFP/TLS根因或关闭证书验证。最终完整隔离、3个Job封闭/零和精确豁免/profile清理记录保留，AV/BFE/FlClash不变。原ProgramFiles/ClaudeCodeProtection-Network-20261027-r4及私有记录保留，旧FAIL不改。
+
+当前新SOURCE：代理阶段另记录固定7890 TCP连接结果和有限错误类型/数字码（无消息/私有路径），保留默认TLS/吊销检查。新增固定已安装qualify-gpu复用同一原子AppContainer/Job准入与报告管道，完整隔离下host对照+隔离内nvcuda Driver API固定256整数/1KiB显存、实际PTX加7内核、同步回读全元素及SHA核对、逐API/精确资源释放记录。只从System32搜索nvcuda，无外部编译器/模型/CPU替代、禁JIT持久缓存，无网络开放或全机设备变化；普通管理入口仍需既有管理员和安装全包核验。CUDA头文件与NVIDIA Driver API文档核对签名/指针数组；这不是PyTorch兼容、其他进程GPU内存隔离或敏感资源验收。生命周期26源，6项目非生成检查0错误/警告；新工件待BUILD/独立资格和实际运行。

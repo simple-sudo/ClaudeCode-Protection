@@ -12,6 +12,13 @@ namespace ProtectionLifecycle;
 public static class InstalledBroker
 {
     public static int RunAdmissionCanary()=>AtomicChild.RunCanary();
+    public static (int ExitCode,string Report) QualifyGpu()
+    {
+        ProtectedState.RequireAdministrator();var layout=FixedLayout.FromWindows();using var state=ProtectedState.OpenExisting(layout);
+        var current=CurrentPointer.Parse(state.Read("current.json",4096),state.InstallationId);using var version=VerifiedVersion.Open(layout,state,current.Release);
+        if(version.Package.ManifestHash!=current.ManifestSHA256)throw WfpNative.Contract("InstalledPointerManifestMismatch");
+        AssertInstalledHost(layout,state,version);return GpuQualification.Run(layout,state,version);
+    }
     public static (int ExitCode,string Report) QualifyNetwork()
     {
         ProtectedState.RequireAdministrator();var layout=FixedLayout.FromWindows();

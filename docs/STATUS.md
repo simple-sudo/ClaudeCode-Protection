@@ -6,6 +6,10 @@
 
 退出后6规则102370–102375全匹配，所属两Job封闭/零成员回执与本次两SID豁免精确移除、其他项保持记录保留；profile Delete API0，独立profile不存在仍UNKNOWN。FlClash20944/Core14268、AV/BFE运行，有限Application告警0、完整告警覆盖UNKNOWN。新SOURCE将UDP调用成功和投递分开，不把调用成功叫拒绝或泄漏：TCP仍需10013，UDP仅允许10013或完整send成功进入独立投递核对，未知错误/超时拒绝；接收器任务健康、2秒负向窗口、末尾主机正向与迟到nonce核对，失败阶段亦纳入汇总。微软sendto契约见[文档](https://learn.microsoft.com/en-us/windows/win32/api/winsock2/nf-winsock2-sendto)。这是有限本地投递观察，不是物理外网/系统解析器或全产品证明。6项目非生成检查0错误0警告。dfed30f管理图32输入离线BUILD0；元数据无module initializer，8项UDP/TCP资格判据（含超时/错误/部分发送负向）通过，只证明候选判定、不证明投递；系统工具只读正向/通用单链接负向与普通命令拒绝通过。批准07aca932e74843c682ce7eacda492994，manifest 9AE1DBF15E05AC67E5E4EE73E216BFDB36FE1819ABC49E4A7C4FC5D060C37E10，待bootstrap及真实矩阵。
 
+**最新实测（06:44Z）：**07aca932e74843c682ce7eacda492994/9AE1DBF15E05AC67E5E4EE73E216BFDB36FE1819ABC49E4A7C4FC5D060C37E10已INACTIVE更新0，operation718c8f52ff54489297c1daf750b4b6a6。网络请求f785c12d92d244a4ba6a8ab9dd261189退出3：独立AppContainer对照成功；完整隔离阶段TCP/代理端口10013，UDP4/6/DNS各0收据、2秒窗口且collector健康，限定本地阶段匹配。代理开放前5个保留角色/同一AppContainer低4096零capability/唯一Job成员已核对，旁路仍阻断，但HTTPS为HttpRequestException/FailureMask64；没有取得代理通道成功或第四阶段。错误当前缺内层码，不能猜作WFP/TLS根因或关闭证书验证。最终完整隔离、3个Job封闭/零和精确豁免/profile清理记录保留，AV/BFE/FlClash不变。原ProgramFiles/ClaudeCodeProtection-Network-20261027-r4及私有记录保留，旧FAIL不改。
+
+当前新SOURCE：代理阶段另记录固定7890 TCP连接结果和有限错误类型/数字码（无消息/私有路径），保留默认TLS/吊销检查。新增固定已安装qualify-gpu复用同一原子AppContainer/Job准入与报告管道，完整隔离下host对照+隔离内nvcuda Driver API固定256整数/1KiB显存、实际PTX加7内核、同步回读全元素及SHA核对、逐API/精确资源释放记录。只从System32搜索nvcuda，无外部编译器/模型/CPU替代、禁JIT持久缓存，无网络开放或全机设备变化；普通管理入口仍需既有管理员和安装全包核验。CUDA头文件与NVIDIA Driver API文档核对签名/指针数组；这不是PyTorch兼容、其他进程GPU内存隔离或敏感资源验收。生命周期26源，6项目非生成检查0错误/警告；新工件待BUILD/独立资格和实际运行。
+
 日期：2026-10-27（America/New_York）；最初安装/GUI实测发生于10月26日晚，本轮WFP与原子准入实测发生于10月27日。目标模式已建立且仍active，完整产品目标未完成。用户已批准阻塞部分继续推进，并补充[完整产品方向](PRODUCT-DIRECTION-20261026.md)。本地自主开发与小范围提交，既有origin保留，不推送。不同源码与工件不互相继承运行证据。
 
 ## 当前成果与证据级别

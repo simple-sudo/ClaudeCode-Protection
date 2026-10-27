@@ -14,6 +14,7 @@
     <Compile Include="WfpObjectContract.cs" />
     <Compile Include="AtomicAdmission.cs" />
     <Compile Include="ProxyChannel.cs;NetworkQualification.cs" />
+    <Compile Include="GpuQualification.cs" />
     <EmbeddedResource Include="LifecycleProtocol.json" />
     <EmbeddedResource Include="BrokerProtocol.json" />
     <EmbeddedResource Include="RecoveryProtocol.json" />
