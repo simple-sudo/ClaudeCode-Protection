@@ -113,7 +113,7 @@ internal sealed class CenterWindow : Window
         // report failure must not erase the baseline failure/output.
         details.Text = "Windows 代理配置：\r\n" + baseline.Output + "\r\n" + baseline.Error;
         BackendResult result;
-        try { result = online ? await BackendClient.Command("audit", "--online") : await BackendClient.Command("audit"); }
+        try { result = online ? await BackendClient.Command("preflight", "--online") : await BackendClient.Command("preflight"); }
         catch (Exception ex) { result = new(125, "", "Environment audit invocation failed: " + ex.GetType().Name); }
         details.Text += "\r\n\r\n环境检查：\r\n" + result.Output + "\r\n" + result.Error;
         var message = result.ExitCode == 125 ? "环境检查未能完成，阶段结果如下；保护仍未激活。" : "环境检查已返回。失败和未知项保留；保护仍未激活。";

@@ -1,5 +1,13 @@
 # 2026-10-27 系统蓝屏事件：运行测试停止
 
+## 后续明确授权（2026-10-27，本轮 PR 整合会话）
+
+用户现明确表示系统测试可以再次进行，接受可能再次蓝屏，以找到原因。
+这替代下文基于事故的永久等待解释；原停止、失败、自动审查拒绝和 UNKNOWN 全部保留。
+先采用原单个转储的微软调试器有界离线分析，再按具体假设选择必要测试。
+无权自动确认 UAC、改变 AV/日常 FlClash 或启动真实 Claude；每个新产品工件仍须审查/资格。
+实际分析状态及新证据见 [整合记录](INTEGRATION-20261027.md)，不把这份授权记成测试成功。
+
 ## 已确认事实
 
 Windows System日志1001/Microsoft-Windows-WER-SystemErrorReporting明确记录bugcheck 0x0000001e（0xffffffffc0000005,0,8,0），ReportId ba6f3990-c859-4189-abe0-ca70d278d5f7。Kernel-Power41及EventLog6008记非正常关机；系统启动时间2026-10-27T07:56:31.5Z（本地03:56:31）。小转储C:\Windows\Minidump\102726-15281-01.dmp存在，7030648字节，写入07:56:43.804Z。普通用户读取转储摘要返回AccessDenied，SHA/故障栈/驱动归因UNKNOWN，未改ACL或复制绕过。

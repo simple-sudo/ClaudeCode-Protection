@@ -13,6 +13,7 @@
   <ItemGroup>
     <Compile Include="Program.cs" />
     <Compile Include="../ClaudeProtection/Models.cs;../ClaudeProtection/EnvironmentAudit.cs;../ClaudeProtection/ProcessIdentity.cs;../ClaudeProtection/ProxySettings.cs;../ClaudeProtection/UserProxyBaseline.cs" />
+    <Compile Include="../ClaudeProtection/DiagnosticNetworkTargetPolicy.cs;../Shared/ProxyDestinationPolicy.cs" />
     <Compile Include="../ClaudeProtection/NativeJob.cs;../ClaudeProtection/SandboxToken.cs;../ClaudeProtection/ControlledLoopback.cs;../ClaudeProtection/ExperimentMonitor.cs;../ClaudeProtection/IsolationExperiment.cs" />
     <!-- Historical aggregate SelfTests.cs remains evidence, never compiled here. -->
     <None Include="../../scripts/Read-Environment.ps1" Link="Read-Environment.ps1" CopyToOutputDirectory="PreserveNewest" />

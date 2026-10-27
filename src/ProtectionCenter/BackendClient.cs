@@ -12,7 +12,7 @@ internal static class BackendClient
     {
         // Defense in depth: the GUI cannot dispatch engineering commands even
         // if a future caller accidentally wires one into a button.
-        if (arguments.Length == 0 || arguments[0] is not ("audit" or "system-proxy-baseline" or "repair-proxy-plan" or "repair-proxy" or "restore-proxy"))
+        if (arguments.Length == 0 || arguments[0] is not ("audit" or "preflight" or "system-proxy-baseline" or "repair-proxy-plan" or "repair-proxy" or "restore-proxy"))
             throw new InvalidOperationException("此操作不属于日常检查与维护");
         return await Run(Path.Combine(Root, "bin", "current", "ClaudeProtection.exe"), arguments);
     }

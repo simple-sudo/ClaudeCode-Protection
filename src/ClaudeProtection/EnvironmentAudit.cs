@@ -85,12 +85,15 @@ internal static class EnvironmentAudit
 
     internal static async Task<Check> Transport(string name, string url, bool country, string proxy = "http://127.0.0.1:7890")
     {
+        if(!DiagnosticNetworkTargetPolicy.IsApprovedDiagnostic(url,proxy))
+            return new(name,"FAIL","Unapproved diagnostic destination or proxy; no request sent");
         try
         {
             using var handler = new HttpClientHandler
             {
                 Proxy = new WebProxy(proxy) { BypassProxyOnLocal = false }, UseProxy = true,
-                AllowAutoRedirect = false, UseCookies = false
+                AllowAutoRedirect = false, UseCookies = false, UseDefaultCredentials = false,
+                CheckCertificateRevocationList = true
             };
             // Default certificate validation stays enabled. No credentials are sent.
             using var client = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(12), MaxResponseContentBufferSize = 65536 };

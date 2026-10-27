@@ -76,6 +76,15 @@ Read-Check 'windows-region' {
     if ($ok) { Add-Check 'windows-region' 'PASS' 'Eastern Standard Time / en-US / en-US; not network isolation evidence' }
     else { Add-Check 'windows-region' 'FAIL' 'Timezone or culture drift detected; no automatic system change' }
 }
+Read-Check 'host-timezone' {
+    $observed = (Get-TimeZone).Id
+    Add-Check 'host-timezone' 'UNKNOWN' "Observed timezone=$observed; no current strict-session target configured; no automatic modification"
+}
+Read-Check 'host-locale' {
+    $culture = (Get-Culture).Name
+    $locale = (Get-WinSystemLocale).Name
+    Add-Check 'host-locale' 'UNKNOWN' "Observed user culture=$culture; system locale=$locale; no current strict-session target configured"
+}
 Read-Check 'firewall-service' {
     if ((Get-Service -Name MpsSvc).Status -eq 'Running') { Add-Check 'firewall-service' 'PASS' 'MpsSvc running' }
     else { Add-Check 'firewall-service' 'FAIL' 'MpsSvc is not running' }

@@ -6,7 +6,7 @@ internal static class Program
 {
     private static int Main(string[] args)
     {
-        if (args.Length != 1 || args[0] is not ("quarantine" or "inspect-runtime" or "inspect-wfp" or "qualify-wfp-objects" or "inspect-installed-fence" or "qualify-admission" or "qualify-network" or "qualify-gpu" or "qualify-watchdog" or "admission-child"))
+        if (args.Length != 1 || args[0] is not ("launch" or "quarantine" or "inspect-runtime" or "inspect-wfp" or "qualify-wfp-objects" or "inspect-installed-fence" or "qualify-admission" or "qualify-network" or "qualify-gpu" or "qualify-watchdog" or "admission-child"))
         {
             Console.Error.WriteLine("ProtectionBroker inspect-runtime | inspect-wfp; inspect-installed-fence (installed read-only); quarantine | qualify-admission | qualify-network | qualify-gpu | qualify-watchdog (installed); qualify-wfp-objects (protected qualification host). Management requires existing elevation.");
             return 64;
@@ -15,6 +15,7 @@ internal static class Program
         {
             if(args[0]=="admission-child")return ProtectionLifecycle.InstalledBroker.RunAdmissionCanary();
             var result = args[0] switch {
+                "launch" => ProtectionLifecycle.InstalledBroker.LaunchDevelopmentSession(),
                 "inspect-runtime" => ProtectionLifecycle.InstalledBroker.InspectRuntime(),
                 "inspect-wfp" => ProtectionLifecycle.InstalledBroker.InspectWfp(),
                 "qualify-wfp-objects" => ProtectionLifecycle.WfpObjectContract.Qualify(),

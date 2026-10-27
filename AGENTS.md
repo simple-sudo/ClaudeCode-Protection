@@ -1,5 +1,15 @@
 # ClaudeCode-Protection working rules
 
+2026-10-27 integration continuation: the user has explicitly reopened bounded
+system testing, including the possibility of another bugcheck, to find the cause.
+The earlier crash-related blanket runtime stop is historical, not a permanent
+veto. Start with the preserved dump and a concrete hypothesis; use reviewed,
+bounded, exact-artifact entries and preserve failures, exit/drain and recovery.
+This does not clear the Kaspersky incident, bypass AV, unlock legacy build
+scripts, permit automatic UAC confirmation, reconfigure daily FlClash or authorize
+real Claude login/inference/sessions. Source integration is not qualification.
+See docs/INTEGRATION-20261027.md and the incident record for current evidence.
+
 The user's 2026-10-26 autonomous-development instruction supersedes the earlier
 ban on local Git initialization/commits. Work in this existing checkout. Local,
 scoped commits are authorized; do not publish, configure a remote or push.

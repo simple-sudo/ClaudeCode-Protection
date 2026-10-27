@@ -7,6 +7,10 @@ on:
       - 'src/ProtectionLifecycle/**'
       - 'src/ProtectionBroker/**'
       - 'src/Shared/**'
+      - 'src/ClaudeProtection/**'
+      - 'src/ClaudeProtection.Engineering/**'
+      - 'src/ProtectionCenter/**'
+      - 'src/ProtectionBootstrap/**'
   workflow_dispatch:
 
 permissions:
@@ -14,7 +18,7 @@ permissions:
 
 jobs:
   no-execution-build:
-    name: Compile Broker and Lifecycle without running
+    name: Compile all product projects without running
     runs-on: windows-latest
     timeout-minutes: 10
     permissions:
@@ -28,4 +32,8 @@ jobs:
           dotnet-version: '8.0.x'
       - name: Compile source, do not run protected code
         shell: pwsh
-        run: dotnet build src/ProtectionBroker/ProtectionBroker.csproj --configuration Release --nologo
+        run: |
+          foreach ($project in 'ClaudeProtection','ClaudeProtection.Engineering','ProtectionBroker','ProtectionCenter','ProtectionBootstrap') {
+            dotnet build "src/$project/$project.csproj" --configuration Release --nologo
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }

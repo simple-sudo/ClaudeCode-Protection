@@ -11,6 +11,7 @@
 !/scripts/
 !/src/
 !/tests/
+!/.github/
 
 # Preserve on disk; never stage runtime state or historical evidence.
 **/bin/

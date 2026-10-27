@@ -11,6 +11,28 @@ namespace ProtectionLifecycle;
 // development build. Neither diagnostic opens the installed mutation path.
 public static class InstalledBroker
 {
+    // The sole production development-session entry. It deliberately has no
+    // target/script/report input and no fallback to a qualification command.
+    // There is no positive issuer until current trusted collectors, a confined
+    // forwarding channel and the remaining system-security gates exist.
+    public static (int ExitCode,string Report) LaunchDevelopmentSession()
+    {
+        ProtectedState.RequireAdministrator();var layout=FixedLayout.FromWindows();
+        using var state=ProtectedState.OpenExisting(layout);
+        var current=CurrentPointer.Parse(state.Read("current.json",4096),state.InstallationId);
+        using var version=VerifiedVersion.Open(layout,state,current.Release);
+        if(version.Package.ManifestHash!=current.ManifestSHA256)throw WfpNative.Contract("InstalledPointerManifestMismatch");
+        AssertInstalledHost(layout,state,version);
+        var checks=ClaudeCodeProtection.Security.StrictEnvironmentRequirements.Required.Select(def=>new {
+            def.Id,Status="UNKNOWN",Required=true,Reason="NO_CURRENT_TRUSTED_SESSION_COLLECTOR",
+            CachedPassAccepted=false,DiagnosticReportAccepted=false}).ToArray();
+        return(125,JsonSerializer.Serialize(new {SchemaVersion=1,Scope="INSTALLED_BROKER_DEVELOPMENT_LAUNCH_REFUSAL",
+            state.InstallationId,current.Release,current.ManifestSHA256,Status="DEFERRED_BY_USER",
+            Checks=checks,LaunchAuthorized=false,ProcessCreated=false,
+            RemainingSecurityGates=new[]{"CONFINED_PROXY_FORWARDING","CURRENT_SESSION_IDENTITY_JOB_WFP",
+                "CHILD_AND_HOST_RESOURCE_ISOLATION","REAL_CLAUDE_SESSION_DEFERRED"}}));
+    }
+
     public static int RunAdmissionCanary()=>AtomicChild.RunCanary();
     public static (int ExitCode,string Report) QualifyWatchdog()
     {
