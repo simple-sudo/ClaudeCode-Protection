@@ -2,6 +2,8 @@
 
 ## 2026-10-27 首次安装后隔离实际失败
 
+850d0a5的32输入修正BUILD0、系统工具正向/通用硬链接负向资格与普通命令拒绝通过；批准626a6ff8672142c8ae9363e2f99a87eb，manifestD1B1982E41107A988E719BC8779CE66F62BE7FD1C9F28D8673557BC416B3EF87，接续bootstrap/真实更新。旧安装仍466a，95d更新FAIL保留。
+
 95d对应33输入bootstrap BUILD0，但真实update-inactive125：AssertClosedHistory所用loopback-intent前缀遗漏于ProtectedState固定白名单，在版本stage/指针切换前拒绝，当前仍466a。原错误Fixed inventory prefix required、helper终态/当前指针回读保留；新矩阵未启动。修正SOURCE只加入这一个固定清单前缀，不开放任意枚举；AV/BFE/FlClash及旧完整隔离保持。
 
 766e01f的32输入修正构建0，无module initializer。普通上下文固定字节库的只读资格实际确认：固定系统工具打开成功，通用payload打开同一4硬链接文件仍拒绝；没有执行系统工具/修改WFP/创建Job。普通管理命令拒绝仍通过。批准95d24323588440989b3ee726bc4a75a8、manifestE9F06ED86C5C2245B79152402FE7CE8DF33A12BFACB58B69BBDCB8D73F964F4F进入独立bootstrap/更新/网络复测；原矩阵FAIL及基线事实各自保留。
