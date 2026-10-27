@@ -317,3 +317,7 @@ STATUS.md改为唯一当前事实/剩余缺口索引；整理前旧内容按原�
 5635752独立bootstrap36输入BUILD0，7a235d0d3395432b97b114f8b57fee22/3B2DBEDD06AF0B8230E3527CEC2790159CCEA9A36F8A2E3CF4213BC0CC25D9B3已INACTIVE更新0，operation448bc1a84ff34e048cad02ecad5c3460。首次Watchdog requestddb0939b095643119aa04c2f28a60505退出3：ready HTTPS200，但Job3a7ddf9f7c934b55a6b3ef6ea219bf96由首次恢复前唯一PID13696变为13696+34780，严格唯一目标核对拒绝，未做期限/漂移注入。失败后共用Stop已观察完整隔离先于Job停止、真实零成员/关闭回执，精确豁免/profile清理，AV/BFE/FlClash保持。原ProgramFiles/ClaudeCodeProtection-Watchdog-20261027及私有记录保留；多出成员身份仍UNKNOWN，不能忽略或按名字放行。
 
 当前SOURCE新增仅对同一Job已枚举成员的只读身份诊断，先持有句柄并IsProcessInJob确认归属再读映像/创建时间/令牌，失败逐项保留；无终止权限/外部PID接口，目标唯一检查不放宽。前后Job快照与成员诊断先记录再拒绝，帮助判断下一实际修正。6项目非生成0错0警告，待新BUILD/安装/运行。新版本不继承旧网络/GPU证据。
+
+### 2026-10-27：实际系统bugcheck与运行验证停止
+
+07:56Z测试窗口Windows bugcheck0x1e、WER1001/Kernel-Power41，转储102726-15281-01.dmp存在但普通用户读取AccessDenied。未发重启命令，测试关联UNKNOWN；查明前再次诊断的决定过早，第二次08:00Z退出3、无存活产品进程，停止所有新增产品build/install/run/fault injection，只读定位。重启后6持久角色完整、历史22Job/20豁免cleanup存在是有限观察，不计完整重启验收。当前814cf已安装INACTIVE，原失败/中断/转储保留。详见INCIDENT-20261027-SYSTEM-CRASH.md。
