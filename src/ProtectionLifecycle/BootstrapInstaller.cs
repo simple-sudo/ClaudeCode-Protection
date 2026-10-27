@@ -16,13 +16,13 @@ internal sealed class BootstrapApproval : IDisposable
     internal string ManifestHash { get; private set; }="";
     internal string PayloadDirectory { get; private set; }="";
     private BootstrapApproval() { }
-    internal static BootstrapApproval Open()
+    internal static BootstrapApproval Open(bool inactiveUpdate=false)
     {
         ProtectedState.RequireAdministrator();
         var result=new BootstrapApproval();
         try
         {
-            var root=WindowsPathSeal.Canonical(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),"ClaudeCodeProtection-Bootstrap"));
+            var root=WindowsPathSeal.Canonical(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),inactiveUpdate?"ClaudeCodeProtection-Update-20261027":"ClaudeCodeProtection-Bootstrap"));
             var entry=Assembly.GetEntryAssembly()??throw new InvalidOperationException("Bootstrap entry missing");
             if(entry.GetName().Name!="ProtectionBootstrap" ||
                 !Same(Environment.ProcessPath,Path.Combine(root,"ProtectionBootstrap.exe")) ||
@@ -88,6 +88,77 @@ internal sealed class BootstrapApproval : IDisposable
 
 public static class BootstrapInstaller
 {
+    // One migration from the independently verified original no-admission
+    // package. This is not an active-runtime update or generic empty-job lease.
+    public static (int ExitCode,string Report) UpdateNeverAdmitted()
+    {
+        ProtectedState.RequireAdministrator();
+        using var approval=BootstrapApproval.Open(true);
+        var package=ReviewedPackage.FromBootstrap(approval);
+        var layout=FixedLayout.FromWindows();
+        using var state=ProtectedState.OpenExisting(layout);
+        var current=CurrentPointer.Parse(state.Read("current.json",4096),state.InstallationId);
+        using var prior=VerifiedVersion.Open(layout,state,current.Release);
+        using var runtime=new NeverAdmittedUpdateLease(state,approval,prior,package);
+        var operation=VersionLifecycle.InstallOrUpdate(layout,state,package,approval.PayloadDirectory,"update",runtime);
+        using var verified=VerifiedVersion.Open(layout,state,package.Release);
+        var after=CurrentPointer.Parse(state.Read("current.json",4096),state.InstallationId);
+        if(after.Release!=package.Release || after.ManifestSHA256!=package.ManifestHash || after.OperationId!=operation)
+            throw new InvalidDataException("Updated inactive selection differs");
+        runtime.AssertNoOwnedProcesses();verified.AssertHeld(state);
+        return (0,JsonSerializer.Serialize(new {SchemaVersion=1,Status="NEVER_ADMITTED_INACTIVE_UPDATE_COMPLETED",state.InstallationId,
+            PriorRelease=current.Release,package.Release,package.ManifestHash,OperationId=operation,Activation="INACTIVE",
+            RuntimeLeaseScope="PINNED_ORIGINAL_NO_ADMISSION_PACKAGE_AND_ABSENT_FENCE_OBJECTS",WfpModified=false,JobCreated=false,
+            ClaudeLaunched=false,UserConfigurationModified=false,ProtectionQualified=false}));
+    }
+
+    private sealed class NeverAdmittedUpdateLease : ILifecycleRuntimeLease
+    {
+        private const string OriginalManifest="1D83FA034A65DC58D1FFEB9C4F3A54EA52F1C3B7AF6156A54C752FA5D8801BAC";
+        private readonly ProtectedState state;
+        private readonly BootstrapApproval approval;
+        private readonly VerifiedVersion prior;
+        private readonly ReviewedPackage next;
+        private bool disposed;
+        internal NeverAdmittedUpdateLease(ProtectedState state,BootstrapApproval approval,VerifiedVersion prior,ReviewedPackage next)
+        {
+            this.state=state;this.approval=approval;this.prior=prior;this.next=next;
+            var current=CurrentPointer.Parse(state.Read("current.json",4096),state.InstallationId);
+            if(current.Release!=prior.Package.Release || current.ManifestSHA256!=OriginalManifest || prior.Package.ManifestHash!=OriginalManifest ||
+                next.Release==prior.Package.Release || next.ManifestHash==OriginalManifest)
+                throw new InvalidOperationException("Only the pinned original no-admission package can migrate");
+            AssertNoOwnedProcesses();
+        }
+        public void AssertLaunchAdmissionClosed()
+        {
+            if(disposed)throw new ObjectDisposedException(nameof(NeverAdmittedUpdateLease));
+            state.AssertHeld();approval.AssertHeld();prior.AssertHeld(state);
+            // The original package has no launch command. Every installed
+            // admission/mutation owner must hold this same exclusive lock.
+            // New payload stays INACTIVE throughout this one update operation.
+            var current=CurrentPointer.Parse(state.Read("current.json",4096),state.InstallationId);
+            if(!((current.Release==prior.Package.Release && current.ManifestSHA256==OriginalManifest) ||
+                (current.Release==next.Release && current.ManifestSHA256==next.ManifestHash)))
+                throw new InvalidDataException("Current pointer escaped the bound inactive migration");
+        }
+        public void AssertNoOwnedProcesses()
+        {
+            AssertLaunchAdmissionClosed();
+            if(state.ListLeaves("job-intent-").Length!=0)throw new InvalidOperationException("Job history is outside never-admitted update authority");
+            // A failed quarantine intent is not absence. Check every exact
+            // owned plan against BFE; inaccessible/foreign/present objects fail.
+            foreach(var plan in FencePlan.ReadAll(state))
+            {
+                using var fence=PersistentFence.OpenExisting(state,plan.Data.FenceId);
+                if(!fence.Observe().AllAbsent)throw new InvalidOperationException("Existing fence resources require the full runtime maintenance owner");
+            }
+        }
+        public void StopAndVerifyOwnedProcesses()=>AssertNoOwnedProcesses();
+        public void RemoveAndVerifyExactOwnedResources(string installationId)=>throw new InvalidOperationException("Inactive migration cannot remove resources");
+        public void AssertNoOwnedResources(string installationId)=>throw new InvalidOperationException("Inactive migration cannot authorize resource cleanup");
+        public void Dispose(){disposed=true;}
+    }
+
     // Fixed fresh install only. No path, digest, activation, process, network,
     // update, adoption or uninstall parameter crosses this public boundary.
     public static (int ExitCode,string Report) InstallFresh()

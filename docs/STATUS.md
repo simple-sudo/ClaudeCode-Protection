@@ -47,6 +47,8 @@ INTEGRATED是实际调用链；VERIFIED只适用于表中明确功能及负向�
 
 ## 下一主线及安全边界
 
+c1ab0dc的修正版已独立离线构建，并在-r2受保护资格目录实际运行：生产`PolicyMatches`对BFE返回的65通过，16项标志组合只有1和65通过；Abort及两对象不存在均回读成功。资格仍只覆盖native对象/匹配契约，当前正式安装尚未改变。为将修正落入正式版本，新增SOURCE的`update-inactive`只允许从固定原始manifest迁移：持有旧整版、私有锁、INACTIVE指针、无任何Job历史，逐一核对原fence意图的BFE对象全不存在；不把failed intent当作不存在，不具备资源删除权或活动版本升级权。目标新清单仍由独立bootstrap内嵌批准，复用既有VersionLifecycle更新与完成账本；等待本轮限定构建/安装实测。
+
 继续复用当前生产owner，实现精确身份的原子进程准入与代理限制；优先用自有合成进程独立验证IPv4/DNS/UDP/IPv6阻断、代理失效、控制器崩溃和恢复，随后接Watchdog及精确卸载。不得把轮询停止、配置正确或代理响应当无直连证明。
 
 当前API不一致仍需只读分项定位；代理owner路径不可读保留UNKNOWN，不能按名称放行。UI离线检查的FAIL/UNKNOWN与旧S2各自独立。配置维护的冲突、中断、备份损坏分支仍需有界实测。

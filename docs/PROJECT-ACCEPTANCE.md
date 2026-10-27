@@ -2,6 +2,8 @@
 
 ## 2026-10-27 首次安装后隔离实际失败
 
+c1ab0dc修正独立BUILD后，-r2受保护资格副本实际退出0：同一生产策略函数接受当前BFE 65，16项标志组合仅1/65接受，Abort后两对象独立回读不存在，AV/BFE与日常FlClash保持。生产安装原失败仍保留。下一纵向切片为固定原始无准入包的未激活更新入口，禁止活动更新/资源删除/空Job推断：固定旧manifest、旧版租约、私有锁、INACTIVE、零Job历史及所有fence对象实查不存在。SOURCE通过，需独立BUILD/真实安装后再运行quarantine，不能提前升级验收。
+
 后续1104c4e的29输入离线构建成功，独立受保护合成native资格经本人UAC成功：返回INDEXED|PERSISTENT=65、安全描述符形状正常，Abort后两随机对象均独立回读不存在。真实失败定位为生产Flags==1与BFE索引标志不兼容，不是已证实隔离成功。限定资格路径work/wfp-object-contract-build及runtime-recovery；原始生成控制路径/目的地leaf两次前置失败留存，未被后来的成功覆盖。修正只认可PERSISTENT及PERSISTENT|INDEXED；仍拒绝其他标志，新增同一生产函数的16项负向资格待新构建实测，当前安装旧包及首次quarantine退出3不变。
 
 目标模式在新接续会话实际建立。本人UAC后，以5个固定已安装工件摘要、最小运行环境和受保护报告目录运行固定quarantine；退出3、QuarantineObserved=false。事务内抛InvalidDataException，原失败/意图/前后记录保留，Job登记0不是完整进程清零或保护验收。原始记录C:\Program Files\ClaudeCodeProtection-Quarantine-20261027，控制work/installed-quarantine-control。没有启动Claude或改动FlClash/系统代理/TUN/AV；AV/BFE运行，FlClash/Core PID20944/14268一致，有限AV观察0而完整覆盖UNKNOWN。

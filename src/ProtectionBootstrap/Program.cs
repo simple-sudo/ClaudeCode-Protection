@@ -1,13 +1,13 @@
 using ProtectionLifecycle;
 using System.Text.Json;
 
-if(args.Length!=1 || args[0]!="install-inactive")
+if(args.Length!=1 || args[0] is not ("install-inactive" or "update-inactive"))
 {
-    Console.Error.WriteLine("Usage: ProtectionBootstrap install-inactive");return 64;
+    Console.Error.WriteLine("Usage: ProtectionBootstrap install-inactive | update-inactive (pinned original never-admitted installation only)");return 64;
 }
 try
 {
-    var result=BootstrapInstaller.InstallFresh();Console.WriteLine(result.Report);return result.ExitCode;
+    var result=args[0]=="install-inactive"?BootstrapInstaller.InstallFresh():BootstrapInstaller.UpdateNeverAdmitted();Console.WriteLine(result.Report);return result.ExitCode;
 }
 catch(Exception ex)
 {
