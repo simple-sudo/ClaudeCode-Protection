@@ -60,11 +60,26 @@ internal static class WfpNative
         internal Guid Key;internal Display Display;internal uint Flags;internal IntPtr Provider;internal Blob Data;internal Guid Layer,SubLayer;internal Value Weight;
         internal uint ConditionCount;internal IntPtr Conditions;internal Action Action;internal Context Context;internal IntPtr Reserved;internal ulong Id;internal Value EffectiveWeight;
     }
+    // FWPM_LAYER0, SDK shared/fwpmtypes.h. Query only; no mutation API uses it.
+    [StructLayout(LayoutKind.Sequential)] internal struct Layer {
+        internal Guid Key;internal Display Display;internal uint Flags,FieldCount;internal IntPtr Fields;
+        internal Guid DefaultSubLayer;internal ushort Id;
+    }
+    internal static IReadOnlyDictionary<string,int> LayoutSnapshot()=>new Dictionary<string,int> {
+        ["PointerBytes"]=IntPtr.Size,["ValueBytes"]=Marshal.SizeOf<Value>(),["BlobBytes"]=Marshal.SizeOf<Blob>(),
+        ["ConditionBytes"]=Marshal.SizeOf<Condition>(),["ActionBytes"]=Marshal.SizeOf<Action>(),["ContextBytes"]=Marshal.SizeOf<Context>(),
+        ["SubLayerBytes"]=Marshal.SizeOf<SubLayer>(),["FilterBytes"]=Marshal.SizeOf<Filter>(),["LayerBytes"]=Marshal.SizeOf<Layer>(),
+        ["FilterContextOffset"]=Marshal.OffsetOf<Filter>(nameof(Filter.Context)).ToInt32(),
+        ["FilterIdOffset"]=Marshal.OffsetOf<Filter>(nameof(Filter.Id)).ToInt32(),
+        ["LayerFieldsOffset"]=Marshal.OffsetOf<Layer>(nameof(Layer.Fields)).ToInt32(),
+        ["LayerIdOffset"]=Marshal.OffsetOf<Layer>(nameof(Layer.Id)).ToInt32()
+    };
     internal static void AssertLayout()
     {
         if(!OperatingSystem.IsWindows() || !Environment.Is64BitProcess || Marshal.SizeOf<Value>()!=16 || Marshal.SizeOf<Blob>()!=16 || Marshal.SizeOf<Condition>()!=40 ||
             Marshal.SizeOf<Action>()!=20 || Marshal.SizeOf<Context>()!=16 || Marshal.SizeOf<SubLayer>()!=72 || Marshal.SizeOf<Filter>()!=200 ||
-            Marshal.OffsetOf<Filter>(nameof(Filter.Context)).ToInt32()!=152 || Marshal.OffsetOf<Filter>(nameof(Filter.Id)).ToInt32()!=176)
+            Marshal.OffsetOf<Filter>(nameof(Filter.Context)).ToInt32()!=152 || Marshal.OffsetOf<Filter>(nameof(Filter.Id)).ToInt32()!=176 ||
+            Marshal.SizeOf<Layer>()!=72 || Marshal.OffsetOf<Layer>(nameof(Layer.Fields)).ToInt32()!=40 || Marshal.OffsetOf<Layer>(nameof(Layer.Id)).ToInt32()!=64)
             throw new PlatformNotSupportedException("Unqualified WFP interop layout");
     }
     internal static SafeWfpEngine Open()
@@ -146,6 +161,7 @@ internal static class WfpNative
     [DllImport("fwpuclnt.dll",ExactSpelling=true)] internal static extern uint FwpmFilterDeleteByKey0(SafeWfpEngine engine,in Guid key);
     [DllImport("fwpuclnt.dll",ExactSpelling=true)] internal static extern uint FwpmFilterGetSecurityInfoByKey0(SafeWfpEngine engine,in Guid key,uint requested,out IntPtr owner,out IntPtr group,out IntPtr dacl,out IntPtr sacl,out IntPtr descriptor);
     [DllImport("fwpuclnt.dll",ExactSpelling=true)] internal static extern void FwpmFreeMemory0(ref IntPtr memory);
+    [DllImport("fwpuclnt.dll",ExactSpelling=true)] internal static extern uint FwpmLayerGetByKey0(SafeWfpEngine engine,in Guid key,out IntPtr layer);
     [DllImport("advapi32.dll")] [return:MarshalAs(UnmanagedType.Bool)] internal static extern bool IsValidSid(IntPtr sid);
     [DllImport("advapi32.dll")] private static extern uint GetSecurityDescriptorLength(IntPtr descriptor);
     [DllImport("advapi32.dll",EntryPoint="ConvertStringSecurityDescriptorToSecurityDescriptorW",CharSet=CharSet.Unicode,SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)] private static extern bool ConvertStringSecurityDescriptorToSecurityDescriptor(string value,uint revision,out IntPtr descriptor,out uint length);

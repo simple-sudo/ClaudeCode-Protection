@@ -6,14 +6,18 @@ internal static class Program
 {
     private static int Main(string[] args)
     {
-        if (args.Length != 1 || args[0] != "quarantine")
+        if (args.Length != 1 || args[0] is not ("quarantine" or "inspect-runtime" or "inspect-wfp"))
         {
-            Console.Error.WriteLine("ProtectionBroker quarantine | reinstates installation quarantine and stops registered jobs; requires the verified installed current broker and an existing elevated token");
+            Console.Error.WriteLine("ProtectionBroker inspect-runtime | inspect-wfp (read-only); quarantine (installed current broker and existing elevated token required)");
             return 64;
         }
         try
         {
-            var result = ProtectionLifecycle.InstalledBroker.Quarantine();
+            var result = args[0] switch {
+                "inspect-runtime" => ProtectionLifecycle.InstalledBroker.InspectRuntime(),
+                "inspect-wfp" => ProtectionLifecycle.InstalledBroker.InspectWfp(),
+                _ => ProtectionLifecycle.InstalledBroker.Quarantine()
+            };
             Console.WriteLine(result.Report);
             return result.ExitCode;
         }
@@ -21,7 +25,7 @@ internal static class Program
         {
             var code = ex is System.ComponentModel.Win32Exception native ? native.NativeErrorCode : ex.HResult;
             // Do not disclose protected state, arguments or private paths.
-            Console.Error.WriteLine("Quarantine not confirmed: " + ex.GetType().Name + "; code=" + code);
+            Console.Error.WriteLine("Operation not confirmed: " + ex.GetType().Name + "; code=" + code);
             return 125;
         }
     }

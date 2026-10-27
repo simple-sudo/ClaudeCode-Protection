@@ -31,6 +31,15 @@ That separate grant is now consumed: restore/build succeeded, no product ran.
 scripts/Invoke-BrokerOfflineBuild.ps1 records that fixed attempt, not a reusable
 unlock. Its artifacts remain in work/broker-offline-build and are not approved
 for execution, installation, escalation, quarantine or network/AV changes.
+Subsequent explicit human authorization on 2026-10-26 says the blocked parts
+may proceed toward the goal. This supersedes waiting for the same scope again:
+review and qualify the concrete build/runtime and trusted-installation path,
+then proceed within the tool-owned scope. It does not establish blanket
+artifact safety or authorize old selftest, AV changes, global networking
+changes, real Claude launch, automatic UAC confirmation or unscoped execution.
+Keep ordinary legacy stops; use reviewed bounded entry points and preserve
+the earlier grants/failed/UNKNOWN evidence. Read-only runtime/WFP diagnostics
+must stay separate from the installed quarantine mutation path.
 Do not restore the retired binary, run the old aggregate selftest, add AV
 exclusions, rename/repackage to evade detection, or change AV policy. A new
 alert stops validation immediately. Compile/execute blocked work must be

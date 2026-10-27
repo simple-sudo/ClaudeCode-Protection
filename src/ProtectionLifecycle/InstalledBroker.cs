@@ -1,14 +1,68 @@
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Text.Json;
 
 namespace ProtectionLifecycle;
 
 // The production command surface is deliberately smaller than the internal
 // owners: no supplied path, SID, PID, key, package, script or activation option.
-// It requires an already installed, verified current broker and elevation;
-// it never elevates itself or makes a development checkout an admin launcher.
+// Mutations require the installed verified broker and elevation. The two
+// explicit diagnostics are read-only and can be separately qualified from a
+// development build. Neither diagnostic opens the installed mutation path.
 public static class InstalledBroker
 {
+    public static (int ExitCode, string Report) InspectRuntime()
+    {
+        var layout=WfpNative.LayoutSnapshot();
+        try
+        {
+            WfpNative.AssertLayout();
+            return (0,JsonSerializer.Serialize(new {SchemaVersion=1,Scope="CURRENT_PROCESS_MARSHALLING_LAYOUT_ONLY",Status="LAYOUT_MATCHES_DECLARED_X64_CONTRACT",
+                Runtime=Environment.Version.ToString(),Is64BitProcess=Environment.Is64BitProcess,Layout=layout,
+                WfpApiCalled=false,JobApiCalled=false,NativeFilterFunctionalityQualified=false,ProtectionQualified=false}));
+        }
+        catch(PlatformNotSupportedException ex)
+        {
+            return (2,JsonSerializer.Serialize(new {SchemaVersion=1,Scope="CURRENT_PROCESS_MARSHALLING_LAYOUT_ONLY",Status="LAYOUT_NOT_QUALIFIED",
+                Runtime=Environment.Version.ToString(),Is64BitProcess=Environment.Is64BitProcess,Layout=layout,
+                Failures=WfpNative.Describe(ex),WfpApiCalled=false,JobApiCalled=false,ProtectionQualified=false}));
+        }
+    }
+
+    public static (int ExitCode, string Report) InspectWfp()
+    {
+        try
+        {
+            // ABI guard precedes the first WFP call. No install/private state,
+            // caller-provided key, filter changes or process handles are used.
+            using var engine=WfpNative.Open();
+            var layers=WfpNative.Transaction(engine,true,()=>new[]{ReadLayer(WfpNative.ConnectV4),ReadLayer(WfpNative.ConnectV6)});
+            return (0,JsonSerializer.Serialize(new {SchemaVersion=1,Scope="LOCAL_WFP_READ_ONLY_BUILTIN_LAYER_QUERY",Status="BUILTIN_LAYERS_OBSERVED",
+                Runtime=Environment.Version.ToString(),Layers=layers,ReadOnlyTransaction=true,
+                PolicyModified=false,JobApiCalled=false,NativeFilterFunctionalityQualified=false,ProtectionQualified=false,RebootQualified=false}));
+
+            object ReadLayer(Guid key)
+            {
+                var status=WfpNative.FwpmLayerGetByKey0(engine,in key,out var pointer);
+                try
+                {
+                    WfpNative.Check(status,"ReadBuiltinConnectLayer");
+                    if(pointer==IntPtr.Zero)throw new InvalidDataException("Missing builtin layer response");
+                    var layer=Marshal.PtrToStructure<WfpNative.Layer>(pointer);
+                    if(layer.Key!=key || layer.FieldCount is <1 or >128 || layer.Fields==IntPtr.Zero)
+                        throw new InvalidDataException("Builtin layer response differs");
+                    return new {Key=key.ToString("D"),Name=WfpNative.Name(layer.Display.Name),layer.Flags,layer.FieldCount,layer.Id};
+                }
+                finally{if(pointer!=IntPtr.Zero)WfpNative.FwpmFreeMemory0(ref pointer);}
+            }
+        }
+        catch(Exception ex) when(ex is WfpFailure or System.ComponentModel.Win32Exception or PlatformNotSupportedException or InvalidDataException or AggregateException)
+        {
+            return (2,JsonSerializer.Serialize(new {SchemaVersion=1,Scope="LOCAL_WFP_READ_ONLY_BUILTIN_LAYER_QUERY",Status="BUILTIN_LAYER_READ_NOT_CONFIRMED",
+                Failures=WfpNative.Describe(ex),PolicyModified=false,JobApiCalled=false,ProtectionQualified=false}));
+        }
+    }
+
     public static (int ExitCode, string Report) Quarantine()
     {
         ProtectedState.RequireAdministrator();
