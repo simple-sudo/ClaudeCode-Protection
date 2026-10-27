@@ -25,6 +25,8 @@ internal sealed class PersistentFence : IDisposable
     private readonly InstallationPackageSid package;
     private readonly object gate=new();
     private bool disposed;
+    internal bool IsSessionChannel=>plan.Data.PolicySHA256==SessionProxy.PolicySHA256 && plan.Data.ProxyPort==SessionProxy.Port;
+    internal string IntentSHA256=>plan.SHA256;
     private PersistentFence(ProtectedState state,FencePlan plan,SafeWfpEngine engine,InstallationPackageSid package)
     {this.state=state;this.plan=plan;this.engine=engine;this.package=package;}
     private static PersistentFence Open(ProtectedState state,FencePlan plan)
@@ -39,9 +41,11 @@ internal sealed class PersistentFence : IDisposable
             }));}catch(Exception log){throw new AggregateException("WFP open and failure recording both failed",ex,log);}finally{engine?.Dispose();sid?.Dispose();}throw;
         }
     }
-    internal static PersistentFence CreateQuarantined(ProtectedState state,VerifiedVersion version)
+    internal static PersistentFence CreateQuarantined(ProtectedState state,VerifiedVersion version)=>CreateQuarantined(state,version,false);
+    internal static PersistentFence CreateSessionQuarantined(ProtectedState state,VerifiedVersion version)=>CreateQuarantined(state,version,true);
+    private static PersistentFence CreateQuarantined(ProtectedState state,VerifiedVersion version,bool session)
     {
-        ProtectedState.RequireAdministrator();var plan=FencePlan.Create(state,version);var owner=Open(state,plan);
+        ProtectedState.RequireAdministrator();var plan=session?FencePlan.CreateSession(state,version):FencePlan.Create(state,version);var owner=Open(state,plan);
         try
         {
             owner.Mutate("CREATE_QUARANTINE",()=>{
@@ -85,14 +89,24 @@ internal sealed class PersistentFence : IDisposable
         proxy.AssertHealthy();
         if(plan.Data.PolicySHA256!=CompiledFencePolicy.SHA256 || plan.Data.ProxyPort!=CompiledFencePolicy.ProxyPort)
             throw WfpNative.Contract("HistoricalFenceCannotGrantProxyAdmission");
-        return Mutate("OPEN_QUALIFIED_COMPILED_IPV4_PROXY",()=>{
+        return OpenChannel(proxy.AssertHealthy,"OPEN_QUALIFIED_COMPILED_IPV4_PROXY");
+    }
+    internal FenceObservation OpenSessionGateway(SessionProxy gateway)
+    {
+        if(!IsSessionChannel)throw WfpNative.Contract("RawProxyFenceCannotGrantSessionAdmission");
+        return OpenChannel(gateway.AssertHealthy,"OPEN_AUTHENTICATED_SESSION_GATEWAY");
+    }
+    private FenceObservation OpenChannel(Action assertChannel,string operation)
+    {
+        assertChannel();
+        return Mutate(operation,()=>{
             _=WfpNative.Transaction(engine,false,()=>{
                 var before=ReadInTransaction();if(!before.FullQuarantineObserved)throw WfpNative.Contract("ProxyOpenRequiresFullQuarantine");
-                proxy.AssertHealthy();WfpNative.Check(WfpNative.FwpmFilterDeleteByKey0(engine,plan.Key(4)),"RemoveExactIPv4QuarantineOnly");
+                assertChannel();WfpNative.Check(WfpNative.FwpmFilterDeleteByKey0(engine,plan.Key(4)),"RemoveExactIPv4QuarantineOnly");
                 var after=ReadInTransaction();if(!after.IPv4ProxyOnlyObserved)throw WfpNative.Contract("IPv4ProxyPolicyTransactionMismatch");return after;
             });
             var committed=Observe();if(!committed.IPv4ProxyOnlyObserved)throw WfpNative.Contract("IPv4ProxyPolicyCommitMismatch");
-            proxy.AssertHealthy();Record("COMPILED_IPV4_PROXY_ONLY_OBSERVED",committed);return committed;
+            assertChannel();Record("COMPILED_IPV4_PROXY_ONLY_OBSERVED",committed);return committed;
         });
     }
     private T Mutate<T>(string operation,Func<T> body)

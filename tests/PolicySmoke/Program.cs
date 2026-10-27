@@ -125,4 +125,37 @@ Require(ProtectionCenter.PreflightDisplay.Render(duplicateProperty,now).Contains
 Require(ProtectionCenter.PreflightDisplay.Render("{}",now).Contains("报告无法核验"),"missing payload fields refused");
 Require(ProtectionCenter.PreflightDisplay.Render(new string(' ',262145),now).Contains("报告无法核验"),"oversized report refused");
 
+// These are the exact parsers consumed by SessionProxy before any forwarding.
+static void Refuse(Action action,string reason)
+{
+    var refused=false;
+    try{action();}catch(Exception error) when(error is System.IO.InvalidDataException or System.Text.Json.JsonException or
+        InvalidOperationException or KeyNotFoundException or FormatException or OverflowException){refused=true;}
+    Require(refused,reason);
+}
+var connect="CONNECT www.microsoft.com:443 HTTP/1.1\r\nHost: www.microsoft.com:443\r\nProxy-Authorization: Basic ZmFrZTpmYWtl\r\n\r\n";
+Require(ProxyDestinationPolicy.ParseConnect(connect).Host=="www.microsoft.com","canonical CONNECT parsed before transport authorization");
+Require(ProxyDestinationPolicy.ParseConnect(connect.Replace("Host:","host:")).Host=="www.microsoft.com","header names case insensitive");
+foreach(var malformed in new[]{connect.Replace("CONNECT ","GET "),connect.Replace(":443",":7890"),
+    connect.Replace("www.microsoft.com","127.0.0.1"),connect.Replace("www.microsoft.com","metadata.google.internal"),
+    connect.Replace("Host: www.microsoft.com:443","Host: evil.invalid:443"),
+    connect.Replace("\r\n\r\n","\r\nContent-Length: 12\r\n\r\n"),
+    connect.Replace("\r\n\r\n","\r\nTransfer-Encoding: chunked\r\n\r\n"),
+    connect.Replace("\r\n\r\n","\r\nHost: www.microsoft.com:443\r\n\r\n"),
+    connect.Replace("\r\n","\n"),connect.Replace("HTTP/1.1","HTTP/2"),connect.Replace("Host:"," Host:"),connect[..^2]})
+    Refuse(()=>ProxyDestinationPolicy.ParseConnect(malformed),"ambiguous or unauthorized CONNECT syntax refused");
+static byte[] DnsBytes(string json)=>System.Text.Encoding.UTF8.GetBytes(json);
+var doh="{\"Status\":0,\"TC\":false,\"Question\":[{\"name\":\"www.microsoft.com.\",\"type\":1}],\"Answer\":[{\"name\":\"www.microsoft.com.\",\"type\":1,\"TTL\":30,\"data\":\"1.1.1.1\"}]}";
+Require(ProxyDestinationPolicy.ParseResolution("www.microsoft.com",DnsBytes(doh)).Single().Equals(IP("1.1.1.1")),"bounded matching public A answer");
+foreach(var invalidDns in new[]{doh.Replace("\"Status\":0","\"Status\":3"),doh.Replace("\"TC\":false","\"TC\":true"),
+    doh.Replace("\"TTL\":30","\"TTL\":0"),doh.Replace("\"1.1.1.1\"","\"127.0.0.1\""),
+    doh.Replace("\"1.1.1.1\"","\"192.168.1.1\""),doh.Replace("\"1.1.1.1\"","\"::ffff:1.1.1.1\""),
+    doh.Replace("\"Status\":0","\"Status\":0,\"Status\":0"),doh.Replace("\"name\":\"www.microsoft.com.\",\"type\":1,\"TTL\"","\"name\":\"unrelated.com.\",\"type\":1,\"TTL\""),
+    doh.Replace("\"Question\":[","\"Question\":[{\"name\":\"extra.com.\",\"type\":1},")})
+    Refuse(()=>ProxyDestinationPolicy.ParseResolution("www.microsoft.com",DnsBytes(invalidDns)),"unsafe or unrelated DoH answer refused");
+var cname=doh.Replace("\"Answer\":[","\"Answer\":[{\"name\":\"www.microsoft.com.\",\"type\":5,\"TTL\":30,\"data\":\"cdn.microsoft.com.\"},")
+    .Replace("\"name\":\"www.microsoft.com.\",\"type\":1,\"TTL\"","\"name\":\"cdn.microsoft.com.\",\"type\":1,\"TTL\"");
+Require(ProxyDestinationPolicy.ParseResolution("www.microsoft.com",DnsBytes(cname)).Length==1,"CNAME chain bound to the matching question");
+Refuse(()=>ProxyDestinationPolicy.ParseResolution("www.microsoft.com",DnsBytes(cname.Replace("cdn.microsoft.com.","router.local."))),"private CNAME refused");
+
 Console.WriteLine("PolicySmoke: bounded pure policy cases passed. No product entry point, native API or network request was executed.");

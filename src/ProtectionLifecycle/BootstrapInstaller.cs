@@ -92,6 +92,7 @@ public static class BootstrapInstaller
     // one-shot admissions. This is not a generic empty-job/runtime lease.
     public static (int ExitCode,string Report) UpdatePinnedInactive()
     {
+        ProtectedSession.AssertSystemTestingAllowed();
         ProtectedState.RequireAdministrator();
         using var approval=BootstrapApproval.Open(true);
         var package=ReviewedPackage.FromBootstrap(approval);
@@ -187,6 +188,7 @@ public static class BootstrapInstaller
     // update, adoption or uninstall parameter crosses this public boundary.
     public static (int ExitCode,string Report) InstallFresh()
     {
+        ProtectedSession.AssertSystemTestingAllowed();
         ProtectedState.RequireAdministrator();
         using var approval=BootstrapApproval.Open();
         var package=ReviewedPackage.FromBootstrap(approval);

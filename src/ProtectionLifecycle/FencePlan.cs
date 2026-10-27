@@ -37,14 +37,17 @@ internal sealed class FencePlan
     }
     internal byte[] Marker(int role)=>Encoding.ASCII.GetBytes("CPCF1").Concat(Convert.FromHexString(Data.InstallationId)).Concat(Convert.FromHexString(Data.FenceId))
         .Concat(Convert.FromHexString(SHA256)).Append(checked((byte)(role<0?255:role))).ToArray();
-    internal static FencePlan Create(ProtectedState state,VerifiedVersion version)
+    internal static FencePlan Create(ProtectedState state,VerifiedVersion version)=>Create(state,version,false);
+    internal static FencePlan CreateSession(ProtectedState state,VerifiedVersion version)=>Create(state,version,true);
+    private static FencePlan Create(ProtectedState state,VerifiedVersion version,bool session)
     {
         state.AssertHeld();version.AssertHeld(state);LifecycleRecovery.AssertNoPending(state);
         var current=CurrentPointer.Parse(state.Read("current.json",4096),state.InstallationId);
         if(current.Release!=version.Package.Release || current.ManifestSHA256!=version.Package.ManifestHash)throw new InvalidDataException("Fence version differs from verified current version");
         if(ReadAll(state).Count>=64)throw new InvalidDataException("Fence inventory full");
         var id=Guid.NewGuid().ToString("N");var data=new FenceDocument(1,state.InstallationId,id,version.Package.Release,version.Package.ManifestHash,
-            CompiledFencePolicy.SHA256,CompiledFencePolicy.ProxyPort,Guid.NewGuid().ToString("N"),CompiledFencePolicy.Roles.Select(r=>new FenceFilterKey(r,Guid.NewGuid().ToString("N"))).ToArray(),"INSTALLATION_PACKAGE_SID_ONLY");
+            session?SessionProxy.PolicySHA256:CompiledFencePolicy.SHA256,session?SessionProxy.Port:CompiledFencePolicy.ProxyPort,
+            Guid.NewGuid().ToString("N"),CompiledFencePolicy.Roles.Select(r=>new FenceFilterKey(r,Guid.NewGuid().ToString("N"))).ToArray(),"INSTALLATION_PACKAGE_SID_ONLY");
         state.WriteNew(Leaf(id),JsonSerializer.SerializeToUtf8Bytes(data));return Read(state,id);
     }
     private static Guid ParseKey(string text)

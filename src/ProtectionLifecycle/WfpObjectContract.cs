@@ -11,6 +11,7 @@ public static class WfpObjectContract
 {
     public static (int ExitCode,string Report) Qualify()
     {
+        ProtectedSession.AssertSystemTestingAllowed();
         ProtectedState.RequireAdministrator();
         var folder=WindowsPathSeal.Child(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),"ClaudeCodeProtection-Qualification-ObjectContract-20261027-r4");
         using var directory=WindowsPathSeal.LockDirectory(folder,PathPolicy.Protected);

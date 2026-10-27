@@ -1,6 +1,28 @@
 # 当前开发状态
 
-## 2026-10-27 本次接收后的当前结论
+## 2026-10-27 首条可信会话主链接线：当前结论
+
+上一轮属于progress，提交 `b18d5cc`；本轮继续同一分支，不改变完整产品目标。
+SOURCE / INTEGRATED：正式Broker launch和受阻断的session-synthetic进入同一ProtectedSession所有者；
+一次性创建/首次恢复许可、安装/策略/SessionId/Job/SID/fence/固定资源绑定，复用原AtomicChild、
+PersistentFence、ProtectionRuntimeLease和成员核验，连接到撤销、封闭、零成员与资源清理。
+
+实际SessionProxy转发源码已接线：仅固定自有HTTPS目标，受保护侧新WFP允许17891而非原始7890，
+每会话认证+精确Job/token/监听核验，经固定DoH解析并审查A/CNAME回答后发送字面IP上游CONNECT；
+无宿主DNS解析或直连回退。详情与实际调用接点见[主链说明](PROTECTED-SESSION-CHAIN.md)。
+
+**正向会话仍不能运行**：14项可信采集当前均UNKNOWN，独立宿主资源/通道实机/资源授权也UNKNOWN；
+旧7890 fence需要封闭迁移，当前拒绝复用。真实Claude继续DEFERRED_BY_USER，系统测试停止有效。
+公开库入口的系统资格、安装和admission-child也补上同一事故阻断；未运行这些代码。
+
+验证仅SOURCE：六项目非生成语义检查0错误/0警告；共享转发解析负向用例未执行。
+原始报告为 `outputs/session-chain-closure-source-types.json` 和
+`outputs/session-chain-final-policy-source-types.json`（不入Git；后者仅测试源码分析）。
+BUILD / VERIFIED无本轮新增；新代码未安装，完整产品非DELIVERABLE，未改AV/日常网络/FlClash。
+后续缺口是实际可信采集/环境策略、当前工件安全资格、旧屏障迁移、宿主敏感资源及授权工具/GPU，
+以及在事故调查和具体安全条件满足后的集中实机验收。不能把源码接线或单个合成负载当全产品完成。
+
+## 上一轮PR接收记录（历史窗口）
 
 **本轮完成源码接收和限定修复，完整产品仍非 DELIVERABLE；系统测试继续 BLOCKED。**
 用户本次第五节明确保留 0x1E 后的系统测试阻断，替代历史重新授权描述。本轮未构建、安装、

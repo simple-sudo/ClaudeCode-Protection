@@ -352,3 +352,17 @@ SOURCE：六产品项目非生成语义检查0错误/0警告；测试七个源�
 AVP21.26/BFE运行，不冒充主机安全鉴定。完整产品非DELIVERABLE，正式Claude继续DEFERRED_BY_USER。
 可信转发执行边界及不可绕过路径、十四项Broker可信采集/会话绑定/失效撤销、敏感宿主资源及开发工具隔离仍缺。
 新整合工件BUILD/安装/实机验证BLOCKED，0x1E归因仍UNKNOWN；不请求例行审批、不推送、不合并远端PR。
+
+### 2026-10-27：首条可信会话主链SOURCE接线
+
+接续b18d5cc，正式Broker与固定自有合成请求共用ProtectedSession；一次性许可绑定当前安装、选择、
+策略、SessionId、Job、AppContainer、fence意图和固定资源，创建/恢复分别消费，运行复核与异常撤销。
+原AtomicChild/PersistentFence/ProtectionRuntimeLease/PR #1成员核验/精确零成员和恢复被复用，
+新增SessionProxy实际执行CONNECT、会话认证/peer归属、固定DoH与字面IP上游连接。新通道17891，
+不把原7890或候选地址判据当完整隔离；旧fence不自动迁移或删除。
+
+当前14项可信采集全部UNKNOWN；独立系统资格/敏感资源/工具设备授权亦缺，因此没有正向许可。
+新入口及公开库系统入口仍受事故停止，未新增产品构建、安装、执行、native、监听、DNS或网络测试。
+全六项目非生成语义检查0错误/0警告；转发解析器新增负向用例只做源码语义核对，没有执行通过记录。
+详见PROTECTED-SESSION-CHAIN.md；BUILD/运行仍BLOCKED、Claude仍DEFERRED_BY_USER、整体非DELIVERABLE。
+工作区/PowerShell/Python/Git/Node/MCP/GPU及敏感信息读取限制仍须同主链集成，未以固定负载替代目标。

@@ -10,6 +10,10 @@ This does not clear the Kaspersky incident, bypass AV, unlock legacy build
 scripts, permit automatic UAC confirmation, reconfigure daily FlClash or authorize
 real Claude login/inference/sessions. Source integration is not qualification.
 See docs/INTEGRATION-20261027.md and the incident record for current evidence.
+The next-stage source chain is now InstalledBroker -> ProtectedSession ->
+AtomicChild/SessionProxy/PersistentFence/ProtectionRuntimeLease. Reuse this owner;
+see docs/PROTECTED-SESSION-CHAIN.md. Its missing trusted collectors/security grants
+remain UNKNOWN and cannot issue a positive permit. No new runtime clearance exists.
 
 The user's 2026-10-26 autonomous-development instruction supersedes the earlier
 ban on local Git initialization/commits. Work in this existing checkout. Local,

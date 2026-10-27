@@ -1,9 +1,10 @@
+using System.Text.Json;
 using System.Net;
 using System.Net.Sockets;
 
 namespace ClaudeCodeProtection.Security;
 
-// Reusable, non-networking input policy for a FUTURE trusted forwarding path.
+// Non-networking policy consumed by the owned SessionProxy execution path.
 // The caller must independently own DNS, bind the selected literal IP at the
 // transport layer and deny every alternative route to the original proxy.
 // No security claim follows from merely calling this class.
@@ -95,4 +96,78 @@ internal static class ProxyDestinationPolicy
 
     private static bool IsAsciiAlnum(char c)=>
         c is >= 'a' and <= 'z' or >= 'A' and <= 'Z' or >= '0' and <= '9';
+    internal sealed record ConnectRequest(string Host, string Authorization);
+    internal static ConnectRequest ParseConnect(string header)
+    {
+        if(header.Length is <16 or >8192 || !header.EndsWith("\r\n\r\n",StringComparison.Ordinal))
+            throw new InvalidDataException("BoundedCompleteConnectHeaderRequired");
+        var lines = header.Split("\r\n", StringSplitOptions.None);
+        if(lines.Take(lines.Length-2).Any(line=>line.Length==0 || line.Any(ch=>ch<32 || ch>126)))
+            throw new InvalidDataException("NonCanonicalConnectHeader");
+        var request = lines[0].Split(' ');
+        if (request.Length != 3 || request[0] != "CONNECT" || request[2] != "HTTP/1.1" ||
+            !request[1].EndsWith(":443", StringComparison.Ordinal)) throw new InvalidDataException("HttpsConnectRequired");
+        var host = request[1][..^4];
+        if (!ProxyDestinationPolicy.IsPublicHostnameCandidate(host) || host != host.ToLowerInvariant())
+            throw new InvalidDataException("CanonicalPublicDestinationRequired");
+        var fields = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var line in lines.Skip(1).Where(line => line.Length != 0))
+        {
+            var colon = line.IndexOf(':');
+            if (colon < 1 || !fields.TryAdd(line[..colon], line[(colon + 1)..].Trim()) || fields.Count > 8)
+                throw new InvalidDataException("AmbiguousConnectHeaders");
+        }
+        if (!fields.TryGetValue("Host", out var authority) || authority != request[1] ||
+            fields.Keys.Any(key => !new[] { "Host", "Proxy-Authorization", "User-Agent", "Proxy-Connection" }.Contains(key, StringComparer.OrdinalIgnoreCase)) ||
+            fields.TryGetValue("Proxy-Connection", out var connection) && !connection.Equals("Keep-Alive", StringComparison.OrdinalIgnoreCase))
+            throw new InvalidDataException("ConnectAuthorityOrHeadersRefused");
+        return new(host, fields.GetValueOrDefault("Proxy-Authorization", ""));
+    }
+    internal static IPAddress[] ParseResolution(string host, byte[] bytes)
+    {
+        if (bytes.Length is < 1 or > 65536) throw new InvalidDataException("ResolverResponseCapacity");
+        using var document = JsonDocument.Parse(bytes, new JsonDocumentOptions { MaxDepth = 8 });
+        var root = document.RootElement; Unique(root);
+        if (root.GetProperty("Status").GetInt32() != 0 || root.GetProperty("TC").GetBoolean())
+            throw new InvalidDataException("ResolverResponseFailedOrTruncated");
+        var questions = root.GetProperty("Question").EnumerateArray().ToArray();
+        if (questions.Length != 1) throw new InvalidDataException("ResolverQuestionCount");
+        Unique(questions[0]);
+        if (DnsName(questions[0].GetProperty("name").GetString()) != host || questions[0].GetProperty("type").GetInt32() != 1)
+            throw new InvalidDataException("ResolverQuestionMismatch");
+        var answers = root.GetProperty("Answer").EnumerateArray().ToArray();
+        if (answers.Length is < 1 or > 24) throw new InvalidDataException("ResolverAnswerCapacity");
+        var aliases = new Dictionary<string, string>(StringComparer.Ordinal);
+        var addresses = new List<(string Name, IPAddress Address)>();
+        foreach (var answer in answers)
+        {
+            Unique(answer);
+            var name = DnsName(answer.GetProperty("name").GetString());
+            if (answer.GetProperty("TTL").GetInt64() < 1) throw new InvalidDataException("ResolverExpiredAnswer");
+            var type = answer.GetProperty("type").GetInt32();
+            var data = answer.GetProperty("data").GetString();
+            if (type == 5) { if (!aliases.TryAdd(name, DnsName(data))) throw new InvalidDataException("DuplicateAlias"); }
+            else if (type == 1 && IPAddress.TryParse(data, out var ip) && ip.AddressFamily == AddressFamily.InterNetwork &&
+                ProxyDestinationPolicy.IsPublicAddressCandidate(ip)) addresses.Add((name, ip));
+            else throw new InvalidDataException("PrivateSpecialOrUnsupportedResolverAnswer");
+        }
+        var terminal = host; var visited = new HashSet<string>(StringComparer.Ordinal);
+        while (aliases.TryGetValue(terminal, out var next))
+        { if (!visited.Add(terminal) || visited.Count > 8) throw new InvalidDataException("ResolverAliasLoop"); terminal = next; }
+        if (aliases.Keys.Any(name => !visited.Contains(name)) || addresses.Count is < 1 or > 16 || addresses.Any(item => item.Name != terminal))
+            throw new InvalidDataException("UnrelatedResolverAnswer");
+        return addresses.Select(item => item.Address).Distinct().ToArray();
+    }
+    private static string DnsName(string? input)
+    {
+        var name = input?.ToLowerInvariant();
+        if (name?.EndsWith(".", StringComparison.Ordinal) == true) name = name[..^1];
+        if (!ProxyDestinationPolicy.IsPublicHostnameCandidate(name)) throw new InvalidDataException("ResolverNameRefused");
+        return name!;
+    }
+    private static void Unique(JsonElement value)
+    {
+        var names = value.EnumerateObject().Select(item => item.Name).ToArray();
+        if (names.Distinct(StringComparer.Ordinal).Count() != names.Length) throw new InvalidDataException("DuplicateResolverField");
+    }
 }

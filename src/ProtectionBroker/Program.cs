@@ -6,7 +6,7 @@ internal static class Program
 {
     private static int Main(string[] args)
     {
-        if (args.Length != 1 || args[0] is not ("launch" or "quarantine" or "inspect-runtime" or "inspect-wfp" or "qualify-wfp-objects" or "inspect-installed-fence" or "qualify-admission" or "qualify-network" or "qualify-gpu" or "qualify-watchdog" or "admission-child"))
+        if (args.Length != 1 || args[0] is not ("launch" or "session-synthetic" or "quarantine" or "inspect-runtime" or "inspect-wfp" or "qualify-wfp-objects" or "inspect-installed-fence" or "qualify-admission" or "qualify-network" or "qualify-gpu" or "qualify-watchdog" or "admission-child"))
         {
             Console.Error.WriteLine("ProtectionBroker inspect-runtime | inspect-wfp; inspect-installed-fence (installed read-only); quarantine | qualify-admission | qualify-network | qualify-gpu | qualify-watchdog (installed); qualify-wfp-objects (protected qualification host). Management requires existing elevation.");
             return 64;
@@ -14,7 +14,7 @@ internal static class Program
         // Incident hold precedes elevation, installed-state access and every
         // native qualification call. Clearing it requires a reviewed source
         // change after crash investigation, never a flag or cached PASS.
-        if (args[0] is "qualify-wfp-objects" or "qualify-admission" or "qualify-network" or "qualify-gpu" or "qualify-watchdog")
+        if (args[0] is "session-synthetic" or "qualify-wfp-objects" or "qualify-admission" or "qualify-network" or "qualify-gpu" or "qualify-watchdog")
         {
             Console.Error.WriteLine("SYSTEM_VALIDATION_BLOCKED: 0x1E crash investigation and artifact clearance are required. No qualification was started.");
             return 125;
@@ -24,6 +24,7 @@ internal static class Program
             if(args[0]=="admission-child")return ProtectionLifecycle.InstalledBroker.RunAdmissionCanary();
             var result = args[0] switch {
                 "launch" => ProtectionLifecycle.InstalledBroker.LaunchDevelopmentSession(),
+                "session-synthetic" => ProtectionLifecycle.InstalledBroker.RunSyntheticSession(),
                 "inspect-runtime" => ProtectionLifecycle.InstalledBroker.InspectRuntime(),
                 "inspect-wfp" => ProtectionLifecycle.InstalledBroker.InspectWfp(),
                 "qualify-wfp-objects" => ProtectionLifecycle.WfpObjectContract.Qualify(),

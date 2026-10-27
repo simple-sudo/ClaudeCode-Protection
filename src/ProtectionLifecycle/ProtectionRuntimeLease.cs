@@ -17,20 +17,29 @@ internal sealed class ProtectionRuntimeLease
     private readonly OwnedKernelJob job;
     private readonly IReadOnlyList<PersistentFence> fences;
     private readonly ProxyChannelLease proxy;
+    private readonly SessionProxy? gateway;
+    private readonly ProtectedSession.Admission? admission;
     private readonly Stopwatch clock=Stopwatch.StartNew();
     private readonly string pointerSHA256,id=Guid.NewGuid().ToString("N");
     private long deadlineMs=25000;
     private bool activated,closed;
     private RuntimeStop? stopped;
-    internal ProtectionRuntimeLease(ProtectedState state,VerifiedVersion version,OwnedKernelJob job,IReadOnlyList<PersistentFence> fences,ProxyChannelLease proxy)
+    internal ProtectionRuntimeLease(ProtectedState state,VerifiedVersion version,OwnedKernelJob job,IReadOnlyList<PersistentFence> fences,ProxyChannelLease proxy,
+        SessionProxy? gateway=null,ProtectedSession.Admission? admission=null)
     {
         this.state=state;this.version=version;this.job=job;this.fences=fences;this.proxy=proxy;
+        if((gateway is null)!=(admission is null))throw WfpNative.Contract("SessionGatewayAndPermitRequiredTogether");
+        if(gateway is not null && !ReferenceEquals(gateway,admission!.Gateway))throw WfpNative.Contract("SessionRuntimeGatewayMismatch");
+        admission?.AssertRuntimeObjects(job,version,fences);
+        this.gateway=gateway;this.admission=admission;
+        if(gateway is not null)id=gateway.SessionId;
         pointerSHA256=state.Read("current.json",4096).SHA256;
         if(fences.Count==0 || !job.AtomicAdmissionReserved)throw WfpNative.Contract("RuntimeRequiresAtomicAdmissionAndFence");
         AssertHealthy();
         state.WriteNew("session-open-"+id+".json",JsonSerializer.SerializeToUtf8Bytes(new {SchemaVersion=1,state.InstallationId,SessionId=id,job.JobId,
             version.Package.Release,version.Package.ManifestHash,CurrentPointerSHA256=pointerSHA256,StartupDeadlineMs=deadlineMs,
-            Scope="SINGLE_ATOMIC_JOB_COMPILED_PROXY",AdmissionReusable=false,AtUtc=DateTime.UtcNow.ToString("o")}));
+            Scope=gateway is null?"SINGLE_ATOMIC_JOB_COMPILED_PROXY":"SINGLE_AUTHORIZED_SESSION_GATEWAY",AdmissionReusable=false,
+            SessionBindingSHA256=admission?.BindingSHA256,AtUtc=DateTime.UtcNow.ToString("o")}));
     }
     internal void AssertHealthy()
     {
@@ -39,7 +48,9 @@ internal sealed class ProtectionRuntimeLease
         if(state.Read("current.json",4096).SHA256!=pointerSHA256)throw WfpNative.Contract("RuntimeInstalledSelectionDrift");
         if(clock.ElapsedMilliseconds>=deadlineMs)throw WfpNative.Contract("RuntimeLeaseExpired");
         proxy.AssertHealthy();
+        admission?.AssertCurrent();gateway?.AssertHealthy();
         foreach(var fence in fences)if(!fence.Observe().IPv4ProxyOnlyObserved)throw WfpNative.Contract("RuntimeFenceDrift");
+        if(gateway is not null && fences.Any(f=>!f.IsSessionChannel))throw WfpNative.Contract("SessionRawProxyPolicyDrift");
         if(!job.Observe().ExpectedLimits)throw WfpNative.Contract("RuntimeJobLimitsDrift");
     }
     // One transition from bounded startup to a bounded active lease. A later
@@ -55,6 +66,8 @@ internal sealed class ProtectionRuntimeLease
     {
         if(stopped is not null)return stopped;
         closed=true;var errors=new List<Exception>();var quarantined=true;long quarantineAt=-1,jobAt=-1;JobSnapshot? zero=null;
+        admission?.Revoke();
+        try{gateway?.Revoke();}catch(Exception ex){errors.Add(ex);}
         try{state.WriteNew("session-stop-intent-"+id+".json",JsonSerializer.SerializeToUtf8Bytes(new {SchemaVersion=1,state.InstallationId,SessionId=id,job.JobId,
             Reason=reason,AdmissionClosed=true,AtMs=clock.ElapsedMilliseconds}));}catch(Exception ex){errors.Add(ex);}
         foreach(var fence in fences)

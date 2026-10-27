@@ -118,7 +118,10 @@ internal sealed class ProxyChannelLease : IDisposable
             }
         }
     }
-    private static uint ListenerOwner()
+    private static uint ListenerOwner()=>ReadLoopbackOwner(CompiledFencePolicy.ProxyPort,null);
+    internal static uint SessionPeerOwner(int sourcePort)=>ReadLoopbackOwner(sourcePort,SessionProxy.Port);
+    internal static uint SessionListenerOwner()=>ReadLoopbackOwner(SessionProxy.Port,null);
+    private static uint ReadLoopbackOwner(int localPort,int? remotePort)
     {
         uint size=0;var first=GetExtendedTcpTable(IntPtr.Zero,ref size,false,2,5,0);
         if(first!=122 || size is <4 or >1024*1024)throw new WfpFailure("SizeProxyOwnerTable",first);
@@ -128,7 +131,7 @@ internal sealed class ProxyChannelLease : IDisposable
             try
             {
                 var status=GetExtendedTcpTable(buffer,ref size,false,2,5,0);
-                if(status==122){if(size>1024*1024)throw WfpNative.Contract("ProxyOwnerTableCapacity");continue;}
+                if(status==122){if(size is <4 or >1024*1024)throw WfpNative.Contract("ProxyOwnerTableCapacity");continue;}
                 WfpNative.Check(status,"ReadProxyOwnerTable");var count=Marshal.ReadInt32(buffer);
                 if(count<0 || count>(capacity-4)/24)throw WfpNative.Contract("ProxyOwnerTableBounds");
                 var owners=new List<uint>();
@@ -136,7 +139,10 @@ internal sealed class ProxyChannelLease : IDisposable
                 {
                     var row=buffer+4+i*24;var port=unchecked((uint)Marshal.ReadInt32(row,8));
                     var decoded=((port&255)<<8)|((port>>8)&255);
-                    if(Marshal.ReadInt32(row)==2 && unchecked((uint)Marshal.ReadInt32(row,4))==0x0100007f && decoded==CompiledFencePolicy.ProxyPort)
+                    var remote=unchecked((uint)Marshal.ReadInt32(row,16));
+                    var remoteDecoded=((remote&255)<<8)|((remote>>8)&255);
+                    if(Marshal.ReadInt32(row)==(remotePort is null?2:5) && unchecked((uint)Marshal.ReadInt32(row,4))==0x0100007f && decoded==localPort &&
+                        (remotePort is null || unchecked((uint)Marshal.ReadInt32(row,12))==0x0100007f && remoteDecoded==remotePort))
                         owners.Add(unchecked((uint)Marshal.ReadInt32(row,20)));
                 }
                 if(owners.Count!=1 || owners[0]==0)throw WfpNative.Contract("UniqueLoopbackProxyListenerRequired");return owners[0];
