@@ -76,6 +76,20 @@ Read-Check 'windows-region' {
     if ($ok) { Add-Check 'windows-region' 'PASS' 'Eastern Standard Time / en-US / en-US; not network isolation evidence' }
     else { Add-Check 'windows-region' 'FAIL' 'Timezone or culture drift detected; no automatic system change' }
 }
+Read-Check 'host-timezone' {
+    if ((Get-TimeZone).Id -eq 'Eastern Standard Time') {
+        Add-Check 'host-timezone' 'PASS' 'Selected Eastern Standard Time observed; not an IP or network proof'
+    } else {
+        Add-Check 'host-timezone' 'FAIL' 'Timezone differs from the reviewed user policy; no automatic modification'
+    }
+}
+Read-Check 'host-locale' {
+    if ((Get-Culture).Name -eq 'en-US' -and (Get-WinSystemLocale).Name -eq 'en-US') {
+        Add-Check 'host-locale' 'PASS' 'User culture and system locale match the reviewed en-US policy'
+    } else {
+        Add-Check 'host-locale' 'FAIL' 'Culture or system locale differs; no automatic modification'
+    }
+}
 Read-Check 'firewall-service' {
     if ((Get-Service -Name MpsSvc).Status -eq 'Running') { Add-Check 'firewall-service' 'PASS' 'MpsSvc running' }
     else { Add-Check 'firewall-service' 'FAIL' 'MpsSvc is not running' }
