@@ -18,6 +18,12 @@ internal static class Program
                     var audit = await EnvironmentAudit.Run(Environment.CurrentDirectory, args.Contains("--online"));
                     Console.WriteLine(JsonSerializer.Serialize(audit, Files.Json));
                     return Gate.Reject(audit).Length == 0 ? 0 : 2;
+                case "preflight":
+                    if (args.Length > 2 || (args.Length == 2 && args[1] != "--online")) return 64;
+                    var observed = await EnvironmentAudit.Run(Environment.CurrentDirectory, args.Contains("--online"));
+                    Console.WriteLine(JsonSerializer.Serialize(StrictPreflight.Evaluate(observed, DateTimeOffset.UtcNow), Files.Json));
+                    // A read-only user audit cannot authorize protected launch.
+                    return 2;
                 case "launch":
                     Console.Error.WriteLine("DEFERRED_BY_USER: Real Claude launch remains unavailable; protection and lifecycle qualification are incomplete.");
                     return 125;
@@ -46,7 +52,7 @@ internal static class Program
                     Console.WriteLine(JsonSerializer.Serialize(transport, Files.Json));
                     return transport.Status == "PASS" ? 0 : 2;
                 default:
-                    Console.WriteLine("ClaudeProtection daily | audit [--online] | system-proxy-baseline | process-identity PID | transport | repair-proxy-plan | repair-proxy SHA256 | restore-proxy");
+                    Console.WriteLine("ClaudeProtection daily | audit [--online] | preflight [--online] | system-proxy-baseline | process-identity PID | transport | repair-proxy-plan | repair-proxy SHA256 | restore-proxy");
                     Console.WriteLine("Real Claude launch is deferred. Engineering commands are excluded from this build.");
                     return args.Length == 0 ? 0 : 64;
             }
