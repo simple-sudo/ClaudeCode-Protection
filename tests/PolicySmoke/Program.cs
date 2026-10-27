@@ -195,4 +195,5 @@ foreach(var kernelImage in new[]{priorImage,nextImage,foreignImage})
 Refuse(()=>FenceMigrationSelection.Decide(priorImage,priorImage,priorImage,priorImage,true),"identical transition images refused");
 Refuse(()=>FenceMigrationSelection.Decide(priorImage,nextImage,"invalid",nextImage,true),"malformed selection refused");
 
-Console.WriteLine("PolicySmoke: bounded pure policy cases passed. No product entry point, native API or network request was executed.");
+await SessionTunnelCases.RunAsync();
+Console.WriteLine("PolicySmoke: bounded pure policy and in-memory duplex cases passed. No product entry point, native API or network request was executed.");

@@ -1,5 +1,21 @@
 # 当前开发状态
 
+## 2026-10-27 受控网关正常结束与故障排空修复（本轮）
+
+接续8611fd2，工作区干净。发现SessionProxy任一方向正常EOF会取消两个方向，可能截断仍在返回的数据；
+其余方向的并发错误也可能被当作取消清理而吞掉。修复直接进入ProtectedSession使用的同一SessionProxy：
+正常EOF仅对对应目的Socket发送FIN，另一方向继续传输；错误/超时/撤销取消并观察两个复制任务后才释放端点。
+原每方向8MiB、会话64MiB、连接20秒/会话60秒上限保持，字节在写出前计入预算；不存在直连回退。
+固定会话canary改为精确HTTP/1.1 HEAD，避免GET只取头后丢弃未读正文自行中止隧道；未改目标或证书验证。
+网络策略摘要包含新传输语义，旧环境预期/屏障不会自动继承新策略。
+
+SOURCE / INTEGRATED：六产品项目语义检查0错误/0警告（Lifecycle35源），11源纯托管测试语义无诊断。
+原始报告为outputs/session-duplex-source-types-final.json、session-duplex-policy-source-types-final.json。
+新增内存双向端点用例覆盖两个方向延迟回复、后发错误、写失败、方向/会话预算及截止撤销、排空；
+测试调用实际SessionTunnel复制器，不开端口/文件或调用native。当前本节尚未有BUILD/执行结果。
+本轮未恢复WFP/Job/Watchdog实验、故障注入或真实Claude，未改AV、FlClash或系统网络。
+完整会话的可信证据、资源/工具/GPU授权和系统资格缺口未被此修复补位，完整产品仍非DELIVERABLE。
+
 ## 2026-10-27 用户重新授权：本机验证与封闭网络迁移
 
 用户已明确允许有界构建/系统验证继续，并接受可能再次蓝屏；历史停止不是永久禁令。

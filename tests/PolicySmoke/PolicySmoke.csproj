@@ -11,6 +11,7 @@
     <!-- Source-link the exact production policy without executing application,
          native code, product scripts, WFP, Job, CUDA or proxy diagnostics. -->
     <Compile Include="Program.cs" />
+    <Compile Include="SessionTunnelCases.cs" />
     <Compile Include="../../src/ClaudeProtection/Models.cs" Link="Models.cs" />
     <Compile Include="../../src/ClaudeProtection/StrictPreflight.cs" Link="StrictPreflight.cs" />
     <Compile Include="../../src/ClaudeProtection/DiagnosticNetworkTargetPolicy.cs" Link="DiagnosticNetworkTargetPolicy.cs" />
@@ -18,6 +19,7 @@
     <Compile Include="../../src/Shared/StrictEnvironmentRequirements.cs" Link="StrictEnvironmentRequirements.cs" />
     <Compile Include="../../src/Shared/EnvironmentExpectations.cs" Link="EnvironmentExpectations.cs" />
     <Compile Include="../../src/Shared/FenceMigrationSelection.cs" Link="FenceMigrationSelection.cs" />
+    <Compile Include="../../src/Shared/SessionTunnel.cs" Link="SessionTunnel.cs" />
     <Compile Include="../../src/ProtectionCenter/PreflightDisplay.cs" Link="PreflightDisplay.cs" />
   </ItemGroup>
 </Project>

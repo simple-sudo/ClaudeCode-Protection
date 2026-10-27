@@ -40,6 +40,12 @@ AppContainer/Low/零capability核验。凭据只在本会话进程内生成与�
 不相关回答或CNAME循环均拒绝；每次新隧道重新解析，无跨请求缓存。
 审查结果直接用于上游字面IPv4 CONNECT，不再交给FlClash解析原始域名；客户端TLS保留原目标名称。
 TLS采用严格离线吊销与禁止AIA下载；缺证书/吊销缓存会失败，未关闭验证。
+实际隧道复制器SessionTunnel由SessionProxy直接调用：一方正常EOF只关闭对应Socket的发送方向，
+允许另一方向继续排空；出现错误/截止/撤销则取消两方向并观察两个任务后释放端点。
+双向字节在写出前检查每方向及会话总预算，原20秒连接期限仍包含排空时间，没有新增无限等待。
+固定canary使用精确HTTP/1.1 HEAD检测响应头，不再用GET后丢弃未读正文而中止自己的连接。
+这些变化进入网络策略摘要；已有预期配置不能自动转授新策略证据。
+参考：[Socket发送方向关闭](https://learn.microsoft.com/dotnet/api/system.net.sockets.socket.shutdown)。
 参考：[连接回调](https://learn.microsoft.com/dotnet/api/system.net.http.socketshttphandler.connectcallback)、
 [禁止证书下载](https://learn.microsoft.com/dotnet/api/system.security.cryptography.x509certificates.x509chainpolicy.disablecertificatedownloads)、
 [TCP连接所有者字段](https://learn.microsoft.com/windows/win32/api/tcpmib/ns-tcpmib-mib_tcprow_owner_pid)。

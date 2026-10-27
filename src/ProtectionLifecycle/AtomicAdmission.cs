@@ -352,7 +352,11 @@ internal sealed class AtomicChild : IDisposable
                 BypassProxyOnLocal=false,Credentials=new System.Net.NetworkCredential(sessionId,sessionSecret)},
                 AllowAutoRedirect=false,UseCookies=false,SslOptions=SessionProxy.OfflineTls()};
             using var client=new HttpClient(handler){Timeout=TimeSpan.FromSeconds(10)};
-            using var response=client.GetAsync("https://"+SessionProxy.Target+"/",HttpCompletionOption.ResponseHeadersRead).GetAwaiter().GetResult();
+            // A transport canary needs headers only. GET + disposing an unread
+            // body can abort its own tunnel and look like a gateway failure.
+            using var request=new HttpRequestMessage(HttpMethod.Head,"https://"+SessionProxy.Target+"/") {
+                Version=System.Net.HttpVersion.Version11,VersionPolicy=HttpVersionPolicy.RequestVersionExact};
+            using var response=client.SendAsync(request,HttpCompletionOption.ResponseHeadersRead).GetAwaiter().GetResult();
             return (int)response.StatusCode is >=200 and <400?42:126;
         }
         if(gpuPlan is not null)

@@ -17,7 +17,7 @@ internal sealed class SessionProxy : IDisposable
     internal const int Port = 17891;
     internal const string Target = "www.microsoft.com";
     internal static readonly string PolicySHA256 = Convert.ToHexString(SHA256.HashData(Encoding.ASCII.GetBytes(
-        "CPC-SESSION-NET1;listen=127.0.0.1:17891;upstream=127.0.0.1:7890;connect=www.microsoft.com:443;doh=1.1.1.1:443/cloudflare-dns.com;A-only;ipv6=deny;no-direct-fallback;tls=offline-no-download;auth=per-session+held-job-peer+AC-low-zero;max-connections=4;accepted=32;max-bytes=8MiB-per-direction+64MiB-total;connection-seconds=20;session-seconds=60")));
+        "CPC-SESSION-NET1;listen=127.0.0.1:17891;upstream=127.0.0.1:7890;connect=www.microsoft.com:443;doh=1.1.1.1:443/cloudflare-dns.com;A-only;ipv6=deny;no-direct-fallback;tls=offline-no-download;auth=per-session+held-job-peer+AC-low-zero;max-connections=4;accepted=32;max-bytes=8MiB-per-direction+64MiB-total;connection-seconds=20;session-seconds=60;half-close=send-fin+drain-peer;fault=cancel+drain-both")));
     private readonly TcpListener listener = new(IPAddress.Loopback, Port);
     private readonly CancellationTokenSource stop = new(TimeSpan.FromSeconds(60));
     private readonly ConcurrentDictionary<int, (TcpClient Client, Task Work)> clients = new();
@@ -111,28 +111,13 @@ internal sealed class SessionProxy : IDisposable
                 AssertHealthy();
                 AtomicChild.AssertSessionPeer(job, process, packageSid, peer.Port);
                 await stream.WriteAsync(Encoding.ASCII.GetBytes("HTTP/1.1 200 Connection Established\r\n\r\n"), deadline.Token);
-                var upload = Pump(stream, remote, deadline.Token);
-                var download = Pump(remote, stream, deadline.Token);
-                var completed = await Task.WhenAny(upload, download);
-                await completed; // A failing first pump is not a clean EOF.
-                deadline.Cancel(); remote.Dispose(); client.Dispose();
-                try { await Task.WhenAll(upload, download); }
-                catch (Exception ex) when (deadline.IsCancellationRequested && ex is OperationCanceledException or ObjectDisposedException or IOException or SocketException) { }
+                await SessionTunnel.CopyAsync(stream,remote,
+                    ()=>client.Client.Shutdown(SocketShutdown.Send),()=>remote.Socket.Shutdown(SocketShutdown.Send),
+                    count=>{if(Interlocked.Add(ref transferred,count)>64*1024*1024)throw new InvalidDataException("SessionTunnelByteBudgetExceeded");},
+                    8*1024*1024,deadline.Token);
             }
             catch (Exception ex)
             { if (authenticated && !stop.IsCancellationRequested) Fail(ex); }
-        }
-    }
-    private async Task Pump(Stream input, Stream output, CancellationToken token)
-    {
-        var buffer = new byte[16384]; long total = 0;
-        while (true)
-        {
-            var count = await input.ReadAsync(buffer, token); if (count == 0) return;
-            total += count;
-            if (total > 8 * 1024 * 1024 || Interlocked.Add(ref transferred,count)>64*1024*1024)
-                throw new InvalidDataException("SessionTunnelByteBudgetExceeded");
-            await output.WriteAsync(buffer.AsMemory(0, count), token);
         }
     }
     private async Task<IPAddress[]> Resolve(string host, CancellationToken token)
