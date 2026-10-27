@@ -21,6 +21,7 @@
     <Compile Include="../Shared/ProxyDestinationPolicy.cs" Link="ProxyDestinationPolicy.cs" />
     <Compile Include="../Shared/StrictEnvironmentRequirements.cs" Link="StrictEnvironmentRequirements.cs" />
     <Compile Include="../Shared/EnvironmentExpectations.cs" Link="EnvironmentExpectations.cs" />
+    <Compile Include="../Shared/FenceMigrationSelection.cs" Link="FenceMigrationSelection.cs" />
     <EmbeddedResource Include="LifecycleProtocol.json" />
     <EmbeddedResource Include="BrokerProtocol.json" />
     <EmbeddedResource Include="RecoveryProtocol.json" />

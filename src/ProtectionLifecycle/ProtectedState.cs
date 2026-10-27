@@ -165,7 +165,7 @@ internal sealed class ProtectedState : IDisposable
     internal string[] ListLeaves(string fixedPrefix)
     {
         AssertHeld();
-        if(fixedPrefix is not ("operation-" or "plan-" or "release-" or "restage-" or "recovery-" or "selection-" or "stage-intent-" or "job-intent-" or "fence-intent-" or "loopback-intent-")) throw new InvalidOperationException("Fixed inventory prefix required");
+        if(fixedPrefix is not ("operation-" or "plan-" or "release-" or "restage-" or "recovery-" or "selection-" or "stage-intent-" or "job-intent-" or "fence-intent-" or "fence-migration-" or "loopback-intent-")) throw new InvalidOperationException("Fixed inventory prefix required");
         // Enumeration locates names only. Each matched file must separately pass
         // the handle, ACL, strict JSON and identity checks before it is trusted.
         return Directory.EnumerateFiles(directory.Path,"*",SearchOption.TopDirectoryOnly)

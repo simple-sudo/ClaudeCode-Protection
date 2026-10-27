@@ -15,24 +15,26 @@ internal static class Program
             }
             catch(Exception ex){Console.Error.WriteLine("Environment intent not confirmed: "+ex.GetType().Name+"; code="+ex.HResult);return 125;}
         }
-        if (args.Length != 1 || args[0] is not ("inspect-session-environment" or "launch" or "session-synthetic" or "quarantine" or "inspect-runtime" or "inspect-wfp" or "qualify-wfp-objects" or "inspect-installed-fence" or "qualify-admission" or "qualify-network" or "qualify-gpu" or "qualify-watchdog" or "admission-child"))
+        if (args.Length != 1 || args[0] is not ("migrate-session-network" or "inspect-session-environment" or "launch" or "session-synthetic" or "quarantine" or "inspect-runtime" or "inspect-wfp" or "qualify-wfp-objects" or "inspect-installed-fence" or "qualify-admission" or "qualify-network" or "qualify-gpu" or "qualify-watchdog" or "admission-child"))
         {
             Console.Error.WriteLine("ProtectionBroker inspect-runtime | inspect-wfp; inspect-installed-fence (installed read-only); quarantine | qualify-admission | qualify-network | qualify-gpu | qualify-watchdog (installed); qualify-wfp-objects (protected qualification host). Management requires existing elevation.");
             Console.Error.WriteLine("Installed intent management: inspect-session-environment | configure-session-environment EXPECTED_SHA_OR_none WINDOWS_TIMEZONE USER_LOCALE SYSTEM_LOCALE. This never changes Windows settings or grants launch.");
+            Console.Error.WriteLine("Installed inactive network maintenance: migrate-session-network (closed admissions, full quarantine; no launch permission).");
             return 64;
         }
-        // Incident hold precedes elevation, installed-state access and every
-        // native qualification call. Clearing it requires a reviewed source
-        // change after crash investigation, never a flag or cached PASS.
-        if (args[0] is "session-synthetic" or "qualify-wfp-objects" or "qualify-admission" or "qualify-network" or "qualify-gpu" or "qualify-watchdog")
+        // The current artifact has not obtained bounded runtime/install
+        // clearance. Authorization to perform qualification is not clearance
+        // for an arbitrary invocation or a session permit.
+        if (args[0] is "migrate-session-network" or "session-synthetic" or "qualify-wfp-objects" or "qualify-admission" or "qualify-network" or "qualify-gpu" or "qualify-watchdog")
         {
-            Console.Error.WriteLine("SYSTEM_VALIDATION_BLOCKED: 0x1E crash investigation and artifact clearance are required. No qualification was started.");
+            Console.Error.WriteLine("SYSTEM_ARTIFACT_NOT_QUALIFIED: bounded runtime/install clearance is required. No system operation was started.");
             return 125;
         }
         try
         {
             if(args[0]=="admission-child")return ProtectionLifecycle.InstalledBroker.RunAdmissionCanary();
             var result = args[0] switch {
+                "migrate-session-network" => ProtectionLifecycle.InstalledBroker.MigrateSessionNetwork(),
                 "launch" => ProtectionLifecycle.InstalledBroker.LaunchDevelopmentSession(),
                 "inspect-session-environment" => ProtectionLifecycle.InstalledBroker.InspectEnvironmentExpectations(),
                 "session-synthetic" => ProtectionLifecycle.InstalledBroker.RunSyntheticSession(),

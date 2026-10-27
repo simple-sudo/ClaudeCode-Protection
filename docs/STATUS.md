@@ -1,5 +1,38 @@
 # 当前开发状态
 
+## 2026-10-27 用户重新授权：本机验证与封闭网络迁移
+
+用户已明确允许有界构建/系统验证继续，并接受可能再次蓝屏；历史停止不是永久禁令。
+不自动重现、不绕过AV/UAC、不改日常FlClash/全机网络，先固定证据与具体工件范围。
+真实Claude仍延期，十四项与系统门禁不能从这份授权推导PASS。
+
+- BUILD：b204c979 的8源纯托管测试、Broker/Lifecycle（34源+2项目+4资源）分别离线还原/编译成功；
+  Broker构建0错误/0警告。固定SDK8.0.422/ref8.0.28、空包源、导入审计、独立输出与前后快照。
+- VERIFIED（有限）：纯策略用例实际退出0；当前Broker `inspect-runtime` 退出0，x64结构布局符合声明。
+  `inspect-wfp` 实际退出2，ReadBuiltinConnectLayer错误5（访问被拒绝），保留原FAIL/UNKNOWN，不改权限。
+  两个普通用户诊断均退出；未安装、未创建Job/进程隔离、未变更WFP规则。
+- SOURCE / INTEGRATED：安装Broker新增 `migrate-session-network`，只接受固定7890旧策略与当前17891策略。
+  所有历史单次准入关闭、回环豁免关闭后，先完整封闭，再一事务替换同安装SID/同7个对象键；
+  保留新旧完整字节和摘要，内核独立回读后比较旧摘要原子选择新计划。中断只由同入口按新旧标记恢复；
+  未完成迁移阻断正常启动/安装生命周期。不会杀任务来使迁移通过，也不授予启动许可。
+  六项目语义分析0错误/0警告：`outputs/session-network-migration-final-source-types.json`（Lifecycle34源）；
+  同一实际迁移阶段决策进入PolicySmoke的事务前/提交后/选择后及反向/未知/未封闭拒绝用例，九源语义检查无诊断。
+  `outputs/session-network-migration-policy-source-types.json`是源码证据，此处尚无新增用例执行结果。
+  此迁移源码尚未安装/执行；上述b204c979构建不覆盖后续源码。
+- 事故诊断：核验了既有10:34Z日志。`!analyze` 未找到扩展导出，内核符号缺失；退出0不代表分析成功。
+  显式扩展+微软公开符号的修正分析在启动前被自动审批拒绝，仅返回blocked by policy；不换入口绕过。
+  尚未取得可归因的故障栈，无新蓝屏/故障注入；详见事故记录。
+
+复现资料均保留在忽略的 `work/session-validation-reopened-control`、
+`work/session-validation-policy-b204c97-build`、`work/session-validation-broker-b204c97-build`；
+原失败和受保护分析日志不覆盖。有限前后观察AVP/BFE运行、FlClash28088/Core16112未变、
+Application新AV事件0，完整AV覆盖UNKNOWN，Kaspersky事件未结案。
+
+正式许可仍不能签发：当前工件的安装/系统资格、功能性网络/DNS可信证据、宿主资源隔离与工具/GPU授权仍缺。
+源码入口的限制现明确为当前工件未获资格，不把用户已重开的授权继续解释为永久蓝屏禁令。
+完整产品仍非DELIVERABLE；没有推送、AV/系统网络/FlClash改动或真实Claude执行。
+下文是各轮原窗口记录，其“停止/未编译”只适用于当时。
+
 ## 2026-10-27 挂起准备与实时环境证据接线：当前结论
 
 上一轮progress为 `04e7419`。本轮修正“需要根Job/SID证据才能创建根对象”的准备依赖：

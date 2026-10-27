@@ -1,6 +1,34 @@
-# 2026-10-27 系统蓝屏事件：运行测试停止
+# 2026-10-27 系统蓝屏事件与诊断进展
 
-## 当前边界：本次 GitHub PR 接收指示
+## 当前边界：用户再次明确授权有界实机推进
+
+用户最新明确表示相关缺口可以授权，即使再次蓝屏也可继续定位；不要求为复现而复现。
+这收紧了下方停止条款的适用时间：它们保留为历史，不再解释为永久禁止构建/实机资格。
+继续具体工件审查、有限执行、人工UAC、AV保持、新告警即停、日常FlClash/网络保持、真实Claude延期。
+先读取已有分析结果，不默认重跑同一实验。新结果见STATUS当前节。
+
+### 已核实的分析失败及本轮审批拒绝
+
+10:34:25Z已有分析退出0但摘要为空。13:07Z通过固定只读helper、人类UAC，读取原受保护日志，
+未修改其ACL；SHA256仍为738AA185D0397C03F3BA651CDEB98156BB7621818247C9D1E7BF74ACF32F0EE6。
+日志34532字节/452行，明确包含 `Unable to add extension DLL: exts`、
+`analyze is not extension gallery command`、`No export analyze found`，且ntoskrnl符号不可用。
+故前次退出0仅是调试器结束，不是成功根因分析。驱动列表中的出现本身不能构成归因。
+只读结果位于ProgramFiles/ClaudeCodeProtection-CrashRead-20261027-R1/summary.json。
+
+修正helper固定同一dump、同一12个微软签名工具输入，显式加载ext/kdexts，
+仅配置微软公开符号路径，禁止shell/遥测、不附加进程；180秒/1GiB/8MiB日志/256MiB符号缓存上限。
+helper SHA256 BE69436A52ED7F8025C13C9D382EC1CC92320C4DFE99D0D552B54104C3CED142，
+保留于work/crash-analysis-20261027-explicit-ext-r1。启动动作被自动审批审查拒绝，
+仅返回blocked by policy、无细分原因。本次helper/调试器未启动，不更换入口绕过。
+这项自动审批阻断不撤销用户对其余有界验证的授权，也不构成任何驱动或产品的安全结论。
+
+本轮独立普通用户验证已进行：当前Broker布局检查通过；WFP内置层读取拒绝访问（错误5），
+无规则变化、Job操作或故障注入；没有通过该失败去放宽权限。事故栈/驱动根因仍UNKNOWN。
+分析扩展加载及符号设置依据微软文档：[扩展加载](https://learn.microsoft.com/windows-hardware/drivers/debuggercmds/loading-debugger-extension-dlls)、
+[公开符号](https://learn.microsoft.com/windows-hardware/drivers/debugger/microsoft-public-symbols)。
+
+## 历史边界：本次 GitHub PR 接收指示
 
 用户最新明确要求“请保留既有系统级运行测试阻断”。本次不执行新产品构建、安装、
 WFP/Job/Watchdog 资格或故障注入；下节重新授权记录已被此指示收紧，保留为历史。

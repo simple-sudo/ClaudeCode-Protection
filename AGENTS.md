@@ -1,11 +1,11 @@
 # ClaudeCode-Protection working rules
 
-2026-10-27 PR intake: the user's latest instruction explicitly retains the
-system-test hold after bugcheck 0x1E. This supersedes the earlier reopening
-record, which remains historical evidence, not present authorization. Do not
-build/install/run new product artifacts, invoke WFP/Job/Watchdog qualification
-or fault injection until incident investigation and applicable artifact safety
-conditions are satisfied. Safe source review and non-emitting checks may proceed.
+2026-10-27 renewed authorization: the user explicitly permits bounded local
+builds and system validation again, accepting the possibility of another crash.
+The PR-intake runtime hold is historical, not a continuing blanket veto. Start
+from preserved analysis evidence and a concrete hypothesis; review/pin each
+artifact and execute only its bounded qualification scope, retaining failures,
+exit/drain and recovery. Do not reproduce a crash merely for reproduction.
 This does not clear the Kaspersky incident, bypass AV, unlock legacy build
 scripts, permit automatic UAC confirmation, reconfigure daily FlClash or authorize
 real Claude login/inference/sessions. Source integration is not qualification.
@@ -13,7 +13,8 @@ See docs/INTEGRATION-20261027.md and the incident record for current evidence.
 The next-stage source chain is now InstalledBroker -> ProtectedSession ->
 AtomicChild/SessionProxy/PersistentFence/ProtectionRuntimeLease. Reuse this owner;
 see docs/PROTECTED-SESSION-CHAIN.md. Its missing trusted collectors/security grants
-remain UNKNOWN and cannot issue a positive permit. No new runtime clearance exists.
+remain UNKNOWN and cannot issue a positive permit. This new human authorization
+permits qualification, not a fabricated positive permit or blanket artifact safety.
 
 The user's 2026-10-26 autonomous-development instruction supersedes the earlier
 ban on local Git initialization/commits. Work in this existing checkout. Local,

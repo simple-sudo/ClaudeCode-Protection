@@ -11,6 +11,32 @@ namespace ProtectionLifecycle;
 // development build. Neither diagnostic opens the installed mutation path.
 public static class InstalledBroker
 {
+    public static (int ExitCode,string Report) MigrateSessionNetwork()
+    {
+        ProtectedSession.AssertSystemTestingAllowed();
+        return WithCurrentInstallation((_,state,version)=>
+        {
+            var plans=FencePlan.ReadAll(state,forNetworkMigration:true);
+            if(plans.Any(p=>!(p.Data.PolicySHA256==CompiledFencePolicy.SHA256 && p.Data.ProxyPort==CompiledFencePolicy.ProxyPort) &&
+                !(p.Data.PolicySHA256==SessionProxy.PolicySHA256 && p.Data.ProxyPort==SessionProxy.Port)))
+                throw WfpNative.Contract("UnrecognizedNetworkPolicyRequiresSeparateReview");
+            InstallationLoopbackLease.AssertClosedHistory(state);
+            using var jobs=RegisteredJobSet.OpenForMaintenance(state);jobs.AssertClosedAdmissionsForNetworkMaintenance();
+            var observations=new List<FenceObservation>();
+            foreach(var plan in plans)
+                if(plan.Data.PolicySHA256==CompiledFencePolicy.SHA256 || FencePlan.HasMigration(state,plan.Data.FenceId))
+                    observations.Add(PersistentFence.MigrateRawProxyToSession(state,version,plan.Data.FenceId,jobs));
+                else
+                {
+                    using var fence=PersistentFence.OpenExisting(state,plan.Data.FenceId);var observed=fence.Observe();
+                    if(!observed.FullQuarantineObserved)throw WfpNative.Contract("ExistingSessionFenceNotQuarantined");
+                }
+            FencePlan.AssertNoPendingMigration(state);
+            return(0,JsonSerializer.Serialize(new {SchemaVersion=1,Scope="INSTALLATION_NETWORK_MAINTENANCE_ONLY",state.InstallationId,
+                Status=plans.Count==0?"NO_EXISTING_FENCES_TO_MIGRATE":"OWNED_GATEWAY_POLICY_SELECTED_IN_QUARANTINE",Migrated=observations.ToArray(),LaunchAuthorized=false,
+                NetworkFunctionalityQualified=false,JobsTerminated=false}));
+        },forNetworkMigration:true);
+    }
     public static (int ExitCode,string Report) InspectEnvironmentExpectations()=>WithCurrentInstallation((_,state,_)=>
     {
         var raw=state.ReadOptional("session-environment-policy.json");
@@ -45,13 +71,13 @@ public static class InstalledBroker
         return(0,JsonSerializer.Serialize(new {SchemaVersion=1,Status="CONFIGURED",PolicySHA256=hash,SystemSettingsModified=false,
             LaunchAuthorized=false,ObservedEnvironmentVerified=false}));
     });
-    private static (int ExitCode,string Report) WithCurrentInstallation(Func<FixedLayout,ProtectedState,VerifiedVersion,(int ExitCode,string Report)> operation)
+    private static (int ExitCode,string Report) WithCurrentInstallation(Func<FixedLayout,ProtectedState,VerifiedVersion,(int ExitCode,string Report)> operation,bool forNetworkMigration=false)
     {
         ProtectedState.RequireAdministrator();var layout=FixedLayout.FromWindows();using var state=ProtectedState.OpenExisting(layout);
         var current=CurrentPointer.Parse(state.Read("current.json",4096),state.InstallationId);
         using var version=VerifiedVersion.Open(layout,state,current.Release);
         if(version.Package.ManifestHash!=current.ManifestSHA256)throw WfpNative.Contract("InstalledPointerManifestMismatch");
-        AssertInstalledHost(layout,state,version);LifecycleRecovery.AssertNoPending(state);
+        AssertInstalledHost(layout,state,version);LifecycleRecovery.AssertNoPending(state,forNetworkMigration:forNetworkMigration);
         return operation(layout,state,version);
     }
     // The sole production development-session entry. It deliberately has no

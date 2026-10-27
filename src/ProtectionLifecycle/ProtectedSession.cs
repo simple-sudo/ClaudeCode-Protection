@@ -13,10 +13,12 @@ namespace ProtectionLifecycle;
 // use this owner; only its fixed installed synthetic workload is implemented.
 internal sealed class ProtectedSession
 {
-    // Reviewed source hold, with no time/flag/environment/config override.
+    // Current artifact still needs bounded runtime/install qualification.
+    // Renewed human authorization permits that work, not a positive clearance.
+    // There is no caller flag/environment/config override.
     internal static bool SystemTestingBlocked => true;
     internal static void AssertSystemTestingAllowed()
-    {if(SystemTestingBlocked)throw new InvalidOperationException("SYSTEM_VALIDATION_BLOCKED: 0x1E investigation and artifact clearance required");}
+    {if(SystemTestingBlocked)throw new InvalidOperationException("SYSTEM_ARTIFACT_NOT_QUALIFIED: bounded artifact/runtime/install qualification required");}
     private const string ResourceScope = "INSTALLED_BROKER_CANARY_ONLY;workspace=none;tools=none;gpu=none;no-breakaway";
     private readonly FixedLayout layout;
     private readonly ProtectedState state;

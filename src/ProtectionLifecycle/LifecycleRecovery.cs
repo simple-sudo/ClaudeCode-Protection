@@ -158,9 +158,10 @@ internal static class LifecycleRecovery
         }
         finally{verified?.Dispose();}
     }
-    internal static void AssertNoPending(ProtectedState state,string? exceptOperation=null)
+    internal static void AssertNoPending(ProtectedState state,string? exceptOperation=null,bool forNetworkMigration=false)
     {
         state.AssertHeld();
+        if(!forNetworkMigration)FencePlan.AssertNoPendingMigration(state);
         foreach(var leaf in state.ListLeaves("plan-"))
         {
             if(leaf.Length!=42 || !leaf.EndsWith(".json",StringComparison.Ordinal))throw new InvalidDataException("Unexpected plan filename");

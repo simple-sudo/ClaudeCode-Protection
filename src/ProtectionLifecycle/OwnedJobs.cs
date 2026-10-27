@@ -317,5 +317,17 @@ internal sealed class RegisteredJobSet : IDisposable
         }));
         return result;
     }
+    internal void AssertClosedAdmissionsForNetworkMaintenance()
+    {
+        AssertHeld();
+        // Durable CLOSED one-shot admission cannot admit another process. A
+        // destroyed private namespace must not be recreated just to query zero.
+        // Missing names or an empty Job WITHOUT that proof are insufficient.
+        foreach(var intent in intents)
+        {
+            if(AtomicJobCompletion.ReadClosed(state,intent) is null)throw WfpNative.Contract("NetworkMigrationRequiresClosedAdmission");
+        }
+        AssertHeld();
+    }
     public void Dispose(){if(disposed)return;disposed=true;for(var i=jobs.Count-1;i>=0;i--)jobs[i].Dispose();}
 }

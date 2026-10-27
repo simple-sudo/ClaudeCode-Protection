@@ -61,6 +61,60 @@ internal sealed class PersistentFence : IDisposable
         catch{owner.Dispose();throw;}
     }
     internal static PersistentFence OpenExisting(ProtectedState state,string fenceId)=>Open(state,FencePlan.Read(state,Identifiers.Hex32(fenceId)));
+    internal static FenceObservation MigrateRawProxyToSession(ProtectedState state,VerifiedVersion version,string fenceId,RegisteredJobSet jobs)
+    {
+        ProtectedState.RequireAdministrator();state.AssertHeld();version.AssertHeld(state);jobs.AssertClosedAdmissionsForNetworkMaintenance();
+        LifecycleRecovery.AssertNoPending(state,forNetworkMigration:true);
+        if(!FencePlan.HasMigration(state,fenceId))
+        {
+            using var prior=OpenExisting(state,fenceId);
+            if(prior.plan.Data.PolicySHA256!=CompiledFencePolicy.SHA256 || prior.plan.Data.ProxyPort!=CompiledFencePolicy.ProxyPort)
+                throw WfpNative.Contract("OnlyKnownRawProxyPolicyCanMigrate");
+            // Freeze the old channel before writing the durable transition.
+            _=prior.ReinstateQuarantine();
+        }
+        var migration=FencePlan.PrepareMigration(state,version,fenceId);
+        using var owner=OpenExisting(state,fenceId);
+        _=owner.Mutate("MIGRATE_RAW_PROXY_TO_QUARANTINED_SESSION_GATEWAY",()=>WfpNative.Transaction(owner.engine,false,()=>{
+            jobs.AssertClosedAdmissionsForNetworkMaintenance();version.AssertHeld(state);
+            var actual=owner.ReadMigrationPlan(migration);
+            var action=ClaudeCodeProtection.Security.FenceMigrationSelection.Decide(migration.Prior.SHA256,migration.Next.SHA256,
+                owner.plan.SHA256,actual.SHA256,owner.ReadInTransaction(actual).FullQuarantineObserved);
+            if(action==ClaudeCodeProtection.Security.FenceMigrationAction.ReplaceKernelThenSelect)
+            {
+                // Same exact keys and installation SID, full quarantine on both
+                // sides, all seven objects replaced in ONE WFP transaction.
+                for(var i=0;i<6;i++)WfpNative.Check(WfpNative.FwpmFilterDeleteByKey0(owner.engine,actual.Key(i)),"MigrateExactOwnedFilter");
+                WfpNative.Check(WfpNative.FwpmSubLayerDeleteByKey0(owner.engine,actual.SubLayer),"MigrateExactOwnedSubLayer");
+                owner.AddSubLayer(migration.Next);for(var i=0;i<6;i++)owner.AddFilter(i,migration.Next);
+            }
+            var result=owner.ReadInTransaction(migration.Next);
+            if(!result.FullQuarantineObserved)throw WfpNative.Contract("MigratedTransactionReadbackMismatch");return result;
+        }));
+        // Independent committed readback BEFORE selecting the new private image.
+        var committed=WfpNative.Transaction(owner.engine,true,()=>owner.ReadInTransaction(migration.Next));
+        if(!committed.FullQuarantineObserved)throw WfpNative.Contract("MigratedCommitReadbackMismatch");
+        jobs.AssertClosedAdmissionsForNetworkMaintenance();version.AssertHeld(state);
+        if(owner.plan.SHA256==migration.Prior.SHA256)
+            _=state.ReplacePointer(FencePlan.Leaf(fenceId),migration.Prior.SHA256,migration.NextBytes.Bytes);
+        using var selected=OpenExisting(state,fenceId);var final=selected.Observe();
+        if(!final.FullQuarantineObserved)throw WfpNative.Contract("MigratedSelectionReadbackMismatch");
+        FencePlan.CompleteMigration(state,migration);return final;
+    }
+    private FencePlan ReadMigrationPlan(FencePlan.Migration migration)
+    {
+        AssertHeld();var key=migration.Prior.SubLayer;
+        var status=WfpNative.FwpmSubLayerGetByKey0(engine,in key,out var pointer);
+        try
+        {
+            WfpNative.Check(status,"ReadMigrationSubLayer");if(pointer==IntPtr.Zero)throw WfpNative.Contract("MigrationSubLayerMissing");
+            var layer=Marshal.PtrToStructure<WfpNative.SubLayer>(pointer);
+            var actual=LayerIdentityMatches(layer,migration.Prior)?migration.Prior:
+                LayerIdentityMatches(layer,migration.Next)?migration.Next:throw WfpNative.Contract("ForeignMigrationSubLayer");
+            WfpNative.AssertSecurity(engine,key,WfpNative.FwpmSubLayerGetSecurityInfoByKey0);return actual;
+        }
+        finally{if(pointer!=IntPtr.Zero)WfpNative.FwpmFreeMemory0(ref pointer);}
+    }
     private void AssertHeld()
     {
         if(disposed || engine.IsClosed || engine.IsInvalid || package.Pointer==IntPtr.Zero)throw new ObjectDisposedException(nameof(PersistentFence));
@@ -133,7 +187,8 @@ internal sealed class PersistentFence : IDisposable
     {state.WriteNew("fence-observed-"+plan.Data.FenceId+"-"+Guid.NewGuid().ToString("N")+".json",JsonSerializer.SerializeToUtf8Bytes(new {
         SchemaVersion=1,InstallationId=state.InstallationId,plan.Data.FenceId,IntentSHA256=plan.SHA256,Status=status,Observation=observed
     }));}
-    private FenceObservation ReadInTransaction()
+    private FenceObservation ReadInTransaction()=>ReadInTransaction(plan);
+    private FenceObservation ReadInTransaction(FencePlan plan)
     {
         AssertHeld();var layerPresent=false;var layerHealthy=false;ushort? observedWeight=null;
         var layerKey=plan.SubLayer;var layerStatus=WfpNative.FwpmSubLayerGetByKey0(engine,in layerKey,out var pointer);
@@ -213,13 +268,15 @@ internal sealed class PersistentFence : IDisposable
             _=>false
         };
     }
-    private void AddSubLayer()
+    private void AddSubLayer()=>AddSubLayer(plan);
+    private void AddSubLayer(FencePlan plan)
     {
         using var arena=new WfpNative.Arena();using var security=new WfpNative.Descriptor();
         var layer=SubLayerDefinition(plan,arena);
         WfpNative.Check(WfpNative.FwpmSubLayerAdd0(engine,in layer,security.Pointer),"AddExactPersistentSubLayer");
     }
-    private void AddFilter(int role)
+    private void AddFilter(int role)=>AddFilter(role,plan);
+    private void AddFilter(int role,FencePlan plan)
     {
         using var arena=new WfpNative.Arena();using var security=new WfpNative.Descriptor();
         var filter=FilterDefinition(plan,package,role,arena);

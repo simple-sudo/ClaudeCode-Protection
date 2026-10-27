@@ -177,4 +177,22 @@ foreach(var badIntent in new[]{expectationsJson.Replace("\"SchemaVersion\":1","\
     expectationsJson.Replace("Eastern Standard Time",""),expectationsJson.Replace("en-US",""),expectationsJson.Replace("en-US","en-us")})
     Refuse(()=>EnvironmentExpectations.Parse(DnsBytes(badIntent),policyInstallation,networkPolicy),"malformed, implicit or authoritative-looking environment intent refused");
 
+// Exercise the actual owner's crash-phase decision without WFP, disk or Job.
+var priorImage=new string('A',64);var nextImage=new string('B',64);var foreignImage=new string('C',64);
+Require(FenceMigrationSelection.Decide(priorImage,nextImage,priorImage,priorImage,true)==FenceMigrationAction.ReplaceKernelThenSelect,
+    "before transaction selects exact replacement");
+Require(FenceMigrationSelection.Decide(priorImage,nextImage,priorImage,nextImage,true)==FenceMigrationAction.SelectCommittedKernel,
+    "commit before metadata resumes selection without deleting the new kernel objects");
+Require(FenceMigrationSelection.Decide(priorImage,nextImage,nextImage,nextImage,true)==FenceMigrationAction.VerifySelectedKernel,
+    "selection before completion only verifies the committed image");
+foreach(var selectedImage in new[]{priorImage,nextImage,foreignImage})
+foreach(var kernelImage in new[]{priorImage,nextImage,foreignImage})
+{
+    Refuse(()=>FenceMigrationSelection.Decide(priorImage,nextImage,selectedImage,kernelImage,false),"all non-quarantined migration states refused");
+    if(selectedImage==foreignImage || kernelImage==foreignImage || selectedImage==nextImage && kernelImage==priorImage)
+        Refuse(()=>FenceMigrationSelection.Decide(priorImage,nextImage,selectedImage,kernelImage,true),"foreign or reverse-order migration refused");
+}
+Refuse(()=>FenceMigrationSelection.Decide(priorImage,priorImage,priorImage,priorImage,true),"identical transition images refused");
+Refuse(()=>FenceMigrationSelection.Decide(priorImage,nextImage,"invalid",nextImage,true),"malformed selection refused");
+
 Console.WriteLine("PolicySmoke: bounded pure policy cases passed. No product entry point, native API or network request was executed.");
