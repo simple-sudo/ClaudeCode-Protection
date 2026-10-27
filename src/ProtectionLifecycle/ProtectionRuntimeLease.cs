@@ -65,6 +65,9 @@ internal sealed class ProtectionRuntimeLease
         }
         if(gateway is not null && fences.Any(f=>!f.IsSessionChannel))throw WfpNative.Contract("SessionRawProxyPolicyDrift");
         if(!job.Observe().ExpectedLimits)throw WfpNative.Contract("RuntimeJobLimitsDrift");
+        // Renew only after every check succeeded. A delayed/dead owner cannot
+        // let an existing socket retain its old forwarding permission forever.
+        admission?.ObserveRuntimeHealthy(this,deadlineMs-clock.ElapsedMilliseconds);
         startupObserved=true;
     }
     internal void AttachAdmission(ProtectedSession.Admission permit)
@@ -79,6 +82,7 @@ internal sealed class ProtectionRuntimeLease
     {
         if(activated || durationMs is <250 or >60000 || preparation is not null && admission is null)throw WfpNative.Contract("RuntimeActivationRefused");
         AssertHealthy();activated=true;deadlineMs=checked(clock.ElapsedMilliseconds+durationMs);
+        admission?.ObserveRuntimeHealthy(this,deadlineMs-clock.ElapsedMilliseconds);
         state.WriteNew("session-active-"+id+".json",JsonSerializer.SerializeToUtf8Bytes(new {SchemaVersion=1,state.InstallationId,SessionId=id,job.JobId,
             ActiveDurationMs=durationMs,DeadlineMs=deadlineMs,Renewable=false,AtUtc=DateTime.UtcNow.ToString("o")}));
     }

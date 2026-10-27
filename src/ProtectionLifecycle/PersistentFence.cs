@@ -148,7 +148,7 @@ internal sealed class PersistentFence : IDisposable
     internal FenceObservation OpenSessionGateway(SessionProxy gateway)
     {
         if(!IsSessionChannel)throw WfpNative.Contract("RawProxyFenceCannotGrantSessionAdmission");
-        return OpenChannel(gateway.AssertHealthy,"OPEN_AUTHENTICATED_SESSION_GATEWAY");
+        return OpenChannel(gateway.AssertReadyToOpen,"OPEN_AUTHENTICATED_SESSION_GATEWAY");
     }
     private FenceObservation OpenChannel(Action assertChannel,string operation)
     {

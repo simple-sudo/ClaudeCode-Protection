@@ -226,15 +226,37 @@ internal sealed class ProtectedSession
     {
         private readonly ProtectedSession owner;
         private readonly string bindingSHA256;
+        private readonly SessionForwardingLease forwarding;
         private AtomicChild? primary;
         private int phase; // 0 issued, 2 resume consumed, 3 revoked; creation uses Preparation
         internal string SessionId=>owner.id;
         internal SessionProxy Gateway=>owner.gateway??throw WfpNative.Contract("SessionGatewayMissing");
-        internal Admission(ProtectedSession owner){this.owner=owner;owner.AssertCurrent();bindingSHA256=ComputeBinding();}
+        internal Admission(ProtectedSession owner)
+        {this.owner=owner;owner.AssertCurrent();bindingSHA256=ComputeBinding();forwarding=new(()=>owner.clock.ElapsedMilliseconds);}
+        internal void AssertGatewayOpening()
+        {
+            // Pure checks only: called inside the WFP write transaction too.
+            // Do not reenter WFP reads or let an active/revoked permit reopen it.
+            if(Volatile.Read(ref phase)!=0 || !owner.EnvironmentEligible() || !owner.SystemSecurityEligible())
+                throw WfpNative.Contract("GatewayOpeningRequiresIssuedCurrentAdmission");
+        }
+        internal void AssertForwardingCurrent()
+        {
+            if(Volatile.Read(ref phase)!=2 || !owner.EnvironmentEligible() || !owner.SystemSecurityEligible())
+                throw WfpNative.Contract("ForwardingRequiresResumedCurrentAdmission");
+            forwarding.AssertCurrent();
+        }
+        internal void ObserveRuntimeHealthy(ProtectionRuntimeLease exactRuntime,long remainingMs)
+        {
+            if(!ReferenceEquals(owner.runtime,exactRuntime) || Volatile.Read(ref phase)==3)
+                throw WfpNative.Contract("ForwardingHealthOwnerMismatch");
+            forwarding.Renew(remainingMs);
+        }
         internal void BeforeResume(AtomicChild child)
         {
             owner.RefreshEnvironment(true);
             AssertCurrent();
+            forwarding.AssertCurrent();
             if(child.ExpectedPackageSid!=owner.sid || child.ExpectedImagePath!=WindowsPathSeal.Child(owner.layout.Version(owner.version.Package.Release),"bin/admin/ProtectionBroker.exe") ||
                 Interlocked.CompareExchange(ref phase,2,0)!=0)throw WfpNative.Contract("SessionResumePermitConsumedOrForeign");
             (owner.preparation??throw WfpNative.Contract("SuspendedPreparationMissing")).ConsumeResume(child);
@@ -261,7 +283,7 @@ internal sealed class ProtectedSession
             if(!ReferenceEquals(exactJob,owner.job) || !ReferenceEquals(exactVersion,owner.version) ||
                 !exactFences.SequenceEqual(owner.fences))throw WfpNative.Contract("SessionRuntimeOwnerMismatch");
         }
-        internal void Revoke()=>Interlocked.Exchange(ref phase,3);
+        internal void Revoke(){Interlocked.Exchange(ref phase,3);forwarding.Revoke();}
         internal bool Matches(Preparation prepared)=>ReferenceEquals(prepared,owner.preparation);
         internal string BindingSHA256=>bindingSHA256;
         private string ComputeBinding()=>Convert.ToHexString(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(new {
@@ -305,6 +327,7 @@ internal sealed class ProtectedSession
             runtime.AssertHealthy();RefreshEnvironment(true);
             if(!EnvironmentEligible() || !SystemSecurityEligible())throw WfpNative.Contract("FullSessionAdmissionRefusedAfterSuspendedPreparation");
             admission=new Admission(this);
+            gateway.BindAdmission(admission);
             state.WriteNew("protected-session-intent-"+id+".json",JsonSerializer.SerializeToUtf8Bytes(new {
                 SchemaVersion=1,SessionId=id,state.InstallationId,version.Package.Release,version.Package.ManifestHash,
                 job.JobId,AppContainerSid=sid,admission.BindingSHA256,NetworkPolicySHA256=SessionProxy.PolicySHA256,

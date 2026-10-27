@@ -17,7 +17,7 @@ internal sealed class SessionProxy : IDisposable
     internal const int Port = 17891;
     internal const string Target = "www.microsoft.com";
     internal static readonly string PolicySHA256 = Convert.ToHexString(SHA256.HashData(Encoding.ASCII.GetBytes(
-        "CPC-SESSION-NET1;listen=127.0.0.1:17891;upstream=127.0.0.1:7890;connect=www.microsoft.com:443;doh=1.1.1.1:443/cloudflare-dns.com;A-only;ipv6=deny;no-direct-fallback;tls=offline-no-download;auth=per-session+held-job-peer+AC-low-zero;max-connections=4;accepted=32;max-bytes=8MiB-per-direction+64MiB-total;connection-seconds=20;session-seconds=60;half-close=send-fin+drain-peer;fault=cancel+drain-both")));
+        "CPC-SESSION-NET1;listen=127.0.0.1:17891;upstream=127.0.0.1:7890;connect=www.microsoft.com:443;doh=1.1.1.1:443/cloudflare-dns.com;A-only;ipv6=deny;no-direct-fallback;tls=offline-no-download;auth=per-session+held-job-peer+AC-low-zero;max-connections=4;accepted=32;max-bytes=8MiB-per-direction+64MiB-total;connection-seconds=20;session-seconds=60;half-close=send-fin+drain-peer;fault=cancel+drain-both;forward=bound-admission+runtime-health-2s+per-write")));
     private readonly TcpListener listener = new(IPAddress.Loopback, Port);
     private readonly CancellationTokenSource stop = new(TimeSpan.FromSeconds(60));
     private readonly ConcurrentDictionary<int, (TcpClient Client, Task Work)> clients = new();
@@ -27,6 +27,7 @@ internal sealed class SessionProxy : IDisposable
     private readonly byte[] authorization;
     private readonly Task accept;
     private Exception? failure;
+    private ProtectedSession.Admission? admission;
     private int sequence;
     private long transferred;
     private volatile bool disposed;
@@ -46,6 +47,22 @@ internal sealed class SessionProxy : IDisposable
             throw WfpNative.Contract("SessionGatewayStoppedExpiredOrFailed");
         if(ProxyChannelLease.SessionListenerOwner()!=unchecked((uint)Environment.ProcessId))throw WfpNative.Contract("SessionGatewayListenerOwnerDrift");
         upstream.AssertHealthy();
+    }
+    internal void BindAdmission(ProtectedSession.Admission permit)
+    {
+        if(!ReferenceEquals(permit.Gateway,this))throw WfpNative.Contract("GatewayAdmissionOwnerMismatch");
+        permit.AssertCurrent();
+        if(Interlocked.CompareExchange(ref admission,permit,null) is not null)throw WfpNative.Contract("GatewayAdmissionAlreadyBound");
+    }
+    internal void AssertReadyToOpen()
+    {
+        AssertHealthy();
+        (Volatile.Read(ref admission)??throw WfpNative.Contract("GatewayAdmissionMissing")).AssertGatewayOpening();
+    }
+    private void AssertForwardingCurrent()
+    {
+        (Volatile.Read(ref admission)??throw WfpNative.Contract("GatewayAdmissionMissing")).AssertForwardingCurrent();
+        if(disposed || stop.IsCancellationRequested || failure is not null)throw WfpNative.Contract("GatewayForwardingStopped");
     }
     private async Task Accept()
     {
@@ -99,7 +116,7 @@ internal sealed class SessionProxy : IDisposable
                 if (client.Client.RemoteEndPoint is not IPEndPoint peer || !peer.Address.Equals(IPAddress.Loopback))
                     throw new InvalidDataException("SessionLoopbackPeerRequired");
                 using var process = AtomicChild.HoldSessionPeer(job, packageSid, peer.Port);
-                AssertHealthy();
+                AssertHealthy();AssertForwardingCurrent();
                 var addresses = await Resolve(request.Host, deadline.Token);
                 var chosen = addresses[0];
                 if (!ProxyDestinationPolicy.AuthorizePinnedHttps(request.Host, 443, addresses, chosen).Allowed)
@@ -107,14 +124,16 @@ internal sealed class SessionProxy : IDisposable
                 // The upstream receives a literal IPv4, never the client name.
                 // TLS inside the tunnel still belongs to the client and keeps
                 // its original hostname/certificate validation.
+                AssertForwardingCurrent();
                 using var remote = await OpenTunnel(upstream, chosen, deadline.Token);
                 AssertHealthy();
                 AtomicChild.AssertSessionPeer(job, process, packageSid, peer.Port);
+                AssertForwardingCurrent();
                 await stream.WriteAsync(Encoding.ASCII.GetBytes("HTTP/1.1 200 Connection Established\r\n\r\n"), deadline.Token);
                 await SessionTunnel.CopyAsync(stream,remote,
                     ()=>client.Client.Shutdown(SocketShutdown.Send),()=>remote.Socket.Shutdown(SocketShutdown.Send),
                     count=>{if(Interlocked.Add(ref transferred,count)>64*1024*1024)throw new InvalidDataException("SessionTunnelByteBudgetExceeded");},
-                    8*1024*1024,deadline.Token);
+                    8*1024*1024,AssertForwardingCurrent,deadline.Token);
             }
             catch (Exception ex)
             { if (authenticated && !stop.IsCancellationRequested) Fail(ex); }

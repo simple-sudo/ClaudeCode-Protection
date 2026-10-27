@@ -5,7 +5,7 @@ namespace ClaudeCodeProtection.Security;
 internal static class SessionTunnel
 {
     internal static async Task CopyAsync(Stream client,Stream upstream,Action clientFinishSending,Action upstreamFinishSending,
-        Action<int> accountBytes,long directionLimit,CancellationToken token)
+        Action<int> accountBytes,long directionLimit,Action assertAuthorized,CancellationToken token)
     {
         if(directionLimit is <1 or >8*1024*1024)throw new ArgumentOutOfRangeException(nameof(directionLimit));
         using var canceled=CancellationTokenSource.CreateLinkedTokenSource(token);
@@ -15,15 +15,18 @@ internal static class SessionTunnel
             while(true)
             {
                 canceled.Token.ThrowIfCancellationRequested();
+                assertAuthorized();
                 var count=await input.ReadAsync(buffer,canceled.Token);
                 if(count==0)
                 {
                     canceled.Token.ThrowIfCancellationRequested();
+                    assertAuthorized();
                     finishSending();return;
                 }
                 total+=count;
                 if(total>directionLimit)throw new InvalidDataException("SessionTunnelByteBudgetExceeded");
                 accountBytes(count); // Reserve the session budget BEFORE forwarding.
+                assertAuthorized(); // A blocked read must not outlive permission.
                 await output.WriteAsync(buffer.AsMemory(0,count),canceled.Token);
             }
         }
@@ -49,4 +52,33 @@ internal static class SessionTunnel
             }
         }
     }
+}
+
+// In-memory health freshness, never a report/file/launch credential. Only the
+// owning Admission renews it after the existing runtime's full health checks.
+internal sealed class SessionForwardingLease
+{
+    internal const int MaximumGapMs=2000;
+    private readonly Func<long> clock;
+    private long until=-1;
+    private int revoked;
+    internal SessionForwardingLease(Func<long> monotonicClock){clock=monotonicClock;}
+    internal void Renew(long runtimeRemainingMs)
+    {
+        var now=clock();var previous=Interlocked.Read(ref until);
+        if(Volatile.Read(ref revoked)!=0 || now<0 || runtimeRemainingMs<=0 || previous>=0 && now>=previous)
+        {Revoke();throw new InvalidOperationException("SessionForwardingHealthExpiredOrRevoked");}
+        Interlocked.Exchange(ref until,checked(now+Math.Min(MaximumGapMs,runtimeRemainingMs)));
+        if(Volatile.Read(ref revoked)!=0)throw new InvalidOperationException("SessionForwardingHealthRevoked");
+    }
+    internal void AssertCurrent()
+    {
+        var now=clock();var expires=Interlocked.Read(ref until);
+        if(Volatile.Read(ref revoked)!=0 || now<0 || expires<0 || now>=expires)
+        {
+            if(expires>=0 && now>=expires)Revoke();
+            throw new InvalidOperationException("SessionForwardingHealthMissingExpiredOrRevoked");
+        }
+    }
+    internal void Revoke()=>Interlocked.Exchange(ref revoked,1);
 }

@@ -45,6 +45,12 @@ TLS采用严格离线吊销与禁止AIA下载；缺证书/吊销缓存会失败�
 双向字节在写出前检查每方向及会话总预算，原20秒连接期限仍包含排空时间，没有新增无限等待。
 固定canary使用精确HTTP/1.1 HEAD检测响应头，不再用GET后丢弃未读正文而中止自己的连接。
 这些变化进入网络策略摘要；已有预期配置不能自动转授新策略证据。
+网关一次绑定同一所有者签发的Admission；仅有Job/token身份或知道会话认证值不能取得转发权限。
+屏障开放需要该许可仍处于已签发阶段，真正转发必须已消费首次恢复许可，环境/独立安全证据有效，
+且运行租约完整健康检查后签发的内存健康期有效。健康期最多2秒且不超过运行租约剩余时间；
+过期/撤销后迟到心跳不能恢复。读取前和每次写出前检查，阻塞读返回后也复核。
+健康期检查无WFP/进程扫描；实际内核/身份复核仍由原运行租约完成，只有全套成功才续期。
+该机制不能撤回已写入OS/代理的字节，不承诺瞬时零在途字节，也不替代独立进程监督或CPU/文件权限撤销。
 参考：[Socket发送方向关闭](https://learn.microsoft.com/dotnet/api/system.net.sockets.socket.shutdown)。
 参考：[连接回调](https://learn.microsoft.com/dotnet/api/system.net.http.socketshttphandler.connectcallback)、
 [禁止证书下载](https://learn.microsoft.com/dotnet/api/system.security.cryptography.x509certificates.x509chainpolicy.disablecertificatedownloads)、

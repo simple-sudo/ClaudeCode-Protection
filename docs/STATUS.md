@@ -1,5 +1,24 @@
 # 当前开发状态
 
+## 2026-10-27 会话许可直接约束网关转发（本轮）
+
+接续36c4d7e，工作区干净。修复网关只核验连接身份、转发阶段未直接消费Admission的缺口。
+SOURCE / INTEGRATED：同一ProtectedSession.Admission一次绑定同一SessionProxy；WFP开放要求该已签发许可，
+实际解析/连接/响应及复制写出还要求首次恢复许可已消费、全部环境/独立安全快照仍有效。
+原ProtectionRuntimeLease在所有安装/Job/fence/代理/许可检查成功后，才续期最多2秒的内存转发健康期；
+健康期不超过实际运行租约剩余时间，激活缩短期限时同步收紧；首次恢复前也检查健康期。
+缺失、撤销、过期或迟到续期拒绝。复制器读取前及写出前均检查，不让阻塞读沿用旧许可；
+检查使用同一所有者的单调时钟/内存能力，不在每个数据块上重复WFP或进程扫描，也不接受GUI/文件PASS。
+策略摘要已包含新约束，旧策略配置不会自动获得本次权限。
+
+六项目SOURCE语义0错误/0警告（Lifecycle35源），11源纯测试语义无诊断；
+outputs/session-forwarding-admission-source-types-final.json、session-forwarding-admission-policy-source-types-r1.json保留。
+新增实际复制器+实际健康期对象的内存用例：阻塞读时撤销/过期、零字节写出、双方排空、
+迟到心跳不复活、运行剩余时间收紧。当前尚无本轮BUILD/执行结果。
+这是网关写入前的检查，不能撤回已交给内核/上游的字节，也不是独立进程Watchdog或Broker挂起时的CPU/文件撤销。
+完整门禁、功能性网络/DNS、宿主资源/工具/GPU及集中实机证据仍缺，完整产品仍非DELIVERABLE。
+本轮不恢复WFP/Job/Watchdog实验、不重试调试器审批、不启动真实Claude、不改AV/FlClash/系统网络。
+
 ## 2026-10-27 受控网关正常结束与故障排空修复（本轮）
 
 接续8611fd2，工作区干净。发现SessionProxy任一方向正常EOF会取消两个方向，可能截断仍在返回的数据；
