@@ -34,7 +34,7 @@ internal static class TlsClientHelloCases
         using var input=new SessionTunnelCases.Endpoint(wire,true){MaximumRead=1};
         using var deadline=new CancellationTokenSource(TimeSpan.FromSeconds(2));
         try{using var view=await SessionTunnel.RequireTlsClientHelloAsync(input,Host,()=>{},deadline.Token);}
-        catch(IOException){return;}
+        catch(Exception error) when(error is IOException or InvalidDataException){return;}
         throw new InvalidOperationException("TlsClientHello: unsafe record accepted");
     }
     internal static async Task RunAsync()

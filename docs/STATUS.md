@@ -22,7 +22,11 @@ TLS名称约束不是服务器证书验证，也不能防止上游重新映射�
 
 六产品SOURCE语义0错误/0警告（Lifecycle35源），12源纯测试语义无诊断；
 outputs/session-tls-target-source-types-final.json、session-tls-target-policy-source-types-final.json保留。
-新增分片/名称/扩展/容量/截断/撤销及原样重放和计费用例，当前尚未编译/执行。
+新增分片/名称/扩展/容量/截断/撤销及原样重放和计费用例。
+66428c7的Broker/Lifecycle（42输入）及12源纯测试均离线构建0错误/0警告；首次纯测试退出-532462766，
+堆栈为网关正确拒绝明文输入后的InitialTlsRecordRefused。原因是测试辅助器仅捕获IOException，
+漏掉InvalidDataException；修正辅助器异常分类，未放宽产品条件。首次policy-tls-result.json与程序集/脚本保持原样。
+当前修正后的测试尚待执行，不能把首次失败写成通过；本次产品工件仍未安装或执行。
 本轮未恢复WFP/Job/Watchdog实验、未安装或执行新产品、未启动真实Claude；完整产品仍非DELIVERABLE。
 
 ## 2026-10-27 会话许可直接约束网关转发（本轮）
