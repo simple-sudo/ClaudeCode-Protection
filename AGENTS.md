@@ -71,3 +71,20 @@ non-emitting checker after managed-source changes; perform meaningful runtime
 checks only when their safety clearance exists. Preserve original failures.
 Before each commit inspect scope and credentials; keep state/logs/backups,
 PID files, generated binaries and private data out of Git.
+
+The user's latest 2026-10-27 full guidance expands the unified product goal;
+see docs/PRODUCT-DIRECTION-20261027.md. Continue the actual network matrix.
+Overall delivery also requires strict fourteen-item environment admission
+enforced by the trusted Broker (not GUI-only or reusable old PASS), independent
+system-security gates, host-sensitive file/registry/process/management-interface
+isolation, usable authorized workspaces/toolchains and inherited child limits,
+and representative native NVIDIA GPU computation inside the chosen boundary.
+No default full VM, CPU-only substitution or unrestricted sandbox fallback.
+The current raw FlClash endpoint is qualification-only; it does not establish
+confidentiality against proxy-mediated access to local management resources.
+Small owned CUDA/PyTorch compatibility evaluation is now explicitly requested;
+review/qualify each concrete artifact and retain the same AV/UAC/Claude limits.
+Keep the user's rewritten upstream README and safely merge fetched history;
+do not overwrite local changes or push. Synthetic qualification cannot become
+an alternate general Claude launch path. Partial network success is not full
+product completion.
