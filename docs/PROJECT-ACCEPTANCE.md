@@ -181,3 +181,11 @@ S2独立读取新PE元数据及调用树，移除worker离线资格不明的签�
 用户随后明确“阻塞部分我批准你有权限继续，你有权向下推进目标”。该指示更新此前等待状态，不是AV误报结论，也不移除AV/日常网络/UAC/真实Claude限制。实施固定inspect-runtime/inspect-wfp管理诊断源码，直接消费当前.NET8组件的Marshal布局及只读WFP事务/内置层读取；普通权限，不接受可变键/路径/目标，不创建或删除策略、Job或安装状态。FWPM_LAYER0与GetByKey声明按本机SDK10.0.26100.0头文件复核。quarantine仍要求可信已安装当前版本，不以诊断入口绕过。五项目非生成语义检查0错误/0警告，新产物及运行证据待独立核验，不升级旧工件或旧失败。
 
 首次新构建6e116d7成功且资格核验后，inspect-runtime在.NET8.0.28/x64实际执行，13项Marshal尺寸/偏移符合声明，退出0；inspect-wfp在BeginWfpTransaction返回错误码5，退出2，原失败保留。微软[LayerGetByKey](https://learn.microsoft.com/en-us/windows/win32/api/fwpmu/nf-fwpmu-fwpmlayergetbykey0)要求layer READ，[TransactionBegin](https://learn.microsoft.com/en-us/windows/win32/api/fwpmu/nf-fwpmu-fwpmtransactionbegin0)另需engine BEGIN_READ_TXN；本次元数据诊断无跨对象策略原子性需求。因此仅将诊断改为固定内置层独立读取，仍受对象READ检查，不改ACL/权限、不提权，原隔离owner事务不动。现行修正待新产物复核，不能将其赋给旧6e116d7失败。原始记录位于work/broker-readonly-runtime；AV/BFE运行、规则禁用、FlClash/Core PID及settings摘要在当前窗口一致。
+
+## 2026-10-26 扩大授权后的只读原生验证与首次安装接线
+
+fc113de独立restore/build均0，0错误/0警告；普通.NET8.0.28/x64布局检查成功。普通用户直接LayerGetByKey返回Code5/ReadBuiltinConnectLayer；首版显式事务Code5/BeginWfpTransaction另存，未提权伪装普通用户结果。多余参数64及普通quarantine125按预期拒绝。
+
+人类确认UAC、固定五文件摘要与全源路径租约后，ProgramFiles下新受保护资格副本完成inspect-wfp，V4/V6固定层各42字段、Id48/50，退出0。首个helper的FileSystemRights.ReadWrite不存在导致创建后失败；原空目录保留，先在自建单字节文件复现/修正为ReadData|WriteData，再在新的-r1目录成功。没有正式安装、过滤器/Job修改、Claude启动或网络/AV改动。AVP/BFE运行且观察窗口内Application未见AV事件；完整厂商告警覆盖UNKNOWN。原始记录在work/broker-readonly-*及broker-elevated-readonly-*；不回填旧失败。
+
+随后连接首次未激活安装SOURCE：独立ProtectionBootstrap持有嵌入包批准，库内自引用包pin删除；固定受保护宿主、预检全部输入后才创建全新私有状态，复用原版本/指针/账本。fresh租约不冒充通用进程/清理权。默认嵌入拒绝占位符，无批准包不创建状态；六项目非生成语义检查0错误/0警告。真实安装须继续独立构建/资格/实测，不将SOURCE写为通过。用户完整产品指导与870c4ca固定上游审查已接入文档。

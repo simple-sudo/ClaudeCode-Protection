@@ -9,9 +9,9 @@ internal sealed record LifecycleRecord(int SchemaVersion, string InstallationId,
     string Operation, string? Target, int Sequence, string Phase, string Event, string ProofKind, string ProofSHA256,
     string? PreviousRecordSHA256, string AtUtc);
 
-// Actual OS observations must be supplied by the future installed broker's
-// owners while it holds the session admission barrier. No CLI/JSON caller may
-// manufacture one of these receipts. There is no production adapter yet.
+// Active-installation observations must come from the installed runtime owner.
+// The fresh installer has a narrower lease for a newly created installation
+// that has never admitted a session. It cannot authorize update or uninstall.
 internal interface ILifecycleRuntimeLease : IDisposable
 {
     void AssertLaunchAdmissionClosed();
@@ -189,8 +189,7 @@ internal static class VersionStager
         transaction.RecordStagingIntent(state,package,runtime);
         using var source=WindowsPathSeal.LockDirectory(sourceDirectory, PathPolicy.Source);
         var manifest=ProtectedState.ReadBound(source,"package.json",PackagePolicy.MaxManifestBytes,false);
-        var pinned=PackagePolicy.Authorize(manifest.Bytes);
-        if (pinned.ManifestHash!=package.ManifestHash || pinned.Release!=package.Release) throw new InvalidDataException("Source package changed");
+        package.AssertSameManifest(manifest.Bytes);
         using var code=OpenOrCreateOwnedCodeRoot(layout,state,transaction.Id);
         using var versions=OpenOrCreateChild(code,"versions",state,transaction.Id);
         // Reused release identifiers are refused, including partial earlier stages.

@@ -16,8 +16,9 @@ internal sealed class ProtectedState : IDisposable
     private readonly SafeFileHandle mutex;
     private bool disposed;
     internal string InstallationId { get; }
-    private ProtectedState(PathLease directory, SafeFileHandle mutex, string installationId)
-    { this.directory = directory; this.mutex = mutex; InstallationId = Identifiers.Hex32(installationId); }
+    internal bool CreatedInThisProcess { get; }
+    private ProtectedState(PathLease directory, SafeFileHandle mutex, string installationId,bool createdInThisProcess=false)
+    { this.directory = directory; this.mutex = mutex; InstallationId = Identifiers.Hex32(installationId);CreatedInThisProcess=createdInThisProcess; }
 
     internal static ProtectedState OpenExisting(FixedLayout layout)
     {
@@ -46,7 +47,7 @@ internal sealed class ProtectedState : IDisposable
         catch { mutex?.Dispose(); directory.Dispose(); throw; }
     }
 
-    // Called only AFTER PackagePolicy.Authorize by a reviewed bootstrap. This
+    // Called only AFTER protected BootstrapApproval by a reviewed bootstrap. This
     // library has no executable entry and no elevation or startup mechanism.
     internal static ProtectedState CreateFresh(FixedLayout layout, ReviewedPackage package)
     {
@@ -62,7 +63,7 @@ internal sealed class ProtectedState : IDisposable
         {
             mutex = WindowsPathSeal.CreateProtectedFile(directory, "operation-lock.json", false);
             WriteBound(directory,"installation.json",JsonSerializer.SerializeToUtf8Bytes(new StateIdentity(1,installationId)),false,CreationTag.For(CreationRole.StateIdentity,installationId));
-            return new(directory, mutex, installationId);
+            return new(directory, mutex, installationId,true);
         }
         catch { mutex?.Dispose(); directory.Dispose(); throw; } // Preserve incomplete owned state, never erase evidence.
     }
@@ -170,6 +171,13 @@ internal sealed class ProtectedState : IDisposable
         return Directory.EnumerateFiles(directory.Path,"*",SearchOption.TopDirectoryOnly)
             .Select(Path.GetFileName).Where(n=>n is not null && n.StartsWith(fixedPrefix,StringComparison.Ordinal))
             .Select(n=>Identifiers.StateLeaf(n!)).OrderBy(n=>n,StringComparer.Ordinal).ToArray();
+    }
+    internal void AssertFreshEmpty()
+    {
+        AssertHeld();
+        if(!CreatedInThisProcess)throw new InvalidOperationException("Fresh state required");
+        var names=Directory.EnumerateFileSystemEntries(directory.Path).Select(Path.GetFileName).OrderBy(n=>n,StringComparer.Ordinal).ToArray();
+        if(!names.SequenceEqual(new[]{"installation.json","operation-lock.json"}))throw new InvalidOperationException("New state is no longer empty");
     }
     internal void RemoveCurrent(string? expectedHash)
     {

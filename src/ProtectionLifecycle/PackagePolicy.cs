@@ -13,12 +13,18 @@ internal sealed class ReviewedPackage
     internal ReadOnlyMemory<byte> ManifestBytes { get; }
     private ReviewedPackage(string release, string hash, IReadOnlyList<PayloadFile> files, byte[] frozen)
     { Release = release; ManifestHash = hash; Files = files; ManifestBytes = frozen; }
-    internal static ReviewedPackage FromBytes(ReadOnlyMemory<byte> raw)
+    internal static ReviewedPackage FromBootstrap(BootstrapApproval approval)
     {
+        approval.AssertHeld();
+        var raw=approval.Manifest;
         if (raw.Length is < 1 or > PackagePolicy.MaxManifestBytes) throw new InvalidDataException("Manifest size refused");
         var frozen = raw.ToArray(); // Hash and parse the same privately captured bytes.
-        var validated = PackagePolicy.ValidateAuthorized(frozen);
+        var validated = PackagePolicy.ParsePinned(frozen, approval.ManifestHash);
         return new(validated.Release, validated.ManifestHash, validated.Files, frozen);
+    }
+    internal void AssertSameManifest(ReadOnlyMemory<byte> raw)
+    {
+        if(!raw.Span.SequenceEqual(ManifestBytes.Span))throw new InvalidDataException("Source package changed");
     }
     internal static ReviewedPackage FromOwnedState(ProtectedState state,string release,ReadOnlyMemory<byte> raw)
     {
@@ -34,10 +40,10 @@ internal sealed class ReviewedPackage
 
 internal static class PackagePolicy
 {
-    // This value must be built into a specifically reviewed one-shot bootstrap.
-    // A user-writable sidecar, environment value, CLI hash or manifest cannot
-    // populate it. No approved package exists in the current static phase.
-    private static readonly string? ApprovedManifestSHA256 = null;
+    // The independently pinned bootstrap embeds the complete approval AFTER
+    // payload compilation. This library is itself a payload asset: embedding
+    // the payload-manifest digest here would be circular. No sidecar/CLI digest
+    // is an authority; BootstrapApproval requires the protected fixed host.
     // Explicit incident retirement/no-restoration boundary, not a malware
     // signature or a vendor false-positive determination. Applies to all names.
     private static readonly HashSet<string> RetiredIncidentArtifacts=new(StringComparer.Ordinal) {
@@ -63,16 +69,6 @@ internal static class PackagePolicy
         new AssetSpec("broker-lifecycle", "bin/admin/ProtectionLifecycle.dll")
     });
 
-    // Future local bootstrap authorization must bind this assembly and all its
-    // dependencies before any elevated execution. Pinning the payload alone
-    // does not authenticate a mutable bootstrap or resolve the AV incident.
-    internal static ReviewedPackage Authorize(ReadOnlyMemory<byte> raw) => ReviewedPackage.FromBytes(raw);
-    internal static (string Release, string ManifestHash, IReadOnlyList<PayloadFile> Files) ValidateAuthorized(ReadOnlyMemory<byte> raw)
-    {
-        if (ApprovedManifestSHA256 is not { } expected)
-            throw new InvalidOperationException("NO_REVIEWED_PACKAGE: installation remains unavailable");
-        return ParsePinned(raw, expected);
-    }
     internal static (string Release,string ManifestHash,IReadOnlyList<PayloadFile> Files) ValidateOwned(ReadOnlyMemory<byte> raw,OwnedReleaseReceipt receipt)
     {
         var parsed=ParsePinned(raw,receipt.ManifestSHA256);
@@ -80,7 +76,7 @@ internal static class PackagePolicy
         return parsed;
     }
 
-    private static (string Release, string ManifestHash, IReadOnlyList<PayloadFile> Files) ParsePinned(ReadOnlyMemory<byte> raw, string trustedDigest)
+    internal static (string Release, string ManifestHash, IReadOnlyList<PayloadFile> Files) ParsePinned(ReadOnlyMemory<byte> raw, string trustedDigest)
     {
         _ = Identifiers.Hash(trustedDigest);
         if (raw.Length is < 1 or > MaxManifestBytes) throw new InvalidDataException("Manifest size refused");

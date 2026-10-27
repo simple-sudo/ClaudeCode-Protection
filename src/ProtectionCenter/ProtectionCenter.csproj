@@ -7,8 +7,10 @@
     <Nullable>enable</Nullable>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <AssemblyName>ProtectionCenter</AssemblyName>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="App.cs;BackendClient.cs" />
     <Compile Include="../Shared/UserDataPaths.cs" Link="UserDataPaths.cs" />
   </ItemGroup>
 </Project>

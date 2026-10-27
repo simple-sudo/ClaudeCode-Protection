@@ -28,3 +28,13 @@
 - 微软：[事务helper](https://github.com/microsoft/Windows-driver-samples/blob/a3ca26ddd1e69d2d8c9fc77cc96931545713bf20/network/trans/WFPSampler/lib/HelperFunctions_FwpmTransaction.cpp)、[RPC回调](https://github.com/microsoft/Windows-driver-samples/blob/a3ca26ddd1e69d2d8c9fc77cc96931545713bf20/network/trans/WFPSampler/svc/Framework_RPCServerInterface.cpp)、[样例组成](https://github.com/microsoft/Windows-driver-samples/blob/a3ca26ddd1e69d2d8c9fc77cc96931545713bf20/network/trans/WFPSampler/README.md)。
 
 本轮为源码/许可/依赖审查，未运行四个上游项目的测试或安装流程，也未因此授予本项目BUILD、VERIFIED或DELIVERABLE。
+
+## 用户新指定870c4ca快照复核
+
+GitHub compare已核对：383f927aaf821afd4151115d9ea0be83212826db到870c4ca0754234965878ef58144d7a755d965037共18提交、29变更文件。原始compare及Windows源码/许可证在本地outputs/20261026-upstream-870c4ca，未运行上游代码。新快照LICENSE仍为MIT，Copyright (c) 2026 Claude Switcher Contributors；本轮仅参考设计，没有复制源码。
+
+- [规则管理](https://github.com/YOURSJEYO/claude-switcher/blob/870c4ca0754234965878ef58144d7a755d965037/windows/claude-switch.ps1)：使用Script.js托管块、备份与运行中Mihomo `/rules`回读；区分写入与内核已加载值得复用。Get-ClashMode区分global/rule/direct/unknown，Get-RulesStatus却把Direct标为`ok:规则不适用`，本项目不能把它展示为保护成功。
+- Test-PinnedRules检查前16项的域名/端口命中，但没有证明匹配项的目标出口被授权；不能移植为无泄漏验收。Restore-ClashScriptChange覆盖备份/删除且吞掉错误，回滚前未比较用户后续修改；沿用本项目现有前后摘要冲突拒绝机制。
+- 核验失败回滚和检查/修复的界面分离有参考价值。Windows Test-ProxyAlive主要检查进程/服务，Get-Egress未显式指定应用层代理；这两项不能当独立代理通道证明。自动重启Clash、盲目恢复、按名终止、全机时区/IPv6与账号管理不直接导入。时区/IPv6现在是用户允许设计的受控高级能力，不代表当前开发应立即修改全机状态。
+
+继续使用C#/.NET和Windows原生WFP，参考其体验与状态分类，不新增PowerShell上游运行时、Go/Python或驱动依赖。
