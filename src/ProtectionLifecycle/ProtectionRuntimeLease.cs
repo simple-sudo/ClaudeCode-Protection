@@ -76,6 +76,44 @@ internal sealed class ProtectionRuntimeLease
     }
 }
 
+// Qualification-only member policy: a console host can be created by Windows
+// after the canary's suspended admission. Reject arbitrary extra executables,
+// foreign tokens, unstable snapshots and missing/uncertain member evidence.
+// This is NOT a general Claude child-process admission policy.
+internal static class WatchdogMemberPolicy
+{
+    internal static void Verify(JobSnapshot before,OwnedMemberInspection[] inspected,JobSnapshot after,
+        uint primaryPid,string packageSid,string primaryImage,string consoleHostImage)
+    {
+        if(before.JobId!=after.JobId || !before.ExpectedLimits || !after.ExpectedLimits ||
+            before.ActiveBefore!=before.ActiveAfter || after.ActiveBefore!=after.ActiveAfter ||
+            before.ActiveBefore is <1 or >2 || after.ActiveBefore!=before.ActiveBefore ||
+            before.ProcessIds.Length!=checked((int)before.ActiveBefore) || after.ProcessIds.Length!=checked((int)after.ActiveBefore) ||
+            !before.ProcessIds.Contains(primaryPid) || inspected.Length!=before.ProcessIds.Length ||
+            !before.ProcessIds.SequenceEqual(inspected.Select(m=>m.Pid)) ||
+            !before.ProcessIds.OrderBy(p=>p).SequenceEqual(after.ProcessIds.OrderBy(p=>p)))
+            throw WfpNative.Contract("WatchdogMemberSnapshotUnstableOrUnexpected");
+
+        var expectedPrimary=WindowsPathSeal.Canonical(primaryImage);
+        var expectedConsole=WindowsPathSeal.Canonical(consoleHostImage);
+        foreach(var member in inspected)
+        {
+            var token=member.Token;
+            if(!member.MembershipConfirmed || member.CreatedFileTime is null or <=0 ||
+                member.Failures is null || member.Failures.Length!=0 ||
+                token is null || !token.IsAppContainer || token.PackageSid!=packageSid ||
+                token.CapabilityCount!=0 || token.IntegritySid!="S-1-16-4096" ||
+                string.IsNullOrWhiteSpace(member.ImagePath))
+                throw WfpNative.Contract("WatchdogMemberIdentityNotQualified");
+
+            var observedImage=WindowsPathSeal.Canonical(member.ImagePath);
+            var expectedImage=member.Pid==primaryPid?expectedPrimary:expectedConsole;
+            if(!string.Equals(observedImage,expectedImage,StringComparison.OrdinalIgnoreCase))
+                throw WfpNative.Contract("WatchdogUnexpectedMemberImage");
+        }
+    }
+}
+
 internal enum WatchdogCase { LeaseExpiry,NarrowingFenceDrift }
 internal static class WatchdogQualification
 {
@@ -129,7 +167,10 @@ internal static class WatchdogQualification
                     !NetworkQualification.NegativeCasesEligible(childReport.Cases) || !child.IsRunning)throw WfpNative.Contract("WatchdogReadyReportRefused");
                 var members=job.Observe();var inspected=AtomicChild.InspectMembers(job,members);var afterInspection=job.Observe();
                 state.WriteNew("watchdog-members-"+job.JobId+".json",JsonSerializer.SerializeToUtf8Bytes(new {Before=members,Members=inspected,After=afterInspection}));
-                if(members.ActiveBefore!=1 || members.ActiveAfter!=1 || !members.ProcessIds.SequenceEqual(new[]{child.Pid}))throw WfpNative.Contract("WatchdogTargetMembershipRefused");
+                // Pre-resume admission remains strictly one suspended target; this
+                // post-resume check can additionally accept one verified OS console host.
+                WatchdogMemberPolicy.Verify(members,inspected,afterInspection,child.Pid,child.ExpectedPackageSid,
+                    child.ExpectedImagePath,Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System),"conhost.exe"));
                 runtime.Activate(kind==WatchdogCase.LeaseExpiry?1000:5000);var clock=Stopwatch.StartNew();
                 if(kind==WatchdogCase.NarrowingFenceDrift)foreach(var fence in fences)_=fence.ReinstateQuarantine(); // Narrows only our own SID; never deletes a guard.
                 while(clock.ElapsedMilliseconds<6000)
