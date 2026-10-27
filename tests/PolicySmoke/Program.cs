@@ -26,6 +26,10 @@ Require(!baseline.AllStrictChecksPass && !baseline.BrokerSecurityAdmissionPresen
 
 var stale=StrictPreflight.Evaluate(audit,now.AddHours(1));
 Require(!stale.EvidenceFresh && Find(stale,"proxy-core").Status=="UNKNOWN","reject expired positive observations");
+var invalidSchema=StrictPreflight.Evaluate(audit with {SchemaVersion=9},now);
+Require(!invalidSchema.SourceNamesUnique && Find(invalidSchema,"proxy-core").Status=="UNKNOWN","unknown audit schema");
+var future=StrictPreflight.Evaluate(audit,now.AddMinutes(-3));
+Require(!future.EvidenceFresh && Find(future,"proxy-core").Status=="UNKNOWN","future-dated audit rejected");
 var duplicate=StrictPreflight.Evaluate(audit with {Checks=sample.Append(sample[0]).ToList()},now);
 Require(!duplicate.SourceNamesUnique && Find(duplicate,"proxy-core").Status=="UNKNOWN","duplicate-source rejection");
 var missing=StrictPreflight.Evaluate(audit with {Checks=sample.Where(c=>c.Name!="proxy-owner-path").ToList()},now);
