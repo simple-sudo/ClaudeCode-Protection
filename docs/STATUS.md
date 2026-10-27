@@ -60,6 +60,8 @@ INTEGRATED是实际调用链；VERIFIED只适用于表中明确功能及负向�
 
 ## 下一主线及安全边界
 
+766e01f修正管理图32输入BUILD0；独立普通权限、固定库字节快照及无module initializer后，仅调用只读OS工具句柄资格：OpenCheckNetIsolation成功，通用Open对同一4硬链接文件仍以原单链接错误拒绝。工具没有执行、无WFP/Job修改，限定VERIFIED为这两条路径。普通runtime/拒绝检查仍按预期。新批准95d24323588440989b3ee726bc4a75a8，manifest E9F06ED86C5C2245B79152402FE7CE8DF33A12BFACB58B69BBDCB8D73F964F4F，待独立bootstrap及真实更新/矩阵；466a首次失败不覆盖。
+
 466a包已实际INACTIVE更新（operation ae397c94caeb48aca2bbde4e502c74e0）。首次qualify-network退出3，request24808d3065e24cb0adb3ee17988cc1dc：当前FlClash监听PID14268、E:\program\FlClash\FlClashCore.exe及创建时刻/磁盘hash已持有核对，主机显式HTTPS Microsoft200；6个TCP/UDP/IPv6/UDP53接收端基线全部返回成功且各1份nonce收据。此为限定真实基线，不是受保护网络矩阵通过。
 
 运行在专属控制profile创建后、回环豁免添加前失败。原private记录与ProgramFiles/ClaudeCodeProtection-Network-20261027保留；loopback cleanup独立确认本次SID不存在、其他原1项未变，profile Delete API0，6规则完整回读。只读fsutil发现System32/CheckNetIsolation.exe实际有4条Windows servicing硬链接，原单链接payload校验误用于该系统工具，导致InvalidDataException。当前SOURCE增加唯一固定无参数OS工具打开方法，保持所有产品/源码/删除路径单链接限制、系统目录祖先/owner/DACL/无写入共享和最终路径核验；不改ACL、不拷贝改名系统工具。新增回环历史闭合检查及子工具终态未知不签发清理证明，待新构建/资格。未打开代理门、未恢复受保护网络子进程，无Claude/AV/FlClash/TUN变更。
