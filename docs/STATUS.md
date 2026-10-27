@@ -12,7 +12,7 @@
 SOURCE / INTEGRATED：六产品项目语义检查0错误/0警告（Lifecycle35源），11源纯托管测试语义无诊断。
 原始报告为outputs/session-duplex-source-types-final.json、session-duplex-policy-source-types-final.json。
 新增内存双向端点用例覆盖两个方向延迟回复、后发错误、写失败、方向/会话预算及截止撤销、排空；
-测试调用实际SessionTunnel复制器，不开端口/文件或调用native。当前本节尚未有BUILD/执行结果。
+测试调用实际SessionTunnel复制器，不开端口/文件或调用native。
 随后7543cb1的Broker/Lifecycle（42固定输入）与11源纯测试分别离线还原/编译成功，均0错误/0警告；
 纯测试实际退出0，含上述双向延迟响应、错误/预算/截止的排空验证。
 测试程序集SHA256 6274B63D189D25D62C3217517EAB0D610F27739243044B42687BD4363A195C19，
@@ -20,7 +20,13 @@ SOURCE / INTEGRATED：六产品项目语义检查0错误/0警告（Lifecycle35�
 历史迁移读取另补一个更新兼容修正：完成的旧网关策略记录不再要求等于当前策略摘要，仍核对完整前后像、
 固定端口/对象键/安装归属；实际迁移/恢复及启动仍要求当前策略，不从历史回执签发许可。
 这避免本次传输策略摘要升级后把已完成的维护历史误判为不合法；该后续源码语义检查六项目0错误/0警告，
-outputs/session-duplex-history-source-types.json，尚待本节后续编译记录。
+outputs/session-duplex-history-source-types.json。
+最终源码c9cd81a的Broker/Lifecycle已再次独立离线构建通过，0错误/0警告，
+work/session-duplex-final-c9cd81a-build保留42输入、导入、产物摘要及前后观察；未执行/安装产品。
+此前7543cb1纯测试的12个输入SHA256逐一与c9cd81a核对一致，复用的是相同测试输入的执行结果，
+不是新会话或系统资格；policy-duplex-input-reuse.json保留逐范围说明。历史迁移读取修正仍无实机执行证据。
+Socket半关闭与真实TLS/HEAD互操作均NOT_RUN，内存排空成功不能冒充内核/网络验收。
+有限前后观察AVP/BFE运行、FlClash/Core PID保持，Application新增AV事件0，完整覆盖UNKNOWN。
 本轮未恢复WFP/Job/Watchdog实验、故障注入或真实Claude，未改AV、FlClash或系统网络。
 完整会话的可信证据、资源/工具/GPU授权和系统资格缺口未被此修复补位，完整产品仍非DELIVERABLE。
 
