@@ -49,7 +49,12 @@ internal static class WfpNative
     internal static readonly Guid ConnectV4=new("c38d57d1-05a7-4c33-904f-7fbceee60e82"),ConnectV6=new("4a72393b-319f-44bc-84c3-ba54dcb3b6b4"),
         PackageId=new("71bc78fa-f17c-4997-a602-6abb261f351c"),RemoteAddress=new("b235ae9a-1d64-49b8-a44c-5ff3d9095045"),
         RemotePort=new("c35a604d-d22b-4e1a-91b4-68f674ee674b"),Protocol=new("3971ef2b-623e-4f9a-8cb1-6e79b806b9a7");
-    internal const uint Persistent=1,Block=0x1001,UInt8=1,UInt16=2,UInt32=3,UInt64=4,Sid=13,Equal=0,NotEqual=10;
+    internal const uint Persistent=1,Indexed=0x40,Block=0x1001,UInt8=1,UInt16=2,UInt32=3,UInt64=4,Sid=13,Equal=0,NotEqual=10;
+    // BFE may return INDEXED even when Add supplied only PERSISTENT. Reject
+    // disabled, boot-time, provider-context and every other unexpected flag.
+    internal static bool ExpectedPersistentFilterFlags(uint flags)=>(flags&~Indexed)==Persistent;
+    internal static InvalidDataException Contract(string stage)
+    {var error=new InvalidDataException(stage);error.Data["Stage"]=stage;return error;}
     [StructLayout(LayoutKind.Sequential)] internal struct Display {internal IntPtr Name,Description;}
     [StructLayout(LayoutKind.Sequential)] internal struct Blob {internal uint Size;internal IntPtr Data;}
     [StructLayout(LayoutKind.Explicit,Size=16)] internal struct Value {

@@ -13,7 +13,7 @@ public static class WfpObjectContract
     public static (int ExitCode,string Report) Qualify()
     {
         ProtectedState.RequireAdministrator();
-        var folder=WindowsPathSeal.Child(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),"ClaudeCodeProtection-Qualification-ObjectContract-20261027");
+        var folder=WindowsPathSeal.Child(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),"ClaudeCodeProtection-Qualification-ObjectContract-20261027-r2");
         using var directory=WindowsPathSeal.LockDirectory(folder,PathPolicy.Protected);
         if(!string.Equals(Environment.ProcessPath,WindowsPathSeal.Child(folder,"ProtectionBroker.exe"),StringComparison.OrdinalIgnoreCase) ||
             !string.Equals(Assembly.GetEntryAssembly()?.Location,WindowsPathSeal.Child(folder,"ProtectionBroker.dll"),StringComparison.OrdinalIgnoreCase) ||
@@ -42,7 +42,12 @@ public static class WfpObjectContract
                 observation=new {LayerSecurity=Security(layerKey,WfpNative.FwpmSubLayerGetSecurityInfoByKey0),FilterSecurity=Security(filterKey,WfpNative.FwpmFilterGetSecurityInfoByKey0),
                     read.Flags,ActionType=read.Action.Type,ActionKey=read.Action.Key,ContextRaw=read.Context.Raw,ContextUnion=read.Context.Key,
                     ReservedPointerIsNull=read.Reserved==IntPtr.Zero,read.ConditionCount,WeightType=read.Weight.Type,
-                    Weight=read.Weight.Pointer==IntPtr.Zero?(ulong?)null:unchecked((ulong)Marshal.ReadInt64(read.Weight.Pointer))};
+                    Weight=read.Weight.Pointer==IntPtr.Zero?(ulong?)null:unchecked((ulong)Marshal.ReadInt64(read.Weight.Pointer)),
+                    ProductionQuarantinePolicyMatches=PersistentFence.PolicyMatches(read,4,CompiledFencePolicy.ProxyPort),
+                    FlagCases=new uint[]{0,1,0x40,0x41,0x21,0x61,0x81,0xc1,0x3,0x43,0x5,0x45,0x9,0x49,0x11,0x51}.Select(flags=>{
+                        var candidate=read;candidate.Flags=flags;return new {Flags=flags,Accepted=PersistentFence.PolicyMatches(candidate,4,CompiledFencePolicy.ProxyPort)};
+                    }).ToArray()};
+                if(!PersistentFence.PolicyMatches(read,4,CompiledFencePolicy.ProxyPort))throw WfpNative.Contract("QualificationProductionPolicyReadbackMismatch");
             }
             finally{if(pointer!=IntPtr.Zero)WfpNative.FwpmFreeMemory0(ref pointer);}
         }

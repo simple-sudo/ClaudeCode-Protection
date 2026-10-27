@@ -36,6 +36,10 @@ INTEGRATED是实际调用链；VERIFIED只适用于表中明确功能及负向�
 
 新增固定`qualify-wfp-objects`仅SOURCE：受保护独立资格宿主、专用合成package SID及随机对象键，只在未提交事务内观察本次对象安全描述符/标量，必须Abort并独立回读两对象不存在；不打开安装状态，不进入生产quarantine或只读inspect命令。六项目非生成检查0错误/0警告；首次checker因报告父目录不存在退出1，建目录后通过。此项用于定位本次真实失败，不是防泄漏验收。当前生产安装仍为旧包。
 
+1104c4e独立29输入离线restore/build均0。五文件固定pin、元数据无module initializer、人类UAC及受保护专用资格副本后，合成对象检查实际退出0：BFE回读filter Flags=65（PERSISTENT|INDEXED），安全描述符管理员owner/保护DACL及两个SY/BA ACE正常。事务Abort成功，随后独立查询filter/sublayer均不存在。与生产`PolicyMatches`原先Flags必须精确等于1的条件结合，定位为INDEXED回读不兼容；微软[FWPM_FILTER0](https://learn.microsoft.com/en-us/windows/win32/api/fwpmtypes/ns-fwpmtypes-fwpm_filter0)记录该标志用于索引。限定VERIFIED为此native对象契约，不是网络隔离。
+
+初始资格生成launcher残留旧相对control导致固定plan拒绝；修正后helper残留旧目的地leaf导致创建目录前退出1。均未执行产品/创建资格目录，原脚本与失败保留work/wfp-object-contract-control；修正完整固定范围后work/wfp-object-contract-runtime-recovery成功，原工件名称未变，不涉及AV绕过。真实结果在ProgramFiles/ClaudeCodeProtection-Qualification-ObjectContract-20261027。修正生产读取只允许1或65，仍拒绝disabled及其他未知标志；同一生产匹配函数新增实际对象与16项标志负向资格，当前修正SOURCE待新工件运行，旧安装未改变。
+
 1. WFP首版普通用户事务Code5/BeginWfpTransaction保留；固定内置元数据改为独立GetByKey后仍Code5/ReadBuiltinConnectLayer。管理员只读成功不覆盖这两次普通用户失败。读API与事务分别要求layer READ和engine BEGIN_READ_TXN，见微软[LayerGetByKey](https://learn.microsoft.com/en-us/windows/win32/api/fwpmu/nf-fwpmu-fwpmlayergetbykey0)及[TransactionBegin](https://learn.microsoft.com/en-us/windows/win32/api/fwpmu/nf-fwpmu-fwpmtransactionbegin0)。
 2. 首次资格复制因PowerShell5.1不存在的FileSystemRights.ReadWrite枚举失败，原空资格目录保留；显式ReadData|WriteData经自建单字节文件验证，在新的-r1资格目录成功。资格目录不是正式产品根。
 3. 产品图首次构建GUI因共享源码缺少System.IO失败；真实WPF默认global usings不含IO/Http，原checker超集漏检。修复共享源和checker后新目录完整构建成功。失败在work/product-payload-build；修正版在product-payload-recovery-build，最后输入绑定修正另在product-final-build。

@@ -46,7 +46,7 @@ internal sealed class PersistentFence : IDisposable
                 _=WfpNative.Transaction(owner.engine,false,()=>{
                 var prior=owner.ReadInTransaction();if(!prior.AllAbsent)throw new InvalidDataException("Initial fence keys already exist; not adopted");
                 owner.AddSubLayer();for(var i=0;i<6;i++)owner.AddFilter(i);var added=owner.ReadInTransaction();
-                if(!added.FullQuarantineObserved)throw new InvalidDataException("New quarantine policy did not match in its transaction");return added;
+                if(!added.FullQuarantineObserved)throw WfpNative.Contract("NewQuarantinePolicyReadbackMismatch");return added;
                 });
                 var observed=owner.Observe();if(!observed.FullQuarantineObserved)throw new InvalidDataException("Committed quarantine readback differs");
                 owner.Record("QUARANTINE_READBACK_OBSERVED",observed);return observed;
@@ -136,13 +136,13 @@ internal sealed class PersistentFence : IDisposable
                 if(!layerPresent || filter.Key!=key || filter.Provider!=IntPtr.Zero || filter.SubLayer!=plan.SubLayer || WfpNative.Name(filter.Display.Name)!=plan.Name(role) ||
                     !WfpNative.BlobMatches(filter.Data,plan.Marker(role)) || !PackageMatches(filter))throw new InvalidDataException("Foreign or changed filter ownership refused");
                 WfpNative.AssertSecurity(engine,key,WfpNative.FwpmFilterGetSecurityInfoByKey0);
-                roles.Add(new(CompiledFencePolicy.Roles[role],true,(filter.Flags&WfpNative.Persistent)!=0,PolicyMatches(filter,role),filter.Id));
+                roles.Add(new(CompiledFencePolicy.Roles[role],true,(filter.Flags&WfpNative.Persistent)!=0,PolicyMatches(filter,role,plan.Data.ProxyPort),filter.Id));
             }
             finally{if(filterPointer!=IntPtr.Zero)WfpNative.FwpmFreeMemory0(ref filterPointer);}
         }
         return new(plan.Data.FenceId,layerPresent,layerHealthy,roles.ToArray(),DateTime.UtcNow.ToString("o"),"INSTALLATION_PACKAGE_SID_ALE_CONNECT_ONLY",false,false,false);
     }
-    private IEnumerable<WfpNative.Condition> Conditions(WfpNative.Filter filter)
+    private static IEnumerable<WfpNative.Condition> Conditions(WfpNative.Filter filter)
     {
         if(filter.ConditionCount is <1 or >16 || filter.Conditions==IntPtr.Zero)throw new InvalidDataException("Filter condition array invalid");
         var size=Marshal.SizeOf<WfpNative.Condition>();for(var i=0;i<filter.ConditionCount;i++)yield return Marshal.PtrToStructure<WfpNative.Condition>(filter.Conditions+i*size);
@@ -158,9 +158,10 @@ internal sealed class PersistentFence : IDisposable
         }
         return count==1;
     }
-    private bool PolicyMatches(WfpNative.Filter filter,int role)
+    internal static bool PolicyMatches(WfpNative.Filter filter,int role,int proxyPort)
     {
-        if(filter.Flags!=WfpNative.Persistent || filter.Layer!=(role is 3 or 5?WfpNative.ConnectV6:WfpNative.ConnectV4) || filter.Action.Type!=WfpNative.Block || filter.Action.Key!=Guid.Empty ||
+        if(role is <0 or >5 || proxyPort is <1 or >65535)throw new ArgumentOutOfRangeException(nameof(role));
+        if(!WfpNative.ExpectedPersistentFilterFlags(filter.Flags) || filter.Layer!=(role is 3 or 5?WfpNative.ConnectV6:WfpNative.ConnectV4) || filter.Action.Type!=WfpNative.Block || filter.Action.Key!=Guid.Empty ||
             filter.Context.Key!=Guid.Empty || filter.Reserved!=IntPtr.Zero || filter.Weight.Type!=WfpNative.UInt64 || filter.Weight.Pointer==IntPtr.Zero ||
             unchecked((ulong)Marshal.ReadInt64(filter.Weight.Pointer))!=ulong.MaxValue || filter.ConditionCount!=(role<3?2u:1u))return false;
         var extra=Conditions(filter).Where(c=>c.Field!=WfpNative.PackageId).ToArray();
@@ -168,7 +169,7 @@ internal sealed class PersistentFence : IDisposable
         if(extra.Length!=1 || extra[0].Match!=WfpNative.NotEqual)return false;var c=extra[0];
         return role switch {
             0=>c.Field==WfpNative.RemoteAddress && c.Value.Type==WfpNative.UInt32 && c.Value.U32==0x7f000001,
-            1=>c.Field==WfpNative.RemotePort && c.Value.Type==WfpNative.UInt16 && c.Value.U16==plan.Data.ProxyPort,
+            1=>c.Field==WfpNative.RemotePort && c.Value.Type==WfpNative.UInt16 && c.Value.U16==proxyPort,
             2=>c.Field==WfpNative.Protocol && c.Value.Type==WfpNative.UInt8 && c.Value.U8==6,
             _=>false
         };
