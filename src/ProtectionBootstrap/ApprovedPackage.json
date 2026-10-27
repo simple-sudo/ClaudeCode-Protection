@@ -1,1 +1,77 @@
-{"SchemaVersion":0,"Scope":"NO_REVIEWED_PACKAGE"}
+{
+  "SchemaVersion": 1,
+  "Scope": "UNACTIVATED_PRODUCT",
+  "Release": "806b2b6997c84e0da4db46c9d267d7a0",
+  "Files": [
+    {
+      "Asset": "daily-exe",
+      "Length": 151552,
+      "SHA256": "1984E2B95B1C2C1850994AEB844CE914FAA0B2DA557DB9106B4A5403700FBB7D"
+    },
+    {
+      "Asset": "daily-dll",
+      "Length": 59392,
+      "SHA256": "D886E73DC9ADD48196EF957EF6E7A41705A10106B0C1013F41438E5E025979DF"
+    },
+    {
+      "Asset": "daily-deps",
+      "Length": 440,
+      "SHA256": "F55C3E0EF861AB128C2D384B897E54D52E4EFA63CEF821863F000559ED9CB376"
+    },
+    {
+      "Asset": "daily-runtime",
+      "Length": 340,
+      "SHA256": "28329CF08F6505E73806B17558B187C02F0C1C516FE47EBFB7A013D082AAA306"
+    },
+    {
+      "Asset": "daily-reader",
+      "Length": 7929,
+      "SHA256": "3731AB7E6B9B18F19CD7F4150D023F6F06E0DF8D26EFB1A60D46DE6B5BB77A8D"
+    },
+    {
+      "Asset": "center-exe",
+      "Length": 151552,
+      "SHA256": "CFEE28597519CA4A4C57CD8226DBAB0676FA993F25A8D4B0216C0B8797B974F5"
+    },
+    {
+      "Asset": "center-dll",
+      "Length": 32256,
+      "SHA256": "B26488605071A5FD03D3772CA3EF3E787EF7865F909533503B57AC8D30A762BF"
+    },
+    {
+      "Asset": "center-deps",
+      "Length": 440,
+      "SHA256": "9B7AA19B206A07C3A12BD8C49169D30ED5D7C7713D930CE8E72D814706D13574"
+    },
+    {
+      "Asset": "center-runtime",
+      "Length": 458,
+      "SHA256": "C71152BF25E40D647B2440C5B39BE157A3D356106BE9D5B678AB97BB87B4E782"
+    },
+    {
+      "Asset": "broker-exe",
+      "Length": 151552,
+      "SHA256": "B90D97152299E526E717DB47D123AC994C8258432499541CFCBB73469F8D8FCD"
+    },
+    {
+      "Asset": "broker-dll",
+      "Length": 6144,
+      "SHA256": "6C0A6FF3DC95307610FAAF2004D8454BEADB30C4F87E337502CAF99DD4B51503"
+    },
+    {
+      "Asset": "broker-deps",
+      "Length": 853,
+      "SHA256": "9124E3DF9053EC1C653D57246E9AE76A10C4FB85BB2BD212614066151273066A"
+    },
+    {
+      "Asset": "broker-runtime",
+      "Length": 340,
+      "SHA256": "28329CF08F6505E73806B17558B187C02F0C1C516FE47EBFB7A013D082AAA306"
+    },
+    {
+      "Asset": "broker-lifecycle",
+      "Length": 325632,
+      "SHA256": "D717EA7C48F16703C382DBBEABCE1AF99EC4C49F57D2E6BED38BD0763590A329"
+    }
+  ]
+}
