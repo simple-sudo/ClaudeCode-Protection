@@ -6,9 +6,14 @@
 不自动重现、不绕过AV/UAC、不改日常FlClash/全机网络，先固定证据与具体工件范围。
 真实Claude仍延期，十四项与系统门禁不能从这份授权推导PASS。
 
-- BUILD：b204c979 的8源纯托管测试、Broker/Lifecycle（34源+2项目+4资源）分别离线还原/编译成功；
-  Broker构建0错误/0警告。固定SDK8.0.422/ref8.0.28、空包源、导入审计、独立输出与前后快照。
-- VERIFIED（有限）：纯策略用例实际退出0；当前Broker `inspect-runtime` 退出0，x64结构布局符合声明。
+- BUILD：当前源码提交48f9293c的9源纯托管测试、Broker/Lifecycle（35源+2项目+4资源）分别离线还原/编译成功，
+  0错误/0警告。固定SDK8.0.422/ref8.0.28、空包源、导入审计、独立输出与前后快照。
+  前序b204c979的两次独立构建同样保留，不覆盖其回执。
+- VERIFIED（有限）：48f9293c纯策略用例实际退出0，包含实际消费的迁移阶段决策，
+  程序集SHA256 0986B48CB1C2F196124E1CF44835538691F1DC3AF3FD011B943155C5E0B2152D。
+  新工件migrate-session-network/session-synthetic/admission-child均退出125，三个进程确认退出；
+  前两者明确返回SYSTEM_ARTIFACT_NOT_QUALIFIED，后者经公开库保护拒绝；没有系统操作。
+  前序b204c979 Broker `inspect-runtime` 退出0，x64结构布局符合声明。
   `inspect-wfp` 实际退出2，ReadBuiltinConnectLayer错误5（访问被拒绝），保留原FAIL/UNKNOWN，不改权限。
   两个普通用户诊断均退出；未安装、未创建Job/进程隔离、未变更WFP规则。
 - SOURCE / INTEGRATED：安装Broker新增 `migrate-session-network`，只接受固定7890旧策略与当前17891策略。
@@ -17,14 +22,16 @@
   未完成迁移阻断正常启动/安装生命周期。不会杀任务来使迁移通过，也不授予启动许可。
   六项目语义分析0错误/0警告：`outputs/session-network-migration-final-source-types.json`（Lifecycle34源）；
   同一实际迁移阶段决策进入PolicySmoke的事务前/提交后/选择后及反向/未知/未封闭拒绝用例，九源语义检查无诊断。
-  `outputs/session-network-migration-policy-source-types.json`是源码证据，此处尚无新增用例执行结果。
-  此迁移源码尚未安装/执行；上述b204c979构建不覆盖后续源码。
+  `outputs/session-network-migration-policy-source-types.json`保留源码证据；执行结果另见上项。
+  此迁移实现已编译，但尚未安装/执行；纯决策通过不证明WFP事务/崩溃恢复通过。
 - 事故诊断：核验了既有10:34Z日志。`!analyze` 未找到扩展导出，内核符号缺失；退出0不代表分析成功。
   显式扩展+微软公开符号的修正分析在启动前被自动审批拒绝，仅返回blocked by policy；不换入口绕过。
   尚未取得可归因的故障栈，无新蓝屏/故障注入；详见事故记录。
 
 复现资料均保留在忽略的 `work/session-validation-reopened-control`、
 `work/session-validation-policy-b204c97-build`、`work/session-validation-broker-b204c97-build`；
+当前源码构建分别位于 `work/session-gateway-migration-48f9293-build`、
+`work/session-migration-policy-48f9293-build`，固定控制脚本/输入/导入/工件摘要/测试及拒绝结果均保留。
 原失败和受保护分析日志不覆盖。有限前后观察AVP/BFE运行、FlClash28088/Core16112未变、
 Application新AV事件0，完整AV覆盖UNKNOWN，Kaspersky事件未结案。
 
