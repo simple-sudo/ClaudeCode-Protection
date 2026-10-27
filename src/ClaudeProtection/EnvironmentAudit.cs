@@ -85,6 +85,8 @@ internal static class EnvironmentAudit
 
     internal static async Task<Check> Transport(string name, string url, bool country, string proxy = "http://127.0.0.1:7890")
     {
+        if(!DiagnosticNetworkTargetPolicy.IsApprovedDiagnostic(url,proxy))
+            return new(name,"FAIL","Unapproved diagnostic destination or proxy; no request sent");
         try
         {
             using var handler = new HttpClientHandler
