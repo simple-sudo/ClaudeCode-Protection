@@ -296,3 +296,10 @@ STATUS.md改为唯一当前事实/剩余缺口索引；整理前旧内容按原�
 26719a固定bootstrap34输入BUILD0/安装更新0；网络request24ea1a4ee5f24e27a2dd69aada09319b实际3。host/child同一4证书链，leaf均无链错误，隔离中间证书64/16777216，实际观察到Microsoft两类CRL及DigiCert GlobalRootG2分发点。没有自动请求这些URL，原严格FAIL保留；ProgramFiles/ClaudeCodeProtection-Network-20261027-r7和私有回执保留，完整隔离/Job/精确豁免清理、AV/BFE/FlClash保持。
 
 下一修正SOURCE见[TLS进程内吊销补充](TLS-REVOCATION-SOURCE.md)：只对固定Microsoft资格目标及精确issuer/地址补充3份通过指定代理取得的CRL，以签名/时间/范围/直接吊销查询+Windows显式memory store CACHE_ONLY原生检查证明状态，不忽略其他TLS错误，不导入全局信任。当前managed非生成6项目0错误/警告（生命周期27源），尚未BUILD/native资格/实际TLS通过；不能覆盖原失败或第三方工具TLS资格。
+### 2026-10-27：四阶段限定网络矩阵与进程内CRL严格验证实际通过
+
+4285a43独立bootstrap35输入BUILD0、固定20资产及人类UAC更新0。当前fd4f9f85655342cebc46aab4d19982d8/7EC62DE8F572CBED678616FF2E1F1A815C520463BD172E998A546CA975A7593C，operation3f63a9da217f47fdada03d298146cfce，INACTIVE。
+
+网络request ce160d0fddd4471c977c2c36080fceec实际0：对照六项各1收据；完整隔离/指定代理开放/再次完整隔离的六个旁路接收均0，TCP10013、UDPsend成功与零投递分开；代理开放取得HTTPS200，恢复后7890又10013；最终host正向六项仍各1，受保护迟到nonce全0。三份指定代理取得CRL（34664/1032/2102字节）均经精确issuer签名/时效/范围/直接吊销查询及native CACHE_ONLY内存库检查通过，释放成功。原OS PolicyErrors4/64/16777216及r3–r7失败保留，不写成原OS联网检查已通过。仅限本次固定Microsoft资格，不是任意CA/第三方TLS兼容。
+
+原始ProgramFiles/ClaudeCodeProtection-Network-20261027-r8及私有回执保留；6规则103002–103007最终独立回读匹配，累计21登记Job均核对不可复用准入摘要/版本/关闭零成员回执，19豁免意图精确清理且其他项保持。Profile独立不存在仍UNKNOWN。AV/BFE/FlClash保持、无产品测试进程、无Claude/全机/AV改动/推送。详细证据与剩余故障/物理出口/系统解析器/资源门禁范围见NETWORK-QUALIFICATION-20261027.md。目标active，完整统一产品未完成。

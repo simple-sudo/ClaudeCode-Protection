@@ -1,6 +1,6 @@
 # 固定HTTPS资格的进程内吊销数据补充
 
-日期2026-10-27。当前仅SOURCE，不是TLS成功或通用代理产品授权；后续BUILD/native资格/已安装调用链分别记STATUS和验收账本。
+日期2026-10-27。当前SOURCE/BUILD/原生负向及固定已安装HTTPS调用链均已取得限定证据，详见[四阶段网络资格](NETWORK-QUALIFICATION-20261027.md)。此契约仍只针对固定Microsoft资格程序，不是通用代理产品授权。
 
 ## 已有实际依据
 
