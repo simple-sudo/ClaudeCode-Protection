@@ -6,7 +6,7 @@ namespace ProtectionLifecycle;
 
 internal sealed record FenceRoleObservation(string Role,bool Present,bool Persistent,bool PolicyMatches,ulong? ObservedId);
 internal sealed record FenceObservation(string FenceId,bool SubLayerPresent,bool SubLayerHealthy,FenceRoleObservation[] Roles,string AtUtc,
-    string Scope,bool LaunchQualified,bool ProxyQualified,bool RebootQualified)
+    string Scope,bool LaunchQualified,bool ProxyQualified,bool RebootQualified,ushort? ObservedSubLayerWeight)
 {
     internal bool AllAbsent=>!SubLayerPresent && Roles.All(r=>!r.Present);
     internal bool FullQuarantineObserved=>SubLayerHealthy && Roles.Length==6 && Roles.All(r=>r.Present && r.Persistent && r.PolicyMatches);
@@ -104,7 +104,7 @@ internal sealed class PersistentFence : IDisposable
     }));}
     private FenceObservation ReadInTransaction()
     {
-        AssertHeld();var layerPresent=false;var layerHealthy=false;
+        AssertHeld();var layerPresent=false;var layerHealthy=false;ushort? observedWeight=null;
         var layerKey=plan.SubLayer;var layerStatus=WfpNative.FwpmSubLayerGetByKey0(engine,in layerKey,out var pointer);
         if(layerStatus!=WfpNative.SubLayerNotFound)
         {
@@ -115,7 +115,10 @@ internal sealed class PersistentFence : IDisposable
                 if(!LayerIdentityMatches(layer,plan))
                     throw WfpNative.Contract("Foreign or changed sublayer identity refused");
                 WfpNative.AssertSecurity(engine,layerKey,WfpNative.FwpmSubLayerGetSecurityInfoByKey0);
-                layerPresent=true;layerHealthy=layer.Flags==WfpNative.Persistent && layer.Weight==ushort.MaxValue;
+                // BFE assigns the closest available weight; the request is
+                // not an exact round-trip guarantee. Expose actual priority
+                // for a future activation/drift lease, never claim top rank.
+                layerPresent=true;layerHealthy=LayerPolicyMatches(layer);observedWeight=layer.Weight;
             }
             finally{if(pointer!=IntPtr.Zero)WfpNative.FwpmFreeMemory0(ref pointer);}
         }
@@ -139,7 +142,7 @@ internal sealed class PersistentFence : IDisposable
             }
             finally{if(filterPointer!=IntPtr.Zero)WfpNative.FwpmFreeMemory0(ref filterPointer);}
         }
-        return new(plan.Data.FenceId,layerPresent,layerHealthy,roles.ToArray(),DateTime.UtcNow.ToString("o"),"INSTALLATION_PACKAGE_SID_ALE_CONNECT_ONLY",false,false,false);
+        return new(plan.Data.FenceId,layerPresent,layerHealthy,roles.ToArray(),DateTime.UtcNow.ToString("o"),"INSTALLATION_PACKAGE_SID_ALE_CONNECT_ONLY",false,false,false,observedWeight);
     }
     private static IEnumerable<WfpNative.Condition> Conditions(WfpNative.Filter filter)
     {
@@ -148,6 +151,7 @@ internal sealed class PersistentFence : IDisposable
     }
     internal static bool LayerIdentityMatches(WfpNative.SubLayer layer,FencePlan plan)=>layer.Key==plan.SubLayer && layer.Provider==IntPtr.Zero &&
         WfpNative.Name(layer.Display.Name)==plan.Name(-1) && WfpNative.BlobMatches(layer.Data,plan.Marker(-1));
+    internal static bool LayerPolicyMatches(WfpNative.SubLayer layer)=>layer.Flags==WfpNative.Persistent;
     internal static bool FilterIdentityMatches(WfpNative.Filter filter,FencePlan plan,int role,string packageSid)=>
         filter.Key==plan.Key(role) && filter.Provider==IntPtr.Zero && filter.SubLayer==plan.SubLayer && WfpNative.Name(filter.Display.Name)==plan.Name(role) &&
         WfpNative.BlobMatches(filter.Data,plan.Marker(role)) && PackageMatches(filter,packageSid);

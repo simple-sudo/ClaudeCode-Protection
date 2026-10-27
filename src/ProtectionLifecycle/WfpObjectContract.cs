@@ -12,7 +12,7 @@ public static class WfpObjectContract
     public static (int ExitCode,string Report) Qualify()
     {
         ProtectedState.RequireAdministrator();
-        var folder=WindowsPathSeal.Child(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),"ClaudeCodeProtection-Qualification-ObjectContract-20261027-r3");
+        var folder=WindowsPathSeal.Child(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),"ClaudeCodeProtection-Qualification-ObjectContract-20261027-r4");
         using var directory=WindowsPathSeal.LockDirectory(folder,PathPolicy.Protected);
         if(!string.Equals(Environment.ProcessPath,WindowsPathSeal.Child(folder,"ProtectionBroker.exe"),StringComparison.OrdinalIgnoreCase) ||
             !string.Equals(Assembly.GetEntryAssembly()?.Location,WindowsPathSeal.Child(folder,"ProtectionBroker.dll"),StringComparison.OrdinalIgnoreCase) ||
@@ -35,7 +35,7 @@ public static class WfpObjectContract
                 if(pointer==IntPtr.Zero)throw WfpNative.Contract("MissingQualificationLayer");
                 var read=Marshal.PtrToStructure<WfpNative.SubLayer>(pointer);
                 var identity=PersistentFence.LayerIdentityMatches(read,plan);
-                var healthy=read.Flags==WfpNative.Persistent && read.Weight==ushort.MaxValue;
+                var healthy=PersistentFence.LayerPolicyMatches(read);
                 layerObservation=new {read.Flags,read.Weight,IdentityMatches=identity,PolicyMatches=healthy,Security=Security(key,WfpNative.FwpmSubLayerGetSecurityInfoByKey0)};
                 accepted&=identity && healthy;
                 WfpNative.AssertSecurity(engine,key,WfpNative.FwpmSubLayerGetSecurityInfoByKey0);

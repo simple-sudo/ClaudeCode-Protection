@@ -22,7 +22,7 @@ internal sealed class BootstrapApproval : IDisposable
         var result=new BootstrapApproval();
         try
         {
-            var root=WindowsPathSeal.Canonical(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),inactiveUpdate?"ClaudeCodeProtection-Update-20261027":"ClaudeCodeProtection-Bootstrap"));
+            var root=WindowsPathSeal.Canonical(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),inactiveUpdate?"ClaudeCodeProtection-Update-20261027-r2":"ClaudeCodeProtection-Bootstrap"));
             var entry=Assembly.GetEntryAssembly()??throw new InvalidOperationException("Bootstrap entry missing");
             if(entry.GetName().Name!="ProtectionBootstrap" ||
                 !Same(Environment.ProcessPath,Path.Combine(root,"ProtectionBootstrap.exe")) ||
@@ -88,7 +88,7 @@ internal sealed class BootstrapApproval : IDisposable
 
 public static class BootstrapInstaller
 {
-    // One migration from the independently verified original no-admission
+    // Migration from independently verified pinned no-admission packages.
     // package. This is not an active-runtime update or generic empty-job lease.
     public static (int ExitCode,string Report) UpdateNeverAdmitted()
     {
@@ -108,13 +108,16 @@ public static class BootstrapInstaller
         runtime.AssertNoOwnedProcesses();verified.AssertHeld(state);
         return (0,JsonSerializer.Serialize(new {SchemaVersion=1,Status="NEVER_ADMITTED_INACTIVE_UPDATE_COMPLETED",state.InstallationId,
             PriorRelease=current.Release,package.Release,package.ManifestHash,OperationId=operation,Activation="INACTIVE",
-            RuntimeLeaseScope="PINNED_ORIGINAL_NO_ADMISSION_PACKAGE_AND_ABSENT_FENCE_OBJECTS",WfpModified=false,JobCreated=false,
+            RuntimeLeaseScope="PINNED_NO_ADMISSION_PACKAGE_AND_ABSENT_FENCE_OBJECTS",WfpModified=false,JobCreated=false,
             ClaudeLaunched=false,UserConfigurationModified=false,ProtectionQualified=false}));
     }
 
     private sealed class NeverAdmittedUpdateLease : ILifecycleRuntimeLease
     {
-        private const string OriginalManifest="1D83FA034A65DC58D1FFEB9C4F3A54EA52F1C3B7AF6156A54C752FA5D8801BAC";
+        private static readonly string[] NoAdmissionManifests={
+            "1D83FA034A65DC58D1FFEB9C4F3A54EA52F1C3B7AF6156A54C752FA5D8801BAC",
+            "BB0A619C10B53ECF4AC4E79578C9DF4A058E1758B3B111836A5172F46488E9FD"
+        }; // Both exact reviewed packages expose no launch/admission command.
         private readonly ProtectedState state;
         private readonly BootstrapApproval approval;
         private readonly VerifiedVersion prior;
@@ -124,9 +127,9 @@ public static class BootstrapInstaller
         {
             this.state=state;this.approval=approval;this.prior=prior;this.next=next;
             var current=CurrentPointer.Parse(state.Read("current.json",4096),state.InstallationId);
-            if(current.Release!=prior.Package.Release || current.ManifestSHA256!=OriginalManifest || prior.Package.ManifestHash!=OriginalManifest ||
-                next.Release==prior.Package.Release || next.ManifestHash==OriginalManifest)
-                throw new InvalidOperationException("Only the pinned original no-admission package can migrate");
+            if(current.Release!=prior.Package.Release || current.ManifestSHA256!=prior.Package.ManifestHash || !NoAdmissionManifests.Contains(prior.Package.ManifestHash,StringComparer.Ordinal) ||
+                next.Release==prior.Package.Release || next.ManifestHash==prior.Package.ManifestHash)
+                throw new InvalidOperationException("Only a pinned reviewed no-admission package can migrate");
             AssertNoOwnedProcesses();
         }
         public void AssertLaunchAdmissionClosed()
@@ -137,7 +140,7 @@ public static class BootstrapInstaller
             // admission/mutation owner must hold this same exclusive lock.
             // New payload stays INACTIVE throughout this one update operation.
             var current=CurrentPointer.Parse(state.Read("current.json",4096),state.InstallationId);
-            if(!((current.Release==prior.Package.Release && current.ManifestSHA256==OriginalManifest) ||
+            if(!((current.Release==prior.Package.Release && current.ManifestSHA256==prior.Package.ManifestHash) ||
                 (current.Release==next.Release && current.ManifestSHA256==next.ManifestHash)))
                 throw new InvalidDataException("Current pointer escaped the bound inactive migration");
         }

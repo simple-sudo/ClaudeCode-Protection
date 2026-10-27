@@ -2,6 +2,8 @@
 
 ## 2026-10-27 首次安装后隔离实际失败
 
+完整六角色资格定位第二缺陷：1345e11 BUILD后的受保护-r3副本，6条规则身份/条件/标志/安全描述符均通过，子层实际weight65533而请求65535，原代码错误要求等值。产品资格退出2、外部helper125如实保留；Abort后7对象不存在回读成功。修正依照微软BFE最近可用权重语义记录实际优先级，不声称最高优先级/真实阻断已证实。下一次未激活更新仅准许原始包及已核验的无准入BB0A包，所有先行安全条件不变。当前修正SOURCE待BUILD与真实quarantine。
+
 固定未激活更新真实成功：faa9136470ae4ec8ba6273c10a91d19b，manifest BB0A619C10B53ECF4AC4E79578C9DF4A058E1758B3B111836A5172F46488E9FD，operation54bc6986cc7f4905b0c6b1d7ebd9683d。旧版仍保留，14资产摘要/当前权限负向核对通过。新包quarantine仍返回3：REINSTATE_QUARANTINE抛InvalidDataException，保留原失败，INDEXED单规则修正不能覆盖整套策略失败。扩展专用合成资格直接复用六角色生产定义及身份/策略匹配，逐角色输出而不提交或打开安装状态。此扩展当前SOURCE，不回填INTEGRATED/防泄漏通过。
 
 c1ab0dc修正独立BUILD后，-r2受保护资格副本实际退出0：同一生产策略函数接受当前BFE 65，16项标志组合仅1/65接受，Abort后两对象独立回读不存在，AV/BFE与日常FlClash保持。生产安装原失败仍保留。下一纵向切片为固定原始无准入包的未激活更新入口，禁止活动更新/资源删除/空Job推断：固定旧manifest、旧版租约、私有锁、INACTIVE、零Job历史及所有fence对象实查不存在。SOURCE通过，需独立BUILD/真实安装后再运行quarantine，不能提前升级验收。
