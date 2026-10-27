@@ -127,7 +127,9 @@ internal static class WatchdogQualification
                 if(childReport.SchemaVersion!=1 || childReport.Pid!=child.Pid || childReport.Nonce!=plan.Nonce || childReport.Kind!=plan.Kind || childReport.FailureMask!=0 ||
                     childReport.ProxyHttpStatus is not (>=200 and <400) || childReport.ProxySocket?.SocketCallSucceeded!=true ||
                     !NetworkQualification.NegativeCasesEligible(childReport.Cases) || !child.IsRunning)throw WfpNative.Contract("WatchdogReadyReportRefused");
-                var members=job.Observe();if(members.ActiveBefore!=1 || members.ActiveAfter!=1 || !members.ProcessIds.SequenceEqual(new[]{child.Pid}))throw WfpNative.Contract("WatchdogTargetMembershipRefused");
+                var members=job.Observe();var inspected=AtomicChild.InspectMembers(job,members);var afterInspection=job.Observe();
+                state.WriteNew("watchdog-members-"+job.JobId+".json",JsonSerializer.SerializeToUtf8Bytes(new {Before=members,Members=inspected,After=afterInspection}));
+                if(members.ActiveBefore!=1 || members.ActiveAfter!=1 || !members.ProcessIds.SequenceEqual(new[]{child.Pid}))throw WfpNative.Contract("WatchdogTargetMembershipRefused");
                 runtime.Activate(kind==WatchdogCase.LeaseExpiry?1000:5000);var clock=Stopwatch.StartNew();
                 if(kind==WatchdogCase.NarrowingFenceDrift)foreach(var fence in fences)_=fence.ReinstateQuarantine(); // Narrows only our own SID; never deletes a guard.
                 while(clock.ElapsedMilliseconds<6000)

@@ -161,6 +161,10 @@ internal sealed class OwnedKernelJob : IDisposable
         var before=Active();var ids=ProcessIds();var after=Active();
         return new(intent.JobId,limits.Basic.LimitFlags,before,after,ids,DateTime.UtcNow.ToString("o"));
     }
+    internal bool ContainsProcess(SafeProcessHandle process)
+    {
+        AssertHeld();if(!IsProcessInJob(process,handle,out var belongs))throw Error("InspectExactJobMembership");return belongs;
+    }
     private uint Active()
     {
         if(!QueryAccounting(handle,1,out var accounting,(uint)Marshal.SizeOf<BasicAccounting>(),out _))throw Error("QueryOwnedJobAccounting");
@@ -227,6 +231,7 @@ internal sealed class OwnedKernelJob : IDisposable
     [DllImport("kernel32.dll",EntryPoint="QueryInformationJobObject",SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)] private static extern bool QueryAccounting(SafeJobHandle handle,int info,out BasicAccounting accounting,uint size,out uint returned);
     [DllImport("kernel32.dll",EntryPoint="QueryInformationJobObject",SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)] private static extern bool QueryBuffer(SafeJobHandle handle,int info,IntPtr buffer,uint size,out uint returned);
     [DllImport("kernel32.dll",SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)] private static extern bool TerminateJobObject(SafeJobHandle handle,uint exitCode);
+    [DllImport("kernel32.dll",SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)] private static extern bool IsProcessInJob(SafeProcessHandle process,SafeJobHandle job,[MarshalAs(UnmanagedType.Bool)] out bool belongs);
 }
 
 internal sealed record RegisteredJobFailure(string JobId,string Stage,WfpErrorEvidence[] Errors);
