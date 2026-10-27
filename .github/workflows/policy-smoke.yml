@@ -1,0 +1,32 @@
+name: Safe managed policy smoke
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/policy-smoke.yml'
+      - 'src/ClaudeProtection/StrictPreflight.cs'
+      - 'src/ClaudeProtection/DiagnosticNetworkTargetPolicy.cs'
+      - 'src/ClaudeProtection/Models.cs'
+      - 'src/Shared/ProxyDestinationPolicy.cs'
+      - 'tests/PolicySmoke/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pure-policy-only:
+    name: Pure managed logic (no native product)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Run only source-linked managed policy smoke
+        run: dotnet run --project tests/PolicySmoke/PolicySmoke.csproj --configuration Release
