@@ -11,6 +11,7 @@ on:
       - 'src/ClaudeProtection/Program.cs'
       - 'src/ClaudeProtection/ClaudeProtection.csproj'
       - 'src/Shared/**'
+      - 'src/ProtectionCenter/PreflightDisplay.cs'
       - 'tests/PolicySmoke/**'
   workflow_dispatch:
 

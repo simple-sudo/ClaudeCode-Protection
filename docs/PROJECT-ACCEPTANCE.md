@@ -332,3 +332,23 @@ STATUS.md改为唯一当前事实/剩余缺口索引；整理前旧内容按原�
 WER目录读取辅助进程曾异常增长；首次停止UAC取消后，经用户明确允许重显UAC，仅精确终止PID18080/创建时刻匹配的helper，停止回执08:06:15.580Z，当前不存在。单个WER的有界读取替代路径已退出0；原失败/取消/资源异常保留，原因未猜测。
 
 微软官方WinDbg工具已下载/签名核验，未系统安装/执行；离线分析调试器的启动被自动审批拒绝（仅blocked by policy），没有换入口绕过。故障模块、内核栈及测试因果仍UNKNOWN，产品构建/安装/运行/故障注入保持BLOCKED。完整事件/工具来源/证据及手动离线诊断步骤见INCIDENT-20261027-SYSTEM-CRASH.md。无产品测试进程，AV/BFE/日常FlClash保持；目标未完成。
+
+### 2026-10-27：GitHub两批成果重新接收与源码收尾
+
+接续已有整合分支587ef08，工作区干净；重新fetch与GitHub MCP核对origin/main仍8e5b4ee，
+PR #1仍eb2300e、PR #2仍950836b，均Draft且未合并。原CI40480675575的Broker/Lifecycle编译、
+40480813906的daily编译及纯托管测试成功；仅对应各自源提交，不覆盖本地整合补丁。
+保留4a91a20成员句柄/重复PID/创建时间修复及00479f2日常/GUI预检、Broker启动拒绝、587ef08地址边界修复。
+
+本次最新用户指示要求保留系统运行阻断，覆盖历史重新授权。SOURCE补充Broker五个系统qualify入口、
+Bootstrap安装/更新的提前拒绝；没有命令参数或环境变量解锁。未构建安装，不改变已装旧字节。
+GUI接入十四项中文结果/处理说明，整份核验schema、唯一ID、必要性、非权威标志及逐项时间，
+独立两分钟过期/未来判定，每15秒只重绘、无重复worker/网络；保留FAIL和原报告保存/失败提示。
+新增针对实际格式化器的失效、重复、缺失及伪造授权负向测试，未执行。
+
+SOURCE：六产品项目非生成语义检查0错误/0警告；测试七个源输入仅语义检查同样无诊断。
+原始outputs/pr-intake-closure-source-types.json、pr-intake-test-source-analysis-final.json不入Git。
+本轮无Emit/MSBuild/restore、产品程序集运行、原生资格、UAC或AV/网络改动；有限只读快照未见四个产品名称进程、
+AVP21.26/BFE运行，不冒充主机安全鉴定。完整产品非DELIVERABLE，正式Claude继续DEFERRED_BY_USER。
+可信转发执行边界及不可绕过路径、十四项Broker可信采集/会话绑定/失效撤销、敏感宿主资源及开发工具隔离仍缺。
+新整合工件BUILD/安装/实机验证BLOCKED，0x1E归因仍UNKNOWN；不请求例行审批、不推送、不合并远端PR。

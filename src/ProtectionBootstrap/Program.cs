@@ -1,18 +1,9 @@
-using ProtectionLifecycle;
-using System.Text.Json;
-
 if(args.Length!=1 || args[0] is not ("install-inactive" or "update-inactive"))
 {
-    Console.Error.WriteLine("Usage: ProtectionBootstrap install-inactive | update-inactive (pinned reviewed inactive packages only)");return 64;
+    Console.Error.WriteLine("Usage: ProtectionBootstrap install-inactive | update-inactive (currently blocked by incident hold)");return 64;
 }
-try
-{
-    var result=args[0]=="install-inactive"?BootstrapInstaller.InstallFresh():BootstrapInstaller.UpdatePinnedInactive();Console.WriteLine(result.Report);return result.ExitCode;
-}
-catch(Exception ex)
-{
-    Console.Error.WriteLine(JsonSerializer.Serialize(new {Status="INSTALL_NOT_COMPLETED",FailureType=ex.GetType().Name,Failures=Describe(ex),ProtectionQualified=false}));
-    return 125;
-}
-static object Describe(Exception ex)=>new {Type=ex.GetType().Name,ex.Message,Code=ex is System.ComponentModel.Win32Exception native?native.NativeErrorCode:(int?)null,
-    Stage=ex.Data["Stage"]?.ToString(),Inner=ex.InnerException is null?null:Describe(ex.InnerException)};
+// The current integration has no installation clearance following 0x1E.
+// Historical pinned installers remain in Lifecycle; direct entry must not
+// bypass the incident hold or mutate the installed selection.
+Console.Error.WriteLine("SYSTEM_VALIDATION_BLOCKED: Installation/update is suspended pending crash investigation and artifact clearance. No installation was started.");
+return 125;

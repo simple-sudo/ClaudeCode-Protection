@@ -1,10 +1,11 @@
 # ClaudeCode-Protection working rules
 
-2026-10-27 integration continuation: the user has explicitly reopened bounded
-system testing, including the possibility of another bugcheck, to find the cause.
-The earlier crash-related blanket runtime stop is historical, not a permanent
-veto. Start with the preserved dump and a concrete hypothesis; use reviewed,
-bounded, exact-artifact entries and preserve failures, exit/drain and recovery.
+2026-10-27 PR intake: the user's latest instruction explicitly retains the
+system-test hold after bugcheck 0x1E. This supersedes the earlier reopening
+record, which remains historical evidence, not present authorization. Do not
+build/install/run new product artifacts, invoke WFP/Job/Watchdog qualification
+or fault injection until incident investigation and applicable artifact safety
+conditions are satisfied. Safe source review and non-emitting checks may proceed.
 This does not clear the Kaspersky incident, bypass AV, unlock legacy build
 scripts, permit automatic UAC confirmation, reconfigure daily FlClash or authorize
 real Claude login/inference/sessions. Source integration is not qualification.

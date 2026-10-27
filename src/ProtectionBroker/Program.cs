@@ -11,6 +11,14 @@ internal static class Program
             Console.Error.WriteLine("ProtectionBroker inspect-runtime | inspect-wfp; inspect-installed-fence (installed read-only); quarantine | qualify-admission | qualify-network | qualify-gpu | qualify-watchdog (installed); qualify-wfp-objects (protected qualification host). Management requires existing elevation.");
             return 64;
         }
+        // Incident hold precedes elevation, installed-state access and every
+        // native qualification call. Clearing it requires a reviewed source
+        // change after crash investigation, never a flag or cached PASS.
+        if (args[0] is "qualify-wfp-objects" or "qualify-admission" or "qualify-network" or "qualify-gpu" or "qualify-watchdog")
+        {
+            Console.Error.WriteLine("SYSTEM_VALIDATION_BLOCKED: 0x1E crash investigation and artifact clearance are required. No qualification was started.");
+            return 125;
+        }
         try
         {
             if(args[0]=="admission-child")return ProtectionLifecycle.InstalledBroker.RunAdmissionCanary();

@@ -99,4 +99,30 @@ Require(!ProxyDestinationPolicy.AuthorizePinnedHttps("api.anthropic.com.evil.int
 // A policy decision is only a candidate; the trusted forwarder must actually
 // tunnel the selected IP literal, without allowing fallback to direct 7890.
 
-Console.WriteLine("PolicySmoke: bounded pure policy cases passed. No product or native code executed.");
+// Exercise the actual GUI formatter without starting WPF or a backend process.
+static string Display(StrictPreflightReport report,DateTimeOffset at)=>
+    ProtectionCenter.PreflightDisplay.Render(System.Text.Json.JsonSerializer.Serialize(report),at);
+var rendered=Display(baseline,now);
+Require(rendered.Contains("14. Claude 服务可达性") && rendered.Contains("不是启动许可"),"all fourteen items visible without launch authority");
+Require(rendered.Contains("已观察到合格条件"),"fresh bounded observations are visible");
+Require(!Display(baseline,now.AddMinutes(3)).Contains("已观察到合格条件"),"GUI independently expires old positive results");
+Require(!Display(baseline,now.AddTicks(-1)).Contains("已观察到合格条件"),"GUI refuses future evidence");
+Require(Display(bad,now.AddMinutes(3)).Contains("代理内核：失败"),"expired display preserves failures");
+Require(!Display(baseline with {SourceNamesUnique=false},now).Contains("已观察到合格条件"),"GUI cannot present duplicated source positives");
+foreach(var forged in new[]{
+    baseline with {LaunchAuthorized=true},
+    baseline with {BrokerSecurityAdmissionPresent=true},
+    baseline with {AllStrictChecksPass=true},
+    baseline with {Checks=baseline.Checks.Append(baseline.Checks[0]).ToArray()},
+    baseline with {Checks=baseline.Checks.Skip(1).ToArray()},
+    baseline with {Checks=baseline.Checks.Select((check,index)=>index==0?check with {RequiredForStrictMode=false}:check).ToArray()},
+    baseline with {Checks=baseline.Checks.Select((check,index)=>index==0?check with {TrustedForLaunchAdmission=true}:check).ToArray()},
+    baseline with {Checks=baseline.Checks.Select((check,index)=>index==0?check with {Status="CACHED_PASS"}:check).ToArray()},
+    baseline with {Checks=baseline.Checks.Select((check,index)=>index==0?check with {EvidenceAtUtc=now.AddHours(-1).ToString("O")}:check).ToArray()}
+}) Require(Display(forged,now).Contains("报告无法核验"),"GUI refuses malformed or authoritative-looking reports as a whole");
+var duplicateProperty=System.Text.Json.JsonSerializer.Serialize(baseline).Replace("\"SchemaVersion\":1","\"SchemaVersion\":1,\"SchemaVersion\":1");
+Require(ProtectionCenter.PreflightDisplay.Render(duplicateProperty,now).Contains("报告无法核验"),"duplicate JSON properties refused");
+Require(ProtectionCenter.PreflightDisplay.Render("{}",now).Contains("报告无法核验"),"missing payload fields refused");
+Require(ProtectionCenter.PreflightDisplay.Render(new string(' ',262145),now).Contains("报告无法核验"),"oversized report refused");
+
+Console.WriteLine("PolicySmoke: bounded pure policy cases passed. No product entry point, native API or network request was executed.");

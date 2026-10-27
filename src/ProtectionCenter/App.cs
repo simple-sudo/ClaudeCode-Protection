@@ -38,6 +38,9 @@ internal sealed class CenterWindow : Window
     private readonly TextBlock activity = new() { Text = "就绪。检查和维护均不会启动真实 Claude。", Foreground = Muted, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 10, 0, 0) };
     private readonly TextBox details = new() { IsReadOnly = true, FontFamily = new FontFamily("Consolas"), FontSize = 11, TextWrapping = TextWrapping.NoWrap, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Auto, BorderThickness = new Thickness(0), Background = Brushes.White, Padding = new Thickness(12) };
     private readonly List<Button> actions = new();
+    private readonly System.Windows.Threading.DispatcherTimer evidenceRefresh = new() { Interval = TimeSpan.FromSeconds(15) };
+    private string? environmentOutput, baselineDisplay;
+    private string environmentError = "";
     private bool busy, closeWhenDone;
     internal CenterWindow()
     {
@@ -78,6 +81,10 @@ internal sealed class CenterWindow : Window
         Grid.SetRow(lower, 3); root.Children.Add(lower);
         Grid.SetRow(activity, 4); root.Children.Add(activity); Content = root;
         Closing += (_, e) => { if (busy) { closeWhenDone = true; e.Cancel = true; activity.Text = "正在完成检查或清理，结束后自动关闭。"; } };
+        // Re-render freshness without repeating the worker or any network test.
+        evidenceRefresh.Tick += (_, _) => { if (!busy) RefreshEnvironmentDisplay(); };
+        Closed += (_, _) => evidenceRefresh.Stop();
+        evidenceRefresh.Start();
     }
     private static TextBlock Value(string text) => new() { Text = text, FontSize = 20, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 8, 0, 0) };
     private static TextBlock Label(string text) => new() { Text = text, Foreground = Muted, FontSize = 13 };
@@ -96,6 +103,7 @@ internal sealed class CenterWindow : Window
     }
     private async Task Inspect(bool online)
     {
+        environmentOutput = null;
         activity.Text = "正在核对代理配置和环境……";
         var baseline = await BackendClient.Command("system-proxy-baseline");
         if (baseline.ExitCode == 0)
@@ -115,7 +123,10 @@ internal sealed class CenterWindow : Window
         BackendResult result;
         try { result = online ? await BackendClient.Command("preflight", "--online") : await BackendClient.Command("preflight"); }
         catch (Exception ex) { result = new(125, "", "Environment audit invocation failed: " + ex.GetType().Name); }
-        details.Text += "\r\n\r\n环境检查：\r\n" + result.Output + "\r\n" + result.Error;
+        baselineDisplay = details.Text;
+        environmentOutput = result.Output;
+        environmentError = result.Error;
+        RefreshEnvironmentDisplay();
         var message = result.ExitCode == 125 ? "环境检查未能完成，阶段结果如下；保护仍未激活。" : "环境检查已返回。失败和未知项保留；保护仍未激活。";
         activity.Text = message;
         try { activity.Text += "\n记录：" + BackendClient.SaveReport("environment", result, baseline); }
@@ -124,6 +135,7 @@ internal sealed class CenterWindow : Window
     }
     private async Task Repair()
     {
+        environmentOutput = null;
         activity.Text = "核对 Claude 的三个代理字段；Windows 全局代理保持原样。";
         var plan = await BackendClient.Command("repair-proxy-plan");
         if (plan.ExitCode != 0) { ShowMaintenance(plan, "config-repair"); return; }
@@ -134,8 +146,17 @@ internal sealed class CenterWindow : Window
     }
     private async Task Restore()
     {
+        environmentOutput = null;
         activity.Text = "正在核对上次修改记录；有后续编辑时拒绝覆盖。";
         ShowMaintenance(await BackendClient.Command("restore-proxy"), "config-restore");
+    }
+    private void RefreshEnvironmentDisplay()
+    {
+        if (environmentOutput is not null)
+        {
+            var display = baselineDisplay + "\r\n\r\n" + PreflightDisplay.Render(environmentOutput, DateTimeOffset.UtcNow) + "\r\n" + environmentError;
+            if (details.Text != display) details.Text = display;
+        }
     }
     private void ShowMaintenance(BackendResult result, string reportKind)
     {

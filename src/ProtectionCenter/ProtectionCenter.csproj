@@ -10,7 +10,8 @@
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="App.cs;BackendClient.cs" />
+    <Compile Include="App.cs;BackendClient.cs;PreflightDisplay.cs" />
     <Compile Include="../Shared/UserDataPaths.cs" Link="UserDataPaths.cs" />
+    <Compile Include="../Shared/StrictEnvironmentRequirements.cs" Link="StrictEnvironmentRequirements.cs" />
   </ItemGroup>
 </Project>
