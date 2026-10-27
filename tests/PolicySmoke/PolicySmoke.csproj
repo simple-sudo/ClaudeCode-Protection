@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- Source-link the exact production policy without executing application,
+         native code, product scripts, WFP, Job, CUDA or proxy diagnostics. -->
+    <Compile Include="Program.cs" />
+    <Compile Include="../../src/ClaudeProtection/Models.cs" Link="Models.cs" />
+    <Compile Include="../../src/ClaudeProtection/StrictPreflight.cs" Link="StrictPreflight.cs" />
+    <Compile Include="../../src/ClaudeProtection/DiagnosticNetworkTargetPolicy.cs" Link="DiagnosticNetworkTargetPolicy.cs" />
+  </ItemGroup>
+</Project>
