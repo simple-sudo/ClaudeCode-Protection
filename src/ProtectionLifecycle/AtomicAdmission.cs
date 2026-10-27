@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Security.Principal;
 using System.Text;
@@ -101,6 +102,7 @@ internal sealed class AtomicChild : IDisposable
     private readonly bool gpuWorkload;
     private bool resumed,disposed;
     internal uint Pid {get;}
+    internal bool IsRunning=>!disposed && WaitForSingleObject(process,0)==0x102;
     private AtomicChild(ProtectedState state,VerifiedVersion version,OwnedKernelJob job,ProcessInfo info,string image,string sid,NetworkProbePlan? network,bool gpuWorkload)
     {
         this.state=state;this.version=version;this.job=job;this.image=image;packageSid=sid;Pid=info.ProcessId;this.network=network;this.gpuWorkload=gpuWorkload;
@@ -182,7 +184,7 @@ internal sealed class AtomicChild : IDisposable
         if(!token.IsAppContainer || token.PackageSid!=packageSid || token.CapabilityCount!=0 || token.IntegritySid!="S-1-16-4096")throw WfpNative.Contract("AtomicTokenBeforeResumeMismatch");
         var plans=FencePlan.ReadAll(state);if(plans.Count==0)throw WfpNative.Contract("AtomicResumeRequiresRegisteredFence");
         var observations=new List<FenceObservation>();
-        var proxyOnly=network?.Kind==NetworkProbeKind.Proxy;
+        var proxyOnly=network?.RequiresProxy==true;
         if(proxyOnly){if(proxy is null)throw WfpNative.Contract("NetworkProxyAdmissionNeedsLiveIdentityLease");proxy.AssertHealthy();}
         foreach(var plan in plans)
         {
@@ -201,7 +203,7 @@ internal sealed class AtomicChild : IDisposable
     internal uint WaitForCanaryExit()
     {
         if(!resumed || disposed)throw new InvalidOperationException("Canary has not resumed");
-        var status=WaitForSingleObject(process,network is not null || gpuWorkload?30000u:15000u);
+        var status=WaitForSingleObject(process,network?.Kind==NetworkProbeKind.ProxySession?90000u:network is not null || gpuWorkload?30000u:15000u);
         if(status==0x102)throw new TimeoutException("Finite atomic canary did not exit");
         if(status!=0)throw Error("AtomicCanaryWait");
         if(!GetExitCodeProcess(process,out var code))throw Error("AtomicCanaryExitCode");return code;
@@ -222,7 +224,16 @@ internal sealed class AtomicChild : IDisposable
         {
             if(plan.Length>8192)throw WfpNative.Contract("NetworkPlanSizeRefused");
             var network=JsonSerializer.Deserialize<NetworkProbePlan>(plan)??throw WfpNative.Contract("MissingNetworkPlan");network.Validate();
-            var report=NetworkQualification.RunChild(network).GetAwaiter().GetResult();Console.WriteLine(JsonSerializer.Serialize(report));return report.FailureMask;
+            var report=NetworkQualification.RunChild(network).GetAwaiter().GetResult();Console.WriteLine(JsonSerializer.Serialize(report));
+            if(network.Kind==NetworkProbeKind.ProxySession && report.FailureMask==0)
+            {
+                // Fixed owned-loopback attempts keep the admitted child alive
+                // during watchdog qualification. No children or extra targets.
+                var clock=Stopwatch.StartNew();while(clock.ElapsedMilliseconds<60000)
+                {Thread.Sleep(100);if(!NetworkQualification.NegativeCasesEligible(NetworkQualification.RawCases(network).GetAwaiter().GetResult()))return 126;}
+                return 124; // Finite fallback is not watchdog success.
+            }
+            return report.FailureMask;
         }
         Thread.Sleep(200);return 42; // No network, state, file writes or children.
     }

@@ -7,9 +7,10 @@ using System.Text.Json;
 
 namespace ProtectionLifecycle;
 
-internal enum NetworkProbeKind { Control,Quarantine,Proxy,ProxyDenied }
+internal enum NetworkProbeKind { Control,Quarantine,Proxy,ProxyDenied,ProxySession }
 internal sealed record NetworkProbePlan(NetworkProbeKind Kind,int TcpPort,int OtherAddressPort,int Tcp6Port,int UdpPort,int Udp6Port,string Nonce)
 {
+    internal bool RequiresProxy=>Kind is NetworkProbeKind.Proxy or NetworkProbeKind.ProxySession;
     internal void Validate()
     {
         if(!Enum.IsDefined(Kind) || new[]{TcpPort,OtherAddressPort,Tcp6Port,UdpPort,Udp6Port}.Any(p=>p is <1024 or >65535 || p==CompiledFencePolicy.ProxyPort))
@@ -159,7 +160,7 @@ internal static class NetworkQualification
         var cases=await RawCases(plan);var mask=0;
         for(var i=0;i<cases.Length;i++)if(plan.Kind==NetworkProbeKind.Control?!cases[i].SocketCallSucceeded:!EligibleNegative(cases[i],i))mask|=1<<i;
         int? http=null;SocketProbe? proxy=null;NetworkTransportFailure? failure=null;TlsValidationObservation? tls=null;TlsCertificateObservation[]? certificates=null;RevocationSupply? supplied=null;
-        if(plan.Kind==NetworkProbeKind.Proxy)
+        if(plan.RequiresProxy)
         {
             proxy=await Probe("compiled-proxy-port",IPAddress.Loopback,CompiledFencePolicy.ProxyPort,false,Array.Empty<byte>());
             if(!proxy.SocketCallSucceeded)mask|=64;
@@ -177,6 +178,8 @@ internal static class NetworkQualification
     // Unknown errors/timeouts remain failures; TCP still requires AccessDenied.
     private static bool EligibleNegative(SocketProbe probe,int index)=>Denied(probe) ||
         (index>=3 && probe.SocketCallSucceeded && probe.SocketError is null && probe.FailureType is null);
+    internal static bool NegativeCasesEligible(SocketProbe[]? cases)=>cases is not null && cases.Length==NetworkReceivers.Roles.Length &&
+        cases.Select(c=>c.Role).SequenceEqual(NetworkReceivers.Roles) && cases.Select(EligibleNegative).All(v=>v);
 
     internal static (int ExitCode,string Report) Run(FixedLayout layout,ProtectedState state,VerifiedVersion version)
     {
@@ -242,18 +245,19 @@ internal static class NetworkQualification
             using var job=OwnedKernelJob.CreateEmpty(state,version);
             using var pipe=new AnonymousPipeServerStream(PipeDirection.In,HandleInheritability.Inheritable);
             using var reader=new StreamReader(pipe,Encoding.UTF8,false,4096,true);
-            var text=ReadBounded(reader);Exception? phaseFailure=null;NetworkChildReport? observed=null;int[]? delivered=null;Task<uint>? exited=null;
+            var text=ReadBounded(reader);Exception? phaseFailure=null;NetworkChildReport? observed=null;int[]? delivered=null;Task<uint>? exited=null;ProtectionRuntimeLease? runtime=null;
             try
             {
                 using var child=AtomicChild.CreateCanary(layout,state,version,job,profile,plan,pipe.ClientSafePipeHandle.DangerousGetHandle());
                 pipe.DisposeLocalCopyOfClientHandle();
                 if(kind==NetworkProbeKind.Proxy)foreach(var fence in fences)_=fence.OpenQualifiedIPv4Proxy(proxy);
+                if(kind==NetworkProbeKind.Proxy)runtime=new(state,version,job,fences,proxy);
                 _=child.ResumeQuarantined(proxy);exited=Task.Run(child.WaitForCanaryExit);
                 while(!exited.Wait(250))
                 {
                     if(kind==NetworkProbeKind.Proxy)
                     {
-                        proxy.AssertHealthy();foreach(var fence in fences)if(!fence.Observe().IPv4ProxyOnlyObserved)throw WfpNative.Contract("NetworkWatchdogFenceDrift");
+                        runtime!.AssertHealthy();
                     }
                 }
                 var exit=exited.GetAwaiter().GetResult();
@@ -276,11 +280,17 @@ internal static class NetworkQualification
             {
                 // Restore deny before stopping processes or removing the exact
                 // exemption. Continue exact Job stop even if WFP restore fails.
-                if(kind==NetworkProbeKind.Proxy)foreach(var fence in fences)
+                if(kind==NetworkProbeKind.Proxy && runtime is null)foreach(var fence in fences)
                 {try{_=fence.ReinstateQuarantine();}catch(Exception ex){phaseFailure=Combine(phaseFailure,ex);}}
                 try
                 {
-                    if(job.AtomicAdmissionReserved){var zero=job.CloseAtomicAdmissionAndStop();profile.AfterOwnedJobZero(zero);}
+                    if(runtime is not null)
+                    {
+                        var stopped=runtime.Stop(phaseFailure is null?"NETWORK_PHASE_END":"NETWORK_PHASE_FAILURE");
+                        if(stopped.FinalJob is not null)profile.AfterOwnedJobZero(stopped.FinalJob);
+                        if(stopped.Failures.Length!=0 || !stopped.QuarantineObservedBeforeStop || stopped.FinalJob?.ObservedZero!=true)throw WfpNative.Contract("NetworkRuntimeStopNotConfirmed");
+                    }
+                    else if(job.AtomicAdmissionReserved){var zero=job.CloseAtomicAdmissionAndStop();profile.AfterOwnedJobZero(zero);}
                     else{_=job.StopAndVerifyZero();throw WfpNative.Contract("NetworkAdmissionReservationUnknown");}
                 }
                 catch(Exception ex){phaseFailure=Combine(phaseFailure,ex);}

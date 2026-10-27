@@ -303,3 +303,9 @@ STATUS.md改为唯一当前事实/剩余缺口索引；整理前旧内容按原�
 网络request ce160d0fddd4471c977c2c36080fceec实际0：对照六项各1收据；完整隔离/指定代理开放/再次完整隔离的六个旁路接收均0，TCP10013、UDPsend成功与零投递分开；代理开放取得HTTPS200，恢复后7890又10013；最终host正向六项仍各1，受保护迟到nonce全0。三份指定代理取得CRL（34664/1032/2102字节）均经精确issuer签名/时效/范围/直接吊销查询及native CACHE_ONLY内存库检查通过，释放成功。原OS PolicyErrors4/64/16777216及r3–r7失败保留，不写成原OS联网检查已通过。仅限本次固定Microsoft资格，不是任意CA/第三方TLS兼容。
 
 原始ProgramFiles/ClaudeCodeProtection-Network-20261027-r8及私有回执保留；6规则103002–103007最终独立回读匹配，累计21登记Job均核对不可复用准入摘要/版本/关闭零成员回执，19豁免意图精确清理且其他项保持。Profile独立不存在仍UNKNOWN。AV/BFE/FlClash保持、无产品测试进程、无Claude/全机/AV改动/推送。详细证据与剩余故障/物理出口/系统解析器/资源门禁范围见NETWORK-QUALIFICATION-20261027.md。目标active，完整统一产品未完成。
+
+### 2026-10-27：单次Job运行租约与Watchdog SOURCE接入
+
+## 本轮进行中：运行租约与故障响应
+
+新SOURCE把原代理阶段轮询接入共用ProtectionRuntimeLease，绑定选择摘要/核验版/一次性Job/代理身份/fence与有界期限；停止先回读隔离，再精确Job终止/零成员及关闭回执，记录时序。新增已安装固定qualify-watchdog，用自有长活canary验证1000ms期限到期和本工具收窄隔离漂移，不停止FlClash、不移除守卫、不把两例冒充代理/控制器崩溃。源契约/缺口见[RUNTIME-WATCHDOG-SOURCE](RUNTIME-WATCHDOG-SOURCE.md)。生命周期28源；首次非生成检查因漏传Enable的control参数1错，原报告保留，修正后6项目0错0警告。当前新工件尚未BUILD/运行，不继承fd4f网络或c9 GPU运行证据。

@@ -22,7 +22,7 @@ internal sealed class BootstrapApproval : IDisposable
         var result=new BootstrapApproval();
         try
         {
-            var root=WindowsPathSeal.Canonical(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),inactiveUpdate?"ClaudeCodeProtection-Update-20261027-crl-memory":"ClaudeCodeProtection-Bootstrap"));
+            var root=WindowsPathSeal.Canonical(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),inactiveUpdate?"ClaudeCodeProtection-Update-20261027-watchdog":"ClaudeCodeProtection-Bootstrap"));
             var entry=Assembly.GetEntryAssembly()??throw new InvalidOperationException("Bootstrap entry missing");
             if(entry.GetName().Name!="ProtectionBootstrap" ||
                 !Same(Environment.ProcessPath,Path.Combine(root,"ProtectionBootstrap.exe")) ||
@@ -127,7 +127,8 @@ public static class BootstrapInstaller
             "9AE1DBF15E05AC67E5E4EE73E216BFDB36FE1819ABC49E4A7C4FC5D060C37E10",
             "49B57CE036DBE8391D9967875BE1A7CB4505EB0F92407040DB88EE4CF7CB6CBE",
             "B832A15F4A52CEE50B09707C032BB9199296A69A79A735BC84BAFA56A142A94B",
-            "A31A246BFE3A021B3E443138906119BDAFD8518EBDC0B8CB349D87E0BFFBE2BD"
+            "A31A246BFE3A021B3E443138906119BDAFD8518EBDC0B8CB349D87E0BFFBE2BD",
+            "7EC62DE8F572CBED678616FF2E1F1A815C520463BD172E998A546CA975A7593C"
         };
         private readonly ProtectedState state;
         private readonly BootstrapApproval approval;

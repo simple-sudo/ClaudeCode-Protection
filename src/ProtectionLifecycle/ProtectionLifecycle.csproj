@@ -16,6 +16,7 @@
     <Compile Include="ProxyChannel.cs;NetworkQualification.cs" />
     <Compile Include="GpuQualification.cs" />
     <Compile Include="ProcessLocalRevocation.cs" />
+    <Compile Include="ProtectionRuntimeLease.cs" />
     <EmbeddedResource Include="LifecycleProtocol.json" />
     <EmbeddedResource Include="BrokerProtocol.json" />
     <EmbeddedResource Include="RecoveryProtocol.json" />
