@@ -1,0 +1,180 @@
+using System.ComponentModel;
+using System.Runtime.InteropServices;
+using System.Security.Principal;
+using System.Text;
+using System.Text.Json;
+using Microsoft.Win32.SafeHandles;
+
+namespace ProtectionLifecycle;
+
+// A completed one-shot admission cannot accept another process. Recovery may
+// use its durable zero-members proof; arbitrary missing Jobs remain UNKNOWN.
+internal sealed record AtomicJobCompletion(int SchemaVersion,string InstallationId,string JobId,string Release,string ManifestSHA256,
+    string AdmissionSHA256,string Status,JobSnapshot Snapshot)
+{
+    internal static AtomicJobCompletion? ReadClosed(ProtectedState state,OwnedJobIntent intent)
+    {
+        state.AssertHeld();var raw=state.ReadOptional("job-completed-"+intent.JobId+".json");if(raw is null)return null;
+        using var doc=JsonDocument.Parse(raw.Bytes,new JsonDocumentOptions{MaxDepth=5});var r=doc.RootElement;
+        StrictJson.Fields(r,"SchemaVersion","InstallationId","JobId","Release","ManifestSHA256","AdmissionSHA256","Status","Snapshot");
+        StrictJson.Fields(r.GetProperty("Snapshot"),"JobId","LimitFlags","ActiveBefore","ActiveAfter","ProcessIds","AtUtc");
+        var result=JsonSerializer.Deserialize<AtomicJobCompletion>(raw.Bytes)??throw WfpNative.Contract("MissingAtomicCompletion");
+        if(result.SchemaVersion!=1 || result.InstallationId!=state.InstallationId || result.JobId!=intent.JobId || result.Release!=intent.Release ||
+            result.ManifestSHA256!=intent.ManifestSHA256 || result.Status!="ADMISSION_CLOSED_MEMBERS_ZERO_OBSERVED" || result.Snapshot is null ||
+            result.Snapshot.JobId!=intent.JobId || !result.Snapshot.ExpectedLimits || !result.Snapshot.ObservedZero)
+            throw WfpNative.Contract("AtomicCompletionOwnershipOrZeroMismatch");
+        var admission=state.Read("job-admission-"+intent.JobId+".json",8192);
+        if(admission.SHA256!=Identifiers.Hash(result.AdmissionSHA256))throw WfpNative.Contract("AtomicCompletionAdmissionHashMismatch");
+        using var data=JsonDocument.Parse(admission.Bytes);var a=data.RootElement;
+        StrictJson.Fields(a,"SchemaVersion","InstallationId","JobId","Release","ManifestSHA256","Binding","Reusable");
+        if(a.GetProperty("SchemaVersion").GetInt32()!=1 || StrictJson.Text(a,"InstallationId")!=state.InstallationId || StrictJson.Text(a,"JobId")!=intent.JobId ||
+            StrictJson.Text(a,"Release")!=intent.Release || StrictJson.Text(a,"ManifestSHA256")!=intent.ManifestSHA256 ||
+            StrictJson.Text(a,"Binding")!="ATOMIC_JOB_LIST_AT_CREATION" || a.GetProperty("Reusable").GetBoolean())throw WfpNative.Contract("AtomicAdmissionProofMismatch");
+        return result;
+    }
+}
+
+internal sealed record AdmissionToken(bool IsAppContainer,string? PackageSid,int CapabilityCount,string IntegritySid);
+
+// No supplied executable/arguments/PID/token. First consumer is the installed
+// broker's own finite canary. Production Claude admission remains deferred.
+internal sealed class AtomicChild : IDisposable
+{
+    private readonly ProtectedState state;
+    private readonly VerifiedVersion version;
+    private readonly OwnedKernelJob job;
+    private readonly SafeProcessHandle process;
+    private readonly SafeWaitHandle thread;
+    private readonly string image,packageSid;
+    private bool resumed,disposed;
+    internal uint Pid {get;}
+    private AtomicChild(ProtectedState state,VerifiedVersion version,OwnedKernelJob job,ProcessInfo info,string image,string sid)
+    {
+        this.state=state;this.version=version;this.job=job;this.image=image;packageSid=sid;Pid=info.ProcessId;
+        process=new(info.Process,true);thread=new(info.Thread,true);
+    }
+    internal static AtomicChild CreateCanary(FixedLayout layout,ProtectedState state,VerifiedVersion version,OwnedKernelJob job)
+    {
+        ProtectedState.RequireAdministrator();state.AssertHeld();version.AssertHeld(state);
+        if(!Environment.Is64BitProcess || Marshal.SizeOf<StartupInfo>()!=104 || Marshal.SizeOf<StartupInfoEx>()!=112 || Marshal.SizeOf<SecurityCapabilities>()!=24)
+            throw new PlatformNotSupportedException("Atomic admission requires the declared x64 layout");
+        var image=WindowsPathSeal.Child(layout.Version(version.Package.Release),"bin/admin/ProtectionBroker.exe");
+        using var package=new InstallationPackageSid(state);
+        var jobHandle=job.ReserveAtomicAdmission(version);
+        IntPtr attributes=IntPtr.Zero,capabilities=IntPtr.Zero,jobList=IntPtr.Zero,environment=IntPtr.Zero;
+        bool initialized=false,handleHeld=false;
+        try
+        {
+            jobHandle.DangerousAddRef(ref handleHeld);
+            nuint size=0;_=InitializeProcThreadAttributeList(IntPtr.Zero,2,0,ref size);
+            if(size is 0 or >65536)throw Error("AtomicAttributeListSize");
+            attributes=Marshal.AllocHGlobal(checked((int)size));
+            if(!InitializeProcThreadAttributeList(attributes,2,0,ref size))throw Error("AtomicInitializeAttributes");initialized=true;
+            capabilities=Marshal.AllocHGlobal(Marshal.SizeOf<SecurityCapabilities>());
+            Marshal.StructureToPtr(new SecurityCapabilities{Sid=package.Pointer},capabilities,false);
+            if(!UpdateProcThreadAttribute(attributes,0,(IntPtr)0x20009,capabilities,(nuint)Marshal.SizeOf<SecurityCapabilities>(),IntPtr.Zero,IntPtr.Zero))throw Error("AtomicSetPackageAtCreation");
+            jobList=Marshal.AllocHGlobal(IntPtr.Size);Marshal.WriteIntPtr(jobList,jobHandle.DangerousGetHandle());
+            if(!UpdateProcThreadAttribute(attributes,0,(IntPtr)0x2000d,jobList,(nuint)IntPtr.Size,IntPtr.Zero,IntPtr.Zero))throw Error("AtomicSetJobListAtCreation");
+            var env=new SortedDictionary<string,string>(StringComparer.OrdinalIgnoreCase);
+            foreach(var name in new[]{"SystemRoot","windir","SystemDrive","ProgramFiles","ProgramFiles(x86)","ProgramW6432","PROCESSOR_ARCHITECTURE"})
+            {var value=Environment.GetEnvironmentVariable(name);if(value is not null)env[name]=value;}
+            env["PATH"]="C:\\Program Files\\dotnet;C:\\Windows\\System32;C:\\Windows";
+            env["DOTNET_ROOT"]="C:\\Program Files\\dotnet";env["DOTNET_ROLL_FORWARD"]="LatestPatch";
+            environment=Marshal.StringToHGlobalUni(string.Join('\0',env.Select(p=>p.Key+"="+p.Value))+"\0\0");
+            var startup=new StartupInfoEx{Basic=new(){Size=Marshal.SizeOf<StartupInfoEx>()},Attributes=attributes};
+            var command=new StringBuilder("\""+image+"\" admission-child");
+            // The OS binds BOTH identity and Job before returning a suspended
+            // initial thread. No inheritable handles or breakaway are enabled.
+            if(!CreateProcess(image,command,IntPtr.Zero,IntPtr.Zero,false,0x08080404,environment,Path.GetDirectoryName(image)!,ref startup,out var info))
+                throw Error("AtomicCreateSuspendedWithPackageAndJob");
+            return new(state,version,job,info,image,package.Value);
+        }
+        finally
+        {
+            if(initialized)DeleteProcThreadAttributeList(attributes);
+            if(attributes!=IntPtr.Zero)Marshal.FreeHGlobal(attributes);
+            if(capabilities!=IntPtr.Zero)Marshal.FreeHGlobal(capabilities);
+            if(jobList!=IntPtr.Zero)Marshal.FreeHGlobal(jobList);
+            if(environment!=IntPtr.Zero)Marshal.FreeHGlobal(environment);
+            if(handleHeld)jobHandle.DangerousRelease();
+        }
+    }
+    internal object ResumeQuarantined()
+    {
+        if(disposed || resumed)throw new InvalidOperationException("Canary resume is one-shot");
+        state.AssertHeld();version.AssertHeld(state);
+        var snapshot=job.Observe();
+        if(!snapshot.ExpectedLimits || snapshot.ActiveBefore!=1 || snapshot.ActiveAfter!=1 || snapshot.ProcessIds.Length!=1 || snapshot.ProcessIds[0]!=Pid)
+            throw WfpNative.Contract("AtomicJobMembershipBeforeResumeMismatch");
+        if(!GetProcessTimes(process,out var created,out _,out _,out _))throw Error("AtomicReadCreationTime");
+        var path=new StringBuilder(32768);uint length=(uint)path.Capacity;
+        if(!QueryFullProcessImageName(process,0,path,ref length))throw Error("AtomicReadCreatedImage");
+        if(!string.Equals(WindowsPathSeal.Canonical(path.ToString()),image,StringComparison.OrdinalIgnoreCase))throw WfpNative.Contract("AtomicCreatedImageMismatch");
+        var token=ReadToken(process);
+        if(!token.IsAppContainer || token.PackageSid!=packageSid || token.CapabilityCount!=0 || token.IntegritySid!="S-1-16-4096")throw WfpNative.Contract("AtomicTokenBeforeResumeMismatch");
+        var plans=FencePlan.ReadAll(state);if(plans.Count==0)throw WfpNative.Contract("AtomicResumeRequiresRegisteredFence");
+        var observations=new List<FenceObservation>();
+        foreach(var plan in plans)
+        {
+            using var fence=PersistentFence.OpenExisting(state,plan.Data.FenceId);var observed=fence.Observe();
+            if(!observed.FullQuarantineObserved)throw WfpNative.Contract("AtomicResumeRequiresCommittedQuarantine");observations.Add(observed);
+        }
+        var proof=new {SchemaVersion=1,state.InstallationId,job.JobId,Pid,CreatedFileTime=created.ToString("X16"),Token=token,
+            ImageSHA256=version.Package.Files.Single(f=>f.Asset.Id=="broker-exe").SHA256,Job=snapshot,Fences=observations,
+            Binding="SECURITY_CAPABILITIES_AND_JOB_LIST_AT_CREATION",Status="BEFORE_FIRST_RESUME",NetworkBehaviorQualified=false};
+        state.WriteNew("admission-before-resume-"+job.JobId+".json",JsonSerializer.SerializeToUtf8Bytes(proof));
+        var previous=ResumeThread(thread);if(previous==uint.MaxValue)throw Error("AtomicResumePrimaryThread");
+        if(previous!=1)throw WfpNative.Contract("AtomicInitialSuspendCountMismatch");
+        resumed=true;return proof;
+    }
+    internal uint WaitForCanaryExit()
+    {
+        if(!resumed || disposed)throw new InvalidOperationException("Canary has not resumed");
+        var status=WaitForSingleObject(process,15000);
+        if(status==0x102)throw new TimeoutException("Finite atomic canary did not exit");
+        if(status!=0)throw Error("AtomicCanaryWait");
+        if(!GetExitCodeProcess(process,out var code))throw Error("AtomicCanaryExitCode");return code;
+    }
+    internal static int RunCanary()
+    {
+        using var current=new SafeProcessHandle((IntPtr)(-1),false);var token=ReadToken(current);
+        if(!token.IsAppContainer || token.CapabilityCount!=0 || token.IntegritySid!="S-1-16-4096")return 125;
+        Thread.Sleep(200);return 42; // No network, state, file writes or children.
+    }
+    private static AdmissionToken ReadToken(SafeProcessHandle process)
+    {
+        if(!OpenProcessToken(process,8,out var token))throw Error("AtomicOpenCreatedToken");
+        using(token)
+        {
+            var container=Read(29,p=>Marshal.ReadInt32(p)!=0);
+            var sid=Read(31,p=>{var s=Marshal.ReadIntPtr(p);return s==IntPtr.Zero?null:new SecurityIdentifier(s).Value;});
+            var count=Read(30,Marshal.ReadInt32);
+            var integrity=Read(25,p=>new SecurityIdentifier(Marshal.ReadIntPtr(p)).Value);
+            return new(container,sid,count,integrity);
+            T Read<T>(int type,Func<IntPtr,T> consume)
+            {
+                _=GetTokenInformation(token,type,IntPtr.Zero,0,out var size);
+                if(size is <4 or >65536)throw Error("AtomicTokenBufferSize");var p=Marshal.AllocHGlobal(size);
+                try{if(!GetTokenInformation(token,type,p,size,out _))throw Error("AtomicReadTokenInformation");return consume(p);}
+                finally{Marshal.FreeHGlobal(p);}
+            }
+        }
+    }
+    public void Dispose(){if(disposed)return;disposed=true;thread.Dispose();process.Dispose();}
+    private static Win32Exception Error(string stage){var e=new Win32Exception(Marshal.GetLastWin32Error());e.Data["Stage"]=stage;return e;}
+    [StructLayout(LayoutKind.Sequential,CharSet=CharSet.Unicode)] private struct StartupInfo {internal int Size;internal string? Reserved,Desktop,Title;internal int X,Y,XSize,YSize,XCount,YCount,Fill;internal uint Flags;internal ushort Show,ReservedBytes;internal IntPtr ReservedPointer,Input,Output,Error;}
+    [StructLayout(LayoutKind.Sequential)] private struct StartupInfoEx {internal StartupInfo Basic;internal IntPtr Attributes;}
+    [StructLayout(LayoutKind.Sequential)] private struct SecurityCapabilities {internal IntPtr Sid,Capabilities;internal uint Count,Reserved;}
+    [StructLayout(LayoutKind.Sequential)] private struct ProcessInfo {internal IntPtr Process,Thread;internal uint ProcessId,ThreadId;}
+    [DllImport("kernel32.dll",SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)] private static extern bool InitializeProcThreadAttributeList(IntPtr list,int count,int flags,ref nuint size);
+    [DllImport("kernel32.dll",SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)] private static extern bool UpdateProcThreadAttribute(IntPtr list,uint flags,IntPtr attribute,IntPtr value,nuint size,IntPtr previous,IntPtr returned);
+    [DllImport("kernel32.dll")] private static extern void DeleteProcThreadAttributeList(IntPtr list);
+    [DllImport("kernel32.dll",EntryPoint="CreateProcessW",CharSet=CharSet.Unicode,SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)] private static extern bool CreateProcess(string image,StringBuilder command,IntPtr processSecurity,IntPtr threadSecurity,[MarshalAs(UnmanagedType.Bool)] bool inherit,uint flags,IntPtr environment,string cwd,ref StartupInfoEx startup,out ProcessInfo info);
+    [DllImport("kernel32.dll",SetLastError=true)] private static extern uint ResumeThread(SafeWaitHandle thread);
+    [DllImport("kernel32.dll",SetLastError=true)] private static extern uint WaitForSingleObject(SafeProcessHandle process,uint milliseconds);
+    [DllImport("kernel32.dll",SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)] private static extern bool GetExitCodeProcess(SafeProcessHandle process,out uint code);
+    [DllImport("kernel32.dll",SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)] private static extern bool GetProcessTimes(SafeProcessHandle process,out long created,out long exited,out long kernel,out long user);
+    [DllImport("kernel32.dll",EntryPoint="QueryFullProcessImageNameW",CharSet=CharSet.Unicode,SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)] private static extern bool QueryFullProcessImageName(SafeProcessHandle process,uint flags,StringBuilder path,ref uint size);
+    [DllImport("advapi32.dll",SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)] private static extern bool OpenProcessToken(SafeProcessHandle process,uint access,out SafeAccessTokenHandle token);
+    [DllImport("advapi32.dll",SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)] private static extern bool GetTokenInformation(SafeAccessTokenHandle token,int type,IntPtr data,int size,out int returned);
+}

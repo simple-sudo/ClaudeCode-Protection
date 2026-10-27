@@ -47,9 +47,8 @@ internal sealed record JobSnapshot(string JobId,uint LimitFlags,uint ActiveBefor
     internal bool ObservedZero=>ActiveBefore==0 && ActiveAfter==0 && ProcessIds.Length==0;
 }
 
-// Concrete kernel owner; no CreateProcess/Assign/Resume, PID-based kill, helper
-// executable, or caller-supplied object name. Launch/admission/WFP composition
-// remains mandatory and is not implemented by this component.
+// Concrete kernel owner. Atomic admission reserves one creation using JOB_LIST;
+// there is no post-creation Assign or PID-based termination fallback.
 internal sealed class OwnedKernelJob : IDisposable
 {
     internal const uint RequiredLimits=0x2000; // KILL_ON_JOB_CLOSE; no breakaway flags.
@@ -58,7 +57,29 @@ internal sealed class OwnedKernelJob : IDisposable
     private readonly SafeJobHandle handle;
     private readonly PrivateJobNamespace jobNamespace;
     private bool disposed;
+    private bool admissionClaimed,admissionClosed;
     internal string JobId=>intent.JobId;
+    internal bool AtomicAdmissionReserved=>admissionClaimed;
+    internal SafeJobHandle ReserveAtomicAdmission(VerifiedVersion version)
+    {
+        AssertHeld();version.AssertHeld(state);
+        if(admissionClaimed || admissionClosed || intent.Release!=version.Package.Release || intent.ManifestSHA256!=version.Package.ManifestHash)
+            throw new InvalidOperationException("One-shot job admission is unavailable");
+        var observed=Observe();if(!observed.ExpectedLimits || !observed.ObservedZero)throw WfpNative.Contract("AtomicAdmissionRequiresEmptySealedJob");
+        state.WriteNew("job-admission-"+intent.JobId+".json",JsonSerializer.SerializeToUtf8Bytes(new {
+            SchemaVersion=1,state.InstallationId,intent.JobId,intent.Release,intent.ManifestSHA256,Binding="ATOMIC_JOB_LIST_AT_CREATION",Reusable=false
+        }));
+        admissionClaimed=true;return handle;
+    }
+    internal JobSnapshot CloseAtomicAdmissionAndStop()
+    {
+        AssertHeld();if(!admissionClaimed)throw new InvalidOperationException("No atomic admission was reserved");
+        admissionClosed=true;var snapshot=StopAndVerifyZero();
+        var admission=state.Read("job-admission-"+intent.JobId+".json",8192);
+        state.WriteNew("job-completed-"+intent.JobId+".json",JsonSerializer.SerializeToUtf8Bytes(new AtomicJobCompletion(1,state.InstallationId,intent.JobId,
+            intent.Release,intent.ManifestSHA256,admission.SHA256,"ADMISSION_CLOSED_MEMBERS_ZERO_OBSERVED",snapshot)));
+        return snapshot;
+    }
     private OwnedKernelJob(ProtectedState state,OwnedJobIntent intent,SafeJobHandle handle,PrivateJobNamespace jobNamespace)
     {this.state=state;this.intent=intent;this.handle=handle;this.jobNamespace=jobNamespace;}
 
@@ -210,12 +231,12 @@ internal sealed class OwnedKernelJob : IDisposable
 
 internal sealed record RegisteredJobFailure(string JobId,string Stage,WfpErrorEvidence[] Errors);
 internal sealed record RegisteredJobObservation(int ExpectedJobs,string[] NamesAbsentAtOpen,JobSnapshot[] PresentJobs,RegisteredJobFailure[] Failures,
-    string Scope,bool CompleteProcessOwnershipQualified,bool AdmissionOrNetworkQualified)
+    string Scope,bool CompleteProcessOwnershipQualified,bool AdmissionOrNetworkQualified,string[] CompletedAdmissionJobIds)
 {
     // A later zero observation never repairs a failed stop, an unavailable job
     // or a missing observation. All recorded intent entries remain in scope.
     internal bool AllRegisteredMembersZeroObserved=>NamesAbsentAtOpen.Length==0 && Failures.Length==0 &&
-        PresentJobs.Length==ExpectedJobs && PresentJobs.All(s=>s.ObservedZero);
+        PresentJobs.Length+CompletedAdmissionJobIds.Length==ExpectedJobs && PresentJobs.All(s=>s.ObservedZero);
 }
 
 // Holds all recovered handles before terminating any members. This is useful
@@ -228,6 +249,7 @@ internal sealed class RegisteredJobSet : IDisposable
     private readonly IReadOnlyList<OwnedJobIntent> intents;
     private readonly List<OwnedKernelJob> jobs=new();
     private readonly List<string> absent=new();
+    private readonly List<string> completed=new();
     private bool disposed;
     private RegisteredJobSet(ProtectedState state,IReadOnlyList<OwnedJobIntent> intents){this.state=state;this.intents=intents;}
     internal static RegisteredJobSet OpenForMaintenance(ProtectedState state)
@@ -237,6 +259,7 @@ internal sealed class RegisteredJobSet : IDisposable
         {
             foreach(var intent in set.intents)
             {
+                if(AtomicJobCompletion.ReadClosed(state,intent) is not null){set.completed.Add(intent.JobId);continue;}
                 var job=OwnedKernelJob.OpenExisting(state,intent);
                 if(job is null)set.absent.Add(intent.JobId);else{set.jobs.Add(job);_=job.Observe();}
             }
@@ -254,6 +277,8 @@ internal sealed class RegisteredJobSet : IDisposable
     {
         if(disposed)throw new ObjectDisposedException(nameof(RegisteredJobSet));state.AssertHeld();
         if(!OwnedJobIntent.ReadAll(state).SequenceEqual(intents))throw new InvalidDataException("Registered job set changed during maintenance");
+        foreach(var id in completed)if(AtomicJobCompletion.ReadClosed(state,intents.Single(i=>i.JobId==id)) is null)
+            throw new InvalidDataException("Completed admission proof changed");
     }
     internal RegisteredJobObservation StopAndObserveRegisteredMembers()
     {
@@ -280,9 +305,9 @@ internal sealed class RegisteredJobSet : IDisposable
             catch(Exception ex){failures.Add(new(job.JobId,"final-observation",WfpNative.Describe(ex)));}
         }
         AssertHeld();
-        var result=new RegisteredJobObservation(intents.Count,absent.ToArray(),snapshots.ToArray(),failures.ToArray(),"REGISTERED_JOB_MEMBERS_ONLY",false,false);
+        var result=new RegisteredJobObservation(intents.Count,absent.ToArray(),snapshots.ToArray(),failures.ToArray(),"REGISTERED_JOB_MEMBERS_ONLY",false,false,completed.ToArray());
         state.WriteNew("job-set-observed-"+Guid.NewGuid().ToString("N")+".json",JsonSerializer.SerializeToUtf8Bytes(new {
-            SchemaVersion=2,InstallationId=state.InstallationId,Status=result.AllRegisteredMembersZeroObserved?"REGISTERED_JOB_MEMBERS_ZERO_OBSERVED":"REGISTERED_JOB_STOP_NOT_CONFIRMED",
+            SchemaVersion=3,InstallationId=state.InstallationId,Status=result.AllRegisteredMembersZeroObserved?"REGISTERED_JOB_MEMBERS_ZERO_OBSERVED":"REGISTERED_JOB_STOP_NOT_CONFIRMED",
             Observation=result,AtUtc=DateTime.UtcNow.ToString("o")
         }));
         return result;

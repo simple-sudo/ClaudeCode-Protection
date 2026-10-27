@@ -11,6 +11,69 @@ namespace ProtectionLifecycle;
 // development build. Neither diagnostic opens the installed mutation path.
 public static class InstalledBroker
 {
+    public static int RunAdmissionCanary()=>AtomicChild.RunCanary();
+
+    public static (int ExitCode,string Report) InspectInstalledFence()
+    {
+        ProtectedState.RequireAdministrator();var layout=FixedLayout.FromWindows();
+        using var state=ProtectedState.OpenExisting(layout);
+        var current=CurrentPointer.Parse(state.Read("current.json",4096),state.InstallationId);
+        using var version=VerifiedVersion.Open(layout,state,current.Release);
+        if(version.Package.ManifestHash!=current.ManifestSHA256)throw WfpNative.Contract("InstalledPointerManifestMismatch");
+        AssertInstalledHost(layout,state,version);
+        var observations=new List<FenceObservation>();
+        foreach(var plan in FencePlan.ReadAll(state))
+        {using var owner=PersistentFence.OpenExisting(state,plan.Data.FenceId);observations.Add(owner.Observe());}
+        var complete=observations.Count>0 && observations.All(o=>o.FullQuarantineObserved);
+        return(complete?0:3,JsonSerializer.Serialize(new {SchemaVersion=1,Scope="INSTALLED_FENCE_READ_ONLY",state.InstallationId,
+            QuarantineObjectsObserved=complete,Observations=observations,PolicyModified=false,JobApiCalled=false,NetworkBehaviorQualified=false}));
+    }
+
+    public static (int ExitCode,string Report) QualifyAtomicAdmission()
+    {
+        ProtectedState.RequireAdministrator();var layout=FixedLayout.FromWindows();
+        using var state=ProtectedState.OpenExisting(layout);
+        var current=CurrentPointer.Parse(state.Read("current.json",4096),state.InstallationId);
+        using var version=VerifiedVersion.Open(layout,state,current.Release);
+        if(version.Package.ManifestHash!=current.ManifestSHA256)throw WfpNative.Contract("InstalledPointerManifestMismatch");
+        AssertInstalledHost(layout,state,version);LifecycleRecovery.AssertNoPending(state);
+        var plans=FencePlan.ReadAll(state);if(plans.Count==0)throw WfpNative.Contract("AtomicQualificationRequiresQuarantine");
+        foreach(var plan in plans)
+        {using var fence=PersistentFence.OpenExisting(state,plan.Data.FenceId);if(!fence.Observe().FullQuarantineObserved)throw WfpNative.Contract("AtomicQualificationRequiresCompleteQuarantine");}
+        var request=Guid.NewGuid().ToString("N");
+        state.WriteNew("atomic-before-"+request+".json",JsonSerializer.SerializeToUtf8Bytes(new {SchemaVersion=1,state.InstallationId,
+            current.Release,current.ManifestSHA256,Scope="FIXED_INSTALLED_NO_NETWORK_CANARY",AtUtc=DateTime.UtcNow.ToString("o")}));
+        using var job=OwnedKernelJob.CreateEmpty(state,version);
+        Exception? failure=null;uint? childExit=null;bool resumed=false;JobSnapshot? final=null;
+        try
+        {
+            using var child=AtomicChild.CreateCanary(layout,state,version,job);
+            _=child.ResumeQuarantined();resumed=true;childExit=child.WaitForCanaryExit();
+            if(childExit!=42)throw WfpNative.Contract("AtomicCanaryExitMismatch");
+        }
+        catch(Exception ex){failure=ex;}
+        finally
+        {
+            try
+            {
+                if(job.AtomicAdmissionReserved)final=job.CloseAtomicAdmissionAndStop();
+                else
+                {
+                    _=job.StopAndVerifyZero();
+                    throw WfpNative.Contract("AtomicAdmissionWasNotReservedCompletionUnknown");
+                }
+            }
+            catch(Exception ex){failure=failure is null?ex:new AggregateException(failure,ex);}
+        }
+        var complete=resumed && childExit==42 && final is not null && final.ObservedZero && failure is null;
+        var report=JsonSerializer.Serialize(new {SchemaVersion=1,state.InstallationId,RequestId=request,job.JobId,ChildExitCode=childExit,
+            Status=complete?"ATOMIC_CANARY_ADMISSION_AND_CLOSED_JOB_OBSERVED":"ATOMIC_CANARY_NOT_CONFIRMED",
+            ResumedAfterIdentityJobAndQuarantineChecks=resumed,OneShotAdmissionClosedAndMembersZero=final?.ObservedZero??false,
+            Failures=failure is null?Array.Empty<WfpErrorEvidence>():WfpNative.Describe(failure),NetworkBehaviorQualified=false,
+            ClaudeLaunched=false,ProxyQualified=false,ControllerCrashQualified=false});
+        state.WriteNew("atomic-after-"+request+".json",System.Text.Encoding.UTF8.GetBytes(report));
+        return(complete?0:3,report);
+    }
     public static (int ExitCode, string Report) InspectRuntime()
     {
         var layout=WfpNative.LayoutSnapshot();
@@ -163,6 +226,7 @@ public static class InstalledBroker
                 FenceCount = fences.Count, RegisteredJobsExpected = jobs?.ExpectedJobs, RegisteredJobsObserved = jobs?.PresentJobs.Length,
                 NamesAbsentAtOpen = jobs?.NamesAbsentAtOpen.Length, FailedStages = failures.Count,
                 RegisteredJobFailures = jobs?.Failures.Length,
+                CompletedAdmissionJobs = jobs?.CompletedAdmissionJobIds.Length,
                 CompleteProcessOwnershipQualified = false, ImmediateDisconnectQualified = false,
                 LaunchQualified = false, ProxyQualified = false, RebootQualified = false
             });

@@ -22,7 +22,7 @@ internal sealed class BootstrapApproval : IDisposable
         var result=new BootstrapApproval();
         try
         {
-            var root=WindowsPathSeal.Canonical(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),inactiveUpdate?"ClaudeCodeProtection-Update-20261027-r2":"ClaudeCodeProtection-Bootstrap"));
+            var root=WindowsPathSeal.Canonical(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),inactiveUpdate?"ClaudeCodeProtection-Update-20261027-r3":"ClaudeCodeProtection-Bootstrap"));
             var entry=Assembly.GetEntryAssembly()??throw new InvalidOperationException("Bootstrap entry missing");
             if(entry.GetName().Name!="ProtectionBootstrap" ||
                 !Same(Environment.ProcessPath,Path.Combine(root,"ProtectionBootstrap.exe")) ||
@@ -108,7 +108,7 @@ public static class BootstrapInstaller
         runtime.AssertNoOwnedProcesses();verified.AssertHeld(state);
         return (0,JsonSerializer.Serialize(new {SchemaVersion=1,Status="NEVER_ADMITTED_INACTIVE_UPDATE_COMPLETED",state.InstallationId,
             PriorRelease=current.Release,package.Release,package.ManifestHash,OperationId=operation,Activation="INACTIVE",
-            RuntimeLeaseScope="PINNED_NO_ADMISSION_PACKAGE_AND_ABSENT_FENCE_OBJECTS",WfpModified=false,JobCreated=false,
+            RuntimeLeaseScope="PINNED_NO_ADMISSION_PACKAGE_ZERO_JOB_HISTORY_AND_ABSENT_OR_QUARANTINED_FENCE",WfpModified=false,JobCreated=false,
             ClaudeLaunched=false,UserConfigurationModified=false,ProtectionQualified=false}));
     }
 
@@ -116,8 +116,9 @@ public static class BootstrapInstaller
     {
         private static readonly string[] NoAdmissionManifests={
             "1D83FA034A65DC58D1FFEB9C4F3A54EA52F1C3B7AF6156A54C752FA5D8801BAC",
-            "BB0A619C10B53ECF4AC4E79578C9DF4A058E1758B3B111836A5172F46488E9FD"
-        }; // Both exact reviewed packages expose no launch/admission command.
+            "BB0A619C10B53ECF4AC4E79578C9DF4A058E1758B3B111836A5172F46488E9FD",
+            "D21A7D9F39A93E82087062EAD14F49329E7DBDD2743B2DC12DE98CAB6DC691F1"
+        }; // Exact reviewed packages expose no launch/admission command.
         private readonly ProtectedState state;
         private readonly BootstrapApproval approval;
         private readonly VerifiedVersion prior;
@@ -148,12 +149,13 @@ public static class BootstrapInstaller
         {
             AssertLaunchAdmissionClosed();
             if(state.ListLeaves("job-intent-").Length!=0)throw new InvalidOperationException("Job history is outside never-admitted update authority");
-            // A failed quarantine intent is not absence. Check every exact
-            // owned plan against BFE; inaccessible/foreign/present objects fail.
+            // A failed intent is not absence. Every exact plan must be absent
+            // or fully quarantined; no resource is removed during this update.
             foreach(var plan in FencePlan.ReadAll(state))
             {
                 using var fence=PersistentFence.OpenExisting(state,plan.Data.FenceId);
-                if(!fence.Observe().AllAbsent)throw new InvalidOperationException("Existing fence resources require the full runtime maintenance owner");
+                var observed=fence.Observe();
+                if(!observed.AllAbsent && !observed.FullQuarantineObserved)throw new InvalidOperationException("Partial or changed fence resources require the full runtime maintenance owner");
             }
         }
         public void StopAndVerifyOwnedProcesses()=>AssertNoOwnedProcesses();
