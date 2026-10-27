@@ -47,6 +47,8 @@ INTEGRATED是实际调用链；VERIFIED只适用于表中明确功能及负向�
 
 ## 下一主线及安全边界
 
+1f3322d独立29输入构建成功；受保护-r4六角色native资格退出0，6身份/策略匹配及96项标志组合检查通过，实际子层weight65533；未提交事务Abort，7对象全部不存在独立回读成功。限定VERIFIED为对象契约；未提交测试不证明已安装隔离或真实网络防泄漏。批准下一未激活包083d97b7e544434cbb0d900004035657，manifest D21A7D9F39A93E82087062EAD14F49329E7DBDD2743B2DC12DE98CAB6DC691F1；复用已核验9个日常/GUI资产及新5个管理资产，待独立bootstrap构建与安装。此前失败不覆盖。
+
 1345e11的六角色资格真实退出2（外部helper125），所有6个生产过滤器的身份/条件/标志/安全描述符均匹配；唯一失败为子层请求65535、BFE实际分配65533。Abort及7对象不存在均回读成功。微软[Installing a Provider](https://learn.microsoft.com/en-us/windows/win32/fwp/installing-a-provider)明确让BFE选择最近可用weight；源码现在保存实际weight并移除请求值必须原样返回的错误前提，不把权重或对象存在当真实阻断证明；[Filter Arbitration](https://learn.microsoft.com/en-us/windows/win32/fwp/filter-arbitration)中的hard-permit等组合仍须负向功能验证。当前修正SOURCE。未激活迁移白名单仅增添本次已安装、仍无准入命令的精确BB0A包；仍持有旧版/私有锁、无Job历史且逐意图验证所有BFE对象不存在，不增加资源删除或活动升级权限。
 
 5627b65批准的新包faa9136470ae4ec8ba6273c10a91d19b（manifest BB0A619C10B53ECF4AC4E79578C9DF4A058E1758B3B111836A5172F46488E9FD）已通过独立payload及bootstrap构建、嵌入资源元数据核对和20项固定输入资格，实际`update-inactive`退出0，操作54bc6986cc7f4905b0c6b1d7ebd9683d，指针仍INACTIVE。旧版/原bootstrap及所有失败保留。新14资产摘要与普通用户写拒绝已回读；当前gui/daily沿用原来9文件，当前新版GUI未重跑。work/inactive-update-*及ProgramFiles/ClaudeCodeProtection-Update-20261027。
