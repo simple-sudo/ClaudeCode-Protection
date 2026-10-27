@@ -189,3 +189,5 @@ fc113de独立restore/build均0，0错误/0警告；普通.NET8.0.28/x64布局检
 人类确认UAC、固定五文件摘要与全源路径租约后，ProgramFiles下新受保护资格副本完成inspect-wfp，V4/V6固定层各42字段、Id48/50，退出0。首个helper的FileSystemRights.ReadWrite不存在导致创建后失败；原空目录保留，先在自建单字节文件复现/修正为ReadData|WriteData，再在新的-r1目录成功。没有正式安装、过滤器/Job修改、Claude启动或网络/AV改动。AVP/BFE运行且观察窗口内Application未见AV事件；完整厂商告警覆盖UNKNOWN。原始记录在work/broker-readonly-*及broker-elevated-readonly-*；不回填旧失败。
 
 随后连接首次未激活安装SOURCE：独立ProtectionBootstrap持有嵌入包批准，库内自引用包pin删除；固定受保护宿主、预检全部输入后才创建全新私有状态，复用原版本/指针/账本。fresh租约不冒充通用进程/清理权。默认嵌入拒绝占位符，无批准包不创建状态；六项目非生成语义检查0错误/0警告。真实安装须继续独立构建/资格/实测，不将SOURCE写为通过。用户完整产品指导与870c4ca固定上游审查已接入文档。
+
+2026-10-26当前四项目产品图674fd76离线restore均0；broker/lifecycle及日常CLI编译成功，GUI因共享UserDataPaths缺少显式System.IO出现14个错误，保留work/product-payload-build。WPF实际SDK默认global usings不含IO/Http，原非生成checker使用超集漏检；已修共享源码及checker按项目选择默认集合。修正类型检查另存，须新构建，不覆盖失败。

@@ -47,7 +47,12 @@ while($pending.Count){
         if($text -match '(?m)^\s*#\s*(if|elif|define|undef)\b'){throw 'Conditional source needs explicit SDK preprocessor evaluation'}
         $trees.Add([Microsoft.CodeAnalysis.CSharp.CSharpSyntaxTree]::ParseText($text,$parse,$path))
     }
-    if([string]$xml.Project.PropertyGroup.ImplicitUsings -eq 'enable'){$trees.Add([Microsoft.CodeAnalysis.CSharp.CSharpSyntaxTree]::ParseText($globalUsings,$parse,'(in-memory SDK implicit global usings)'))}
+    if([string]$xml.Project.PropertyGroup.ImplicitUsings -eq 'enable'){
+        # WPF SDK removes System.IO and System.Net.Http from its default set.
+        # Match actual SDK output; a superset can conceal missing source usings.
+        $projectUsings=if([string]$xml.Project.PropertyGroup.UseWPF -eq 'true'){$globalUsings.Replace('global using System.IO; ','').Replace('global using System.Net.Http; ','')}else{$globalUsings}
+        $trees.Add([Microsoft.CodeAnalysis.CSharp.CSharpSyntaxTree]::ParseText($projectUsings,$parse,'(in-memory SDK implicit global usings)'))
+    }
     $assemblyPaths=@{}
     foreach($reference in Get-ChildItem -LiteralPath $core -File -Filter '*.dll'){$assemblyPaths[$reference.Name]=$reference.FullName}
     if([string]$xml.Project.PropertyGroup.UseWPF -eq 'true'){foreach($reference in Get-ChildItem -LiteralPath $desktop -File -Filter '*.dll'){$assemblyPaths[$reference.Name]=$reference.FullName}}
