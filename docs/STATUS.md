@@ -12,8 +12,8 @@
 
 ## 当前安装与运行证据
 
-- 当前release：ebd633c55ccb4357b26c0daa008790ba；manifest SHA256 B832A15F4A52CEE50B09707C032BB9199296A69A79A735BC84BAFA56A142A94B；operation 884f0e2bf88f4e56a6edd2a5122d03e4，INACTIVE。
-- 当前生命周期DLL SHA256 2788A266C1F0B658E8E4F643C099E65EF5C7AEF6238A1974E3DD361CAF5E3DBC；正式代码C:\Program Files\ClaudeCodeProtection\versions\上述release，私有状态C:\Program Files\ClaudeCodeProtection-State。旧版、原bootstrap及全部失败保留。
+- 当前release：26719a907d0a4863b68c6e46d24d4dfb；manifest SHA256 A31A246BFE3A021B3E443138906119BDAFD8518EBDC0B8CB349D87E0BFFBE2BD；operation fe81717c63b44d408f7886daf112f442，INACTIVE。
+- 当前生命周期DLL SHA256 1A9F8ED9B9C5A772C2CB2AE68A622EF3864E18372884FD2233929CDA47BA7DEF；正式代码C:\Program Files\ClaudeCodeProtection\versions\上述release，私有状态C:\Program Files\ClaudeCodeProtection-State。旧版、原bootstrap及全部失败保留。
 - 本轮管理图33输入BUILD0、bootstrap34输入BUILD0；限定离线、SDK8.0.422/ref8.0.28、无第三方包/分析器/生成器。非生成检查6项目0错误/警告；无module initializer。
 - 6项TLS拒绝判据、7项GPU结果判据、8项UDP/TCP候选判据通过；是限定验证，非完整保护证明。普通用户inspect-runtime0，其余受限管理/子进程入口125拒绝。
 - 已安装更新20项来源/嵌入批准及14资产哈希/权限/普通写拒绝核对成功。原9项GUI/daily字节复用，当前目录GUI未重新打开；没有常驻产品进程、服务或自启动。
@@ -58,3 +58,6 @@ Kaspersky事件未解决；有限Application观察无新告警，完整厂商告
 当前实际安装仍ebd633；新SOURCE只扩展固定Microsoft HTTPS诊断：宿主/子进程同样记录每张证书SHA256、逐项链状态及CRL Distribution Points，限8层链/16KiB扩展/8级ASN深度/16地址/每项1024字符，解析错误明确保留。证书地址是不可信观察，未新增任何目标访问/信任库/缓存写入，不放行任意CA地址，不放宽TLS。6项目非生成0错误/警告。fa755f8管理图33输入离线BUILD0，无module initializer；7项ASN解析容量/畸形负向通过，原21项判据与普通命令拒绝通过，无新网络调用。批准26719a907d0a4863b68c6e46d24d4dfb，manifest A31A246BFE3A021B3E443138906119BDAFD8518EBDC0B8CB349D87E0BFFBE2BD；待独立bootstrap及实际观察。
 
 普通用户CAPI2只读查询返回权限拒绝，保留UNKNOWN，不启用日志。通过系统curl读取公开链的进程启动被自动审批审查拒绝（仅blocked by policy、无细分原因），该启动没有执行，不换壳重试。改为已安装Broker原有资格入口内的受审查观察，沿用具体工件构建/资格/人类UAC边界。
+26719a固定bootstrap34输入BUILD0/安装更新0；网络request24ea1a4ee5f24e27a2dd69aada09319b实际3。host/child同一4证书链，leaf均无链错误，隔离中间证书64/16777216，实际观察到Microsoft两类CRL及DigiCert GlobalRootG2分发点。没有自动请求这些URL，原严格FAIL保留；ProgramFiles/ClaudeCodeProtection-Network-20261027-r7和私有回执保留，完整隔离/Job/精确豁免清理、AV/BFE/FlClash保持。
+
+下一修正SOURCE见[TLS进程内吊销补充](TLS-REVOCATION-SOURCE.md)：只对固定Microsoft资格目标及精确issuer/地址补充3份通过指定代理取得的CRL，以签名/时间/范围/直接吊销查询+Windows显式memory store CACHE_ONLY原生检查证明状态，不忽略其他TLS错误，不导入全局信任。当前managed非生成6项目0错误/警告（生命周期27源），尚未BUILD/native资格/实际TLS通过；不能覆盖原失败或第三方工具TLS资格。

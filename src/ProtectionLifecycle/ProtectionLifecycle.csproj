@@ -15,6 +15,7 @@
     <Compile Include="AtomicAdmission.cs" />
     <Compile Include="ProxyChannel.cs;NetworkQualification.cs" />
     <Compile Include="GpuQualification.cs" />
+    <Compile Include="ProcessLocalRevocation.cs" />
     <EmbeddedResource Include="LifecycleProtocol.json" />
     <EmbeddedResource Include="BrokerProtocol.json" />
     <EmbeddedResource Include="RecoveryProtocol.json" />

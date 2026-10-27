@@ -57,16 +57,19 @@ internal sealed class ProxyChannelLease : IDisposable
         directory.AssertHeld();WindowsPathSeal.VerifyObject(image.SafeFileHandle,ExpectedImage,false);
         if(WaitForSingleObject(process,0)!=0x102 || ListenerOwner()!=pid)throw WfpNative.Contract("ProxyProcessOrListenerIdentityDrift");
     }
-    internal static async Task<int> CheckTransport(Action<TlsValidationObservation>? observe=null,Action<TlsCertificateObservation[]>? observeCertificates=null)
+    internal static async Task<int> CheckTransport(Action<TlsValidationObservation>? observe=null,Action<TlsCertificateObservation[]>? observeCertificates=null,Action<RevocationSupply>? observeRevocation=null)
     {
         using var handler=new HttpClientHandler{UseProxy=true,Proxy=new WebProxy("http://127.0.0.1:7890"),AllowAutoRedirect=false,
             UseCookies=false,UseDefaultCredentials=false,CheckCertificateRevocationList=true};
-        if(observe is not null || observeCertificates is not null)handler.ServerCertificateCustomValidationCallback=(_,certificate,chain,errors)=>
+        if(observe is not null || observeCertificates is not null || observeRevocation is not null)handler.ServerCertificateCustomValidationCallback=(request,certificate,chain,errors)=>
         {
             var result=new TlsValidationObservation((int)errors,chain?.ChainStatus.Select(s=>(int)s.Status).ToArray()??Array.Empty<int>(),certificate is not null,chain is not null);
-            observe?.Invoke(result);observeCertificates?.Invoke(ObserveCertificates(chain));return AcceptObservedTls(result);
+            observe?.Invoke(result);observeCertificates?.Invoke(ObserveCertificates(chain));
+            if(AcceptObservedTls(result))return true;
+            if(observeRevocation is null || request.RequestUri?.AbsoluteUri!="https://www.microsoft.com/" || !ProcessLocalRevocation.Eligible(result))return false;
+            var verified=ProcessLocalRevocation.Validate(certificate,chain,result);observeRevocation(verified);return verified.Accepted;
         };
-        using var client=new HttpClient(handler){Timeout=TimeSpan.FromSeconds(8)};
+        using var client=new HttpClient(handler){Timeout=TimeSpan.FromSeconds(20)};
         using var response=await client.GetAsync("https://www.microsoft.com/",HttpCompletionOption.ResponseHeadersRead);
         return (int)response.StatusCode;
     }
