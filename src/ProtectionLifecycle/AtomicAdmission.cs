@@ -103,6 +103,8 @@ internal sealed class AtomicChild : IDisposable
     private readonly bool gpuWorkload;
     private bool resumed,disposed;
     internal uint Pid {get;}
+    internal string ExpectedPackageSid=>packageSid;
+    internal string ExpectedImagePath=>image;
     internal bool IsRunning=>!disposed && WaitForSingleObject(process,0)==0x102;
     internal static OwnedMemberInspection[] InspectMembers(OwnedKernelJob job,JobSnapshot snapshot)
     {
