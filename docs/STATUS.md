@@ -60,6 +60,10 @@ INTEGRATED是实际调用链；VERIFIED只适用于表中明确功能及负向�
 
 ## 下一主线及安全边界
 
+网络矩阵纵向切片当前SOURCE：固定已安装`qualify-network`复用AtomicChild/OwnedKernelJob/PersistentFence，先精确持有既有FlClash Core进程/磁盘映像及127.0.0.1:7890监听身份，显式代理HTTPS Microsoft、默认TLS校验并开启吊销检查。只对工具安装SID或独立短名对照SID添加/移除精确回环豁免，保存其他项快照并核对不变，不恢复整张全局列表；现有豁免拒绝接管。Windows工具固定System32路径、ACL/文件句柄及最小环境，无Shell/UAC自动确认，不调整FlClash/系统代理/TUN。
+
+矩阵有父进程接收端基线、无本工具WFP过滤器的独立AppContainer回环对照、完整隔离、仅指定IPv4代理开放、再次阻断代理路径。独占自有127.0.0.1/127.0.0.2/::1 TCP/UDP接收端含127.0.0.2:53原始DNS包，记录随机nonce收据；不占用已有53监听。代理开放事务只删除精确IPv4 quarantine角色，其他5角色保留，必须源策略摘要与编译端点一致、身份有效及提交后回读匹配；结束/失败恢复完整隔离，继续所属Job清零，再移除本次豁免/精确profile。每个阶段通过唯一继承报告管道返回PID/nonce/逐项结果，开放期间轮询所属代理/过滤器漂移。SOURCE非真实网络验收：系统解析器经服务代理DNS、外部物理出口、真实代理进程崩溃与控制器崩溃仍UNKNOWN；独立对照只向本次接收端发送，不访问外部站点。六项目非生成检查0错误/0警告，生命周期25源，待32输入管理图构建及独立资格/安装/实测。
+
 当前实际安装已为c81055a2849c4c86a9d7f07524cc77d6，manifest F68329165AAAD7BF5C8CBB4B44111B715439395B850F9653C80D687843A006FA，update操作2288775b17db4e27accaf24a6d53795c；旧3版保留，指针仍INACTIVE。已安装只读inspect-installed-fence在首次quarantine进程退出后及canary尝试前后均返回0，6原filterId102364–102369一致，证明当前时段跨进程持久对象可读，不证明流量/重启。
 
 首次qualify-admission实际返回3，CreateProcess在恢复前失败Win32=2/AtomicCreateSuspendedWithPackageAndJob，无子进程恢复。真实私有命名Job edfbfe75140d44769786802ce5e20502创建、ACL/tag/limits核验、终止/零成员及封闭一次性准入回执成功；不计进程准入通过。原记录ProgramFiles/ClaudeCodeProtection-Atomic-20261027与work/atomic-canary-control。根据微软[AppContainer启动流程](https://learn.microsoft.com/en-us/windows/win32/secauthz/implementing-an-appcontainer)，补充此前缺失的专属current-user profile：先行意图、Create返回新SID核对，已有profile拒绝接管/删除，只有本次创建且同一Job观察零后才调用精确Delete；删除API成功与独立不存在仍区分。当前修正SOURCE，根因假设待复测，不以文档当成功。

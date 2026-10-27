@@ -10,11 +10,13 @@ internal sealed record FenceObservation(string FenceId,bool SubLayerPresent,bool
 {
     internal bool AllAbsent=>!SubLayerPresent && Roles.All(r=>!r.Present);
     internal bool FullQuarantineObserved=>SubLayerHealthy && Roles.Length==6 && Roles.All(r=>r.Present && r.Persistent && r.PolicyMatches);
+    internal bool IPv4ProxyOnlyObserved=>SubLayerHealthy && Roles.Length==6 && Roles.Select((r,i)=>i==4?!r.Present:r.Present && r.Persistent && r.PolicyMatches).All(ok=>ok);
 }
 
 // A real WFP implementation for a fixed installation package SID. It adds or
-// reinstates quarantine; it cannot open a proxy path, launch a process, remove
-// the final barrier for uninstall, or manufacture lifecycle quiescence.
+// reinstates quarantine and opens only the compiled IPv4 proxy endpoint after
+// identity qualification. It cannot remove the final barrier for uninstall or
+// manufacture lifecycle quiescence.
 internal sealed class PersistentFence : IDisposable
 {
     private readonly ProtectedState state;
@@ -76,6 +78,21 @@ internal sealed class PersistentFence : IDisposable
             });
             var observed=Observe();if(!observed.FullQuarantineObserved)throw WfpNative.Contract("Quarantine commit readback differs");
             Record("QUARANTINE_REINSTATED_READBACK",observed);return observed;
+        });
+    }
+    internal FenceObservation OpenQualifiedIPv4Proxy(ProxyChannelLease proxy)
+    {
+        proxy.AssertHealthy();
+        if(plan.Data.PolicySHA256!=CompiledFencePolicy.SHA256 || plan.Data.ProxyPort!=CompiledFencePolicy.ProxyPort)
+            throw WfpNative.Contract("HistoricalFenceCannotGrantProxyAdmission");
+        return Mutate("OPEN_QUALIFIED_COMPILED_IPV4_PROXY",()=>{
+            _=WfpNative.Transaction(engine,false,()=>{
+                var before=ReadInTransaction();if(!before.FullQuarantineObserved)throw WfpNative.Contract("ProxyOpenRequiresFullQuarantine");
+                proxy.AssertHealthy();WfpNative.Check(WfpNative.FwpmFilterDeleteByKey0(engine,plan.Key(4)),"RemoveExactIPv4QuarantineOnly");
+                var after=ReadInTransaction();if(!after.IPv4ProxyOnlyObserved)throw WfpNative.Contract("IPv4ProxyPolicyTransactionMismatch");return after;
+            });
+            var committed=Observe();if(!committed.IPv4ProxyOnlyObserved)throw WfpNative.Contract("IPv4ProxyPolicyCommitMismatch");
+            proxy.AssertHealthy();Record("COMPILED_IPV4_PROXY_ONLY_OBSERVED",committed);return committed;
         });
     }
     private T Mutate<T>(string operation,Func<T> body)

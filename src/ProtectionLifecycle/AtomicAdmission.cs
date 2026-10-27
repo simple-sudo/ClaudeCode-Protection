@@ -17,9 +17,10 @@ internal sealed class InstallationProfileLease : IDisposable
     private string? jobId;
     private bool mayDelete=true,disposed;
     private InstallationProfileLease(ProtectedState state,string name,string id){this.state=state;this.name=name;this.id=id;}
-    internal static InstallationProfileLease Create(ProtectedState state)
+    internal static InstallationProfileLease Create(ProtectedState state,bool control=false)
     {
-        state.AssertHeld();using var expected=new InstallationPackageSid(state);var id=Guid.NewGuid().ToString("N");
+        state.AssertHeld();using var expected=control?InstallationPackageSid.ForNetworkControl(state):new InstallationPackageSid(state);var id=Guid.NewGuid().ToString("N");
+        if(expected.Name.Length>64)throw WfpNative.Contract("AppContainerProfileNameExceedsWindowsLimit");
         state.WriteNew("profile-intent-"+id+".json",JsonSerializer.SerializeToUtf8Bytes(new {SchemaVersion=1,state.InstallationId,Name=expected.Name,Sid=expected.Value,
             Status="FRESH_PROFILE_CREATION_PLANNED",ExistingProfileAdoptionAllowed=false,AtUtc=DateTime.UtcNow.ToString("o")}));
         var status=CreateAppContainerProfile(expected.Name,"ClaudeCodeProtection synthetic session","Finite tool-owned no-network admission qualification",IntPtr.Zero,0,out var sid);
@@ -39,6 +40,8 @@ internal sealed class InstallationProfileLease : IDisposable
         finally{if(sid!=IntPtr.Zero)FreeSid(sid);}
     }
     internal void BeforeProcessCreation(string boundJobId){state.AssertHeld();if(disposed)throw new ObjectDisposedException(nameof(InstallationProfileLease));jobId=Identifiers.Hex32(boundJobId);mayDelete=false;}
+    internal void AssertPackage(InstallationPackageSid package)
+    {state.AssertHeld();if(disposed || package.Name!=name)throw WfpNative.Contract("ProfileAndAtomicPackageDiffer");}
     internal void AfterOwnedJobZero(JobSnapshot snapshot)
     {state.AssertHeld();if(snapshot.JobId!=jobId || !snapshot.ExpectedLimits || !snapshot.ObservedZero)throw WfpNative.Contract("ProfileCleanupRequiresOwnedJobZero");mayDelete=true;}
     public void Dispose()
@@ -94,49 +97,61 @@ internal sealed class AtomicChild : IDisposable
     private readonly SafeProcessHandle process;
     private readonly SafeWaitHandle thread;
     private readonly string image,packageSid;
+    private readonly NetworkProbePlan? network;
     private bool resumed,disposed;
     internal uint Pid {get;}
-    private AtomicChild(ProtectedState state,VerifiedVersion version,OwnedKernelJob job,ProcessInfo info,string image,string sid)
+    private AtomicChild(ProtectedState state,VerifiedVersion version,OwnedKernelJob job,ProcessInfo info,string image,string sid,NetworkProbePlan? network)
     {
-        this.state=state;this.version=version;this.job=job;this.image=image;packageSid=sid;Pid=info.ProcessId;
+        this.state=state;this.version=version;this.job=job;this.image=image;packageSid=sid;Pid=info.ProcessId;this.network=network;
         process=new(info.Process,true);thread=new(info.Thread,true);
     }
-    internal static AtomicChild CreateCanary(FixedLayout layout,ProtectedState state,VerifiedVersion version,OwnedKernelJob job,InstallationProfileLease profile)
+    internal static AtomicChild CreateCanary(FixedLayout layout,ProtectedState state,VerifiedVersion version,OwnedKernelJob job,InstallationProfileLease profile,
+        NetworkProbePlan? network=null,IntPtr output=default)
     {
         ProtectedState.RequireAdministrator();state.AssertHeld();version.AssertHeld(state);
         if(!Environment.Is64BitProcess || Marshal.SizeOf<StartupInfo>()!=104 || Marshal.SizeOf<StartupInfoEx>()!=112 || Marshal.SizeOf<SecurityCapabilities>()!=24)
             throw new PlatformNotSupportedException("Atomic admission requires the declared x64 layout");
         var image=WindowsPathSeal.Child(layout.Version(version.Package.Release),"bin/admin/ProtectionBroker.exe");
-        using var package=new InstallationPackageSid(state);
+        network?.Validate();if((network is null)!=(output==IntPtr.Zero))throw WfpNative.Contract("NetworkReportHandleRequiredExactlyForNetworkCanary");
+        using var package=network?.Kind==NetworkProbeKind.Control?InstallationPackageSid.ForNetworkControl(state):new InstallationPackageSid(state);
+        profile.AssertPackage(package);
         var jobHandle=job.ReserveAtomicAdmission(version);
-        IntPtr attributes=IntPtr.Zero,capabilities=IntPtr.Zero,jobList=IntPtr.Zero,environment=IntPtr.Zero;
+        IntPtr attributes=IntPtr.Zero,capabilities=IntPtr.Zero,jobList=IntPtr.Zero,environment=IntPtr.Zero,handles=IntPtr.Zero;
         bool initialized=false,handleHeld=false;
         try
         {
             jobHandle.DangerousAddRef(ref handleHeld);
-            nuint size=0;_=InitializeProcThreadAttributeList(IntPtr.Zero,2,0,ref size);
+            var count=network is null?2:3;
+            nuint size=0;_=InitializeProcThreadAttributeList(IntPtr.Zero,count,0,ref size);
             if(size is 0 or >65536)throw Error("AtomicAttributeListSize");
             attributes=Marshal.AllocHGlobal(checked((int)size));
-            if(!InitializeProcThreadAttributeList(attributes,2,0,ref size))throw Error("AtomicInitializeAttributes");initialized=true;
+            if(!InitializeProcThreadAttributeList(attributes,count,0,ref size))throw Error("AtomicInitializeAttributes");initialized=true;
             capabilities=Marshal.AllocHGlobal(Marshal.SizeOf<SecurityCapabilities>());
             Marshal.StructureToPtr(new SecurityCapabilities{Sid=package.Pointer},capabilities,false);
             if(!UpdateProcThreadAttribute(attributes,0,(IntPtr)0x20009,capabilities,(nuint)Marshal.SizeOf<SecurityCapabilities>(),IntPtr.Zero,IntPtr.Zero))throw Error("AtomicSetPackageAtCreation");
             jobList=Marshal.AllocHGlobal(IntPtr.Size);Marshal.WriteIntPtr(jobList,jobHandle.DangerousGetHandle());
             if(!UpdateProcThreadAttribute(attributes,0,(IntPtr)0x2000d,jobList,(nuint)IntPtr.Size,IntPtr.Zero,IntPtr.Zero))throw Error("AtomicSetJobListAtCreation");
+            if(network is not null)
+            {
+                handles=Marshal.AllocHGlobal(IntPtr.Size);Marshal.WriteIntPtr(handles,output);
+                if(!UpdateProcThreadAttribute(attributes,0,(IntPtr)0x20002,handles,(nuint)IntPtr.Size,IntPtr.Zero,IntPtr.Zero))throw Error("AtomicSetOnlyReportHandleInheritance");
+            }
             var env=new SortedDictionary<string,string>(StringComparer.OrdinalIgnoreCase);
             foreach(var name in new[]{"SystemRoot","windir","SystemDrive","ProgramFiles","ProgramFiles(x86)","ProgramW6432","PROCESSOR_ARCHITECTURE","LOCALAPPDATA","USERPROFILE","TEMP","TMP"})
             {var value=Environment.GetEnvironmentVariable(name);if(value is not null)env[name]=value;}
             env["PATH"]="C:\\Program Files\\dotnet;C:\\Windows\\System32;C:\\Windows";
             env["DOTNET_ROOT"]="C:\\Program Files\\dotnet";env["DOTNET_ROLL_FORWARD"]="LatestPatch";
+            if(network is not null)env["CPC_NETWORK_PLAN"]=JsonSerializer.Serialize(network);
             environment=Marshal.StringToHGlobalUni(string.Join('\0',env.Select(p=>p.Key+"="+p.Value))+"\0\0");
             var startup=new StartupInfoEx{Basic=new(){Size=Marshal.SizeOf<StartupInfoEx>()},Attributes=attributes};
+            if(network is not null){startup.Basic.Flags=0x100;startup.Basic.Output=output;startup.Basic.Error=output;}
             var command=new StringBuilder("\""+image+"\" admission-child");
             // The OS binds BOTH identity and Job before returning a suspended
             // initial thread. No inheritable handles or breakaway are enabled.
             profile.BeforeProcessCreation(job.JobId);
-            if(!CreateProcess(image,command,IntPtr.Zero,IntPtr.Zero,false,0x08080404,environment,Path.GetDirectoryName(image)!,ref startup,out var info))
+            if(!CreateProcess(image,command,IntPtr.Zero,IntPtr.Zero,network is not null,0x08080404,environment,Path.GetDirectoryName(image)!,ref startup,out var info))
                 throw Error("AtomicCreateSuspendedWithPackageAndJob");
-            return new(state,version,job,info,image,package.Value);
+            return new(state,version,job,info,image,package.Value,network);
         }
         finally
         {
@@ -145,10 +160,11 @@ internal sealed class AtomicChild : IDisposable
             if(capabilities!=IntPtr.Zero)Marshal.FreeHGlobal(capabilities);
             if(jobList!=IntPtr.Zero)Marshal.FreeHGlobal(jobList);
             if(environment!=IntPtr.Zero)Marshal.FreeHGlobal(environment);
+            if(handles!=IntPtr.Zero)Marshal.FreeHGlobal(handles);
             if(handleHeld)jobHandle.DangerousRelease();
         }
     }
-    internal object ResumeQuarantined()
+    internal object ResumeQuarantined(ProxyChannelLease? proxy=null)
     {
         if(disposed || resumed)throw new InvalidOperationException("Canary resume is one-shot");
         state.AssertHeld();version.AssertHeld(state);
@@ -163,14 +179,17 @@ internal sealed class AtomicChild : IDisposable
         if(!token.IsAppContainer || token.PackageSid!=packageSid || token.CapabilityCount!=0 || token.IntegritySid!="S-1-16-4096")throw WfpNative.Contract("AtomicTokenBeforeResumeMismatch");
         var plans=FencePlan.ReadAll(state);if(plans.Count==0)throw WfpNative.Contract("AtomicResumeRequiresRegisteredFence");
         var observations=new List<FenceObservation>();
+        var proxyOnly=network?.Kind==NetworkProbeKind.Proxy;
+        if(proxyOnly){if(proxy is null)throw WfpNative.Contract("NetworkProxyAdmissionNeedsLiveIdentityLease");proxy.AssertHealthy();}
         foreach(var plan in plans)
         {
             using var fence=PersistentFence.OpenExisting(state,plan.Data.FenceId);var observed=fence.Observe();
-            if(!observed.FullQuarantineObserved)throw WfpNative.Contract("AtomicResumeRequiresCommittedQuarantine");observations.Add(observed);
+            if(proxyOnly?!observed.IPv4ProxyOnlyObserved:!observed.FullQuarantineObserved)throw WfpNative.Contract("AtomicResumeRequiresCommittedExpectedFence");observations.Add(observed);
         }
         var proof=new {SchemaVersion=1,state.InstallationId,job.JobId,Pid,CreatedFileTime=created.ToString("X16"),Token=token,
             ImageSHA256=version.Package.Files.Single(f=>f.Asset.Id=="broker-exe").SHA256,Job=snapshot,Fences=observations,
-            Binding="SECURITY_CAPABILITIES_AND_JOB_LIST_AT_CREATION",Status="BEFORE_FIRST_RESUME",NetworkBehaviorQualified=false};
+            Binding="SECURITY_CAPABILITIES_AND_JOB_LIST_AT_CREATION",Status="BEFORE_FIRST_RESUME",NetworkBehaviorQualified=false,
+            Scope=network?.Kind==NetworkProbeKind.Control?"UNFENCED_OWNED_LOOPBACK_CONTROL":proxyOnly?"COMPILED_IPV4_PROXY_ONLY":"FULL_QUARANTINE"};
         state.WriteNew("admission-before-resume-"+job.JobId+".json",JsonSerializer.SerializeToUtf8Bytes(proof));
         var previous=ResumeThread(thread);if(previous==uint.MaxValue)throw Error("AtomicResumePrimaryThread");
         if(previous!=1)throw WfpNative.Contract("AtomicInitialSuspendCountMismatch");
@@ -179,7 +198,7 @@ internal sealed class AtomicChild : IDisposable
     internal uint WaitForCanaryExit()
     {
         if(!resumed || disposed)throw new InvalidOperationException("Canary has not resumed");
-        var status=WaitForSingleObject(process,15000);
+        var status=WaitForSingleObject(process,network is null?15000u:30000u);
         if(status==0x102)throw new TimeoutException("Finite atomic canary did not exit");
         if(status!=0)throw Error("AtomicCanaryWait");
         if(!GetExitCodeProcess(process,out var code))throw Error("AtomicCanaryExitCode");return code;
@@ -188,6 +207,13 @@ internal sealed class AtomicChild : IDisposable
     {
         using var current=new SafeProcessHandle((IntPtr)(-1),false);var token=ReadToken(current);
         if(!token.IsAppContainer || token.CapabilityCount!=0 || token.IntegritySid!="S-1-16-4096")return 125;
+        var plan=Environment.GetEnvironmentVariable("CPC_NETWORK_PLAN");
+        if(plan is not null)
+        {
+            if(plan.Length>8192)throw WfpNative.Contract("NetworkPlanSizeRefused");
+            var network=JsonSerializer.Deserialize<NetworkProbePlan>(plan)??throw WfpNative.Contract("MissingNetworkPlan");network.Validate();
+            var report=NetworkQualification.RunChild(network).GetAwaiter().GetResult();Console.WriteLine(JsonSerializer.Serialize(report));return report.FailureMask;
+        }
         Thread.Sleep(200);return 42; // No network, state, file writes or children.
     }
     private static AdmissionToken ReadToken(SafeProcessHandle process)

@@ -1,0 +1,185 @@
+using System.ComponentModel;
+using System.Diagnostics;
+using System.Net;
+using System.Runtime.InteropServices;
+using System.Security.Cryptography;
+using System.Security.Principal;
+using System.Text;
+using System.Text.Json;
+using Microsoft.Win32.SafeHandles;
+
+namespace ProtectionLifecycle;
+
+// Holds the existing proxy process and its on-disk image, without starting,
+// stopping or reconfiguring it. Path/hash are observations, not AV clearance or
+// proof that every byte in the already-running image equals the disk image.
+internal sealed class ProxyChannelLease : IDisposable
+{
+    private const string ExpectedImage="E:\\program\\FlClash\\FlClashCore.exe";
+    private readonly SafeProcessHandle process;
+    private readonly PathLease directory;
+    private readonly FileStream image;
+    private readonly uint pid;
+    private bool disposed;
+    internal object Evidence {get;}
+    private ProxyChannelLease(SafeProcessHandle process,PathLease directory,FileStream image,uint pid,object evidence)
+    {this.process=process;this.directory=directory;this.image=image;this.pid=pid;Evidence=evidence;}
+    internal static ProxyChannelLease Open(ProtectedState state)
+    {
+        ProtectedState.RequireAdministrator();state.AssertHeld();var pid=ListenerOwner();
+        var process=OpenProcess(0x101000,false,pid);PathLease? directory=null;FileStream? image=null;
+        try
+        {
+            if(process.IsInvalid)throw Error("OpenExistingProxyIdentity");
+            if(!GetProcessTimes(process,out var created,out _,out _,out _))throw Error("ReadProxyCreationTime");
+            var path=new StringBuilder(32768);uint length=(uint)path.Capacity;
+            if(!QueryFullProcessImageName(process,0,path,ref length))throw Error("ReadProxyImagePath");
+            if(!string.Equals(WindowsPathSeal.Canonical(path.ToString()),ExpectedImage,StringComparison.OrdinalIgnoreCase))throw WfpNative.Contract("ProxyListenerImagePathMismatch");
+            directory=WindowsPathSeal.LockDirectory(Path.GetDirectoryName(ExpectedImage)!,PathPolicy.Source);
+            var file=WindowsPathSeal.Open(ExpectedImage,false,true);image=new(file,FileAccess.Read,65536,false);
+            if(image.Length is <1 or >128*1024*1024)throw WfpNative.Contract("ProxyImageSizeRefused");
+            var hash=Convert.ToHexString(SHA256.HashData(image));
+            var evidence=new {Pid=pid,ImagePath=ExpectedImage,CreatedUtc=DateTime.FromFileTimeUtc(created).ToString("o"),DiskImageSHA256=hash,
+                FileIdentity=WindowsPathSeal.Identity(image.SafeFileHandle),MappedImageBytesQualified=false,Endpoint="127.0.0.1:7890"};
+            var lease=new ProxyChannelLease(process,directory,image,pid,evidence);lease.AssertHealthy();
+            state.WriteNew("proxy-observed-"+Guid.NewGuid().ToString("N")+".json",JsonSerializer.SerializeToUtf8Bytes(evidence));return lease;
+        }
+        catch{image?.Dispose();directory?.Dispose();process.Dispose();throw;}
+    }
+    internal void AssertHealthy()
+    {
+        if(disposed || process.IsClosed || image.SafeFileHandle.IsClosed)throw new ObjectDisposedException(nameof(ProxyChannelLease));
+        directory.AssertHeld();WindowsPathSeal.VerifyObject(image.SafeFileHandle,ExpectedImage,false);
+        if(WaitForSingleObject(process,0)!=0x102 || ListenerOwner()!=pid)throw WfpNative.Contract("ProxyProcessOrListenerIdentityDrift");
+    }
+    internal static async Task<int> CheckTransport()
+    {
+        using var handler=new HttpClientHandler{UseProxy=true,Proxy=new WebProxy("http://127.0.0.1:7890"),AllowAutoRedirect=false,
+            UseCookies=false,UseDefaultCredentials=false,CheckCertificateRevocationList=true};
+        using var client=new HttpClient(handler){Timeout=TimeSpan.FromSeconds(8)};
+        using var response=await client.GetAsync("https://www.microsoft.com/",HttpCompletionOption.ResponseHeadersRead);
+        return (int)response.StatusCode;
+    }
+    private static uint ListenerOwner()
+    {
+        uint size=0;var first=GetExtendedTcpTable(IntPtr.Zero,ref size,false,2,5,0);
+        if(first!=122 || size is <4 or >1024*1024)throw new WfpFailure("SizeProxyOwnerTable",first);
+        for(var attempt=0;attempt<4;attempt++)
+        {
+            var capacity=size;var buffer=Marshal.AllocHGlobal(checked((int)capacity));
+            try
+            {
+                var status=GetExtendedTcpTable(buffer,ref size,false,2,5,0);
+                if(status==122){if(size>1024*1024)throw WfpNative.Contract("ProxyOwnerTableCapacity");continue;}
+                WfpNative.Check(status,"ReadProxyOwnerTable");var count=Marshal.ReadInt32(buffer);
+                if(count<0 || count>(capacity-4)/24)throw WfpNative.Contract("ProxyOwnerTableBounds");
+                var owners=new List<uint>();
+                for(var i=0;i<count;i++)
+                {
+                    var row=buffer+4+i*24;var port=unchecked((uint)Marshal.ReadInt32(row,8));
+                    var decoded=((port&255)<<8)|((port>>8)&255);
+                    if(Marshal.ReadInt32(row)==2 && unchecked((uint)Marshal.ReadInt32(row,4))==0x0100007f && decoded==CompiledFencePolicy.ProxyPort)
+                        owners.Add(unchecked((uint)Marshal.ReadInt32(row,20)));
+                }
+                if(owners.Count!=1 || owners[0]==0)throw WfpNative.Contract("UniqueLoopbackProxyListenerRequired");return owners[0];
+            }
+            finally{Marshal.FreeHGlobal(buffer);}
+        }
+        throw WfpNative.Contract("ProxyOwnerTableChangedRepeatedly");
+    }
+    public void Dispose(){if(disposed)return;disposed=true;image.Dispose();directory.Dispose();process.Dispose();}
+    private static Win32Exception Error(string stage){var e=new Win32Exception(Marshal.GetLastWin32Error());e.Data["Stage"]=stage;return e;}
+    [DllImport("iphlpapi.dll",ExactSpelling=true)] private static extern uint GetExtendedTcpTable(IntPtr table,ref uint size,[MarshalAs(UnmanagedType.Bool)] bool sorted,uint family,int tableClass,uint reserved);
+    [DllImport("kernel32.dll",SetLastError=true)] private static extern SafeProcessHandle OpenProcess(uint access,[MarshalAs(UnmanagedType.Bool)] bool inherit,uint pid);
+    [DllImport("kernel32.dll",SetLastError=true)] private static extern uint WaitForSingleObject(SafeProcessHandle process,uint milliseconds);
+    [DllImport("kernel32.dll",SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)] private static extern bool GetProcessTimes(SafeProcessHandle process,out long created,out long exited,out long kernel,out long user);
+    [DllImport("kernel32.dll",EntryPoint="QueryFullProcessImageNameW",CharSet=CharSet.Unicode,SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)] private static extern bool QueryFullProcessImageName(SafeProcessHandle process,uint flags,StringBuilder path,ref uint length);
+}
+
+internal sealed record LoopbackEntry(string Sid,uint Attributes);
+
+// The Windows CLI receives one derived owned SID, never a global-list restore.
+// Snapshot comparisons detect unrelated drift; cleanup removes only our SID.
+// An external concurrent writer cannot be atomically locked by this API.
+internal sealed class InstallationLoopbackLease : IDisposable
+{
+    private readonly ProtectedState state;
+    private readonly string sid,id;
+    private readonly LoopbackEntry[] prior;
+    private bool disposed;
+    private InstallationLoopbackLease(ProtectedState state,string sid,string id,LoopbackEntry[] prior)
+    {this.state=state;this.sid=sid;this.id=id;this.prior=prior;}
+    internal static InstallationLoopbackLease Enable(ProtectedState state,bool control)
+    {
+        ProtectedState.RequireAdministrator();state.AssertHeld();
+        using var package=control?InstallationPackageSid.ForNetworkControl(state):new InstallationPackageSid(state);
+        var before=Read();if(before.Any(e=>e.Sid==package.Value))throw WfpNative.Contract("ExistingLoopbackExemptionNotAdopted");
+        var id=Guid.NewGuid().ToString("N");
+        state.WriteNew("loopback-intent-"+id+".json",JsonSerializer.SerializeToUtf8Bytes(new {SchemaVersion=1,state.InstallationId,Sid=package.Value,
+            Before=before,Operation="ADD_EXACT_OWNED_SID",ExternalConcurrentWritersSerialized=false,AtUtc=DateTime.UtcNow.ToString("o")}));
+        var lease=new InstallationLoopbackLease(state,package.Value,id,before);
+        try
+        {
+            Invoke("-a",package.Value);var after=Read();
+            if(after.Count(e=>e.Sid==package.Value)!=1 || !Others(after,package.Value).SequenceEqual(before))throw WfpNative.Contract("LoopbackAddOrOtherEntriesChanged");
+            state.WriteNew("loopback-added-"+id+".json",JsonSerializer.SerializeToUtf8Bytes(new {SchemaVersion=1,state.InstallationId,Sid=package.Value,Status="EXACT_SID_PRESENT_OTHERS_UNCHANGED"}));
+            return lease;
+        }
+        catch(Exception failure){try{lease.Dispose();}catch(Exception cleanup){throw new AggregateException(failure,cleanup);}throw;}
+    }
+    public void Dispose()
+    {
+        if(disposed)return;disposed=true;state.AssertHeld();
+        var before=Read();if(before.Any(e=>e.Sid==sid))Invoke("-d",sid);
+        var after=Read();var absent=after.All(e=>e.Sid!=sid);var othersSame=Others(before,sid).SequenceEqual(after);
+        state.WriteNew("loopback-cleanup-"+id+".json",JsonSerializer.SerializeToUtf8Bytes(new {SchemaVersion=1,state.InstallationId,Sid=sid,
+            ExactSidAbsent=absent,UnrelatedEntriesPreserved=othersSame,OriginalOthersUnchanged=after.SequenceEqual(prior),AtUtc=DateTime.UtcNow.ToString("o")}));
+        if(!absent || !othersSame)throw WfpNative.Contract("LoopbackCleanupOrUnrelatedEntriesNotConfirmed");
+    }
+    private static LoopbackEntry[] Others(IEnumerable<LoopbackEntry> rows,string sid)=>rows.Where(e=>e.Sid!=sid).OrderBy(e=>e.Sid,StringComparer.Ordinal).ToArray();
+    private static LoopbackEntry[] Read()
+    {
+        WfpNative.Check(NetworkIsolationGetAppContainerConfig(out var count,out var pointer),"ReadLoopbackExemptions");
+        try
+        {
+            if(count>4096 || (count>0 && pointer==IntPtr.Zero))throw WfpNative.Contract("LoopbackSnapshotBounds");
+            var result=new List<LoopbackEntry>();var size=Marshal.SizeOf<SidAttributes>();
+            for(var i=0;i<count;i++)
+            {
+                var row=Marshal.PtrToStructure<SidAttributes>(pointer+checked((int)i)*size);
+                if(row.Sid==IntPtr.Zero || !WfpNative.IsValidSid(row.Sid))throw WfpNative.Contract("InvalidLoopbackSid");
+                result.Add(new(new SecurityIdentifier(row.Sid).Value,row.Attributes));
+            }
+            if(result.Select(e=>e.Sid).Distinct().Count()!=result.Count)throw WfpNative.Contract("DuplicateLoopbackSid");
+            return result.OrderBy(e=>e.Sid,StringComparer.Ordinal).ToArray();
+        }
+        finally
+        {
+            if(pointer!=IntPtr.Zero)
+            {
+                if(count<=4096)for(var i=0;i<count;i++){var p=Marshal.ReadIntPtr(pointer+checked((int)i)*Marshal.SizeOf<SidAttributes>());if(p!=IntPtr.Zero)HeapFree(GetProcessHeap(),0,p);}
+                HeapFree(GetProcessHeap(),0,pointer);
+            }
+        }
+    }
+    private static void Invoke(string operation,string sid)
+    {
+        if(operation is not ("-a" or "-d") || !sid.StartsWith("S-1-15-2-",StringComparison.Ordinal))throw WfpNative.Contract("ExactLoopbackCommandRequired");
+        var system=Environment.GetFolderPath(Environment.SpecialFolder.System);using var path=WindowsPathSeal.LockDirectory(system,PathPolicy.TrustedAncestor);
+        using var executable=WindowsPathSeal.Open(Path.Combine(system,"CheckNetIsolation.exe"),false,true);WindowsPathSeal.AssertAcl(executable,false,true);
+        var start=new ProcessStartInfo(Path.Combine(system,"CheckNetIsolation.exe")){UseShellExecute=false,CreateNoWindow=true,WorkingDirectory=system,
+            RedirectStandardOutput=true,RedirectStandardError=true};
+        start.Environment.Clear();foreach(var name in new[]{"SystemRoot","windir","SystemDrive","USERPROFILE","LOCALAPPDATA"})
+        {var value=Environment.GetEnvironmentVariable(name);if(value is not null)start.Environment[name]=value;}
+        start.ArgumentList.Add("LoopbackExempt");start.ArgumentList.Add(operation);start.ArgumentList.Add("-p="+sid);
+        using var process=Process.Start(start)??throw WfpNative.Contract("LoopbackCommandNotStarted");
+        var output=process.StandardOutput.ReadToEndAsync();var error=process.StandardError.ReadToEndAsync();
+        if(!process.WaitForExit(10000)){process.Kill();throw new TimeoutException("Exact loopback command timeout");}
+        _=output.GetAwaiter().GetResult();_=error.GetAwaiter().GetResult();
+        if(process.ExitCode!=0)throw WfpNative.Contract("ExactLoopbackCommandFailed");
+    }
+    [StructLayout(LayoutKind.Sequential)] private struct SidAttributes {internal IntPtr Sid;internal uint Attributes;}
+    [DllImport("FirewallAPI.dll",ExactSpelling=true)] private static extern uint NetworkIsolationGetAppContainerConfig(out uint count,out IntPtr entries);
+    [DllImport("kernel32.dll")] private static extern IntPtr GetProcessHeap();
+    [DllImport("kernel32.dll")] [return:MarshalAs(UnmanagedType.Bool)] private static extern bool HeapFree(IntPtr heap,uint flags,IntPtr memory);
+}
