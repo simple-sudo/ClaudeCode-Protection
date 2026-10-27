@@ -97,13 +97,14 @@ internal static class SessionTunnelCases
     }
     // Entirely memory-backed duplex endpoint; it cannot open a socket, file,
     // native API, product entry point or another process.
-    private sealed class Endpoint:Stream
+    internal sealed class Endpoint:Stream
     {
         private readonly byte[] input;
         private readonly TaskCompletionSource ready=new(TaskCreationOptions.RunContinuationsAsynchronously);
         private readonly MemoryStream written=new();
         private int position,active;
         internal bool FailWrites {get;init;}
+        internal int MaximumRead {get;init;}=int.MaxValue;
         internal Exception? ReadFailure {get;init;}
         internal bool Canceled {get;private set;}
         internal int ActiveReads=>Volatile.Read(ref active);
@@ -119,7 +120,7 @@ internal static class SessionTunnelCases
             {
                 await ready.Task.WaitAsync(token);token.ThrowIfCancellationRequested();
                 if(ReadFailure is not null)throw ReadFailure;
-                var count=Math.Min(buffer.Length,input.Length-position);input.AsMemory(position,count).CopyTo(buffer);position+=count;return count;
+                var count=Math.Min(MaximumRead,Math.Min(buffer.Length,input.Length-position));input.AsMemory(position,count).CopyTo(buffer);position+=count;return count;
             }
             catch(OperationCanceledException){Canceled=true;throw;}
             finally{Interlocked.Decrement(ref active);}

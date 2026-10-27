@@ -38,7 +38,17 @@ AppContainer/Low/零capability核验。凭据只在本会话进程内生成与�
 当前锁定[Cloudflare JSON接口](https://developers.cloudflare.com/1.1.1.1/encryption/dns-over-https/make-api-requests/dns-json/)；
 它不是通用DNS JSON标准。格式变化、截断、错误、失效TTL、重复字段、私网/特殊地址、
 不相关回答或CNAME循环均拒绝；每次新隧道重新解析，无跨请求缓存。
-审查结果直接用于上游字面IPv4 CONNECT，不再交给FlClash解析原始域名；客户端TLS保留原目标名称。
+审查结果写入上游字面IPv4 CONNECT；这只是请求表示，尚未证明FlClash后续不会映射/嗅探并改变目的地。
+客户端TLS仍由客户端终止，保留其原名称与证书验证责任。
+已认证且有当前许可的客户端先向网关提交首个TLS握手，再由网关进行该连接的DoH解析/上游连接。
+实际RequireTlsClientHelloAsync→ValidateTlsClientHello检查完整ClientHello，限32KiB/8条记录并支持流/记录分片；
+唯一可见SNI须匹配授权名，ALPN如出现限http/1.1和h2，缺失名称、明文、重复/畸形扩展及ECH/旧加密名称拒绝。
+预读的完整原始记录通过借用端点的流视图交回SessionTunnel，字节仍经原预算和写出许可检查，不重复/遗漏转发。
+本地200响应仅让客户端提交握手，不表示远端已连通或获得最终保护验收；错误关闭原连接并撤销。
+此策略不作TLS解密/证书替代，ECH暂不支持，未完成一般工具/浏览器兼容，亦不能证明上游保持字面目的地。
+格式参考：[SNI](https://www.rfc-editor.org/rfc/rfc6066#section-3)、
+[TLS1.3结构](https://www.rfc-editor.org/rfc/rfc8446#section-4.1.2)、
+[IANA加密名称扩展](https://www.iana.org/assignments/tls-extensiontype-values)。
 TLS采用严格离线吊销与禁止AIA下载；缺证书/吊销缓存会失败，未关闭验证。
 实际隧道复制器SessionTunnel由SessionProxy直接调用：一方正常EOF只关闭对应Socket的发送方向，
 允许另一方向继续排空；出现错误/截止/撤销则取消两方向并观察两个任务后释放端点。
@@ -104,6 +114,11 @@ RegisteredJobSet/InstallationLoopbackLease → PersistentFence/FencePlan，复�
 实际迁移/恢复仍绑定当前工件和当前策略，启动继续拒绝非当前策略。历史可检查不等于许可可复用。
 FlClash是否真正按字面地址转发、系统服务代发DNS、端口重用/崩溃时序、物理出口均尚无新证据。
 此方案依赖已审核上游诚实执行字面CONNECT，不证明能抵御被篡改的FlClash或恶意上游。
+更准确地说，上游还须证明其正常配置不会重写目标、选择DIRECT或回退到宿主出口；仅“软件诚实”不足。
+审阅时的上游Meta源码：[HTTP CONNECT接收](https://github.com/MetaCubeX/mihomo/blob/Meta/listener/http/proxy.go)、
+[模式与目的地处理](https://github.com/MetaCubeX/mihomo/blob/Meta/tunnel/tunnel.go)。它们不是当前安装Core的版本/行为资格。
+本机只读观察到global/Selector→Vless，未见当时选中DIRECT；控制器GET没有锁定此后连接的路由。
+没有更改日常配置，当前不从此观察签发任何启动或网络权限。
 
 阻止出口与阻止读取宿主信息是两项独立条件。当前未实现对FlClash配置/订阅、敏感文件/注册表、
 进程对象/管理接口及宿主接口信息的完整资源拒绝，也未证明所有相关Windows服务可被归属限制。

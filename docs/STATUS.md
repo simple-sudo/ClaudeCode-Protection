@@ -1,5 +1,30 @@
 # 当前开发状态
 
+## 2026-10-27 CONNECT目标与TLS首个握手名称绑定（本轮）
+
+接续904d360，工作区干净。先只读核对当前上游：14:07Z的本机控制器GET观察为global、
+选中适配器链Selector→Vless，未观察到DIRECT；配置摘要前后未变，未披露选中名称/节点/订阅/secret，
+未改FlClash、未调用延迟测试或外部出口服务。work/upstream-route-readonly-20261027-r1保留固定脚本与脱敏结果。
+这是瞬时元数据，不是连接原子路由或真实出口资格，不能给十四项或独立安全条件签PASS。
+
+SOURCE / INTEGRATED：SessionProxy实际转发前新增同一路径的ClientHello检查。
+对已认证、当前许可及精确Job/token的连接，先返回本地CONNECT响应并接收至多32KiB/8条TLS记录的首个握手；
+必须是完整ClientHello、唯一可见SNI与授权目标一致，ALPN如存在只能http/1.1或h2。
+缺失/重复/私网名称/不同名称、明文、畸形长度、ECH/旧加密名称等拒绝并沿原Fail/撤销链退出。
+随后才发起该连接的DoH解析及字面IP上游CONNECT，再把预读字节交回原复制器，完整计入流量预算、
+维持每次写出前许可复核和原端点排空。两次上游操作后仍核对当前身份/许可；无直连回退。
+策略摘要包含此限制；当前只服务固定自有HTTPS目标，不代表一般浏览器/ECH及全工具链兼容完成。
+
+上游审查还表明普通CONNECT不能代表已锁定独立出站；Mihomo会按模式选择GLOBAL/DIRECT并可能处理映射/嗅探。
+已把网关独立安全UNKNOWN原因明确为当前内核功能及上游字面目标保持/非DIRECT路径未获资格。
+TLS名称约束不是服务器证书验证，也不能防止上游重新映射同一授权名称；此必要缺口继续阻止正式许可。
+依据与范围见[主链说明](PROTECTED-SESSION-CHAIN.md)，不以当前配置或源码分支推断已安装Core行为通过。
+
+六产品SOURCE语义0错误/0警告（Lifecycle35源），12源纯测试语义无诊断；
+outputs/session-tls-target-source-types-final.json、session-tls-target-policy-source-types-final.json保留。
+新增分片/名称/扩展/容量/截断/撤销及原样重放和计费用例，当前尚未编译/执行。
+本轮未恢复WFP/Job/Watchdog实验、未安装或执行新产品、未启动真实Claude；完整产品仍非DELIVERABLE。
+
 ## 2026-10-27 会话许可直接约束网关转发（本轮）
 
 接续36c4d7e，工作区干净。修复网关只核验连接身份、转发阶段未直接消费Admission的缺口。

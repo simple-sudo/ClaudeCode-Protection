@@ -196,4 +196,5 @@ Refuse(()=>FenceMigrationSelection.Decide(priorImage,priorImage,priorImage,prior
 Refuse(()=>FenceMigrationSelection.Decide(priorImage,nextImage,"invalid",nextImage,true),"malformed selection refused");
 
 await SessionTunnelCases.RunAsync();
+await TlsClientHelloCases.RunAsync();
 Console.WriteLine("PolicySmoke: bounded pure policy and in-memory duplex cases passed. No product entry point, native API or network request was executed.");

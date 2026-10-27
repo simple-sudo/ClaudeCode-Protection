@@ -12,6 +12,63 @@ internal static class ProxyDestinationPolicy
 {
     internal sealed record PinnedDecision(bool Allowed,string Reason);
 
+    // The CONNECT authority alone cannot constrain a proxy's TLS sniffing.
+    // This validates the complete initial handshake, not a TLS certificate or
+    // the upstream's routing behavior. No encrypted-name fallback is accepted.
+    internal static void ValidateTlsClientHello(string expectedHost,ReadOnlySpan<byte> message)
+    {
+        if(!IsPublicHostnameCandidate(expectedHost) || IPAddress.TryParse(expectedHost,out _) || message.Length is <4 or >32768 ||
+            message[0]!=1 || ((message[1]<<16)|(message[2]<<8)|message[3])!=message.Length-4)
+            throw new InvalidDataException("BoundedClientHelloRequired");
+        var body=new HelloReader(message[4..]);
+        if(body.U16()!=0x0303)throw new InvalidDataException("ModernTlsClientHelloRequired");
+        _=body.Take(32);var session=body.U8();if(session>32)throw new InvalidDataException("TlsSessionIdCapacity");_=body.Take(session);
+        var cipherBytes=body.U16();if(cipherBytes<2 || cipherBytes%2!=0)throw new InvalidDataException("TlsCipherVectorInvalid");_=body.Take(cipherBytes);
+        if(body.U8()!=1 || body.U8()!=0)throw new InvalidDataException("TlsCompressionRefused");
+        var extensionBytes=body.U16();if(extensionBytes!=body.Remaining)throw new InvalidDataException("TlsExtensionVectorInvalid");
+        var seen=new HashSet<int>();var serverName=false;
+        while(body.Remaining>0)
+        {
+            var type=body.U16();var size=body.U16();var extension=new HelloReader(body.Take(size));
+            if(!seen.Add(type))throw new InvalidDataException("DuplicateTlsExtension");
+            if(type is 65037 or 64768 or 65486)throw new InvalidDataException("EncryptedTlsNameUnsupported");
+            if(type==0)
+            {
+                if(extension.U16()!=extension.Remaining || extension.U8()!=0)throw new InvalidDataException("TlsServerNameVectorInvalid");
+                var length=extension.U16();var name=extension.Take(length);
+                if(length is <1 or >253 || extension.Remaining!=0)throw new InvalidDataException("OneTlsServerNameRequired");
+                for(var i=0;i<name.Length;i++)if(name[i] is <33 or >126)throw new InvalidDataException("AsciiTlsServerNameRequired");
+                if(!System.Text.Encoding.ASCII.GetString(name).Equals(expectedHost,StringComparison.OrdinalIgnoreCase))
+                    throw new InvalidDataException("TlsNameDiffersFromAuthorizedTarget");
+                serverName=true;
+            }
+            if(type==16)
+            {
+                if(extension.U16()!=extension.Remaining || extension.Remaining==0)throw new InvalidDataException("TlsAlpnVectorInvalid");
+                var protocols=new HashSet<string>(StringComparer.Ordinal);
+                while(extension.Remaining>0)
+                {
+                    var protocol=System.Text.Encoding.ASCII.GetString(extension.Take(extension.U8()));
+                    if(protocol is not ("http/1.1" or "h2") || !protocols.Add(protocol))throw new InvalidDataException("HttpsAlpnRequired");
+                }
+            }
+        }
+        if(!serverName)throw new InvalidDataException("VisibleAuthorizedTlsNameRequired");
+    }
+    private ref struct HelloReader
+    {
+        private ReadOnlySpan<byte> bytes;
+        internal HelloReader(ReadOnlySpan<byte> bytes){this.bytes=bytes;}
+        internal int Remaining=>bytes.Length;
+        internal ReadOnlySpan<byte> Take(int count)
+        {
+            if(count<0 || count>bytes.Length)throw new InvalidDataException("TlsVectorTruncated");
+            var result=bytes[..count];bytes=bytes[count..];return result;
+        }
+        internal int U8()=>Take(1)[0];
+        internal int U16(){var value=Take(2);return (value[0]<<8)|value[1];}
+    }
+
     internal static bool IsPublicHostnameCandidate(string? input)
     {
         if(string.IsNullOrEmpty(input) || input.Length>253 ||

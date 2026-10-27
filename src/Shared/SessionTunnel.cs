@@ -4,6 +4,61 @@ namespace ClaudeCodeProtection.Security;
 // sockets; its caller retains the deadline, revocation and endpoint lifetime.
 internal static class SessionTunnel
 {
+    // Read only the bounded initial ClientHello. Return a duplex replay view
+    // so the existing copier accounts/forwards every validated byte exactly once.
+    // No upstream socket is created by this method.
+    internal static async Task<Stream> RequireTlsClientHelloAsync(Stream client,string host,Action assertAuthorized,CancellationToken token)
+    {
+        using var wire=new MemoryStream();using var handshake=new MemoryStream();var expected=-1;
+        for(var record=0;record<8;record++)
+        {
+            assertAuthorized();var header=new byte[5];await client.ReadExactlyAsync(header,token);
+            assertAuthorized();var size=(header[3]<<8)|header[4];
+            if(header[0]!=22 || header[1]!=3 || header[2] is <1 or >3 || size is <1 or >16384 || wire.Length+5+size>32768)
+                throw new InvalidDataException("InitialTlsRecordRefused");
+            var payload=new byte[size];await client.ReadExactlyAsync(payload,token);assertAuthorized();
+            wire.Write(header);wire.Write(payload);handshake.Write(payload);
+            var bytes=handshake.GetBuffer();
+            if(handshake.Length>=4 && expected<0)
+            {
+                expected=4+((bytes[1]<<16)|(bytes[2]<<8)|bytes[3]);
+                if(bytes[0]!=1 || expected is <4 or >32768)throw new InvalidDataException("InitialTlsHandshakeRefused");
+            }
+            if(expected>=0 && handshake.Length>=expected)
+            {
+                if(handshake.Length!=expected)throw new InvalidDataException("ExtraInitialTlsHandshakeBytes");
+                ProxyDestinationPolicy.ValidateTlsClientHello(host,bytes.AsSpan(0,expected));assertAuthorized();
+                return new PrefixDuplexStream(client,wire.ToArray());
+            }
+        }
+        throw new InvalidDataException("TlsInitialRecordCapacity");
+    }
+    private sealed class PrefixDuplexStream(Stream inner,byte[] prefix):Stream
+    {
+        private int position;
+        public override bool CanRead=>inner.CanRead;
+        public override bool CanWrite=>inner.CanWrite;
+        public override bool CanSeek=>false;
+        public override long Length=>throw new NotSupportedException();
+        public override long Position{get=>throw new NotSupportedException();set=>throw new NotSupportedException();}
+        public override ValueTask<int> ReadAsync(Memory<byte> buffer,CancellationToken token=default)
+        {
+            token.ThrowIfCancellationRequested();
+            if(position==prefix.Length)return inner.ReadAsync(buffer,token);
+            var count=Math.Min(buffer.Length,prefix.Length-position);prefix.AsMemory(position,count).CopyTo(buffer);position+=count;return ValueTask.FromResult(count);
+        }
+        public override int Read(byte[] buffer,int offset,int count)
+        {
+            if(position==prefix.Length)return inner.Read(buffer,offset,count);
+            var size=Math.Min(count,prefix.Length-position);prefix.AsSpan(position,size).CopyTo(buffer.AsSpan(offset,size));position+=size;return size;
+        }
+        public override void Flush()=>inner.Flush();
+        public override void Write(byte[] buffer,int offset,int count)=>inner.Write(buffer,offset,count);
+        public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer,CancellationToken token=default)=>inner.WriteAsync(buffer,token);
+        public override long Seek(long offset,SeekOrigin origin)=>throw new NotSupportedException();
+        public override void SetLength(long value)=>throw new NotSupportedException();
+        // The caller owns the endpoint; this view cannot close it prematurely.
+    }
     internal static async Task CopyAsync(Stream client,Stream upstream,Action clientFinishSending,Action upstreamFinishSending,
         Action<int> accountBytes,long directionLimit,Action assertAuthorized,CancellationToken token)
     {

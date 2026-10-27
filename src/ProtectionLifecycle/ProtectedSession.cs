@@ -53,6 +53,7 @@ internal sealed class ProtectedSession
         systemSafety=Array.AsReadOnly(SystemRequirements.Select(name=>new EnvironmentEvidence(name,
             name=="current-trusted-installation"?"PASS":"UNKNOWN",
             name=="current-trusted-installation"?"HELD_CURRENT_INSTALLATION_ASSETS":
+                name=="current-gateway-kernel-enforcement"?"CURRENT_KERNEL_FUNCTIONALITY_AND_UPSTREAM_LITERAL_NON_DIRECT_ROUTE_NOT_QUALIFIED":
                 "CURRENT_ARTIFACT_SECURITY_QUALIFICATION_OR_RESOURCE_GRANT_MISSING",clock.ElapsedMilliseconds,120000)).ToArray());
     }
     private sealed record EnvironmentEvidence(string Id,string Status,string Reason,long ObservedMs,long ValidForMs);
