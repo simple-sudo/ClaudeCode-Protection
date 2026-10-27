@@ -51,6 +51,8 @@ INTEGRATED是实际调用链；VERIFIED只适用于表中明确功能及负向�
 
 ## 下一主线及安全边界
 
+39cea24原子准入切片独立30输入离线构建成功，未安装运行新准入；元数据无module initializer，普通用户inspect-runtime退出0，admission-child/qualify-admission/inspect-installed-fence分别125拒绝，均无Job或网络动作。下一批准包c81055a2849c4c86a9d7f07524cc77d6，manifest F68329165AAAD7BF5C8CBB4B44111B715439395B850F9653C80D687843A006FA；待bootstrap单独构建及受保护安装。当前正式083d包和既有完整持久隔离保持。
+
 后续原子准入纵向切片当前仅SOURCE：已安装broker固定qualify-admission→现有私有命名Job→CreateProcessW同时提交SECURITY_CAPABILITIES/JOB_LIST并初始挂起→核对当前包、确切镜像/创建时刻/令牌/AppContainer低完整性/零capability/唯一Job成员/已提交完整隔离→先行记录→首次Resume。子进程只能执行当前broker的200ms无网络canary并返回42，命令不接受外部路径/脚本/PID/参数。完成前封闭一次性准入、停止并观察Job零，保存绑定准入记录的完成回执；已关闭准入的专属回执可供后续管理跳过已终结Job，任意缺失名称仍UNKNOWN。新增inspect-installed-fence是独立只读入口，不借quarantine变更做观察。
 
 新公开代码文件/目录增加标准ALL_APPLICATION_PACKAGES只读/执行ACE，使隔离进程可加载自己的代码；管理员/系统仍是唯一可写者，私有状态不加此ACE。迁移仅允许3个已核验无准入包的固定摘要，且无Job历史；允许保留完整既有隔离，拒绝部分/外来对象，不清理规则。六项目非生成检查0错误/0警告（生命周期23源）。此切片未构建/运行，不计原子准入、网络行为或崩溃通过。
