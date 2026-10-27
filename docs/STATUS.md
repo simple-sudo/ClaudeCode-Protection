@@ -13,6 +13,14 @@ SOURCE / INTEGRATED：六产品项目语义检查0错误/0警告（Lifecycle35�
 原始报告为outputs/session-duplex-source-types-final.json、session-duplex-policy-source-types-final.json。
 新增内存双向端点用例覆盖两个方向延迟回复、后发错误、写失败、方向/会话预算及截止撤销、排空；
 测试调用实际SessionTunnel复制器，不开端口/文件或调用native。当前本节尚未有BUILD/执行结果。
+随后7543cb1的Broker/Lifecycle（42固定输入）与11源纯测试分别离线还原/编译成功，均0错误/0警告；
+纯测试实际退出0，含上述双向延迟响应、错误/预算/截止的排空验证。
+测试程序集SHA256 6274B63D189D25D62C3217517EAB0D610F27739243044B42687BD4363A195C19，
+保留work/session-duplex-broker-7543cb1-build、session-duplex-policy-7543cb1-build及固定控制脚本/结果。
+历史迁移读取另补一个更新兼容修正：完成的旧网关策略记录不再要求等于当前策略摘要，仍核对完整前后像、
+固定端口/对象键/安装归属；实际迁移/恢复及启动仍要求当前策略，不从历史回执签发许可。
+这避免本次传输策略摘要升级后把已完成的维护历史误判为不合法；该后续源码语义检查六项目0错误/0警告，
+outputs/session-duplex-history-source-types.json，尚待本节后续编译记录。
 本轮未恢复WFP/Job/Watchdog实验、故障注入或真实Claude，未改AV、FlClash或系统网络。
 完整会话的可信证据、资源/工具/GPU授权和系统资格缺口未被此修复补位，完整产品仍非DELIVERABLE。
 

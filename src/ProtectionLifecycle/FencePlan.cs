@@ -133,8 +133,11 @@ internal sealed class FencePlan
         var priorBytes=Decode("Prior");var nextBytes=Decode("Next");
         var prior=Parse(state,id,priorBytes);var next=Parse(state,id,nextBytes);
         var selected=Read(state,id).SHA256;
+        // Schema 1's completed journal remains readable after a gateway policy
+        // upgrade. PrepareMigration separately requires the CURRENT policy for
+        // a live migration/recovery; history is never an activation credential.
         if(prior.Data.PolicySHA256!=CompiledFencePolicy.SHA256 || prior.Data.ProxyPort!=CompiledFencePolicy.ProxyPort ||
-            next.Data.PolicySHA256!=SessionProxy.PolicySHA256 || next.Data.ProxyPort!=SessionProxy.Port ||
+            next.Data.PolicySHA256==prior.Data.PolicySHA256 || next.Data.ProxyPort!=17891 ||
             prior.SubLayer!=next.SubLayer || !prior.keys.SequenceEqual(next.keys) || prior.SHA256==next.SHA256 ||
             (selected!=prior.SHA256 && selected!=next.SHA256))
             throw WfpNative.Contract("MigrationPolicyKeysOrSelectionDiffer");
