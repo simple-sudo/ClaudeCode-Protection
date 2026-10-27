@@ -33,7 +33,7 @@ internal static class DiagnosticNetworkTargetPolicy
     // False does NOT prove that a DNS hostname resolves only to public IPs.
     internal static bool DestinationRequiresRestriction(string? rawHost)
     {
-        if(string.IsNullOrWhiteSpace(rawHost) || rawHost.EndsWith('.',StringComparison.Ordinal) ||
+        if(string.IsNullOrWhiteSpace(rawHost) || rawHost.EndsWith(".",StringComparison.Ordinal) ||
             rawHost.Contains('%') || rawHost.Any(char.IsWhiteSpace))
             return true;
         var host=rawHost.Trim('[',']').ToLowerInvariant();
