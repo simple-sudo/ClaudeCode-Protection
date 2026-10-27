@@ -1,4 +1,6 @@
 using ClaudeProtection;
+using ClaudeCodeProtection.Security;
+using System.Net;
 
 static void Require(bool truth,string reason)
 {
@@ -55,4 +57,40 @@ foreach(var target in new[]{"http://api.anthropic.com/v1/models","https://127.0.
         "diagnostic target rejected: "+target);
 Require(!DiagnosticNetworkTargetPolicy.IsApprovedDiagnostic("https://api.anthropic.com/v1/models",
     "http://127.0.0.1:9090"),"management port is not an approved proxy");
+
+static IPAddress IP(string value)=>IPAddress.Parse(value);
+Require(ProxyDestinationPolicy.IsPublicHostnameCandidate("api.anthropic.com"),"reviewed HTTPS host name syntax");
+Require(!ProxyDestinationPolicy.IsPublicHostnameCandidate("127.1"),"shortened numeric IPv4 blocked");
+Require(!ProxyDestinationPolicy.IsPublicHostnameCandidate("0x7f000001"),"hex numeric alias blocked");
+Require(!ProxyDestinationPolicy.IsPublicHostnameCandidate("intranet"),"single-label alias blocked");
+Require(!ProxyDestinationPolicy.IsPublicHostnameCandidate("metadata.google.internal"),"metadata name blocked");
+Require(!ProxyDestinationPolicy.IsPublicHostnameCandidate("router.local"),"mDNS name blocked");
+Require(!ProxyDestinationPolicy.IsPublicHostnameCandidate("dns.home.arpa"),"special-use ARPA name blocked");
+Require(!ProxyDestinationPolicy.IsPublicHostnameCandidate("api.anthropic.com."),"trailing dot rejected");
+Require(!ProxyDestinationPolicy.IsPublicHostnameCandidate("api.anthropic.com\\bad"),"backslash authority rejected");
+Require(!ProxyDestinationPolicy.IsPublicHostnameCandidate("éxample.com"),"ambiguous Unicode name rejected");
+foreach(var denied in new[]{"0.0.0.0","10.0.0.1","100.64.0.1","127.1.2.3","169.254.169.254",
+ "172.16.0.1","192.0.0.2","192.0.2.1","192.88.99.1","192.168.1.1",
+ "198.18.0.1","198.19.2.3","198.51.100.2","203.0.113.2","224.0.0.1","255.255.255.255",
+ "::","::1","::ffff:8.8.8.8","fe80::1","fc00::1","ff02::1","2001:db8::1","2002::1","2001::1"})
+    Require(!ProxyDestinationPolicy.IsPublicAddressCandidate(IP(denied)),"special address denied "+denied);
+foreach(var accepted in new[]{"1.1.1.1","8.8.8.8","93.184.216.34","2606:4700:4700::1111"})
+    Require(ProxyDestinationPolicy.IsPublicAddressCandidate(IP(accepted)),"public candidate "+accepted);
+var host="api.anthropic.com";var good=IP("1.1.1.1");var other=IP("8.8.8.8");var internalIp=IP("127.0.0.1");
+Require(ProxyDestinationPolicy.AuthorizePinnedHttps(host,443,new[]{good},good).Allowed,"known public literal candidate");
+Require(!ProxyDestinationPolicy.AuthorizePinnedHttps(host,443,new[]{good,internalIp},good).Allowed,
+    "mixed public/private DNS answers fail closed");
+Require(!ProxyDestinationPolicy.AuthorizePinnedHttps(host,443,new[]{good},internalIp).Allowed,
+    "selected private address not in verified answer");
+Require(!ProxyDestinationPolicy.AuthorizePinnedHttps(host,443,new[]{good},other).Allowed,
+    "selected address not in response rejected");
+Require(!ProxyDestinationPolicy.AuthorizePinnedHttps(host,443,Array.Empty<IPAddress>(),good).Allowed,
+    "missing DNS resolution refused");
+Require(!ProxyDestinationPolicy.AuthorizePinnedHttps(host,80,new[]{good},good).Allowed,
+    "non-HTTPS port refused");
+Require(!ProxyDestinationPolicy.AuthorizePinnedHttps("api.anthropic.com.evil.internal",443,new[]{good},good).Allowed,
+    "internal-looking name refused even with public answer");
+// A policy decision is only a candidate; the trusted forwarder must actually
+// tunnel the selected IP literal, without allowing fallback to direct 7890.
+
 Console.WriteLine("PolicySmoke: bounded pure policy cases passed. No product or native code executed.");
