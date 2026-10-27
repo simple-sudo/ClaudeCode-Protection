@@ -10,6 +10,10 @@
 
 当前新SOURCE：代理阶段另记录固定7890 TCP连接结果和有限错误类型/数字码（无消息/私有路径），保留默认TLS/吊销检查。新增固定已安装qualify-gpu复用同一原子AppContainer/Job准入与报告管道，完整隔离下host对照+隔离内nvcuda Driver API固定256整数/1KiB显存、实际PTX加7内核、同步回读全元素及SHA核对、逐API/精确资源释放记录。只从System32搜索nvcuda，无外部编译器/模型/CPU替代、禁JIT持久缓存，无网络开放或全机设备变化；普通管理入口仍需既有管理员和安装全包核验。CUDA头文件与NVIDIA Driver API文档核对签名/指针数组；这不是PyTorch兼容、其他进程GPU内存隔离或敏感资源验收。生命周期26源，6项目非生成检查0错误/警告。70f2e4f管理图33输入离线BUILD0，无module initializer；7项GPU报告判定（摘要/计算/释放/步骤/API错误负向）及8项UDP资格通过，均未调用GPU。普通qualify-gpu等管理命令125拒绝。系统nvcuda.dll签名Valid（Microsoft Windows Hardware Compatibility Publisher）、32.0.16.1047、SHA B53D1E3E49B2D1BC33480243017AF6847E4809B7ACDD7C121EA294F05AFE6FD3。批准c9e8231060b14950a878ad56a4e05260，manifest49B57CE036DBE8391D9967875BE1A7CB4505EB0F92407040DB88EE4CF7CB6CBE；待bootstrap/安装和实际计算。
 
+**最新GPU实测与代理定位（06:49Z）：**当前c9e8231060b14950a878ad56a4e05260/49B57CE036DBE8391D9967875BE1A7CB4505EB0F92407040DB88EE4CF7CB6CBE，INACTIVE更新0，operation dfc556b8173942568e43ddb7a3a51756。GPU请求93054db03fd842dbb0c9be331e8abebb实际0：host及安装SID/Low4096/capability0/原子Job子进程40508均在RTX4060完成16个CUDA步骤，1KiB分配、256整数加7内核/同步/全量回读、结果SHA 4ADEB88C463E46506A15EF3743B8E106C7554A7CE7427BE97E291713B95A4034一致，模块/显存/上下文释放0。Job e655fd78177b4a65a29c92616f95eb3c封闭且零，完整WFP前后回读。限定VERIFIED为此实际Driver API负载，网络从未开放；不是PyTorch、工具链或其他进程GPU内存/敏感资源隔离证明。原始ProgramFiles/ClaudeCodeProtection-Gpu-20261027-r1及私有回执保留。helper沿用模板的network-qualification标签含历史说明，实际权限以gpu-qualification.json、gpu-scope.json及固定命令源码为准，无网络接收端/豁免动作。
+
+同包网络请求93840c6fe778464c82f0267a163f24f5退出3（ProgramFiles/ClaudeCodeProtection-Network-20261027-r5）：对照与完整隔离匹配，代理开放后固定7890 TCP连接成功、旁路收据0，但HTTPS HttpRequestError=SecureConnectionError、inner=AuthenticationException，无SocketError。因此代理可连接和TLS成功分开；证书链原因仍UNKNOWN，不能猜为吊销/根证书或豁免。所有失败保留，最终完整隔离及所属Job/豁免清理后AV/BFE/FlClash运行。新增SOURCE只采集TLS PolicyErrors/ChainStatus数值/对象存在性，callback必须证书/chain均存在、PolicyErrors0、全部chain flag0才接受，吊销检查保持开启，无证书绕过；6项目非生成0错误/警告，新TLS工件待BUILD/运行。新源码不继承c9的GPU运行资格。
+
 日期：2026-10-27（America/New_York）；最初安装/GUI实测发生于10月26日晚，本轮WFP与原子准入实测发生于10月27日。目标模式已建立且仍active，完整产品目标未完成。用户已批准阻塞部分继续推进，并补充[完整产品方向](PRODUCT-DIRECTION-20261026.md)。本地自主开发与小范围提交，既有origin保留，不推送。不同源码与工件不互相继承运行证据。
 
 ## 当前成果与证据级别

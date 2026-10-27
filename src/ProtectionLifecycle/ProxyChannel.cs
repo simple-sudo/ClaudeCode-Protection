@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Net;
+using System.Net.Security;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Security.Principal;
@@ -10,6 +11,7 @@ using Microsoft.Win32.SafeHandles;
 
 namespace ProtectionLifecycle;
 
+internal sealed record TlsValidationObservation(int PolicyErrors,int[] ChainStatus,bool CertificatePresent,bool ChainPresent);
 // Holds the existing proxy process and its on-disk image, without starting,
 // stopping or reconfiguring it. Path/hash are observations, not AV clearance or
 // proof that every byte in the already-running image equals the disk image.
@@ -52,14 +54,23 @@ internal sealed class ProxyChannelLease : IDisposable
         directory.AssertHeld();WindowsPathSeal.VerifyObject(image.SafeFileHandle,ExpectedImage,false);
         if(WaitForSingleObject(process,0)!=0x102 || ListenerOwner()!=pid)throw WfpNative.Contract("ProxyProcessOrListenerIdentityDrift");
     }
-    internal static async Task<int> CheckTransport()
+    internal static async Task<int> CheckTransport(Action<TlsValidationObservation>? observe=null)
     {
         using var handler=new HttpClientHandler{UseProxy=true,Proxy=new WebProxy("http://127.0.0.1:7890"),AllowAutoRedirect=false,
             UseCookies=false,UseDefaultCredentials=false,CheckCertificateRevocationList=true};
+        if(observe is not null)handler.ServerCertificateCustomValidationCallback=(_,certificate,chain,errors)=>
+        {
+            var result=new TlsValidationObservation((int)errors,chain?.ChainStatus.Select(s=>(int)s.Status).ToArray()??Array.Empty<int>(),certificate is not null,chain is not null);
+            observe(result);return AcceptObservedTls(result);
+        };
         using var client=new HttpClient(handler){Timeout=TimeSpan.FromSeconds(8)};
         using var response=await client.GetAsync("https://www.microsoft.com/",HttpCompletionOption.ResponseHeadersRead);
         return (int)response.StatusCode;
     }
+    // The diagnostic callback accepts only a present, clean chain and no name,
+    // trust or availability errors. Revocation checking remains enabled.
+    internal static bool AcceptObservedTls(TlsValidationObservation result)=>result.CertificatePresent && result.ChainPresent &&
+        result.PolicyErrors==(int)SslPolicyErrors.None && result.ChainStatus.All(s=>s==0);
     private static uint ListenerOwner()
     {
         uint size=0;var first=GetExtendedTcpTable(IntPtr.Zero,ref size,false,2,5,0);
