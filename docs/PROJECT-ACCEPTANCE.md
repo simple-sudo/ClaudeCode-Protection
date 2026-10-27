@@ -272,3 +272,13 @@ AVP/BFE保持运行、两条真实Claude规则禁用；本窗口FlClash/Core PID
 **最新GPU实测与代理定位（06:49Z）：**当前c9e8231060b14950a878ad56a4e05260/49B57CE036DBE8391D9967875BE1A7CB4505EB0F92407040DB88EE4CF7CB6CBE，INACTIVE更新0，operation dfc556b8173942568e43ddb7a3a51756。GPU请求93054db03fd842dbb0c9be331e8abebb实际0：host及安装SID/Low4096/capability0/原子Job子进程40508均在RTX4060完成16个CUDA步骤，1KiB分配、256整数加7内核/同步/全量回读、结果SHA 4ADEB88C463E46506A15EF3743B8E106C7554A7CE7427BE97E291713B95A4034一致，模块/显存/上下文释放0。Job e655fd78177b4a65a29c92616f95eb3c封闭且零，完整WFP前后回读。限定VERIFIED为此实际Driver API负载，网络从未开放；不是PyTorch、工具链或其他进程GPU内存/敏感资源隔离证明。原始ProgramFiles/ClaudeCodeProtection-Gpu-20261027-r1及私有回执保留。helper沿用模板的network-qualification标签含历史说明，实际权限以gpu-qualification.json、gpu-scope.json及固定命令源码为准，无网络接收端/豁免动作。
 
 同包网络请求93840c6fe778464c82f0267a163f24f5退出3（ProgramFiles/ClaudeCodeProtection-Network-20261027-r5）：对照与完整隔离匹配，代理开放后固定7890 TCP连接成功、旁路收据0，但HTTPS HttpRequestError=SecureConnectionError、inner=AuthenticationException，无SocketError。因此代理可连接和TLS成功分开；证书链原因仍UNKNOWN，不能猜为吊销/根证书或豁免。所有失败保留，最终完整隔离及所属Job/豁免清理后AV/BFE/FlClash运行。新增SOURCE只采集TLS PolicyErrors/ChainStatus数值/对象存在性，callback必须证书/chain均存在、PolicyErrors0、全部chain flag0才接受，吊销检查保持开启，无证书绕过；6项目非生成0错误/警告，新TLS工件待BUILD/运行。新源码不继承c9的GPU运行资格。
+
+### 2026-10-27：严格TLS链状态实际定位与当前状态整理
+
+37e6cb7的34输入bootstrap BUILD0，固定20文件资格/人类UAC安装更新0；当前ebd633c55ccb4357b26c0daa008790ba/B832A15F4A52CEE50B09707C032BB9199296A69A79A735BC84BAFA56A142A94B，operation884f0e2bf88f4e56a6edd2a5122d03e4，INACTIVE。原c9 GPU成功继续限定于原包，不转授新库。
+
+网络request21720be4982541ca9543e0ba8835e12b实际3，固定代理TCP成功、其他本地旁路收据0，TLS PolicyErrors4、ChainStatus64/16777216（RevocationStatusUnknown/OfflineRevocation），维持严格拒绝。具体吊销请求/系统服务归属尚未捕获，不能声称全机CA服务停机或任意扩大外联。第四阶段未执行；原始ProgramFiles/ClaudeCodeProtection-Network-20261027-r6与私有回执保留。最终6规则102770–102775完整匹配，14登记Job/14一次性关闭回执、本次精确豁免删除及其他项不变；profile独立不存在仍UNKNOWN。AV/BFE/FlClash保持、无存活本轮产品进程、未启动Claude、未推送。
+
+工程决定：停止同条件重复TLS实验，转向受控吊销依赖设计/定位，同时保持GPU实测成果，后续落实资源拒绝/授权开发工具、严格14可信门禁和故障生命周期。完整产品未完成。目标工具实际usageLimited，未标完成、未声称后台继续。
+
+STATUS.md改为唯一当前事实/剩余缺口索引；整理前旧内容按原字节保存STATUS-HISTORY-20261027.md，所有旧失败/UNKNOWN/引用保留，此账本继续历史追加。
