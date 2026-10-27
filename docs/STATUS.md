@@ -60,6 +60,8 @@ INTEGRATED是实际调用链；VERIFIED只适用于表中明确功能及负向�
 
 ## 下一主线及安全边界
 
+49863d4的32输入管理图离线restore/build成功，0错误/0警告。元数据无module initializer；普通inspect-runtime0，admission-child/qualify-admission/inspect-installed-fence/qualify-network均125拒绝，没有网络或Job动作。下一批准包466a04443a294ba7a0aa7cff90ebd525，manifest978CE60499B05D76E2820F7ADD214727E3F417716A2EABD1EA34EB90FC14C5B4；待独立bootstrap构建/安装。当前5b正式包及隔离没有因SOURCE/BUILD改变。
+
 网络矩阵纵向切片当前SOURCE：固定已安装`qualify-network`复用AtomicChild/OwnedKernelJob/PersistentFence，先精确持有既有FlClash Core进程/磁盘映像及127.0.0.1:7890监听身份，显式代理HTTPS Microsoft、默认TLS校验并开启吊销检查。只对工具安装SID或独立短名对照SID添加/移除精确回环豁免，保存其他项快照并核对不变，不恢复整张全局列表；现有豁免拒绝接管。Windows工具固定System32路径、ACL/文件句柄及最小环境，无Shell/UAC自动确认，不调整FlClash/系统代理/TUN。
 
 矩阵有父进程接收端基线、无本工具WFP过滤器的独立AppContainer回环对照、完整隔离、仅指定IPv4代理开放、再次阻断代理路径。独占自有127.0.0.1/127.0.0.2/::1 TCP/UDP接收端含127.0.0.2:53原始DNS包，记录随机nonce收据；不占用已有53监听。代理开放事务只删除精确IPv4 quarantine角色，其他5角色保留，必须源策略摘要与编译端点一致、身份有效及提交后回读匹配；结束/失败恢复完整隔离，继续所属Job清零，再移除本次豁免/精确profile。每个阶段通过唯一继承报告管道返回PID/nonce/逐项结果，开放期间轮询所属代理/过滤器漂移。SOURCE非真实网络验收：系统解析器经服务代理DNS、外部物理出口、真实代理进程崩溃与控制器崩溃仍UNKNOWN；独立对照只向本次接收端发送，不访问外部站点。六项目非生成检查0错误/0警告，生命周期25源，待32输入管理图构建及独立资格/安装/实测。

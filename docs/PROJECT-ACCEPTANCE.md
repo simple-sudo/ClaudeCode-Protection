@@ -2,6 +2,8 @@
 
 ## 2026-10-27 首次安装后隔离实际失败
 
+49863d4网络管理图32输入离线BUILD0、0错0警告；元数据无module initializer，普通inspect-runtime0和4个受限命令125拒绝已实测，无网络/Job动作。新批准466a04443a294ba7a0aa7cff90ebd525、manifest978CE60499B05D76E2820F7ADD214727E3F417716A2EABD1EA34EB90FC14C5B4进入独立bootstrap构建/安装路径，尚无网络矩阵运行证据，不升级前述有限canary范围。
+
 后续网络矩阵SOURCE接入实际安装入口，复用原子准入/Job/WFP：受持有进程/文件/监听身份的FlClash显式HTTPS前置检查；工具SID精确临时回环豁免及其他项前后核对；父进程收据基线、独立无工具WFP的AppContainer控制组、隔离/IPv4指定代理/再封闭4阶段；TCP、UDP、IPv6、原始UDP53 DNS包以专属nonce独立收据判定。开放仅删除自身IPv4 quarantine角色，结束恢复完整隔离并清零所属Job/撤回精确豁免/profile。对照不访问外网；保护子进程仅固定Microsoft HTTPS，不接触Claude/凭据。系统解析器代理DNS、物理出口、真实代理/控制器崩溃未由此宣称通过。所有新增managed源码非生成检查0错0警告，未据此赋予BUILD/运行证据。
 
 19fb254批准5bcaa958304246a78e8a4631dc9ae3a1，manifest9A3AFFC424CCB1D05691891A0F5EA99BFFECE30EDA801594825076C2DBB9E32F；独立31输入bootstrap构建、20资产资格和真实限定inactive update均0，operation18032154127b41d9893233e4f330b34b。所有旧版与原失败保留。
