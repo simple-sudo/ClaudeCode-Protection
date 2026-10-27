@@ -14,5 +14,6 @@
     <Compile Include="../../src/ClaudeProtection/Models.cs" Link="Models.cs" />
     <Compile Include="../../src/ClaudeProtection/StrictPreflight.cs" Link="StrictPreflight.cs" />
     <Compile Include="../../src/ClaudeProtection/DiagnosticNetworkTargetPolicy.cs" Link="DiagnosticNetworkTargetPolicy.cs" />
+    <Compile Include="../../src/Shared/ProxyDestinationPolicy.cs" Link="ProxyDestinationPolicy.cs" />
   </ItemGroup>
 </Project>
