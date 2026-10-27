@@ -103,17 +103,34 @@ internal sealed class AtomicChild : IDisposable
     private readonly bool gpuWorkload;
     private bool resumed,disposed;
     internal uint Pid {get;}
+    internal string ExpectedPackageSid=>packageSid;
+    internal string ExpectedImagePath=>image;
+    internal long ExpectedCreatedFileTime
+    {
+        get
+        {
+            if(disposed || !GetProcessTimes(process,out var created,out _,out _,out _))throw Error("ReadHeldPrimaryCreationTime");
+            return created;
+        }
+    }
     internal bool IsRunning=>!disposed && WaitForSingleObject(process,0)==0x102;
-    internal static OwnedMemberInspection[] InspectMembers(OwnedKernelJob job,JobSnapshot snapshot)
+    internal static void InspectMembers(OwnedKernelJob job,JobSnapshot snapshot,Action<OwnedMemberInspection[]> whileHeld)
     {
         if(snapshot.JobId!=job.JobId || snapshot.ProcessIds.Length>64)throw WfpNative.Contract("BoundedExactJobInspectionRequired");
-        return snapshot.ProcessIds.Select(pid=>
+        // Keep every successfully opened process object alive through the
+        // caller's second Job snapshot and decision. A recycled numeric PID
+        // must not stand in for an inspected member between those operations.
+        var held=new List<SafeProcessHandle>();
+        try
+        {
+        var members=snapshot.ProcessIds.Select(pid=>
         {
             long? created=null;string? image=null;AdmissionToken? token=null;bool member=false;Exception? failure=null;
             try
             {
-                using var process=OpenProcess(0x101000,false,pid);if(process.IsInvalid)throw Error("InspectOwnedMemberOpen");
+                var process=OpenProcess(0x101000,false,pid);held.Add(process);if(process.IsInvalid)throw Error("InspectOwnedMemberOpen");
                 member=job.ContainsProcess(process);if(!member)throw WfpNative.Contract("InspectedProcessNotInExactJob");
+                if(WaitForSingleObject(process,0)!=0x102)throw WfpNative.Contract("InspectedMemberNotRunning");
                 if(!GetProcessTimes(process,out var at,out _,out _,out _))throw Error("InspectOwnedMemberCreation");created=at;
                 var path=new StringBuilder(32768);uint length=(uint)path.Capacity;if(!QueryFullProcessImageName(process,0,path,ref length))throw Error("InspectOwnedMemberImage");image=path.ToString();
                 token=ReadToken(process);
@@ -121,6 +138,9 @@ internal sealed class AtomicChild : IDisposable
             catch(Exception ex){failure=ex;}
             return new OwnedMemberInspection(pid,member,created,image,token,failure is null?Array.Empty<WfpErrorEvidence>():WfpNative.Describe(failure));
         }).ToArray();
+        whileHeld(members);
+        }
+        finally{foreach(var handle in held)handle.Dispose();}
     }
     private AtomicChild(ProtectedState state,VerifiedVersion version,OwnedKernelJob job,ProcessInfo info,string image,string sid,NetworkProbePlan? network,bool gpuWorkload)
     {
