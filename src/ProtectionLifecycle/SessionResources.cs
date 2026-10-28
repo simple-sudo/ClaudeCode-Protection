@@ -10,12 +10,13 @@ using Microsoft.Win32.SafeHandles;
 namespace ProtectionLifecycle;
 
 // Fixed, offline qualification data, never an executable/path/script grant.
-internal sealed record ResourceProbePlan(int SchemaVersion,string Nonce,string InstallationId,string Release,int BrokerPid,string ToolSHA256)
+internal sealed record ResourceProbePlan(int SchemaVersion,string Nonce,string InstallationId,string Release,int BrokerPid,string ToolSHA256,string? GitAssetSetSHA256)
 {
     internal void Validate()
     {
         if(SchemaVersion!=1 || BrokerPid<=0)throw WfpNative.Contract("ResourceQualificationPlanRefused");
         _=Identifiers.Hex32(Nonce);_=Identifiers.Hex32(InstallationId);_=Identifiers.Hex32(Release);_=Identifiers.Hash(ToolSHA256);
+        if(GitAssetSetSHA256 is not null && GitAssetSetSHA256!=SessionGitToolchain.AssetSetSHA256)throw WfpNative.Contract("GitAssetSetNotReviewed");
     }
     internal string Fixture=>WindowsPathSeal.Child(FixedLayout.FromWindows().StateRoot,"resource-fixture-"+Nonce+".json");
     internal string Workspace(string sid)=>WindowsPathSeal.Child(SessionResources.ProfileFolder(sid),"workspace-"+Nonce);
@@ -23,7 +24,7 @@ internal sealed record ResourceProbePlan(int SchemaVersion,string Nonce,string I
 }
 internal sealed record ResourceAccessCase(string Role,string Status,int? Error);
 internal sealed record ResourceChildReport(int SchemaVersion,int Pid,string Nonce,bool WorkspaceWriteReadMatched,int? ToolExit,
-    ResourceAccessCase[] Cases,string? FailureType,int? FailureCode,string? FailureStage,string? ToolDiagnostic);
+    ResourceAccessCase[] Cases,string? FailureType,int? FailureCode,string? FailureStage,string? ToolDiagnostic,GitToolchainReport? Git);
 
 // The workspace belongs to the freshly created installation profile. No host
 // directory ACL is widened, adopted, recursively copied or deleted. It is task
@@ -33,25 +34,28 @@ internal sealed class SessionResources : IDisposable
     private readonly ProtectedState state;
     private readonly PathLease folder;
     private readonly FileStream input,tool;
+    private readonly SessionGitToolchain? git;
     internal ResourceProbePlan Plan {get;}
     internal string Workspace=>folder.Path;
-    private SessionResources(ProtectedState state,PathLease folder,FileStream input,FileStream tool,ResourceProbePlan plan)
-    {this.state=state;this.folder=folder;this.input=input;this.tool=tool;Plan=plan;}
-    internal static SessionResources Create(ProtectedState state,VerifiedVersion version,InstallationProfileLease profile,string nonce)
+    private SessionResources(ProtectedState state,PathLease folder,FileStream input,FileStream tool,ResourceProbePlan plan,SessionGitToolchain? git)
+    {this.state=state;this.folder=folder;this.input=input;this.tool=tool;Plan=plan;this.git=git;}
+    internal static SessionResources Create(ProtectedState state,VerifiedVersion version,InstallationProfileLease profile,string nonce,bool includeGit=false)
     {
         state.AssertHeld();version.AssertHeld(state);
         using var sid=new InstallationPackageSid(state);profile.AssertPackage(sid);
         var tool=new FileStream(WindowsPathSeal.OpenPowerShell(),FileAccess.Read,65536,false);
-        PathLease? directory=null;FileStream? input=null;
+        PathLease? directory=null;FileStream? input=null;SessionGitToolchain? git=null;
         try
         {
             var hash=Convert.ToHexString(SHA256.HashData(tool));tool.Position=0;
-            var plan=new ResourceProbePlan(1,Identifiers.Hex32(nonce),state.InstallationId,version.Package.Release,Environment.ProcessId,hash);plan.Validate();
+            if(includeGit)git=SessionGitToolchain.Open();
+            var plan=new ResourceProbePlan(1,Identifiers.Hex32(nonce),state.InstallationId,version.Package.Release,Environment.ProcessId,hash,
+                includeGit?SessionGitToolchain.AssetSetSHA256:null);plan.Validate();
             var root=profile.WorkspaceRoot();
             using var parent=WindowsPathSeal.LockDirectory(root,PathPolicy.Source);
             var path=plan.Workspace(sid.Value);
             using var identity=WindowsIdentity.GetCurrent();
-            using var grant=new WorkspaceDescriptor(identity.User?.Value??throw WfpNative.Contract("WorkspaceHumanOwnerMissing"),sid.Value);
+            using var grant=new WorkspaceDescriptor(identity.User?.Value??throw WfpNative.Contract("WorkspaceHumanOwnerMissing"),sid.Value,includeGit);
             var attributes=grant.Attributes;
             if(!CreateDirectory(path,ref attributes))throw new WfpFailure("CreateFreshSessionWorkspace",unchecked((uint)Marshal.GetLastWin32Error()));
             directory=WindowsPathSeal.LockDirectory(path,PathPolicy.Source);
@@ -62,14 +66,15 @@ internal sealed class SessionResources : IDisposable
             if(input.Length!=plan.Input.Length || Convert.ToHexString(SHA256.HashData(input))!=Convert.ToHexString(SHA256.HashData(plan.Input)))
                 throw WfpNative.Contract("FreshWorkspaceInputChanged");
             input.Position=0;
+            if(includeGit)using(var empty=new FileStream(WindowsPathSeal.Child(path,"empty-git-config"),FileMode.CreateNew,FileAccess.Write,FileShare.None)){empty.Flush(true);}
             state.WriteNew("resource-fixture-"+nonce+".json",JsonSerializer.SerializeToUtf8Bytes(new {SchemaVersion=1,state.InstallationId,Nonce=nonce,
                 Value="CONTROLLED_NON_SECRET_FIXTURE",Scope="PRIVATE_STATE_ACCESS_DENIAL_CONTROL"}));
             // An existing, readable positive host control prevents absence from
             // being mistaken for a restricted child's access-denied result.
             _=state.Read("resource-fixture-"+nonce+".json",4096);
-            return new(state,directory,input,tool,plan);
+            return new(state,directory,input,tool,plan,git);
         }
-        catch{input?.Dispose();directory?.Dispose();tool.Dispose();throw;}
+        catch{git?.Dispose();input?.Dispose();directory?.Dispose();tool.Dispose();throw;}
     }
     internal void AssertHeld()
     {
@@ -77,8 +82,9 @@ internal sealed class SessionResources : IDisposable
         if(input.SafeFileHandle.IsClosed || tool.SafeFileHandle.IsClosed)throw WfpNative.Contract("SessionResourceLeaseLost");
         WindowsPathSeal.VerifyObject(input.SafeFileHandle,WindowsPathSeal.Child(Workspace,"input.txt"),false);
         WindowsPathSeal.AssertAcl(tool.SafeFileHandle,false,true);
+        git?.AssertHeld();
     }
-    internal void AssertOutput()
+    internal void AssertOutput(ResourceChildReport observed)
     {
         AssertHeld();
         foreach(var name in new[]{"root-output.txt","tool-output.txt"})
@@ -88,13 +94,31 @@ internal sealed class SessionResources : IDisposable
             if(output.Length!=Plan.Input.Length || Convert.ToHexString(SHA256.HashData(output))!=Convert.ToHexString(SHA256.HashData(Plan.Input)))
                 throw WfpNative.Contract("SessionWorkspaceOutputMismatch");
         }
+        if(git is not null)SessionGitToolchain.AssertRepository(Workspace,Plan,observed.Git??throw WfpNative.Contract("GitOutputEvidenceMissing"));
     }
-    internal bool ToolReady()
+    internal void PreserveGitFailure()
     {
-        AssertHeld();var path=WindowsPathSeal.Child(Workspace,"tool-ready.txt");
+        if(git is null)return;
+        var path=WindowsPathSeal.Child(Workspace,"git-last-result.json");
+        try
+        {
+            using var file=new FileStream(WindowsPathSeal.Open(path,false,true),FileAccess.Read,4096,false);
+            if(file.Length is <1 or >32768)throw WfpNative.Contract("GitFailureRecordBounds");
+            var bytes=new byte[checked((int)file.Length)];file.ReadExactly(bytes);
+            // Private failure evidence only; never parsed into admission or
+            // returned as a user-supplied authorization/configuration record.
+            state.WriteNew("resource-git-error-"+Plan.Nonce+".json",bytes);
+        }
+        catch(ExactPathAbsentException ex)when(string.Equals(ex.FailedPath,path,StringComparison.OrdinalIgnoreCase)){}
+    }
+    internal bool ToolReady()=>Ready("tool-ready");
+    internal bool GitReady()=>git is not null && Ready("git-ready");
+    private bool Ready(string stem)
+    {
+        AssertHeld();var path=WindowsPathSeal.Child(Workspace,stem+".txt");
         // The signal carries no authority: it only follows close of the data
         // file. Identity still comes from held process/token/Job inspection.
-        if(!File.Exists(WindowsPathSeal.Child(Workspace,"tool-ready.signal")))return false;
+        if(!File.Exists(WindowsPathSeal.Child(Workspace,stem+".signal")))return false;
         try
         {
             using var handle=WindowsPathSeal.Open(path,false,true);
@@ -105,12 +129,15 @@ internal sealed class SessionResources : IDisposable
         }
         catch(ExactPathAbsentException ex)when(string.Equals(ex.FailedPath,path,StringComparison.OrdinalIgnoreCase)){return false;}
     }
-    internal void ReleaseInspectedTool()
+    internal void ReleaseInspectedTool()=>Release("tool-go");
+    internal void ReleaseInspectedGit()
+    {if(git is null)throw WfpNative.Contract("GitResourceGrantMissing");Release("git-go");}
+    private void Release(string stem)
     {
         AssertHeld();
-        using(var output=new FileStream(WindowsPathSeal.Child(Workspace,"tool-go.txt"),FileMode.CreateNew,FileAccess.Write,FileShare.None))
+        using(var output=new FileStream(WindowsPathSeal.Child(Workspace,stem+".txt"),FileMode.CreateNew,FileAccess.Write,FileShare.None))
         {output.Write(Encoding.ASCII.GetBytes(Plan.Nonce));output.Flush(true);}
-        using var signal=new FileStream(WindowsPathSeal.Child(Workspace,"tool-go.signal"),FileMode.CreateNew,FileAccess.Write,FileShare.Read);
+        using var signal=new FileStream(WindowsPathSeal.Child(Workspace,stem+".signal"),FileMode.CreateNew,FileAccess.Write,FileShare.Read);
         signal.Flush(true);
     }
     internal static string ToolPath=>WindowsPathSeal.Child(Environment.GetFolderPath(Environment.SpecialFolder.System),"WindowsPowerShell/v1.0/powershell.exe");
@@ -127,14 +154,14 @@ internal sealed class SessionResources : IDisposable
     internal static int RunChild(string packageSid)
     {
         var raw=Environment.GetEnvironmentVariable("CPC_RESOURCE_PLAN");if(raw is null || raw.Length>1024)return 125;
-        using var json=JsonDocument.Parse(raw);StrictJson.Fields(json.RootElement,"SchemaVersion","Nonce","InstallationId","Release","BrokerPid","ToolSHA256");
+        using var json=JsonDocument.Parse(raw);StrictJson.Fields(json.RootElement,"SchemaVersion","Nonce","InstallationId","Release","BrokerPid","ToolSHA256","GitAssetSetSHA256");
         var plan=JsonSerializer.Deserialize<ResourceProbePlan>(raw)??throw WfpNative.Contract("ResourcePlanMissing");plan.Validate();
         using var sid=InstallationPackageSid.FromInstallationId(plan.InstallationId);
         if(sid.Value!=packageSid || Environment.GetEnvironmentVariable("CPC_NETWORK_PLAN") is not null ||
             Environment.GetEnvironmentVariable("CPC_GPU_PLAN") is not null || Environment.GetEnvironmentVariable("CPC_SESSION_ID") is not null ||
             !string.Equals(Environment.ProcessPath,WindowsPathSeal.Child(FixedLayout.FromWindows().Version(plan.Release),"bin/admin/ProtectionBroker.exe"),StringComparison.OrdinalIgnoreCase))return 125;
         var workspace=plan.Workspace(packageSid);var cases=new List<ResourceAccessCase>();bool matched=false;int? toolExit=null;string? failure=null;
-        string stage="READ_WORKSPACE_INPUT";int? failureCode=null;string? failureStage=null;string? toolDiagnostic=null;
+        string stage="READ_WORKSPACE_INPUT";int? failureCode=null;string? failureStage=null;string? toolDiagnostic=null;GitToolchainReport? gitReport=null;
         try
         {
             // The trusted owner holds and checks this complete ancestry and
@@ -195,13 +222,15 @@ internal sealed class SessionResources : IDisposable
                     diagnostic:"UNCLASSIFIED_OUTPUT_SHA256="+Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(toolOut+"\0"+toolError)));
                 throw WfpNative.Contract("FixedToolUnexpectedOutput");
             }
+            if(plan.GitAssetSetSHA256 is not null)
+            {stage="FIXED_OFFLINE_GIT_TOOLCHAIN";gitReport=SessionGitToolchain.RunChild(plan,workspace);if(!SessionGitToolchain.Qualified(gitReport))throw WfpNative.Contract("FixedGitToolchainNotQualified");}
         }
         catch(Exception ex){failure=ex.GetType().Name;failureCode=ex is System.ComponentModel.Win32Exception native?native.NativeErrorCode:ex.HResult;failureStage=stage+(ex.Data["Stage"] is string nativeStage?"/"+nativeStage:"");}
-        var report=new ResourceChildReport(1,Environment.ProcessId,plan.Nonce,matched,toolExit,cases.ToArray(),failure,failureCode,failureStage,toolDiagnostic);
+        var report=new ResourceChildReport(1,Environment.ProcessId,plan.Nonce,matched,toolExit,cases.ToArray(),failure,failureCode,failureStage,toolDiagnostic,gitReport);
         Console.WriteLine(JsonSerializer.Serialize(report));return Qualified(report)?0:3;
     }
     internal static bool Qualified(ResourceChildReport report)=>report.SchemaVersion==1 && report.WorkspaceWriteReadMatched && report.ToolExit==0 && report.FailureType is null && report.FailureCode is null && report.FailureStage is null && report.ToolDiagnostic is null &&
-        report.Cases.Length==3 && report.Cases.Select(c=>c.Role).SequenceEqual(new[]{"private-state-Read","private-state-Write","broker-vm-read-open"}) &&
+        (report.Git is null || SessionGitToolchain.Qualified(report.Git)) && report.Cases.Length==3 && report.Cases.Select(c=>c.Role).SequenceEqual(new[]{"private-state-Read","private-state-Write","broker-vm-read-open"}) &&
         report.Cases.All(c=>c.Status=="ACCESS_DENIED" && c.Error==5);
     internal static async Task<string> ReadBounded(StreamReader reader)
     {
@@ -214,7 +243,7 @@ internal sealed class SessionResources : IDisposable
         using var file=File.OpenRead(path);if(file.Length is <1 or >1024)throw WfpNative.Contract("ResourceFixtureBounds");
         var data=new byte[checked((int)file.Length)];file.ReadExactly(data);return data;
     }
-    public void Dispose(){input.Dispose();folder.Dispose();tool.Dispose();}
+    public void Dispose(){git?.Dispose();input.Dispose();folder.Dispose();tool.Dispose();}
     // Windows' profile-root access does not guarantee that a directory created
     // by the elevated Broker inherits a usable package grant. Define both
     // halves of the AppContainer access check at creation, then set only the
@@ -225,10 +254,15 @@ internal sealed class SessionResources : IDisposable
     {
         private IntPtr descriptor,label;
         private readonly RawSecurityDescriptor expected;
-        internal WorkspaceDescriptor(string humanSid,string packageSid)
+        internal WorkspaceDescriptor(string humanSid,string packageSid,bool mutable)
         {
             _=new SecurityIdentifier(humanSid);_=new SecurityIdentifier(packageSid);
-            var text="O:BAG:SYD:P(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)(A;OICI;0x001201bf;;;"+humanSid+")(A;OICI;0x001201bf;;;"+packageSid+")";
+            // Git needs atomic lock-file replacement. DELETE is confined to
+            // this freshly created task tree; no DELETE_CHILD/WRITE_DAC/OWNER
+            // or existing host directory grant is added. Held input/root
+            // handles still prohibit replacement of the owner's trust inputs.
+            var mask=mutable?"0x001301bf":"0x001201bf";
+            var text="O:BAG:SYD:P(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)(A;OICI;"+mask+";;;"+humanSid+")(A;OICI;"+mask+";;;"+packageSid+")";
             expected=new RawSecurityDescriptor(text+"S:(ML;OICI;NW;;;LW)");
             if(!ConvertStringSecurityDescriptorToSecurityDescriptor(text,1,out descriptor,out _))
                 throw new WfpFailure("CreateWorkspaceDescriptor",unchecked((uint)Marshal.GetLastWin32Error()));

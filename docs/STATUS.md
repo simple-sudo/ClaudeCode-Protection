@@ -1,5 +1,18 @@
 # 当前开发状态
 
+## 2026-10-28 下一调用链：固定离线Git工具链（SOURCE，尚未BUILD/VERIFIED）
+
+qualify-toolchain已接入InstalledBroker → ProtectedSession → SessionResources/同一AtomicChild与RuntimeLease，
+不接收命令、目标或项目路径。复用本机ProgramFiles Git的签名有效exe与5个非系统DLL，当前摘要固定、
+管理侧持有可信目录及所有资产；路径变化或文件更新必须重新审查，不从路径本身推导可信身份。
+Git的stdin哈希负载在管理侧核验同Job/AppContainer/Low/零capability后才释放；随后固定init/add/commit/show，
+禁用宿主配置、凭据助手、hooks、签名及所有Git传输协议，环境清空，提交身份/日期使用无账号关联的固定样本。
+管理侧将独立解压/限长核对实际Git blob/tree/commit及分支引用，Git还独立尝试非秘密私有样本读取并要求拒绝。
+只在新nonce Git工作区授予文件DELETE以支持Git的锁文件替换；不授予DELETE_CHILD/WRITE_DAC/WRITE_OWNER，
+不改已有宿主/Git目录ACL，封存的输入及工作区根仍由不共享写/删除的管理句柄保护。
+六产品SOURCE语义0错误/0警告（Lifecycle38源）；实际Git兼容性、拒绝与清理尚待具体工件有界资格。
+下方75320489是上一已安装成功版本，不转授此新源码运行证据；正式会话/网络/14项准入仍关闭。
+
 ## 2026-10-28 当前：已安装的离线会话与跨进程profile清理恢复通过
 
 用户已人工核实本次codex.exe有效OpenAI签名及对应SHA256的OpenTIP Clean；接受该记录，

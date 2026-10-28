@@ -104,17 +104,19 @@ internal sealed class ProtectedSession
     }
     internal static (int ExitCode,string Report) QualifyResources(FixedLayout layout,ProtectedState state,VerifiedVersion version)
         =>new ProtectedSession(layout,state,version).ExecuteResourceQualification();
+    internal static (int ExitCode,string Report) QualifyToolchain(FixedLayout layout,ProtectedState state,VerifiedVersion version)
+        =>new ProtectedSession(layout,state,version).ExecuteResourceQualification(includeGit:true);
     internal static (int ExitCode,string Report) QualifyResourceRecovery(FixedLayout layout,ProtectedState state,VerifiedVersion version)
         // Deliberately EXIT this installed owner with a durable cleanup
         // checkpoint. The NEXT installed invocation performs real journal
         // recovery; no live in-memory profile object is transferred to it.
         =>new ProtectedSession(layout,state,version).ExecuteResourceQualification(true);
-    private (int ExitCode,string Report) ExecuteResourceQualification(bool deferCleanup=false)
+    private (int ExitCode,string Report) ExecuteResourceQualification(bool deferCleanup=false,bool includeGit=false)
     {
         InstallationProfileLease? profile=null;AtomicChild? child=null;
         System.IO.Pipes.AnonymousPipeServerStream? pipe=null;StreamReader? reader=null;
         ResourceQualification? permit=null;ResourceChildReport? observed=null;Task<uint>? exited=null;Task<string>? text=null;
-        JobSnapshot? zero=null;RuntimeStop? stopped=null;uint? exit=null;bool resumed=false,toolObserved=false,cleanupDeferred=false;
+        JobSnapshot? zero=null;RuntimeStop? stopped=null;uint? exit=null;bool resumed=false,toolObserved=false,gitObserved=false,cleanupDeferred=false;
         var failures=new List<Exception>();
         try
         {
@@ -126,7 +128,7 @@ internal sealed class ProtectedSession
             foreach(var fence in fences)if(!fence.Observe().FullQuarantineObserved)throw WfpNative.Contract("ResourceQualificationFullQuarantineRequired");
             state.WriteNew("resource-session-before-"+id+".json",JsonSerializer.SerializeToUtf8Bytes(new {SchemaVersion=1,state.InstallationId,
                 SessionId=id,version.Package.Release,version.Package.ManifestHash,Scope="FIXED_OFFLINE_RESOURCE_AND_POWERSHELL_QUALIFICATION",FormalAdmissionIssued=false}));
-            profile=InstallationProfileLease.Create(state);resources=SessionResources.Create(state,version,profile,id);
+            profile=InstallationProfileLease.Create(state);resources=SessionResources.Create(state,version,profile,id,includeGit);
             using(var package=new InstallationPackageSid(state))sid=package.Value;
             job=OwnedKernelJob.CreateEmpty(state,version);permit=new ResourceQualification(this);
             pipe=new(System.IO.Pipes.PipeDirection.In,HandleInheritability.Inheritable);reader=new StreamReader(pipe,Encoding.UTF8,false,4096,true);
@@ -142,7 +144,9 @@ internal sealed class ProtectedSession
                 // members have been verified together. After release, its
                 // planned exit is supervised by the runtime and exact Job
                 // drain, not mistaken for a foreign process appearing.
-                if(toolObserved || !resources.ToolReady())continue;
+                var gitPhase=toolObserved;
+                if(gitPhase?!includeGit || gitObserved || !resources.GitReady():!resources.ToolReady())continue;
+                var expectedTool=gitPhase?SessionGitToolchain.ToolPath:SessionResources.ToolPath;
                 var before=job.Observe();
                 if(before.ActiveBefore==0 && before.ActiveAfter==0)continue;
                 AtomicChild.InspectMembers(job,before,members=>
@@ -167,20 +171,22 @@ internal sealed class ProtectedSession
                             member.ImagePath is null)throw WfpNative.Contract("ResourceToolIdentityUnconfirmed");
                         var image=WindowsPathSeal.Canonical(member.ImagePath);
                         if(primary?!string.Equals(image,child.ExpectedImagePath,StringComparison.OrdinalIgnoreCase):
-                            !string.Equals(image,SessionResources.ToolPath,StringComparison.OrdinalIgnoreCase) &&
+                            !string.Equals(image,expectedTool,StringComparison.OrdinalIgnoreCase) &&
                             !string.Equals(image,Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System),"conhost.exe"),StringComparison.OrdinalIgnoreCase))
                             throw WfpNative.Contract("ResourceUnexpectedToolImage");
-                        if(!primary && string.Equals(image,SessionResources.ToolPath,StringComparison.OrdinalIgnoreCase))fixedTool=true;
+                        if(!primary && string.Equals(image,expectedTool,StringComparison.OrdinalIgnoreCase))fixedTool=true;
                     }
                     if(!fixedTool)throw WfpNative.Contract("ReadyResourceToolNotInHeldJobSnapshot");
-                    runtime.AssertHealthy();resources.ReleaseInspectedTool();toolObserved=true;
+                    runtime.AssertHealthy();
+                    if(gitPhase){resources.ReleaseInspectedGit();gitObserved=true;}else{resources.ReleaseInspectedTool();toolObserved=true;}
                 });
             }
             exit=exited.GetAwaiter().GetResult();runtime.AssertHealthy();
             observed=JsonSerializer.Deserialize<ResourceChildReport>(text.WaitAsync(TimeSpan.FromSeconds(2)).GetAwaiter().GetResult())??throw WfpNative.Contract("ResourceChildReportMissing");
-            if(exit!=0 || observed.Pid!=child.Pid || observed.Nonce!=id || !SessionResources.Qualified(observed) || !toolObserved)
+            if(exit!=0 || observed.Pid!=child.Pid || observed.Nonce!=id || !SessionResources.Qualified(observed) || !toolObserved ||
+                includeGit && (!gitObserved || observed.Git is null) || !includeGit && observed.Git is not null)
                 throw WfpNative.Contract("OfflineResourceOrInheritedToolBoundaryNotQualified");
-            resources.AssertOutput();
+            resources.AssertOutput(observed);
         }
         catch(Exception ex){failures.Add(ex);}
         finally
@@ -196,6 +202,7 @@ internal sealed class ProtectedSession
             if(profile?.ProcessCreationAttempted==true && zero is not null)try{profile.AfterOwnedJobZero(zero);}catch(Exception ex){failures.Add(ex);}
             if(exited is not null)try{exit=exited.WaitAsync(TimeSpan.FromSeconds(2)).GetAwaiter().GetResult();}catch(Exception ex){failures.Add(ex);}
             if(pipe is not null)try{pipe.DisposeLocalCopyOfClientHandle();}catch(Exception ex){failures.Add(ex);}
+            if(includeGit && failures.Count!=0)try{resources?.PreserveGitFailure();}catch(Exception ex){failures.Add(ex);}
             foreach(var owned in new IDisposable?[]{child,reader,pipe,resources})try{owned?.Dispose();}catch(Exception ex){failures.Add(ex);}
             try
             {
@@ -209,11 +216,13 @@ internal sealed class ProtectedSession
             foreach(var fence in fences)try{if(!fence.Observe().FullQuarantineObserved)throw WfpNative.Contract("ResourceFinalQuarantineMissing");}catch(Exception ex){failures.Add(ex);}
             foreach(var fence in fences)try{fence.Dispose();}catch(Exception ex){failures.Add(ex);}
         }
-        var success=observed is not null && SessionResources.Qualified(observed) && toolObserved && zero?.ObservedZero==true && failures.Count==0;
+        var success=observed is not null && SessionResources.Qualified(observed) && toolObserved && (!includeGit || gitObserved && observed.Git is not null) && zero?.ObservedZero==true && failures.Count==0;
         var report=JsonSerializer.Serialize(new {SchemaVersion=1,state.InstallationId,SessionId=id,version.Package.Release,version.Package.ManifestHash,
-            Status=success?(cleanupDeferred?"OFFLINE_RESOURCE_CLOSED_JOB_CLEANUP_DEFERRED":"FIXED_OFFLINE_WORKSPACE_TOOL_AND_DENIAL_OBSERVED"):"OFFLINE_RESOURCE_SESSION_NOT_CONFIRMED",Scope="FIXED_PROFILE_WORKSPACE_WINDOWS_POWERSHELL_AND_NON_SECRET_DENIAL_FIXTURE_ONLY",
+            Status=success?(cleanupDeferred?"OFFLINE_RESOURCE_CLOSED_JOB_CLEANUP_DEFERRED":includeGit?"FIXED_OFFLINE_GIT_TOOLCHAIN_AND_DENIAL_OBSERVED":"FIXED_OFFLINE_WORKSPACE_TOOL_AND_DENIAL_OBSERVED"):"OFFLINE_RESOURCE_SESSION_NOT_CONFIRMED",
+            Scope=includeGit?"FIXED_OFFLINE_GIT_INIT_ADD_COMMIT_AND_DENIAL_ONLY":"FIXED_PROFILE_WORKSPACE_WINDOWS_POWERSHELL_AND_NON_SECRET_DENIAL_FIXTURE_ONLY",
             Resumed=resumed,ChildExit=exit,Child=observed,InheritedPowerShellIdentityObserved=toolObserved,FinalJob=zero,Stop=stopped,
             CleanupDeferredForRecovery=cleanupDeferred,
+            InheritedGitIdentityObserved=gitObserved,GitAssetSetSHA256=resources?.Plan.GitAssetSetSHA256,
             Failures=failures.SelectMany(WfpNative.Describe).ToArray(),FormalAdmissionIssued=false,LaunchAuthorized=false,NetworkOpened=false,ClaudeLaunched=false,
             AllHostResourceIsolationQualified=false,UserProjectToolchainQualified=false,FourteenEnvironmentRequirementsQualified=false,GpuQualified=false});
         state.WriteNew("resource-session-after-"+id+".json",Encoding.UTF8.GetBytes(report));return(success?0:3,report);
