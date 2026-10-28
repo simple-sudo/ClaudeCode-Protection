@@ -22,7 +22,7 @@ internal sealed class BootstrapApproval : IDisposable
         var result=new BootstrapApproval();
         try
         {
-            var root=WindowsPathSeal.Canonical(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),inactiveUpdate?"ClaudeCodeProtection-Update-20261027-resources-r1":"ClaudeCodeProtection-Bootstrap"));
+            var root=WindowsPathSeal.Canonical(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),inactiveUpdate?"ClaudeCodeProtection-Update-20261027-resources-r2":"ClaudeCodeProtection-Bootstrap"));
             var entry=Assembly.GetEntryAssembly()??throw new InvalidOperationException("Bootstrap entry missing");
             if(entry.GetName().Name!="ProtectionBootstrap" ||
                 !Same(Environment.ProcessPath,Path.Combine(root,"ProtectionBootstrap.exe")) ||
@@ -137,7 +137,8 @@ public static class BootstrapInstaller
             // Preserved member-diagnostic package present at the 0x1E event.
             // Allowing closed inactive migration does not clear that incident.
             "3EB4F1A88CAC2B3CFB6A561B357E65600745F6B989D8D9A7916A7FA0537FC7BD",
-            "B58EDC15D9C21C17565A57ACCA08B39B1AC1992E59429CB4F719E4FD3EAB7962"
+            "B58EDC15D9C21C17565A57ACCA08B39B1AC1992E59429CB4F719E4FD3EAB7962",
+            "1FD3A0A5A5A9AF2468ADD39E90E9BB1C8AE489D4128A4D1CDD8342C8D2E0607F"
         };
         private readonly ProtectedState state;
         private readonly BootstrapApproval approval;

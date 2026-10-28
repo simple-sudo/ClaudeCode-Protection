@@ -21,7 +21,7 @@ internal sealed record ResourceProbePlan(int SchemaVersion,string Nonce,string I
 }
 internal sealed record ResourceAccessCase(string Role,string Status,int? Error);
 internal sealed record ResourceChildReport(int SchemaVersion,int Pid,string Nonce,bool WorkspaceWriteReadMatched,int? ToolExit,
-    ResourceAccessCase[] Cases,string? FailureType);
+    ResourceAccessCase[] Cases,string? FailureType,int? FailureCode,string? FailureStage);
 
 // The workspace belongs to the freshly created installation profile. No host
 // directory ACL is widened, adopted, recursively copied or deleted. It is task
@@ -104,14 +104,20 @@ internal sealed class SessionResources : IDisposable
             Environment.GetEnvironmentVariable("CPC_GPU_PLAN") is not null || Environment.GetEnvironmentVariable("CPC_SESSION_ID") is not null ||
             !string.Equals(Environment.ProcessPath,WindowsPathSeal.Child(FixedLayout.FromWindows().Version(plan.Release),"bin/admin/ProtectionBroker.exe"),StringComparison.OrdinalIgnoreCase))return 125;
         var workspace=plan.Workspace(packageSid);var cases=new List<ResourceAccessCase>();bool matched=false;int? toolExit=null;string? failure=null;
+        string stage="OPEN_AUTHORIZED_WORKSPACE_LEAF";int? failureCode=null;string? failureStage=null;
         try
         {
-            using var folder=WindowsPathSeal.LockDirectory(workspace,PathPolicy.Source);
+            // The trusted owner holds the complete ancestry. The restricted
+            // child must not need READ_CONTROL on unrelated host ancestors.
+            using var folder=WindowsPathSeal.Open(workspace,true,false);
+            stage="READ_WORKSPACE_INPUT";
             var input=ReadSmall(WindowsPathSeal.Child(workspace,"input.txt"));
             if(!input.AsSpan().SequenceEqual(plan.Input))throw WfpNative.Contract("ResourceInputMismatch");
             var result=WindowsPathSeal.Child(workspace,"root-output.txt");
+            stage="WRITE_AND_READ_WORKSPACE_OUTPUT";
             using(var output=new FileStream(result,FileMode.CreateNew,FileAccess.Write,FileShare.None)){output.Write(input);output.Flush(true);}
             matched=ReadSmall(result).AsSpan().SequenceEqual(input);
+            stage="DENY_PRIVATE_STATE_AND_BROKER_HANDLE";
             foreach(var access in new[]{FileAccess.Read,FileAccess.Write})
             {
                 try{using var opened=new FileStream(plan.Fixture,FileMode.Open,access,FileShare.ReadWrite);cases.Add(new("private-state-"+access,"OPENED",null));}
@@ -126,6 +132,7 @@ internal sealed class SessionResources : IDisposable
             // script or network request. It uses the same workspace and must
             // independently fail to read the protected non-secret fixture.
             const string script="$ErrorActionPreference='Stop';$v=[IO.File]::ReadAllText('input.txt');[IO.File]::WriteAllText('tool-output.txt',$v);$denied=$false;try{$f=[IO.File]::OpenRead($env:CPC_DENIAL_FIXTURE);$f.Dispose()}catch{if($_.Exception -is [UnauthorizedAccessException] -or $_.Exception.InnerException -is [UnauthorizedAccessException]){$denied=$true}else{exit 22}};if(!$denied){exit 23};[Threading.Thread]::Sleep(2200);exit 0";
+            stage="VERIFY_FIXED_TOOL_BYTES";
             using(var tool=File.OpenRead(ToolPath))
                 if(Convert.ToHexString(SHA256.HashData(tool))!=plan.ToolSHA256)throw WfpNative.Contract("FixedToolBytesChanged");
             var start=new ProcessStartInfo(ToolPath){UseShellExecute=false,CreateNoWindow=true,WorkingDirectory=workspace,RedirectStandardOutput=true,RedirectStandardError=true};
@@ -137,18 +144,20 @@ internal sealed class SessionResources : IDisposable
             start.Environment["PSModulePath"]=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System),"WindowsPowerShell\\v1.0\\Modules");
             start.Environment["CPC_DENIAL_FIXTURE"]=plan.Fixture;
             foreach(var arg in new[]{"-NoLogo","-NoProfile","-NonInteractive","-Command",script})start.ArgumentList.Add(arg);
+            stage="START_FIXED_POWERSHELL";
             using var process=Process.Start(start)??throw WfpNative.Contract("FixedToolStartFailed");
             var stdout=ReadBounded(process.StandardOutput);var stderr=ReadBounded(process.StandardError);
+            stage="WAIT_FIXED_POWERSHELL";
             if(!process.WaitForExit(10000))throw new TimeoutException("Fixed offline tool deadline");
             toolExit=process.ExitCode;
             if(stdout.WaitAsync(TimeSpan.FromSeconds(1)).GetAwaiter().GetResult().Length!=0 ||
                 stderr.WaitAsync(TimeSpan.FromSeconds(1)).GetAwaiter().GetResult().Length!=0)throw WfpNative.Contract("FixedToolUnexpectedOutput");
         }
-        catch(Exception ex){failure=ex.GetType().Name;}
-        var report=new ResourceChildReport(1,Environment.ProcessId,plan.Nonce,matched,toolExit,cases.ToArray(),failure);
+        catch(Exception ex){failure=ex.GetType().Name;failureCode=ex is System.ComponentModel.Win32Exception native?native.NativeErrorCode:ex.HResult;failureStage=stage;}
+        var report=new ResourceChildReport(1,Environment.ProcessId,plan.Nonce,matched,toolExit,cases.ToArray(),failure,failureCode,failureStage);
         Console.WriteLine(JsonSerializer.Serialize(report));return Qualified(report)?0:3;
     }
-    internal static bool Qualified(ResourceChildReport report)=>report.SchemaVersion==1 && report.WorkspaceWriteReadMatched && report.ToolExit==0 && report.FailureType is null &&
+    internal static bool Qualified(ResourceChildReport report)=>report.SchemaVersion==1 && report.WorkspaceWriteReadMatched && report.ToolExit==0 && report.FailureType is null && report.FailureCode is null && report.FailureStage is null &&
         report.Cases.Length==3 && report.Cases.Select(c=>c.Role).SequenceEqual(new[]{"private-state-Read","private-state-Write","broker-vm-read-open"}) &&
         report.Cases.All(c=>c.Status=="ACCESS_DENIED" && c.Error==5);
     internal static async Task<string> ReadBounded(StreamReader reader)
