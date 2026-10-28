@@ -5,7 +5,8 @@
 Git在新建的工具自有私有任务目录中完成stdin hash/init/add/commit/show，避免为getcwd开放个人profile祖先；
 管理侧持有进程句柄核验同Job/低完整性/精确AppContainer/零capability，独立核对实际Git对象及固定样本身份。
 任务根与原profile/闭Job账本绑定，完整no-follow/单链接库存校验后按句柄叶到根清理；43项实际删除、根缺失回读及独立无待恢复检查通过。
-会话在Job持久关闭/零成员后保留清理checkpoint并退出；下一独立Broker从v2私有账本完成精确profile删除与storage根不存在回读，第三次调用确认无待恢复项。
+较早75320489窗口还实际验证了：Job持久关闭/零成员后保留清理checkpoint并退出，下一独立Broker从v2账本完成profile清理，第三次调用确认无待恢复项。
+本次fc2d7c8b的Git会话在同一所有者退出前完成任务/profile清理，另一次Broker只核对无待恢复；不把两个工件/窗口混成同一次恢复实测。
 正式会话仍未获许可；没有开放网关或网络。此前Codex告警已补充用户人工签名/OpenTIP核实，继续按具体工件资格开发，见STATUS及事件记录。
 
 ## 同一个入口和所有者
