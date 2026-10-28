@@ -15,11 +15,12 @@ internal static class Program
             }
             catch(Exception ex){Console.Error.WriteLine("Environment intent not confirmed: "+ex.GetType().Name+"; code="+ex.HResult);return 125;}
         }
-        if (args.Length != 1 || args[0] is not ("migrate-session-network" or "inspect-session-environment" or "launch" or "session-synthetic" or "quarantine" or "inspect-runtime" or "inspect-wfp" or "qualify-wfp-objects" or "inspect-installed-fence" or "qualify-admission" or "qualify-network" or "qualify-gpu" or "qualify-watchdog" or "admission-child"))
+        if (args.Length != 1 || args[0] is not ("qualify-resources" or "migrate-session-network" or "inspect-session-environment" or "launch" or "session-synthetic" or "quarantine" or "inspect-runtime" or "inspect-wfp" or "qualify-wfp-objects" or "inspect-installed-fence" or "qualify-admission" or "qualify-network" or "qualify-gpu" or "qualify-watchdog" or "admission-child"))
         {
             Console.Error.WriteLine("ProtectionBroker inspect-runtime | inspect-wfp; inspect-installed-fence (installed read-only); quarantine | qualify-admission | qualify-network | qualify-gpu | qualify-watchdog (installed); qualify-wfp-objects (protected qualification host). Management requires existing elevation.");
             Console.Error.WriteLine("Installed intent management: inspect-session-environment | configure-session-environment EXPECTED_SHA_OR_none WINDOWS_TIMEZONE USER_LOCALE SYSTEM_LOCALE. This never changes Windows settings or grants launch.");
             Console.Error.WriteLine("Installed inactive network maintenance: migrate-session-network (closed admissions, full quarantine; no launch permission).");
+            Console.Error.WriteLine("Installed bounded qualification: qualify-resources (fixed offline workspace/PowerShell/denial fixture only; no formal launch or network grant).");
             return 64;
         }
         // The current artifact has not obtained bounded runtime/install
@@ -34,6 +35,7 @@ internal static class Program
         {
             if(args[0]=="admission-child")return ProtectionLifecycle.InstalledBroker.RunAdmissionCanary();
             var result = args[0] switch {
+                "qualify-resources" => ProtectionLifecycle.InstalledBroker.QualifyResources(),
                 "migrate-session-network" => ProtectionLifecycle.InstalledBroker.MigrateSessionNetwork(),
                 "launch" => ProtectionLifecycle.InstalledBroker.LaunchDevelopmentSession(),
                 "inspect-session-environment" => ProtectionLifecycle.InstalledBroker.InspectEnvironmentExpectations(),

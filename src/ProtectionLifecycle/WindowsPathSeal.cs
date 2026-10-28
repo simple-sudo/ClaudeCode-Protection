@@ -97,6 +97,14 @@ internal static class WindowsPathSeal
         try{VerifyObjectCore(handle,path,false,true);AssertAcl(handle,false,true);return handle;}
         catch(Exception ex){handle.Dispose();if(ex.Data["Stage"] is null)ex.Data["Stage"]="VerifyFixedWindowsLoopbackUtility";throw;}
     }
+    internal static SafeFileHandle OpenPowerShell()
+    {
+        var path=Child(Environment.GetFolderPath(Environment.SpecialFolder.System),"WindowsPowerShell/v1.0/powershell.exe");
+        var handle=CreateFile(path,ReadControl|ReadAttributes|0x80000000u,1,IntPtr.Zero,3,OpenReparse,IntPtr.Zero);
+        if(handle.IsInvalid){var error=Error("OpenFixedWindowsPowerShell");handle.Dispose();throw error;}
+        try{VerifyObjectCore(handle,path,false,true);AssertAcl(handle,false,true);return handle;}
+        catch{handle.Dispose();throw;}
+    }
     internal static string Identity(SafeFileHandle handle)
     {
         if(!GetFileInformationByHandle(handle,out var info))throw Error("ReadExactIdentity");

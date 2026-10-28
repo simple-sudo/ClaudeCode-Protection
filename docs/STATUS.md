@@ -1,5 +1,16 @@
 # 当前开发状态
 
+## 2026-10-27 离线资源/工作区/PowerShell会话接入（进行中）
+
+上一轮64d8257完成真实INACTIVE安装，属于progress。本轮沿同一InstalledBroker→ProtectedSession→AtomicChild→ProtectionRuntimeLease，
+新增固定qualify-resources：只在现有完整隔离下运行安装包内有限负载，使用新建AppContainer profile自有工作区，
+不向宿主目录添加权限。管理侧准备非秘密敏感样本并确认其存在；根程序及固定系统PowerShell验证工作区读写，
+独立尝试样本访问，根程序另请求管理进程VM_READ句柄但不读内存。管理侧实际Job/token/映像核对工具继承。
+许可是本所有者内一次性离线资源资格，不能签Admission、打开网关、传入脚本/任意目标或恢复正式会话。
+原完整隔离/期限/停止/零成员/profile清理被复用。当前仅SOURCE接入，尚未构建/安装/运行本轮新路径。
+六产品非生成语义检查0错误/0警告（Lifecycle36源），outputs/session-resource-reviewed-source-types.json保留。
+具体工件仍待固定审查与实机资格，十四项/网络/完整宿主资源、用户项目工具链与GPU不从该切片取得PASS。
+
 ## 2026-10-27 安装主线：固定新Broker已实际INACTIVE更新
 
 接续2328e24，本次用户明确P0宿主资源隔离与网络防护并重，P1设备身份/遥测为正式目标，优先真实产品贯通。

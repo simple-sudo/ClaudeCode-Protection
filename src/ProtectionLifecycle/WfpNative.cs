@@ -29,6 +29,7 @@ internal sealed class InstallationPackageSid : IDisposable
         state.AssertHeld();return "ClaudeCodeProtection."+Identifiers.Hex32(state.InstallationId);
     }
     internal static InstallationPackageSid ForObjectContractQualification()=>new("ClaudeCodeProtection.ObjectContractQualification.20261027");
+    internal static InstallationPackageSid FromInstallationId(string id)=>new("ClaudeCodeProtection."+Identifiers.Hex32(id));
     internal static InstallationPackageSid ForNetworkControl(ProtectedState state)
     {state.AssertHeld();return new("CPC.NetControl."+Identifiers.Hex32(state.InstallationId));}
     private InstallationPackageSid(string name)

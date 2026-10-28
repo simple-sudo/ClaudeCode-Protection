@@ -44,6 +44,12 @@ internal sealed class InstallationProfileLease : IDisposable
     internal bool ProcessCreationAttempted=>jobId is not null;
     internal void AssertPackage(InstallationPackageSid package)
     {state.AssertHeld();if(disposed || package.Name!=name)throw WfpNative.Contract("ProfileAndAtomicPackageDiffer");}
+    internal string WorkspaceRoot()
+    {
+        state.AssertHeld();if(disposed)throw new ObjectDisposedException(nameof(InstallationProfileLease));
+        using var package=new InstallationPackageSid(state);AssertPackage(package);
+        return SessionResources.ProfileFolder(package.Value);
+    }
     internal void AfterOwnedJobZero(JobSnapshot snapshot)
     {state.AssertHeld();if(snapshot.JobId!=jobId || !snapshot.ExpectedLimits || !snapshot.ObservedZero)throw WfpNative.Contract("ProfileCleanupRequiresOwnedJobZero");mayDelete=true;}
     public void Dispose()
@@ -103,6 +109,7 @@ internal sealed class AtomicChild : IDisposable
     private readonly NetworkProbePlan? network;
     private readonly bool gpuWorkload;
     private readonly ProtectedSession.Preparation? sessionPreparation;
+    private readonly ProtectedSession.ResourceQualification? resourceQualification;
     private ProtectedSession.Admission? sessionAdmission;
     private bool resumed,disposed;
     internal bool ResumeAttempted {get;private set;}
@@ -120,7 +127,17 @@ internal sealed class AtomicChild : IDisposable
     internal bool IsRunning=>!disposed && WaitForSingleObject(process,0)==0x102;
     internal void AssertSuspendedSessionIdentity(ProtectedSession.Preparation exactPreparation)
     {
-        if(!ReferenceEquals(sessionPreparation,exactPreparation) || disposed || resumed || !IsRunning)throw WfpNative.Contract("LiveSuspendedSessionRootRequired");
+        if(!ReferenceEquals(sessionPreparation,exactPreparation))throw WfpNative.Contract("ForeignSuspendedSessionRoot");
+        AssertSuspendedIdentity();
+    }
+    internal void AssertSuspendedResourceIdentity(ProtectedSession.ResourceQualification permit)
+    {
+        if(!ReferenceEquals(resourceQualification,permit))throw WfpNative.Contract("ForeignResourceQualificationRoot");
+        AssertSuspendedIdentity();
+    }
+    private void AssertSuspendedIdentity()
+    {
+        if(disposed || resumed || !IsRunning)throw WfpNative.Contract("LiveSuspendedSessionRootRequired");
         var snapshot=job.Observe();
         if(!snapshot.ExpectedLimits || snapshot.ActiveBefore!=1 || snapshot.ActiveAfter!=1 || snapshot.ProcessIds.Length!=1 || snapshot.ProcessIds[0]!=Pid ||
             !job.ContainsProcess(process) || GetProcessId(process)!=Pid)throw WfpNative.Contract("SuspendedSessionRootJobMismatch");
@@ -177,33 +194,41 @@ internal sealed class AtomicChild : IDisposable
         }
         finally{foreach(var handle in held)handle.Dispose();}
     }
-    private AtomicChild(ProtectedState state,VerifiedVersion version,OwnedKernelJob job,ProcessInfo info,string image,string sid,NetworkProbePlan? network,bool gpuWorkload,ProtectedSession.Preparation? preparation)
+    private AtomicChild(ProtectedState state,VerifiedVersion version,OwnedKernelJob job,ProcessInfo info,string image,string sid,NetworkProbePlan? network,bool gpuWorkload,ProtectedSession.Preparation? preparation,ProtectedSession.ResourceQualification? resources)
     {
         this.state=state;this.version=version;this.job=job;this.image=image;packageSid=sid;Pid=info.ProcessId;this.network=network;this.gpuWorkload=gpuWorkload;
-        process=new(info.Process,true);thread=new(info.Thread,true);sessionPreparation=preparation;
+        process=new(info.Process,true);thread=new(info.Thread,true);sessionPreparation=preparation;resourceQualification=resources;
     }
     internal static AtomicChild CreateCanary(FixedLayout layout,ProtectedState state,VerifiedVersion version,OwnedKernelJob job,InstallationProfileLease profile,
         NetworkProbePlan? network=null,IntPtr output=default,GpuProbePlan? gpu=null)
-        =>CreateCore(layout,state,version,job,profile,network,output,gpu,null);
+        =>CreateCore(layout,state,version,job,profile,network,output,gpu,null,null);
+    internal static AtomicChild CreateResourceQualification(FixedLayout layout,ProtectedState state,VerifiedVersion version,OwnedKernelJob job,
+        InstallationProfileLease profile,ProtectedSession.ResourceQualification permit,IntPtr output)
+    {
+        var child=CreateCore(layout,state,version,job,profile,null,output,null,null,permit);
+        try{permit.BindCreated(child);return child;}catch{child.Dispose();throw;}
+    }
     internal static AtomicChild CreateSession(FixedLayout layout,ProtectedState state,VerifiedVersion version,OwnedKernelJob job,InstallationProfileLease profile,
         ProtectedSession.Preparation preparation)
     {
-        var child=CreateCore(layout,state,version,job,profile,null,default,null,preparation);
+        var child=CreateCore(layout,state,version,job,profile,null,default,null,preparation,null);
         try{preparation.BindCreated(child);return child;}catch{child.Dispose();throw;}
     }
     private static AtomicChild CreateCore(FixedLayout layout,ProtectedState state,VerifiedVersion version,OwnedKernelJob job,InstallationProfileLease profile,
-        NetworkProbePlan? network,IntPtr output,GpuProbePlan? gpu,ProtectedSession.Preparation? preparation)
+        NetworkProbePlan? network,IntPtr output,GpuProbePlan? gpu,ProtectedSession.Preparation? preparation,ProtectedSession.ResourceQualification? resources)
     {
         ProtectedState.RequireAdministrator();state.AssertHeld();version.AssertHeld(state);
         preparation?.BeforeCreate(job,version);
+        resources?.BeforeCreate(job,version);
+        if(resources is not null && (preparation is not null || network is not null || gpu is not null))throw WfpNative.Contract("ResourceQualificationCannotBorrowOtherAuthority");
         if(preparation is not null && (network is not null || gpu is not null))throw WfpNative.Contract("SuspendedSessionCannotBorrowQualificationPlan");
         if(!Environment.Is64BitProcess || Marshal.SizeOf<StartupInfo>()!=104 || Marshal.SizeOf<StartupInfoEx>()!=112 || Marshal.SizeOf<SecurityCapabilities>()!=24)
             throw new PlatformNotSupportedException("Atomic admission requires the declared x64 layout");
-        if(preparation is not null && Marshal.SizeOf<KernelJobSeal.SecurityAttributes>()!=24)
+        if((preparation is not null || resources is not null) && Marshal.SizeOf<KernelJobSeal.SecurityAttributes>()!=24)
             throw new PlatformNotSupportedException("Suspended session security attributes require the declared x64 layout");
         var image=WindowsPathSeal.Child(layout.Version(version.Package.Release),"bin/admin/ProtectionBroker.exe");
         network?.Validate();gpu?.Validate();if(network is not null && gpu is not null)throw WfpNative.Contract("OneFixedQualificationWorkloadRequired");
-        var report=network is not null || gpu is not null;if(report!=(output!=IntPtr.Zero))throw WfpNative.Contract("ReportHandleRequiredExactlyForQualificationWorkload");
+        var report=network is not null || gpu is not null || resources is not null;if(report!=(output!=IntPtr.Zero))throw WfpNative.Contract("ReportHandleRequiredExactlyForQualificationWorkload");
         using var package=network?.Kind==NetworkProbeKind.Control?InstallationPackageSid.ForNetworkControl(state):new InstallationPackageSid(state);
         profile.AssertPackage(package);
         var jobHandle=job.ReserveAtomicAdmission(version);
@@ -228,7 +253,7 @@ internal sealed class AtomicChild : IDisposable
                 if(!UpdateProcThreadAttribute(attributes,0,(IntPtr)0x20002,handles,(nuint)IntPtr.Size,IntPtr.Zero,IntPtr.Zero))throw Error("AtomicSetOnlyReportHandleInheritance");
             }
             var env=new SortedDictionary<string,string>(StringComparer.OrdinalIgnoreCase);
-            var inherited=preparation is null?new[]{"SystemRoot","windir","SystemDrive","ProgramFiles","ProgramFiles(x86)","ProgramW6432","PROCESSOR_ARCHITECTURE","LOCALAPPDATA","USERPROFILE","TEMP","TMP"}:
+            var inherited=preparation is null && resources is null?new[]{"SystemRoot","windir","SystemDrive","ProgramFiles","ProgramFiles(x86)","ProgramW6432","PROCESSOR_ARCHITECTURE","LOCALAPPDATA","USERPROFILE","TEMP","TMP"}:
                 new[]{"SystemRoot","windir","SystemDrive","ProgramFiles","ProgramFiles(x86)","ProgramW6432","PROCESSOR_ARCHITECTURE"};
             foreach(var name in inherited)
             {var value=Environment.GetEnvironmentVariable(name);if(value is not null)env[name]=value;}
@@ -236,6 +261,11 @@ internal sealed class AtomicChild : IDisposable
             env["DOTNET_ROOT"]="C:\\Program Files\\dotnet";env["DOTNET_ROLL_FORWARD"]="LatestPatch";
             if(network is not null)env["CPC_NETWORK_PLAN"]=JsonSerializer.Serialize(network);
             if(gpu is not null){env["CPC_GPU_PLAN"]=JsonSerializer.Serialize(gpu);env["CUDA_CACHE_DISABLE"]="1";}
+            if(resources is not null)
+            {
+                env["CPC_RESOURCE_PLAN"]=JsonSerializer.Serialize(resources.Plan);
+                foreach(var name in new[]{"TEMP","TMP","LOCALAPPDATA","USERPROFILE"})env[name]=resources.Workspace;
+            }
             if(preparation is not null)
             {
                 env["CPC_SESSION_ID"]=preparation.SessionId;env["CPC_SESSION_SECRET"]=preparation.Gateway.Secret;
@@ -248,22 +278,23 @@ internal sealed class AtomicChild : IDisposable
             if(report){startup.Basic.Flags=0x100;startup.Basic.Output=output;startup.Basic.Error=output;}
             var command=new StringBuilder("\""+image+"\" admission-child");
             // The OS binds BOTH identity and Job before returning a suspended
-            // initial thread. No inheritable handles or breakaway are enabled.
+            // initial thread. Only the explicit qualification report handle
+            // may be inherited; no breakaway permission is enabled.
             profile.BeforeProcessCreation(job.JobId);
             ProcessInfo info;
-            if(preparation is not null)
+            if(preparation is not null || resources is not null)
             {
                 using var descriptor=new KernelJobSeal.SessionObjectDescriptor();
                 var processAttributes=descriptor.Attributes;var threadAttributes=descriptor.Attributes;
-                if(!CreateSealedProcess(image,command,ref processAttributes,ref threadAttributes,false,0x08080404,environment,Path.GetDirectoryName(image)!,ref startup,out info))
+                if(!CreateSealedProcess(image,command,ref processAttributes,ref threadAttributes,report,0x08080404,environment,resources?.Workspace??Path.GetDirectoryName(image)!,ref startup,out info))
                     throw Error("AtomicCreateSealedSuspendedSession");
             }
             else if(!CreateProcess(image,command,IntPtr.Zero,IntPtr.Zero,report,0x08080404,environment,Path.GetDirectoryName(image)!,ref startup,out info))
                 throw Error("AtomicCreateSuspendedWithPackageAndJob");
-            var child=new AtomicChild(state,version,job,info,image,package.Value,network,gpu is not null,preparation);
+            var child=new AtomicChild(state,version,job,info,image,package.Value,network,gpu is not null,preparation,resources);
             try
             {
-                if(preparation is not null){KernelJobSeal.SessionObjectDescriptor.AssertSeal(child.process);KernelJobSeal.SessionObjectDescriptor.AssertSeal(child.thread);}
+                if(preparation is not null || resources is not null){KernelJobSeal.SessionObjectDescriptor.AssertSeal(child.process);KernelJobSeal.SessionObjectDescriptor.AssertSeal(child.thread);}
                 return child;
             }
             catch{child.Dispose();throw;}
@@ -290,6 +321,13 @@ internal sealed class AtomicChild : IDisposable
             sessionAdmission=sessionPermit;
         }
         else if(sessionPermit is not null)throw WfpNative.Contract("SessionPermitCannotAuthorizeLegacyCanary");
+        if(resourceQualification is not null)
+        {
+            if(proxy is not null || sessionPermit is not null)throw WfpNative.Contract("OfflineResourceQualificationCannotUseNetworkPermit");
+            AssertSuspendedResourceIdentity(resourceQualification);
+            KernelJobSeal.SessionObjectDescriptor.AssertSeal(process);KernelJobSeal.SessionObjectDescriptor.AssertSeal(thread);
+            resourceQualification.AssertCurrent();
+        }
         state.AssertHeld();version.AssertHeld(state);
         sessionAdmission?.AssertCurrent();
         var snapshot=job.Observe();
@@ -323,6 +361,7 @@ internal sealed class AtomicChild : IDisposable
             Scope=sessionAdmission is not null?"AUTHENTICATED_SESSION_GATEWAY":network?.Kind==NetworkProbeKind.Control?"UNFENCED_OWNED_LOOPBACK_CONTROL":proxyOnly?"COMPILED_IPV4_PROXY_ONLY":gpuWorkload?"FIXED_CUDA_FULL_QUARANTINE":"FULL_QUARANTINE"};
         state.WriteNew("admission-before-resume-"+job.JobId+".json",JsonSerializer.SerializeToUtf8Bytes(proof));
         sessionAdmission?.BeforeResume(this);
+        resourceQualification?.BeforeResume(this);
         ResumeAttempted=true;
         var previous=ResumeThread(thread);if(previous==uint.MaxValue)throw Error("AtomicResumePrimaryThread");
         if(previous!=1)throw WfpNative.Contract("AtomicInitialSuspendCountMismatch");
@@ -381,6 +420,12 @@ internal sealed class AtomicChild : IDisposable
             return report.FailureMask;
         }
         Thread.Sleep(200);return 42; // No network, state, file writes or children.
+    }
+    internal static int RunResourceCanary()
+    {
+        using var current=new SafeProcessHandle((IntPtr)(-1),false);var token=ReadToken(current);
+        if(!token.IsAppContainer || token.CapabilityCount!=0 || token.IntegritySid!="S-1-16-4096" || token.PackageSid is null)return 125;
+        return SessionResources.RunChild(token.PackageSid);
     }
     private static AdmissionToken ReadToken(SafeProcessHandle process)
     {

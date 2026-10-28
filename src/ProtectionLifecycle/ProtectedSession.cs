@@ -41,6 +41,7 @@ internal sealed class ProtectedSession
     private Admission? admission;
     private Preparation? preparation;
     private ProtectionRuntimeLease? runtime;
+    private SessionResources? resources;
     private ProtectedSession(FixedLayout layout,ProtectedState state,VerifiedVersion version)
     {
         this.layout=layout;this.state=state;this.version=version;
@@ -57,6 +58,141 @@ internal sealed class ProtectedSession
                 "CURRENT_ARTIFACT_SECURITY_QUALIFICATION_OR_RESOURCE_GRANT_MISSING",clock.ElapsedMilliseconds,120000)).ToArray());
     }
     private sealed record EnvironmentEvidence(string Id,string Status,string Reason,long ObservedMs,long ValidForMs);
+    // This capability authorizes one compiled offline resource experiment,
+    // bound to this installed owner. It cannot attach Admission, open a
+    // gateway, consume a formal Preparation, or select a caller workload.
+    internal sealed class ResourceQualification
+    {
+        private readonly ProtectedSession owner;
+        private AtomicChild? root;
+        private int phase;
+        internal ResourceQualification(ProtectedSession owner){this.owner=owner;AssertCurrent();}
+        internal string SessionId=>owner.id;
+        internal ResourceProbePlan Plan=>owner.resources!.Plan;
+        internal string Workspace=>owner.resources!.Workspace;
+        internal void AssertCurrent()
+        {
+            owner.state.AssertHeld();owner.version.AssertHeld(owner.state);
+            if(Volatile.Read(ref phase)==3 || owner.clock.ElapsedMilliseconds>=30000 || owner.job is null || owner.resources is null ||
+                owner.admission is not null || owner.preparation is not null || owner.gateway is not null || owner.sid is null ||
+                owner.state.Read("current.json",4096).SHA256!=owner.pointerSHA256 || owner.fences.Count==0 ||
+                owner.fences.Any(f=>!f.Observe().FullQuarantineObserved))throw WfpNative.Contract("OfflineResourceScopeExpiredChangedOrUnconfined");
+            owner.resources.AssertHeld();
+        }
+        internal void BeforeCreate(OwnedKernelJob job,VerifiedVersion version)
+        {
+            AssertRuntimeObjects(job,version,owner.fences);
+            if(Interlocked.CompareExchange(ref phase,1,0)!=0)throw WfpNative.Contract("ResourceCreationPermitConsumed");
+        }
+        internal void BindCreated(AtomicChild child)
+        {
+            if(Volatile.Read(ref phase)!=1 || root is not null || child.ExpectedPackageSid!=owner.sid)throw WfpNative.Contract("ResourceRootBindingRefused");
+            child.AssertSuspendedResourceIdentity(this);root=child;
+        }
+        internal void BeforeResume(AtomicChild child)
+        {
+            AssertCurrent();
+            if(!ReferenceEquals(root,child) || Interlocked.CompareExchange(ref phase,2,1)!=1)throw WfpNative.Contract("ResourceResumePermitConsumedOrForeign");
+        }
+        internal void AssertRuntimeObjects(OwnedKernelJob job,VerifiedVersion version,IReadOnlyList<PersistentFence> fences)
+        {
+            AssertCurrent();
+            if(!ReferenceEquals(owner.job,job) || !ReferenceEquals(owner.version,version) || !fences.SequenceEqual(owner.fences))
+                throw WfpNative.Contract("ResourceRuntimeOwnerMismatch");
+        }
+        internal void Revoke()=>Interlocked.Exchange(ref phase,3);
+    }
+    internal static (int ExitCode,string Report) QualifyResources(FixedLayout layout,ProtectedState state,VerifiedVersion version)
+        =>new ProtectedSession(layout,state,version).ExecuteResourceQualification();
+    private (int ExitCode,string Report) ExecuteResourceQualification()
+    {
+        InstallationProfileLease? profile=null;AtomicChild? child=null;
+        System.IO.Pipes.AnonymousPipeServerStream? pipe=null;StreamReader? reader=null;
+        ResourceQualification? permit=null;ResourceChildReport? observed=null;Task<uint>? exited=null;Task<string>? text=null;
+        JobSnapshot? zero=null;RuntimeStop? stopped=null;uint? exit=null;bool resumed=false,toolObserved=false;
+        var failures=new List<Exception>();
+        try
+        {
+            LifecycleRecovery.AssertNoPending(state);InstallationLoopbackLease.AssertClosedHistory(state);
+            foreach(var intent in OwnedJobIntent.ReadAll(state))
+                if(AtomicJobCompletion.ReadClosed(state,intent) is null)throw WfpNative.Contract("ResourceQualificationPriorAdmissionNotClosed");
+            var plans=FencePlan.ReadAll(state);if(plans.Count==0)throw WfpNative.Contract("ResourceQualificationNeedsExistingQuarantine");
+            foreach(var plan in plans)fences.Add(PersistentFence.OpenExisting(state,plan.Data.FenceId));
+            foreach(var fence in fences)if(!fence.Observe().FullQuarantineObserved)throw WfpNative.Contract("ResourceQualificationFullQuarantineRequired");
+            state.WriteNew("resource-session-before-"+id+".json",JsonSerializer.SerializeToUtf8Bytes(new {SchemaVersion=1,state.InstallationId,
+                SessionId=id,version.Package.Release,version.Package.ManifestHash,Scope="FIXED_OFFLINE_RESOURCE_AND_POWERSHELL_QUALIFICATION",FormalAdmissionIssued=false}));
+            profile=InstallationProfileLease.Create(state);resources=SessionResources.Create(state,version,profile,id);
+            using(var package=new InstallationPackageSid(state))sid=package.Value;
+            job=OwnedKernelJob.CreateEmpty(state,version);permit=new ResourceQualification(this);
+            pipe=new(System.IO.Pipes.PipeDirection.In,HandleInheritability.Inheritable);reader=new StreamReader(pipe,Encoding.UTF8,false,4096,true);
+            text=SessionResources.ReadBounded(reader);
+            child=AtomicChild.CreateResourceQualification(layout,state,version,job,profile,permit,pipe.ClientSafePipeHandle.DangerousGetHandle());
+            pipe.DisposeLocalCopyOfClientHandle();
+            runtime=new ProtectionRuntimeLease(state,version,job,fences,null,resources:permit);
+            _=child.ResumeQuarantined();resumed=true;runtime.Activate(20000);exited=Task.Run(child.WaitForCanaryExit);
+            while(!exited.Wait(100))
+            {
+                runtime.AssertHealthy();
+                var before=job.Observe();
+                if(before.ActiveBefore==0 && before.ActiveAfter==0)continue;
+                AtomicChild.InspectMembers(job,before,members=>
+                {
+                    var after=job.Observe();
+                    if(!before.ExpectedLimits || !after.ExpectedLimits || before.ActiveBefore!=before.ActiveAfter || before.ActiveBefore is <1 or >4 ||
+                        after.ActiveBefore!=after.ActiveAfter || before.ActiveBefore!=after.ActiveBefore ||
+                        !before.ProcessIds.OrderBy(p=>p).SequenceEqual(after.ProcessIds.OrderBy(p=>p)) ||
+                        before.ProcessIds.Length!=before.ActiveBefore || !before.ProcessIds.Contains(child.Pid) ||
+                        members.Length!=before.ProcessIds.Length || members.Select(m=>m.Pid).Distinct().Count()!=members.Length)
+                        throw WfpNative.Contract("ResourceToolMembershipUnstable");
+                    foreach(var member in members)
+                    {
+                        var primary=member.Pid==child.Pid;
+                        if(!member.MembershipConfirmed || member.Failures.Length!=0 || member.CreatedFileTime is null ||
+                            member.CreatedFileTime<child.ExpectedCreatedFileTime || primary && member.CreatedFileTime!=child.ExpectedCreatedFileTime ||
+                            member.Token is not {IsAppContainer:true,CapabilityCount:0,IntegritySid:"S-1-16-4096"} || member.Token.PackageSid!=sid ||
+                            member.ImagePath is null)throw WfpNative.Contract("ResourceToolIdentityUnconfirmed");
+                        var image=WindowsPathSeal.Canonical(member.ImagePath);
+                        if(primary?!string.Equals(image,child.ExpectedImagePath,StringComparison.OrdinalIgnoreCase):
+                            !string.Equals(image,SessionResources.ToolPath,StringComparison.OrdinalIgnoreCase) &&
+                            !string.Equals(image,Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System),"conhost.exe"),StringComparison.OrdinalIgnoreCase))
+                            throw WfpNative.Contract("ResourceUnexpectedToolImage");
+                        if(!primary && string.Equals(image,SessionResources.ToolPath,StringComparison.OrdinalIgnoreCase))toolObserved=true;
+                    }
+                });
+            }
+            exit=exited.GetAwaiter().GetResult();runtime.AssertHealthy();
+            observed=JsonSerializer.Deserialize<ResourceChildReport>(text.WaitAsync(TimeSpan.FromSeconds(2)).GetAwaiter().GetResult())??throw WfpNative.Contract("ResourceChildReportMissing");
+            if(exit!=0 || observed.Pid!=child.Pid || observed.Nonce!=id || !SessionResources.Qualified(observed) || !toolObserved)
+                throw WfpNative.Contract("OfflineResourceOrInheritedToolBoundaryNotQualified");
+            resources.AssertOutput();
+        }
+        catch(Exception ex){failures.Add(ex);}
+        finally
+        {
+            permit?.Revoke();
+            if(runtime is not null)
+            {
+                try{stopped=runtime.Stop("OFFLINE_RESOURCE_QUALIFICATION_TERMINAL");zero=stopped.FinalJob;
+                    if(!stopped.QuarantineObservedBeforeStop || stopped.Failures.Length!=0 || zero?.ObservedZero!=true)throw WfpNative.Contract("ResourceQualificationStopUnconfirmed");}
+                catch(Exception ex){failures.Add(ex);}
+            }
+            else if(job is not null)try{zero=job.AtomicAdmissionReserved?job.CloseAtomicAdmissionAndStop():job.StopAndVerifyZero();}catch(Exception ex){failures.Add(ex);}
+            if(profile?.ProcessCreationAttempted==true && zero is not null)try{profile.AfterOwnedJobZero(zero);}catch(Exception ex){failures.Add(ex);}
+            if(exited is not null)try{exit=exited.WaitAsync(TimeSpan.FromSeconds(2)).GetAwaiter().GetResult();}catch(Exception ex){failures.Add(ex);}
+            if(pipe is not null)try{pipe.DisposeLocalCopyOfClientHandle();}catch(Exception ex){failures.Add(ex);}
+            foreach(var owned in new IDisposable?[]{child,reader,pipe,resources,profile,job})try{owned?.Dispose();}catch(Exception ex){failures.Add(ex);}
+            if(text is not null)try{_=text.WaitAsync(TimeSpan.FromSeconds(2)).GetAwaiter().GetResult();}catch(Exception ex){failures.Add(ex);}
+            foreach(var fence in fences)try{if(!fence.Observe().FullQuarantineObserved)throw WfpNative.Contract("ResourceFinalQuarantineMissing");}catch(Exception ex){failures.Add(ex);}
+            foreach(var fence in fences)try{fence.Dispose();}catch(Exception ex){failures.Add(ex);}
+        }
+        var success=observed is not null && SessionResources.Qualified(observed) && toolObserved && zero?.ObservedZero==true && failures.Count==0;
+        var report=JsonSerializer.Serialize(new {SchemaVersion=1,state.InstallationId,SessionId=id,version.Package.Release,version.Package.ManifestHash,
+            Status=success?"FIXED_OFFLINE_WORKSPACE_TOOL_AND_DENIAL_OBSERVED":"OFFLINE_RESOURCE_SESSION_NOT_CONFIRMED",Scope="FIXED_PROFILE_WORKSPACE_WINDOWS_POWERSHELL_AND_NON_SECRET_DENIAL_FIXTURE_ONLY",
+            Resumed=resumed,ChildExit=exit,Child=observed,InheritedPowerShellIdentityObserved=toolObserved,FinalJob=zero,Stop=stopped,
+            Failures=failures.SelectMany(WfpNative.Describe).ToArray(),FormalAdmissionIssued=false,LaunchAuthorized=false,NetworkOpened=false,ClaudeLaunched=false,
+            AllHostResourceIsolationQualified=false,UserProjectToolchainQualified=false,FourteenEnvironmentRequirementsQualified=false,GpuQualified=false});
+        state.WriteNew("resource-session-after-"+id+".json",Encoding.UTF8.GetBytes(report));return(success?0:3,report);
+    }
     private (EnvironmentExpectations?,string?,string) ReadExpectations()
     {
         try

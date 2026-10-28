@@ -106,7 +106,11 @@ public static class InstalledBroker
     }
 
     public static int RunAdmissionCanary()
-    {ProtectedSession.AssertSystemTestingAllowed();return AtomicChild.RunCanary();}
+    {
+        if(Environment.GetEnvironmentVariable("CPC_RESOURCE_PLAN") is not null)return AtomicChild.RunResourceCanary();
+        ProtectedSession.AssertSystemTestingAllowed();return AtomicChild.RunCanary();
+    }
+    public static (int ExitCode,string Report) QualifyResources()=>WithCurrentInstallation(ProtectedSession.QualifyResources);
     public static (int ExitCode,string Report) QualifyWatchdog()
     {
         ProtectedSession.AssertSystemTestingAllowed();

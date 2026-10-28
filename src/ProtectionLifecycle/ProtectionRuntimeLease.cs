@@ -16,7 +16,8 @@ internal sealed class ProtectionRuntimeLease
     private readonly VerifiedVersion version;
     private readonly OwnedKernelJob job;
     private readonly IReadOnlyList<PersistentFence> fences;
-    private readonly ProxyChannelLease proxy;
+    private readonly ProxyChannelLease? proxy;
+    private readonly ProtectedSession.ResourceQualification? resources;
     private readonly SessionProxy? gateway;
     private ProtectedSession.Admission? admission;
     private readonly ProtectedSession.Preparation? preparation;
@@ -27,21 +28,25 @@ internal sealed class ProtectionRuntimeLease
     private long deadlineMs=25000;
     private bool activated,closed;
     private RuntimeStop? stopped;
-    internal ProtectionRuntimeLease(ProtectedState state,VerifiedVersion version,OwnedKernelJob job,IReadOnlyList<PersistentFence> fences,ProxyChannelLease proxy,
-        SessionProxy? gateway=null,ProtectedSession.Preparation? preparation=null)
+    internal ProtectionRuntimeLease(ProtectedState state,VerifiedVersion version,OwnedKernelJob job,IReadOnlyList<PersistentFence> fences,ProxyChannelLease? proxy,
+        SessionProxy? gateway=null,ProtectedSession.Preparation? preparation=null,ProtectedSession.ResourceQualification? resources=null)
     {
         this.state=state;this.version=version;this.job=job;this.fences=fences;this.proxy=proxy;
+        if(resources is null && proxy is null || resources is not null && (proxy is not null || gateway is not null || preparation is not null))
+            throw WfpNative.Contract("RuntimeScopeRequiresEitherOfflineResourcesOrLiveProxy");
+        this.resources=resources;resources?.AssertRuntimeObjects(job,version,fences);
         if((gateway is null)!=(preparation is null))throw WfpNative.Contract("SessionGatewayAndPreparationRequiredTogether");
         if(preparation is not null && !ReferenceEquals(gateway,preparation.Gateway))throw WfpNative.Contract("StartupGatewayMismatch");
         preparation?.AssertRuntimeObjects(job,version,fences);
         this.gateway=gateway;this.preparation=preparation;
         if(gateway is not null)id=gateway.SessionId;
+        if(resources is not null)id=resources.SessionId;
         pointerSHA256=state.Read("current.json",4096).SHA256;
         if(fences.Count==0 || !job.AtomicAdmissionReserved)throw WfpNative.Contract("RuntimeRequiresAtomicAdmissionAndFence");
         AssertHealthy();
         state.WriteNew("session-open-"+id+".json",JsonSerializer.SerializeToUtf8Bytes(new {SchemaVersion=1,state.InstallationId,SessionId=id,job.JobId,
             version.Package.Release,version.Package.ManifestHash,CurrentPointerSHA256=pointerSHA256,StartupDeadlineMs=deadlineMs,
-            Scope=gateway is null?"SINGLE_ATOMIC_JOB_COMPILED_PROXY":"QUARANTINED_SUSPENDED_SESSION_STARTUP",
+            Scope=resources is not null?"FIXED_OFFLINE_RESOURCES_NO_FORWARDING_NO_FORMAL_PERMIT":gateway is null?"SINGLE_ATOMIC_JOB_COMPILED_PROXY":"QUARANTINED_SUSPENDED_SESSION_STARTUP",
             FormalSessionResumeAuthorized=false,AdmissionReusable=false,
             SessionBindingSHA256=(string?)null,AtUtc=DateTime.UtcNow.ToString("o")}));
     }
@@ -51,13 +56,13 @@ internal sealed class ProtectionRuntimeLease
         state.AssertHeld();version.AssertHeld(state);
         if(state.Read("current.json",4096).SHA256!=pointerSHA256)throw WfpNative.Contract("RuntimeInstalledSelectionDrift");
         if(clock.ElapsedMilliseconds>=deadlineMs)throw WfpNative.Contract("RuntimeLeaseExpired");
-        proxy.AssertHealthy();
+        proxy?.AssertHealthy();resources?.AssertCurrent();
         if(admission is not null)admission.AssertCurrent();else preparation?.AssertCurrent();
         gateway?.AssertHealthy();
         foreach(var fence in fences)
         {
             var observed=fence.Observe();
-            if(preparation is not null && admission is null?!observed.FullQuarantineObserved:!observed.IPv4ProxyOnlyObserved)
+            if(resources is not null || preparation is not null && admission is null?!observed.FullQuarantineObserved:!observed.IPv4ProxyOnlyObserved)
                 throw WfpNative.Contract("RuntimeFenceDrift");
         }
         if(gateway is not null && fences.Any(f=>!f.IsSessionChannel))throw WfpNative.Contract("SessionRawProxyPolicyDrift");
@@ -88,6 +93,7 @@ internal sealed class ProtectionRuntimeLease
         if(stopped is not null)return stopped;
         closed=true;var errors=new List<Exception>();var quarantined=true;long quarantineAt=-1,jobAt=-1;JobSnapshot? zero=null;
         admission?.Revoke();
+        resources?.Revoke();
         preparation?.Revoke();
         try{gateway?.Revoke();}catch(Exception ex){errors.Add(ex);}
         try{state.WriteNew("session-stop-intent-"+id+".json",JsonSerializer.SerializeToUtf8Bytes(new {SchemaVersion=1,state.InstallationId,SessionId=id,job.JobId,
