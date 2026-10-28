@@ -52,6 +52,16 @@ internal sealed class InstallationProfileLease : IDisposable
         jobId=bound.JobId;mayDelete=false;
     }
     internal bool ProcessCreationAttempted=>jobId is not null;
+    internal void PlanTaskWorkspace(string sessionId)
+    {
+        if(disposed || jobId is not null || storage is null)throw WfpNative.Contract("TaskWorkspacePreparationUnavailable");
+        SessionTaskWorkspace.Plan(state,storage,sessionId);
+    }
+    internal void RecordTaskWorkspace(string sessionId,PathLease workspace)
+    {
+        if(disposed || jobId is not null || storage is null)throw WfpNative.Contract("TaskWorkspaceCreationUnavailable");
+        SessionTaskWorkspace.RecordCreated(state,storage,sessionId,workspace);
+    }
     internal void AssertPackage(InstallationPackageSid package)
     {state.AssertHeld();if(disposed || package.Name!=name)throw WfpNative.Contract("ProfileAndAtomicPackageDiffer");}
     internal string WorkspaceRoot()

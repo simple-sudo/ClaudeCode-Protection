@@ -1,6 +1,6 @@
 # 当前开发状态
 
-## 2026-10-28 下一调用链：固定离线Git工具链（SOURCE，尚未BUILD/VERIFIED）
+## 2026-10-28 Git接续：已定位profile内工作目录拒绝，改为工具自有任务目录（新源码待资格）
 
 qualify-toolchain已接入InstalledBroker → ProtectedSession → SessionResources/同一AtomicChild与RuntimeLease，
 不接收命令、目标或项目路径。复用本机ProgramFiles Git的签名有效exe与5个非系统DLL，当前摘要固定、
@@ -10,8 +10,24 @@ Git的stdin哈希负载在管理侧核验同Job/AppContainer/Low/零capability�
 管理侧将独立解压/限长核对实际Git blob/tree/commit及分支引用，Git还独立尝试非秘密私有样本读取并要求拒绝。
 只在新nonce Git工作区授予文件DELETE以支持Git的锁文件替换；不授予DELETE_CHILD/WRITE_DAC/WRITE_OWNER，
 不改已有宿主/Git目录ACL，封存的输入及工作区根仍由不共享写/删除的管理句柄保护。
-六产品SOURCE语义0错误/0警告（Lifecycle38源）；实际Git兼容性、拒绝与清理尚待具体工件有界资格。
-下方75320489是上一已安装成功版本，不转授此新源码运行证据；正式会话/网络/14项准入仍关闭。
+现有Git资格三次真实结果保留：r1在创建子进程前拒绝，随后只读fsutil确认exe4个链接、DLL各2个；
+已只为固定只读资产增加精确链接数量/摘要/可信ACL例外，源/安装包/状态/删除路径仍单链接。
+r2根程序/PowerShell及三项拒绝通过，但Git在放行stdin前退出；r3保留其真实退出128及stderr：
+Unable to read current working directory: Permission denied。r3还触发了已退出Git不在就绪快照的拒绝；
+125是随后精确停止造成的根程序退出，不能伪装为Git原退出码。两次均完整隔离后Job归零。
+有界CodeIntegrity/AppLocker窗口查询无匹配事件，但不能排除未覆盖的安全事件；未改AV或改用其他入口。
+当前已安装dd87aad181d24fc096370685595ef478/manifest66DBD24CB8A296BC0023A24E806B755973344DC95B387E3E8A21F2EDFE367EE5仍INACTIVE，Git未获资格。
+
+下一具体修复SOURCE：Git任务数据改为新建ProgramFiles/ClaudeCodeProtection-Task-<nonce>，不开放个人profile祖先ACL。
+任务目录本身仍为BA所有者、Low标签、当前用户/精确package最小修改权限，祖先为既有公开可遍历的可信系统目录。
+新任务根在创建前后分别写入与profile创建摘要绑定的私有意图/NTFS身份；进程创建前必须完成这些记录。
+清理接在原profile的闭准入/零Job checkpoint之后：完整no-follow/单链接预检、持有句柄按叶到根精确删除、回读根不存在，
+拒绝路径替换、未确认创建、越界、重解析点、硬链接或超限；不使用递归路径删除兜底。
+FileDispositionInfoEx仅用于这个新建临时任务树，DELETE+POSIX+image check+ignore readonly，所需WRITE_ATTRIBUTES限于已核验的任务句柄；
+不是权限/所有者/全机安全配置修改或安全擦除保证。依据见[Windows删除语义](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-fscc/2e860264-018a-47b3-8555-565a13b35a45)。
+所有历史Git包/失败/实际stderr与Job归零仍保留在work/git-toolchain*及ProgramFiles固定资格目录。
+此新数据位置/清理代码尚待构建与有界资格；下方75320489是已成功的较早离线/恢复窗口，不转授新代码运行证据。
+正式会话、网络、14项准入及任意用户项目仍关闭。
 
 ## 2026-10-28 当前：已安装的离线会话与跨进程profile清理恢复通过
 

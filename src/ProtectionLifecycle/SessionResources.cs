@@ -19,7 +19,7 @@ internal sealed record ResourceProbePlan(int SchemaVersion,string Nonce,string I
         if(GitAssetSetSHA256 is not null && GitAssetSetSHA256!=SessionGitToolchain.AssetSetSHA256)throw WfpNative.Contract("GitAssetSetNotReviewed");
     }
     internal string Fixture=>WindowsPathSeal.Child(FixedLayout.FromWindows().StateRoot,"resource-fixture-"+Nonce+".json");
-    internal string Workspace(string sid)=>WindowsPathSeal.Child(SessionResources.ProfileFolder(sid),"workspace-"+Nonce);
+    internal string Workspace(string sid)=>GitAssetSetSHA256 is null?WindowsPathSeal.Child(SessionResources.ProfileFolder(sid),"workspace-"+Nonce):SessionTaskWorkspace.PathFor(Nonce);
     internal byte[] Input=>Encoding.UTF8.GetBytes("CPC-RESOURCE:"+Nonce);
 }
 internal sealed record ResourceAccessCase(string Role,string Status,int? Error);
@@ -51,15 +51,17 @@ internal sealed class SessionResources : IDisposable
             if(includeGit)git=SessionGitToolchain.Open();
             var plan=new ResourceProbePlan(1,Identifiers.Hex32(nonce),state.InstallationId,version.Package.Release,Environment.ProcessId,hash,
                 includeGit?SessionGitToolchain.AssetSetSHA256:null);plan.Validate();
-            var root=profile.WorkspaceRoot();
-            using var parent=WindowsPathSeal.LockDirectory(root,PathPolicy.Source);
+            var root=includeGit?Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles):profile.WorkspaceRoot();
+            using var parent=WindowsPathSeal.LockDirectory(root,includeGit?PathPolicy.CreationParent:PathPolicy.Source);
             var path=plan.Workspace(sid.Value);
+            if(includeGit)profile.PlanTaskWorkspace(nonce);
             using var identity=WindowsIdentity.GetCurrent();
             using var grant=new WorkspaceDescriptor(identity.User?.Value??throw WfpNative.Contract("WorkspaceHumanOwnerMissing"),sid.Value,includeGit);
             var attributes=grant.Attributes;
             if(!CreateDirectory(path,ref attributes))throw new WfpFailure("CreateFreshSessionWorkspace",unchecked((uint)Marshal.GetLastWin32Error()));
             directory=WindowsPathSeal.LockDirectory(path,PathPolicy.Source);
             grant.ApplyLowLabelAndVerify(path);
+            if(includeGit)profile.RecordTaskWorkspace(nonce,directory);
             var inputPath=WindowsPathSeal.Child(path,"input.txt");
             using(var seeded=new FileStream(inputPath,FileMode.CreateNew,FileAccess.Write,FileShare.None)){seeded.Write(plan.Input);seeded.Flush(true);}
             input=new FileStream(WindowsPathSeal.Open(inputPath,false,true),FileAccess.Read,4096,false);
@@ -244,6 +246,8 @@ internal sealed class SessionResources : IDisposable
         var data=new byte[checked((int)file.Length)];file.ReadExactly(data);return data;
     }
     public void Dispose(){git?.Dispose();input.Dispose();folder.Dispose();tool.Dispose();}
+    internal static void AssertMutableWorkspace(SafeFileHandle handle,string human,string package)
+    {using var expected=new WorkspaceDescriptor(human,package,true);expected.AssertApplied(handle);}
     // Windows' profile-root access does not guarantee that a directory created
     // by the elevated Broker inherits a usable package grant. Define both
     // halves of the AppContainer access check at creation, then set only the

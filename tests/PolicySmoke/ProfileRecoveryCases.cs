@@ -108,3 +108,8 @@ internal static class InstallationLoopbackLease{internal static void AssertClose
 internal sealed class FencePlan{internal FencePlan Data=>this;internal string FenceId=>throw new Exception("native forbidden");internal static IReadOnlyList<FencePlan> ReadAll(ProtectedState state)=>throw new Exception("native forbidden");}
 internal sealed class PersistentFence : IDisposable{internal static PersistentFence OpenExisting(ProtectedState state,string id)=>throw new Exception("native forbidden");internal (bool FullQuarantineObserved, bool Unused) Observe()=>throw new Exception("native forbidden");public void Dispose(){}}
 internal sealed class WfpFailure : IOException{internal WfpFailure(string stage,uint status):base(stage){}}
+internal static class SessionTaskWorkspace
+{
+    internal static void AssertClosed(ProtectedState state,ProfileStorageReceipt profile)=>throw new Exception("native task collaborator forbidden in reader tests");
+    internal static void Cleanup(ProtectedState state,ProfileStorageReceipt profile)=>throw new Exception("native task collaborator forbidden in reader tests");
+}

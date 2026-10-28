@@ -91,6 +91,7 @@ internal static class SessionProfileRecovery
             if(!plans.Contains("profile-intent-"+record.ProfileId+".json",StringComparer.Ordinal))throw WfpNative.Contract("ProfileCreationPlanMissing");
             var closed=state.ReadOptional("profile-cleaned-"+record.ProfileId+".json");
             if(closed is null){result.Add(record);continue;}
+            SessionTaskWorkspace.AssertClosed(state,record);
             using var completion=JsonDocument.Parse(closed.Bytes,new JsonDocumentOptions{MaxDepth=3});var c=completion.RootElement;
             StrictJson.Fields(c,"SchemaVersion","InstallationId","ProfileId","CreatedSHA256","CleanupIntentSHA256","Status","HResult","StorageRootAbsent","ProfileRegistrationAbsenceQualified");
             if(c.GetProperty("SchemaVersion").GetInt32()!=2 || StrictJson.Text(c,"InstallationId")!=state.InstallationId ||
@@ -175,6 +176,7 @@ internal static class SessionProfileRecovery
     internal static void Cleanup(ProtectedState state,ProfileStorageReceipt record)
     {
         WriteCleanupIntent(state,record);
+        SessionTaskWorkspace.Cleanup(state,record);
         using var parent=WindowsPathSeal.LockDirectory(Path.GetDirectoryName(record.StorageRoot)!,PathPolicy.Source);
         if(parent.ObjectIdentity()!=record.ParentIdentity)throw WfpNative.Contract("ProfileStorageParentWasReplaced");
         _=InspectStorage(record);
