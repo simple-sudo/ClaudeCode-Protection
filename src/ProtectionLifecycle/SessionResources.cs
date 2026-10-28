@@ -53,9 +53,9 @@ internal sealed class SessionResources : IDisposable
             using var identity=WindowsIdentity.GetCurrent();
             using var grant=new WorkspaceDescriptor(identity.User?.Value??throw WfpNative.Contract("WorkspaceHumanOwnerMissing"),sid.Value);
             var attributes=grant.Attributes;
-            if(!CreateDirectory(path,ref attributes))throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error(),"CreateFreshSessionWorkspace");
+            if(!CreateDirectory(path,ref attributes))throw new WfpFailure("CreateFreshSessionWorkspace",unchecked((uint)Marshal.GetLastWin32Error()));
             directory=WindowsPathSeal.LockDirectory(path,PathPolicy.Source);
-            using(var workspace=WindowsPathSeal.Open(path,true,false))grant.AssertApplied(workspace);
+            grant.ApplyLowLabelAndVerify(path);
             var inputPath=WindowsPathSeal.Child(path,"input.txt");
             using(var seeded=new FileStream(inputPath,FileMode.CreateNew,FileAccess.Write,FileShare.None)){seeded.Write(plan.Input);seeded.Flush(true);}
             input=new FileStream(WindowsPathSeal.Open(inputPath,false,true),FileAccess.Read,4096,false);
@@ -180,27 +180,43 @@ internal sealed class SessionResources : IDisposable
     public void Dispose(){input.Dispose();folder.Dispose();tool.Dispose();}
     // Windows' profile-root access does not guarantee that a directory created
     // by the elevated Broker inherits a usable package grant. Define both
-    // halves of the AppContainer access check and low integrity at creation,
-    // ONLY on this new nonce workspace. No existing object ACL is rewritten.
+    // halves of the AppContainer access check at creation, then set only the
+    // low mandatory label using WRITE_OWNER, before any child exists. Passing
+    // a whole SACL at creation needlessly requires SeSecurityPrivilege.
+    // This is ONLY the new nonce workspace; existing host ACLs are untouched.
     private sealed class WorkspaceDescriptor : IDisposable
     {
-        private IntPtr descriptor;
+        private IntPtr descriptor,label;
         private readonly RawSecurityDescriptor expected;
         internal WorkspaceDescriptor(string humanSid,string packageSid)
         {
             _=new SecurityIdentifier(humanSid);_=new SecurityIdentifier(packageSid);
-            var text="O:BAG:SYD:P(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)(A;OICI;0x001201bf;;;"+humanSid+")(A;OICI;0x001201bf;;;"+packageSid+")S:P(ML;OICI;NW;;;LW)";
-            expected=new RawSecurityDescriptor(text);
+            var text="O:BAG:SYD:P(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)(A;OICI;0x001201bf;;;"+humanSid+")(A;OICI;0x001201bf;;;"+packageSid+")";
+            expected=new RawSecurityDescriptor(text+"S:(ML;OICI;NW;;;LW)");
             if(!ConvertStringSecurityDescriptorToSecurityDescriptor(text,1,out descriptor,out _))
-                throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error(),"CreateWorkspaceDescriptor");
+                throw new WfpFailure("CreateWorkspaceDescriptor",unchecked((uint)Marshal.GetLastWin32Error()));
+            if(!ConvertStringSecurityDescriptorToSecurityDescriptor("S:(ML;OICI;NW;;;LW)",1,out label,out _))
+            {var error=Marshal.GetLastWin32Error();Dispose();throw new WfpFailure("CreateWorkspaceLowLabel",unchecked((uint)error));}
         }
         internal KernelJobSeal.SecurityAttributes Attributes=>new(){Length=Marshal.SizeOf<KernelJobSeal.SecurityAttributes>(),Descriptor=descriptor,Inherit=0};
+        internal void ApplyLowLabelAndVerify(string path)
+        {
+            using var handle=CreateFile(path,0x000a0080,1,IntPtr.Zero,3,0x02200000,IntPtr.Zero); // WRITE_OWNER, READ_CONTROL, attributes; no data write.
+            if(handle.IsInvalid)throw new WfpFailure("OpenNewWorkspaceForLowLabel",unchecked((uint)Marshal.GetLastWin32Error()));
+            WindowsPathSeal.VerifyObject(handle,path,true);
+            if(!GetSecurityDescriptorSacl(label,out var present,out var sacl,out _) || !present || sacl==IntPtr.Zero)
+                throw WfpNative.Contract("WorkspaceLowLabelDescriptorMissing");
+            var status=SetSecurityInfo(handle,1,16,IntPtr.Zero,IntPtr.Zero,IntPtr.Zero,sacl); // LABEL only, never SACL_SECURITY_INFORMATION.
+            if(status!=0)throw new WfpFailure("SetNewWorkspaceLowLabel",status);
+            AssertApplied(handle);
+        }
         internal void AssertApplied(SafeFileHandle handle)
         {
             var status=GetSecurityInfo(handle,1,1|4|16,out _,out _,out _,out _,out var value);
             if(status!=0)throw new WfpFailure("ReadWorkspaceGrant",status);
             try
             {
+                if(value==IntPtr.Zero)throw WfpNative.Contract("WorkspaceDescriptorMissing");
                 var size=GetSecurityDescriptorLength(value);if(size is <20 or >65536)throw WfpNative.Contract("WorkspaceDescriptorBounds");
                 var bytes=new byte[checked((int)size)];Marshal.Copy(value,bytes,0,bytes.Length);var actual=new RawSecurityDescriptor(bytes,0);
                 if(actual.Owner?.Value!=expected.Owner?.Value || (actual.ControlFlags&ControlFlags.DiscretionaryAclProtected)==0 ||
@@ -220,13 +236,16 @@ internal sealed class SessionResources : IDisposable
             }
             return true;
         }
-        public void Dispose(){if(descriptor!=IntPtr.Zero){LocalFree(descriptor);descriptor=IntPtr.Zero;}}
+        public void Dispose(){if(descriptor!=IntPtr.Zero){LocalFree(descriptor);descriptor=IntPtr.Zero;}if(label!=IntPtr.Zero){LocalFree(label);label=IntPtr.Zero;}}
     }
     [DllImport("userenv.dll",CharSet=CharSet.Unicode,ExactSpelling=true)] private static extern int GetAppContainerFolderPath(string sid,out IntPtr path);
     [DllImport("kernel32.dll",EntryPoint="CreateDirectoryW",CharSet=CharSet.Unicode,SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)] private static extern bool CreateDirectory(string path,ref KernelJobSeal.SecurityAttributes attributes);
     [DllImport("advapi32.dll",EntryPoint="ConvertStringSecurityDescriptorToSecurityDescriptorW",CharSet=CharSet.Unicode,SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)] private static extern bool ConvertStringSecurityDescriptorToSecurityDescriptor(string text,uint revision,out IntPtr descriptor,out uint length);
     [DllImport("advapi32.dll")] private static extern uint GetSecurityInfo(SafeFileHandle handle,int type,uint information,out IntPtr owner,out IntPtr group,out IntPtr dacl,out IntPtr sacl,out IntPtr descriptor);
     [DllImport("advapi32.dll")] private static extern uint GetSecurityDescriptorLength(IntPtr descriptor);
+    [DllImport("advapi32.dll",SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)] private static extern bool GetSecurityDescriptorSacl(IntPtr descriptor,[MarshalAs(UnmanagedType.Bool)] out bool present,out IntPtr sacl,[MarshalAs(UnmanagedType.Bool)] out bool defaulted);
+    [DllImport("advapi32.dll")] private static extern uint SetSecurityInfo(SafeFileHandle handle,int type,uint information,IntPtr owner,IntPtr group,IntPtr dacl,IntPtr sacl);
+    [DllImport("kernel32.dll",EntryPoint="CreateFileW",CharSet=CharSet.Unicode,SetLastError=true)] private static extern SafeFileHandle CreateFile(string path,uint access,uint share,IntPtr attributes,uint disposition,uint flags,IntPtr template);
     [DllImport("kernel32.dll")] private static extern IntPtr LocalFree(IntPtr value);
     [DllImport("kernel32.dll",SetLastError=true)] private static extern SafeProcessHandle OpenProcess(uint access,[MarshalAs(UnmanagedType.Bool)] bool inherit,uint pid);
 }
