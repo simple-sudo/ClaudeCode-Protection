@@ -89,6 +89,27 @@ internal sealed class SessionResources : IDisposable
                 throw WfpNative.Contract("SessionWorkspaceOutputMismatch");
         }
     }
+    internal bool ToolReady()
+    {
+        AssertHeld();var path=WindowsPathSeal.Child(Workspace,"tool-ready.txt");
+        try
+        {
+            using var handle=WindowsPathSeal.Open(path,false,true);
+            using var file=new FileStream(handle,FileAccess.Read,64,false);
+            if(file.Length!=32 || Convert.ToHexString(SHA256.HashData(file))!=Convert.ToHexString(SHA256.HashData(Encoding.ASCII.GetBytes(Plan.Nonce))))
+                throw WfpNative.Contract("ResourceToolReadyBindingMismatch");
+            return true;
+        }
+        catch(ExactPathAbsentException ex)when(string.Equals(ex.FailedPath,path,StringComparison.OrdinalIgnoreCase)){return false;}
+    }
+    internal void ReleaseInspectedTool()
+    {
+        AssertHeld();
+        var temporary=WindowsPathSeal.Child(Workspace,"tool-go-pending.txt");
+        using(var output=new FileStream(temporary,FileMode.CreateNew,FileAccess.Write,FileShare.None))
+        {output.Write(Encoding.ASCII.GetBytes(Plan.Nonce));output.Flush(true);}
+        File.Move(temporary,WindowsPathSeal.Child(Workspace,"tool-go.txt"),false);
+    }
     internal static string ToolPath=>WindowsPathSeal.Child(Environment.GetFolderPath(Environment.SpecialFolder.System),"WindowsPowerShell/v1.0/powershell.exe");
     internal static string ProfileFolder(string sid)
     {
@@ -137,7 +158,11 @@ internal sealed class SessionResources : IDisposable
             // The fixed OS tool executes no user profile, module, supplied
             // script or network request. It uses the same workspace and must
             // independently fail to read the protected non-secret fixture.
-            const string script="$ErrorActionPreference='Stop';$v=[IO.File]::ReadAllText('input.txt');[IO.File]::WriteAllText('tool-output.txt',$v);$denied=$false;try{$f=[IO.File]::OpenRead($env:CPC_DENIAL_FIXTURE);$f.Dispose()}catch{if($_.Exception -is [UnauthorizedAccessException] -or $_.Exception.InnerException -is [UnauthorizedAccessException]){$denied=$true}else{exit 22}};if(!$denied){exit 23};[Threading.Thread]::Sleep(2200);exit 0";
+            // Readiness is coordination, not evidence of identity. The owner
+            // verifies held process handles/tokens/Job before releasing this
+            // compiled script. Planned startup/exit need not be atomic Job
+            // membership snapshots; all traffic remains quarantined.
+            const string script="$ErrorActionPreference='Stop';[IO.File]::WriteAllText('tool-ready-pending.txt',$env:CPC_RESOURCE_NONCE);[IO.File]::Move('tool-ready-pending.txt','tool-ready.txt');$until=[DateTime]::UtcNow.AddSeconds(8);while(![IO.File]::Exists('tool-go.txt')){if([DateTime]::UtcNow -ge $until){exit 24};[Threading.Thread]::Sleep(20)};if([IO.File]::ReadAllText('tool-go.txt') -cne $env:CPC_RESOURCE_NONCE){exit 25};$v=[IO.File]::ReadAllText('input.txt');[IO.File]::WriteAllText('tool-output.txt',$v);$denied=$false;try{$f=[IO.File]::OpenRead($env:CPC_DENIAL_FIXTURE);$f.Dispose()}catch{if($_.Exception -is [UnauthorizedAccessException] -or $_.Exception.InnerException -is [UnauthorizedAccessException]){$denied=$true}else{exit 22}};if(!$denied){exit 23};exit 0";
             stage="VERIFY_FIXED_TOOL_BYTES";
             using(var tool=File.OpenRead(ToolPath))
                 if(Convert.ToHexString(SHA256.HashData(tool))!=plan.ToolSHA256)throw WfpNative.Contract("FixedToolBytesChanged");
@@ -149,6 +174,7 @@ internal sealed class SessionResources : IDisposable
             start.Environment["PATH"]=Environment.GetFolderPath(Environment.SpecialFolder.System);
             start.Environment["PSModulePath"]=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System),"WindowsPowerShell\\v1.0\\Modules");
             start.Environment["CPC_DENIAL_FIXTURE"]=plan.Fixture;
+            start.Environment["CPC_RESOURCE_NONCE"]=plan.Nonce;
             foreach(var arg in new[]{"-NoLogo","-NoProfile","-NonInteractive","-Command",script})start.ArgumentList.Add(arg);
             stage="START_FIXED_POWERSHELL";
             using var process=Process.Start(start)??throw WfpNative.Contract("FixedToolStartFailed");

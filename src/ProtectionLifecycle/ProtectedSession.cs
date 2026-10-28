@@ -138,6 +138,11 @@ internal sealed class ProtectedSession
             while(!exited.Wait(100))
             {
                 runtime.AssertHealthy();
+                // Fixed PowerShell waits before its workload until all held
+                // members have been verified together. After release, its
+                // planned exit is supervised by the runtime and exact Job
+                // drain, not mistaken for a foreign process appearing.
+                if(toolObserved || !resources.ToolReady())continue;
                 var before=job.Observe();
                 if(before.ActiveBefore==0 && before.ActiveAfter==0)continue;
                 AtomicChild.InspectMembers(job,before,members=>
@@ -148,7 +153,11 @@ internal sealed class ProtectedSession
                         !before.ProcessIds.OrderBy(p=>p).SequenceEqual(after.ProcessIds.OrderBy(p=>p)) ||
                         before.ProcessIds.Length!=before.ActiveBefore || !before.ProcessIds.Contains(child.Pid) ||
                         members.Length!=before.ProcessIds.Length || members.Select(m=>m.Pid).Distinct().Count()!=members.Length)
+                    {
+                        state.WriteNew("resource-membership-failure-"+id+".json",JsonSerializer.SerializeToUtf8Bytes(new {Before=before,Members=members,After=after}));
                         throw WfpNative.Contract("ResourceToolMembershipUnstable");
+                    }
+                    bool fixedTool=false;
                     foreach(var member in members)
                     {
                         var primary=member.Pid==child.Pid;
@@ -161,8 +170,10 @@ internal sealed class ProtectedSession
                             !string.Equals(image,SessionResources.ToolPath,StringComparison.OrdinalIgnoreCase) &&
                             !string.Equals(image,Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System),"conhost.exe"),StringComparison.OrdinalIgnoreCase))
                             throw WfpNative.Contract("ResourceUnexpectedToolImage");
-                        if(!primary && string.Equals(image,SessionResources.ToolPath,StringComparison.OrdinalIgnoreCase))toolObserved=true;
+                        if(!primary && string.Equals(image,SessionResources.ToolPath,StringComparison.OrdinalIgnoreCase))fixedTool=true;
                     }
+                    if(!fixedTool)throw WfpNative.Contract("ReadyResourceToolNotInHeldJobSnapshot");
+                    runtime.AssertHealthy();resources.ReleaseInspectedTool();toolObserved=true;
                 });
             }
             exit=exited.GetAwaiter().GetResult();runtime.AssertHealthy();
