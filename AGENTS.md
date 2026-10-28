@@ -114,3 +114,15 @@ This is installation-only qualification, not session/network/resource clearance.
 Bootstrap UpdatePinnedInactive now uses its existing fixed protected host,
 embedded manifest, pinned prior packages and closed-admission lifecycle checks;
 fresh install and all unqualified system/session entry holds remain. See STATUS.
+
+2026-10-28 current installed continuation: 7fb4570 Broker/Lifecycle + d8ae593
+embedded Bootstrap completed inactive update to 7532048921364d978518e2e6993a9b9e.
+The fixed offline resource session, closed-Job checkpoint, separate installed
+Broker profile cleanup and no-pending readback completed. This is post-closed-Job
+storage recovery only, not controller-crash/reboot or formal-session clearance.
+Profile v2 journals pin fresh storage identity, current human owner and durable
+Job closure. Never adopt legacy/uncertain creations or delete a replaced tree.
+The original r1/r2 failures and ordinary ACL-diagnostic refusal remain preserved.
+User-supplied valid OpenAI signature and OpenTIP Clean are accepted as manual
+investigation results for the exact Codex digest. They do not authorize AV UI,
+broader exclusions, automatic UAC or unqualified product/Claude launch.

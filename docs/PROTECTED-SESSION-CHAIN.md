@@ -1,7 +1,9 @@
 # 首条保护会话主链：源码接线与实际阻碍
 
 2026-10-27；首轮 `04e7419`，后续继续同一所有者。本文件描述源码与限定接线，不代表完整会话已验收。
-当前安装3990f557保持INACTIVE；同一所有者的固定离线资源资格已实际运行通过，包括工作区、PowerShell继承与非秘密样本/管理进程句柄拒绝。正式会话仍未获许可；没有打开网关监听或授予网络。随后新Codex进程AV告警停止新增执行，见STATUS及本次事件记录。
+2026-10-28当前安装75320489保持INACTIVE；同一所有者的固定离线资源/PowerShell及拒绝验证实际通过。
+会话在Job持久关闭/零成员后保留清理checkpoint并退出；下一独立Broker从v2私有账本完成精确profile删除与storage根不存在回读，第三次调用确认无待恢复项。
+正式会话仍未获许可；没有开放网关或网络。此前Codex告警已补充用户人工签名/OpenTIP核实，继续按具体工件资格开发，见STATUS及事件记录。
 
 ## 同一个入口和所有者
 
@@ -21,6 +23,7 @@
 | 实际转发 | `SessionProxy` | 只接受当前Job/AppContainer的认证连接；解析、地址审查和字面IP CONNECT均位于实际转发代码中 |
 | 持续监督 | 原 `ProtectionRuntimeLease` + Preparation/Admission + PR #1成员核验 | 同一租约先监督完整隔离的挂起阶段；全门禁通过后接收正式许可，才转向开放/恢复阶段；异常进入停止 |
 | 退出恢复 | 原运行租约/Job/Profile/loopback所有者 | 先撤销许可、关闭转发，再恢复完整隔离、精确停止Job/观察零成员，然后排空与清理；逐项保存失败 |
+| 已关闭Job的资源接续 | 原InstallationProfileLease + SessionProfileRecovery | v2创建/Job/cleanup checkpoint绑定；只恢复同一安装/当前用户及原目录身份，不采用legacy/未知创建窗口；完整隔离及所有准入关闭后才清理，实际回读storage不存在 |
 
 ## 网络执行范围
 

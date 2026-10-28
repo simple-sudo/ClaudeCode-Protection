@@ -1,6 +1,6 @@
 # 当前开发状态
 
-## 2026-10-28 接续：精确profile清理恢复接回同一安装所有者
+## 2026-10-28 当前：已安装的离线会话与跨进程profile清理恢复通过
 
 用户已人工核实本次codex.exe有效OpenAI签名及对应SHA256的OpenTIP Clean；接受该记录，
 不扩大为所有历史告警均属误报。受信任条目截图不代替完整选项/最终保存确认；本工具未改AV。
@@ -11,13 +11,40 @@ SOURCE / INTEGRATED：InstallationProfileLease创建前拒绝现存目录；v2�
 限定目录/文件数量与深度，Windows删除API成功还必须实际回读整个profile目录不存在。
 recover-session-resources通过现有InstalledBroker所有者，只处理有checkpoint的本次安装/当前用户资源；
 要求全部准入关闭、持久零成员及完整隔离。目录替换、未知创建窗口、未关闭Job或旧账本均不获得删除许可。
-qualify-resource-recovery沿ProtectedSession原离线资源链验证Job归零后延后清理，再调用同一恢复入口；
-不是故意崩溃、正式Admission、网络开放或任意程序启动。
+qualify-resource-recovery沿ProtectedSession原离线资源链验证Job归零后延后清理并退出；
+下一次独立Broker调用recover-session-resources从私有账本完成恢复，无活的profile对象传递。
+固定PowerShell用“数据关闭后发布signal”握手，在管理侧持有进程句柄核验Job/token/image后才执行负载；
+工作区仍只有原读写权限，未为通知改名增加DELETE权限。正常退出阶段由运行租约/Job排空监督。
 
-BUILD / VERIFIED：本次修改尚待具体工件构建/资格验证；六产品非生成语义检查初次0错误/0警告。
-已安装3990f557仍为上一版本INACTIVE，不能转授新源码运行证据。
+BUILD：7fb4570产品44输入、d8ae593 Bootstrap45输入分别离线构建0错误/0警告；同一Lifecycle字节复用，
+六产品非生成语义检查0错误/0警告（Lifecycle37源），20项staging/内嵌批准/无module initializer核对完成。
+账本读取器14源/15输入的隔离测试实际退出0；内核/删除协作者为抛异常的替身，WindowsIdentity读取用于当前用户匹配，
+只证明账本逻辑，不能冒充native恢复。后续产品改动未改变这15输入，逐项摘要核对后复用该范围证据。
+当前Broker九项普通用户拒绝（含伪造资源计划）及Bootstrap两项拒绝均125，并确认退出。
+
+VERIFIED（限定）：人工UAC流程最终退出0；当前release=7532048921364d978518e2e6993a9b9e，
+manifest=1C2D5F29BB27A0ED4A003F67210C12286956FE2AD9F9547ECA34865C8BB8D2FB，
+operation=03f023fd29fe4e11aa62ffe7ccd0303a，保持INACTIVE。
+09:14Z固定离线会话Session=5468d53da63c43fa92d74c05843120bc，根程序/PowerShell均退出0，
+工作区读写及私有样本读写/Broker VM_READ句柄请求拒绝通过；管理侧核验PowerShell同Job/AppContainer/Low4096/capability0。
+Job=0d755fbd82a4437fb4f967b3072f7d50完整隔离回读后关闭/归零，主动保留清理checkpoint并退出。
+第二个Broker实际恢复1个精确profile，Delete API0且整个storage根路径OPEN_EXISTING回读不存在；
+第三个Broker返回NO_PENDING_PROFILE_CLEANUP。管理侧独立回读created/job/intent/closed摘要绑定一致。
+资源原始报告SHA256=B64444331EE6B1A2CBE0876D411A194018BB92A4D6B1CF30139578E17A42EA46。
+独立普通用户核对14安装资产/7目录、全部普通写打开拒绝与私有state读拒绝，旧包保留；当前未见产品进程。
+
+原失败保留：r1首次成员快照不稳定，停止后Job归零，125是停止后的根程序退出码，不能倒推根程序主动拒绝；
+原记录未保存两端快照，具体成员变化尚不确定。r2握手的File.Move需要工作区未授予的删除权限，PowerShell退出1；
+原始stderr未展开，归因为权限设计不匹配的工程判断，不虚构已捕获其原生错误5。
+r3改为不需要rename的双文件握手后通过；没有扩大目录权限或降低身份检查。另一个普通用户rename诊断在设置
+测试目录ACL时被拒绝，未执行rename对照，保留NOT_RUN，不充当上述判断的实测证明。
+全部包、失败和固定工件在work/profile-recovery*-control/build及ProgramFiles对应固定目录保留；不入Git。
+本次观察AVP/BFE运行、FlClash28452/Core27708保持，有限Application AV事件0；厂商完整告警覆盖仍UNKNOWN。
+
 DELIVERABLE：整体未完成。真正控制器死亡/重启、native创建与created回执之间的未知窗口仍缺安全自动恢复；
 真实授权项目/Git/Python/MCP/GPU、全面宿主隔离、网关实际网络矩阵与十四项可信准入仍是主要交付缺口。
+未签正式Admission，未打开网络或运行真实Claude；9项daily/GUI仍复用原批准字节，当前GUI源码未随Broker重新构建。
+未修改AV/全机网络/日常FlClash、未推送。下文为历史窗口，不能覆盖本次成功及其范围。
 
 ## 2026-10-27 当前：离线资源会话通过；随后Codex进程被卡巴斯基拦截
 

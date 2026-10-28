@@ -400,3 +400,17 @@ PowerShell另验证样本读取拒绝。管理侧独立核对实际输出，完�
 仅固定离线fixture/PowerShell范围，不等于真实项目、全面宿主隔离、网络、十四项或异常恢复完成。
 21:23:22用户截图证实codex.exe进程遭PDM:Exploit.Win32.Generic行为拦截，停止新增执行，未设置例外。
 成功工件字节仍在；新事件、误报与历史归因未确认，详情见STATUS和INCIDENT-20261027-CODEX-SYSTEM-WATCHER.md。
+
+### 2026-10-28：离线受保护会话退出后的跨进程profile清理恢复
+
+7fb4570产品44输入与d8ae593 Bootstrap45输入离线BUILD0/零警告；六产品SOURCE0/零警告。
+账本源链接测试实际退出0，仅隔离读取器与替身内核协作者范围；当前15输入逐项一致，native恢复另测。
+最终人工UAC流程实际退出0，release7532048921364d978518e2e6993a9b9e/manifest1C2D5F29BB27A0ED4A003F67210C12286956FE2AD9F9547ECA34865C8BB8D2FB，INACTIVE。
+Session5468d53da63c43fa92d74c05843120bc正常工作区/PowerShell退出0和三项权限拒绝通过；
+完整隔离后Job0d755fbd82a4437fb4f967b3072f7d50归零，保留checkpoint并退出。
+第二个已安装Broker从受保护账本恢复1个精确profile，native删除0且storage根实际回读不存在；第三个调用无待恢复项。
+created/job/intent/closed摘要绑定独立核对；14安装资产/7目录普通访问审计通过，未见残留产品进程。
+r1快照不稳定和r2握手rename失败保留，修复为先就绪/句柄核验后释放的只读写双文件握手，没有扩大工作区或宿主权限。
+普通用户rename诊断在ACL设置阶段拒绝，rename对照NOT_RUN；不虚构其错误内容或把它当产品失败/AV事件。
+本次不是强制崩溃/重启恢复、任意项目或工具链、网络、全部14项、全宿主隔离或真实Claude验收；整体非DELIVERABLE。
+完整证据保留work/profile-recovery*及ProgramFiles固定qualification目录，未推送或改AV/日常FlClash/全机设置。
