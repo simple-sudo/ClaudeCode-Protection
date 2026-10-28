@@ -388,3 +388,15 @@ operation db5149274f4a4d678a8f4ce465cbec37，INACTIVE。旧814cf433包/账本保
 七项Broker系统入口和普通更新/新建安装拒绝均125。未创建Job、写WFP、运行保护会话或真实Claude；
 9项daily/GUI字节复用，未重建/运行。完整产品非DELIVERABLE，受保护资源/工具/网络/十四项资格仍缺。
 限定原始记录在work/session-inactive-update-control及ProgramFiles固定更新目录；未推送或修改AV/FlClash/全机设置。
+
+### 2026-10-27：固定离线资源会话实际通过，后续Codex新AV告警
+
+最终95a3a53产品/43输入与fb11989 Bootstrap/44输入离线BUILD0。3990f557包保持INACTIVE。
+Session 60086a41a80e4357b6c984667f1fce69实际退出0：根程序及系统PowerShell在profile工作区读写，
+PowerShell同Job/AppContainer/Low4096/capability0；根程序样本读写及Broker VM_READ句柄打开均AccessDenied5，
+PowerShell另验证样本读取拒绝。管理侧独立核对实际输出，完整隔离回读后Job 9b0eed6e11b546ba822c66c13e307661归零，清理无异常。
+前四次失败保留：早期元数据拒绝、叶查询错误5、创建SACL缺特权1314、已回读DACL/低标签后叶查询仍5。
+元数据核验留在管理侧后正常I/O通过；未以扩大宿主权限/禁用安全软件取得成功。
+仅固定离线fixture/PowerShell范围，不等于真实项目、全面宿主隔离、网络、十四项或异常恢复完成。
+21:23:22用户截图证实codex.exe进程遭PDM:Exploit.Win32.Generic行为拦截，停止新增执行，未设置例外。
+成功工件字节仍在；新事件、误报与历史归因未确认，详情见STATUS和INCIDENT-20261027-CODEX-SYSTEM-WATCHER.md。

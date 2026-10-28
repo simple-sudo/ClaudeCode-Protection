@@ -1,19 +1,63 @@
 # 当前开发状态
 
-## 2026-10-27 离线资源/工作区/PowerShell会话（进行中，保留两次真实失败）
+## 2026-10-28 接续：精确profile清理恢复接回同一安装所有者
 
-上一轮64d8257真实INACTIVE更新属于progress。本轮复用InstalledBroker→ProtectedSession→AtomicChild→ProtectionRuntimeLease，
-固定qualify-resources只运行安装包内离线负载；profile自有工作区读写、固定PowerShell继承、非秘密敏感样本读写拒绝、
-管理进程VM_READ句柄拒绝属于同一有限资格；不接收脚本/目标、不签正式Admission或打开网络。
-已实际安装dd509e2f/manifest1FD3A0A5以及修正版e1d831fb/manifest87886CBB（完整摘要见嵌入包及原始回执）。
-两轮均成功挂起创建/核对/恢复固定AppContainer根程序，但工作区操作前失败，PowerShell未运行。
-首次仅Win32Exception；修正子进程不逐级打开宿主祖先目录后，第二次明确OPEN_AUTHORIZED_WORKSPACE_LEAF/Win32错误5。
-因此祖先检查并非完整原因，profile根访问不能推导Broker新建目录继承可用；两次原始失败不改写。
-两轮Stop均确认原完整隔离先于Job停止、零成员、profile Delete API成功；没有开放网络、修改AV/FlClash/全机设置。
-当前SOURCE正在改为只在新nonce工作区创建时显式用户+package读写DACL和低完整性标签，并独立回读；
-不修改已有宿主目录ACL。六产品非生成0错误/0警告（Lifecycle36源）；此新工件尚未构建/运行。
-先前两轮Broker43输入/Bootstrap44输入离线BUILD0/零警告，原失败与所有包在work/resource-session*-control/build及ProgramFiles对应固定目录保留。
-正式会话、十四项、网络、完整宿主资源/真实项目工具链/GPU仍未通过，整体非DELIVERABLE；真实Claude延期。
+用户已人工核实本次codex.exe有效OpenAI签名及对应SHA256的OpenTIP Clean；接受该记录，
+不扩大为所有历史告警均属误报。受信任条目截图不代替完整选项/最终保存确认；本工具未改AV。
+普通开发命令现已成功执行。下方上一窗口“停止新增执行”是当时状态，不构成本次续开发的总禁令。
+
+SOURCE / INTEGRATED：InstallationProfileLease创建前拒绝现存目录；v2私有账本记录实际NTFS身份/当前用户，
+原子进程创建前持久记录唯一Job绑定。Job关闭/零成员后才建立精确清理checkpoint；清理不跟随重解析点，
+限定目录/文件数量与深度，Windows删除API成功还必须实际回读整个profile目录不存在。
+recover-session-resources通过现有InstalledBroker所有者，只处理有checkpoint的本次安装/当前用户资源；
+要求全部准入关闭、持久零成员及完整隔离。目录替换、未知创建窗口、未关闭Job或旧账本均不获得删除许可。
+qualify-resource-recovery沿ProtectedSession原离线资源链验证Job归零后延后清理，再调用同一恢复入口；
+不是故意崩溃、正式Admission、网络开放或任意程序启动。
+
+BUILD / VERIFIED：本次修改尚待具体工件构建/资格验证；六产品非生成语义检查初次0错误/0警告。
+已安装3990f557仍为上一版本INACTIVE，不能转授新源码运行证据。
+DELIVERABLE：整体未完成。真正控制器死亡/重启、native创建与created回执之间的未知窗口仍缺安全自动恢复；
+真实授权项目/Git/Python/MCP/GPU、全面宿主隔离、网关实际网络矩阵与十四项可信准入仍是主要交付缺口。
+
+## 2026-10-27 当前：离线资源会话通过；随后Codex进程被卡巴斯基拦截
+
+SOURCE / INTEGRATED：固定 qualify-resources 已进入 InstalledBroker → ProtectedSession → AtomicChild → ProtectionRuntimeLease。
+它只运行安装包内固定离线负载、profile自有工作区与系统PowerShell，不接收目标/脚本，不签正式Admission或开放网络。
+用户与package读写DACL只用于新nonce工作区；先用DACL创建，再以LABEL_SECURITY_INFORMATION设置低标签并回读。
+父目录/文件身份与卷元数据由持有整条路径的管理侧核验；受限子进程只需正常文件I/O，不为辅助元数据查询扩大宿主访问。
+
+BUILD：最终产品95a3a53的43输入、Bootstrap fb11989的44输入分别离线构建0错误/0警告；
+六产品非生成语义检查0错误/0警告（Lifecycle36源），20项staging/内嵌批准/同库/无module initializer核对完成。
+普通用户资格/更新入口及伪造资源计划的普通子程序入口均实际125拒绝。
+
+VERIFIED（有限）：最终安装release=3990f55726ad4515ad4f335912179bef，
+manifest=32D20BF3646356B71FEECA9875192C631A9503A497B2480C074B245FC577373C，
+operation=c06f8dc2add44b0b8d01ccd085cb635b，选择保持INACTIVE。
+01:19Z的固定离线会话实际退出0：根程序工作区读写、PowerShell读写与敏感样本读取拒绝成功；
+管理侧确认PowerShell处于同一Job/AppContainer、Low4096/capability0及固定映像；根程序样本读/写和Broker VM_READ句柄请求均错误5拒绝。
+SessionId=60086a41a80e4357b6c984667f1fce69，JobId=9b0eed6e11b546ba822c66c13e307661。
+Stop确认完整隔离回读后精确Job关闭/零成员；清理无异常意味着profile Delete API0，不推导独立存储不存在或崩溃/重启恢复。
+原始报告SHA256=B316B89A1BA0928A1E6B2EACFFD360C58EBBF31BA902F608FA43E69D19976B58。
+独立核对14安装资产哈希/普通写拒绝与7目录权限、私有state读拒绝、旧包保留；当时未见遗留产品进程。
+
+前四次真实失败完整保留：r1早期Win32Exception；r2工作区叶元数据打开错误5；
+r3创建时提交整个SACL导致1314，未创建Job/子进程；r4低标签专用接口与DACL回读成功，但受限叶元数据查询仍错误5。
+因此权限继承假设不足以单独解释原故障；r5把管理元数据查询留在可信所有者后，实际I/O和工具调用通过。
+所有原包、失败、固定脚本/输入/工件摘要在work/resource-session*-control/build与ProgramFiles对应固定目录保留，不入Git。
+停止重复这条已成功正常矩阵；下一功能应扩展实际宿主资源/授权项目与工具边界及网络/可信准入，不以固定fixture替代整体目标。
+
+后续新事件：用户截图确认2026-10-27 21:23:22（America/New_York）系统监控检测并阻止codex.exe/PID30504，
+名称PDM:Exploit.Win32.Generic，对象为进程、原因为行为分析；不是项目二进制被该截图直接标记。
+随后新shell进程创建错误5的现象与此一致；尚不能确认具体行为、误报或历史事件归因。
+已停止新增产品构建/执行；仅通过既有Node文件工具保存截图、核对文件摘要/文档，未换入口启动被阻止命令，未修改AV例外。
+告警后只读确认上述安装manifest/Lifecycle/Broker DLL字节仍匹配；不能代替私有current指针/运行状态重新核验。
+详见[本次Codex告警](INCIDENT-20261027-CODEX-SYSTEM-WATCHER.md)。本页更新尚未Git提交：不通过替代进程绕过执行阻断。
+
+DELIVERABLE：整体仍未完成。DEFERRED：真实Claude继续延期。BLOCKED：新的执行需先处置此次具体AV事件；
+完整宿主资源/注册表/管理接口、真实授权项目及Git/Python/MCP/GPU、网络功能、十四项可信采集及异常恢复仍缺。
+成功窗口AVP/BFE运行、FlClash28452/Core27708保持，有限Application AV事件0；随后截图证明此日志观察不覆盖全部厂商告警。
+没有从旧PASS、当前局部成功或用户误报假设签正式许可；没有改FlClash/全机网络/AV、推送或运行真实Claude。
+下文是历史窗口，不覆盖最新安装、真实离线成功和此次新AV事件。
 
 ## 2026-10-27 安装主线：固定新Broker已实际INACTIVE更新
 

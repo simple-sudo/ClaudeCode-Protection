@@ -19,6 +19,7 @@
     <Compile Include="ProtectionRuntimeLease.cs" />
     <Compile Include="SessionProxy.cs;ProtectedSession.cs" />
     <Compile Include="SessionResources.cs" />
+    <Compile Include="SessionProfileRecovery.cs" />
     <Compile Include="../Shared/ProxyDestinationPolicy.cs" Link="ProxyDestinationPolicy.cs" />
     <Compile Include="../Shared/StrictEnvironmentRequirements.cs" Link="StrictEnvironmentRequirements.cs" />
     <Compile Include="../Shared/EnvironmentExpectations.cs" Link="EnvironmentExpectations.cs" />

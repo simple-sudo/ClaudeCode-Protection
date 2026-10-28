@@ -104,12 +104,21 @@ internal sealed class ProtectedSession
     }
     internal static (int ExitCode,string Report) QualifyResources(FixedLayout layout,ProtectedState state,VerifiedVersion version)
         =>new ProtectedSession(layout,state,version).ExecuteResourceQualification();
-    private (int ExitCode,string Report) ExecuteResourceQualification()
+    internal static (int ExitCode,string Report) QualifyResourceRecovery(FixedLayout layout,ProtectedState state,VerifiedVersion version)
+    {
+        var checkpoint=new ProtectedSession(layout,state,version).ExecuteResourceQualification(true);
+        if(checkpoint.ExitCode!=0)return checkpoint;
+        var recovery=SessionProfileRecovery.RecoverClosed(state);
+        return(recovery.ExitCode,JsonSerializer.Serialize(new {SchemaVersion=1,Scope="OFFLINE_RESOURCE_CLOSED_JOB_CLEANUP_CHECKPOINT_RECOVERY",
+            Checkpoint=JsonSerializer.Deserialize<JsonElement>(checkpoint.Report),Recovery=JsonSerializer.Deserialize<JsonElement>(recovery.Report),
+            ForcedProcessCrash=false,ControllerCrashQualified=false,LaunchAuthorized=false,ClaudeLaunched=false}));
+    }
+    private (int ExitCode,string Report) ExecuteResourceQualification(bool deferCleanup=false)
     {
         InstallationProfileLease? profile=null;AtomicChild? child=null;
         System.IO.Pipes.AnonymousPipeServerStream? pipe=null;StreamReader? reader=null;
         ResourceQualification? permit=null;ResourceChildReport? observed=null;Task<uint>? exited=null;Task<string>? text=null;
-        JobSnapshot? zero=null;RuntimeStop? stopped=null;uint? exit=null;bool resumed=false,toolObserved=false;
+        JobSnapshot? zero=null;RuntimeStop? stopped=null;uint? exit=null;bool resumed=false,toolObserved=false,cleanupDeferred=false;
         var failures=new List<Exception>();
         try
         {
@@ -180,15 +189,24 @@ internal sealed class ProtectedSession
             if(profile?.ProcessCreationAttempted==true && zero is not null)try{profile.AfterOwnedJobZero(zero);}catch(Exception ex){failures.Add(ex);}
             if(exited is not null)try{exit=exited.WaitAsync(TimeSpan.FromSeconds(2)).GetAwaiter().GetResult();}catch(Exception ex){failures.Add(ex);}
             if(pipe is not null)try{pipe.DisposeLocalCopyOfClientHandle();}catch(Exception ex){failures.Add(ex);}
-            foreach(var owned in new IDisposable?[]{child,reader,pipe,resources,profile,job})try{owned?.Dispose();}catch(Exception ex){failures.Add(ex);}
+            foreach(var owned in new IDisposable?[]{child,reader,pipe,resources})try{owned?.Dispose();}catch(Exception ex){failures.Add(ex);}
+            try
+            {
+                if(deferCleanup && failures.Count==0 && profile is not null && zero?.ObservedZero==true && observed is not null && SessionResources.Qualified(observed))
+                {profile.DeferCleanupForRecovery();cleanupDeferred=true;}
+                else profile?.Dispose();
+            }
+            catch(Exception ex){failures.Add(ex);}
+            try{job?.Dispose();}catch(Exception ex){failures.Add(ex);}
             if(text is not null)try{_=text.WaitAsync(TimeSpan.FromSeconds(2)).GetAwaiter().GetResult();}catch(Exception ex){failures.Add(ex);}
             foreach(var fence in fences)try{if(!fence.Observe().FullQuarantineObserved)throw WfpNative.Contract("ResourceFinalQuarantineMissing");}catch(Exception ex){failures.Add(ex);}
             foreach(var fence in fences)try{fence.Dispose();}catch(Exception ex){failures.Add(ex);}
         }
         var success=observed is not null && SessionResources.Qualified(observed) && toolObserved && zero?.ObservedZero==true && failures.Count==0;
         var report=JsonSerializer.Serialize(new {SchemaVersion=1,state.InstallationId,SessionId=id,version.Package.Release,version.Package.ManifestHash,
-            Status=success?"FIXED_OFFLINE_WORKSPACE_TOOL_AND_DENIAL_OBSERVED":"OFFLINE_RESOURCE_SESSION_NOT_CONFIRMED",Scope="FIXED_PROFILE_WORKSPACE_WINDOWS_POWERSHELL_AND_NON_SECRET_DENIAL_FIXTURE_ONLY",
+            Status=success?(cleanupDeferred?"OFFLINE_RESOURCE_CLOSED_JOB_CLEANUP_DEFERRED":"FIXED_OFFLINE_WORKSPACE_TOOL_AND_DENIAL_OBSERVED"):"OFFLINE_RESOURCE_SESSION_NOT_CONFIRMED",Scope="FIXED_PROFILE_WORKSPACE_WINDOWS_POWERSHELL_AND_NON_SECRET_DENIAL_FIXTURE_ONLY",
             Resumed=resumed,ChildExit=exit,Child=observed,InheritedPowerShellIdentityObserved=toolObserved,FinalJob=zero,Stop=stopped,
+            CleanupDeferredForRecovery=cleanupDeferred,
             Failures=failures.SelectMany(WfpNative.Describe).ToArray(),FormalAdmissionIssued=false,LaunchAuthorized=false,NetworkOpened=false,ClaudeLaunched=false,
             AllHostResourceIsolationQualified=false,UserProjectToolchainQualified=false,FourteenEnvironmentRequirementsQualified=false,GpuQualified=false});
         state.WriteNew("resource-session-after-"+id+".json",Encoding.UTF8.GetBytes(report));return(success?0:3,report);

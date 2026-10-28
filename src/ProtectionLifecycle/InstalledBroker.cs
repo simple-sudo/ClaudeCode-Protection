@@ -111,6 +111,8 @@ public static class InstalledBroker
         ProtectedSession.AssertSystemTestingAllowed();return AtomicChild.RunCanary();
     }
     public static (int ExitCode,string Report) QualifyResources()=>WithCurrentInstallation(ProtectedSession.QualifyResources);
+    public static (int ExitCode,string Report) QualifyResourceRecovery()=>WithCurrentInstallation(ProtectedSession.QualifyResourceRecovery);
+    public static (int ExitCode,string Report) RecoverSessionResources()=>WithCurrentInstallation((_,state,_)=>SessionProfileRecovery.RecoverClosed(state));
     public static (int ExitCode,string Report) QualifyWatchdog()
     {
         ProtectedSession.AssertSystemTestingAllowed();

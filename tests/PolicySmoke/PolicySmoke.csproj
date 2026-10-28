@@ -13,6 +13,8 @@
     <Compile Include="Program.cs" />
     <Compile Include="SessionTunnelCases.cs" />
     <Compile Include="TlsClientHelloCases.cs" />
+    <Compile Include="ProfileRecoveryCases.cs" />
+    <Compile Include="../../src/ProtectionLifecycle/SessionProfileRecovery.cs" Link="SessionProfileRecovery.cs" />
     <Compile Include="../../src/ClaudeProtection/Models.cs" Link="Models.cs" />
     <Compile Include="../../src/ClaudeProtection/StrictPreflight.cs" Link="StrictPreflight.cs" />
     <Compile Include="../../src/ClaudeProtection/DiagnosticNetworkTargetPolicy.cs" Link="DiagnosticNetworkTargetPolicy.cs" />

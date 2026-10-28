@@ -9,6 +9,7 @@ static void Require(bool truth,string reason)
 static StrictPreflightCheck Find(StrictPreflightReport report,string name)=>
     report.Checks.Single(c=>c.Id==name);
 var now=DateTimeOffset.UtcNow;
+ProtectionLifecycle.ProfileRecoveryCases.Run();
 var sample=new List<Check>();
 foreach(var name in new[]{
     "proxy-listener","proxy-owner-path","system-proxy-baseline","user-proxy-settings",
