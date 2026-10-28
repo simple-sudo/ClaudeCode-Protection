@@ -1,5 +1,7 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using System.Security.AccessControl;
+using System.Security.Principal;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -48,8 +50,12 @@ internal sealed class SessionResources : IDisposable
             var root=profile.WorkspaceRoot();
             using var parent=WindowsPathSeal.LockDirectory(root,PathPolicy.Source);
             var path=plan.Workspace(sid.Value);
-            if(!CreateDirectory(path,IntPtr.Zero))throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error(),"CreateFreshSessionWorkspace");
+            using var identity=WindowsIdentity.GetCurrent();
+            using var grant=new WorkspaceDescriptor(identity.User?.Value??throw WfpNative.Contract("WorkspaceHumanOwnerMissing"),sid.Value);
+            var attributes=grant.Attributes;
+            if(!CreateDirectory(path,ref attributes))throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error(),"CreateFreshSessionWorkspace");
             directory=WindowsPathSeal.LockDirectory(path,PathPolicy.Source);
+            using(var workspace=WindowsPathSeal.Open(path,true,false))grant.AssertApplied(workspace);
             var inputPath=WindowsPathSeal.Child(path,"input.txt");
             using(var seeded=new FileStream(inputPath,FileMode.CreateNew,FileAccess.Write,FileShare.None)){seeded.Write(plan.Input);seeded.Flush(true);}
             input=new FileStream(WindowsPathSeal.Open(inputPath,false,true),FileAccess.Read,4096,false);
@@ -172,7 +178,55 @@ internal sealed class SessionResources : IDisposable
         var data=new byte[checked((int)file.Length)];file.ReadExactly(data);return data;
     }
     public void Dispose(){input.Dispose();folder.Dispose();tool.Dispose();}
+    // Windows' profile-root access does not guarantee that a directory created
+    // by the elevated Broker inherits a usable package grant. Define both
+    // halves of the AppContainer access check and low integrity at creation,
+    // ONLY on this new nonce workspace. No existing object ACL is rewritten.
+    private sealed class WorkspaceDescriptor : IDisposable
+    {
+        private IntPtr descriptor;
+        private readonly RawSecurityDescriptor expected;
+        internal WorkspaceDescriptor(string humanSid,string packageSid)
+        {
+            _=new SecurityIdentifier(humanSid);_=new SecurityIdentifier(packageSid);
+            var text="O:BAG:SYD:P(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)(A;OICI;0x001201bf;;;"+humanSid+")(A;OICI;0x001201bf;;;"+packageSid+")S:P(ML;OICI;NW;;;LW)";
+            expected=new RawSecurityDescriptor(text);
+            if(!ConvertStringSecurityDescriptorToSecurityDescriptor(text,1,out descriptor,out _))
+                throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error(),"CreateWorkspaceDescriptor");
+        }
+        internal KernelJobSeal.SecurityAttributes Attributes=>new(){Length=Marshal.SizeOf<KernelJobSeal.SecurityAttributes>(),Descriptor=descriptor,Inherit=0};
+        internal void AssertApplied(SafeFileHandle handle)
+        {
+            var status=GetSecurityInfo(handle,1,1|4|16,out _,out _,out _,out _,out var value);
+            if(status!=0)throw new WfpFailure("ReadWorkspaceGrant",status);
+            try
+            {
+                var size=GetSecurityDescriptorLength(value);if(size is <20 or >65536)throw WfpNative.Contract("WorkspaceDescriptorBounds");
+                var bytes=new byte[checked((int)size)];Marshal.Copy(value,bytes,0,bytes.Length);var actual=new RawSecurityDescriptor(bytes,0);
+                if(actual.Owner?.Value!=expected.Owner?.Value || (actual.ControlFlags&ControlFlags.DiscretionaryAclProtected)==0 ||
+                    !Same(actual.DiscretionaryAcl,expected.DiscretionaryAcl) || !Same(actual.SystemAcl,expected.SystemAcl))
+                    throw WfpNative.Contract("WorkspaceGrantOrLowIntegrityMismatch");
+            }
+            finally{if(value!=IntPtr.Zero)LocalFree(value);}
+        }
+        private static bool Same(RawAcl? left,RawAcl? right)
+        {
+            if(left is null || right is null || left.Count!=right.Count)return false;
+            for(var i=0;i<left.Count;i++)
+            {
+                var a=new byte[left[i].BinaryLength];left[i].GetBinaryForm(a,0);
+                var b=new byte[right[i].BinaryLength];right[i].GetBinaryForm(b,0);
+                if(!a.AsSpan().SequenceEqual(b))return false;
+            }
+            return true;
+        }
+        public void Dispose(){if(descriptor!=IntPtr.Zero){LocalFree(descriptor);descriptor=IntPtr.Zero;}}
+    }
     [DllImport("userenv.dll",CharSet=CharSet.Unicode,ExactSpelling=true)] private static extern int GetAppContainerFolderPath(string sid,out IntPtr path);
-    [DllImport("kernel32.dll",EntryPoint="CreateDirectoryW",CharSet=CharSet.Unicode,SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)] private static extern bool CreateDirectory(string path,IntPtr attributes);
+    [DllImport("kernel32.dll",EntryPoint="CreateDirectoryW",CharSet=CharSet.Unicode,SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)] private static extern bool CreateDirectory(string path,ref KernelJobSeal.SecurityAttributes attributes);
+    [DllImport("advapi32.dll",EntryPoint="ConvertStringSecurityDescriptorToSecurityDescriptorW",CharSet=CharSet.Unicode,SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)] private static extern bool ConvertStringSecurityDescriptorToSecurityDescriptor(string text,uint revision,out IntPtr descriptor,out uint length);
+    [DllImport("advapi32.dll")] private static extern uint GetSecurityInfo(SafeFileHandle handle,int type,uint information,out IntPtr owner,out IntPtr group,out IntPtr dacl,out IntPtr sacl,out IntPtr descriptor);
+    [DllImport("advapi32.dll")] private static extern uint GetSecurityDescriptorLength(IntPtr descriptor);
+    [DllImport("kernel32.dll")] private static extern IntPtr LocalFree(IntPtr value);
     [DllImport("kernel32.dll",SetLastError=true)] private static extern SafeProcessHandle OpenProcess(uint access,[MarshalAs(UnmanagedType.Bool)] bool inherit,uint pid);
 }

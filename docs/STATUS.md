@@ -1,15 +1,19 @@
 # 当前开发状态
 
-## 2026-10-27 离线资源/工作区/PowerShell会话接入（进行中）
+## 2026-10-27 离线资源/工作区/PowerShell会话（进行中，保留两次真实失败）
 
-上一轮64d8257完成真实INACTIVE安装，属于progress。本轮沿同一InstalledBroker→ProtectedSession→AtomicChild→ProtectionRuntimeLease，
-新增固定qualify-resources：只在现有完整隔离下运行安装包内有限负载，使用新建AppContainer profile自有工作区，
-不向宿主目录添加权限。管理侧准备非秘密敏感样本并确认其存在；根程序及固定系统PowerShell验证工作区读写，
-独立尝试样本访问，根程序另请求管理进程VM_READ句柄但不读内存。管理侧实际Job/token/映像核对工具继承。
-许可是本所有者内一次性离线资源资格，不能签Admission、打开网关、传入脚本/任意目标或恢复正式会话。
-原完整隔离/期限/停止/零成员/profile清理被复用。当前仅SOURCE接入，尚未构建/安装/运行本轮新路径。
-六产品非生成语义检查0错误/0警告（Lifecycle36源），outputs/session-resource-reviewed-source-types.json保留。
-具体工件仍待固定审查与实机资格，十四项/网络/完整宿主资源、用户项目工具链与GPU不从该切片取得PASS。
+上一轮64d8257真实INACTIVE更新属于progress。本轮复用InstalledBroker→ProtectedSession→AtomicChild→ProtectionRuntimeLease，
+固定qualify-resources只运行安装包内离线负载；profile自有工作区读写、固定PowerShell继承、非秘密敏感样本读写拒绝、
+管理进程VM_READ句柄拒绝属于同一有限资格；不接收脚本/目标、不签正式Admission或打开网络。
+已实际安装dd509e2f/manifest1FD3A0A5以及修正版e1d831fb/manifest87886CBB（完整摘要见嵌入包及原始回执）。
+两轮均成功挂起创建/核对/恢复固定AppContainer根程序，但工作区操作前失败，PowerShell未运行。
+首次仅Win32Exception；修正子进程不逐级打开宿主祖先目录后，第二次明确OPEN_AUTHORIZED_WORKSPACE_LEAF/Win32错误5。
+因此祖先检查并非完整原因，profile根访问不能推导Broker新建目录继承可用；两次原始失败不改写。
+两轮Stop均确认原完整隔离先于Job停止、零成员、profile Delete API成功；没有开放网络、修改AV/FlClash/全机设置。
+当前SOURCE正在改为只在新nonce工作区创建时显式用户+package读写DACL和低完整性标签，并独立回读；
+不修改已有宿主目录ACL。六产品非生成0错误/0警告（Lifecycle36源）；此新工件尚未构建/运行。
+先前两轮Broker43输入/Bootstrap44输入离线BUILD0/零警告，原失败与所有包在work/resource-session*-control/build及ProgramFiles对应固定目录保留。
+正式会话、十四项、网络、完整宿主资源/真实项目工具链/GPU仍未通过，整体非DELIVERABLE；真实Claude延期。
 
 ## 2026-10-27 安装主线：固定新Broker已实际INACTIVE更新
 
