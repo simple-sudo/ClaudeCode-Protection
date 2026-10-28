@@ -9,6 +9,7 @@ static void Require(bool truth,string reason)
 static StrictPreflightCheck Find(StrictPreflightReport report,string name)=>
     report.Checks.Single(c=>c.Id==name);
 var now=DateTimeOffset.UtcNow;
+LoopbackTcpTableCases.Run();
 ProtectionLifecycle.ProfileRecoveryCases.Run();
 var sample=new List<Check>();
 foreach(var name in new[]{
@@ -198,4 +199,4 @@ Refuse(()=>FenceMigrationSelection.Decide(priorImage,nextImage,"invalid",nextIma
 
 await SessionTunnelCases.RunAsync();
 await TlsClientHelloCases.RunAsync();
-Console.WriteLine("PolicySmoke: bounded pure policy and in-memory duplex cases passed. No product entry point, native API or network request was executed.");
+Console.WriteLine("PolicySmoke: bounded policy, journal-reader and in-memory duplex cases passed. No product entry point, native mutation or network request was executed; profile-reader cases inspect the current Windows identity.");

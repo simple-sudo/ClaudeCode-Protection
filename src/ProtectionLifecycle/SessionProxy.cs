@@ -17,7 +17,7 @@ internal sealed class SessionProxy : IDisposable
     internal const int Port = 17891;
     internal const string Target = "www.microsoft.com";
     internal static readonly string PolicySHA256 = Convert.ToHexString(SHA256.HashData(Encoding.ASCII.GetBytes(
-        "CPC-SESSION-NET1;listen=127.0.0.1:17891;upstream=127.0.0.1:7890;connect=www.microsoft.com:443;doh=1.1.1.1:443/cloudflare-dns.com;A-only;ipv6=deny;no-direct-fallback;tls=offline-no-download;auth=per-session+held-job-peer+AC-low-zero;max-connections=4;accepted=32;max-bytes=8MiB-per-direction+64MiB-total;connection-seconds=20;session-seconds=60;half-close=send-fin+drain-peer;fault=cancel+drain-both;forward=bound-admission+runtime-health-2s+per-write;client-hello=visible-matching-SNI+http-ALPN;hello=32KiB+8records;no-ECH")));
+        "CPC-SESSION-NET2;listen=127.0.0.1:17891;upstream=127.0.0.1:7890+held-reverse-established-tuple;connect=www.microsoft.com:443;doh=1.1.1.1:443/cloudflare-dns.com;A-only;ipv6=deny;no-direct-fallback;tls=offline-no-download;auth=per-session+held-job-peer+AC-low-zero;max-connections=4;accepted=32;max-bytes=8MiB-per-direction+64MiB-total;connection-seconds=20;session-seconds=60;half-close=send-fin+drain-peer;fault=cancel+drain-both;forward=bound-admission+runtime-health-2s+per-write;client-hello=visible-matching-SNI+http-ALPN;hello=32KiB+8records;no-ECH")));
     private readonly TcpListener listener = new(IPAddress.Loopback, Port);
     private readonly CancellationTokenSource stop = new(TimeSpan.FromSeconds(60));
     private readonly ConcurrentDictionary<int, (TcpClient Client, Task Work)> clients = new();
@@ -129,7 +129,7 @@ internal sealed class SessionProxy : IDisposable
                 // client's bounded handshake has passed. No invalid ClientHello
                 // starts even a resolver tunnel on behalf of that connection.
                 AssertForwardingCurrent();
-                using var remote=await OpenTunnel(upstream,chosen,deadline.Token);
+                using var remote=await OpenTunnel(chosen,deadline.Token);
                 AssertHealthy();AtomicChild.AssertSessionPeer(job,process,packageSid,peer.Port);AssertForwardingCurrent();
                 await SessionTunnel.CopyAsync(tlsClient,remote,
                     ()=>client.Client.Shutdown(SocketShutdown.Send),()=>remote.Socket.Shutdown(SocketShutdown.Send),
@@ -149,7 +149,7 @@ internal sealed class SessionProxy : IDisposable
             ConnectCallback = async (context, cancel) => {
                 if (context.DnsEndPoint.Host != "cloudflare-dns.com" || context.DnsEndPoint.Port != 443)
                     throw new InvalidDataException("UnapprovedResolverTransport");
-                return await OpenTunnel(upstream, IPAddress.Parse("1.1.1.1"), cancel);
+                return await OpenTunnel(IPAddress.Parse("1.1.1.1"), cancel);
             }
         };
         using var client = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(5), MaxResponseContentBufferSize = 65536 };
@@ -162,15 +162,16 @@ internal sealed class SessionProxy : IDisposable
             throw new InvalidDataException("TrustedResolverResponseRefused");
         return ProxyDestinationPolicy.ParseResolution(host, await response.Content.ReadAsByteArrayAsync(token));
     }
-    private static async Task<NetworkStream> OpenTunnel(ProxyChannelLease upstream, IPAddress ip, CancellationToken token)
+    private async Task<NetworkStream> OpenTunnel(IPAddress ip, CancellationToken token)
     {
         if (ip.AddressFamily != AddressFamily.InterNetwork || !ProxyDestinationPolicy.IsPublicAddressCandidate(ip))
             throw new InvalidDataException("PublicIPv4TunnelRequired");
-        upstream.AssertHealthy();
+        AssertForwardingCurrent();upstream.AssertHealthy();
         var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
         try
         {
             await socket.ConnectAsync(new IPEndPoint(IPAddress.Loopback, CompiledFencePolicy.ProxyPort), token);
+            upstream.AssertConnectedPeer(socket);AssertForwardingCurrent();
             var stream = new NetworkStream(socket, ownsSocket: true);
             var authority = ip + ":443";
             await stream.WriteAsync(Encoding.ASCII.GetBytes("CONNECT " + authority + " HTTP/1.1\r\nHost: " + authority + "\r\n\r\n"), token);
@@ -178,7 +179,7 @@ internal sealed class SessionProxy : IDisposable
             var status = reply.Split("\r\n", StringSplitOptions.None)[0].Split(' ');
             if (status.Length < 2 || status[0] is not ("HTTP/1.1" or "HTTP/1.0") || status[1] != "200")
                 throw new InvalidDataException("UpstreamLiteralConnectRefused");
-            upstream.AssertHealthy(); return stream;
+            upstream.AssertConnectedPeer(socket);AssertForwardingCurrent();return stream;
         }
         catch { socket.Dispose(); throw; }
     }

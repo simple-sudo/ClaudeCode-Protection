@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Formats.Asn1;
 using System.Net;
 using System.Net.Security;
+using System.Net.Sockets;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Security.Principal;
@@ -10,6 +11,7 @@ using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Text.Json;
 using Microsoft.Win32.SafeHandles;
+using ClaudeCodeProtection.Security;
 
 namespace ProtectionLifecycle;
 
@@ -56,6 +58,18 @@ internal sealed class ProxyChannelLease : IDisposable
         if(disposed || process.IsClosed || image.SafeFileHandle.IsClosed)throw new ObjectDisposedException(nameof(ProxyChannelLease));
         directory.AssertHeld();WindowsPathSeal.VerifyObject(image.SafeFileHandle,ExpectedImage,false);
         if(WaitForSingleObject(process,0)!=0x102 || ListenerOwner()!=pid)throw WfpNative.Contract("ProxyProcessOrListenerIdentityDrift");
+    }
+    // Pin the accepted server-side socket, not just whichever process happens
+    // to own the listener when checked. No CONNECT data may precede this check.
+    // An uncertain/closed connection is refused; there is no listener fallback.
+    internal void AssertConnectedPeer(Socket socket)
+    {
+        AssertHealthy();
+        if(socket.LocalEndPoint is not IPEndPoint local || !local.Address.Equals(IPAddress.Loopback) ||
+            socket.RemoteEndPoint is not IPEndPoint remote || !remote.Address.Equals(IPAddress.Loopback) ||
+            remote.Port!=CompiledFencePolicy.ProxyPort || ReadLoopbackOwner(remote.Port,local.Port)!=pid)
+            throw WfpNative.Contract("ProxyConnectedPeerIdentityMismatch");
+        AssertHealthy();
     }
     internal static async Task<int> CheckTransport(Action<TlsValidationObservation>? observe=null,Action<TlsCertificateObservation[]>? observeCertificates=null,Action<RevocationSupply>? observeRevocation=null)
     {
@@ -132,20 +146,10 @@ internal sealed class ProxyChannelLease : IDisposable
             {
                 var status=GetExtendedTcpTable(buffer,ref size,false,2,5,0);
                 if(status==122){if(size is <4 or >1024*1024)throw WfpNative.Contract("ProxyOwnerTableCapacity");continue;}
-                WfpNative.Check(status,"ReadProxyOwnerTable");var count=Marshal.ReadInt32(buffer);
-                if(count<0 || count>(capacity-4)/24)throw WfpNative.Contract("ProxyOwnerTableBounds");
-                var owners=new List<uint>();
-                for(var i=0;i<count;i++)
-                {
-                    var row=buffer+4+i*24;var port=unchecked((uint)Marshal.ReadInt32(row,8));
-                    var decoded=((port&255)<<8)|((port>>8)&255);
-                    var remote=unchecked((uint)Marshal.ReadInt32(row,16));
-                    var remoteDecoded=((remote&255)<<8)|((remote>>8)&255);
-                    if(Marshal.ReadInt32(row)==(remotePort is null?2:5) && unchecked((uint)Marshal.ReadInt32(row,4))==0x0100007f && decoded==localPort &&
-                        (remotePort is null || unchecked((uint)Marshal.ReadInt32(row,12))==0x0100007f && remoteDecoded==remotePort))
-                        owners.Add(unchecked((uint)Marshal.ReadInt32(row,20)));
-                }
-                if(owners.Count!=1 || owners[0]==0)throw WfpNative.Contract("UniqueLoopbackProxyListenerRequired");return owners[0];
+                WfpNative.Check(status,"ReadProxyOwnerTable");
+                if(size is <4 || size>capacity)throw WfpNative.Contract("ProxyOwnerTableBounds");
+                var bytes=new byte[checked((int)size)];Marshal.Copy(buffer,bytes,0,bytes.Length);
+                return LoopbackTcpTable.FindOwner(bytes,localPort,remotePort);
             }
             finally{Marshal.FreeHGlobal(buffer);}
         }
