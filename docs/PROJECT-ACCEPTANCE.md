@@ -426,3 +426,13 @@ stdin hash、init/add/commit/show、管理侧独立实际Git对象及固定样�
 任务私有意图/created/closed/profile cleanup摘要绑定独立核对，另一Broker无待恢复项；14资产/7目录普通访问审计通过。
 原r1硬链接拒绝、r2过早退出及r3确切getcwd/128错误保留；r4新建私有任务目录采用可遍历的可信系统祖先，不开放个人目录。
 不是全面宿主/网络/14项/任意项目/Python/MCP/GPU/真实Claude或崩溃重启验收。未改AV/既有目录ACL/全机网络/日常FlClash，未推送。
+
+## 2026-10-28 接续：受控网关上游连接身份
+
+ab509a5将实际上游ESTABLISHED连接的反向loopback四元组/PID核对接入原SessionProxy的DoH和目标隧道，
+发送CONNECT前及响应后均需匹配持有的ProxyChannelLease进程，并重查当前转发许可；不从可信监听端口推导连接者可信。
+SOURCE六产品0错误/0警告；BUILD固定SDK/离线47项产品输入、17项策略输入0错误/0警告，均未执行产品。
+策略测试实际退出0，DLL SHA256=34AA2EBF24ACA85FBB2C0C6DCBCCA58A8C7745181B9323F9A7C6685DDF0C3951；
+覆盖监听恢复但连接仍属另一PID、端点/状态/重复/零PID及损坏表拒绝，不包含真实TCP表/竞争/native网络验收。
+原始记录work/upstream-peer-*保留。安装仍fc2d7c8b/INACTIVE；旧Git资格不能转授新源码运行证据。
+正式网络/十四项/全宿主隔离及出口保真仍BLOCKED/UNKNOWN，完整产品未DELIVERABLE；无AV/日常FlClash/系统网络变更。
