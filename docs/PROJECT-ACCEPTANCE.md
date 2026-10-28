@@ -377,3 +377,14 @@ AVP21.26/BFE运行，不冒充主机安全鉴定。完整产品非DELIVERABLE，
 创建/恢复前强制刷新与策略失效拒绝；其余采集及系统功能资格仍缺，完整许可不能签发。
 六产品项目非生成语义0错误/0警告、八个测试源输入仅语义无诊断；没有新BUILD、产品运行、配置写入、
 Native/WFP/Job/Watchdog测试或AV/全机网络变更。原失败与UNKNOWN保留；系统实验BLOCKED、ClaudeDEFERRED_BY_USER，目标未完成。
+
+### 2026-10-27：固定新Broker的INACTIVE更新实际完成
+
+5ea85b5接回既有UpdatePinnedInactive；Broker/Lifecycle42输入与7fd42ba Bootstrap43输入离线BUILD0/零警告。
+人工UAC后固定20文件Bootstrap实际更新0；release f43484dc7fd6410086d3bc6785126793，
+manifest B58EDC15D9C21C17565A57ACCA08B39B1AC1992E59429CB4F719E4FD3EAB7962，
+operation db5149274f4a4d678a8f4ce465cbec37，INACTIVE。旧814cf433包/账本保留。
+独立普通用户核对14资产哈希/权限与7目录，14项写打开AccessDenied、私有state读AccessDenied；仅安装资产范围。
+七项Broker系统入口和普通更新/新建安装拒绝均125。未创建Job、写WFP、运行保护会话或真实Claude；
+9项daily/GUI字节复用，未重建/运行。完整产品非DELIVERABLE，受保护资源/工具/网络/十四项资格仍缺。
+限定原始记录在work/session-inactive-update-control及ProgramFiles固定更新目录；未推送或修改AV/FlClash/全机设置。

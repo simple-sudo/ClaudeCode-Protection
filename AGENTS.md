@@ -104,3 +104,13 @@ Keep the user's rewritten upstream README and safely merge fetched history;
 do not overwrite local changes or push. Synthetic qualification cannot become
 an alternate general Claude launch path. Partial network success is not full
 product completion.
+
+2026-10-27 product-throughline update: P0-A host-sensitive resource isolation and
+P0-B network privacy are equal priorities; P1 device/software identity and
+unnecessary telemetry are part of the product. Favor installed vertical slices.
+The reviewed 5ea85b5 Broker/Lifecycle + 7fd42ba embedded-package Bootstrap has
+completed a human-UAC INACTIVE update to f43484dc7fd6410086d3bc6785126793.
+This is installation-only qualification, not session/network/resource clearance.
+Bootstrap UpdatePinnedInactive now uses its existing fixed protected host,
+embedded manifest, pinned prior packages and closed-admission lifecycle checks;
+fresh install and all unqualified system/session entry holds remain. See STATUS.

@@ -1,19 +1,38 @@
 # 当前开发状态
 
-## 2026-10-27 安装主线：限定INACTIVE更新恢复（进行中）
+## 2026-10-27 安装主线：固定新Broker已实际INACTIVE更新
 
-接续2328e24，本次用户重申P0宿主资源/网络并重与产品贯通。
-定位到Bootstrap安装入口对所有更新无条件125，而具体工件审查与INACTIVE更新所有者已经存在。
-本次仅恢复原UpdatePinnedInactive：固定保护目录、嵌入完整包批准、旧版本精确白名单、安装独占锁、
-所有历史准入关闭/零成员、回环豁免已关闭、屏障不存在或完整封闭、原生命周期账本和原子选择。
-将事故时814cf433包的精确摘要加入允许迁出的历史包；这不清除事故或放行其运行。
-新建安装、WFP/Job/GPU/Watchdog、迁移及正式/合成会话入口继续拒绝，日常维护不提升。
+接续2328e24，本次用户明确P0宿主资源隔离与网络防护并重，P1设备身份/遥测为正式目标，优先真实产品贯通。
+修复Bootstrap入口无条件拒绝全部更新：仅接回现有UpdatePinnedInactive，不新增平行安装器。
+管理侧要求固定保护目录、嵌入完整包批准、旧版本精确白名单、独占锁、所有历史准入关闭/零成员、
+回环豁免关闭、屏障不存在或完整封闭、原账本/原子选择。事故时814cf433包仅获允许迁出，不清除事故。
+新建安装及WFP/Job/GPU/Watchdog/迁移/合成会话仍未获资格，正式Claude仍DEFERRED_BY_USER。
 
-SOURCE / INTEGRATED：上述更新入口已连接原安装所有者；六项目非生成语义检查0错误/0警告，
-outputs/inactive-update-reopened-source-types.json保留。下一步固定当前Broker包、独立编译嵌入批准的Bootstrap、
-检查同库/工件/拒绝路径后再进入人工UAC的限定安装验证。BUILD/安装运行尚无本轮结果。
-完整产品非DELIVERABLE；宿主资源/工作区工具授权、上游字面目标保持、十四项完整可信采集等仍缺。
-真实Claude延期、事故根因UNKNOWN，AV/FlClash/全机设置不变，原始失败/安装保留；不推送。
+- SOURCE / INTEGRATED：5ea85b5接回同一安装所有者；六产品非生成语义检查0错误/0警告。
+- BUILD：5ea85b5的Broker/Lifecycle42固定输入与7fd42ba的Bootstrap43输入分别离线构建成功，均0错误/0警告；
+  固定SDK8.0.422/ref8.0.28、空源、导入审计。Bootstrap构建持有并复用相同Lifecycle，未重编写库。
+- VERIFIED（限定安装）：20项staging文件/内嵌批准/同库/无module initializer核对完成；
+  实际七个Broker系统拒绝、普通用户更新拒绝、新建安装拒绝均退出125并确认退出。
+  人工UAC后固定Bootstrap更新实际退出0；当前release=f43484dc7fd6410086d3bc6785126793，
+  manifest=B58EDC15D9C21C17565A57ACCA08B39B1AC1992E59429CB4F719E4FD3EAB7962，
+  operation=db5149274f4a4d678a8f4ce465cbec37，Activation=INACTIVE。
+  管理侧current指针回读与更新回执一致；独立普通用户核对14资产字节/权限、7目录权限，
+  14项Write打开均AccessDenied（零字节写入），私有state读取AccessDenied，旧814cf433 manifest保留。
+  此权限结果仅适用于安装资产/管理state，不冒充开发侧宿主敏感资源隔离。
+- DELIVERABLE：完整产品仍未完成。此次交付进展是最新会话/网关源码已进入实际安装Broker包，
+  不再仅停留在checkout；尚未打开其转发监听、恢复挂起程序或运行受保护会话。
+  9项既有daily/GUI资产按原批准字节复用，未重建/运行，不声称当前GUI已获得后续源码更新。
+- BLOCKED：工件的受保护进程/网络/资源功能资格、授权工作区与工具设备、上游字面目标保持/非DIRECT路径、
+  十四项完整可信采集仍缺。下一实际切片优先同一已安装所有者的宿主资源拒绝及授权工作区可用，
+  需固定有限负载资格，不能从安装成功或旧网络/GPU证据签正式许可。
+
+证据保留work/session-inactive-update-control、session-inactive-broker-5ea85b5-build、
+session-inactive-bootstrap-7fd42ba-build，以及ProgramFiles/ClaudeCodeProtection-Update-20261027-session-r1，均不入Git。
+实际运行窗口00:44:40–00:44:49Z（本地2026-10-27）；原失败/包/私有账本不删除。
+前后有限观察AVP/BFE运行、FlClash28452/Core27708保持、Application新增AV事件0，完整AV覆盖UNKNOWN，
+Kaspersky事件及0x1E根因均未结案。没有WFP写入、Job创建、故障注入、全机设置/AV/FlClash变更或真实Claude。
+最后未见本轮产品进程存活。fetch后origin/main仍8e5b4ee且已在本地历史中；README/origin保留，未推送。
+下文均为先前窗口，不能覆盖上述实际安装或转授运行资格。
 
 ## 2026-10-27 CONNECT目标与TLS首个握手名称绑定（本轮）
 
