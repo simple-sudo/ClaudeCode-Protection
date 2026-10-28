@@ -81,7 +81,10 @@ internal sealed class SessionGitToolchain : IDisposable
                 Signal(workspace,"git-ready",plan.Nonce);
                 var clock=Stopwatch.StartNew();
                 while(!File.Exists(WindowsPathSeal.Child(workspace,"git-go.signal")))
-                {if(clock.ElapsedMilliseconds>=8000 || process.HasExited)throw WfpNative.Contract("GitInspectionGateExpired");Thread.Sleep(20);}
+                {
+                    if(process.HasExited){RecordResult(workspace,Finish(process,stdout,stderr));throw WfpNative.Contract("GitExitedBeforeInputAdmission");}
+                    if(clock.ElapsedMilliseconds>=8000)throw WfpNative.Contract("GitInspectionGateExpired");Thread.Sleep(20);
+                }
                 if(File.ReadAllText(WindowsPathSeal.Child(workspace,"git-go.txt"))!=plan.Nonce)throw WfpNative.Contract("GitGateBindingMismatch");
                 process.StandardInput.Write(Encoding.UTF8.GetString(plan.Input));process.StandardInput.Close();
                 var result=Finish(process,stdout,stderr);
@@ -105,7 +108,7 @@ internal sealed class SessionGitToolchain : IDisposable
             if(!denied)throw WfpNative.Contract("GitPrivateFixtureDenialNotConfirmed");
             return new(hashMatched,committed,commit,denied,denialExit,null,null,null);
         }
-        catch(Exception ex){return new(hashMatched,committed,commit,denied,denialExit,stage,ex.GetType().Name,ex is System.ComponentModel.Win32Exception native?native.NativeErrorCode:ex.HResult);}
+        catch(Exception ex){return new(hashMatched,committed,commit,denied,denialExit,stage+(ex.Data["Stage"] is string nativeStage?"/"+nativeStage:""),ex.GetType().Name,ex is System.ComponentModel.Win32Exception native?native.NativeErrorCode:ex.HResult);}
     }
     private static void Signal(string workspace,string stem,string nonce)
     {
@@ -123,6 +126,7 @@ internal sealed class SessionGitToolchain : IDisposable
         start.Environment["PATH"]=DirectoryPath+";"+Environment.GetFolderPath(Environment.SpecialFolder.System);
         start.Environment["GIT_EXEC_PATH"]=DirectoryPath;start.Environment["GIT_CONFIG_NOSYSTEM"]="1";start.Environment["GIT_ATTR_NOSYSTEM"]="1";
         start.Environment["GIT_CONFIG_GLOBAL"]=WindowsPathSeal.Child(workspace,"empty-git-config");start.Environment["GIT_CONFIG_COUNT"]="0";
+        start.Environment["GIT_CEILING_DIRECTORIES"]=workspace;start.Environment["GIT_DISCOVERY_ACROSS_FILESYSTEM"]="0";
         start.Environment["GIT_TERMINAL_PROMPT"]="0";start.Environment["GCM_INTERACTIVE"]="never";start.Environment["GIT_NO_LAZY_FETCH"]="1";
         foreach(var name in new[]{"GIT_AUTHOR_NAME","GIT_COMMITTER_NAME"})start.Environment[name]="CPC Qualification";
         foreach(var name in new[]{"GIT_AUTHOR_EMAIL","GIT_COMMITTER_EMAIL"})start.Environment[name]="offline@invalid.example";
