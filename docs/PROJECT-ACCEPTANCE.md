@@ -414,3 +414,15 @@ r1快照不稳定和r2握手rename失败保留，修复为先就绪/句柄核验
 普通用户rename诊断在ACL设置阶段拒绝，rename对照NOT_RUN；不虚构其错误内容或把它当产品失败/AV事件。
 本次不是强制崩溃/重启恢复、任意项目或工具链、网络、全部14项、全宿主隔离或真实Claude验收；整体非DELIVERABLE。
 完整证据保留work/profile-recovery*及ProgramFiles固定qualification目录，未推送或改AV/日常FlClash/全机设置。
+
+### 2026-10-28：真实离线Git工作流与工具自有任务目录生命周期通过
+
+a97a967产品46输入/13eafd8 Bootstrap47输入离线BUILD0；六产品SOURCE0/零警告。
+账本15输入隔离读取器测试0；其任务/内核协作者是替身，不冒充下面的native结果。
+最终fc2d7c8b668c47dea505fc2f19f923a3安装INACTIVE，manifest2F23479431360CC5BE0B0E84DFB821FBF2FFD8D04BE3A100EC0F7677B0EDB20B。
+Session5607967e70a1403191c53ec499cab1d7实际根程序/PowerShell0，Git同Job/AppContainer/Low4096/零capability核验后释放stdin；
+stdin hash、init/add/commit/show、管理侧独立实际Git对象及固定样本身份核验通过；Git读取非秘密私有样本128/Permission denied。
+根程序三项AccessDenied5继续成立。完整隔离后Jobd2c339aa4bb84b8897ea712312621f72归零，43任务项按原身份精确清理，根回读不存在。
+任务私有意图/created/closed/profile cleanup摘要绑定独立核对，另一Broker无待恢复项；14资产/7目录普通访问审计通过。
+原r1硬链接拒绝、r2过早退出及r3确切getcwd/128错误保留；r4新建私有任务目录采用可遍历的可信系统祖先，不开放个人目录。
+不是全面宿主/网络/14项/任意项目/Python/MCP/GPU/真实Claude或崩溃重启验收。未改AV/既有目录ACL/全机网络/日常FlClash，未推送。

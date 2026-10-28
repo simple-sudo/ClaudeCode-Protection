@@ -1,7 +1,10 @@
 # 首条保护会话主链：源码接线与实际阻碍
 
 2026-10-27；首轮 `04e7419`，后续继续同一所有者。本文件描述源码与限定接线，不代表完整会话已验收。
-2026-10-28当前安装75320489保持INACTIVE；同一所有者的固定离线资源/PowerShell及拒绝验证实际通过。
+2026-10-28当前安装fc2d7c8b保持INACTIVE；同一所有者的固定离线资源/PowerShell/Git及拒绝验证实际通过。
+Git在新建的工具自有私有任务目录中完成stdin hash/init/add/commit/show，避免为getcwd开放个人profile祖先；
+管理侧持有进程句柄核验同Job/低完整性/精确AppContainer/零capability，独立核对实际Git对象及固定样本身份。
+任务根与原profile/闭Job账本绑定，完整no-follow/单链接库存校验后按句柄叶到根清理；43项实际删除、根缺失回读及独立无待恢复检查通过。
 会话在Job持久关闭/零成员后保留清理checkpoint并退出；下一独立Broker从v2私有账本完成精确profile删除与storage根不存在回读，第三次调用确认无待恢复项。
 正式会话仍未获许可；没有开放网关或网络。此前Codex告警已补充用户人工签名/OpenTIP核实，继续按具体工件资格开发，见STATUS及事件记录。
 
@@ -24,6 +27,7 @@
 | 持续监督 | 原 `ProtectionRuntimeLease` + Preparation/Admission + PR #1成员核验 | 同一租约先监督完整隔离的挂起阶段；全门禁通过后接收正式许可，才转向开放/恢复阶段；异常进入停止 |
 | 退出恢复 | 原运行租约/Job/Profile/loopback所有者 | 先撤销许可、关闭转发，再恢复完整隔离、精确停止Job/观察零成员，然后排空与清理；逐项保存失败 |
 | 已关闭Job的资源接续 | 原InstallationProfileLease + SessionProfileRecovery | v2创建/Job/cleanup checkpoint绑定；只恢复同一安装/当前用户及原目录身份，不采用legacy/未知创建窗口；完整隔离及所有准入关闭后才清理，实际回读storage不存在 |
+| 固定离线Git与任务数据 | 同一SessionResources + SessionGitToolchain + SessionTaskWorkspace | 6个固定只读Git资产摘要/ACL/链接拓扑封存；显式环境/离线协议限制；任务目录新建前后意图/NTFS身份绑定到profile，闭Job后精确清理，不更改宿主目录ACL |
 
 ## 网络执行范围
 

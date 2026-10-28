@@ -126,3 +126,17 @@ The original r1/r2 failures and ordinary ACL-diagnostic refusal remain preserved
 User-supplied valid OpenAI signature and OpenTIP Clean are accepted as manual
 investigation results for the exact Codex digest. They do not authorize AV UI,
 broader exclusions, automatic UAC or unqualified product/Claude launch.
+
+2026-10-28 Git throughline: a97a967 + 13eafd8 completed inactive update to
+fc2d7c8b668c47dea505fc2f19f923a3. Fixed offline Git hash/init/add/commit/show,
+same-Job/AppContainer identity, non-secret private-fixture denial, independent
+Git object verification and 43-entry exact task cleanup completed. Task data
+uses a fresh ProgramFiles/ClaudeCodeProtection-Task-<nonce> with a package-specific
+low-integrity DACL, avoiding grants to private profile ancestors for getcwd.
+Task intents/NTFS identity bind to the existing profile and closed-Job proof;
+never adopt or recursively erase unknown/replaced/reparse/hardlinked trees.
+Git's fixed read-only executable/DLL aliases have reviewed 4/2 hardlinks with
+pinned bytes/trusted ACLs; all payload/state/deletion single-link rules remain.
+The original Git r1/r2/r3 failures remain. This is offline fixed-tool scope,
+not arbitrary projects, online Git, full host/network/14-item, GPU or real Claude
+clearance. See STATUS for exact current evidence and remaining delivery gaps.
