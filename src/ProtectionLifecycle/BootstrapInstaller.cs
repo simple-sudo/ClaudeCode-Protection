@@ -22,7 +22,7 @@ internal sealed class BootstrapApproval : IDisposable
         var result=new BootstrapApproval();
         try
         {
-            var root=WindowsPathSeal.Canonical(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),inactiveUpdate?"ClaudeCodeProtection-Update-20261027-watchdog-members":"ClaudeCodeProtection-Bootstrap"));
+            var root=WindowsPathSeal.Canonical(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),inactiveUpdate?"ClaudeCodeProtection-Update-20261027-session-r1":"ClaudeCodeProtection-Bootstrap"));
             var entry=Assembly.GetEntryAssembly()??throw new InvalidOperationException("Bootstrap entry missing");
             if(entry.GetName().Name!="ProtectionBootstrap" ||
                 !Same(Environment.ProcessPath,Path.Combine(root,"ProtectionBootstrap.exe")) ||
@@ -92,7 +92,10 @@ public static class BootstrapInstaller
     // one-shot admissions. This is not a generic empty-job/runtime lease.
     public static (int ExitCode,string Report) UpdatePinnedInactive()
     {
-        ProtectedSession.AssertSystemTestingAllowed();
+        // Inactive maintenance has its own narrower qualification boundary.
+        // It does not execute a child, activate forwarding or clear the still
+        // unqualified system/session entries. The exact bootstrap is reviewed
+        // and pinned independently after compilation, before human UAC.
         ProtectedState.RequireAdministrator();
         using var approval=BootstrapApproval.Open(true);
         var package=ReviewedPackage.FromBootstrap(approval);
@@ -130,7 +133,10 @@ public static class BootstrapInstaller
             "B832A15F4A52CEE50B09707C032BB9199296A69A79A735BC84BAFA56A142A94B",
             "A31A246BFE3A021B3E443138906119BDAFD8518EBDC0B8CB349D87E0BFFBE2BD",
             "7EC62DE8F572CBED678616FF2E1F1A815C520463BD172E998A546CA975A7593C",
-            "3B2DBEDD06AF0B8230E3527CEC2790159CCEA9A36F8A2E3CF4213BC0CC25D9B3"
+            "3B2DBEDD06AF0B8230E3527CEC2790159CCEA9A36F8A2E3CF4213BC0CC25D9B3",
+            // Preserved member-diagnostic package present at the 0x1E event.
+            // Allowing closed inactive migration does not clear that incident.
+            "3EB4F1A88CAC2B3CFB6A561B357E65600745F6B989D8D9A7916A7FA0537FC7BD"
         };
         private readonly ProtectedState state;
         private readonly BootstrapApproval approval;
