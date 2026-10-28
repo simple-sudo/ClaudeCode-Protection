@@ -23,7 +23,7 @@ internal sealed record ResourceProbePlan(int SchemaVersion,string Nonce,string I
 }
 internal sealed record ResourceAccessCase(string Role,string Status,int? Error);
 internal sealed record ResourceChildReport(int SchemaVersion,int Pid,string Nonce,bool WorkspaceWriteReadMatched,int? ToolExit,
-    ResourceAccessCase[] Cases,string? FailureType,int? FailureCode,string? FailureStage);
+    ResourceAccessCase[] Cases,string? FailureType,int? FailureCode,string? FailureStage,string? ToolDiagnostic);
 
 // The workspace belongs to the freshly created installation profile. No host
 // directory ACL is widened, adopted, recursively copied or deleted. It is task
@@ -92,6 +92,9 @@ internal sealed class SessionResources : IDisposable
     internal bool ToolReady()
     {
         AssertHeld();var path=WindowsPathSeal.Child(Workspace,"tool-ready.txt");
+        // The signal carries no authority: it only follows close of the data
+        // file. Identity still comes from held process/token/Job inspection.
+        if(!File.Exists(WindowsPathSeal.Child(Workspace,"tool-ready.signal")))return false;
         try
         {
             using var handle=WindowsPathSeal.Open(path,false,true);
@@ -105,10 +108,10 @@ internal sealed class SessionResources : IDisposable
     internal void ReleaseInspectedTool()
     {
         AssertHeld();
-        var temporary=WindowsPathSeal.Child(Workspace,"tool-go-pending.txt");
-        using(var output=new FileStream(temporary,FileMode.CreateNew,FileAccess.Write,FileShare.None))
+        using(var output=new FileStream(WindowsPathSeal.Child(Workspace,"tool-go.txt"),FileMode.CreateNew,FileAccess.Write,FileShare.None))
         {output.Write(Encoding.ASCII.GetBytes(Plan.Nonce));output.Flush(true);}
-        File.Move(temporary,WindowsPathSeal.Child(Workspace,"tool-go.txt"),false);
+        using var signal=new FileStream(WindowsPathSeal.Child(Workspace,"tool-go.signal"),FileMode.CreateNew,FileAccess.Write,FileShare.Read);
+        signal.Flush(true);
     }
     internal static string ToolPath=>WindowsPathSeal.Child(Environment.GetFolderPath(Environment.SpecialFolder.System),"WindowsPowerShell/v1.0/powershell.exe");
     internal static string ProfileFolder(string sid)
@@ -131,7 +134,7 @@ internal sealed class SessionResources : IDisposable
             Environment.GetEnvironmentVariable("CPC_GPU_PLAN") is not null || Environment.GetEnvironmentVariable("CPC_SESSION_ID") is not null ||
             !string.Equals(Environment.ProcessPath,WindowsPathSeal.Child(FixedLayout.FromWindows().Version(plan.Release),"bin/admin/ProtectionBroker.exe"),StringComparison.OrdinalIgnoreCase))return 125;
         var workspace=plan.Workspace(packageSid);var cases=new List<ResourceAccessCase>();bool matched=false;int? toolExit=null;string? failure=null;
-        string stage="READ_WORKSPACE_INPUT";int? failureCode=null;string? failureStage=null;
+        string stage="READ_WORKSPACE_INPUT";int? failureCode=null;string? failureStage=null;string? toolDiagnostic=null;
         try
         {
             // The trusted owner holds and checks this complete ancestry and
@@ -162,7 +165,7 @@ internal sealed class SessionResources : IDisposable
             // verifies held process handles/tokens/Job before releasing this
             // compiled script. Planned startup/exit need not be atomic Job
             // membership snapshots; all traffic remains quarantined.
-            const string script="$ErrorActionPreference='Stop';[IO.File]::WriteAllText('tool-ready-pending.txt',$env:CPC_RESOURCE_NONCE);[IO.File]::Move('tool-ready-pending.txt','tool-ready.txt');$until=[DateTime]::UtcNow.AddSeconds(8);while(![IO.File]::Exists('tool-go.txt')){if([DateTime]::UtcNow -ge $until){exit 24};[Threading.Thread]::Sleep(20)};if([IO.File]::ReadAllText('tool-go.txt') -cne $env:CPC_RESOURCE_NONCE){exit 25};$v=[IO.File]::ReadAllText('input.txt');[IO.File]::WriteAllText('tool-output.txt',$v);$denied=$false;try{$f=[IO.File]::OpenRead($env:CPC_DENIAL_FIXTURE);$f.Dispose()}catch{if($_.Exception -is [UnauthorizedAccessException] -or $_.Exception.InnerException -is [UnauthorizedAccessException]){$denied=$true}else{exit 22}};if(!$denied){exit 23};exit 0";
+            const string script="$ErrorActionPreference='Stop';$stage='READY';try{[IO.File]::WriteAllText('tool-ready.txt',$env:CPC_RESOURCE_NONCE);[IO.File]::WriteAllText('tool-ready.signal','');$stage='WAIT_OWNER';$until=[DateTime]::UtcNow.AddSeconds(8);while(![IO.File]::Exists('tool-go.signal')){if([DateTime]::UtcNow -ge $until){exit 24};[Threading.Thread]::Sleep(20)};$stage='READ_OWNER_GATE';if([IO.File]::ReadAllText('tool-go.txt') -cne $env:CPC_RESOURCE_NONCE){exit 25};$stage='WORKSPACE_IO';$v=[IO.File]::ReadAllText('input.txt');[IO.File]::WriteAllText('tool-output.txt',$v);$stage='DENY_PRIVATE_FIXTURE';$denied=$false;try{$f=[IO.File]::OpenRead($env:CPC_DENIAL_FIXTURE);$f.Dispose()}catch{if($_.Exception -is [UnauthorizedAccessException] -or $_.Exception.InnerException -is [UnauthorizedAccessException]){$denied=$true}else{exit 22}};if(!$denied){exit 23};exit 0}catch{$e=$_.Exception.GetBaseException();[Console]::Error.WriteLine('CPC_TOOL_FAILURE|'+$stage+'|'+$e.GetType().Name+'|'+$e.HResult);exit 26}";
             stage="VERIFY_FIXED_TOOL_BYTES";
             using(var tool=File.OpenRead(ToolPath))
                 if(Convert.ToHexString(SHA256.HashData(tool))!=plan.ToolSHA256)throw WfpNative.Contract("FixedToolBytesChanged");
@@ -182,14 +185,22 @@ internal sealed class SessionResources : IDisposable
             stage="WAIT_FIXED_POWERSHELL";
             if(!process.WaitForExit(10000))throw new TimeoutException("Fixed offline tool deadline");
             toolExit=process.ExitCode;
-            if(stdout.WaitAsync(TimeSpan.FromSeconds(1)).GetAwaiter().GetResult().Length!=0 ||
-                stderr.WaitAsync(TimeSpan.FromSeconds(1)).GetAwaiter().GetResult().Length!=0)throw WfpNative.Contract("FixedToolUnexpectedOutput");
+            var toolOut=stdout.WaitAsync(TimeSpan.FromSeconds(1)).GetAwaiter().GetResult();
+            var toolError=stderr.WaitAsync(TimeSpan.FromSeconds(1)).GetAwaiter().GetResult();
+            if(toolOut.Length!=0 || toolError.Length!=0)
+            {
+                var diagnostic=toolError.Trim();
+                toolDiagnostic=System.Text.RegularExpressions.Regex.IsMatch(diagnostic,
+                    @"\ACPC_TOOL_FAILURE\|(READY|WAIT_OWNER|READ_OWNER_GATE|WORKSPACE_IO|DENY_PRIVATE_FIXTURE)\|[A-Za-z0-9.]{1,80}\|-?[0-9]{1,12}\z")?
+                    diagnostic:"UNCLASSIFIED_OUTPUT_SHA256="+Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(toolOut+"\0"+toolError)));
+                throw WfpNative.Contract("FixedToolUnexpectedOutput");
+            }
         }
         catch(Exception ex){failure=ex.GetType().Name;failureCode=ex is System.ComponentModel.Win32Exception native?native.NativeErrorCode:ex.HResult;failureStage=stage+(ex.Data["Stage"] is string nativeStage?"/"+nativeStage:"");}
-        var report=new ResourceChildReport(1,Environment.ProcessId,plan.Nonce,matched,toolExit,cases.ToArray(),failure,failureCode,failureStage);
+        var report=new ResourceChildReport(1,Environment.ProcessId,plan.Nonce,matched,toolExit,cases.ToArray(),failure,failureCode,failureStage,toolDiagnostic);
         Console.WriteLine(JsonSerializer.Serialize(report));return Qualified(report)?0:3;
     }
-    internal static bool Qualified(ResourceChildReport report)=>report.SchemaVersion==1 && report.WorkspaceWriteReadMatched && report.ToolExit==0 && report.FailureType is null && report.FailureCode is null && report.FailureStage is null &&
+    internal static bool Qualified(ResourceChildReport report)=>report.SchemaVersion==1 && report.WorkspaceWriteReadMatched && report.ToolExit==0 && report.FailureType is null && report.FailureCode is null && report.FailureStage is null && report.ToolDiagnostic is null &&
         report.Cases.Length==3 && report.Cases.Select(c=>c.Role).SequenceEqual(new[]{"private-state-Read","private-state-Write","broker-vm-read-open"}) &&
         report.Cases.All(c=>c.Status=="ACCESS_DENIED" && c.Error==5);
     internal static async Task<string> ReadBounded(StreamReader reader)
