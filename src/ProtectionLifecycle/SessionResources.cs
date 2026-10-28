@@ -110,13 +110,13 @@ internal sealed class SessionResources : IDisposable
             Environment.GetEnvironmentVariable("CPC_GPU_PLAN") is not null || Environment.GetEnvironmentVariable("CPC_SESSION_ID") is not null ||
             !string.Equals(Environment.ProcessPath,WindowsPathSeal.Child(FixedLayout.FromWindows().Version(plan.Release),"bin/admin/ProtectionBroker.exe"),StringComparison.OrdinalIgnoreCase))return 125;
         var workspace=plan.Workspace(packageSid);var cases=new List<ResourceAccessCase>();bool matched=false;int? toolExit=null;string? failure=null;
-        string stage="OPEN_AUTHORIZED_WORKSPACE_LEAF";int? failureCode=null;string? failureStage=null;
+        string stage="READ_WORKSPACE_INPUT";int? failureCode=null;string? failureStage=null;
         try
         {
-            // The trusted owner holds the complete ancestry. The restricted
-            // child must not need READ_CONTROL on unrelated host ancestors.
-            using var folder=WindowsPathSeal.Open(workspace,true,false);
-            stage="READ_WORKSPACE_INPUT";
+            // The trusted owner holds and checks this complete ancestry and
+            // input object. File-system/volume security metadata queries are
+            // management work; the restricted tool needs ordinary file I/O.
+            // The owner independently verifies both actual output identities.
             var input=ReadSmall(WindowsPathSeal.Child(workspace,"input.txt"));
             if(!input.AsSpan().SequenceEqual(plan.Input))throw WfpNative.Contract("ResourceInputMismatch");
             var result=WindowsPathSeal.Child(workspace,"root-output.txt");
@@ -159,7 +159,7 @@ internal sealed class SessionResources : IDisposable
             if(stdout.WaitAsync(TimeSpan.FromSeconds(1)).GetAwaiter().GetResult().Length!=0 ||
                 stderr.WaitAsync(TimeSpan.FromSeconds(1)).GetAwaiter().GetResult().Length!=0)throw WfpNative.Contract("FixedToolUnexpectedOutput");
         }
-        catch(Exception ex){failure=ex.GetType().Name;failureCode=ex is System.ComponentModel.Win32Exception native?native.NativeErrorCode:ex.HResult;failureStage=stage;}
+        catch(Exception ex){failure=ex.GetType().Name;failureCode=ex is System.ComponentModel.Win32Exception native?native.NativeErrorCode:ex.HResult;failureStage=stage+(ex.Data["Stage"] is string nativeStage?"/"+nativeStage:"");}
         var report=new ResourceChildReport(1,Environment.ProcessId,plan.Nonce,matched,toolExit,cases.ToArray(),failure,failureCode,failureStage);
         Console.WriteLine(JsonSerializer.Serialize(report));return Qualified(report)?0:3;
     }
