@@ -105,14 +105,10 @@ internal sealed class ProtectedSession
     internal static (int ExitCode,string Report) QualifyResources(FixedLayout layout,ProtectedState state,VerifiedVersion version)
         =>new ProtectedSession(layout,state,version).ExecuteResourceQualification();
     internal static (int ExitCode,string Report) QualifyResourceRecovery(FixedLayout layout,ProtectedState state,VerifiedVersion version)
-    {
-        var checkpoint=new ProtectedSession(layout,state,version).ExecuteResourceQualification(true);
-        if(checkpoint.ExitCode!=0)return checkpoint;
-        var recovery=SessionProfileRecovery.RecoverClosed(state);
-        return(recovery.ExitCode,JsonSerializer.Serialize(new {SchemaVersion=1,Scope="OFFLINE_RESOURCE_CLOSED_JOB_CLEANUP_CHECKPOINT_RECOVERY",
-            Checkpoint=JsonSerializer.Deserialize<JsonElement>(checkpoint.Report),Recovery=JsonSerializer.Deserialize<JsonElement>(recovery.Report),
-            ForcedProcessCrash=false,ControllerCrashQualified=false,LaunchAuthorized=false,ClaudeLaunched=false}));
-    }
+        // Deliberately EXIT this installed owner with a durable cleanup
+        // checkpoint. The NEXT installed invocation performs real journal
+        // recovery; no live in-memory profile object is transferred to it.
+        =>new ProtectedSession(layout,state,version).ExecuteResourceQualification(true);
     private (int ExitCode,string Report) ExecuteResourceQualification(bool deferCleanup=false)
     {
         InstallationProfileLease? profile=null;AtomicChild? child=null;
