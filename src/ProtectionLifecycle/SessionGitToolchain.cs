@@ -33,19 +33,23 @@ internal sealed class SessionGitToolchain : IDisposable
     {
         // The last directory must also deny untrusted DLL creation, rather
         // than merely preventing its own rename. No ACL is changed here.
-        var result=new SessionGitToolchain(WindowsPathSeal.LockDirectory(DirectoryPath,PathPolicy.CreationParent));
+        PathLease directory;
+        try{directory=WindowsPathSeal.LockDirectory(DirectoryPath,PathPolicy.CreationParent);}
+        catch(Exception ex){if(ex.Data["Stage"] is null)ex.Data["Stage"]="VerifyFixedGitDirectory";throw;}
+        var result=new SessionGitToolchain(directory);var stage="VerifyGitAssetSet";
         try
         {
             foreach(var asset in Assets)
             {
-                var file=new FileStream(WindowsPathSeal.Open(WindowsPathSeal.Child(DirectoryPath,asset.Name),false,true),FileAccess.Read,65536,false);
+                stage="VerifyGitAsset:"+asset.Name;
+                var file=new FileStream(WindowsPathSeal.OpenReviewedGitAsset(asset.Name),FileAccess.Read,65536,false);
                 result.files.Add(file);WindowsPathSeal.AssertAcl(file.SafeFileHandle,false,true);
                 if(file.Length is <1 or >16*1024*1024 || Convert.ToHexString(SHA256.HashData(file))!=asset.Hash)throw WfpNative.Contract("ReviewedGitAssetChanged");
                 file.Position=0;
             }
             result.AssertHeld();return result;
         }
-        catch{result.Dispose();throw;}
+        catch(Exception ex){if(ex.Data["Stage"] is null)ex.Data["Stage"]=stage;result.Dispose();throw;}
     }
     internal void AssertHeld()
     {

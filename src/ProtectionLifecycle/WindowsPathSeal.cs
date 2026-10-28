@@ -105,6 +105,27 @@ internal static class WindowsPathSeal
         try{VerifyObjectCore(handle,path,false,true);AssertAcl(handle,false,true);return handle;}
         catch{handle.Dispose();throw;}
     }
+    // Git for Windows intentionally aliases its executable and dependency
+    // DLLs with hardlinks. This is a READ-ONLY exception for a closed asset
+    // set; source/payload/state/deletion paths retain the single-link rule.
+    // Every alias shares the same NTFS object ACL. The caller additionally
+    // holds the trusted Git ancestry and verifies each reviewed byte digest.
+    internal static SafeFileHandle OpenReviewedGitAsset(string leaf)
+    {
+        var links=leaf switch {"git.exe"=>4u,"libiconv-2.dll" or "libintl-8.dll" or "libpcre2-8-0.dll" or "libwinpthread-1.dll" or "zlib1.dll"=>2u,
+            _=>throw new InvalidDataException("Fixed reviewed Git asset required")};
+        var path=Child(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),"Git/mingw64/bin/"+leaf);
+        var handle=CreateFile(path,ReadControl|ReadAttributes|0x80000000u,1,IntPtr.Zero,3,OpenReparse,IntPtr.Zero);
+        if(handle.IsInvalid){var error=Error("OpenReviewedGitAsset");handle.Dispose();throw error;}
+        try
+        {
+            VerifyObjectCore(handle,path,false,true);AssertAcl(handle,false,true);
+            if(!GetFileInformationByHandle(handle,out var info))throw Error("ReadGitAssetLinkCount");
+            if(info.Links!=links)throw new InvalidDataException("Reviewed Git hardlink topology changed");
+            return handle;
+        }
+        catch(Exception ex){handle.Dispose();if(ex.Data["Stage"] is null)ex.Data["Stage"]="VerifyReviewedGitAsset";throw;}
+    }
     internal static string Identity(SafeFileHandle handle)
     {
         if(!GetFileInformationByHandle(handle,out var info))throw Error("ReadExactIdentity");
