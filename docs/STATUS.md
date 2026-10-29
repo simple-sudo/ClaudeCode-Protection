@@ -1,16 +1,14 @@
 # 当前开发状态
 
-## 子进程启动定位候选（待本人UAC）
+## 当前安装 dccb5fe0：LPAC子工具创建拒绝，显式继承候选开发中
 
-BUILD / VERIFIED（cffcffd限定）：55输入离线构建0错误/0警告，工件原生导入面未变、无module initializer。普通用户start-failure测试0：不存在映像的真实带重定向启动调用返回2/3并分类CREATE_PROCESS，无框架栈的异常保持START_UNCLASSIFIED；没有产品执行。work/lpac-build-r6/run-result SHA256=D860DB551EDAFBADD22282B534167E034421E38E18147EB0B7A349C025487864。诊断包dccb5fe0096b4e319ad123d443f564b4，manifest599852489D7049C8944C3C41712AC1ACE5217F2E437AB2AB5D3035D2E880A02A，库726408229A13058F4AF7C662D352AC2957331E12D2D91543245A0A81E82D72E8，3项变更/11复用；仅为原失败点取得准确阶段，不授予任何新增权限。
+VERIFIED（安装限定）：人工UAC14:09:26Z更新dccb5fe0096b4e319ad123d443f564b4，manifest599852489D7049C8944C3C41712AC1ACE5217F2E437AB2AB5D3035D2E880A02A，库726408229A13058F4AF7C662D352AC2957331E12D2D91543245A0A81E82D72E8。15文件摘要/保护ACL独立回读匹配，保持INACTIVE；只读意图2/MISSING。离线55输入构建0错误/警告，普通start-failure测试0，仅验证启动失败分类。证据work/lpac-build-r6、work/lpac-start-label-control。
 
-## 当前安装d1b5cf61：LPAC根资源拒绝通过，PowerShell启动阶段拒绝仍待修复
+FAIL（原生数据任务）：session78cfb5fc2c0442bd9b1fb17b64a120b2退出3，daily已准确返回PowerShellCreateProcess/5；框架重定向管道创建/复制已越过，实际子进程创建遭拒绝。无成果导出，空输出和旧包/失败保留，不重复不变任务或自动恢复。boot仍05:44:54.5Z，产品进程为空，AVP/BFE/FlClash/UU保持。此次终态Job/隔离私有回执尚未独立采集，不从daily3虚构清理成功。
 
-VERIFIED（限定原生）：人工UAC14:00:44Z更新d1b5cf615a7645d882ac982c14d1e2dc / manifest1F79C28F55857F788023802635F7A0A62DACEEA4BE5CD6BD45035E4A78E42681，INACTIVE，15文件摘要/保护ACL匹配；Broker只读意图2/MISSING。新session641515b1ed88432d9d3816a88578dd25管理侧LPAC AccessCheck mask2/挂起身份/首次恢复通过。root实际授权工作区读写匹配，四项均AccessDenied5：私有状态读、写、AAP-only非秘密文件读、Broker VM-read句柄打开。这是比普通AppContainer数据链更强的真实资源拒绝证据，但不证明全部宿主敏感资源已隔离。
+VERIFIED（先前限定，不重测）：d1b5cf61 session641515b1ed88432d9d3816a88578dd25实际LPAC根工作区读写匹配，私有状态读/写、AAP-only非秘密文件读、Broker VM-read打开均拒绝5；管理侧LPAC mask2/挂起身份通过。其Job00f251370f83481391509b8d9fe53b97闭合/零成员、完整隔离和无stop错误有确切回执。证据work/lpac-paths-control，不能外推全宿主隐私。
 
-FAIL（工具阶段保留）：root报告START_FIXED_POWERSHELL / Win32Exception5，ToolExit=null、PowerShell/Git未观察、无成果导出，daily退出3。确切两份回执只读采集确认Job00f251370f83481391509b8d9fe53b97关闭/零成员、完整隔离、stop无错误。work/lpac-paths-control/session-receipts SHA256=D14A3A8E98515843E7A5E839ECC08DA1437975FD869026F71F4BD4AC4D573780；workflow-result=F3F3185D085D759F0BE5A02E4EED16D1E610C84BD3B109F3FD0715EC7C2AEAE1。旧任务/包/空结果保留，无自动重试/恢复。boot仍05:44:54.5Z，AVP/BFE、FlClash/Core24520/17272及UU7056运行，无产品进程；有限Application AV0，完整厂商告警覆盖UNKNOWN。
-
-SOURCE（下一具体问题）：.NET8 Process.Start带重定向时先CreatePipe/DuplicateHandle，再CreateProcess；当前error5不能定位具体API或证明PowerShell本身不兼容。新源码仅以框架已知方法名产生固定CREATE_REDIRECT_PIPE/DUPLICATE_REDIRECT_HANDLE/CREATE_PROCESS标签，并经原daily管道返回有界错误kind/code，不暴露栈/参数/路径。六产品非生成语义0错误/警告；该新增诊断尚无BUILD/runtime资格。下一步仅针对实际失败点资格/修复，不申请通用registryRead/lpacCom、不降低LPAC或改宿主ACL。完整编译/测试/网络/14项/GPU及整个产品继续未验收。下方各“当前安装”标题为历史记录。
+SOURCE / INTEGRATED（修复假设，未验证）：同一AtomicChild中给既有资源/Git工作进程增加显式LPAC后代创建，固定映像参数、同包零能力、AAP opt-out、三条管道handle-list、原Job继承及挂起身份检查；仍由原管理侧检查实际LPAC/Job/工具映像后打开现有门。无新执行器或提权通道，无普通AppContainer回退，不加registryRead/lpacCom能力或改宿主ACL。新增Windows参数往返/普通调用者拒绝资格待构建。不能把显式创建视为已证明的原始原因或修复；编译/项目执行、完整网络/14项/GPU和正式会话仍未验收。以下“当前”标题均为历史快照。
 
 ## 最新：4fe9da3d已安装，LPAC阻碍定位到工具前的路径准备
 

@@ -76,7 +76,7 @@ internal sealed class SessionGitToolchain : IDisposable
                 if(file.Length is <1 or >16*1024*1024 || Convert.ToHexString(SHA256.HashData(file))!=asset.Hash)throw WfpNative.Contract("ChildGitAssetChanged");
             }
             stage="HASH_INPUT_WITH_INSPECTED_GIT";
-            using(var process=Process.Start(Start(workspace,plan.GitDirectory,"hash-object","--stdin"))??throw WfpNative.Contract("GitStartFailed"))
+            using(var process=AtomicChild.StartInheritedTool(Start(workspace,plan.GitDirectory,"hash-object","--stdin")))
             {
                 var stdout=SessionResources.ReadBounded(process.StandardOutput);var stderr=SessionResources.ReadBounded(process.StandardError);
                 Signal(workspace,"git-ready",plan.Nonce);
@@ -156,13 +156,13 @@ internal sealed class SessionGitToolchain : IDisposable
     }
     private static (int Exit,string Out,string Error) Run(string workspace,string directory,params string[] args)
     {
-        using var process=Process.Start(Start(workspace,directory,args))??throw WfpNative.Contract("GitStartFailed");process.StandardInput.Close();
+        using var process=AtomicChild.StartInheritedTool(Start(workspace,directory,args));process.StandardInput.Close();
         var result=Finish(process,SessionResources.ReadBounded(process.StandardOutput),SessionResources.ReadBounded(process.StandardError));
         RecordResult(workspace,result);return result;
     }
     private static void RecordResult(string workspace,(int Exit,string Out,string Error) result)=>
         File.WriteAllText(WindowsPathSeal.Child(workspace,"git-last-result.json"),JsonSerializer.Serialize(new {ExitCode=result.Exit,Stdout=result.Out,Stderr=result.Error}),new UTF8Encoding(false));
-    private static (int Exit,string Out,string Error) Finish(Process process,Task<string> stdout,Task<string> stderr)
+    private static (int Exit,string Out,string Error) Finish(AtomicChild.InheritedTool process,Task<string> stdout,Task<string> stderr)
     {
         if(!process.WaitForExit(8000))throw WfpNative.Contract("FixedGitDeadlineExpired");
         return(process.ExitCode,stdout.WaitAsync(TimeSpan.FromSeconds(1)).GetAwaiter().GetResult(),stderr.WaitAsync(TimeSpan.FromSeconds(1)).GetAwaiter().GetResult());

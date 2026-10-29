@@ -181,7 +181,10 @@ public static class BootstrapInstaller
             "0337CB5D80ECEB760AC8BF96E49FD699B51A0E9E77ED2284BE4206662EFA549F",
             // Current LPAC data chain: root denial qualified, tool start5;
             // exact receipt confirms full quarantine and closed/zero Job.
-            "1F79C28F55857F788023802635F7A0A62DACEEA4BE5CD6BD45035E4A78E42681"
+            "1F79C28F55857F788023802635F7A0A62DACEEA4BE5CD6BD45035E4A78E42681",
+            // Reviewed diagnostic package. Its actual CreateProcess denial is
+            // preserved; all original closure/fence checks still apply here.
+            "599852489D7049C8944C3C41712AC1ACE5217F2E437AB2AB5D3035D2E880A02A"
         };
         private readonly ProtectedState state;
         private readonly BootstrapApproval approval;

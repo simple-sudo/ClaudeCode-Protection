@@ -266,7 +266,7 @@ internal sealed class SessionResources : IDisposable
             stage="VERIFY_FIXED_TOOL_BYTES";
             using(var tool=File.OpenRead(ToolPath))
                 if(Convert.ToHexString(SHA256.HashData(tool))!=plan.ToolSHA256)throw WfpNative.Contract("FixedToolBytesChanged");
-            var start=new ProcessStartInfo(ToolPath){UseShellExecute=false,CreateNoWindow=true,WorkingDirectory=workspace,RedirectStandardOutput=true,RedirectStandardError=true};
+            var start=new ProcessStartInfo(ToolPath){UseShellExecute=false,CreateNoWindow=true,WorkingDirectory=workspace,RedirectStandardInput=true,RedirectStandardOutput=true,RedirectStandardError=true};
             start.Environment.Clear();
             foreach(var name in new[]{"SystemRoot","windir","SystemDrive","PROCESSOR_ARCHITECTURE"})
             {var value=Environment.GetEnvironmentVariable(name);if(value is not null)start.Environment[name]=value;}
@@ -278,7 +278,7 @@ internal sealed class SessionResources : IDisposable
             start.Environment["CPC_RESOURCE_NONCE"]=plan.Nonce;
             foreach(var arg in new[]{"-NoLogo","-NoProfile","-NonInteractive","-Command",script})start.ArgumentList.Add(arg);
             stage="START_FIXED_POWERSHELL";
-            using var process=Process.Start(start)??throw WfpNative.Contract("FixedToolStartFailed");
+            using var process=AtomicChild.StartInheritedTool(start);process.StandardInput.Close();
             var stdout=ReadBounded(process.StandardOutput);var stderr=ReadBounded(process.StandardError);
             stage="WAIT_FIXED_POWERSHELL";
             if(!process.WaitForExit(10000))throw new TimeoutException("Fixed offline tool deadline");
@@ -313,6 +313,12 @@ internal sealed class SessionResources : IDisposable
     }
     private static string ToolStartFailurePhase(Exception error)
     {
+        if(error.Data["Stage"] is string native)
+        {
+            if(native=="InheritedToolCreateProcess")return "CREATE_PROCESS";
+            if(native is "InheritedToolInputPipe" or "InheritedToolOutputPipe" or "InheritedToolErrorPipe")return "CREATE_REDIRECT_PIPE";
+            if(native=="InheritedToolParentHandleSeal")return "DUPLICATE_REDIRECT_HANDLE";
+        }
         var methods=new StackTrace(error,false).GetFrames()?.Select(f=>f.GetMethod()).Where(m=>m?.DeclaringType==typeof(Process)).Select(m=>m!.Name).ToArray()??Array.Empty<string>();
         return methods.Contains("CreatePipeWithSecurityAttributes")?"CREATE_REDIRECT_PIPE":methods.Contains("CreatePipe")?"DUPLICATE_REDIRECT_HANDLE":
             methods.Contains("StartWithCreateProcess")?"CREATE_PROCESS":"START_UNCLASSIFIED";

@@ -1,5 +1,19 @@
 # ClaudeCode-Protection working rules
 
+2026-10-29 authoritative current installed dccb5fe0096b4e319ad123d443f564b4,
+manifest599852489D7049C8944C3C41712AC1ACE5217F2E437AB2AB5D3035D2E880A02A,
+human-UAC inactive update14:09:26Z; 15 hashes/protected DACLs matched.
+Session78cfb5fc2c0442bd9b1fb17b64a120b2 returned3 with actual
+PowerShellCreateProcess/5, no result. Pipe setup passed; do not repeat it.
+Private terminal Job/quarantine receipt not independently read in this
+revision; daily3 is not cleanup proof. No reboot/product process remains.
+Source candidate uses the same AtomicChild native creation for worker-owned
+PowerShell/Git descendants with explicit same-package LPAC/handle list and
+inherited Job. No additional capability or host ACL change, no fallback.
+This is an unqualified repair hypothesis, not established attribution.
+Qualify changed bytes before another concrete human-UAC system operation.
+Preserve all prior failures. Earlier current-package paragraphs are historical.
+
 2026-10-29 current installed d1b5cf615a7645d882ac982c14d1e2dc, manifest
 1F79C28F55857F788023802635F7A0A62DACEEA4BE5CD6BD45035E4A78E42681,
 human-UAC update completed14:00:44Z, remains INACTIVE. LPAC data task

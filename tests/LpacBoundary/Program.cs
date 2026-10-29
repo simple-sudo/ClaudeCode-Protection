@@ -3,11 +3,12 @@ using System.Runtime.ExceptionServices;
 using System.Security.AccessControl;
 using System.Security.Principal;
 using Microsoft.Win32.SafeHandles;
+using System.Runtime.InteropServices;
 
 // Bound to the reviewed production library. These two modes do not create or
 // resume a process/profile/Job or open private resources. The token reader may
 // create a temporary query-only Identification duplicate, never impersonate it.
-if(args.Length!=1 || args[0] is not ("policy" or "self-token" or "runtime-paths" or "start-failure"))return 125;
+if(args.Length!=1 || args[0] is not ("policy" or "self-token" or "runtime-paths" or "start-failure" or "inherited-command"))return 125;
 using var identity=WindowsIdentity.GetCurrent();
 if(new WindowsPrincipal(identity).IsInRole(WindowsBuiltInRole.Administrator))throw new InvalidOperationException("Ordinary test only");
 var library=Assembly.LoadFrom(Path.Combine(AppContext.BaseDirectory,"ProtectionLifecycle.dll"));
@@ -18,6 +19,31 @@ static object? Call(MethodInfo method,params object?[] values)
     catch(TargetInvocationException ex)when(ex.InnerException is not null){ExceptionDispatchInfo.Capture(ex.InnerException).Throw();throw;}
 }
 static void Require(bool value,string reason){if(!value)throw new InvalidOperationException("LPAC: "+reason);}
+if(args[0]=="inherited-command")
+{
+    var atomic=library.GetType("ProtectionLifecycle.AtomicChild",true)!;
+    var command=atomic.GetMethod("InheritedToolCommand",flags)!;
+    var image="C:\\owned tool\\fixed.exe";
+    var values=new[]{"","plain","space here","quote\"inside","C:\\ends with space\\","\\\\\"","中文","line\nnext"};
+    var encoded=Call(command,image,values)!.ToString()!;
+    var parsed=CommandLineToArgvW(encoded,out var count);if(parsed==IntPtr.Zero)throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error());
+    try
+    {
+        Require(count==values.Length+1,"native argument count preserved");
+        Require(Marshal.PtrToStringUni(Marshal.ReadIntPtr(parsed))==image,"exact image retained");
+        for(var i=0;i<values.Length;i++)Require(Marshal.PtrToStringUni(Marshal.ReadIntPtr(parsed,(i+1)*IntPtr.Size))==values[i],"native argument roundtrip "+i);
+    }
+    finally{LocalFree(parsed);}
+    foreach(var invalid in new[]{"nul\0arg",new string('x',32767)})
+    {
+        var refused=false;try{Call(command,image,new[]{invalid});}catch(InvalidDataException){refused=true;}
+        Require(refused,"NUL and oversize command refused");
+    }
+    var start=new System.Diagnostics.ProcessStartInfo(image){UseShellExecute=false,CreateNoWindow=true,WorkingDirectory="C:\\",RedirectStandardInput=true,RedirectStandardOutput=true,RedirectStandardError=true};
+    var rejected=false;try{Call(atomic.GetMethod("StartInheritedTool",flags)!,start);}catch(InvalidDataException){rejected=true;}
+    Require(rejected,"ordinary caller cannot use inherited-tool entry; no pipe/process created");
+    Console.WriteLine("PASS Windows native argv roundtrip, invalid commands and ordinary-caller refusal; no process/Job/profile/elevation");return 0;
+}
 if(args[0]=="start-failure")
 {
     var classify=library.GetType("ProtectionLifecycle.SessionResources",true)!.GetMethod("ToolStartFailurePhase",flags)!;
@@ -98,3 +124,6 @@ Require(rules.Single(r=>r.SecurityIdentifier.Value=="S-1-15-2-1").AccessMask==0x
 Require(rules.All(r=>r.SecurityIdentifier.Value!="S-1-15-2-2" && r.SecurityIdentifier.Value!="S-1-15-2-123"),"fixture has no restricted-package or package grant");
 Require(rules.Single(r=>r.SecurityIdentifier==identity.User).AccessMask==0x120089,"human positive control read-only");
 Console.WriteLine("PASS production LPAC member policy rejects regular roots/children; exact AAP-only non-secret fixture DACL; no native creation or privacy claims");return 0;
+
+[DllImport("shell32.dll",CharSet=CharSet.Unicode,SetLastError=true)] static extern IntPtr CommandLineToArgvW(string command,out int count);
+[DllImport("kernel32.dll")] static extern IntPtr LocalFree(IntPtr memory);

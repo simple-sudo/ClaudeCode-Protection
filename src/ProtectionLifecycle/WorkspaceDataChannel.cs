@@ -63,7 +63,14 @@ public static partial class InstalledBroker
                     failureKind=childStage.GetString() switch {
                         "START_FIXED_POWERSHELL/CREATE_REDIRECT_PIPE"=>"PowerShellRedirectPipe",
                         "START_FIXED_POWERSHELL/DUPLICATE_REDIRECT_HANDLE"=>"PowerShellRedirectHandle",
-                        "START_FIXED_POWERSHELL/CREATE_PROCESS"=>"PowerShellCreateProcess",
+                        "START_FIXED_POWERSHELL/CREATE_PROCESS" or "START_FIXED_POWERSHELL/CREATE_PROCESS/InheritedToolCreateProcess"=>"PowerShellCreateProcess",
+                        "START_FIXED_POWERSHELL/CREATE_REDIRECT_PIPE/InheritedToolInputPipe" or "START_FIXED_POWERSHELL/CREATE_REDIRECT_PIPE/InheritedToolOutputPipe" or "START_FIXED_POWERSHELL/CREATE_REDIRECT_PIPE/InheritedToolErrorPipe"=>"PowerShellRedirectPipe",
+                        "START_FIXED_POWERSHELL/DUPLICATE_REDIRECT_HANDLE/InheritedToolParentHandleSeal"=>"PowerShellRedirectHandle",
+                        "START_FIXED_POWERSHELL/START_UNCLASSIFIED/InheritedToolAttributes"=>"PowerShellAttributes",
+                        "START_FIXED_POWERSHELL/START_UNCLASSIFIED/InheritedToolPackage"=>"PowerShellPackage",
+                        "START_FIXED_POWERSHELL/START_UNCLASSIFIED/InheritedToolLpac"=>"PowerShellLpacPolicy",
+                        "START_FIXED_POWERSHELL/START_UNCLASSIFIED/InheritedToolHandleList"=>"PowerShellHandleList",
+                        "START_FIXED_POWERSHELL/START_UNCLASSIFIED/InheritedToolResume"=>"PowerShellResume",
                         "START_FIXED_POWERSHELL/START_UNCLASSIFIED" or "START_FIXED_POWERSHELL"=>"PowerShellStart",
                         _=>"ResourceSessionFailed"};
                     if(failureKind!="ResourceSessionFailed" && child.TryGetProperty("FailureCode",out var code) && code.ValueKind==JsonValueKind.Number)
