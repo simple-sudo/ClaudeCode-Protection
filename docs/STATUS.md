@@ -1,14 +1,18 @@
 # 当前开发状态
 
-## 2026-10-29 当前事故：0x1E蓝屏；停止新增产品执行
+## 2026-10-29 当前事故修复：名称查询已通过普通用户验证；安装链待验证
 
-SOURCE / INTEGRATED（修复中，未结案）：Wof匹配反汇编表明FileNamesInformation=12跳过事故中的元数据转换，.NET默认类2会进入。现已将Lifecycle所有目录清点接入原WindowsPathSeal的仅名称查询，保留逐项身份/ACL/tag及原清理边界，无旧枚举回退。六产品及两组测试源码语义0错误/0警告；tests/DirectoryNames已给出只访问新普通用户临时样本的具体资格入口。BUILD / 原生资格 / 消除崩溃均未取得；等待对冻结离线构建→工件审查→普通用户有限样本的明确决定，不安装/运行Broker、不恢复旧负载、不改系统。详见事故记录“继续解决”。
+用户明确允许验证并修改此前停止要求，放行此具体修复资格，不再以旧build/runtime blanket hold重复等待同一授权。BUILD / VERIFIED（限定）：2173dcb的51输入离线Lifecycle+DirectoryNames构建0错误/0警告，生成依赖/PE/无module initializer审查后，pages-only与owned-fixture均退出0。484个顶层名称跨64KiB分页完整，Unicode/空目录/重复独立游标/容量拒绝/DELETE句柄兼容通过，嵌套子文件不可见。库SHA256=05316042C9D040BA20DF007576981ABA25EBE817F4347408C00AEDF4FAAEB5CC，测试DLL=C89DE4F2889179774A606B58BE177A1D1CE7B867B88C0AD30949429F98A64FAB。
+
+原始构建/审查/开始与终态/样本保留于work/names-only-qualification-20261029-r1；run-result SHA256=E0FA45AC48DC971721E1CC4855AE1CC7423343FFEC1B090D00F651E6C33928DE。系统boot仍05:44:54.5Z，AVP/BFE运行，FlClash24520/Core17272及UU服务保持；有限Application AV事件0，完整厂商覆盖UNKNOWN。未安装/运行Broker/读私有state/改驱动与网络。修复并未结案：下一项是复用此库准备安装Broker/Bootstrap工件，实际安装和受保护状态查询须保持人工UAC与具体工件审查。
+
+SOURCE / INTEGRATED：Wof匹配反汇编表明FileNamesInformation=12跳过事故中的元数据转换，.NET默认类2会进入。Lifecycle所有目录清点已接入原WindowsPathSeal的仅名称查询，保留逐项身份/ACL/tag及原清理边界，无旧枚举回退。静态语义及限定运行证据见上，不把临时样本通过扩大为原蓝屏已经消除。详见事故记录“继续解决”。
 
 VERIFIED（只读事故比较，非产品验收）：用户明确授权操控已安装微软WinDbg并本人确认UAC；两份原dump的匹配符号均显示ProtectionBroker目录枚举、WofPreDirectoryControlCallback+0x695、Ntfs!FindNextIndexEntry2+0x675后RIP=0，完整分类同为AV_Wof!WofPreDirectoryControlCallback。强烈支持同一失败机制；Wof/AV/硬件责任、具体CLR行与目录仍UNKNOWN，不授予重试。06:53Z收尾复核两份原dump摘要未变，7次分析GUI/7引擎精确结束，日志/符号失败及成功原样保留于work/windbg-installed-20261029；未上传转储。详见[有效比较及限定结论](INCIDENT-20261029-SYSTEM-CRASH.md)。
 
 05:58Z补充：本人UAC的固定只读采集已确认重启后actual current仍为ecb06a/INACTIVE；原转储SHA256=B81AB79BF339A8FB89833C564F86483B950409B3D836BA7D80D46CEC09BD47F3。1501项有界库存的明确UTC事故窗口没有匹配新会话/profile/Job/task回执；不证明请求未执行或恢复成功。r1时间类型误拒绝失败保留，r2修正为明确UTC后307ms退出0。该采集本身无产品/调试器执行；旧拒绝及后续手动分析计划为历史，已由上方本人授权的安装WinDbg路径取得有效结果。
 
-BLOCKED（产品build/install/runtime/fault injection）：本次人工UAC窗口在05:44:37Z已完成INACTIVE更新到ecb06a57929a45d1adf9dd1d8415c4a4，manifest851701939666F35F4E0C4323C408E00690B4CFB96165C81F5C6092AF5D8238C6；错误输入摘要拒绝125已落盘，随后正确项目数据请求没有终态。05:44:54Z系统重启，System1001确认0x1E(C0000005,0,8,0)。驱动/根因/本项目因果均UNKNOWN；不重试、不自动恢复，不把失联当完成。
+历史BLOCKED（本次修复资格已由上方新授权放行；原负载与恢复未放行）：本次人工UAC窗口在05:44:37Z已完成INACTIVE更新到ecb06a57929a45d1adf9dd1d8415c4a4，manifest851701939666F35F4E0C4323C408E00690B4CFB96165C81F5C6092AF5D8238C6；错误输入摘要拒绝125已落盘，随后正确项目数据请求没有终态。05:44:54Z系统重启，System1001确认0x1E(C0000005,0,8,0)。驱动/根因/本项目因果均UNKNOWN；不自动恢复，不把失联当完成。
 新staging/版本目录存在，旧659d76df保留；重启后当前指针已直接回读，但未完成Job/profile及WFP恢复仍未验证。普通读取转储AccessDenied保留，后续本人UAC成功；未改ACL/上传。
 重启后AVP/BFE运行，FlClash/Core24520/17272及UU GameViewer服务进程存在，无产品测试进程；这些不证明整体系统健康/保护验收。
 SOURCE / BUILD / INTEGRATED：457d9bd的普通用户成果恢复/输入边界及256KiB二进制测试通过（DLL AD4FFD697890AB0AFF5A52071D8AFE1AA7F632AF1595C4AE771622C7A8914F7D），实际七文件项目包393114字节SHA EA0D3E9410ABE5BAE70B535EA91F7A679E59D30F7F12B4922AA13DD96B0072F0。

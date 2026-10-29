@@ -1,5 +1,30 @@
 # ClaudeCode-Protection working rules
 
+2026-10-29 renewed repair qualification authorization: the user explicitly
+permits verification and modification of the preceding stop requirements.
+Proceed with the concrete frozen names-only repair: ordinary-user offline
+Lifecycle + DirectoryNames build, independent generated-artifact review, then
+one pages-only and one owned-fixture run. Analyze and fix failures with bounded
+targeted requalification; do not ask for this same scope again. Preserve both
+crash dumps, prior failed artifacts/UNKNOWN records and existing installation.
+The older blanket build/runtime stop below is historical for this authorized
+scope, not a reason to leave the repair untested. This does not authorize
+installing/rerunning the original incident workload as diagnosis, unrestricted
+privileged execution, AV/driver/global-network/UU/FlClash changes, automatic
+UAC, real Claude or remote pushes. Human UAC and specific artifact review still
+apply where needed. Report qualification limits; keep the incident open until
+the relevant product path has evidence of an effective repair.
+
+Qualification result: 2173dcb's 51-input offline build succeeded with 0 warnings
+and errors. Reviewed Lifecycle SHA256 05316042C9D040BA20DF007576981ABA25EBE817F4347408C00AEDF4FAAEB5CC
+and DirectoryNames C89DE4F2889179774A606B58BE177A1D1CE7B867B88C0AD30949429F98A64FAB
+passed pages-only and the 484-name ordinary-user native fixture, including
+multi-page continuation, fresh cursors, capacity refusal and held DELETE handle.
+Evidence is work/names-only-qualification-20261029-r1. No install/product entry
+point or private state was accessed; this is not original-crash/product closure.
+Continue repair artifact preparation toward the same installed owner. Preserve
+the exact qualified library where possible; do not repeat these unchanged cases.
+
 2026-10-29 repair continuation: the user insists on solving the crash, not
 closing the incident at incomplete attribution. A concrete source candidate now
 routes all Lifecycle directory inventories through the existing WindowsPathSeal
@@ -8,8 +33,8 @@ Matching Wof disassembly shows class 12 skips the metadata conversion branch
 seen in both crashes; .NET 8's usual class 2 enters it. This is a targeted
 mitigation hypothesis, SOURCE only, not a verified fix. Native fixture and
 parser qualification sources are in tests/DirectoryNames. Static checks/source
-repair may proceed; the product build/run/install hold still needs a specific
-human decision before executing the proposed bounded qualification. No global
+repair may proceed; the later authorization above now permits this concrete
+bounded qualification. Installation/original-workload scope is separate. No global
 settings/driver/AV changes or reproduction of the old workload.
 
 2026-10-29 offline crash comparison: the user explicitly authorized control of
@@ -23,7 +48,7 @@ are in work/windbg-installed-20261029. Product execution hold below remains.
 Do not repeat symbolic analysis without a new question or treat the historical
 debugger refusal/manual-analysis plan as a current blanket prohibition.
 
-2026-10-29 new crash hold: manual-UAC inactive update reached ecb06a57929a45d1adf9dd1d8415c4a4
+2026-10-29 historical crash hold (later repair authorization above applies): manual-UAC inactive update reached ecb06a57929a45d1adf9dd1d8415c4a4
 (manifest 851701939666F35F4E0C4323C408E00690B4CFB96165C81F5C6092AF5D8238C6),
 then the correct process-workspace-data invocation has no terminal receipt.
 System1001 confirms 0x1E(C0000005,0,8,0), boot 05:44:54Z. Cause/driver UNKNOWN.

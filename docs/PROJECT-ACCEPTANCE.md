@@ -1,5 +1,9 @@
 # 完整项目验收账本
 
+## 2026-10-29 名称查询修复资格通过；事故仍开放
+
+本人明确放行验证及修改旧停止要求。2173dcb的51输入Lifecycle/DirectoryNames离线restore/build0，零警告错误，工件独立审查后普通用户pages-only/owned-fixture均0。484顶层名称跨页/Unicode/空目录/独立游标/容量拒绝/嵌套不递归/DELETE句柄兼容通过；生产库05316042、测试DLL C89DE4F2，完整摘要见STATUS。证据work/names-only-qualification-20261029-r1，样本/回执保留。此为BUILD及限定VERIFIED，不是原蓝屏消除、安装产品路径或生命周期恢复验收；未改系统/AV/驱动/网络，未运行原负载。旧blanket hold对这次授权资格失效，后续实际安装保持工件审查和人工UAC。
+
 ## 2026-10-29 有效离线转储比较；不解除产品事故hold
 
 后续修复SOURCE / INTEGRATED：匹配Wof反汇编确认类12避开本次类2→0x4e的转换分支。原WindowsPathSeal已提供仅名称查询，Lifecycle各清点调用已接入并保留独立对象核验；产品六项目及两组测试源码静态语义0错误/0警告。tests/DirectoryNames限定新普通用户临时样本的资格已编写，但未构建/运行；不是已修复或VERIFIED，事故开放。下一具体步骤的原生查询需单独解除该范围hold，不恢复原负载或修改系统。

@@ -1,6 +1,18 @@
 # 2026-10-29 蓝屏重启：项目数据处理窗口
 
-当前结论：两份原转储的有效符号栈强烈支持相同故障机制：ProtectionBroker目录枚举，经Wof/FLTMGR/NTFS，在Ntfs间接调用处跳向空地址。造成错误调用目标的根因/责任驱动及具体源码调用点仍UNKNOWN；不能将WinDbg分类直接升级为Wof自身缺陷，也不能排除本项目触发。停止新增产品build/install/runtime/fault injection，不重试该负载，不为复现而触发；只继续有界只读事故核对。真实Claude/AV/FlClash/UU/全机网络限制保持。此为技术安全hold，不是用户请求暂停整个goal。
+当前结论：两份原转储的有效符号栈强烈支持相同故障机制：ProtectionBroker目录枚举，经Wof/FLTMGR/NTFS，在Ntfs间接调用处跳向空地址。造成错误调用目标的根因/责任驱动及具体源码调用点仍UNKNOWN；不能将WinDbg分类直接升级为Wof自身缺陷，也不能排除本项目触发。用户后续明确重新授权修复验证，名称查询修复已通过下方限定资格，旧blanket build/runtime停止要求不再阻塞这一授权范围；原事故负载/安装/自动恢复不因临时样本通过而放行。真实Claude/AV/FlClash/UU/全机网络限制保持，事故开放，整体goal未暂停/完成。
+
+## 本人重新授权后的构建与原生资格
+
+用户明确“允许你进行验证，之前的要求停止可以修改掉”。冻结2173dcb的51个输入，经原审查SDK8.0.422/ref8.0.28、独立离线输出/空源/SDK导入清单核对、禁止分析器及共享编译，restore/build均0，零警告/错误。生成文件独立元数据审查：两份x64 managed程序集无module initializer，测试无直接PInvoke，依赖仅自身和Lifecycle；新增查询绑定为WindowsPathSeal.NtQueryDirectoryFile/ntdll，固定dotnet 8.0.28启动。
+
+- Lifecycle SHA256=05316042C9D040BA20DF007576981ABA25EBE817F4347408C00AEDF4FAAEB5CC；DirectoryNames DLL=C89DE4F2889179774A606B58BE177A1D1CE7B867B88C0AD30949429F98A64FAB。
+- pages-only=0：完整/Unicode/dot/255字符名称与截断、非法长度/偏移/续项重叠、隐藏记录、UTF16错误、路径片段等拒绝通过。
+- owned-fixture=0：原生产方法清点全新普通用户临时目录，初始483项+后加1项；编码记录总长度超过64KiB，强制真实分页。空目录/Unicode、文件和目录名称、嵌套不递归、重复独立游标、容量拒绝、后续新增及持有DELETE权限目录句柄时的查询均通过。样本保留，没有递归删除或私有state读取。
+- 运行终态NAMES_ONLY_BOUNDED_QUALIFICATION_PASSED；开始/终态、stdout/stderr、工件审查和原样本在work/names-only-qualification-20261029-r1。run-result.json SHA256=E0FA45AC48DC971721E1CC4855AE1CC7423343FFEC1B090D00F651E6C33928DE，build receipt SHA256=B8070E23F24ED60BBC4AD63189C09F667A741D99048E8D3701E4B44A385CDAC2。
+- 本轮普通用户执行，无UAC/安装/产品入口/AppContainer/Job/WFP/系统设置变化。boot仍05:44:54.5Z，AVP/BFE运行，FlClash/Core24520/17272及UU服务保持；有限Application AV事件0，完整厂商覆盖UNKNOWN。没有产品测试进程遗留。
+
+限定VERIFIED为名称解析和本机名称查询行为，不能记为事故已解决；安装后的版本核验/私有状态清点/资源生命周期仍待证据。下一步复用这份合格库准备实际Broker/Bootstrap工件，保持具体审查和人工UAC，不能再用旧冻结反复阻断同一限定修复资格。下方“未构建/待授权”为此前阶段历史。
 
 ## 2026-10-29 06:53Z：本人授权的已安装WinDbg比较完成
 
