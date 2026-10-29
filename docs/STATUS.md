@@ -1,5 +1,9 @@
 # 当前开发状态
 
+## 开发中：把普通用户数据往返接到实际安装Broker
+
+SOURCE / INTEGRATED：新增daily workspace-process BASE_BUNDLE NEW_RESULT_BUNDLE，预先持有新输出及安装资产，人工UAC启动固定同版本Broker；本地同用户管道双向核对PID、限制帧长/时间，Broker另核对当前daily映像和同一普通用户token。只传数据包，不传宿主路径/脚本/任意命令，复用ProcessWorkspaceBytes、ProtectedSession和成功清理后的ExportWorkspaceData。取消/失败不自动删除或覆盖用户输出，不提升普通daily自身，不打开正式会话/网络。六产品非生成语义0错误/0警告；最初命名遮蔽/nullable诊断修正且保留报告。具体构建/IPC资格及安装待后续证据，当前安装仍5bc986e1。
+
 ## 2026-10-29 当前事故修复：5bc986e1已安装，原Broker状态清点正常返回
 
 VERIFIED（安装与限定只读调用链）：本人明确授权安装并确认UAC，07:37:41Z Bootstrap退出0，ecb06a→5bc986e16e9a44ca856a1b56b90328aa，manifest048E974CD4611B4DB7B577B64DAA5842C5CA02FE08D63298382BBC001FBBEC37，operation d6e5f46005234e67b3124a7ce175cbd0，INACTIVE。07:37:44Z原安装Broker inspect-session-environment退出2/MISSING、stderr为空；这是环境意图尚未配置的正常只读观察，版本布局及LifecycleRecovery状态清点已走新名称查询正常返回。LaunchAuthorized/ObservedEnvironmentVerified/SystemSettingsModified均false。

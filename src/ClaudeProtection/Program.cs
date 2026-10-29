@@ -14,6 +14,10 @@ internal static class Program
         {
             switch (args.FirstOrDefault())
             {
+                case "workspace-process":
+                    if(args.Length!=3)return 64;
+                    Console.WriteLine(JsonSerializer.Serialize(await WorkspaceProcessing.Run(args[1],args[2])));
+                    return 0;
                 case "workspace-pack":
                     if(args.Length!=4)return 64;
                     WorkspaceFiles.RequireOrdinaryUser();
@@ -82,6 +86,7 @@ internal static class Program
                     Console.WriteLine("Real Claude launch is deferred. Engineering commands are excluded from this build.");
                     Console.WriteLine("workspace-pack ROOT SELECTION_JSON NEW_BUNDLE | workspace-review BASE_BUNDLE RESULT_BUNDLE (data transfer only; no launch or host writeback)");
                     Console.WriteLine("workspace-extract BASE_BUNDLE RESULT_BUNDLE NEW_DIRECTORY (new files only; no merge or overwrite)");
+                    Console.WriteLine("workspace-process BASE_BUNDLE NEW_RESULT_BUNDLE (installed Broker, human UAC; fixed offline Git data processing only)");
                     return args.Length == 0 ? 0 : 64;
             }
         }

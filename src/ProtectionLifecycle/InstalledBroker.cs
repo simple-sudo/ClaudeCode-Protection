@@ -10,7 +10,7 @@ namespace ProtectionLifecycle;
 // Mutations require the installed verified broker and elevation. The two
 // explicit diagnostics are read-only and can be separately qualified from a
 // development build. Neither diagnostic opens the installed mutation path.
-public static class InstalledBroker
+public static partial class InstalledBroker
 {
     public static (int ExitCode,string Report) ProcessWorkspaceData(string expectedSHA256)
         =>WithCurrentInstallation((layout,state,version)=>
@@ -18,11 +18,15 @@ public static class InstalledBroker
         var expected=Identifiers.Hash(expectedSHA256);
         if(!Console.IsInputRedirected)throw new InvalidDataException("Byte-pinned redirected workspace data required");
         var bytes=ClaudeCodeProtection.Workspaces.WorkspaceFiles.ReadInput(Console.OpenStandardInput(),ClaudeCodeProtection.Workspaces.WorkspaceBundle.MaxBundleBytes);
+        return ProcessWorkspaceBytes(layout,state,version,expected,bytes);
+    });
+    private static (int ExitCode,string Report) ProcessWorkspaceBytes(FixedLayout layout,ProtectedState state,VerifiedVersion version,string expected,byte[] bytes)
+    {
         if(ClaudeCodeProtection.Workspaces.WorkspaceBundle.Hash(bytes)!=expected)throw new InvalidDataException("Workspace input digest differs");
         var bundle=ClaudeCodeProtection.Workspaces.WorkspaceBundle.Parse(bytes);
         if(bundle.BaseSHA256 is not null || bundle.Files.Length==0)throw new InvalidDataException("Nonempty baseline workspace required");
         return ProtectedSession.ProcessWorkspaceData(layout,state,version,bytes);
-    });
+    }
     public static byte[] ExportWorkspaceData(string sessionId,string expectedResultSHA256)
     {
         byte[]? result=null;

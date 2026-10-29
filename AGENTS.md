@@ -1,5 +1,17 @@
 # ClaudeCode-Protection working rules
 
+2026-10-29 active-goal continuation: user renews autonomous development,
+verification, repair and local commits toward usable authorized projects.
+The next production slice is ordinary daily workspace-process -> one human-UAC
+installed Broker -> existing data-only ProtectedSession/Git -> closed-result
+export -> fresh ordinary-user bundle. A local same-user pipe transfers bytes,
+never privileged host paths or arbitrary commands. Review/pin new artifacts;
+ordinary IPC/output tests do not need repeated stage permission. Installing a
+new package/creating a protected resource session still needs the concrete
+human-controlled system step. Keep 5bc986e1 INACTIVE and preserve crash evidence.
+This slice does not authorize input project code, real Claude or weaken the
+fourteen-item/host-privacy/network/GPU admission requirements.
+
 2026-10-29 installed repair result: the explicitly authorized manual-UAC
 inactive update to 5bc986e16e9a44ca856a1b56b90328aa completed at 07:37Z,
 manifest 048E974CD4611B4DB7B577B64DAA5842C5CA02FE08D63298382BBC001FBBEC37,

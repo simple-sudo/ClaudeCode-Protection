@@ -50,6 +50,28 @@ internal static class WorkspaceFiles
         using var held=new HeldPaths();held.DirectoryChain(Path.GetDirectoryName(Local(path))!);
         using var file=held.NewFile(path);file.Write(bytes);file.Flush(true);
     }
+    // Reserve a new ordinary-user result before UAC and hold its complete
+    // ancestry. Cancel/failure leaves this owned empty/partial file for review;
+    // never delete, overwrite, merge or silently reuse an existing output.
+    internal sealed class BundleOutput : IDisposable
+    {
+        private readonly HeldPaths held=new();
+        private readonly FileStream file;
+        private bool completed;
+        internal BundleOutput(string path)
+        {
+            try{held.DirectoryChain(Path.GetDirectoryName(Local(path))!);file=held.NewFile(path);}
+            catch{held.Dispose();throw;}
+        }
+        internal void Complete(byte[] bytes)
+        {
+            if(completed || file.Position!=0 || file.Length!=0)throw new IOException("Fresh workspace output required");
+            _=WorkspaceBundle.Parse(bytes);file.Write(bytes);file.Flush(true);completed=true;
+        }
+        public void Dispose()=>held.Dispose();
+    }
+    internal static BundleOutput ReserveBundleNew(string path)
+    {RequireOrdinaryUser();return new(path);}
     internal static void ExtractResultNew(string destination,byte[] baselineBytes,byte[] resultBytes)
     {
         RequireOrdinaryUser();_=WorkspaceBundle.Compare(baselineBytes,resultBytes);
@@ -141,7 +163,7 @@ internal static class WorkspaceFiles
         return full.Length==3?full:full.TrimEnd('\\');
     }
     private static string Child(string root,string relative)=>Local(Path.Combine(Local(root),relative.Replace('/','\\')));
-    private sealed class HeldPaths : IDisposable
+    internal sealed class HeldPaths : IDisposable
     {
         private readonly Dictionary<string,SafeFileHandle> directories=new(StringComparer.OrdinalIgnoreCase);
         private readonly List<FileStream> files=new();

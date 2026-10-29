@@ -6,6 +6,15 @@ internal static class Program
 {
     private static int Main(string[] args)
     {
+        if(args.Length==4 && args[0]=="process-workspace-pipe")
+        {
+            try
+            {
+                if(!int.TryParse(args[1],System.Globalization.NumberStyles.None,System.Globalization.CultureInfo.InvariantCulture,out var owner) || owner<=0)return 64;
+                return ProtectionLifecycle.InstalledBroker.ProcessWorkspacePipe(owner,args[2],args[3]);
+            }
+            catch(Exception ex){Console.Error.WriteLine("Workspace data channel not confirmed: "+ex.GetType().Name+"; code="+ex.HResult);return 125;}
+        }
         if(args.Length==2 && args[0]=="process-workspace-data" || args.Length==3 && args[0]=="export-workspace-data")
         {
             try
