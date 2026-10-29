@@ -164,7 +164,11 @@ public static class BootstrapInstaller
             // Installed names-only repair; two read-only paths returned.
             // Migration still requires the same durable closed admissions,
             // Job-zero and quarantine checks; original workload stays unproven.
-            "048E974CD4611B4DB7B577B64DAA5842C5CA02FE08D63298382BBC001FBBEC37"
+            "048E974CD4611B4DB7B577B64DAA5842C5CA02FE08D63298382BBC001FBBEC37",
+            // Installed daily pipe candidate. The first roundtrip was refused;
+            // the existing closed-admission/Job/quarantine checks still decide
+            // whether any inactive migration is safe, never this digest alone.
+            "429D76D9B3245DF335D879F27F8CDCC12AF954E79685B8D40BBDC9F50BDFB5FF"
         };
         private readonly ProtectedState state;
         private readonly BootstrapApproval approval;

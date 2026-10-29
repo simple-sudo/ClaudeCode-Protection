@@ -1,7 +1,6 @@
 using System.Diagnostics;
 using System.Reflection;
 using System.Security.Cryptography;
-using System.Text.Json;
 
 namespace ClaudeProtection;
 
@@ -9,7 +8,7 @@ using ClaudeCodeProtection.Workspaces;
 
 internal static class WorkspaceProcessing
 {
-    internal static async Task<object> Run(string inputPath,string resultPath)
+    internal static async Task<(int ExitCode,object Report)> Run(string inputPath,string resultPath)
     {
         WorkspaceFiles.RequireOrdinaryUser();
         var input=WorkspaceFiles.ReadBundle(inputPath);var bundle=WorkspaceBundle.Parse(input);
@@ -48,16 +47,14 @@ internal static class WorkspaceProcessing
             await WorkspacePipe.Write(server,input,WorkspaceBundle.MaxBundleBytes,transfer.Token);
         using var completion=new CancellationTokenSource(TimeSpan.FromSeconds(75));
         var response=await WorkspacePipe.Read(server,16384,completion.Token);
-        using var doc=JsonDocument.Parse(response);var r=doc.RootElement;
-        var fields=r.EnumerateObject().Select(p=>p.Name).ToArray();
-        if(fields.Length!=6 || fields.Distinct(StringComparer.Ordinal).Count()!=6 ||
-            !fields.OrderBy(n=>n,StringComparer.Ordinal).SequenceEqual(new[]{"BaseSHA256","ExitCode","ResultSHA256","SchemaVersion","SessionId","Status"}.OrderBy(n=>n,StringComparer.Ordinal)) ||
-            r.GetProperty("SchemaVersion").GetInt32()!=1 || r.GetProperty("BaseSHA256").GetString()!=expected)
-            throw new InvalidDataException("Workspace reply contract differs");
-        var session=r.GetProperty("SessionId").GetString();var resultHash=r.GetProperty("ResultSHA256").GetString();
-        if(r.GetProperty("ExitCode").GetInt32()!=0 || r.GetProperty("Status").GetString()!="WORKSPACE_DATA_PROCESSED_AND_CLEANED" ||
-            session?.Length!=32 || session.Any(c=>c is not (>= '0' and <= '9' or >= 'a' and <= 'f')) || !WorkspaceBundle.IsHash(resultHash))
-            throw new IOException("Workspace processing did not produce a closed successful result");
+        var reply=WorkspacePipe.ParseReply(response,expected);var session=reply.SessionId;var resultHash=reply.ResultSHA256;
+        if(reply.ExitCode!=0)
+        {
+            await broker.WaitForExitAsync(completion.Token);
+            if(broker.ExitCode!=reply.ExitCode)throw new IOException("Workspace failure process exit differs");
+            return(reply.ExitCode,new {Status="WORKSPACE_DATA_NOT_CONFIRMED",SessionId=session,BaseSHA256=expected,
+                reply.FailureStage,reply.FailureKind,reply.FailureCode,ResultReleased=false,AutomaticRetry=false});
+        }
         var result=await WorkspacePipe.Read(server,WorkspaceBundle.MaxBundleBytes,completion.Token);
         WorkspacePipe.AssertPeer(server,broker.Id,true);
         if(WorkspaceBundle.Hash(result)!=resultHash)throw new InvalidDataException("Workspace result digest differs");
@@ -65,8 +62,8 @@ internal static class WorkspaceProcessing
         await broker.WaitForExitAsync(completion.Token);
         if(broker.ExitCode!=0)throw new IOException("Workspace Broker did not complete successfully");
         output.Complete(result);
-        return new {Status="WORKSPACE_DATA_RESULT_RECEIVED",SessionId=session,BaseSHA256=expected,ResultSHA256=resultHash,
+        return (0,new {Status="WORKSPACE_DATA_RESULT_RECEIVED",SessionId=session,BaseSHA256=expected,ResultSHA256=resultHash,
             FileCount=WorkspaceBundle.Parse(result).Files.Length,Changes=changes,OriginalProjectModified=false,ProjectCodeExecuted=false,
-            FormalAdmissionIssued=false,NetworkOpened=false,UACAutoConfirmed=false};
+            FormalAdmissionIssued=false,NetworkOpened=false,UACAutoConfirmed=false});
     }
 }

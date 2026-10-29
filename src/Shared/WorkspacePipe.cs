@@ -4,6 +4,7 @@ using System.IO.Pipes;
 using System.Runtime.InteropServices;
 using System.Security.AccessControl;
 using System.Security.Principal;
+using System.Text.Json;
 using Microsoft.Win32.SafeHandles;
 
 namespace ClaudeCodeProtection.Workspaces;
@@ -12,6 +13,36 @@ namespace ClaudeCodeProtection.Workspaces;
 // installed Broker. Never a host-path, script, process or command service.
 internal static class WorkspacePipe
 {
+    // WindowsPrincipal.IsInRole queries primary-token membership by making
+    // a temporary Identification token. Query alone makes that check fail.
+    // This does not request Impersonate, AssignPrimary or Adjust privileges.
+    internal const uint CallerTokenQueryAccess=0x0008|0x0002;
+    internal sealed record Reply(int ExitCode,string? SessionId,string? ResultSHA256,string? FailureStage,string? FailureKind,int? FailureCode);
+    internal static Reply ParseReply(byte[] bytes,string expected)
+    {
+        if(bytes.Length is <1 or >16384 || !WorkspaceBundle.IsHash(expected))throw new InvalidDataException("Workspace reply bounds refused");
+        using var doc=JsonDocument.Parse(bytes,new JsonDocumentOptions{MaxDepth=4});var r=doc.RootElement;
+        var fields=r.EnumerateObject().Select(p=>p.Name).ToArray();
+        var required=new[]{"BaseSHA256","ExitCode","FailureCode","FailureKind","FailureStage","ResultSHA256","SchemaVersion","SessionId","Status"};
+        if(fields.Length!=required.Length || fields.Distinct(StringComparer.Ordinal).Count()!=required.Length ||
+            !fields.OrderBy(n=>n,StringComparer.Ordinal).SequenceEqual(required.OrderBy(n=>n,StringComparer.Ordinal)) ||
+            r.GetProperty("SchemaVersion").GetInt32()!=2 || r.GetProperty("BaseSHA256").GetString()!=expected)
+            throw new InvalidDataException("Workspace reply contract differs");
+        var exit=r.GetProperty("ExitCode").GetInt32();var session=r.GetProperty("SessionId").GetString();
+        var hash=r.GetProperty("ResultSHA256").GetString();var stage=r.GetProperty("FailureStage").GetString();var kind=r.GetProperty("FailureKind").GetString();
+        int? code=r.GetProperty("FailureCode").ValueKind==JsonValueKind.Null?null:r.GetProperty("FailureCode").GetInt32();
+        if(session is not null && (session.Length!=32 || session.Any(c=>c is not (>= '0' and <= '9' or >= 'a' and <= 'f'))))
+            throw new InvalidDataException("Workspace reply session differs");
+        if(exit==0)
+        {
+            if(session is null || !WorkspaceBundle.IsHash(hash) || stage is not null || kind is not null || code is not null ||
+                r.GetProperty("Status").GetString()!="WORKSPACE_DATA_PROCESSED_AND_CLEANED")throw new InvalidDataException("Workspace success reply differs");
+        }
+        else if(exit is not (3 or 125) || hash is not null || stage is not ("installation" or "caller" or "input" or "processing" or "export") ||
+            kind is null || kind.Length is <1 or >80 || kind.Any(c=>!char.IsAsciiLetterOrDigit(c)) || code is null ||
+            r.GetProperty("Status").GetString()!="WORKSPACE_DATA_NOT_CONFIRMED")throw new InvalidDataException("Workspace failure reply differs");
+        return new(exit,session,hash,stage,kind,code);
+    }
     internal static string Name(int ownerPid,string nonce)
     {
         if(ownerPid<=0 || nonce.Length!=32 || nonce.Any(c=>c is not (>= '0' and <= '9' or >= 'a' and <= 'f')))

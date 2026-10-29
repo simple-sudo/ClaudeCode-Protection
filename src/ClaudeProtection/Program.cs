@@ -16,8 +16,8 @@ internal static class Program
             {
                 case "workspace-process":
                     if(args.Length!=3)return 64;
-                    Console.WriteLine(JsonSerializer.Serialize(await WorkspaceProcessing.Run(args[1],args[2])));
-                    return 0;
+                    var processed=await WorkspaceProcessing.Run(args[1],args[2]);
+                    Console.WriteLine(JsonSerializer.Serialize(processed.Report));return processed.ExitCode;
                 case "workspace-pack":
                     if(args.Length!=4)return 64;
                     WorkspaceFiles.RequireOrdinaryUser();

@@ -3,15 +3,60 @@ using System.ComponentModel;
 using System.IO.Pipes;
 using System.Security.AccessControl;
 using System.Security.Principal;
+using System.Text.Json;
 using ClaudeCodeProtection.Workspaces;
 
 WorkspaceFiles.RequireOrdinaryUser();
-if(args.Length!=1 || args[0] is not ("frames" or "local-pipe" or "output" or "snapshot"))return 125;
+if(args.Length!=1 || args[0] is not ("frames" or "local-pipe" or "output" or "snapshot" or "token-membership" or "reply"))return 125;
 static void Require(bool condition,string reason){if(!condition)throw new Exception("WorkspacePipe: "+reason);}
 static async Task Refuse(Func<Task> operation,string reason)
 {
     try{await operation();}catch(Exception ex)when(ex is InvalidDataException or EndOfStreamException or OperationCanceledException or IOException){return;}
     throw new Exception("WorkspacePipe accepted "+reason);
+}
+if(args[0]=="token-membership")
+{
+    using(var queryOnly=WindowsIdentity.GetCurrent(TokenAccessLevels.Query))
+    {
+        var refused=false;try{_=new WindowsPrincipal(queryOnly).IsInRole(WindowsBuiltInRole.Administrator);}
+        catch(System.Security.SecurityException){refused=true;}
+        Require(refused,"original query-only membership failure reproduced");
+    }
+    using var reviewed=WindowsIdentity.GetCurrent((TokenAccessLevels)WorkspacePipe.CallerTokenQueryAccess);
+    Require(!new WindowsPrincipal(reviewed).IsInRole(WindowsBuiltInRole.Administrator),"reviewed ordinary caller classification");
+    Require(WorkspacePipe.CallerTokenQueryAccess==(uint)(TokenAccessLevels.Query|TokenAccessLevels.Duplicate),"membership-only token rights");
+    Console.WriteLine("PASS self token membership: original query-only refusal, production query/duplicate succeeds as ordinary; no other process, impersonation, elevation or Job");return 0;
+}
+if(args[0]=="reply")
+{
+    var hash=new string('A',64);var session=new string('a',32);
+    Dictionary<string,object?> Success()=>new(){["SchemaVersion"]=2,["ExitCode"]=0,["SessionId"]=session,["BaseSHA256"]=hash,["ResultSHA256"]=hash,
+        ["Status"]="WORKSPACE_DATA_PROCESSED_AND_CLEANED",["FailureStage"]=null,["FailureKind"]=null,["FailureCode"]=null};
+    Dictionary<string,object?> Failure()=>new(){["SchemaVersion"]=2,["ExitCode"]=125,["SessionId"]=null,["BaseSHA256"]=hash,["ResultSHA256"]=null,
+        ["Status"]="WORKSPACE_DATA_NOT_CONFIRMED",["FailureStage"]="caller",["FailureKind"]="SecurityException",["FailureCode"]=-2146233078};
+    void Reject(Dictionary<string,object?> value,string reason)
+    {
+        var refused=false;try{_=WorkspacePipe.ParseReply(JsonSerializer.SerializeToUtf8Bytes(value),hash);}catch(InvalidDataException){refused=true;}
+        Require(refused,"reply "+reason);
+    }
+    Require(WorkspacePipe.ParseReply(JsonSerializer.SerializeToUtf8Bytes(Success()),hash).ExitCode==0,"success contract");
+    var failed=WorkspacePipe.ParseReply(JsonSerializer.SerializeToUtf8Bytes(Failure()),hash);
+    Require(failed.FailureStage=="caller" && failed.ResultSHA256 is null && failed.SessionId is null && failed.ExitCode==125,"actionable pre-session refusal without result");
+    var runtime=Failure();runtime["SessionId"]=session;runtime["FailureStage"]="processing";runtime["ExitCode"]=3;runtime["FailureKind"]="ResourceSessionFailed";runtime["FailureCode"]=3;
+    Require(WorkspacePipe.ParseReply(JsonSerializer.SerializeToUtf8Bytes(runtime),hash).SessionId==session,"exact resource receipt binding on failure");
+    var value=Success();value["Extra"]=0;Reject(value,"unknown field");
+    value=Success();value.Remove("FailureCode");Reject(value,"missing field");
+    value=Success();value["BaseSHA256"]=new string('B',64);Reject(value,"wrong input binding");
+    value=Success();value["SessionId"]=null;Reject(value,"missing success session");
+    value=Success();value["FailureStage"]="caller";Reject(value,"contradictory success");
+    value=Failure();value["ResultSHA256"]=hash;Reject(value,"result on failure");
+    value=Failure();value["FailureStage"]="C:\\private";Reject(value,"host path as stage");
+    value=Failure();value["FailureKind"]="private data";Reject(value,"arbitrary failure text");
+    value=Failure();value["SessionId"]="../bad";Reject(value,"invalid session");
+    var duplicate=JsonSerializer.Serialize(Success()).Replace("\"SchemaVersion\":2","\"SchemaVersion\":2,\"SchemaVersion\":2",StringComparison.Ordinal);
+    var refusedDuplicate=false;try{_=WorkspacePipe.ParseReply(System.Text.Encoding.UTF8.GetBytes(duplicate),hash);}catch(InvalidDataException){refusedDuplicate=true;}
+    Require(refusedDuplicate,"duplicate reply fields");
+    Console.WriteLine("PASS reply contract: success/failure/session binding, strict fields, no failure result or private text; no IPC, UAC or Job");return 0;
 }
 if(args[0]=="frames")
 {

@@ -1,5 +1,13 @@
 # 当前开发状态
 
+## 当前安装90079258：新daily往返首轮拒绝，已定位调用者身份检查缺陷
+
+VERIFIED（安装/只读）：用户明确授权后，两次人工UAC；08:18:29Z inactive update退出0，current=90079258ef8545f19d80e2c211744367 / manifest429D76D9B3245DF335D879F27F8CDCC12AF954E79685B8D40BBDC9F50BDFB5FF。15个安装文件摘要/保护DACL及管理员owner独立匹配；新Broker环境意图读取2/MISSING，无准入。证据work/workspace-pipe-control/installed-evidence及installed-readback.json。
+
+FAIL（保留）：08:20:12–15Z普通安装daily workspace-process对确切四文件包BA1C5764F54DF02B4E9266EE4C6414E28C6D8E8D18F9A07EB91A0CE4DC0D4138返回125/IOException，输出为空文件，未重试/恢复。原回复没有返回安全失败阶段，不能据此判定实际是否进入资源阶段或清理成功。系统boot仍05:44:54.5Z，AVP/BFE、FlClash/Core24520/17272及UU7056保持，无产品进程；有限Application AV0，完整厂商覆盖UNKNOWN。
+
+SOURCE / 原因修正中：OpenWorkspaceCaller用TOKEN_QUERY(8)后调用WindowsPrincipal.IsInRole，而.NET8会DuplicateTokenEx作Identification级成员查询。普通用户自令牌复现QUERY→SecurityException，QUERY|DUPLICATE→正常false，与微软源码/接口约束一致；这确定暴露实现缺陷，但当前缺少原Broker失败阶段，不将推断冒充原回执。补齐查询所需的最小两项访问（无Impersonate/AssignPrimary/Adjust权限）、严格回复v2固定phase/type/code/session元数据和daily非零结构化终态。新增资格仅检查自令牌和协议负例，不重跑已过的管道/输出/快照，不触发新任务。原正式会话/隐私/网络/GPU及完整往返仍未验收。
+
 ## 开发中：把普通用户数据往返接到实际安装Broker
 
 BUILD / INTEGRATED（待安装候选）：073d211离线payload构建0错误/0警告，Release90079258ef8545f19d80e2c211744367，manifest429D76D9B3245DF335D879F27F8CDCC12AF954E79685B8D40BBDC9F50BDFB5FF，库8DB5F3039CE3352AFE4D303501FBD7F0429EA43828750BDE942342BE0D6AD2D7；逐资产5变更/9复用，原5bc安装字节保持。新daily可请求一次本人UAC，原Broker接收明确包并交回闭Job/清理后成果，尚未实机完整运行。候选不激活保护、不执行输入项目代码，安装及受保护数据操作须具体本人系统决定。

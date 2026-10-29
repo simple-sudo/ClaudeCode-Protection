@@ -1,5 +1,33 @@
 # ClaudeCode-Protection working rules
 
+2026-10-29 installed daily pipeline: approved human-UAC update to
+90079258ef8545f19d80e2c211744367 completed 08:18:29Z, remains INACTIVE.
+15 installed files matched hashes/protected DACLs; new Broker read-only intent
+returned 2/MISSING normally. The authorized ordinary workspace-process attempt
+at 08:20Z returned 125/IOException, preserving an empty result and all evidence
+in work/workspace-pipe-control/workflow-*. No reboot; no product process left.
+Do not retry that attempt or auto-recover private state. Source review plus
+ordinary self-token reproduction found QUERY-only token rights cannot support
+WindowsPrincipal membership checks (SecurityException); QUERY|DUPLICATE works.
+Fix that bounded check and return safe phase/code/session failure metadata.
+This deterministic defect is not yet proof of the hidden installed failure;
+do not invent original Job/profile/cleanup evidence. New artifact installation
+or another protected task still needs its concrete reviewed human system step.
+
+2026-10-29 explicit workspace-pipeline system authorization: user approves
+installing reviewed candidate 90079258ef8545f19d80e2c211744367 (manifest
+429D76D9B3245DF335D879F27F8CDCC12AF954E79685B8D40BBDC9F50BDFB5FF),
+then one limited daily workspace-process data roundtrip for the four selected
+repository files, input SHA256
+BA1C5764F54DF02B4E9266EE4C6414E28C6D8E8D18F9A07EB91A0CE4DC0D4138.
+Use work/workspace-pipe-control's pinned inactive update/read-only helper,
+then ordinary installed daily -> human-UAC Broker -> original fixed offline
+Git/ProtectedSession -> closed result/export and exact cleanup. Both UAC
+confirmations remain human-controlled. This supersedes waiting for this exact
+installation/resource step, not formal project-code/network/GPU admission or
+automatic retry/recovery. Preserve failures, current/old packages and private
+state; keep INACTIVE and all daily UU/FlClash/AV/network settings.
+
 2026-10-29 active-goal continuation: user renews autonomous development,
 verification, repair and local commits toward usable authorized projects.
 The next production slice is ordinary daily workspace-process -> one human-UAC
