@@ -43,7 +43,7 @@ void Verify(bool rootLpac,bool childLpac,bool hasChild=true)
 Verify(true,true);Verify(true,false,false);
 foreach(var pair in new[]{(false,false),(true,false),(false,true)})
 {
-    var rejected=false;try{Verify(pair.Item1,pair.Item2);}catch(Exception ex)when(ex.GetType().FullName=="ProtectionLifecycle.WfpFailure"){rejected=true;}
+    var rejected=false;try{Verify(pair.Item1,pair.Item2);}catch(InvalidDataException ex)when(ex.Message=="WatchdogMemberIdentityNotQualified"){rejected=true;}
     Require(rejected,"regular AppContainer root/descendant rejected by actual LPAC policy");
 }
 var descriptor=(string)Call(library.GetType("ProtectionLifecycle.SessionResources",true)!.GetMethod("AllPackagesFixtureSddl",flags)!,identity.User!.Value)!;
