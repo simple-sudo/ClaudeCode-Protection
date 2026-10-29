@@ -240,7 +240,7 @@ internal sealed class ProtectedSession
         var report=JsonSerializer.Serialize(new {SchemaVersion=1,state.InstallationId,SessionId=id,version.Package.Release,version.Package.ManifestHash,
             Status=success?(workspaceInput is not null?"WORKSPACE_DATA_PROCESSED_AND_CLEANED":cleanupDeferred?"OFFLINE_RESOURCE_CLOSED_JOB_CLEANUP_DEFERRED":includeGit?"FIXED_OFFLINE_GIT_TOOLCHAIN_AND_DENIAL_OBSERVED":"FIXED_OFFLINE_WORKSPACE_TOOL_AND_DENIAL_OBSERVED"):"OFFLINE_RESOURCE_SESSION_NOT_CONFIRMED",
             Scope=workspaceInput is not null?"CALLER_BYTE_PINNED_DATA_FIXED_OFFLINE_GIT_ONLY_NO_PROJECT_CODE_EXECUTION":includeGit?"FIXED_OFFLINE_GIT_INIT_ADD_COMMIT_AND_DENIAL_ONLY":"FIXED_PROFILE_WORKSPACE_WINDOWS_POWERSHELL_AND_NON_SECRET_DENIAL_FIXTURE_ONLY",
-            Resumed=resumed,ChildExit=exit,Child=observed,ChildBootstrapFailure=bootstrapFailure,DescendantTokenAccess=child?.DescendantTokenAccess,InheritedPowerShellIdentityObserved=toolObserved,FinalJob=zero,Stop=stopped,
+            Resumed=resumed,ChildExit=exit,Child=observed,ChildBootstrapFailure=bootstrapFailure,InheritedPowerShellIdentityObserved=toolObserved,FinalJob=zero,Stop=stopped,
             CleanupDeferredForRecovery=cleanupDeferred,
             InheritedGitIdentityObserved=gitObserved,GitAssetSetSHA256=resources?.Plan.GitAssetSetSHA256,
             WorkspaceBaselineSHA256=includeGit && resources is not null?resources.Plan.WorkspaceInputSHA256??ClaudeCodeProtection.Workspaces.WorkspaceBundle.Hash(resources.Plan.FixedProjectBundle):null,

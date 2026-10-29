@@ -187,7 +187,10 @@ public static class BootstrapInstaller
             "599852489D7049C8944C3C41712AC1ACE5217F2E437AB2AB5D3035D2E880A02A",
             // Explicit inherited creation still returned5. Prior admission and
             // quarantine must be closed by the unchanged update guards.
-            "8ACABDD78FEF52314B664CCE1F2B5D710EE1F665004177F75D9DB888D0F6DFAF"
+            "8ACABDD78FEF52314B664CCE1F2B5D710EE1F665004177F75D9DB888D0F6DFAF",
+            // Native own-token access was already10; no DACL mutation occurred.
+            // Exact receipt confirms original Job closed/zero and quarantine.
+            "449AF6BA7B320FBC50E5B27F77D1C36FF902A0123CE02CBD0A074BDCC3C855B9"
         };
         private readonly ProtectedState state;
         private readonly BootstrapApproval approval;

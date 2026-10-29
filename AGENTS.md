@@ -1,20 +1,21 @@
 # ClaudeCode-Protection working rules
 
-2026-10-29 authoritative installed02eedf61a5344d548e3aa14b694ff2c3,
-manifest8ACABDD78FEF52314B664CCE1F2B5D710EE1F665004177F75D9DB888D0F6DFAF,
-human UAC14:27:38Z INACTIVE; 15 files/ACLs and read-only intent matched.
-Limited sessionc671333cb24940429c84c3bf571e82ba still returned3 with
-PowerShellCreateProcess5. Explicit LPAC creation alone is not a verified fix.
-No result/reboot/product remnants; daily UU/FlClash/AV/network unchanged.
-Private terminal closure not independently collected; preserve failures,
-no unchanged retry or auto-recovery. Evidence work/lpac-inherited-control.
-New source checks the exact new suspended root token object's own
-QUERY|DUPLICATE access and, only if DACL-denied, adds exact package0xA.
-No token defaults/privileges/assign/impersonate/host-object grant. Original
-LPAC/Job/image/deny gates remain. Qualify the changed native artifact and
-owned Identification-token fixture before any new human-UAC resource step.
-Do not treat this hypothesis as attribution or completed tool compatibility.
-Older current-package paragraphs below are historical.
+2026-10-29 authoritative installed10efec92555a4d1985493600122a64f7,
+manifest449AF6BA7B320FBC50E5B27F77D1C36FF902A0123CE02CBD0A074BDCC3C855B9,
+manual-UAC14:39:26Z inactive update; 15 files/ACLs/read-only intent matched.
+Sessionba4e8ac25360430ebbee72c66afa0a05 still failed native CreateProcess5.
+Exact receipts work/lpac-token-control show own-token access10 BEFORE/AFTER,
+Changed=false: token-rights hypothesis refuted; no token ACL grant occurred.
+Job5245d7710ba84c0fa6bb87333793b86a closed/zero, full quarantine, no stop errors.
+Root workspace I/O and all four denials5 passed. No result, reboot, remnants,
+or daily UU/FlClash/AV/network changes. Preserve failure/empty result; no retry
+of unchanged workload or automatic recovery. Source removes the ineffective
+token-DACL mechanism/fixture; next narrow hypothesis inherits the already
+exact task cwd only after worker/current-plan equality, instead of explicit
+reopening. Same original native LPAC/Job/manager gates, no added capability
+or host ACL/privilege grant. Qualify changed artifact before native operation.
+Do not treat the cwd hypothesis as cause or verified compatibility. Older
+current-package paragraphs below are historical.
 2026-10-29 current installed d1b5cf615a7645d882ac982c14d1e2dc, manifest
 1F79C28F55857F788023802635F7A0A62DACEEA4BE5CD6BD45035E4A78E42681,
 human-UAC update completed14:00:44Z, remains INACTIVE. LPAC data task
