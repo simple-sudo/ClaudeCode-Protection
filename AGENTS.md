@@ -1,5 +1,19 @@
 # ClaudeCode-Protection working rules
 
+2026-10-29 user requested UAC again and continued development. Reviewed
+997d514a inactive update completed human UAC at 13:45:25Z; 15 installed files
+and restricted-package RX matched, read-only Broker intent2/MISSING. Separate
+human-UAC four-file LPAC operation e3d1c4a4c512440fbf253994baae2031 returned3,
+resumed root exited125 before PowerShell/Git, no result. Exact before/after
+receipt readback (manual UAC, read-only) confirms full quarantine, admission
+closed and Job e1919105e678426ab37afa1caab1d8cd zero, stop failures empty;
+parent JsonException obscured root startup detail. Boot unchanged, no product
+remnants, daily UU/FlClash/AV/network unchanged. Preserve all receipts and the
+first diagnostic helper's failure. New source keeps manager LPAC verification
+mandatory before resume, limits child self-identity to QUERY (no admission
+authority), and emits bounded structured bootstrap failure if startup fails.
+No unchanged task retry/automatic recovery; qualify changed artifact first.
+
 2026-10-29 LPAC development: source candidate
 997d514a9a6445a2925edd32855e5c61 (manifest
 3C0471F484A193EF5EFF77A259602BAB8DFF13313B8440C08BF2459DA7D86D18)

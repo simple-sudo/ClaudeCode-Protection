@@ -213,13 +213,13 @@ internal sealed class SessionResources : IDisposable
     }
     internal static int RunChild(string packageSid)
     {
-        var raw=Environment.GetEnvironmentVariable("CPC_RESOURCE_PLAN");if(raw is null || raw.Length>1024)return 125;
+        var raw=Environment.GetEnvironmentVariable("CPC_RESOURCE_PLAN");if(raw is null || raw.Length>1024)throw WfpNative.Contract("ResourcePlanBoundsRefused");
         using var json=JsonDocument.Parse(raw);StrictJson.Fields(json.RootElement,"SchemaVersion","Nonce","InstallationId","Release","BrokerPid","ToolSHA256","GitAssetSetSHA256","WorkspaceInputSHA256");
         var plan=JsonSerializer.Deserialize<ResourceProbePlan>(raw)??throw WfpNative.Contract("ResourcePlanMissing");plan.Validate();
         using var sid=InstallationPackageSid.FromInstallationId(plan.InstallationId);
         if(sid.Value!=packageSid || Environment.GetEnvironmentVariable("CPC_NETWORK_PLAN") is not null ||
             Environment.GetEnvironmentVariable("CPC_GPU_PLAN") is not null || Environment.GetEnvironmentVariable("CPC_SESSION_ID") is not null ||
-            !string.Equals(Environment.ProcessPath,WindowsPathSeal.Child(FixedLayout.FromWindows().Version(plan.Release),"bin/admin/ProtectionBroker.exe"),StringComparison.OrdinalIgnoreCase))return 125;
+            !string.Equals(Environment.ProcessPath,WindowsPathSeal.Child(FixedLayout.FromWindows().Version(plan.Release),"bin/admin/ProtectionBroker.exe"),StringComparison.OrdinalIgnoreCase))throw WfpNative.Contract("ResourceChildPlanIdentityMismatch");
         var workspace=plan.Workspace(packageSid);var cases=new List<ResourceAccessCase>();bool matched=false;int? toolExit=null;string? failure=null;
         string stage="READ_WORKSPACE_INPUT";int? failureCode=null;string? failureStage=null;string? toolDiagnostic=null;GitToolchainReport? gitReport=null;
         try

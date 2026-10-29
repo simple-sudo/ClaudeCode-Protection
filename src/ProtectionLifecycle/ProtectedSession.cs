@@ -121,6 +121,7 @@ internal sealed class ProtectedSession
         InstallationProfileLease? profile=null;AtomicChild? child=null;
         System.IO.Pipes.AnonymousPipeServerStream? pipe=null;StreamReader? reader=null;
         ResourceQualification? permit=null;ResourceChildReport? observed=null;Task<uint>? exited=null;Task<string>? text=null;
+        ResourceBootstrapFailure? bootstrapFailure=null;
         JobSnapshot? zero=null;RuntimeStop? stopped=null;uint? exit=null;bool resumed=false,toolObserved=false,gitObserved=false,cleanupDeferred=false;
         var failures=new List<Exception>();
         string? workspaceResultSHA256=null;
@@ -188,7 +189,18 @@ internal sealed class ProtectedSession
                 });
             }
             exit=exited.GetAwaiter().GetResult();runtime.AssertHealthy();
-            observed=JsonSerializer.Deserialize<ResourceChildReport>(text.WaitAsync(TimeSpan.FromSeconds(2)).GetAwaiter().GetResult())??throw WfpNative.Contract("ResourceChildReportMissing");
+            var childText=text.WaitAsync(TimeSpan.FromSeconds(2)).GetAwaiter().GetResult();
+            using(var doc=JsonDocument.Parse(childText))
+                if(doc.RootElement.TryGetProperty("Scope",out var scope) && scope.GetString()=="RESOURCE_BOOTSTRAP_FAILURE")
+                {
+                    StrictJson.Fields(doc.RootElement,"SchemaVersion","Scope","Phase","Type","Code","NativeStage");
+                    var failure=JsonSerializer.Deserialize<ResourceBootstrapFailure>(childText)??throw WfpNative.Contract("ChildBootstrapFailureMissing");
+                    if(failure.SchemaVersion!=1 || failure.Phase is not ("self-token" or "resource-input") || failure.Type.Length is <1 or >80 ||
+                        failure.Type.Any(c=>!char.IsAsciiLetterOrDigit(c)) || failure.NativeStage is not null && (failure.NativeStage.Length>80 || failure.NativeStage.Any(c=>!char.IsAsciiLetterOrDigit(c))))
+                        throw WfpNative.Contract("ChildBootstrapFailureContractDiffers");
+                    bootstrapFailure=failure;throw WfpNative.Contract("ResourceChildBootstrapFailed");
+                }
+            observed=JsonSerializer.Deserialize<ResourceChildReport>(childText)??throw WfpNative.Contract("ResourceChildReportMissing");
             if(exit!=0 || observed.Pid!=child.Pid || observed.Nonce!=id || !SessionResources.Qualified(observed) || !toolObserved ||
                 includeGit && (!gitObserved || observed.Git is null) || !includeGit && observed.Git is not null)
                 throw WfpNative.Contract("OfflineResourceOrInheritedToolBoundaryNotQualified");
@@ -228,7 +240,7 @@ internal sealed class ProtectedSession
         var report=JsonSerializer.Serialize(new {SchemaVersion=1,state.InstallationId,SessionId=id,version.Package.Release,version.Package.ManifestHash,
             Status=success?(workspaceInput is not null?"WORKSPACE_DATA_PROCESSED_AND_CLEANED":cleanupDeferred?"OFFLINE_RESOURCE_CLOSED_JOB_CLEANUP_DEFERRED":includeGit?"FIXED_OFFLINE_GIT_TOOLCHAIN_AND_DENIAL_OBSERVED":"FIXED_OFFLINE_WORKSPACE_TOOL_AND_DENIAL_OBSERVED"):"OFFLINE_RESOURCE_SESSION_NOT_CONFIRMED",
             Scope=workspaceInput is not null?"CALLER_BYTE_PINNED_DATA_FIXED_OFFLINE_GIT_ONLY_NO_PROJECT_CODE_EXECUTION":includeGit?"FIXED_OFFLINE_GIT_INIT_ADD_COMMIT_AND_DENIAL_ONLY":"FIXED_PROFILE_WORKSPACE_WINDOWS_POWERSHELL_AND_NON_SECRET_DENIAL_FIXTURE_ONLY",
-            Resumed=resumed,ChildExit=exit,Child=observed,InheritedPowerShellIdentityObserved=toolObserved,FinalJob=zero,Stop=stopped,
+            Resumed=resumed,ChildExit=exit,Child=observed,ChildBootstrapFailure=bootstrapFailure,InheritedPowerShellIdentityObserved=toolObserved,FinalJob=zero,Stop=stopped,
             CleanupDeferredForRecovery=cleanupDeferred,
             InheritedGitIdentityObserved=gitObserved,GitAssetSetSHA256=resources?.Plan.GitAssetSetSHA256,
             WorkspaceBaselineSHA256=includeGit && resources is not null?resources.Plan.WorkspaceInputSHA256??ClaudeCodeProtection.Workspaces.WorkspaceBundle.Hash(resources.Plan.FixedProjectBundle):null,

@@ -1,5 +1,13 @@
 # 当前开发状态
 
+## 当前安装997d514a：LPAC首次创建/恢复通过，工具前启动失败保留并修正
+
+VERIFIED（安装及部分原生边界）：用户要求继续并重显UAC，13:45:25Z inactive update退出0，current997d514a9a6445a2925edd32855e5c61 / manifest3C0471F484A193EF5EFF77A259602BAB8DFF13313B8440C08BF2459DA7D86D18。15安装文件摘要/保护DACL/管理员owner及ARP RX独立匹配；Broker只读意图2/MISSING。
+
+FAIL（实际LPAC数据操作）：独立人工UAC后session e3d1c4a4c512440fbf253994baae2031返回3，root恢复后退出125，未到PowerShell/Git、无成果。这证明管理侧创建/挂起LPAC AccessCheck身份及首次恢复已走通，不能证明工具兼容或四项文件拒绝。限定只读两份确切回执确认原Job e1919105e678426ab37afa1caab1d8cd关闭且零成员、完整隔离、stop Failures=[]；原父错误JsonException遮蔽了worker启动细节。work/lpac-control/workflow-*及session-receipts-r2.json保留；最初读取helper退出1/无输出也保留，后改为不加载产品库的Windows PowerShell精确读取后退出0，不遍历目录/不修改state。系统boot仍05:44:54.5Z，AVP/BFE及FlClash/Core24520/17272/UU7056保持，无产品进程。
+
+SOURCE：子进程自身份改为仅QUERY，明确不声称取得LPAC AccessCheck证据；管理侧持有进程的LPAC mask2核验及工具成员核验保持强制，根/PowerShell/Git对同一AAP-only文件真实拒绝仍是成功条件。worker启动异常返回受限phase/type/code/nativeStage，父回执独立记ChildBootstrapFailure，不能再用二次JSON解析失败掩盖起因。新构建/限定测试待完成，未重跑原失败或自动恢复。完整编译测试/隐私/网络/GPU仍未验收。
+
 ## 开发中：同一任务链的LPAC资源边界及工具兼容
 
 SOURCE / INTEGRATED：AtomicChild在原Job/包身份原子创建时，对ProtectedSession准备及资源/数据操作强制ALL_APPLICATION_PACKAGES_OPT_OUT；首次恢复、会话对端和实际成员须确认AppContainer且对固定内存SD的AccessCheck仅授予ARP位2、不授予AAP位1，无调用者开关/普通AppContainer降级。仅新建公开产品代码增加ARP只读执行，私有状态/既有宿主ACL未改。原SessionResources新建并持有只授予AAP读取、不授予ARP/包身份的非秘密对照文件；管理侧核对确切DACL/内容，原根/PowerShell/Git必须拒绝同一资源，沿既有闭Job/精确清理收尾。LPAC不是完整隐私保证，所有正式准入UNKNOWN保持；编译/测试及GPU兼容仍未取得许可。六产品非生成语义0错误/0警告；原安装ac570b47未替换。

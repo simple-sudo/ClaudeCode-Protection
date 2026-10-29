@@ -171,7 +171,11 @@ public static class BootstrapInstaller
             "429D76D9B3245DF335D879F27F8CDCC12AF954E79685B8D40BBDC9F50BDFB5FF",
             // Current daily data roundtrip repair. Closed Job, exact cleanup
             // and final quarantine were required before its result export.
-            "DE88460A1F31721FC69F151B528718DC2FE89ABE66BAEA551E3AD3D8AD8815C4"
+            "DE88460A1F31721FC69F151B528718DC2FE89ABE66BAEA551E3AD3D8AD8815C4",
+            // LPAC first runtime: pre-resume identity passed, child exited125;
+            // exact readback established closed/zero Job and full quarantine.
+            // Original lifecycle checks remain mandatory for inactive update.
+            "3C0471F484A193EF5EFF77A259602BAB8DFF13313B8440C08BF2459DA7D86D18"
         };
         private readonly ProtectedState state;
         private readonly BootstrapApproval approval;

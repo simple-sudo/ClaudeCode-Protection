@@ -124,6 +124,7 @@ internal sealed record AtomicJobCompletion(int SchemaVersion,string Installation
 }
 
 internal sealed record AdmissionToken(bool IsAppContainer,string? PackageSid,int CapabilityCount,string IntegritySid,bool LpacAccessCheckObserved,uint ApplicationPackageAccessMask);
+internal sealed record ResourceBootstrapFailure(int SchemaVersion,string Scope,string Phase,string Type,int Code,string? NativeStage);
 internal sealed record OwnedMemberInspection(uint Pid,bool MembershipConfirmed,long? CreatedFileTime,string? ImagePath,AdmissionToken? Token,WfpErrorEvidence[] Failures);
 
 // No supplied executable/arguments/PID/token. First consumer is the installed
@@ -465,13 +466,30 @@ internal sealed class AtomicChild : IDisposable
     }
     internal static int RunResourceCanary()
     {
-        using var current=new SafeProcessHandle((IntPtr)(-1),false);var token=ReadToken(current);
-        if(!token.IsAppContainer || !token.LpacAccessCheckObserved || token.CapabilityCount!=0 || token.IntegritySid!="S-1-16-4096" || token.PackageSid is null)return 125;
-        return SessionResources.RunChild(token.PackageSid);
+        var phase="self-token";
+        try
+        {
+            // The trusted manager MUST have checked LPAC on this exact held
+            // process before ResumeQuarantined. A child cannot issue admission;
+            // it only queries its basic identity, then attempts real resource
+            // denial. Do not require token duplication inside the restricted
+            // worker merely to repeat a privileged management observation.
+            using var current=new SafeProcessHandle((IntPtr)(-1),false);var token=ReadToken(current,false);
+            if(!token.IsAppContainer || token.CapabilityCount!=0 || token.IntegritySid!="S-1-16-4096" || token.PackageSid is null)
+                throw WfpNative.Contract("RestrictedResourceChildTokenMismatch");
+            phase="resource-input";return SessionResources.RunChild(token.PackageSid);
+        }
+        catch(Exception ex)
+        {
+            var native=ex.Data["Stage"] as string;
+            if(native is not null && (native.Length>80 || native.Any(c=>!char.IsAsciiLetterOrDigit(c))))native=null;
+            Console.WriteLine(JsonSerializer.Serialize(new ResourceBootstrapFailure(1,"RESOURCE_BOOTSTRAP_FAILURE",phase,ex.GetType().Name,
+                ex is Win32Exception win32?win32.NativeErrorCode:ex.HResult,native)));return 125;
+        }
     }
-    private static AdmissionToken ReadToken(SafeProcessHandle process)
+    private static AdmissionToken ReadToken(SafeProcessHandle process,bool observePackageAccess=true)
     {
-        if(!OpenProcessToken(process,8|2,out var token))throw Error("AtomicOpenCreatedToken");
+        if(!OpenProcessToken(process,observePackageAccess?8u|2u:8u,out var token))throw Error("AtomicOpenCreatedToken");
         using(token)
         {
             var container=Read(29,p=>Marshal.ReadInt32(p)!=0);
@@ -482,7 +500,7 @@ internal sealed class AtomicChild : IDisposable
             // the preserved own-token qualification. Do not infer false or a
             // positive permit from that failure. Check the actual access
             // semantic using documented AccessCheck + a query-only duplicate.
-            var packageAccess=ProbeApplicationPackageAccess(token);
+            var packageAccess=observePackageAccess?ProbeApplicationPackageAccess(token):0u; // 0 = NOT_OBSERVED, never a grant.
             return new(container,sid,count,integrity,container && packageAccess==2,packageAccess);
             T Read<T>(int type,Func<IntPtr,T> consume)
             {

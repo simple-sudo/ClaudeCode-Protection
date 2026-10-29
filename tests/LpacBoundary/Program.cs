@@ -21,10 +21,13 @@ static void Require(bool value,string reason){if(!value)throw new InvalidOperati
 if(args[0]=="self-token")
 {
     var read=library.GetType("ProtectionLifecycle.AtomicChild",true)!.GetMethod("ReadToken",flags)!;
-    using var self=new SafeProcessHandle((IntPtr)(-1),false);var token=Call(read,self)!;
+    using var self=new SafeProcessHandle((IntPtr)(-1),false);var token=Call(read,self,true)!;
     Require(!(bool)token.GetType().GetProperty("IsAppContainer")!.GetValue(token)!,"ordinary process is not an AppContainer");
     Require(!(bool)token.GetType().GetProperty("LpacAccessCheckObserved")!.GetValue(token)!,"ordinary process must never qualify as LPAC");
     Require((uint)token.GetType().GetProperty("ApplicationPackageAccessMask")!.GetValue(token)! == 3u,"ordinary access mask is exactly both synthetic bits");
+    var basic=Call(read,self,false)!;
+    Require(!(bool)basic.GetType().GetProperty("LpacAccessCheckObserved")!.GetValue(basic)! &&
+        (uint)basic.GetType().GetProperty("ApplicationPackageAccessMask")!.GetValue(basic)! == 0u,"query-only child reading cannot manufacture access-check evidence");
     Console.WriteLine("PASS production own-token AccessCheck mask3; ordinary identity cannot qualify as LPAC; no AppContainer, other process, Job or private data");return 0;
 }
 var tokenType=library.GetType("ProtectionLifecycle.AdmissionToken",true)!;
