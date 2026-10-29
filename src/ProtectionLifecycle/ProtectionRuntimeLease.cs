@@ -124,7 +124,7 @@ internal sealed class ProtectionRuntimeLease
 internal static class WatchdogMemberPolicy
 {
     internal static void Verify(JobSnapshot before,OwnedMemberInspection[] inspected,JobSnapshot after,
-        uint primaryPid,long primaryCreatedFileTime,string packageSid,string primaryImage,string consoleHostImage)
+        uint primaryPid,long primaryCreatedFileTime,string packageSid,string primaryImage,string consoleHostImage,bool requireLpac=false)
     {
         if(before.JobId!=after.JobId || !before.ExpectedLimits || !after.ExpectedLimits ||
             before.ActiveBefore!=before.ActiveAfter || after.ActiveBefore!=after.ActiveAfter ||
@@ -146,7 +146,7 @@ internal static class WatchdogMemberPolicy
                 (member.Pid==primaryPid && member.CreatedFileTime!=primaryCreatedFileTime) ||
                 (member.Pid!=primaryPid && member.CreatedFileTime<primaryCreatedFileTime) ||
                 member.Failures is null || member.Failures.Length!=0 ||
-                token is null || !token.IsAppContainer || token.PackageSid!=packageSid ||
+                token is null || !token.IsAppContainer || requireLpac && !token.IsLessPrivilegedAppContainer || token.PackageSid!=packageSid ||
                 token.CapabilityCount!=0 || token.IntegritySid!="S-1-16-4096" ||
                 string.IsNullOrWhiteSpace(member.ImagePath))
                 throw WfpNative.Contract("WatchdogMemberIdentityNotQualified");

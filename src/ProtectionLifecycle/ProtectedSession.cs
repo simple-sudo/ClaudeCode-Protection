@@ -173,7 +173,7 @@ internal sealed class ProtectedSession
                         var primary=member.Pid==child.Pid;
                         if(!member.MembershipConfirmed || member.Failures.Length!=0 || member.CreatedFileTime is null ||
                             member.CreatedFileTime<child.ExpectedCreatedFileTime || primary && member.CreatedFileTime!=child.ExpectedCreatedFileTime ||
-                            member.Token is not {IsAppContainer:true,CapabilityCount:0,IntegritySid:"S-1-16-4096"} || member.Token.PackageSid!=sid ||
+                            member.Token is not {IsAppContainer:true,IsLessPrivilegedAppContainer:true,CapabilityCount:0,IntegritySid:"S-1-16-4096"} || member.Token.PackageSid!=sid ||
                             member.ImagePath is null)throw WfpNative.Contract("ResourceToolIdentityUnconfirmed");
                         var image=WindowsPathSeal.Canonical(member.ImagePath);
                         if(primary?!string.Equals(image,child.ExpectedImagePath,StringComparison.OrdinalIgnoreCase):
@@ -234,7 +234,7 @@ internal sealed class ProtectedSession
             WorkspaceBaselineSHA256=includeGit && resources is not null?resources.Plan.WorkspaceInputSHA256??ClaudeCodeProtection.Workspaces.WorkspaceBundle.Hash(resources.Plan.FixedProjectBundle):null,
             ClosedWorkspaceResultSHA256=workspaceResultSHA256,
             Failures=failures.SelectMany(WfpNative.Describe).ToArray(),FormalAdmissionIssued=false,LaunchAuthorized=false,NetworkOpened=false,ClaudeLaunched=false,
-            AllHostResourceIsolationQualified=false,UserProjectToolchainQualified=false,FourteenEnvironmentRequirementsQualified=false,GpuQualified=false});
+            Boundary="LPAC_REQUIRED_NO_CAPABILITIES_NO_FALLBACK",AllHostResourceIsolationQualified=false,UserProjectToolchainQualified=false,FourteenEnvironmentRequirementsQualified=false,GpuQualified=false});
         state.WriteNew("resource-session-after-"+id+".json",Encoding.UTF8.GetBytes(report));return(success?0:3,report);
     }
     private (EnvironmentExpectations?,string?,string) ReadExpectations()
@@ -455,7 +455,7 @@ internal sealed class ProtectedSession
                 var before=owner.job!.Observe();
                 AtomicChild.InspectMembers(owner.job,before,members=>WatchdogMemberPolicy.Verify(before,members,owner.job.Observe(),
                     primary.Pid,primary.ExpectedCreatedFileTime,owner.sid!,primary.ExpectedImagePath,
-                    Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System),"conhost.exe")));
+                    Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System),"conhost.exe"),requireLpac:true));
             }
         }
         internal void AssertRuntimeObjects(OwnedKernelJob exactJob,VerifiedVersion exactVersion,IReadOnlyList<PersistentFence> exactFences)

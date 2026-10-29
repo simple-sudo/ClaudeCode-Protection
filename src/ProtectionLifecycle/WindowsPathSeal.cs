@@ -292,7 +292,9 @@ internal static class WindowsPathSeal
     {
         // Public code is readable/executable by AppContainers as on standard
         // Program Files installations. Private state never receives this ACE.
-        var sddl="O:BAG:SYD:P(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)"+(publicRead?"(A;OICI;GRGX;;;BU)(A;OICI;GRGX;;;S-1-15-2-1)":"")+(creation is null?"":"(A;;RC;;;"+creation.Sid+")");
+        // Only newly created public PRODUCT code gains restricted-package RX.
+        // Private state and existing host/runtime/device ACLs stay untouched.
+        var sddl="O:BAG:SYD:P(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)"+(publicRead?"(A;OICI;GRGX;;;BU)(A;OICI;GRGX;;;S-1-15-2-1)(A;OICI;GRGX;;;S-1-15-2-2)":"")+(creation is null?"":"(A;;RC;;;"+creation.Sid+")");
         if (!ConvertStringSecurityDescriptorToSecurityDescriptor(sddl, 1, out var descriptor, out _)) throw Error("CreateSecurityDescriptor");
         try { action(new SecurityAttributes { Length = Marshal.SizeOf<SecurityAttributes>(), Descriptor = descriptor, Inherit=0 }); }
         finally { LocalFree(descriptor); }

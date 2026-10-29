@@ -122,7 +122,7 @@ internal sealed record AtomicJobCompletion(int SchemaVersion,string Installation
     }
 }
 
-internal sealed record AdmissionToken(bool IsAppContainer,string? PackageSid,int CapabilityCount,string IntegritySid);
+internal sealed record AdmissionToken(bool IsAppContainer,string? PackageSid,int CapabilityCount,string IntegritySid,bool IsLessPrivilegedAppContainer);
 internal sealed record OwnedMemberInspection(uint Pid,bool MembershipConfirmed,long? CreatedFileTime,string? ImagePath,AdmissionToken? Token,WfpErrorEvidence[] Failures);
 
 // No supplied executable/arguments/PID/token. First consumer is the installed
@@ -145,6 +145,7 @@ internal sealed class AtomicChild : IDisposable
     internal uint Pid {get;}
     internal string ExpectedPackageSid=>packageSid;
     internal string ExpectedImagePath=>image;
+    internal bool RequiresLpac=>sessionPreparation is not null || resourceQualification is not null;
     internal long ExpectedCreatedFileTime
     {
         get
@@ -174,7 +175,7 @@ internal sealed class AtomicChild : IDisposable
         if(!QueryFullProcessImageName(process,0,path,ref length))throw Error("ReadSuspendedSessionImage");
         var token=ReadToken(process);
         if(!string.Equals(WindowsPathSeal.Canonical(path.ToString()),image,StringComparison.OrdinalIgnoreCase) ||
-            !token.IsAppContainer || token.PackageSid!=packageSid || token.CapabilityCount!=0 || token.IntegritySid!="S-1-16-4096")
+            !token.IsAppContainer || !token.IsLessPrivilegedAppContainer || token.PackageSid!=packageSid || token.CapabilityCount!=0 || token.IntegritySid!="S-1-16-4096")
             throw WfpNative.Contract("SuspendedSessionRootImageOrTokenMismatch");
     }
     internal static SafeProcessHandle HoldSessionPeer(OwnedKernelJob job,string sid,int sourcePort)
@@ -192,7 +193,7 @@ internal sealed class AtomicChild : IDisposable
         if(process.IsClosed || process.IsInvalid || WaitForSingleObject(process,0)!=0x102 || !job.ContainsProcess(process) ||
             ProxyChannelLease.SessionPeerOwner(sourcePort)!=GetProcessId(process))throw WfpNative.Contract("SessionGatewayPeerJobOrLifetimeMismatch");
         var token=ReadToken(process);
-        if(!token.IsAppContainer || token.PackageSid!=sid || token.CapabilityCount!=0 || token.IntegritySid!="S-1-16-4096")
+        if(!token.IsAppContainer || !token.IsLessPrivilegedAppContainer || token.PackageSid!=sid || token.CapabilityCount!=0 || token.IntegritySid!="S-1-16-4096")
             throw WfpNative.Contract("SessionGatewayPeerTokenMismatch");
     }
     internal static void InspectMembers(OwnedKernelJob job,JobSnapshot snapshot,Action<OwnedMemberInspection[]> whileHeld)
@@ -261,12 +262,13 @@ internal sealed class AtomicChild : IDisposable
         using var package=network?.Kind==NetworkProbeKind.Control?InstallationPackageSid.ForNetworkControl(state):new InstallationPackageSid(state);
         profile.AssertPackage(package);
         var jobHandle=job.ReserveAtomicAdmission(version);
-        IntPtr attributes=IntPtr.Zero,capabilities=IntPtr.Zero,jobList=IntPtr.Zero,environment=IntPtr.Zero,handles=IntPtr.Zero;
+        var requireLpac=preparation is not null || resources is not null;
+        IntPtr attributes=IntPtr.Zero,capabilities=IntPtr.Zero,jobList=IntPtr.Zero,environment=IntPtr.Zero,handles=IntPtr.Zero,packagesPolicy=IntPtr.Zero;
         bool initialized=false,handleHeld=false;
         try
         {
             jobHandle.DangerousAddRef(ref handleHeld);
-            var count=report?3:2;
+            var count=(report?3:2)+(requireLpac?1:0);
             nuint size=0;_=InitializeProcThreadAttributeList(IntPtr.Zero,count,0,ref size);
             if(size is 0 or >65536)throw Error("AtomicAttributeListSize");
             attributes=Marshal.AllocHGlobal(checked((int)size));
@@ -274,6 +276,14 @@ internal sealed class AtomicChild : IDisposable
             capabilities=Marshal.AllocHGlobal(Marshal.SizeOf<SecurityCapabilities>());
             Marshal.StructureToPtr(new SecurityCapabilities{Sid=package.Pointer},capabilities,false);
             if(!UpdateProcThreadAttribute(attributes,0,(IntPtr)0x20009,capabilities,(nuint)Marshal.SizeOf<SecurityCapabilities>(),IntPtr.Zero,IntPtr.Zero))throw Error("AtomicSetPackageAtCreation");
+            if(requireLpac)
+            {
+                // PROC_THREAD_ATTRIBUTE_ALL_APPLICATION_PACKAGES_POLICY.
+                // OPT_OUT is set at creation, while Job and package are bound.
+                // No regular-AppContainer retry or caller override.
+                packagesPolicy=Marshal.AllocHGlobal(sizeof(uint));Marshal.WriteInt32(packagesPolicy,1);
+                if(!UpdateProcThreadAttribute(attributes,0,(IntPtr)0x2000f,packagesPolicy,sizeof(uint),IntPtr.Zero,IntPtr.Zero))throw Error("AtomicRequireLpacAtCreation");
+            }
             jobList=Marshal.AllocHGlobal(IntPtr.Size);Marshal.WriteIntPtr(jobList,jobHandle.DangerousGetHandle());
             if(!UpdateProcThreadAttribute(attributes,0,(IntPtr)0x2000d,jobList,(nuint)IntPtr.Size,IntPtr.Zero,IntPtr.Zero))throw Error("AtomicSetJobListAtCreation");
             if(report)
@@ -336,6 +346,7 @@ internal sealed class AtomicChild : IDisposable
             if(jobList!=IntPtr.Zero)Marshal.FreeHGlobal(jobList);
             if(environment!=IntPtr.Zero)Marshal.FreeHGlobal(environment);
             if(handles!=IntPtr.Zero)Marshal.FreeHGlobal(handles);
+            if(packagesPolicy!=IntPtr.Zero)Marshal.FreeHGlobal(packagesPolicy);
             if(handleHeld)jobHandle.DangerousRelease();
         }
     }
@@ -367,7 +378,7 @@ internal sealed class AtomicChild : IDisposable
         if(!QueryFullProcessImageName(process,0,path,ref length))throw Error("AtomicReadCreatedImage");
         if(!string.Equals(WindowsPathSeal.Canonical(path.ToString()),image,StringComparison.OrdinalIgnoreCase))throw WfpNative.Contract("AtomicCreatedImageMismatch");
         var token=ReadToken(process);
-        if(!token.IsAppContainer || token.PackageSid!=packageSid || token.CapabilityCount!=0 || token.IntegritySid!="S-1-16-4096")throw WfpNative.Contract("AtomicTokenBeforeResumeMismatch");
+        if(!token.IsAppContainer || RequiresLpac && !token.IsLessPrivilegedAppContainer || token.PackageSid!=packageSid || token.CapabilityCount!=0 || token.IntegritySid!="S-1-16-4096")throw WfpNative.Contract("AtomicTokenBeforeResumeMismatch");
         var plans=FencePlan.ReadAll(state);if(plans.Count==0)throw WfpNative.Contract("AtomicResumeRequiresRegisteredFence");
         var observations=new List<FenceObservation>();
         var proxyOnly=network?.RequiresProxy==true;
@@ -414,6 +425,7 @@ internal sealed class AtomicChild : IDisposable
         var sessionSecret=Environment.GetEnvironmentVariable("CPC_SESSION_SECRET");
         if(sessionId is not null || sessionSecret is not null)
         {
+            if(!token.IsLessPrivilegedAppContainer)return 125;
             if(plan is not null || gpuPlan is not null || sessionId is null || sessionSecret is null)return 125;
             _=Identifiers.Hex32(sessionId);_=Identifiers.Hash(sessionSecret);
             using var handler=new SocketsHttpHandler {UseProxy=true,Proxy=new System.Net.WebProxy("http://127.0.0.1:"+SessionProxy.Port) {
@@ -453,7 +465,7 @@ internal sealed class AtomicChild : IDisposable
     internal static int RunResourceCanary()
     {
         using var current=new SafeProcessHandle((IntPtr)(-1),false);var token=ReadToken(current);
-        if(!token.IsAppContainer || token.CapabilityCount!=0 || token.IntegritySid!="S-1-16-4096" || token.PackageSid is null)return 125;
+        if(!token.IsAppContainer || !token.IsLessPrivilegedAppContainer || token.CapabilityCount!=0 || token.IntegritySid!="S-1-16-4096" || token.PackageSid is null)return 125;
         return SessionResources.RunChild(token.PackageSid);
     }
     private static AdmissionToken ReadToken(SafeProcessHandle process)
@@ -465,7 +477,8 @@ internal sealed class AtomicChild : IDisposable
             var sid=Read(31,p=>{var s=Marshal.ReadIntPtr(p);return s==IntPtr.Zero?null:new SecurityIdentifier(s).Value;});
             var count=Read(30,Marshal.ReadInt32);
             var integrity=Read(25,p=>new SecurityIdentifier(Marshal.ReadIntPtr(p)).Value);
-            return new(container,sid,count,integrity);
+            var lpac=Read(46,p=>Marshal.ReadInt32(p)!=0);
+            return new(container,sid,count,integrity,lpac);
             T Read<T>(int type,Func<IntPtr,T> consume)
             {
                 _=GetTokenInformation(token,type,IntPtr.Zero,0,out var size);

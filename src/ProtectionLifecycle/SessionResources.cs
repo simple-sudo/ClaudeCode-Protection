@@ -53,19 +53,19 @@ internal sealed class SessionResources : IDisposable
 {
     private readonly ProtectedState state;
     private readonly PathLease folder;
-    private readonly FileStream input,tool;
+    private readonly FileStream input,tool,allPackagesFixture;
     private readonly SessionGitToolchain? git;
     private readonly FileStream? projectInput;
     internal ResourceProbePlan Plan {get;}
     internal string Workspace=>folder.Path;
-    private SessionResources(ProtectedState state,PathLease folder,FileStream input,FileStream tool,ResourceProbePlan plan,SessionGitToolchain? git,FileStream? projectInput)
-    {this.state=state;this.folder=folder;this.input=input;this.tool=tool;Plan=plan;this.git=git;this.projectInput=projectInput;}
+    private SessionResources(ProtectedState state,PathLease folder,FileStream input,FileStream tool,ResourceProbePlan plan,SessionGitToolchain? git,FileStream? projectInput,FileStream allPackagesFixture)
+    {this.state=state;this.folder=folder;this.input=input;this.tool=tool;Plan=plan;this.git=git;this.projectInput=projectInput;this.allPackagesFixture=allPackagesFixture;}
     internal static SessionResources Create(ProtectedState state,VerifiedVersion version,InstallationProfileLease profile,string nonce,bool includeGit=false,byte[]? workspaceInput=null)
     {
         state.AssertHeld();version.AssertHeld(state);
         using var sid=new InstallationPackageSid(state);profile.AssertPackage(sid);
         var tool=new FileStream(WindowsPathSeal.OpenPowerShell(),FileAccess.Read,65536,false);
-        PathLease? directory=null;FileStream? input=null,projectInput=null;SessionGitToolchain? git=null;
+        PathLease? directory=null;FileStream? input=null,projectInput=null,allPackagesFixture=null;SessionGitToolchain? git=null;
         try
         {
             var hash=Convert.ToHexString(SHA256.HashData(tool));tool.Position=0;
@@ -96,6 +96,7 @@ internal sealed class SessionResources : IDisposable
             if(input.Length!=plan.Input.Length || Convert.ToHexString(SHA256.HashData(input))!=Convert.ToHexString(SHA256.HashData(plan.Input)))
                 throw WfpNative.Contract("FreshWorkspaceInputChanged");
             input.Position=0;
+            allPackagesFixture=CreateAllPackagesFixture(WindowsPathSeal.Child(path,"all-packages-only.json"),identity.User!.Value,plan.Input);
             if(includeGit)
             {
                 if(workspaceInput is not null)
@@ -115,9 +116,9 @@ internal sealed class SessionResources : IDisposable
             // An existing, readable positive host control prevents absence from
             // being mistaken for a restricted child's access-denied result.
             _=state.Read("resource-fixture-"+nonce+".json",4096);
-            return new(state,directory,input,tool,plan,git,projectInput);
+            return new(state,directory,input,tool,plan,git,projectInput,allPackagesFixture);
         }
-        catch{projectInput?.Dispose();git?.Dispose();input?.Dispose();directory?.Dispose();tool.Dispose();throw;}
+        catch{allPackagesFixture?.Dispose();projectInput?.Dispose();git?.Dispose();input?.Dispose();directory?.Dispose();tool.Dispose();throw;}
     }
     internal void AssertHeld()
     {
@@ -126,6 +127,9 @@ internal sealed class SessionResources : IDisposable
         WindowsPathSeal.VerifyObject(input.SafeFileHandle,WindowsPathSeal.Child(Workspace,"input.txt"),false);
         WindowsPathSeal.AssertAcl(tool.SafeFileHandle,false,true);
         git?.AssertHeld();
+        if(allPackagesFixture.SafeFileHandle.IsClosed)throw WfpNative.Contract("AllPackagesFixtureLeaseLost");
+        WindowsPathSeal.VerifyObject(allPackagesFixture.SafeFileHandle,WindowsPathSeal.Child(Workspace,"all-packages-only.json"),false);
+        using(var human=WindowsIdentity.GetCurrent())AssertAllPackagesFixture(allPackagesFixture.SafeFileHandle,human.User!.Value);
         if(Plan.WorkspaceInputSHA256 is not null && (projectInput is null || projectInput.SafeFileHandle.IsClosed))throw WfpNative.Contract("WorkspaceDataLeaseLost");
     }
     internal void AssertOutput(ResourceChildReport observed)
@@ -237,6 +241,9 @@ internal sealed class SessionResources : IDisposable
                 catch(UnauthorizedAccessException){cases.Add(new("private-state-"+access,"ACCESS_DENIED",5));}
                 catch(Exception ex){cases.Add(new("private-state-"+access,"UNKNOWN",ex.HResult));}
             }
+            try{using var opened=File.OpenRead(WindowsPathSeal.Child(workspace,"all-packages-only.json"));cases.Add(new("all-packages-only-Read","OPENED",null));}
+            catch(UnauthorizedAccessException){cases.Add(new("all-packages-only-Read","ACCESS_DENIED",5));}
+            catch(Exception ex){cases.Add(new("all-packages-only-Read","UNKNOWN",ex.HResult));}
             using(var broker=OpenProcess(0x10,false,checked((uint)plan.BrokerPid)))
             {
                 var error=Marshal.GetLastWin32Error();cases.Add(new("broker-vm-read-open",!broker.IsInvalid?"OPENED":error==5?"ACCESS_DENIED":"UNKNOWN",broker.IsInvalid?error:null));
@@ -248,7 +255,7 @@ internal sealed class SessionResources : IDisposable
             // verifies held process handles/tokens/Job before releasing this
             // compiled script. Planned startup/exit need not be atomic Job
             // membership snapshots; all traffic remains quarantined.
-            const string script="$ErrorActionPreference='Stop';$stage='READY';try{[IO.File]::WriteAllText('tool-ready.txt',$env:CPC_RESOURCE_NONCE);[IO.File]::WriteAllText('tool-ready.signal','');$stage='WAIT_OWNER';$until=[DateTime]::UtcNow.AddSeconds(8);while(![IO.File]::Exists('tool-go.signal')){if([DateTime]::UtcNow -ge $until){exit 24};[Threading.Thread]::Sleep(20)};$stage='READ_OWNER_GATE';if([IO.File]::ReadAllText('tool-go.txt') -cne $env:CPC_RESOURCE_NONCE){exit 25};$stage='WORKSPACE_IO';$v=[IO.File]::ReadAllText('input.txt');[IO.File]::WriteAllText('tool-output.txt',$v);$stage='DENY_PRIVATE_FIXTURE';$denied=$false;try{$f=[IO.File]::OpenRead($env:CPC_DENIAL_FIXTURE);$f.Dispose()}catch{if($_.Exception -is [UnauthorizedAccessException] -or $_.Exception.InnerException -is [UnauthorizedAccessException]){$denied=$true}else{exit 22}};if(!$denied){exit 23};exit 0}catch{$e=$_.Exception.GetBaseException();[Console]::Error.WriteLine('CPC_TOOL_FAILURE|'+$stage+'|'+$e.GetType().Name+'|'+$e.HResult);exit 26}";
+            const string script="$ErrorActionPreference='Stop';$stage='READY';try{[IO.File]::WriteAllText('tool-ready.txt',$env:CPC_RESOURCE_NONCE);[IO.File]::WriteAllText('tool-ready.signal','');$stage='WAIT_OWNER';$until=[DateTime]::UtcNow.AddSeconds(8);while(![IO.File]::Exists('tool-go.signal')){if([DateTime]::UtcNow -ge $until){exit 24};[Threading.Thread]::Sleep(20)};$stage='READ_OWNER_GATE';if([IO.File]::ReadAllText('tool-go.txt') -cne $env:CPC_RESOURCE_NONCE){exit 25};$stage='WORKSPACE_IO';$v=[IO.File]::ReadAllText('input.txt');[IO.File]::WriteAllText('tool-output.txt',$v);$stage='DENY_PRIVATE_FIXTURE';foreach($fixture in @($env:CPC_DENIAL_FIXTURE,$env:CPC_LPAC_FIXTURE)){$denied=$false;try{$f=[IO.File]::OpenRead($fixture);$f.Dispose()}catch{if($_.Exception -is [UnauthorizedAccessException] -or $_.Exception.InnerException -is [UnauthorizedAccessException]){$denied=$true}else{exit 22}};if(!$denied){exit 23}};exit 0}catch{$e=$_.Exception.GetBaseException();[Console]::Error.WriteLine('CPC_TOOL_FAILURE|'+$stage+'|'+$e.GetType().Name+'|'+$e.HResult);exit 26}";
             stage="VERIFY_FIXED_TOOL_BYTES";
             using(var tool=File.OpenRead(ToolPath))
                 if(Convert.ToHexString(SHA256.HashData(tool))!=plan.ToolSHA256)throw WfpNative.Contract("FixedToolBytesChanged");
@@ -260,6 +267,7 @@ internal sealed class SessionResources : IDisposable
             start.Environment["PATH"]=Environment.GetFolderPath(Environment.SpecialFolder.System);
             start.Environment["PSModulePath"]=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System),"WindowsPowerShell\\v1.0\\Modules");
             start.Environment["CPC_DENIAL_FIXTURE"]=plan.Fixture;
+            start.Environment["CPC_LPAC_FIXTURE"]=WindowsPathSeal.Child(workspace,"all-packages-only.json");
             start.Environment["CPC_RESOURCE_NONCE"]=plan.Nonce;
             foreach(var arg in new[]{"-NoLogo","-NoProfile","-NonInteractive","-Command",script})start.ArgumentList.Add(arg);
             stage="START_FIXED_POWERSHELL";
@@ -286,7 +294,7 @@ internal sealed class SessionResources : IDisposable
         Console.WriteLine(JsonSerializer.Serialize(report));return Qualified(report)?0:3;
     }
     internal static bool Qualified(ResourceChildReport report)=>report.SchemaVersion==1 && report.WorkspaceWriteReadMatched && report.ToolExit==0 && report.FailureType is null && report.FailureCode is null && report.FailureStage is null && report.ToolDiagnostic is null &&
-        (report.Git is null || SessionGitToolchain.Qualified(report.Git)) && report.Cases.Length==3 && report.Cases.Select(c=>c.Role).SequenceEqual(new[]{"private-state-Read","private-state-Write","broker-vm-read-open"}) &&
+        (report.Git is null || SessionGitToolchain.Qualified(report.Git)) && report.Cases.Length==4 && report.Cases.Select(c=>c.Role).SequenceEqual(new[]{"private-state-Read","private-state-Write","all-packages-only-Read","broker-vm-read-open"}) &&
         report.Cases.All(c=>c.Status=="ACCESS_DENIED" && c.Error==5);
     internal static async Task<string> ReadBounded(StreamReader reader)
     {
@@ -299,7 +307,49 @@ internal sealed class SessionResources : IDisposable
         using var file=File.OpenRead(path);if(file.Length is <1 or >1024)throw WfpNative.Contract("ResourceFixtureBounds");
         var data=new byte[checked((int)file.Length)];file.ReadExactly(data);return data;
     }
-    public void Dispose(){projectInput?.Dispose();git?.Dispose();input.Dispose();folder.Dispose();tool.Dispose();}
+    public void Dispose(){allPackagesFixture.Dispose();projectInput?.Dispose();git?.Dispose();input.Dispose();folder.Dispose();tool.Dispose();}
+    private static string AllPackagesFixtureSddl(string human)=>"O:BAG:SYD:P(A;;FA;;;SY)(A;;FA;;;BA)(A;;0x00120089;;;"+new SecurityIdentifier(human).Value+")(A;;0x00120089;;;S-1-15-2-1)";
+    private static FileStream CreateAllPackagesFixture(string path,string human,byte[] content)
+    {
+        // Non-secret, tool-owned positive control. It deliberately grants AAP
+        // read but neither the package nor ALL_RESTRICTED_APPLICATION_PACKAGES.
+        // Never change an existing host object to obtain this comparison.
+        if(!ConvertStringSecurityDescriptorToSecurityDescriptor(AllPackagesFixtureSddl(human),1,out var descriptor,out _))
+            throw new WfpFailure("CreateAllPackagesFixtureDescriptor",unchecked((uint)Marshal.GetLastWin32Error()));
+        try
+        {
+            var security=new KernelJobSeal.SecurityAttributes{Length=Marshal.SizeOf<KernelJobSeal.SecurityAttributes>(),Descriptor=descriptor};
+            var handle=CreateFixtureFile(path,0xC0000000,1,ref security,1,0x00200080,IntPtr.Zero);
+            if(handle.IsInvalid){var error=Marshal.GetLastWin32Error();handle.Dispose();throw new WfpFailure("CreateFreshAllPackagesFixture",unchecked((uint)error));}
+            using(var file=new FileStream(handle,FileAccess.ReadWrite)){file.Write(content);file.Flush(true);}
+        }
+        finally{LocalFree(descriptor);}
+        var held=new FileStream(WindowsPathSeal.Open(path,false,true),FileAccess.Read);
+        try
+        {
+            AssertAllPackagesFixture(held.SafeFileHandle,human);
+            if(held.Length!=content.Length || Convert.ToHexString(SHA256.HashData(held))!=Convert.ToHexString(SHA256.HashData(content)))throw WfpNative.Contract("AllPackagesFixtureContentChanged");
+            held.Position=0;return held;
+        }
+        catch{held.Dispose();throw;}
+    }
+    private static void AssertAllPackagesFixture(SafeFileHandle handle,string human)
+    {
+        var status=GetSecurityInfo(handle,1,1|2|4,out _,out _,out _,out _,out var descriptor);
+        if(status!=0)throw new WfpFailure("ReadAllPackagesFixtureAcl",status);
+        try
+        {
+            var size=GetSecurityDescriptorLength(descriptor);if(size is <20 or >65536)throw WfpNative.Contract("AllPackagesFixtureDescriptorBounds");
+            var bytes=new byte[size];Marshal.Copy(descriptor,bytes,0,bytes.Length);var actual=new RawSecurityDescriptor(bytes,0);
+            var expected=new RawSecurityDescriptor(AllPackagesFixtureSddl(human));
+            if(actual.Owner!=expected.Owner || actual.Group!=expected.Group || (actual.ControlFlags&ControlFlags.DiscretionaryAclProtected)==0 || actual.DiscretionaryAcl is null)
+                throw WfpNative.Contract("AllPackagesFixtureOwnerOrProtectionChanged");
+            var left=new byte[actual.DiscretionaryAcl.BinaryLength];actual.DiscretionaryAcl.GetBinaryForm(left,0);
+            var right=new byte[expected.DiscretionaryAcl!.BinaryLength];expected.DiscretionaryAcl.GetBinaryForm(right,0);
+            if(!left.AsSpan().SequenceEqual(right))throw WfpNative.Contract("AllPackagesFixtureExactAclChanged");
+        }
+        finally{if(descriptor!=IntPtr.Zero)LocalFree(descriptor);}
+    }
     internal static void AssertMutableWorkspace(SafeFileHandle handle,string human,string package)
     {using var expected=new WorkspaceDescriptor(human,package,true);expected.AssertApplied(handle);}
     // Windows' profile-root access does not guarantee that a directory created
@@ -369,6 +419,8 @@ internal sealed class SessionResources : IDisposable
     }
     [DllImport("userenv.dll",CharSet=CharSet.Unicode,ExactSpelling=true)] private static extern int GetAppContainerFolderPath(string sid,out IntPtr path);
     [DllImport("kernel32.dll",EntryPoint="CreateDirectoryW",CharSet=CharSet.Unicode,SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)] private static extern bool CreateDirectory(string path,ref KernelJobSeal.SecurityAttributes attributes);
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
+    [DllImport("kernel32.dll",EntryPoint="CreateFileW",CharSet=CharSet.Unicode,SetLastError=true)] private static extern SafeFileHandle CreateFixtureFile(string path,uint access,uint share,ref KernelJobSeal.SecurityAttributes attributes,uint disposition,uint flags,IntPtr template);
     [DllImport("advapi32.dll",EntryPoint="ConvertStringSecurityDescriptorToSecurityDescriptorW",CharSet=CharSet.Unicode,SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)] private static extern bool ConvertStringSecurityDescriptorToSecurityDescriptor(string text,uint revision,out IntPtr descriptor,out uint length);
     [DllImport("advapi32.dll")] private static extern uint GetSecurityInfo(SafeFileHandle handle,int type,uint information,out IntPtr owner,out IntPtr group,out IntPtr dacl,out IntPtr sacl,out IntPtr descriptor);
     [DllImport("advapi32.dll")] private static extern uint GetSecurityDescriptorLength(IntPtr descriptor);

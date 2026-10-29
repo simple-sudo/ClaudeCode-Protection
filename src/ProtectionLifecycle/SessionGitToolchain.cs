@@ -8,7 +8,7 @@ using ClaudeCodeProtection.Workspaces;
 namespace ProtectionLifecycle;
 
 internal sealed record GitToolchainReport(bool InputHashMatched,bool InitAddCommitObserved,string? CommitId,
-    bool PrivateFixtureReadRefused,int? DenialExit,string? FailureStage,string? FailureType,int? FailureCode);
+    bool PrivateFixtureReadRefused,int? DenialExit,bool AllPackagesFixtureReadRefused,int? AllPackagesDenialExit,string? FailureStage,string? FailureType,int? FailureCode);
 
 // Personal-machine deployment assumption, like the current FlClash path.
 // Only these reviewed installed Git bytes are allowed; an update requires new
@@ -59,12 +59,12 @@ internal sealed class SessionGitToolchain : IDisposable
     }
     public void Dispose(){foreach(var file in files)file.Dispose();directory.Dispose();}
     internal static bool Qualified(GitToolchainReport value)=>value.InputHashMatched && value.InitAddCommitObserved && IsObjectId(value.CommitId) &&
-        value.PrivateFixtureReadRefused && value.DenialExit==128 && value.FailureStage is null && value.FailureType is null && value.FailureCode is null;
+        value.PrivateFixtureReadRefused && value.DenialExit==128 && value.AllPackagesFixtureReadRefused && value.AllPackagesDenialExit==128 && value.FailureStage is null && value.FailureType is null && value.FailureCode is null;
     private static bool IsObjectId(string? value)=>value?.Length==40 && value.All(c=>c is >= '0' and <= '9' or >= 'a' and <= 'f');
     internal static string BlobId(byte[] input)=>Convert.ToHexString(SHA1.HashData(Encoding.ASCII.GetBytes("blob "+input.Length+"\0").Concat(input).ToArray())).ToLowerInvariant();
     internal static GitToolchainReport RunChild(ResourceProbePlan plan,string workspace)
     {
-        bool hashMatched=false,committed=false,denied=false;string? commit=null;int? denialExit=null;var stage="VERIFY_GIT_INPUTS";
+        bool hashMatched=false,committed=false,denied=false,allPackagesDenied=false;string? commit=null;int? denialExit=null,allPackagesExit=null;var stage="VERIFY_GIT_INPUTS";
         try
         {
             if(plan.GitAssetSetSHA256!=AssetSetSHA256)throw WfpNative.Contract("GitResourcePlanMismatch");
@@ -120,9 +120,12 @@ internal sealed class SessionGitToolchain : IDisposable
             stage="GIT_PRIVATE_FIXTURE_DENIAL";var negative=Run(workspace,"hash-object","--",plan.Fixture);denialExit=negative.Exit;
             denied=negative.Exit==128 && negative.Out.Length==0 && negative.Error.TrimEnd().EndsWith(": Permission denied",StringComparison.Ordinal);
             if(!denied)throw WfpNative.Contract("GitPrivateFixtureDenialNotConfirmed");
-            return new(hashMatched,committed,commit,denied,denialExit,null,null,null);
+            stage="GIT_ALL_PACKAGES_FIXTURE_DENIAL";var aap=Run(workspace,"hash-object","--",WindowsPathSeal.Child(workspace,"all-packages-only.json"));allPackagesExit=aap.Exit;
+            allPackagesDenied=aap.Exit==128 && aap.Out.Length==0 && aap.Error.TrimEnd().EndsWith(": Permission denied",StringComparison.Ordinal);
+            if(!allPackagesDenied)throw WfpNative.Contract("GitAllPackagesFixtureDenialNotConfirmed");
+            return new(hashMatched,committed,commit,denied,denialExit,allPackagesDenied,allPackagesExit,null,null,null);
         }
-        catch(Exception ex){return new(hashMatched,committed,commit,denied,denialExit,stage+(ex.Data["Stage"] is string nativeStage?"/"+nativeStage:""),ex.GetType().Name,ex is System.ComponentModel.Win32Exception native?native.NativeErrorCode:ex.HResult);}
+        catch(Exception ex){return new(hashMatched,committed,commit,denied,denialExit,allPackagesDenied,allPackagesExit,stage+(ex.Data["Stage"] is string nativeStage?"/"+nativeStage:""),ex.GetType().Name,ex is System.ComponentModel.Win32Exception native?native.NativeErrorCode:ex.HResult);}
     }
     private static void Signal(string workspace,string stem,string nonce)
     {
