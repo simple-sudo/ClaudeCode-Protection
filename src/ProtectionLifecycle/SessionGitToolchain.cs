@@ -3,6 +3,7 @@ using System.IO.Compression;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using ClaudeCodeProtection.Workspaces;
 
 namespace ProtectionLifecycle;
 
@@ -92,17 +93,23 @@ internal sealed class SessionGitToolchain : IDisposable
                 hashMatched=result.Exit==0 && result.Out.Trim()==BlobId(plan.Input) && result.Error.Length==0;
                 if(!hashMatched)throw WfpNative.Contract("GitInputHashMismatch");
             }
-            var repo=WindowsPathSeal.Child(workspace,"git-project");Directory.CreateDirectory(repo);
+            var repo=WindowsPathSeal.Child(workspace,"git-project");
             Directory.CreateDirectory(WindowsPathSeal.Child(workspace,"empty-git-template"));
             Directory.CreateDirectory(WindowsPathSeal.Child(workspace,"empty-git-hooks"));
-            File.WriteAllBytes(WindowsPathSeal.Child(repo,"payload.txt"),plan.Input);
+            var project=WorkspaceBundle.Parse(plan.ProjectBundle);
+            foreach(var file in project.Files)
+                if(!File.ReadAllBytes(WindowsPathSeal.Child(repo,file.Path)).AsSpan().SequenceEqual(file.Content))throw WfpNative.Contract("GitProjectInputChanged");
             stage="GIT_INIT";Require(Run(workspace,"init","--quiet","--initial-branch=qualification","--template="+WindowsPathSeal.Child(workspace,"empty-git-template"),repo));
-            stage="GIT_ADD";Require(Run(workspace,"-C",repo,"add","--","payload.txt"));
+            stage="GIT_ADD";Require(Run(workspace,new[]{"-C",repo,"add","--"}.Concat(project.Files.Select(f=>f.Path)).ToArray()));
             stage="GIT_COMMIT";Require(Run(workspace,"-C",repo,"commit","--quiet","--no-gpg-sign","-m","Controlled offline qualification"));
             stage="READ_COMMIT";var head=Run(workspace,"-C",repo,"rev-parse","--verify","HEAD");Require(head);commit=head.Out.Trim();
             if(!IsObjectId(commit))throw WfpNative.Contract("GitHeadMissing");
-            var contents=Run(workspace,"-C",repo,"show","HEAD:payload.txt");Require(contents);
-            committed=contents.Out==Encoding.UTF8.GetString(plan.Input);if(!committed)throw WfpNative.Contract("GitCommittedPayloadChanged");
+            foreach(var file in project.Files)
+            {
+                var contents=Run(workspace,"-C",repo,"show","HEAD:"+file.Path);Require(contents);
+                if(contents.Out!=Encoding.UTF8.GetString(file.Content))throw WfpNative.Contract("GitCommittedPayloadChanged");
+            }
+            committed=true;
             stage="GIT_PRIVATE_FIXTURE_DENIAL";var negative=Run(workspace,"hash-object","--",plan.Fixture);denialExit=negative.Exit;
             denied=negative.Exit==128 && negative.Out.Length==0 && negative.Error.TrimEnd().EndsWith(": Permission denied",StringComparison.Ordinal);
             if(!denied)throw WfpNative.Contract("GitPrivateFixtureDenialNotConfirmed");
@@ -167,8 +174,33 @@ internal sealed class SessionGitToolchain : IDisposable
             while((count=decoder.Read(buffer))>0){if(target.Length+count>4096)throw WfpNative.Contract("GitInflatedObjectBounds");target.Write(buffer,0,count);}
             var bytes=target.ToArray();if(Convert.ToHexString(SHA1.HashData(bytes)).ToLowerInvariant()!=id)throw WfpNative.Contract("GitObjectHashMismatch");return bytes;
         }
-        var blob=BlobId(plan.Input);var expectedBlob=Encoding.ASCII.GetBytes("blob "+plan.Input.Length+"\0").Concat(plan.Input).ToArray();
-        if(!ReadObject(blob).AsSpan().SequenceEqual(expectedBlob))throw WfpNative.Contract("GitCommittedBlobMismatch");
+        var project=WorkspaceBundle.Parse(plan.ProjectBundle);
+        string VerifyTree(string prefix)
+        {
+            var entries=new List<(string Name,bool Directory,string Id)>();
+            foreach(var file in project.Files.Where(f=>f.Path.StartsWith(prefix,StringComparison.Ordinal)))
+            {
+                var rest=file.Path[prefix.Length..];var slash=rest.IndexOf('/');
+                if(slash>=0)
+                {
+                    var name=rest[..slash];if(entries.Any(e=>e.Name==name))continue;
+                    entries.Add((name,true,VerifyTree(prefix+name+"/")));
+                }
+                else
+                {
+                    var id=BlobId(file.Content);var bytes=Encoding.ASCII.GetBytes("blob "+file.Content.Length+"\0").Concat(file.Content).ToArray();
+                    if(!ReadObject(id).AsSpan().SequenceEqual(bytes))throw WfpNative.Contract("GitCommittedBlobMismatch");
+                    entries.Add((rest,false,id));
+                }
+            }
+            using var treeBody=new MemoryStream();
+            foreach(var entry in entries.OrderBy(e=>e.Name+(e.Directory?"/":""),StringComparer.Ordinal))
+            {treeBody.Write(Encoding.ASCII.GetBytes((entry.Directory?"40000 ":"100644 ")+entry.Name+"\0"));treeBody.Write(Convert.FromHexString(entry.Id));}
+            var expected=Encoding.ASCII.GetBytes("tree "+treeBody.Length+"\0").Concat(treeBody.ToArray()).ToArray();
+            var treeId=Convert.ToHexString(SHA1.HashData(expected)).ToLowerInvariant();
+            if(!ReadObject(treeId).AsSpan().SequenceEqual(expected))throw WfpNative.Contract("GitCommittedTreeMismatch");return treeId;
+        }
+        var expectedTree=VerifyTree("");
         var commit=ReadObject(report.CommitId!);var zero=Array.IndexOf(commit,(byte)0);
         if(zero is <1 or >32 || !Encoding.ASCII.GetString(commit,0,zero).Equals("commit "+(commit.Length-zero-1),StringComparison.Ordinal))throw WfpNative.Contract("GitCommitObjectRefused");
         var body=Encoding.UTF8.GetString(commit,zero+1,commit.Length-zero-1);
@@ -177,8 +209,7 @@ internal sealed class SessionGitToolchain : IDisposable
         var identity="CPC Qualification <offline@invalid.example> "+stamp+" +0000\n";
         if(body!="tree "+body.Substring(5,40)+"\nauthor "+identity+"committer "+identity+"\nControlled offline qualification\n")
             throw WfpNative.Contract("GitCommitIdentityOrMetadataMismatch");
-        var tree=ReadObject(body.Substring(5,40));var entry=Encoding.ASCII.GetBytes("100644 payload.txt\0").Concat(Convert.FromHexString(blob)).ToArray();
-        if(!tree.AsSpan().SequenceEqual(Encoding.ASCII.GetBytes("tree "+entry.Length+"\0").Concat(entry).ToArray()))throw WfpNative.Contract("GitCommittedTreeMismatch");
+        if(body.Substring(5,40)!=expectedTree)throw WfpNative.Contract("GitCommitWorkspaceTreeMismatch");
         using var refParent=WindowsPathSeal.LockDirectory(WindowsPathSeal.Child(workspace,"git-project/.git/refs/heads"),PathPolicy.Source);
         using var reference=new FileStream(WindowsPathSeal.Open(WindowsPathSeal.Child(refParent.Path,"qualification"),false,true),FileAccess.Read,128,false);
         if(reference.Length!=41)throw WfpNative.Contract("GitBranchRefBounds");var data=new byte[41];reference.ReadExactly(data);

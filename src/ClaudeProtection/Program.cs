@@ -1,4 +1,5 @@
 using System.Text.Json;
+using ClaudeCodeProtection.Workspaces;
 
 namespace ClaudeProtection;
 
@@ -13,6 +14,22 @@ internal static class Program
         {
             switch (args.FirstOrDefault())
             {
+                case "workspace-pack":
+                    if(args.Length!=4)return 64;
+                    WorkspaceFiles.RequireOrdinaryUser();
+                    var bundle=WorkspaceFiles.Capture(args[1],WorkspaceFiles.ReadSelection(args[2]));
+                    WorkspaceFiles.WriteBundleNew(args[3],bundle);
+                    Console.WriteLine(JsonSerializer.Serialize(new {Status="WORKSPACE_DATA_PACKED",SHA256=WorkspaceBundle.Hash(bundle),
+                        FileCount=WorkspaceBundle.Parse(bundle).Files.Length,AdmissionIssued=false,HostAclChanged=false,CodeExecuted=false}));
+                    return 0;
+                case "workspace-review":
+                    if(args.Length!=3)return 64;
+                    WorkspaceFiles.RequireOrdinaryUser();
+                    var baseline=WorkspaceFiles.ReadBundle(args[1]);var result=WorkspaceFiles.ReadBundle(args[2]);
+                    var changes=WorkspaceBundle.Compare(baseline,result);
+                    Console.WriteLine(JsonSerializer.Serialize(new {Status="WORKSPACE_RESULT_COMPARED",BaseSHA256=WorkspaceBundle.Hash(baseline),
+                        ResultSHA256=WorkspaceBundle.Hash(result),Changes=changes,HostFilesModified=false,AdmissionIssued=false}));
+                    return 0;
                 case "audit":
                     if (args.Length > 2 || (args.Length == 2 && args[1] != "--online")) return 64;
                     var audit = await EnvironmentAudit.Run(Environment.CurrentDirectory, args.Contains("--online"));
@@ -55,6 +72,7 @@ internal static class Program
                 default:
                     Console.WriteLine("ClaudeProtection daily | audit [--online] | preflight [--online] | system-proxy-baseline | process-identity PID | transport | repair-proxy-plan | repair-proxy SHA256 | restore-proxy");
                     Console.WriteLine("Real Claude launch is deferred. Engineering commands are excluded from this build.");
+                    Console.WriteLine("workspace-pack ROOT SELECTION_JSON NEW_BUNDLE | workspace-review BASE_BUNDLE RESULT_BUNDLE (data transfer only; no launch or host writeback)");
                     return args.Length == 0 ? 0 : 64;
             }
         }

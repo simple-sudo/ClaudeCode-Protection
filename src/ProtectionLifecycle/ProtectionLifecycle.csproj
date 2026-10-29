@@ -22,6 +22,7 @@
     <Compile Include="SessionProfileRecovery.cs" />
     <Compile Include="SessionGitToolchain.cs" />
     <Compile Include="SessionTaskWorkspace.cs" />
+    <Compile Include="../Shared/WorkspaceBundle.cs;../Shared/WorkspaceFiles.cs" />
     <Compile Include="../Shared/ProxyDestinationPolicy.cs" Link="ProxyDestinationPolicy.cs" />
     <Compile Include="../Shared/LoopbackTcpTable.cs" Link="LoopbackTcpTable.cs" />
     <Compile Include="../Shared/StrictEnvironmentRequirements.cs" Link="StrictEnvironmentRequirements.cs" />

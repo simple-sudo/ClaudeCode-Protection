@@ -118,6 +118,7 @@ internal sealed class ProtectedSession
         ResourceQualification? permit=null;ResourceChildReport? observed=null;Task<uint>? exited=null;Task<string>? text=null;
         JobSnapshot? zero=null;RuntimeStop? stopped=null;uint? exit=null;bool resumed=false,toolObserved=false,gitObserved=false,cleanupDeferred=false;
         var failures=new List<Exception>();
+        string? workspaceResultSHA256=null;
         try
         {
             LifecycleRecovery.AssertNoPending(state);InstallationLoopbackLease.AssertClosedHistory(state);
@@ -200,6 +201,8 @@ internal sealed class ProtectedSession
             }
             else if(job is not null)try{zero=job.AtomicAdmissionReserved?job.CloseAtomicAdmissionAndStop():job.StopAndVerifyZero();}catch(Exception ex){failures.Add(ex);}
             if(profile?.ProcessCreationAttempted==true && zero is not null)try{profile.AfterOwnedJobZero(zero);}catch(Exception ex){failures.Add(ex);}
+            if(includeGit && failures.Count==0 && zero?.ObservedZero==true && observed is not null && SessionResources.Qualified(observed))
+                try{workspaceResultSHA256=resources?.PreserveClosedWorkspaceResult(zero);}catch(Exception ex){failures.Add(ex);}
             if(exited is not null)try{exit=exited.WaitAsync(TimeSpan.FromSeconds(2)).GetAwaiter().GetResult();}catch(Exception ex){failures.Add(ex);}
             if(pipe is not null)try{pipe.DisposeLocalCopyOfClientHandle();}catch(Exception ex){failures.Add(ex);}
             if(includeGit && failures.Count!=0)try{resources?.PreserveGitFailure();}catch(Exception ex){failures.Add(ex);}
@@ -216,13 +219,15 @@ internal sealed class ProtectedSession
             foreach(var fence in fences)try{if(!fence.Observe().FullQuarantineObserved)throw WfpNative.Contract("ResourceFinalQuarantineMissing");}catch(Exception ex){failures.Add(ex);}
             foreach(var fence in fences)try{fence.Dispose();}catch(Exception ex){failures.Add(ex);}
         }
-        var success=observed is not null && SessionResources.Qualified(observed) && toolObserved && (!includeGit || gitObserved && observed.Git is not null) && zero?.ObservedZero==true && failures.Count==0;
+        var success=observed is not null && SessionResources.Qualified(observed) && toolObserved && (!includeGit || gitObserved && observed.Git is not null && workspaceResultSHA256 is not null) && zero?.ObservedZero==true && failures.Count==0;
         var report=JsonSerializer.Serialize(new {SchemaVersion=1,state.InstallationId,SessionId=id,version.Package.Release,version.Package.ManifestHash,
             Status=success?(cleanupDeferred?"OFFLINE_RESOURCE_CLOSED_JOB_CLEANUP_DEFERRED":includeGit?"FIXED_OFFLINE_GIT_TOOLCHAIN_AND_DENIAL_OBSERVED":"FIXED_OFFLINE_WORKSPACE_TOOL_AND_DENIAL_OBSERVED"):"OFFLINE_RESOURCE_SESSION_NOT_CONFIRMED",
             Scope=includeGit?"FIXED_OFFLINE_GIT_INIT_ADD_COMMIT_AND_DENIAL_ONLY":"FIXED_PROFILE_WORKSPACE_WINDOWS_POWERSHELL_AND_NON_SECRET_DENIAL_FIXTURE_ONLY",
             Resumed=resumed,ChildExit=exit,Child=observed,InheritedPowerShellIdentityObserved=toolObserved,FinalJob=zero,Stop=stopped,
             CleanupDeferredForRecovery=cleanupDeferred,
             InheritedGitIdentityObserved=gitObserved,GitAssetSetSHA256=resources?.Plan.GitAssetSetSHA256,
+            WorkspaceBaselineSHA256=includeGit && resources is not null?ClaudeCodeProtection.Workspaces.WorkspaceBundle.Hash(resources.Plan.ProjectBundle):null,
+            ClosedWorkspaceResultSHA256=workspaceResultSHA256,
             Failures=failures.SelectMany(WfpNative.Describe).ToArray(),FormalAdmissionIssued=false,LaunchAuthorized=false,NetworkOpened=false,ClaudeLaunched=false,
             AllHostResourceIsolationQualified=false,UserProjectToolchainQualified=false,FourteenEnvironmentRequirementsQualified=false,GpuQualified=false});
         state.WriteNew("resource-session-after-"+id+".json",Encoding.UTF8.GetBytes(report));return(success?0:3,report);

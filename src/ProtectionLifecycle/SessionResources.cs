@@ -6,6 +6,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using Microsoft.Win32.SafeHandles;
+using ClaudeCodeProtection.Workspaces;
 
 namespace ProtectionLifecycle;
 
@@ -21,6 +22,11 @@ internal sealed record ResourceProbePlan(int SchemaVersion,string Nonce,string I
     internal string Fixture=>WindowsPathSeal.Child(FixedLayout.FromWindows().StateRoot,"resource-fixture-"+Nonce+".json");
     internal string Workspace(string sid)=>GitAssetSetSHA256 is null?WindowsPathSeal.Child(SessionResources.ProfileFolder(sid),"workspace-"+Nonce):SessionTaskWorkspace.PathFor(Nonce);
     internal byte[] Input=>Encoding.UTF8.GetBytes("CPC-RESOURCE:"+Nonce);
+    // Same data transfer contract as daily workspace-pack, without importing
+    // a caller-selected workload into this fixed qualification entry point.
+    internal byte[] ProjectBundle=>WorkspaceBundle.Create(new[]{("payload.txt",Input),
+        ("src/message.txt",Encoding.UTF8.GetBytes("Project input "+Nonce+"\n")),
+        ("README.md",Encoding.UTF8.GetBytes("Offline workspace transfer\n"))}).Serialize();
 }
 internal sealed record ResourceAccessCase(string Role,string Status,int? Error);
 internal sealed record ResourceChildReport(int SchemaVersion,int Pid,string Nonce,bool WorkspaceWriteReadMatched,int? ToolExit,
@@ -68,7 +74,12 @@ internal sealed class SessionResources : IDisposable
             if(input.Length!=plan.Input.Length || Convert.ToHexString(SHA256.HashData(input))!=Convert.ToHexString(SHA256.HashData(plan.Input)))
                 throw WfpNative.Contract("FreshWorkspaceInputChanged");
             input.Position=0;
-            if(includeGit)using(var empty=new FileStream(WindowsPathSeal.Child(path,"empty-git-config"),FileMode.CreateNew,FileAccess.Write,FileShare.None)){empty.Flush(true);}
+            if(includeGit)
+            {
+                using(var empty=new FileStream(WindowsPathSeal.Child(path,"empty-git-config"),FileMode.CreateNew,FileAccess.Write,FileShare.None)){empty.Flush(true);}
+                WorkspaceFiles.MaterializeNew(path,"git-project",plan.ProjectBundle);
+                state.WriteNew("workspace-input-"+nonce+".json",plan.ProjectBundle);
+            }
             state.WriteNew("resource-fixture-"+nonce+".json",JsonSerializer.SerializeToUtf8Bytes(new {SchemaVersion=1,state.InstallationId,Nonce=nonce,
                 Value="CONTROLLED_NON_SECRET_FIXTURE",Scope="PRIVATE_STATE_ACCESS_DENIAL_CONTROL"}));
             // An existing, readable positive host control prevents absence from
@@ -112,6 +123,18 @@ internal sealed class SessionResources : IDisposable
             state.WriteNew("resource-git-error-"+Plan.Nonce+".json",bytes);
         }
         catch(ExactPathAbsentException ex)when(string.Equals(ex.FailedPath,path,StringComparison.OrdinalIgnoreCase)){}
+    }
+    internal string? PreserveClosedWorkspaceResult(JobSnapshot zero)
+    {
+        AssertHeld();if(git is null)return null;
+        if(!zero.ObservedZero)throw WfpNative.Contract("WorkspaceExportRequiresClosedJobZero");
+        var baseline=state.Read("workspace-input-"+Plan.Nonce+".json");
+        if(!baseline.Bytes.AsSpan().SequenceEqual(Plan.ProjectBundle))throw WfpNative.Contract("WorkspaceExportBaselineChanged");
+        var bytes=WorkspaceFiles.SnapshotResult(Workspace,"git-project",baseline.Bytes);
+        if(WorkspaceBundle.Compare(baseline.Bytes,bytes).Length!=0)throw WfpNative.Contract("FixedGitWorkspaceUnexpectedChanges");
+        // Current fixed sample fits the existing private journal size. Future
+        // large project output needs owned data storage, not a widened ledger.
+        return state.WriteNew("workspace-result-"+Plan.Nonce+".json",bytes);
     }
     internal bool ToolReady()=>Ready("tool-ready");
     internal bool GitReady()=>git is not null && Ready("git-ready");

@@ -1,5 +1,17 @@
 # ClaudeCode-Protection working rules
 
+2026-10-28 product continuation: P0 real private data protection and enforced
+network isolation are coequal; lower-priority host environment fingerprint
+protection is also a formal goal. Preserve normal development and NVIDIA GPU.
+Necessary privileged work must be specific Broker-owned resource operations,
+never an unrestricted elevated developer shell or blanket UAC delegation.
+Workspace data transfer uses ordinary-user explicit selection, not privileged
+host-path reads. Keep the original session owner, no parallel executors.
+See docs/PRODUCT-DIRECTION-20261028.md and docs/WORKSPACE-TRANSFER.md.
+Do not stop UU remote software or alter everyday host/network/AV settings.
+User continues to authorize bounded reviewed builds/tests and local commits;
+real Claude, automatic UAC and remote pushes remain excluded.
+
 2026-10-27 renewed authorization: the user explicitly permits bounded local
 builds and system validation again, accepting the possibility of another crash.
 The PR-intake runtime hold is historical, not a continuing blanket veto. Start
