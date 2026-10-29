@@ -296,7 +296,20 @@ internal sealed class SessionResources : IDisposable
             if(plan.GitAssetSetSHA256 is not null)
             {stage="FIXED_OFFLINE_GIT_TOOLCHAIN";gitReport=SessionGitToolchain.RunChild(plan,workspace);if(!SessionGitToolchain.Qualified(gitReport))throw WfpNative.Contract("FixedGitToolchainNotQualified");}
         }
-        catch(Exception ex){failure=ex.GetType().Name;failureCode=ex is System.ComponentModel.Win32Exception native?native.NativeErrorCode:ex.HResult;failureStage=stage+(ex.Data["Stage"] is string nativeStage?"/"+nativeStage:"");}
+        catch(Exception ex)
+        {
+            failure=ex.GetType().Name;failureCode=ex is System.ComponentModel.Win32Exception native?native.NativeErrorCode:ex.HResult;
+            if(stage=="START_FIXED_POWERSHELL" && ex is System.ComponentModel.Win32Exception)
+            {
+                // Process.Start can fail while creating/duplicating redirected
+                // pipes BEFORE CreateProcess. Keep only known framework method
+                // labels; no raw stack, path, arguments or exception message.
+                var methods=new StackTrace(ex,false).GetFrames()?.Select(f=>f.GetMethod()).Where(m=>m?.DeclaringType==typeof(Process)).Select(m=>m!.Name).ToArray()??Array.Empty<string>();
+                stage+="/"+(methods.Contains("CreatePipeWithSecurityAttributes")?"CREATE_REDIRECT_PIPE":methods.Contains("CreatePipe")?"DUPLICATE_REDIRECT_HANDLE":
+                    methods.Contains("StartWithCreateProcess")?"CREATE_PROCESS":"START_UNCLASSIFIED");
+            }
+            failureStage=stage+(ex.Data["Stage"] is string nativeStage?"/"+nativeStage:"");
+        }
         var report=new ResourceChildReport(1,Environment.ProcessId,plan.Nonce,matched,toolExit,cases.ToArray(),failure,failureCode,failureStage,toolDiagnostic,gitReport);
         Console.WriteLine(JsonSerializer.Serialize(report));return Qualified(report)?0:3;
     }

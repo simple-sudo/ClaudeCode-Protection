@@ -57,6 +57,18 @@ public static partial class InstalledBroker
                     if(type.Length is >=1 and <=60 && type.All(char.IsAsciiLetterOrDigit) && phase is "self-token" or "resource-input")
                     {failureKind=(phase=="self-token"?"SelfToken":"ResourceInput")+type;failureCode=bootstrap.GetProperty("Code").GetInt32();}
                 }
+                else if(r.TryGetProperty("Child",out var child) && child.ValueKind==JsonValueKind.Object &&
+                    child.TryGetProperty("FailureStage",out var childStage) && childStage.ValueKind==JsonValueKind.String)
+                {
+                    failureKind=childStage.GetString() switch {
+                        "START_FIXED_POWERSHELL/CREATE_REDIRECT_PIPE"=>"PowerShellRedirectPipe",
+                        "START_FIXED_POWERSHELL/DUPLICATE_REDIRECT_HANDLE"=>"PowerShellRedirectHandle",
+                        "START_FIXED_POWERSHELL/CREATE_PROCESS"=>"PowerShellCreateProcess",
+                        "START_FIXED_POWERSHELL/START_UNCLASSIFIED" or "START_FIXED_POWERSHELL"=>"PowerShellStart",
+                        _=>"ResourceSessionFailed"};
+                    if(failureKind!="ResourceSessionFailed" && child.TryGetProperty("FailureCode",out var code) && code.ValueKind==JsonValueKind.Number)
+                        failureCode=code.GetInt32();
+                }
             }
         }
         catch(Exception ex){exit=125;output=null;resultHash=null;failureStage=stage;failureKind=ex.GetType().Name;failureCode=ex is Win32Exception native?native.NativeErrorCode:ex.HResult;}

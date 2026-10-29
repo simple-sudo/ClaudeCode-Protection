@@ -1,5 +1,22 @@
 # ClaudeCode-Protection working rules
 
+2026-10-29 current installed d1b5cf615a7645d882ac982c14d1e2dc, manifest
+1F79C28F55857F788023802635F7A0A62DACEEA4BE5CD6BD45035E4A78E42681,
+human-UAC update completed14:00:44Z, remains INACTIVE. LPAC data task
+641515b1ed88432d9d3816a88578dd25 reached real workspace read/write and
+all four root denials: private state read/write, AAP-only fixture read,
+Broker VM-read open (all AccessDenied5). Owner pre-resume LPAC mask2 passed.
+Then Process.Start(PowerShell with redirected output) failed Win32 error5;
+PowerShell/Git identities/workload NOT_CONFIRMED, no result released. Exact
+read-only receipt confirms Job00f251370f83481391509b8d9fe53b97 closed/zero,
+full quarantine and no stop errors. Evidence work/lpac-paths-control. No
+reboot or daily UU/FlClash/AV/network changes. Do not repeat this unchanged
+task; no auto-recovery. Source adds fixed failure labels to distinguish .NET
+redirect-pipe creation/duplication from CreateProcess, and returns safe error
+code/kind through the same daily pipe. This diagnostic source has semantic
+checks only; qualify changed artifact before new native operation. Do not
+infer LPAC PowerShell incompatibility or grant registryRead/lpacCom from error5.
+
 2026-10-29 current installed startup revision4fe9da3d17714b949915b4b2962586ab,
 manifest0337CB5D80ECEB760AC8BF96E49FD699B51A0E9E77ED2284BE4206662EFA549F,
 completed human UAC inactive update13:53:27Z. Changed LPAC task

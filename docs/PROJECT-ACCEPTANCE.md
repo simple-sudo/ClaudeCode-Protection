@@ -479,3 +479,7 @@ ac570b474e454a9a94db2310893d3892保持INACTIVE，manifestDE88460A1F31721FC69F151
 普通daily workspace-process经本人UAC，原Broker/ProtectedSession/AppContainer/Job固定Git数据处理、闭Job/精确清理和成功账本导出后返回四份明确选择文件，session d57cf00754fc45c8b599617f2c5e41be，退出0；安装daily review/extract均0，独立原包/结果/新目录摘要一致。
 work/workspace-pipe-repair-control保留终态及字节核对。原900调用者令牌权限不足缺陷、首次失败/空输出和普通自令牌复现均保留；修正QUERY|DUPLICATE及有界失败回执后才资格新工件。成果快照复用已审查class12名称查询，无旧元数据枚举回退。
 这是可用的数据操作链，不是输入项目代码、编译/测试、完整P0/网络/14项/GPU或旧中断会话恢复验收；未改日常网络/UU/FlClash/AV，未再次重启，未推送。
+
+## 2026-10-29：同一数据所有者的LPAC原生资源边界部分通过
+
+d1b5cf61/INACTIVE安装及15文件摘要/ACL核对通过。session641515b1管理侧创建/恢复前LPAC AccessCheck身份、授权工作区实际读写，以及私有状态读写/AAP-only对照文件读/Broker VM-read四项AccessDenied5通过；PowerShell启动阶段Win32错误5、Git未运行、完整任务失败，无成果释放。原Job关闭/归零和完整隔离的精确只读回执确认，stop无失败。原997/4fe启动失败与修复证据保留；不重跑不变任务，不把四个限定拒绝扩成全面隐私保证。原ac570完整数据链与本次LPAC部分证据不互相替代；下一步定位重定向管道/句柄复制/实际CreateProcess失败点，不改宿主ACL或授通用注册表能力。
