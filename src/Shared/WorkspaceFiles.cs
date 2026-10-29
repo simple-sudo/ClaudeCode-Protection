@@ -106,8 +106,12 @@ internal static class WorkspaceFiles
         while(pending.Count>0)
         {
             var parent=pending.Pop();
-            foreach(var path in Directory.EnumerateFileSystemEntries(parent))
+            // A fresh synchronous scan cursor on this already-held NTFS
+            // directory, using the SAME names-only reader as lifecycle checks.
+            using var scan=Open(parent,true,true,false);
+            foreach(var name in WindowsDirectoryNames.Read(scan,WorkspaceBundle.MaxFiles*2+1))
             {
+                var path=Child(parent,name);
                 var relative=Path.GetRelativePath(root,path).Replace('\\','/');
                 if(parent==root && Path.GetFileName(path).Equals(".git",StringComparison.OrdinalIgnoreCase))continue;
                 _=WorkspaceBundle.Relative(relative);

@@ -16,6 +16,7 @@
     <Compile Include="../Shared/StrictEnvironmentRequirements.cs" Link="StrictEnvironmentRequirements.cs" />
     <Compile Include="../Shared/WorkspaceBundle.cs;../Shared/WorkspaceFiles.cs" />
     <Compile Include="WorkspaceProcessing.cs;WorkspaceInstalledHost.cs;../Shared/WorkspacePipe.cs" />
+    <Compile Include="../Shared/WindowsDirectoryNames.cs;../ProtectionLifecycle/DirectoryNamePage.cs" />
     <None Include="../../scripts/Read-Environment.ps1" Link="Read-Environment.ps1" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

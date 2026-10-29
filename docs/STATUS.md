@@ -2,6 +2,8 @@
 
 ## 开发中：把普通用户数据往返接到实际安装Broker
 
+BUILD（d58252b限定）：离线Broker/Lifecycle/daily及独立管道测试构建均0错误/0警告。普通用户frames和local-pipe通过，后者验证仅本人SID DACL、首实例、双向内核PID及包绑定往返。output负例实际收到Win32错误80（正确拒绝覆盖），测试却只捕获IOException，原失败完整保留；修正后只复测该项。审查发现成果快照仍用旧目录枚举，现改为与生命周期共用WindowsDirectoryNames（class12，无元数据枚举回退）；六产品非生成语义通过，新源码的构建/快照实测待资格。证据work/workspace-pipe-build-r1，当前安装5bc986e1未含新入口。
+
 SOURCE / INTEGRATED：新增daily workspace-process BASE_BUNDLE NEW_RESULT_BUNDLE，预先持有新输出及安装资产，人工UAC启动固定同版本Broker；本地同用户管道双向核对PID、限制帧长/时间，Broker另核对当前daily映像和同一普通用户token。只传数据包，不传宿主路径/脚本/任意命令，复用ProcessWorkspaceBytes、ProtectedSession和成功清理后的ExportWorkspaceData。取消/失败不自动删除或覆盖用户输出，不提升普通daily自身，不打开正式会话/网络。六产品非生成语义0错误/0警告；最初命名遮蔽/nullable诊断修正且保留报告。具体构建/IPC资格及安装待后续证据，当前安装仍5bc986e1。
 
 ## 2026-10-29 当前事故修复：5bc986e1已安装，原Broker状态清点正常返回
