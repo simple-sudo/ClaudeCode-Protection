@@ -2,6 +2,8 @@
 
 ## 开发中：把普通用户数据往返接到实际安装Broker
 
+BUILD / INTEGRATED（待安装候选）：073d211离线payload构建0错误/0警告，Release90079258ef8545f19d80e2c211744367，manifest429D76D9B3245DF335D879F27F8CDCC12AF954E79685B8D40BBDC9F50BDFB5FF，库8DB5F3039CE3352AFE4D303501FBD7F0429EA43828750BDE942342BE0D6AD2D7；逐资产5变更/9复用，原5bc安装字节保持。新daily可请求一次本人UAC，原Broker接收明确包并交回闭Job/清理后成果，尚未实机完整运行。候选不激活保护、不执行输入项目代码，安装及受保护数据操作须具体本人系统决定。
+
 VERIFIED（普通用户限定，未安装）：output定向复测退出0；snapshot首轮样本文件名87字符违反既有80字符限制，失败保留，修正样本并只重建独立测试后退出0。452文件快照含450新增/1修改/1删除、嵌套及精确二进制，根.git排除、并发writer以共享冲突拒绝；名称总量跨64KiB页。共用reader与产品源码一致。work/workspace-pipe-build-r2/r3保留工件审查、原失败及终态，r3 run-result SHA256=6D2B8C74E4E6396128DCE8475A54A557CBA8A320375352BCB1D1E5F5865FA0AD。未重跑已过frames/local-pipe/output，未创建产品Job/profile、未读私有state/改系统配置。原安装5bc986e1未含这些改动；新包安装及原链完整往返仍待本人系统授权。当前源码补入已安装5bc清单作为精确inactive迁移来源，原闭准入/Job归零/隔离约束不变。
 
 BUILD（d58252b限定）：离线Broker/Lifecycle/daily及独立管道测试构建均0错误/0警告。普通用户frames和local-pipe通过，后者验证仅本人SID DACL、首实例、双向内核PID及包绑定往返。output负例实际收到Win32错误80（正确拒绝覆盖），测试却只捕获IOException，原失败完整保留；修正后只复测该项。审查发现成果快照仍用旧目录枚举，现改为与生命周期共用WindowsDirectoryNames（class12，无元数据枚举回退）；六产品非生成语义通过，新源码的构建/快照实测待资格。证据work/workspace-pipe-build-r1，当前安装5bc986e1未含新入口。
