@@ -2,6 +2,8 @@
 
 ## 2026-10-29 当前事故：0x1E蓝屏；停止新增产品执行
 
+05:58Z补充：本人UAC的固定只读采集已确认重启后actual current仍为ecb06a/INACTIVE；原转储SHA256=B81AB79BF339A8FB89833C564F86483B950409B3D836BA7D80D46CEC09BD47F3，未复制/上传。1501项有界库存的明确UTC事故窗口没有匹配新会话/profile/Job/task回执；不证明请求未执行或恢复成功。r1时间类型误拒绝失败保留，r2修正为明确UTC后307ms退出0。无产品/调试器执行。旧调试器自动审批拒绝仍保留，用户选择本人手动WinDbg分析，等待两份有效文字结果。
+
 BLOCKED（产品build/install/runtime/fault injection）：本次人工UAC窗口在05:44:37Z已完成INACTIVE更新到ecb06a57929a45d1adf9dd1d8415c4a4，manifest851701939666F35F4E0C4323C408E00690B4CFB96165C81F5C6092AF5D8238C6；错误输入摘要拒绝125已落盘，随后正确项目数据请求没有终态。05:44:54Z系统重启，System1001确认0x1E(C0000005,0,8,0)。驱动/根因/本项目因果均UNKNOWN；不重试、不自动恢复，不把失联当完成。
 新staging/版本目录存在，旧659d76df保留；当前选择只有崩溃前privileged回读，重启后私有state、未完成Job/profile及WFP恢复尚未核对。转储读取普通用户AccessDenied，未改ACL/上传/运行调试器。
 重启后AVP/BFE运行，FlClash/Core24520/17272及UU GameViewer服务进程存在，无产品测试进程；这些不证明整体系统健康/保护验收。
