@@ -30,14 +30,20 @@ static object? Invoke(MethodInfo method,params object[] arguments)
     {ExceptionDispatchInfo.Capture(ex.InnerException).Throw();throw;}
 }
 using var held=(IDisposable)Invoke(open,root,Enum.Parse(policy,"Source"))!;
-string[] Scan(int maximum=128)=>(string[])Invoke(scan,held,maximum)!;
+string[] Scan(int maximum=512)=>(string[])Invoke(scan,held,maximum)!;
 if(Scan().Length!=0)throw new Exception("Fresh names not empty");
 var expected=new List<string>{"alpha.json","项目.bin","nested"};
 File.WriteAllText(Path.Combine(root,"alpha.json"),"{}");
 File.WriteAllBytes(Path.Combine(root,"项目.bin"),new byte[]{0,255,1,128});
 Directory.CreateDirectory(Path.Combine(root,"nested"));
 File.WriteAllText(Path.Combine(root,"nested","outside-top-level.txt"),"no traversal");
-for(var i=0;i<40;i++){var name="entry-"+i.ToString("D2")+".txt";File.WriteAllText(Path.Combine(root,name),"fixed fixture");expected.Add(name);}
+for(var i=0;i<480;i++)
+{
+    var name="entry-"+i.ToString("D3")+"-"+new string('x',58)+".txt";
+    File.WriteAllText(Path.Combine(root,name),"fixed fixture");expected.Add(name);
+}
+// Require a real continuation, not just multiple records in one native page.
+if(expected.Sum(n=>(12+n.Length*2+3)&~3)<=65536)throw new Exception("Fixture does not exceed one native page");
 void Match()
 {
     if(!Scan().OrderBy(n=>n,StringComparer.Ordinal).SequenceEqual(expected.OrderBy(n=>n,StringComparer.Ordinal)))
@@ -54,7 +60,7 @@ var create=seal.GetMethod("CreateFile",flags)!;
 using var deletionHandle=(SafeFileHandle)Invoke(create,root,0x130080u,1u,IntPtr.Zero,3u,0x02200000u,IntPtr.Zero)!;
 if(deletionHandle.IsInvalid)throw new Exception("Fixture DELETE-capable handle failed");
 var scanHeld=seal.GetMethod("EnumerateNames",flags,null,new[]{typeof(SafeFileHandle),typeof(string),typeof(int)},null)!;
-var deletionNames=(string[])Invoke(scanHeld,deletionHandle,root,128)!;
+var deletionNames=(string[])Invoke(scanHeld,deletionHandle,root,512)!;
 if(!deletionNames.OrderBy(n=>n,StringComparer.Ordinal).SequenceEqual(expected.OrderBy(n=>n,StringComparer.Ordinal)))
     throw new Exception("Names query incompatible with exact-removal held handle");
 var report=new{Scope="ORDINARY_OWNED_TEMP_NAMES_ONLY",Root=root,Names=expected.OrderBy(n=>n,StringComparer.Ordinal).ToArray(),
