@@ -100,15 +100,17 @@ internal sealed class SessionGitToolchain : IDisposable
             foreach(var file in project.Files)
                 if(!File.ReadAllBytes(WindowsPathSeal.Child(repo,file.Path)).AsSpan().SequenceEqual(file.Content))throw WfpNative.Contract("GitProjectInputChanged");
             stage="GIT_INIT";Require(Run(workspace,"init","--quiet","--initial-branch=qualification","--template="+WindowsPathSeal.Child(workspace,"empty-git-template"),repo));
-            stage="GIT_ADD";Require(Run(workspace,new[]{"-C",repo,"add","--"}.Concat(project.Files.Select(f=>f.Path)).ToArray()));
+            // Highest-precedence info attributes override project-controlled
+            // transformations. Data processing preserves exact selected bytes,
+            // independent of .gitattributes or .gitignore in the source bundle.
+            var info=WindowsPathSeal.Child(repo,".git/info");Directory.CreateDirectory(info);
+            File.WriteAllText(WindowsPathSeal.Child(info,"attributes"),"* -text -filter -ident -working-tree-encoding\n",new UTF8Encoding(false));
+            stage="GIT_ADD";Require(Run(workspace,new[]{"-C",repo,"add","--force","--"}.Concat(project.Files.Select(f=>f.Path)).ToArray()));
             stage="GIT_COMMIT";Require(Run(workspace,"-C",repo,"commit","--quiet","--no-gpg-sign","-m","Controlled offline qualification"));
             stage="READ_COMMIT";var head=Run(workspace,"-C",repo,"rev-parse","--verify","HEAD");Require(head);commit=head.Out.Trim();
             if(!IsObjectId(commit))throw WfpNative.Contract("GitHeadMissing");
-            foreach(var file in project.Files)
-            {
-                var contents=Run(workspace,"-C",repo,"show","HEAD:"+file.Path);Require(contents);
-                if(contents.Out!=Encoding.UTF8.GetString(file.Content))throw WfpNative.Contract("GitCommittedPayloadChanged");
-            }
+            // The trusted owner verifies every committed blob and complete
+            // tree below. Text-decoding `git show` cannot prove binary data.
             committed=true;
             stage="GIT_PRIVATE_FIXTURE_DENIAL";var negative=Run(workspace,"hash-object","--",plan.Fixture);denialExit=negative.Exit;
             denied=negative.Exit==128 && negative.Out.Length==0 && negative.Error.TrimEnd().EndsWith(": Permission denied",StringComparison.Ordinal);
@@ -168,10 +170,10 @@ internal sealed class SessionGitToolchain : IDisposable
             if(!IsObjectId(id))throw WfpNative.Contract("GitObjectNameRefused");
             using var parent=WindowsPathSeal.LockDirectory(WindowsPathSeal.Child(objects,id[..2]),PathPolicy.Source);
             using var source=new FileStream(WindowsPathSeal.Open(WindowsPathSeal.Child(parent.Path,id[2..]),false,true),FileAccess.Read,4096,false);
-            if(source.Length is <1 or >8192)throw WfpNative.Contract("GitObjectBounds");
+            if(source.Length<1 || source.Length>WorkspaceBundle.MaxFileBytes+65536)throw WfpNative.Contract("GitObjectBounds");
             using var decoder=new ZLibStream(source,CompressionMode.Decompress);using var target=new MemoryStream();
             var buffer=new byte[1024];int count;
-            while((count=decoder.Read(buffer))>0){if(target.Length+count>4096)throw WfpNative.Contract("GitInflatedObjectBounds");target.Write(buffer,0,count);}
+            while((count=decoder.Read(buffer))>0){if(target.Length+count>WorkspaceBundle.MaxFileBytes+64)throw WfpNative.Contract("GitInflatedObjectBounds");target.Write(buffer,0,count);}
             var bytes=target.ToArray();if(Convert.ToHexString(SHA1.HashData(bytes)).ToLowerInvariant()!=id)throw WfpNative.Contract("GitObjectHashMismatch");return bytes;
         }
         var project=WorkspaceBundle.Parse(plan.ProjectBundle);

@@ -15,3 +15,9 @@ v1上限：512文件、每文件1MiB、总内容8MiB、序列化12MiB、相对�
 数据包不是签名、身份凭据、正式准入或管理员授权；哈希只绑定内容。新增命令不执行项目代码，不授予通用会话、网络、设备或GPU权限。固定Git包的源码接线、普通用户传输实测及新安装受限运行分别记账，互不代替。
 
 当前已实测：普通用户打包本仓库四个选定源码；固定三文件包在安装后的原AppContainer/Job链完成Git提交、全对象核对、闭Job结果快照、52项精确清理；安装daily可比较该结果为无变化。没有向Broker开放任意包入口，真实项目的一次性数据授权/持久成果交付仍需同一所有者接线。
+
+开发中新增数据操作（构建/实机状态以STATUS为准）：已安装Broker在现有提升上下文中接受`process-workspace-data EXACT_INPUT_SHA256`，标准输入只接原始数据包字节，15秒/12MiB封顶，不接受宿主文件路径、可执行目标、命令或脚本。SHA256表达对这些具体输入字节的选择，不授予项目代码执行。沿原任务所有者执行固定离线Git init/add/commit，对所有对象独立核验、关闭Job归零后快照/精确清理，成功终态后方可`export-workspace-data SESSION EXACT_RESULT_SHA256`把原始结果包输出到stdout。失败/未完成结果拒绝导出；存储数据与小型安全回执分开，原包/结果字节留在管理员私有state，不自动清除原证据。
+
+普通用户`workspace-extract BASE_BUNDLE RESULT_BUNDLE NEW_DIRECTORY`先比较确切原包绑定，然后只创建全新目录及文件；不合并既有树、不写回原项目、不删除文件。原JSON包无BOM；通过标准输入时须保留字节，不用会改编码/换行的文本管道。结果导出应定向到用户自己选择的新包文件，stdout包含源数据，仅在主动导出时输出。
+
+真实项目的.gitattributes及.gitignore作为文件保留，但数据处理固定在.git/info/attributes中取消text/filter/ident/working-tree-encoding转换，Git add --force仅作用显式清单，使二进制/CRLF与被忽略的已选文件完整进入独立对象核对。依据：[Git属性优先级](https://git-scm.com/docs/gitattributes)、[Git显式强制添加](https://git-scm.com/docs/git-add)。不执行项目hooks、filter、MSBuild或测试。该入口是数据维护，不是正式会话或完整隐私资格的替代入口。

@@ -65,7 +65,7 @@ internal static class SessionTaskWorkspace
             StrictJson.Text(r,"ProfileId")!=profile.ProfileId || StrictJson.Text(r,"CreatedSHA256")!=creation.Created.SHA256 ||
             StrictJson.Text(r,"ProfileCleanupIntentSHA256")!=state.Read("profile-delete-intent-"+profile.ProfileId+".json",8192).SHA256 ||
             StrictJson.Text(r,"Status")!="EXACT_TASK_DIRECTORY_ABSENCE_OBSERVED" || !r.GetProperty("RootAbsent").GetBoolean() ||
-            r.GetProperty("RemovedEntries").GetInt32() is <0 or >2048)throw WfpNative.Contract("TaskWorkspaceCleanupReceiptMismatch");
+            r.GetProperty("RemovedEntries").GetInt32() is <0 or >4096)throw WfpNative.Contract("TaskWorkspaceCleanupReceiptMismatch");
     }
     internal static void Cleanup(ProtectedState state,ProfileStorageReceipt profile)
     {
@@ -95,7 +95,7 @@ internal static class SessionTaskWorkspace
                     var next=pending.Pop();if(next.Depth>16)throw WfpNative.Contract("TaskWorkspaceCleanupDepthExceeded");
                     foreach(var child in Directory.EnumerateFileSystemEntries(next.Path))
                     {
-                        if(entries.Count>=2048)throw WfpNative.Contract("TaskWorkspaceCleanupInventoryExceeded");
+                        if(entries.Count>=4096)throw WfpNative.Contract("TaskWorkspaceCleanupInventoryExceeded");
                         var attributes=File.GetAttributes(child);if((attributes&FileAttributes.ReparsePoint)!=0)throw WfpNative.Contract("TaskWorkspaceReparsePointRefused");
                         var directory=(attributes&FileAttributes.Directory)!=0;
                         entries.Add((child,directory,Open(child,directory)));if(directory)pending.Push((child,next.Depth+1));

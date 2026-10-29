@@ -58,9 +58,10 @@ internal sealed class ProtectedSession
                 "CURRENT_ARTIFACT_SECURITY_QUALIFICATION_OR_RESOURCE_GRANT_MISSING",clock.ElapsedMilliseconds,120000)).ToArray());
     }
     private sealed record EnvironmentEvidence(string Id,string Status,string Reason,long ObservedMs,long ValidForMs);
-    // This capability authorizes one compiled offline resource experiment,
+    // This capability authorizes one compiled offline resource/Git program,
     // bound to this installed owner. It cannot attach Admission, open a
-    // gateway, consume a formal Preparation, or select a caller workload.
+    // gateway, consume a formal Preparation, or execute caller project code.
+    // The data-processing operation accepts only byte-pinned source content.
     internal sealed class ResourceQualification
     {
         private readonly ProtectedSession owner;
@@ -106,12 +107,16 @@ internal sealed class ProtectedSession
         =>new ProtectedSession(layout,state,version).ExecuteResourceQualification();
     internal static (int ExitCode,string Report) QualifyToolchain(FixedLayout layout,ProtectedState state,VerifiedVersion version)
         =>new ProtectedSession(layout,state,version).ExecuteResourceQualification(includeGit:true);
+    // A data-only operation on the existing owner and fixed offline Git
+    // program. Source/test/build files in the bundle are NEVER executed.
+    internal static (int ExitCode,string Report) ProcessWorkspaceData(FixedLayout layout,ProtectedState state,VerifiedVersion version,byte[] bytes)
+        =>new ProtectedSession(layout,state,version).ExecuteResourceQualification(includeGit:true,workspaceInput:bytes);
     internal static (int ExitCode,string Report) QualifyResourceRecovery(FixedLayout layout,ProtectedState state,VerifiedVersion version)
         // Deliberately EXIT this installed owner with a durable cleanup
         // checkpoint. The NEXT installed invocation performs real journal
         // recovery; no live in-memory profile object is transferred to it.
         =>new ProtectedSession(layout,state,version).ExecuteResourceQualification(true);
-    private (int ExitCode,string Report) ExecuteResourceQualification(bool deferCleanup=false,bool includeGit=false)
+    private (int ExitCode,string Report) ExecuteResourceQualification(bool deferCleanup=false,bool includeGit=false,byte[]? workspaceInput=null)
     {
         InstallationProfileLease? profile=null;AtomicChild? child=null;
         System.IO.Pipes.AnonymousPipeServerStream? pipe=null;StreamReader? reader=null;
@@ -129,7 +134,7 @@ internal sealed class ProtectedSession
             foreach(var fence in fences)if(!fence.Observe().FullQuarantineObserved)throw WfpNative.Contract("ResourceQualificationFullQuarantineRequired");
             state.WriteNew("resource-session-before-"+id+".json",JsonSerializer.SerializeToUtf8Bytes(new {SchemaVersion=1,state.InstallationId,
                 SessionId=id,version.Package.Release,version.Package.ManifestHash,Scope="FIXED_OFFLINE_RESOURCE_AND_POWERSHELL_QUALIFICATION",FormalAdmissionIssued=false}));
-            profile=InstallationProfileLease.Create(state);resources=SessionResources.Create(state,version,profile,id,includeGit);
+            profile=InstallationProfileLease.Create(state);resources=SessionResources.Create(state,version,profile,id,includeGit,workspaceInput);
             using(var package=new InstallationPackageSid(state))sid=package.Value;
             job=OwnedKernelJob.CreateEmpty(state,version);permit=new ResourceQualification(this);
             pipe=new(System.IO.Pipes.PipeDirection.In,HandleInheritability.Inheritable);reader=new StreamReader(pipe,Encoding.UTF8,false,4096,true);
@@ -221,12 +226,12 @@ internal sealed class ProtectedSession
         }
         var success=observed is not null && SessionResources.Qualified(observed) && toolObserved && (!includeGit || gitObserved && observed.Git is not null && workspaceResultSHA256 is not null) && zero?.ObservedZero==true && failures.Count==0;
         var report=JsonSerializer.Serialize(new {SchemaVersion=1,state.InstallationId,SessionId=id,version.Package.Release,version.Package.ManifestHash,
-            Status=success?(cleanupDeferred?"OFFLINE_RESOURCE_CLOSED_JOB_CLEANUP_DEFERRED":includeGit?"FIXED_OFFLINE_GIT_TOOLCHAIN_AND_DENIAL_OBSERVED":"FIXED_OFFLINE_WORKSPACE_TOOL_AND_DENIAL_OBSERVED"):"OFFLINE_RESOURCE_SESSION_NOT_CONFIRMED",
-            Scope=includeGit?"FIXED_OFFLINE_GIT_INIT_ADD_COMMIT_AND_DENIAL_ONLY":"FIXED_PROFILE_WORKSPACE_WINDOWS_POWERSHELL_AND_NON_SECRET_DENIAL_FIXTURE_ONLY",
+            Status=success?(workspaceInput is not null?"WORKSPACE_DATA_PROCESSED_AND_CLEANED":cleanupDeferred?"OFFLINE_RESOURCE_CLOSED_JOB_CLEANUP_DEFERRED":includeGit?"FIXED_OFFLINE_GIT_TOOLCHAIN_AND_DENIAL_OBSERVED":"FIXED_OFFLINE_WORKSPACE_TOOL_AND_DENIAL_OBSERVED"):"OFFLINE_RESOURCE_SESSION_NOT_CONFIRMED",
+            Scope=workspaceInput is not null?"CALLER_BYTE_PINNED_DATA_FIXED_OFFLINE_GIT_ONLY_NO_PROJECT_CODE_EXECUTION":includeGit?"FIXED_OFFLINE_GIT_INIT_ADD_COMMIT_AND_DENIAL_ONLY":"FIXED_PROFILE_WORKSPACE_WINDOWS_POWERSHELL_AND_NON_SECRET_DENIAL_FIXTURE_ONLY",
             Resumed=resumed,ChildExit=exit,Child=observed,InheritedPowerShellIdentityObserved=toolObserved,FinalJob=zero,Stop=stopped,
             CleanupDeferredForRecovery=cleanupDeferred,
             InheritedGitIdentityObserved=gitObserved,GitAssetSetSHA256=resources?.Plan.GitAssetSetSHA256,
-            WorkspaceBaselineSHA256=includeGit && resources is not null?ClaudeCodeProtection.Workspaces.WorkspaceBundle.Hash(resources.Plan.ProjectBundle):null,
+            WorkspaceBaselineSHA256=includeGit && resources is not null?resources.Plan.WorkspaceInputSHA256??ClaudeCodeProtection.Workspaces.WorkspaceBundle.Hash(resources.Plan.FixedProjectBundle):null,
             ClosedWorkspaceResultSHA256=workspaceResultSHA256,
             Failures=failures.SelectMany(WfpNative.Describe).ToArray(),FormalAdmissionIssued=false,LaunchAuthorized=false,NetworkOpened=false,ClaudeLaunched=false,
             AllHostResourceIsolationQualified=false,UserProjectToolchainQualified=false,FourteenEnvironmentRequirementsQualified=false,GpuQualified=false});

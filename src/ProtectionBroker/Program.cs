@@ -6,6 +6,17 @@ internal static class Program
 {
     private static int Main(string[] args)
     {
+        if(args.Length==2 && args[0]=="process-workspace-data" || args.Length==3 && args[0]=="export-workspace-data")
+        {
+            try
+            {
+                if(args[0]=="process-workspace-data")
+                {var data=ProtectionLifecycle.InstalledBroker.ProcessWorkspaceData(args[1]);Console.WriteLine(data.Report);return data.ExitCode;}
+                var bytes=ProtectionLifecycle.InstalledBroker.ExportWorkspaceData(args[1],args[2]);
+                using var output=Console.OpenStandardOutput();output.Write(bytes);output.Flush();return 0;
+            }
+            catch(Exception ex){Console.Error.WriteLine("Workspace data operation not confirmed: "+ex.GetType().Name+"; code="+ex.HResult);return 125;}
+        }
         if(args.Length==5 && args[0]=="configure-session-environment")
         {
             try
@@ -23,6 +34,7 @@ internal static class Program
             Console.Error.WriteLine("Installed bounded qualification: qualify-resources (fixed offline workspace/PowerShell/denial fixture only; no formal launch or network grant).");
             Console.Error.WriteLine("Installed resource recovery: recover-session-resources; qualify-resource-recovery (fixed closed-Job cleanup checkpoint only; no forced crash).");
             Console.Error.WriteLine("Installed toolchain qualification: qualify-toolchain (fixed reviewed Git; offline init/add/commit in a fresh task workspace only).");
+            Console.Error.WriteLine("Installed data maintenance: process-workspace-data EXACT_INPUT_SHA256 (redirected bundle bytes); export-workspace-data SESSION EXACT_RESULT_SHA256 (raw bundle stdout). No project code execution or network grant.");
             return 64;
         }
         // The current artifact has not obtained bounded runtime/install

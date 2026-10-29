@@ -30,6 +30,14 @@ internal static class Program
                     Console.WriteLine(JsonSerializer.Serialize(new {Status="WORKSPACE_RESULT_COMPARED",BaseSHA256=WorkspaceBundle.Hash(baseline),
                         ResultSHA256=WorkspaceBundle.Hash(result),Changes=changes,HostFilesModified=false,AdmissionIssued=false}));
                     return 0;
+                case "workspace-extract":
+                    if(args.Length!=4)return 64;
+                    WorkspaceFiles.RequireOrdinaryUser();
+                    var extractBase=WorkspaceFiles.ReadBundle(args[1]);var extractResult=WorkspaceFiles.ReadBundle(args[2]);
+                    WorkspaceFiles.ExtractResultNew(args[3],extractBase,extractResult);
+                    Console.WriteLine(JsonSerializer.Serialize(new {Status="WORKSPACE_RESULT_EXTRACTED_TO_NEW_DIRECTORY",
+                        ResultSHA256=WorkspaceBundle.Hash(extractResult),Files=WorkspaceBundle.Parse(extractResult).Files.Length,OriginalProjectModified=false,CodeExecuted=false}));
+                    return 0;
                 case "audit":
                     if (args.Length > 2 || (args.Length == 2 && args[1] != "--online")) return 64;
                     var audit = await EnvironmentAudit.Run(Environment.CurrentDirectory, args.Contains("--online"));
@@ -73,6 +81,7 @@ internal static class Program
                     Console.WriteLine("ClaudeProtection daily | audit [--online] | preflight [--online] | system-proxy-baseline | process-identity PID | transport | repair-proxy-plan | repair-proxy SHA256 | restore-proxy");
                     Console.WriteLine("Real Claude launch is deferred. Engineering commands are excluded from this build.");
                     Console.WriteLine("workspace-pack ROOT SELECTION_JSON NEW_BUNDLE | workspace-review BASE_BUNDLE RESULT_BUNDLE (data transfer only; no launch or host writeback)");
+                    Console.WriteLine("workspace-extract BASE_BUNDLE RESULT_BUNDLE NEW_DIRECTORY (new files only; no merge or overwrite)");
                     return args.Length == 0 ? 0 : 64;
             }
         }

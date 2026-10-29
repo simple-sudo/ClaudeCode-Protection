@@ -50,6 +50,28 @@ internal static class WorkspaceFiles
         using var held=new HeldPaths();held.DirectoryChain(Path.GetDirectoryName(Local(path))!);
         using var file=held.NewFile(path);file.Write(bytes);file.Flush(true);
     }
+    internal static void ExtractResultNew(string destination,byte[] baselineBytes,byte[] resultBytes)
+    {
+        RequireOrdinaryUser();_=WorkspaceBundle.Compare(baselineBytes,resultBytes);
+        var path=Local(destination);var parent=Path.GetDirectoryName(path)??throw new InvalidDataException("Fresh result directory required");
+        // Every path has already been validated before the first mutation.
+        // MaterializeNew never merges/overwrites/deletes an existing project.
+        MaterializeNew(parent,WorkspaceBundle.Relative(Path.GetFileName(path)),resultBytes);
+    }
+    internal static byte[] ReadInput(Stream stream,int maximum)
+    {
+        if(maximum is <1 or >WorkspaceBundle.MaxBundleBytes)throw new InvalidDataException("Workspace stream bound refused");
+        using var data=new MemoryStream();var buffer=new byte[65536];
+        using var deadline=new CancellationTokenSource(TimeSpan.FromSeconds(15));
+        while(true)
+        {
+            var size=stream.ReadAsync(buffer.AsMemory(0,(int)Math.Min(buffer.Length,maximum-data.Length+1)),deadline.Token)
+                .AsTask().WaitAsync(deadline.Token).GetAwaiter().GetResult();
+            if(size==0)return data.ToArray();
+            if(data.Length+size>maximum)throw new InvalidDataException("Workspace input stream too large");
+            data.Write(buffer,0,size);
+        }
+    }
     // Called by the existing session owner only after exact Job-zero and
     // quarantine. File lists come from this owned task tree, never host paths.
     internal static byte[] SnapshotResult(string taskRoot,string directory,byte[] baselineBytes)

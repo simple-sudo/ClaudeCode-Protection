@@ -12,6 +12,8 @@ static void Refuse(Action action,string name)
 }
 static byte[] Bytes(string value)=>Encoding.UTF8.GetBytes(value);
 var original=WorkspaceBundle.Create(new[]{("src/main.txt",Bytes("before")),("empty.txt",Array.Empty<byte>()),("raw.bin",new byte[]{0,255,1,128})}).Serialize();
+using(var input=new MemoryStream(original))Require(WorkspaceFiles.ReadInput(input,WorkspaceBundle.MaxBundleBytes).AsSpan().SequenceEqual(original),"bounded stdin exact bytes");
+using(var over=new MemoryStream(new byte[33]))Refuse(()=>WorkspaceFiles.ReadInput(over,32),"stdin maximum plus one");
 Require(WorkspaceBundle.Parse(original).Files.Length==3,"binary and empty roundtrip");
 foreach(var name in new[]{"../outside","/absolute","C:/outside","a\\b","a:b","a//b","a/./b","a/../b","CON.txt","nul","COM1.dat","LPT9","a.","a ",".git/config","a/.GIT/config","a/*","a/é"})
     Refuse(()=>WorkspaceBundle.Create(new[]{(name,Bytes("x"))}),"path "+name);
@@ -60,6 +62,20 @@ var actual=WorkspaceFiles.SnapshotResult(task,"project",captured);
 Require(WorkspaceBundle.Compare(captured,actual).Select(c=>c.Kind).Order().SequenceEqual(new[]{"ADD","DELETE","MODIFY"}),"real files result comparison");
 Require(WorkspaceBundle.Parse(actual).Files.All(f=>!f.Path.StartsWith(".git/",StringComparison.OrdinalIgnoreCase)),"host Git metadata not exported");
 WorkspaceFiles.WriteBundleNew(Path.Combine(fixture,"result.bundle.json"),actual);
+var extracted=Path.Combine(fixture,"extracted");WorkspaceFiles.ExtractResultNew(extracted,captured,actual);
+Require(File.ReadAllText(Path.Combine(extracted,"src","main.txt"))=="edited" && !File.Exists(Path.Combine(extracted,"empty.txt")),"fresh result extraction add modify delete");
+Require(File.ReadAllBytes(Path.Combine(extracted,"raw.bin")).AsSpan().SequenceEqual(new byte[]{0,255,1,128}),"binary extraction exact");
+Require(File.ReadAllText(Path.Combine(source,"src","main.txt"))=="before","extraction does not alter original project");
+Refuse(()=>WorkspaceFiles.ExtractResultNew(extracted,captured,actual),"existing extraction destination");
+var mismatched=Path.Combine(fixture,"wrong-baseline-output");
+Refuse(()=>WorkspaceFiles.ExtractResultNew(mismatched,reordered,actual),"wrong baseline extraction");
+Require(!Directory.Exists(mismatched),"wrong baseline preflight before mutation");
+Refuse(()=>WorkspaceFiles.ExtractResultNew(Path.Combine(fixture,"redirect-output","escaped"),captured,actual),"extraction reparse parent");
+var largeBytes=new byte[256*1024];new Random(1729).NextBytes(largeBytes);
+var largeInput=WorkspaceBundle.Create(new[]{("data/large.bin",largeBytes)}).Serialize();
+var largeResult=WorkspaceBundle.Create(new[]{("data/large.bin",largeBytes)},WorkspaceBundle.Hash(largeInput)).Serialize();
+var largeDestination=Path.Combine(fixture,"large-extracted");WorkspaceFiles.ExtractResultNew(largeDestination,largeInput,largeResult);
+Require(File.ReadAllBytes(Path.Combine(largeDestination,"data","large.bin")).AsSpan().SequenceEqual(largeBytes),"result exceeds security-ledger bound without truncation");
 using(var writer=File.Open(Path.Combine(source,"src","main.txt"),FileMode.Open,FileAccess.Write,FileShare.ReadWrite))
     Refuse(()=>WorkspaceFiles.Capture(source,new[]{"src/main.txt"}),"concurrent writer");
 File.AppendAllText(Path.Combine(source,"src","main.txt")," after capture");

@@ -1,5 +1,12 @@
 # 当前开发状态
 
+## 2026-10-29 开发中：真实项目字节处理与普通用户成果恢复
+
+SOURCE / INTEGRATED：process-workspace-data只接标准输入+确切SHA256，调用原ProtectedSession/SessionResources/Git，执行固定离线Git数据操作，不执行输入中的构建/测试/脚本。
+源数据和结果另用12MiB有界私有payload及小型摘要/NTFS身份回执保存，不扩大128KiB安全账本上限；export-workspace-data须消费成功终态及相同原包/结果绑定。
+daily workspace-extract只恢复至全新目录，先核对原包绑定；拒绝合并/覆盖/删除用户原项目。Git二进制内容由全部对象独立验证，info/attributes覆盖工作区转换，显式所选文件不受.gitignore漏收影响。
+新源码未据旧版取得BUILD/运行许可；本次新构建/传输/已安装数据处理尚待执行。当前安装仍659d76df，旧证据见下节。正式会话、网络、编译测试、GPU及完整隐私准入继续关闭。
+
 ## 2026-10-29 当前：项目数据传输已安装并接入原受限Git链
 
 SOURCE / INTEGRATED：caeea49新增daily普通用户workspace-pack / workspace-review，以及原SessionResources中的同一材料化/快照实现。

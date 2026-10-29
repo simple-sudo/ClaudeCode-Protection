@@ -55,6 +55,7 @@ internal sealed record WorkspaceBundle(int SchemaVersion,string Scope,string? Ba
                 directories[directory]=directory;split=directory.LastIndexOf('/');
             }
         }
+        if(directories.Count>MaxFiles)throw new InvalidDataException("Workspace directory inventory bounds");
         if(names.Keys.Any(directories.ContainsKey))throw new InvalidDataException("Workspace file-directory collision refused");
         foreach(var file in Files)
             foreach(var directory in directories.Keys)

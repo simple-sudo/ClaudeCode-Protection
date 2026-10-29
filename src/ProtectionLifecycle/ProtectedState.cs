@@ -155,6 +155,40 @@ internal sealed class ProtectedState : IDisposable
         catch(ExactPathAbsentException ex)when(string.Equals(ex.FailedPath,path,StringComparison.OrdinalIgnoreCase)){return null;}
         try{WindowsPathSeal.AssertAcl(handle,true);return new FileStream(handle,FileAccess.ReadWrite,8192,false);}catch{handle.Dispose();throw;}
     }
+    // Workspace payload storage is distinct from the small security ledger.
+    // Only complete validated bundle bytes, no caller path/leaf or overwrite.
+    // A journal publishes the exact object identity/digest after a flushed
+    // write and independent readback. Incomplete creations remain unaccepted.
+    internal string StoreWorkspaceData(string id,bool result,byte[] bytes)
+    {
+        AssertHeld();_=ClaudeCodeProtection.Workspaces.WorkspaceBundle.Parse(bytes);
+        var leaf="workspace-data-"+(result?"result-":"input-")+Identifiers.Hex32(id)+".json";
+        var receipt="workspace-data-receipt-"+(result?"result-":"input-")+id+".json";
+        WriteNew("workspace-data-intent-"+(result?"result-":"input-")+id+".json",JsonSerializer.SerializeToUtf8Bytes(new {
+            SchemaVersion=1,InstallationId,Id=id,Result=result,SHA256=Convert.ToHexString(SHA256.HashData(bytes)),Length=bytes.Length}));
+        using(var handle=WindowsPathSeal.CreateProtectedFile(directory,leaf,false))
+        using(var stream=new FileStream(handle,FileAccess.Write,65536,false)){stream.Write(bytes);stream.Flush(true);}
+        using var held=WindowsPathSeal.Open(WindowsPathSeal.Child(directory.Path,leaf),false,true);WindowsPathSeal.AssertAcl(held,true);
+        var check=ReadBound(directory,leaf,ClaudeCodeProtection.Workspaces.WorkspaceBundle.MaxBundleBytes,true);
+        if(!check.Bytes.AsSpan().SequenceEqual(bytes))throw new IOException("Workspace data readback differs");
+        WriteNew(receipt,JsonSerializer.SerializeToUtf8Bytes(new {SchemaVersion=1,InstallationId,Id=id,Result=result,
+            SHA256=check.SHA256,Length=bytes.Length,Identity=WindowsPathSeal.Identity(held)}));return check.SHA256;
+    }
+    internal BoundBytes ReadWorkspaceData(string id,bool result)
+    {
+        AssertHeld();id=Identifiers.Hex32(id);
+        var raw=Read("workspace-data-receipt-"+(result?"result-":"input-")+id+".json",4096);
+        using var doc=JsonDocument.Parse(raw.Bytes);var r=doc.RootElement;
+        StrictJson.Fields(r,"SchemaVersion","InstallationId","Id","Result","SHA256","Length","Identity");
+        if(r.GetProperty("SchemaVersion").GetInt32()!=1 || StrictJson.Text(r,"InstallationId")!=InstallationId || StrictJson.Text(r,"Id")!=id ||
+            r.GetProperty("Result").GetBoolean()!=result)throw new InvalidDataException("Workspace data receipt binding differs");
+        var leaf="workspace-data-"+(result?"result-":"input-")+id+".json";
+        using var held=WindowsPathSeal.Open(WindowsPathSeal.Child(directory.Path,leaf),false,true);WindowsPathSeal.AssertAcl(held,true);
+        var bytes=ReadBound(directory,leaf,ClaudeCodeProtection.Workspaces.WorkspaceBundle.MaxBundleBytes,true);
+        if(bytes.Bytes.Length!=r.GetProperty("Length").GetInt32() || bytes.SHA256!=Identifiers.Hash(StrictJson.Text(r,"SHA256")) ||
+            WindowsPathSeal.Identity(held)!=Identifiers.ObjectIdentity(StrictJson.Text(r,"Identity")))throw new InvalidDataException("Workspace stored object changed");
+        _=ClaudeCodeProtection.Workspaces.WorkspaceBundle.Parse(bytes.Bytes);return bytes;
+    }
     internal BoundBytes Read(string leaf, int maximum = 128 * 1024)
     { AssertHeld(); return ReadBound(directory, Identifiers.StateLeaf(leaf), maximum, true); }
     internal BoundBytes? ReadOptional(string leaf)

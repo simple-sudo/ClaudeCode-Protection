@@ -5,12 +5,45 @@ using System.Text.Json;
 namespace ProtectionLifecycle;
 
 // The production command surface is deliberately smaller than the internal
-// owners: no supplied path, SID, PID, key, package, script or activation option.
+// owners: no supplied host path, SID, PID, script or activation option.
+// Workspace bytes are untrusted data, never a package/code-execution permit.
 // Mutations require the installed verified broker and elevation. The two
 // explicit diagnostics are read-only and can be separately qualified from a
 // development build. Neither diagnostic opens the installed mutation path.
 public static class InstalledBroker
 {
+    public static (int ExitCode,string Report) ProcessWorkspaceData(string expectedSHA256)
+        =>WithCurrentInstallation((layout,state,version)=>
+    {
+        var expected=Identifiers.Hash(expectedSHA256);
+        if(!Console.IsInputRedirected)throw new InvalidDataException("Byte-pinned redirected workspace data required");
+        var bytes=ClaudeCodeProtection.Workspaces.WorkspaceFiles.ReadInput(Console.OpenStandardInput(),ClaudeCodeProtection.Workspaces.WorkspaceBundle.MaxBundleBytes);
+        if(ClaudeCodeProtection.Workspaces.WorkspaceBundle.Hash(bytes)!=expected)throw new InvalidDataException("Workspace input digest differs");
+        var bundle=ClaudeCodeProtection.Workspaces.WorkspaceBundle.Parse(bytes);
+        if(bundle.BaseSHA256 is not null || bundle.Files.Length==0)throw new InvalidDataException("Nonempty baseline workspace required");
+        return ProtectedSession.ProcessWorkspaceData(layout,state,version,bytes);
+    });
+    public static byte[] ExportWorkspaceData(string sessionId,string expectedResultSHA256)
+    {
+        byte[]? result=null;
+        _=WithCurrentInstallation((_,state,_)=>
+        {
+            var id=Identifiers.Hex32(sessionId);var expected=Identifiers.Hash(expectedResultSHA256);
+            // Data publication alone is insufficient: only a successful
+            // terminal record after exact cleanup can release this result.
+            using var doc=JsonDocument.Parse(state.Read("resource-session-after-"+id+".json").Bytes);var r=doc.RootElement;
+            if(r.GetProperty("InstallationId").GetString()!=state.InstallationId || r.GetProperty("SessionId").GetString()!=id ||
+                r.GetProperty("Status").GetString()!="WORKSPACE_DATA_PROCESSED_AND_CLEANED" ||
+                r.GetProperty("ClosedWorkspaceResultSHA256").GetString()!=expected || r.GetProperty("Failures").GetArrayLength()!=0 ||
+                r.GetProperty("FormalAdmissionIssued").GetBoolean() || r.GetProperty("NetworkOpened").GetBoolean() || r.GetProperty("ClaudeLaunched").GetBoolean())
+                throw new InvalidDataException("Workspace success/cleanup receipt required");
+            var baseline=state.ReadWorkspaceData(id,false);var data=state.ReadWorkspaceData(id,true);
+            if(data.SHA256!=expected || baseline.SHA256!=r.GetProperty("WorkspaceBaselineSHA256").GetString())throw new InvalidDataException("Workspace export digest differs");
+            _=ClaudeCodeProtection.Workspaces.WorkspaceBundle.Compare(baseline.Bytes,data.Bytes);
+            result=data.Bytes;return(0,"WORKSPACE_DATA_EXPORT_READY");
+        });
+        return result??throw new InvalidDataException("Workspace export missing");
+    }
     public static (int ExitCode,string Report) MigrateSessionNetwork()
     {
         ProtectedSession.AssertSystemTestingAllowed();
