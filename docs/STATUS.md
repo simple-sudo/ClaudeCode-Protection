@@ -8,6 +8,8 @@ FAIL（保留）：08:20:12–15Z普通安装daily workspace-process对确切四
 
 SOURCE / 原因修正中：OpenWorkspaceCaller用TOKEN_QUERY(8)后调用WindowsPrincipal.IsInRole，而.NET8会DuplicateTokenEx作Identification级成员查询。普通用户自令牌复现QUERY→SecurityException，QUERY|DUPLICATE→正常false，与微软源码/接口约束一致；这确定暴露实现缺陷，但当前缺少原Broker失败阶段，不将推断冒充原回执。补齐查询所需的最小两项访问（无Impersonate/AssignPrimary/Adjust权限）、严格回复v2固定phase/type/code/session元数据和daily非零结构化终态。新增资格仅检查自令牌和协议负例，不重跑已过的管道/输出/快照，不触发新任务。原正式会话/隐私/网络/GPU及完整往返仍未验收。
 
+BUILD / VERIFIED（修正限定）：c6b3082四项目离线构建0错误/0警告，工件无模块初始化器、原生导入表与前版完全相同。独立token-membership与reply均退出0；生产共享权限常量直接参与普通自令牌复测，v2拒绝重复/缺失字段、错输入/会话、成功失败矛盾、失败携带结果摘要及任意私有文本。work/workspace-pipe-repair-build-r1/run-result SHA256=1D4A01C75631CFF8E8CEA1500F66E23B07721C8115D0C2FBAE49F0C43E6CDFB7。待安装候选ac570b474e454a9a94db2310893d3892，manifestDE88460A1F31721FC69F151B528718DC2FE89ABE66BAEA551E3AD3D8AD8815C4，库E8FC498BD70D8D531DDEB988051F363BAA3EFB62F064A51519F5E6155DE3126C；只改5资产、9项复用。尚未新UAC/安装/重跑任务。
+
 ## 开发中：把普通用户数据往返接到实际安装Broker
 
 BUILD / INTEGRATED（待安装候选）：073d211离线payload构建0错误/0警告，Release90079258ef8545f19d80e2c211744367，manifest429D76D9B3245DF335D879F27F8CDCC12AF954E79685B8D40BBDC9F50BDFB5FF，库8DB5F3039CE3352AFE4D303501FBD7F0429EA43828750BDE942342BE0D6AD2D7；逐资产5变更/9复用，原5bc安装字节保持。新daily可请求一次本人UAC，原Broker接收明确包并交回闭Job/清理后成果，尚未实机完整运行。候选不激活保护、不执行输入项目代码，安装及受保护数据操作须具体本人系统决定。
