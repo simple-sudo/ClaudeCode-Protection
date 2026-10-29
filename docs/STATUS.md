@@ -8,6 +8,8 @@ FAIL（实际LPAC数据操作）：独立人工UAC后session e3d1c4a4c512440fbf2
 
 SOURCE：子进程自身份改为仅QUERY，明确不声称取得LPAC AccessCheck证据；管理侧持有进程的LPAC mask2核验及工具成员核验保持强制，根/PowerShell/Git对同一AAP-only文件真实拒绝仍是成功条件。worker启动异常返回受限phase/type/code/nativeStage，父回执独立记ChildBootstrapFailure，不能再用二次JSON解析失败掩盖起因。新构建/限定测试待完成，未重跑原失败或自动恢复。完整编译测试/隐私/网络/GPU仍未验收。
 
+BUILD / VERIFIED（bba3139限定）：55输入离线Broker/Lifecycle/独立测试构建0错误/0警告；工件原生面与已审查LPAC版一致。普通self-token退出0，完整AccessCheck对普通本进程mask3，QUERY-only读取明确mask0/未观察，不能制造LPAC通过；不重做未改的policy/输出/传输。work/lpac-build-r4/run-result SHA256=7B79D3FCE8DC87619324B41324D2D26FA38BA8CB990EE932099B774E8A6A4179。待安装4fe9da3d17714b949915b4b2962586ab，manifest0337CB5D80ECEB760AC8BF96E49FD699B51A0E9E77ED2284BE4206662EFA549F，库9D4C1DD2D6E9E7D02C4F3A5C2E6357934725E486E7FF754906B8C4B9DFB60DB2；3资产变更/11复用。
+
 ## 开发中：同一任务链的LPAC资源边界及工具兼容
 
 SOURCE / INTEGRATED：AtomicChild在原Job/包身份原子创建时，对ProtectedSession准备及资源/数据操作强制ALL_APPLICATION_PACKAGES_OPT_OUT；首次恢复、会话对端和实际成员须确认AppContainer且对固定内存SD的AccessCheck仅授予ARP位2、不授予AAP位1，无调用者开关/普通AppContainer降级。仅新建公开产品代码增加ARP只读执行，私有状态/既有宿主ACL未改。原SessionResources新建并持有只授予AAP读取、不授予ARP/包身份的非秘密对照文件；管理侧核对确切DACL/内容，原根/PowerShell/Git必须拒绝同一资源，沿既有闭Job/精确清理收尾。LPAC不是完整隐私保证，所有正式准入UNKNOWN保持；编译/测试及GPU兼容仍未取得许可。六产品非生成语义0错误/0警告；原安装ac570b47未替换。
