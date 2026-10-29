@@ -2,6 +2,24 @@
 
 当前结论：两份原转储的有效符号栈强烈支持相同故障机制：ProtectionBroker目录枚举，经Wof/FLTMGR/NTFS，在Ntfs间接调用处跳向空地址。造成错误调用目标的根因/责任驱动及具体源码调用点仍UNKNOWN；不能将WinDbg分类直接升级为Wof自身缺陷，也不能排除本项目触发。用户后续明确重新授权修复验证，名称查询修复已通过下方限定资格，旧blanket build/runtime停止要求不再阻塞这一授权范围；原事故负载/安装/自动恢复不因临时样本通过而放行。真实Claude/AV/FlClash/UU/全机网络限制保持，事故开放，整体goal未暂停/完成。
 
+## 修复已安装，实际Broker只读入口正常返回
+
+用户明确允许安装5bc986e1并仅做Broker只读及相关后续。07:37:29Z普通launcher持有control/source祖先和20个工件，核对helper1FB8496C、planE40CC54F、最终库70EF78FE；本人UAC后helper34408创建07:37:31.155Z。
+
+- 07:37:41.631Z，Bootstrap4204退出0，PINNED_INACTIVE_UPDATE_COMPLETED；ecb06a→5bc986e16e9a44ca856a1b56b90328aa，manifest048E974CD4611B4DB7B577B64DAA5842C5CA02FE08D63298382BBC001FBBEC37，operation=d6e5f46005234e67b3124a7ce175cbd0，INACTIVE。现有更新owner的闭合Job/隔离/指针检查均是操作前置条件，没有放宽为自动恢复或删除遗留。
+- 当前指针独立回读相同新版本/manifest/operation。07:37:44.500Z，原安装Broker inspect-session-environment退出2/MISSING、stderr为空。缺少环境意图是原接口的明确返回，未自动配置timezone/locale或借此签发准入。其VerifiedVersion和LifecycleRecovery状态清点已使用新名称查询正常完成；这将修复证据从临时样本推进到安装后实际调用链。
+- 07:37:45.981Z完成回执REPAIR_INACTIVE_UPDATE_AND_INSTALLED_READ_ONLY_COMPLETED；launcher07:37:46.008Z取得helper退出0。无测试会话、profile/Job创建、WFP修改或自动恢复。不是凭无新事件猜测成功。
+- 普通用户独立核对15个安装文件hash及文件/5目录trusted owner、受保护DACL、无不可信写grant均通过，不执行写入测试。旧ecb06a及659d76df未删除/改写。
+- boot仍2026-10-29T05:44:54.500Z；AVP/BFE运行，FlClash/Core24520/17272和UU服务7056保持，无产品测试进程。有限Application AV事件0，完整厂商覆盖UNKNOWN。
+
+原受保护回执位于ProgramFiles/ClaudeCodeProtection-Update-5bc986e16e9a44ca856a1b56b90328aa，选定小型证据副本work/names-only-control/installed-evidence；completed.json SHA256=67F00587CA0EB51E3BB43854C57BFD02AF901E48DF56B1DC2F38CAD1D2D0DA14，current-readback=7CCC532057EAFD791A8AF001E29E8A666413327A35A4BE4ABA0F8B06200F47FA，ordinary-installed-readback=07D6036ABE7A3F98B0EB11B7C4D4045E6D3DC7373218B0C3D1DD040DDEC0C012。
+
+继续同一授权下的inspect-installed-fence只读隔离核对，使用4694CF45…E7EC8固定helper。首次UAC在07:42:28Z返回“The operation was canceled by the user”，无helper创建/无Broker开始或结果，原failure SHA256=C4B0AA1028F47C3F514A4D5657503BE46712BB7D4F0C0ADCE1E0E9AC312481F3保留，没有自动重试或换入口。
+
+用户随后明确“uac再弹一次”；保持同一helper/包/操作/输出目录，r2仅更换launcher尝试claim与启动日志名，原失败不覆盖。本人UAC后helper21264退出0（07:43:57.935Z），原安装Broker inspect-installed-fence退出0。观察1个健康subLayer、六角色ipv4-address/ipv4-port/ipv4-protocol/ipv6-deny/quarantine-v4/quarantine-v6，filterId107465–107470，全部Present/Persistent/PolicyMatches=true，PolicyModified/JobApiCalled/NetworkBehaviorQualified=false。没有执行Create/Reinstate/迁移/恢复函数，现有WFP只读事务不改变策略。
+
+fence-read-completed.json SHA256=0DD871C32B7DEA605E563F00D27BC779B89B5FB66D692BA30F724E53FAAB3D9D，原stdout SHA256=3008E418C49CF4E22DB2F710FBBD22604C597B95B6E495480EE18D7857476E02；副本同样保存在installed-evidence。boot仍05:44:54.5Z，FlClash/Core24520/17272、UU服务7056，未见Broker/Bootstrap残留。此次安装及两条生产只读入口正常结束，为有效修复进展；不把系统对象观察称为网络行为或原负载恢复证明。下方安装前“尚未安装/待决定”为历史。
+
 ## 本人重新授权后的构建与原生资格
 
 ### 最终安装候选（尚未安装）

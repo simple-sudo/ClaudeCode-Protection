@@ -1,5 +1,11 @@
 # 完整项目验收账本
 
+## 2026-10-29 修复包实际安装及原Broker只读路径通过
+
+本人授权并确认UAC后，07:37:41Z现有Bootstrap退出0完成ecb06a→5bc986e16e9a44ca856a1b56b90328aa INACTIVE更新，manifest048E974C…BEC37、operation d6e5f46005234e67b3124a7ce175cbd0。安装Broker inspect-session-environment经版本/生命周期清点后退出2/MISSING、stderr空；环境意图缺失保持FAIL-CLOSED，未配置系统或签发启动许可。15文件hash与文件/5目录ACL独立回读通过，helper及launcher终态0，boot未变，远程/AV/BFE保持。此为安装与实际只读名称清点路径VERIFIED；未创建会话/Job/profile、运行原项目负载或执行恢复。后续隔离只读核对另记，不升级为全面网络/隐私/崩溃消除验收。原始/副本证据见STATUS。
+
+07:43Z附加只读隔离核对完成：首次UAC取消保留，用户明确要求再次弹出后，同一helper及安装Broker inspect-installed-fence退出0，六项持久规则与策略完全匹配（107465–107470）；未修改策略或调用Job，原始网络行为资格仍false。安装及原只读路径正常，原工作负载未复测、事故开放。失败/成功分别记录，不把取消或退出0混同保护验收。
+
 ## 2026-10-29 名称查询修复资格通过；事故仍开放
 
 最终候选推进：d38901d补当前ecb06a的精确inactive更新pin，53输入Broker/Lifecycle/样本构建和最终70EF78FE库的两种验证均通过。cf63e34 Bootstrap复用同一库，候选5bc986e1/manifest048E974C，20文件/内嵌清单/10PE与6managed审查通过。构建和两次普通用户有限资格记录分开保留；实际安装尚未进行，待用户决定后只做inactive更新和原Broker只读意图查询，不重跑原事故负载或自动恢复。此处不记安装、原崩溃消除或正式开发能力VERIFIED。

@@ -1,5 +1,30 @@
 # ClaudeCode-Protection working rules
 
+2026-10-29 installed repair result: the explicitly authorized manual-UAC
+inactive update to 5bc986e16e9a44ca856a1b56b90328aa completed at 07:37Z,
+manifest 048E974CD4611B4DB7B577B64DAA5842C5CA02FE08D63298382BBC001FBBEC37,
+operation d6e5f46005234e67b3124a7ce175cbd0. Installed Broker environment-intent
+read returned 2/MISSING normally, after verified version/lifecycle inventories.
+15 installed files and 5 directories passed ordinary hash/ACL readback.
+Additional fence-read UAC was canceled once; preserve that failure. User then
+explicitly requested UAC again, and the same helper completed at 07:43Z with
+Broker exit 0: all six persistent roles matched (107465-107470), no policy or
+Job mutation. No new reboot/product processes; AV/BFE/FlClash/UU retained.
+Current is 5bc986e1/INACTIVE, not ecb06a. Evidence: work/names-only-control/
+installed-evidence and fence-read-r2-*; source/stage/old packages retained.
+Do not repeat these unchanged installation/read-only checks. Original workload,
+profile cleanup and formal session/GPU/network privacy remain unqualified;
+this result is real installed-path progress, not incident/root-cause closure.
+
+2026-10-29 explicit repair-install authorization: the user now permits installing
+the reviewed 5bc986e1 repair package, then ONLY the Broker read-only checks and
+related follow-up. Proceed with the existing pinned install-launch/helper/plan
+in work/names-only-control, human UAC, inactive update and
+inspect-session-environment. This supersedes the candidate's wait-for-decision
+text below; do not request the same installation permission again. No original
+workspace workload, resource/session creation, automatic cleanup/recovery or
+network/AV/driver/remote-software changes are included in this approval.
+
 2026-10-29 renewed repair qualification authorization: the user explicitly
 permits verification and modification of the preceding stop requirements.
 Proceed with the concrete frozen names-only repair: ordinary-user offline
@@ -33,12 +58,12 @@ passed both qualification modes again. cf63e34 embeds release
 5bc986e16e9a44ca856a1b56b90328aa / manifest
 048E974CD4611B4DB7B577B64DAA5842C5CA02FE08D63298382BBC001FBBEC37.
 Bootstrap was built WITHOUT rebuilding that library and holds the same bytes.
-The 20-file stage and 10 PE/6 managed metadata checks passed. No installation
-occurred. work/names-only-control/install-qualification.json pins the prepared
+The 20-file stage and 10 PE/6 managed metadata checks passed. The historical
+pre-install review is work/names-only-control/install-qualification.json; its
 manual-UAC path for update-inactive then inspect-session-environment only;
-no original workload, resource creation, recovery or network mutation. Wait
-for the user's decision on THIS system installation before invoking it; do
-not ask again for the completed ordinary-user qualification or rebuild/retest
+no original workload, resource creation, recovery or network mutation. That
+installation decision and execution are now completed above; do not ask again
+for the completed qualification/installation or rebuild/retest
 unchanged bytes. See STATUS for exact current package and evidence.
 
 2026-10-29 repair continuation: the user insists on solving the crash, not
