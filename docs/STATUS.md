@@ -2,6 +2,8 @@
 
 ## 开发中：把普通用户数据往返接到实际安装Broker
 
+VERIFIED（普通用户限定，未安装）：output定向复测退出0；snapshot首轮样本文件名87字符违反既有80字符限制，失败保留，修正样本并只重建独立测试后退出0。452文件快照含450新增/1修改/1删除、嵌套及精确二进制，根.git排除、并发writer以共享冲突拒绝；名称总量跨64KiB页。共用reader与产品源码一致。work/workspace-pipe-build-r2/r3保留工件审查、原失败及终态，r3 run-result SHA256=6D2B8C74E4E6396128DCE8475A54A557CBA8A320375352BCB1D1E5F5865FA0AD。未重跑已过frames/local-pipe/output，未创建产品Job/profile、未读私有state/改系统配置。原安装5bc986e1未含这些改动；新包安装及原链完整往返仍待本人系统授权。当前源码补入已安装5bc清单作为精确inactive迁移来源，原闭准入/Job归零/隔离约束不变。
+
 BUILD（d58252b限定）：离线Broker/Lifecycle/daily及独立管道测试构建均0错误/0警告。普通用户frames和local-pipe通过，后者验证仅本人SID DACL、首实例、双向内核PID及包绑定往返。output负例实际收到Win32错误80（正确拒绝覆盖），测试却只捕获IOException，原失败完整保留；修正后只复测该项。审查发现成果快照仍用旧目录枚举，现改为与生命周期共用WindowsDirectoryNames（class12，无元数据枚举回退）；六产品非生成语义通过，新源码的构建/快照实测待资格。证据work/workspace-pipe-build-r1，当前安装5bc986e1未含新入口。
 
 SOURCE / INTEGRATED：新增daily workspace-process BASE_BUNDLE NEW_RESULT_BUNDLE，预先持有新输出及安装资产，人工UAC启动固定同版本Broker；本地同用户管道双向核对PID、限制帧长/时间，Broker另核对当前daily映像和同一普通用户token。只传数据包，不传宿主路径/脚本/任意命令，复用ProcessWorkspaceBytes、ProtectedSession和成功清理后的ExportWorkspaceData。取消/失败不自动删除或覆盖用户输出，不提升普通daily自身，不打开正式会话/网络。六产品非生成语义0错误/0警告；最初命名遮蔽/nullable诊断修正且保留报告。具体构建/IPC资格及安装待后续证据，当前安装仍5bc986e1。

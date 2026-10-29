@@ -5,7 +5,8 @@ using System.Text.Json;
 namespace ProtectionLifecycle;
 
 // The production command surface is deliberately smaller than the internal
-// owners: no supplied host path, SID, PID, script or activation option.
+// owners: no supplied host path, SID, script or activation option. The data
+// pipe accepts only its ordinary installed caller PID, nonce and input digest.
 // Workspace bytes are untrusted data, never a package/code-execution permit.
 // Mutations require the installed verified broker and elevation. The two
 // explicit diagnostics are read-only and can be separately qualified from a

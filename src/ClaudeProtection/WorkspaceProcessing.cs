@@ -66,7 +66,7 @@ internal static class WorkspaceProcessing
         if(broker.ExitCode!=0)throw new IOException("Workspace Broker did not complete successfully");
         output.Complete(result);
         return new {Status="WORKSPACE_DATA_RESULT_RECEIVED",SessionId=session,BaseSHA256=expected,ResultSHA256=resultHash,
-            FileCount=WorkspaceBundle.Parse(result).Files.Length,Changes=changes,OriginalProjectModified=false,CodeExecuted=false,
+            FileCount=WorkspaceBundle.Parse(result).Files.Length,Changes=changes,OriginalProjectModified=false,ProjectCodeExecuted=false,
             FormalAdmissionIssued=false,NetworkOpened=false,UACAutoConfirmed=false};
     }
 }

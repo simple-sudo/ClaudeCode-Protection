@@ -1,5 +1,7 @@
 # 授权工作区数据传输
 
+开发中新入口`workspace-process BASE_BUNDLE NEW_RESULT_BUNDLE`：普通用户daily先核对并持有安装资产、创建新的输出文件，然后请求本人UAC启动同版本固定Broker。仅本人SID可访问的本地管道传入确切数据字节；双方核对内核进程PID，Broker还核对普通调用者映像及本人SID。复用原ProcessWorkspaceData/ProtectedSession，成功闭Job与精确清理后再导出绑定原包的成果。没有特权宿主路径、脚本、任意命令或通用提升入口。取消/失败保留新建的空/部分输出供检查，不能覆盖已有结果。安装/实际往返资格以STATUS为准，当前安装5bc包没有这个新命令。
+
 新增daily命令，必须普通用户运行。2026-10-29已安装659d76df包包含这些命令；当前源码、构建与运行范围见STATUS。
 
 `workspace-pack ROOT SELECTION_JSON NEW_BUNDLE`从明确指定的本地NTFS项目根读取清单中的文件，将内容、相对路径与SHA256写入一个新数据包。清单是JSON字符串数组，例如`["README.md","src/main.py","tests/test_main.py"]`。没有目录递归/通配符或默认全项目扫描；未选择文件不会进入包。输出父目录必须已存在；已存在输出拒绝覆盖。终端只返回包摘要与文件数量，不打印项目内容、宿主绝对路径或环境变量。

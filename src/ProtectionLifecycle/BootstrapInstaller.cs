@@ -160,7 +160,11 @@ public static class BootstrapInstaller
             // Exact package installed at the second crash. This permits only
             // the existing inactive-update checks, not adoption/recovery of
             // an interrupted session or an exception to durable Job closure.
-            "851701939666F35F4E0C4323C408E00690B4CFB96165C81F5C6092AF5D8238C6"
+            "851701939666F35F4E0C4323C408E00690B4CFB96165C81F5C6092AF5D8238C6",
+            // Installed names-only repair; two read-only paths returned.
+            // Migration still requires the same durable closed admissions,
+            // Job-zero and quarantine checks; original workload stays unproven.
+            "048E974CD4611B4DB7B577B64DAA5842C5CA02FE08D63298382BBC001FBBEC37"
         };
         private readonly ProtectedState state;
         private readonly BootstrapApproval approval;
