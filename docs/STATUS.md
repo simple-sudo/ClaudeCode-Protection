@@ -1,5 +1,9 @@
 # 当前开发状态
 
+## 子进程启动定位候选（待本人UAC）
+
+BUILD / VERIFIED（cffcffd限定）：55输入离线构建0错误/0警告，工件原生导入面未变、无module initializer。普通用户start-failure测试0：不存在映像的真实带重定向启动调用返回2/3并分类CREATE_PROCESS，无框架栈的异常保持START_UNCLASSIFIED；没有产品执行。work/lpac-build-r6/run-result SHA256=D860DB551EDAFBADD22282B534167E034421E38E18147EB0B7A349C025487864。诊断包dccb5fe0096b4e319ad123d443f564b4，manifest599852489D7049C8944C3C41712AC1ACE5217F2E437AB2AB5D3035D2E880A02A，库726408229A13058F4AF7C662D352AC2957331E12D2D91543245A0A81E82D72E8，3项变更/11复用；仅为原失败点取得准确阶段，不授予任何新增权限。
+
 ## 当前安装d1b5cf61：LPAC根资源拒绝通过，PowerShell启动阶段拒绝仍待修复
 
 VERIFIED（限定原生）：人工UAC14:00:44Z更新d1b5cf615a7645d882ac982c14d1e2dc / manifest1F79C28F55857F788023802635F7A0A62DACEEA4BE5CD6BD45035E4A78E42681，INACTIVE，15文件摘要/保护ACL匹配；Broker只读意图2/MISSING。新session641515b1ed88432d9d3816a88578dd25管理侧LPAC AccessCheck mask2/挂起身份/首次恢复通过。root实际授权工作区读写匹配，四项均AccessDenied5：私有状态读、写、AAP-only非秘密文件读、Broker VM-read句柄打开。这是比普通AppContainer数据链更强的真实资源拒绝证据，但不证明全部宿主敏感资源已隔离。
