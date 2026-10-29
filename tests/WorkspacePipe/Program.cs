@@ -78,7 +78,7 @@ if(args[0]=="snapshot")
     Directory.CreateDirectory(Path.Combine(project,"unused"));
     // More than one 64KiB FILE_NAMES_INFORMATION page, within existing bundle
     // count/size/path bounds. No host project/private state or product session.
-    var added=Enumerable.Range(0,450).Select(i=>i.ToString("D3")+new string('x',80)+".txt").ToArray();
+    var added=Enumerable.Range(0,450).Select(i=>WorkspaceBundle.Relative(i.ToString("D3")+new string('x',73)+".txt")).ToArray();
     foreach(var leaf in added)File.WriteAllBytes(Path.Combine(project,leaf),new byte[]{42});
     var result=WorkspaceFiles.SnapshotResult(task,"project",baseline);var files=WorkspaceBundle.Parse(result).Files;
     Require(files.Length==452 && added.All(n=>files.Any(f=>f.Path==n && f.Content.AsSpan().SequenceEqual(new byte[]{42}))),"multi-page names and exact added content");
