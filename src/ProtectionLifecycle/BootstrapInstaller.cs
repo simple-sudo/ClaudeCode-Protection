@@ -156,7 +156,11 @@ public static class BootstrapInstaller
             // Current fc2d7c8b fixed offline Git package; all admissions still
             // require durable closure/Job-zero before this inactive update.
             "2F23479431360CC5BE0B0E84DFB821FBF2FFD8D04BE3A100EC0F7677B0EDB20B",
-            "CB5515C9CED7D08248EA903F7EA2817B2F47D5EA952D366B31ABB775520C4264" // 659d76df closed offline project-transfer package.
+            "CB5515C9CED7D08248EA903F7EA2817B2F47D5EA952D366B31ABB775520C4264", // 659d76df closed offline project-transfer package.
+            // Exact package installed at the second crash. This permits only
+            // the existing inactive-update checks, not adoption/recovery of
+            // an interrupted session or an exception to durable Job closure.
+            "851701939666F35F4E0C4323C408E00690B4CFB96165C81F5C6092AF5D8238C6"
         };
         private readonly ProtectedState state;
         private readonly BootstrapApproval approval;
