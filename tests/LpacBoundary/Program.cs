@@ -7,7 +7,7 @@ using Microsoft.Win32.SafeHandles;
 // Bound to the reviewed production library. These two modes do not create or
 // resume a process/profile/Job or open private resources. The token reader may
 // create a temporary query-only Identification duplicate, never impersonate it.
-if(args.Length!=1 || args[0] is not ("policy" or "self-token" or "runtime-paths"))return 125;
+if(args.Length!=1 || args[0] is not ("policy" or "self-token" or "runtime-paths" or "start-failure"))return 125;
 using var identity=WindowsIdentity.GetCurrent();
 if(new WindowsPrincipal(identity).IsInRole(WindowsBuiltInRole.Administrator))throw new InvalidOperationException("Ordinary test only");
 var library=Assembly.LoadFrom(Path.Combine(AppContext.BaseDirectory,"ProtectionLifecycle.dll"));
@@ -18,6 +18,22 @@ static object? Call(MethodInfo method,params object?[] values)
     catch(TargetInvocationException ex)when(ex.InnerException is not null){ExceptionDispatchInfo.Capture(ex.InnerException).Throw();throw;}
 }
 static void Require(bool value,string reason){if(!value)throw new InvalidOperationException("LPAC: "+reason);}
+if(args[0]=="start-failure")
+{
+    var classify=library.GetType("ProtectionLifecycle.SessionResources",true)!.GetMethod("ToolStartFailurePhase",flags)!;
+    Require((string)Call(classify,new System.ComponentModel.Win32Exception(5))! == "START_UNCLASSIFIED","no false attribution without framework frames");
+    // Only a non-existent path in a fresh owned directory. Windows rejects
+    // before running any executable; redirected pipe creation is exercised.
+    var fixture=Path.Combine(AppContext.BaseDirectory,"start-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(fixture);
+    var path=Path.Combine(fixture,"missing.exe");Require(!File.Exists(path),"missing executable fixture");
+    var start=new System.Diagnostics.ProcessStartInfo(path){UseShellExecute=false,CreateNoWindow=true,WorkingDirectory=fixture,RedirectStandardOutput=true,RedirectStandardError=true};
+    var rejected=false;
+    try{using var process=System.Diagnostics.Process.Start(start);}
+    catch(System.ComponentModel.Win32Exception ex)when(ex.NativeErrorCode is 2 or 3)
+    {rejected=true;Require((string)Call(classify,ex)! == "CREATE_PROCESS","real native missing-image failure correctly separated from redirection setup");}
+    Require(rejected,"no executable launched");
+    Console.WriteLine("PASS production start-failure classification: absent image after redirect setup, no synthetic stage without frames; no product, elevation or Job");return 0;
+}
 if(args[0]=="runtime-paths")
 {
     var planType=library.GetType("ProtectionLifecycle.ResourceProbePlan",true)!;

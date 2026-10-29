@@ -304,14 +304,18 @@ internal sealed class SessionResources : IDisposable
                 // Process.Start can fail while creating/duplicating redirected
                 // pipes BEFORE CreateProcess. Keep only known framework method
                 // labels; no raw stack, path, arguments or exception message.
-                var methods=new StackTrace(ex,false).GetFrames()?.Select(f=>f.GetMethod()).Where(m=>m?.DeclaringType==typeof(Process)).Select(m=>m!.Name).ToArray()??Array.Empty<string>();
-                stage+="/"+(methods.Contains("CreatePipeWithSecurityAttributes")?"CREATE_REDIRECT_PIPE":methods.Contains("CreatePipe")?"DUPLICATE_REDIRECT_HANDLE":
-                    methods.Contains("StartWithCreateProcess")?"CREATE_PROCESS":"START_UNCLASSIFIED");
+                stage+="/"+ToolStartFailurePhase(ex);
             }
             failureStage=stage+(ex.Data["Stage"] is string nativeStage?"/"+nativeStage:"");
         }
         var report=new ResourceChildReport(1,Environment.ProcessId,plan.Nonce,matched,toolExit,cases.ToArray(),failure,failureCode,failureStage,toolDiagnostic,gitReport);
         Console.WriteLine(JsonSerializer.Serialize(report));return Qualified(report)?0:3;
+    }
+    private static string ToolStartFailurePhase(Exception error)
+    {
+        var methods=new StackTrace(error,false).GetFrames()?.Select(f=>f.GetMethod()).Where(m=>m?.DeclaringType==typeof(Process)).Select(m=>m!.Name).ToArray()??Array.Empty<string>();
+        return methods.Contains("CreatePipeWithSecurityAttributes")?"CREATE_REDIRECT_PIPE":methods.Contains("CreatePipe")?"DUPLICATE_REDIRECT_HANDLE":
+            methods.Contains("StartWithCreateProcess")?"CREATE_PROCESS":"START_UNCLASSIFIED";
     }
     internal static bool Qualified(ResourceChildReport report)=>report.SchemaVersion==1 && report.WorkspaceWriteReadMatched && report.ToolExit==0 && report.FailureType is null && report.FailureCode is null && report.FailureStage is null && report.ToolDiagnostic is null &&
         (report.Git is null || SessionGitToolchain.Qualified(report.Git)) && report.Cases.Length==4 && report.Cases.Select(c=>c.Role).SequenceEqual(new[]{"private-state-Read","private-state-Write","all-packages-only-Read","broker-vm-read-open"}) &&

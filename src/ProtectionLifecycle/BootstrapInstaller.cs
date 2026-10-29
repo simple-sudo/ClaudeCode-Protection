@@ -178,7 +178,10 @@ public static class BootstrapInstaller
             "3C0471F484A193EF5EFF77A259602BAB8DFF13313B8440C08BF2459DA7D86D18",
             // Startup diagnostic revision: exact receipt confirms full
             // quarantine and closed/zero Job after resource-input failure.
-            "0337CB5D80ECEB760AC8BF96E49FD699B51A0E9E77ED2284BE4206662EFA549F"
+            "0337CB5D80ECEB760AC8BF96E49FD699B51A0E9E77ED2284BE4206662EFA549F",
+            // Current LPAC data chain: root denial qualified, tool start5;
+            // exact receipt confirms full quarantine and closed/zero Job.
+            "1F79C28F55857F788023802635F7A0A62DACEEA4BE5CD6BD45035E4A78E42681"
         };
         private readonly ProtectedState state;
         private readonly BootstrapApproval approval;
