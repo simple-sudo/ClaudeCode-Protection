@@ -1,5 +1,11 @@
 # 完整项目验收账本
 
+## 2026-10-29 有效离线转储比较；不解除产品事故hold
+
+后续修复SOURCE / INTEGRATED：匹配Wof反汇编确认类12避开本次类2→0x4e的转换分支。原WindowsPathSeal已提供仅名称查询，Lifecycle各清点调用已接入并保留独立对象核验；产品六项目及两组测试源码静态语义0错误/0警告。tests/DirectoryNames限定新普通用户临时样本的资格已编写，但未构建/运行；不是已修复或VERIFIED，事故开放。下一具体步骤的原生查询需单独解除该范围hold，不恢复原负载或修改系统。
+
+本人明确授权操控已安装Microsoft WinDbg及确认UAC；匹配微软公开符号后，两份原dump都在ProtectionBroker目录枚举，WofPreDirectoryControlCallback+0x695及Ntfs!FindNextIndexEntry2+0x675后跳空地址，完整分类AV_Wof!WofPreDirectoryControlCallback一致。共同失败机制有强证据；根因/责任驱动/具体目录或源码行仍UNKNOWN，不接受Wof自动分类为定责，不排除项目触发。两份原dump摘要复核未变，未复制/上传/改ACL。七个分析GUI及七个引擎精确结束，强制GUI退出-1与日志完成分开；原空白WinDbg保留。失败符号尝试、最终日志和停止回执均保留于work/windbg-installed-20261029，详见INCIDENT-20261029-SYSTEM-CRASH.md。此为VERIFIED只读诊断，未运行产品或更改AV/驱动/远程/网络，build/install/runtime/fault injection/recovery仍BLOCKED，整体目标未完成。
+
 ## 2026-10-29 第二次系统崩溃；项目数据请求未完成
 
 457d9bd新增项目数据入口/私有独立payload存储/普通用户成果恢复，传输测试及真实七文件打包通过；e0845ac修正长清单为NUL路径文件。e0845ac产品49输入、ea66eff Bootstrap50输入构建均0错误/警告。05:44:37Z人工UAC完成ecb06a57929a45d1adf9dd1d8415c4a4 INACTIVE安装（manifest851701939666F35F4E0C4323C408E00690B4CFB96165C81F5C6092AF5D8238C6、operationadfe129138634224858b9bea430a9570）；错误输入SHA拒绝125已落盘。正确数据处理无终态，不能算通过，也不能编造退出码/清理/恢复成功。

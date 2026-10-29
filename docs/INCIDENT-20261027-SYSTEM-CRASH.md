@@ -1,5 +1,7 @@
 # 2026-10-27 系统蓝屏事件与诊断进展
 
+2026-10-29新增有效比较：本人后续明确授权已安装Microsoft WinDbg离线分析并确认UAC，两份原dump匹配符号栈均为ProtectionBroker目录枚举、WofPreDirectoryControlCallback+0x695、Ntfs!FindNextIndexEntry2+0x675后RIP=0，分类一致；强烈支持相同失败机制，责任驱动/根因仍UNKNOWN。见[两份转储比较](INCIDENT-20261029-SYSTEM-CRASH.md)。当前受10月29日新事故hold约束，以下较早恢复授权/拒绝/等待文字均为历史，不解除当前产品执行hold，也不将旧调试器拒绝当成当前所有离线分析的永久禁止。
+
 ## 当前边界：用户再次明确授权有界实机推进
 
 用户最新明确表示相关缺口可以授权，即使再次蓝屏也可继续定位；不要求为复现而复现。

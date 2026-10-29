@@ -1,6 +1,59 @@
 # 2026-10-29 蓝屏重启：项目数据处理窗口
 
-当前结论：Windows已确认bugcheck，不是正常计划重启。根因、故障驱动和触发点UNKNOWN；不能把时间相邻当成因果，也不能排除本次开发操作。停止新增产品build/install/runtime/fault injection，不重试该负载，不为复现而触发；只继续有界只读事故核对。真实Claude/AV/FlClash/UU/全机网络限制保持。此为技术安全hold，不是用户请求暂停整个goal。
+当前结论：两份原转储的有效符号栈强烈支持相同故障机制：ProtectionBroker目录枚举，经Wof/FLTMGR/NTFS，在Ntfs间接调用处跳向空地址。造成错误调用目标的根因/责任驱动及具体源码调用点仍UNKNOWN；不能将WinDbg分类直接升级为Wof自身缺陷，也不能排除本项目触发。停止新增产品build/install/runtime/fault injection，不重试该负载，不为复现而触发；只继续有界只读事故核对。真实Claude/AV/FlClash/UU/全机网络限制保持。此为技术安全hold，不是用户请求暂停整个goal。
+
+## 2026-10-29 06:53Z：本人授权的已安装WinDbg比较完成
+
+### 继续解决：已接入名称查询修复候选，未结案
+
+用户随后明确要求继续解决，不能把不完全定责当成结案。追加离线反汇编仅回答可规避的分支问题，未再次执行产品或复现事故。current-r6.txt中WofPreDirectoryControlCallback+0xb7–0xea按FileInformationClass分流：掩码900000600000000Eh包含1/2/3/37/38/60/63，另处理78–81及33；类12不在其中，走+0x8da的退出路径。类2进入+0x472，随后转换为0x4e并在+0x695同步调用下层；与两份事故栈一致。字段含义对应微软[FLT_PARAMETERS.QueryDirectory](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fltkernel/ns-fltkernel-_flt_parameters)。这是当前匹配版本的分支证据，不是证明错误内存由谁写入。
+
+current-r6.txt SHA256=2D8781D7DDF7879E1733023F389158D5D43FB9E0D82C9D2CB38FAE9B216CC01D；07:11:30Z追加分析的GUI31932及其引擎也已按精确身份结束，原dump摘要再次一致。没有遗留本轮新增分析进程。
+
+[.NET 8.0.28实际实现](https://raw.githubusercontent.com/dotnet/runtime/v8.0.28/src/libraries/System.Private.CoreLib/src/System/IO/Enumeration/FileSystemEnumerator.Windows.cs)对普通Directory枚举请求FileFullDirectoryInformation（2），不是只查询名称。修改通配符或限制递归并不会改变它的类别。采用微软文档支持的[NtQueryDirectoryFile](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-ntquerydirectoryfile)及[FileNamesInformation](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_file_names_information)（12）作为具体修复候选，避免本次观察到的Wof元数据转换路径；不禁用Wof、不改系统压缩/驱动/AV，也不添加另一个执行器。
+
+SOURCE / INTEGRATED：原WindowsPathSeal新增有独立同步游标、持有父目录且核对同一NTFS身份的名称清点；状态清点、版本布局、精确卸载、profile与task清理已接入。名称只作发现，原有逐项文件身份/ACL/创建tag/无reparse与关闭Job要求仍保留。未匹配状态名的对象不被授予权力；同名前缀目录将由后续文件验证拒绝，不静默略过。缓冲64KiB、记录偏移/UTF16/单叶名/重复/容量/x64 ABI及协作时间预算均拒绝不完整结果，不回退到原完整元数据枚举。同步内核调用本身不可由这个协作预算抢占，不宣称硬超时能阻止蓝屏。
+
+六个产品项目及PolicySmoke/DirectoryNames测试源码的非生成语义检查0错误/0警告。测试已编写：原始记录截断/越界/奇数长度/续项重叠/UTF16/路径片段等拒绝；单独的普通用户入口只创建自己的新临时样本，调用同一生产方法核对空目录、Unicode、文件/目录名称、独立重复游标、容量拒绝和后续新增。没有编译、运行或安装这些新源，所有测试仍是待执行，不得标PASS或写成“蓝屏修好”。
+
+下一项具体资格是冻结的Lifecycle库+DirectoryNames离线构建、独立工件审查，然后普通用户pages-only及owned-fixture；不调用Broker/Bootstrap、读取私有state、创建AppContainer/Job/WFP、运行原事故请求、改变系统或要求UAC。这会执行新的原生目录查询，仍受当前build/runtime事故hold约束，须本人对该限定范围作出新决定。原安装/未完成会话/工件均保留，事故继续开放。
+
+### 两次故障证据
+
+用户后续明确授权调用/操控已安装Microsoft WinDbg，UAC均由本人确认，替代下方历史的手动回传等待。使用WinDbg 1.2610.1001.0，未安装调试驱动、附加活动进程或内核、执行产品、修改ACL/安全/网络设置。安装程序显示已安装，没有再次安装。
+
+| 核对项 | 2026-10-27原转储 | 2026-10-29原转储 |
+| --- | --- | --- |
+| 原文件 | 102726-15281-01.dmp | 102926-16031-01.dmp |
+| 转储内时间（UTC） | 07:56:18.117Z | 05:44:40.737Z |
+| Bugcheck | 0x1E(C0000005,0,8,0) | 相同 |
+| 当前进程（内核截短名） | ProtectionBrok | ProtectionBrok |
+| 入口系统调用 | nt!NtQueryDirectoryFile+0xe0 | 相同 |
+| Wof栈帧 | WofPreDirectoryControlCallback+0x695 | 相同 |
+| NTFS返回位置 | FindNextIndexEntry2+0x675 | 相同 |
+| 后续NTFS帧 | NtfsContinueIndexEnumeration+0x10e / NtfsQueryDirectory+0xd32 | 相同 |
+| 异常上下文 | RIP=0，执行访问违例 | 相同 |
+| 完整符号分类 | AV_Wof!WofPreDirectoryControlCallback | 相同 |
+| 分类摘要 | 3ae300a6-24ac-569b-3ce2-789a00065d56 | 相同 |
+
+两次地址因重启不同，但模块内偏移与相关链一致。匹配符号的Ntfs反汇编显示返回位置前一条为guard_dispatch_icall调用；结合RIP=0，支持空目标间接调用。初始trap不含全部寄存器、栈含一个未命名帧，不把所有参数/回溯帧都视为完整可信。没有证据据此认定Wof写坏内存、Kaspersky冲突、GPU故障或硬件正常。当前核实的是共同失败路径，责任归因仍待更具体证据。
+
+内核、Ntfs及Wof图像均10.0.26100.8875，FLTMGR为10.0.26100.8521；提供System32/驱动图像路径并启用严格符号匹配，使用微软公开服务器下载的对应PDB。未启用忽略GUID/版本或强载错误符号。主机只读版本查询为Windows 11 25H2 / 26200.8875，不将调试器通用的Windows 10内核标签当成宿主产品版本。
+
+原有分析失败继续保留：current-r1内核符号错误；current-r2未产生分析日志；current-r3中.sympath将后续分号内容当作路径元素，破坏原本已匹配的路径。修正为启动参数日志/图像/符号路径与逐行的纯调试命令文件，current-r4及previous-r2取得内核/NTFS栈；补齐Wof/FLTMGR符号后，current-r5及previous-r3回答具体函数问题。日志完成标记、符号及内容共同确认分析完成，不以GUI退出码作结论。
+
+原始日志/符号来源及摘要/固定脚本/授权启动回执保留于忽略的work/windbg-installed-20261029：
+
+- current-r5.txt：36380字节，SHA256=A4203689C2AE1C263DD8A71FCCD2B0A9FC54525ADD13D9D5A2B723048E204542。
+- previous-r3.txt：33149字节，SHA256=2558DB9BA799D7A134FBCE71D2F19151A632B852EE66A20551D628F055EBF41A。
+- 06:53:47Z本人UAC固定收尾复核两份原dump摘要仍与此前相同，未复制/上传/改ACL。精确身份/创建时间/映像/签名核对后结束本次7个分析GUI及其7个引擎，14项终态保存；GUI强制结束为-1、引擎退出0，不能记为调试器自然成功退出。原先空白WinDbg27332/32124未动。
+- close-owned-result.json SHA256=923380E7CCC5571F2B56B5F6F44ED1E2770BAB67D11E94C6887F928DBF355B31。
+
+只读CompactOS查询为当前未压缩，未改变状态。另找到一份[用户直接发布的相似栈报告](https://learn.microsoft.com/en-us/answers/questions/5814272/wof-sys-bsod-0x139-kernel-security-check-failure-i)，包含相同Ntfs/Wof偏移，但其系统/bugcheck不同、归因有争议，并非微软承认或修复公告。仅作为线索，不接受其“确定Wof/并发根因”或压力复现/改系统建议。
+
+源码只读追踪：ProcessWorkspaceData在执行输入操作前以及ExecuteResourceQualification开始处调用LifecycleRecovery.AssertNoPending；它经FencePlan等进入ProtectedState.ListLeaves的目录枚举。此为当前共同前置路径的优先排查点，不是已确认崩溃源码行；小转储缺少IRP内容及可用NTFS blackbox，不能确定目录、原查询参数、CLR调用栈或更早破坏源。现有无新会话回执与这个早期路径相容，不能据此宣布从未创建过资源。后续应围绕这一具体调用链设计修复/资格，不重复已回答的栈比较或直接恢复产品负载。
+
+依据微软文档：[启动参数](https://learn.microsoft.com/en-us/windows-hardware/drivers/debuggercmds/windbg-command-line-preview)、[逐行调试命令文件](https://learn.microsoft.com/en-us/windows-hardware/drivers/debuggercmds/-----------------------a---run-script-file-)、[公开符号](https://learn.microsoft.com/en-us/windows-hardware/drivers/debugger/microsoft-public-symbols)。以下保持事故过程中的原始观察与失败，不视为当前尚未运行WinDbg。
 
 ## 确认事实（UTC；括号为America/New_York）
 

@@ -1,5 +1,28 @@
 # ClaudeCode-Protection working rules
 
+2026-10-29 repair continuation: the user insists on solving the crash, not
+closing the incident at incomplete attribution. A concrete source candidate now
+routes all Lifecycle directory inventories through the existing WindowsPathSeal
+using FileNamesInformation (12), retaining independent identity/ACL/tag checks.
+Matching Wof disassembly shows class 12 skips the metadata conversion branch
+seen in both crashes; .NET 8's usual class 2 enters it. This is a targeted
+mitigation hypothesis, SOURCE only, not a verified fix. Native fixture and
+parser qualification sources are in tests/DirectoryNames. Static checks/source
+repair may proceed; the product build/run/install hold still needs a specific
+human decision before executing the proposed bounded qualification. No global
+settings/driver/AV changes or reproduction of the old workload.
+
+2026-10-29 offline crash comparison: the user explicitly authorized control of
+installed Microsoft WinDbg and personally confirmed UAC. Both original dumps,
+with matching public symbols, show ProtectionBroker directory enumeration,
+Ntfs!FindNextIndexEntry2+0x675 -> null and
+AV_Wof!WofPreDirectoryControlCallback (+0x695). This strongly supports the same
+failure mechanism, not attribution to Wof/AV/hardware or a safe product retry.
+Original dump hashes are unchanged; local logs and exact debugger-stop receipts
+are in work/windbg-installed-20261029. Product execution hold below remains.
+Do not repeat symbolic analysis without a new question or treat the historical
+debugger refusal/manual-analysis plan as a current blanket prohibition.
+
 2026-10-29 new crash hold: manual-UAC inactive update reached ecb06a57929a45d1adf9dd1d8415c4a4
 (manifest 851701939666F35F4E0C4323C408E00690B4CFB96165C81F5C6092AF5D8238C6),
 then the correct process-workspace-data invocation has no terminal receipt.

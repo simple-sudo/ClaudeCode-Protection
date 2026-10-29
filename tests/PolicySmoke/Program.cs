@@ -9,6 +9,11 @@ static void Require(bool truth,string reason)
 static StrictPreflightCheck Find(StrictPreflightReport report,string name)=>
     report.Checks.Single(c=>c.Id==name);
 var now=DateTimeOffset.UtcNow;
+if(args.Length==1 && args[0]=="directory-name-pages")
+{
+    ProtectionLifecycle.DirectoryNamePageCases.Run();return;
+}
+ProtectionLifecycle.DirectoryNamePageCases.Run();
 LoopbackTcpTableCases.Run();
 ProtectionLifecycle.ProfileRecoveryCases.Run();
 var sample=new List<Check>();

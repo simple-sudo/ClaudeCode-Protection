@@ -202,15 +202,14 @@ internal sealed class ProtectedState : IDisposable
         if(fixedPrefix is not ("operation-" or "plan-" or "release-" or "restage-" or "recovery-" or "selection-" or "stage-intent-" or "job-intent-" or "fence-intent-" or "fence-migration-" or "loopback-intent-" or "profile-created-" or "profile-intent-")) throw new InvalidOperationException("Fixed inventory prefix required");
         // Enumeration locates names only. Each matched file must separately pass
         // the handle, ACL, strict JSON and identity checks before it is trusted.
-        return Directory.EnumerateFiles(directory.Path,"*",SearchOption.TopDirectoryOnly)
-            .Select(Path.GetFileName).Where(n=>n is not null && n.StartsWith(fixedPrefix,StringComparison.Ordinal))
-            .Select(n=>Identifiers.StateLeaf(n!)).OrderBy(n=>n,StringComparer.Ordinal).ToArray();
+        return WindowsPathSeal.EnumerateNames(directory).Where(n=>n.StartsWith(fixedPrefix,StringComparison.Ordinal))
+            .Select(Identifiers.StateLeaf).OrderBy(n=>n,StringComparer.Ordinal).ToArray();
     }
     internal void AssertFreshEmpty()
     {
         AssertHeld();
         if(!CreatedInThisProcess)throw new InvalidOperationException("Fresh state required");
-        var names=Directory.EnumerateFileSystemEntries(directory.Path).Select(Path.GetFileName).OrderBy(n=>n,StringComparer.Ordinal).ToArray();
+        var names=WindowsPathSeal.EnumerateNames(directory).OrderBy(n=>n,StringComparer.Ordinal).ToArray();
         if(!names.SequenceEqual(new[]{"installation.json","operation-lock.json"}))throw new InvalidOperationException("New state is no longer empty");
     }
     internal void RemoveCurrent(string? expectedHash)

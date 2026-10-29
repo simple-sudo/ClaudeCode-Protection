@@ -155,18 +155,19 @@ internal static class SessionProfileRecovery
             try{root=WindowsPathSeal.Open(record.StorageRoot,true,false);}
             catch(ExactPathAbsentException ex)when(string.Equals(ex.FailedPath,record.StorageRoot,StringComparison.OrdinalIgnoreCase)){return false;}
             held.Add(root);if(WindowsPathSeal.Identity(root)!=record.StorageIdentity)throw WfpNative.Contract("ProfileStorageWasReplaced");
-            var pending=new Stack<(string Path,int Depth)>();pending.Push((record.StorageRoot,0));var count=0;
+            var pending=new Stack<(string Path,int Depth,Microsoft.Win32.SafeHandles.SafeFileHandle Handle)>();pending.Push((record.StorageRoot,0,root));var count=0;
             while(pending.Count>0)
             {
                 var next=pending.Pop();if(next.Depth>16)throw WfpNative.Contract("ProfileCleanupDepthExceeded");
-                foreach(var path in Directory.EnumerateFileSystemEntries(next.Path))
+                foreach(var name in WindowsPathSeal.EnumerateNames(next.Handle,next.Path,2048))
                 {
+                    var path=WindowsPathSeal.Child(next.Path,name);
                     if(++count>2048)throw WfpNative.Contract("ProfileCleanupInventoryExceeded");
                     var attributes=File.GetAttributes(path);
                     if((attributes&FileAttributes.ReparsePoint)!=0)throw WfpNative.Contract("ProfileCleanupReparsePointRefused");
                     var directory=(attributes&FileAttributes.Directory)!=0;
-                    held.Add(WindowsPathSeal.Open(path,directory,false));
-                    if(directory)pending.Push((path,next.Depth+1));
+                    var entry=WindowsPathSeal.Open(path,directory,false);held.Add(entry);
+                    if(directory)pending.Push((path,next.Depth+1,entry));
                 }
             }
             return true;

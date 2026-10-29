@@ -132,6 +132,72 @@ internal static class WindowsPathSeal
         return info.Volume.ToString("X8",System.Globalization.CultureInfo.InvariantCulture)+":"+
             info.IndexHigh.ToString("X8",System.Globalization.CultureInfo.InvariantCulture)+":"+info.IndexLow.ToString("X8",System.Globalization.CultureInfo.InvariantCulture);
     }
+    internal static string[] EnumerateNames(PathLease parent,int maximum=32768)
+    {
+        parent.AssertHeld();
+        var result=EnumerateNamesCore(parent.Path,parent.ObjectIdentity(),maximum);
+        parent.AssertHeld();return result;
+    }
+    internal static string[] EnumerateNames(SafeFileHandle heldParent,string path,int maximum=32768)
+    {
+        VerifyObject(heldParent,path,true);
+        var result=EnumerateNamesCore(path,Identity(heldParent),maximum);
+        VerifyObject(heldParent,path,true);return result;
+    }
+    private static string[] EnumerateNamesCore(string path,string expectedIdentity,int maximum)
+    {
+        if(maximum is <1 or >32768)throw new ArgumentOutOfRangeException(nameof(maximum));
+        if(IntPtr.Size!=8 || Marshal.SizeOf<DirectoryIoStatus>()!=16 ||
+            Marshal.OffsetOf<DirectoryIoStatus>(nameof(DirectoryIoStatus.Information)).ToInt64()!=8)
+            throw new PlatformNotSupportedException("Reviewed x64 directory query ABI required");
+        // The original directory handle/ancestry stays held. A separate,
+        // synchronous scan handle owns its cursor; no shared-cursor restart.
+        // SHARE_DELETE only accommodates our already-held DELETE handle during
+        // exact removal; that original handle still refuses foreign deletion.
+        using var scan=CreateFile(Canonical(path),ReadControl|ReadAttributes|1u|0x100000u,1u|4u,
+            IntPtr.Zero,3,OpenReparse|BackupSemantics,IntPtr.Zero);
+        if(scan.IsInvalid)throw Error("OpenNamesOnlyDirectory");
+        VerifyObject(scan,path,true);
+        if(Identity(scan)!=expectedIdentity)throw new InvalidDataException("Enumeration directory was replaced");
+        var names=new List<string>();var unique=new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        const int bytes=65536;var buffer=Marshal.AllocHGlobal(bytes);
+        var clock=System.Diagnostics.Stopwatch.StartNew();
+        try
+        {
+            // FILE_NAMES_INFORMATION (12) avoids requesting Wof's directory
+            // metadata conversion used by the two preserved crash stacks.
+            // No fallback to Directory.Enumerate*/FindFirstFile/full metadata.
+            for(var call=0;call<=maximum+2;call++)
+            {
+                if(clock.ElapsedMilliseconds>5000)throw new IOException("Directory name scan budget exceeded");
+                var status=NtQueryDirectoryFile(scan,IntPtr.Zero,IntPtr.Zero,IntPtr.Zero,out var io,
+                    buffer,bytes,12,false,IntPtr.Zero,call==0);
+                if(clock.ElapsedMilliseconds>5000)throw new IOException("Directory name scan budget exceeded");
+                if(status==unchecked((int)0x80000006))
+                {
+                    if(io.Information!=0)throw new InvalidDataException("Partial terminal directory name result");
+                    VerifyObject(scan,path,true);
+                    if(Identity(scan)!=expectedIdentity)throw new InvalidDataException("Enumeration identity changed");
+                    return names.ToArray();
+                }
+                // Handles are opened without FILE_FLAG_OVERLAPPED. Pending,
+                // overflow, access failures and empty successes are refusals,
+                // never an empty inventory or permission to delete something.
+                if(status!=0 || io.Status!=0 || io.Information is 0 || io.Information>(nuint)bytes)
+                    throw new IOException("Directory name query refused: status=0x"+unchecked((uint)status).ToString("X8")+
+                        "; io=0x"+io.Status.ToString("X8")+"; bytes="+io.Information);
+                var page=new byte[checked((int)io.Information)];Marshal.Copy(buffer,page,0,page.Length);
+                foreach(var name in DirectoryNamePage.Parse(page))
+                {
+                    if(!unique.Add(name))throw new InvalidDataException("Duplicate/case-colliding directory leaf");
+                    if(names.Count>=maximum)throw new InvalidDataException("Directory name inventory capacity exceeded");
+                    names.Add(name);
+                }
+            }
+            throw new IOException("Directory name scan did not terminate");
+        }
+        finally{Marshal.FreeHGlobal(buffer);}
+    }
     internal static void MarkDelete(SafeFileHandle handle)
     {
         var disposition=new DeleteDisposition{Delete=1};
@@ -271,6 +337,7 @@ internal static class WindowsPathSeal
     internal static Win32Exception Error(string stage) { var error = new Win32Exception(Marshal.GetLastWin32Error()); error.Data["Stage"] = stage; return error; }
     [StructLayout(LayoutKind.Sequential)] private struct SecurityAttributes { internal int Length; internal IntPtr Descriptor; internal int Inherit; }
     [StructLayout(LayoutKind.Sequential)] private struct DeleteDisposition { internal byte Delete; }
+    [StructLayout(LayoutKind.Sequential)] private struct DirectoryIoStatus { internal uint Status; internal nuint Information; }
     [StructLayout(LayoutKind.Sequential)] private struct ByHandleInfo {
         internal uint Attributes; internal System.Runtime.InteropServices.ComTypes.FILETIME Created, Accessed, Written;
         internal uint Volume, SizeHigh, SizeLow, Links, IndexHigh, IndexLow;
@@ -279,6 +346,8 @@ internal static class WindowsPathSeal
     [DllImport("kernel32.dll", EntryPoint="CreateFileW", CharSet=CharSet.Unicode, SetLastError=true)] private static extern SafeFileHandle CreateFileWithSecurity(string path, uint access, uint share, ref SecurityAttributes security, uint disposition, uint flags, IntPtr template);
     [DllImport("kernel32.dll", EntryPoint="CreateDirectoryW", CharSet=CharSet.Unicode, SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)] private static extern bool CreateDirectory(string path, ref SecurityAttributes security);
     [DllImport("kernel32.dll", SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)] private static extern bool GetFileInformationByHandle(SafeFileHandle handle, out ByHandleInfo info);
+    [DllImport("ntdll.dll",ExactSpelling=true)] private static extern int NtQueryDirectoryFile(SafeFileHandle handle,IntPtr completionEvent,IntPtr apcRoutine,IntPtr apcContext,
+        out DirectoryIoStatus status,IntPtr buffer,uint length,int informationClass,[MarshalAs(UnmanagedType.U1)]bool singleEntry,IntPtr name,[MarshalAs(UnmanagedType.U1)]bool restart);
     [DllImport("kernel32.dll", SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)] private static extern bool SetFileInformationByHandle(SafeFileHandle handle,int informationClass,ref DeleteDisposition information,uint size);
     [DllImport("kernel32.dll", EntryPoint="GetFinalPathNameByHandleW", CharSet=CharSet.Unicode, SetLastError=true)] private static extern uint GetFinalPathNameByHandle(SafeFileHandle handle, StringBuilder path, uint size, uint flags);
     [DllImport("kernel32.dll", EntryPoint="GetVolumeInformationByHandleW", CharSet=CharSet.Unicode, SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)] private static extern bool GetVolumeInformationByHandle(SafeFileHandle handle, StringBuilder? volume, uint volumeSize, out uint serial, out uint maxComponent, out uint flags, StringBuilder fileSystem, uint fileSystemSize);

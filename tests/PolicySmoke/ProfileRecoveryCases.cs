@@ -101,6 +101,7 @@ internal static class WindowsPathSeal
     internal static PathLease LockDirectory(string path,PathPolicy policy)=>throw new Exception("native forbidden");
     internal static SafeFileHandle Open(string path,bool directory,bool read)=>throw new Exception("native forbidden");
     internal static string Identity(SafeFileHandle handle)=>throw new Exception("native forbidden");
+    internal static string[] EnumerateNames(SafeFileHandle handle,string path,int maximum)=>throw new Exception("native forbidden");
 }
 internal sealed class ExactPathAbsentException : Exception{internal string FailedPath=>throw new Exception("native forbidden");}
 internal static class SessionResources{internal static string ProfileFolder(string sid)=>throw new Exception("native forbidden");}

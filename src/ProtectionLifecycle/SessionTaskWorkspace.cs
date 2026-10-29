@@ -88,17 +88,18 @@ internal static class SessionTaskWorkspace
                 entries.Add((path,true,root));
                 if(WindowsPathSeal.Identity(root)!=creation.Identity)throw WfpNative.Contract("TaskWorkspaceRootReplaced");
                 using var package=new InstallationPackageSid(state);SessionResources.AssertMutableWorkspace(root,profile.OwnerSid,package.Value);
-                var pending=new Stack<(string Path,int Depth)>();pending.Push((path,0));
+                var pending=new Stack<(string Path,int Depth,SafeFileHandle Handle)>();pending.Push((path,0,root));
                 while(pending.Count>0)
                 {
                     state.AssertHeld();
                     var next=pending.Pop();if(next.Depth>16)throw WfpNative.Contract("TaskWorkspaceCleanupDepthExceeded");
-                    foreach(var child in Directory.EnumerateFileSystemEntries(next.Path))
+                    foreach(var name in WindowsPathSeal.EnumerateNames(next.Handle,next.Path,4096))
                     {
+                        var child=WindowsPathSeal.Child(next.Path,name);
                         if(entries.Count>=4096)throw WfpNative.Contract("TaskWorkspaceCleanupInventoryExceeded");
                         var attributes=File.GetAttributes(child);if((attributes&FileAttributes.ReparsePoint)!=0)throw WfpNative.Contract("TaskWorkspaceReparsePointRefused");
                         var directory=(attributes&FileAttributes.Directory)!=0;
-                        entries.Add((child,directory,Open(child,directory)));if(directory)pending.Push((child,next.Depth+1));
+                        var entry=Open(child,directory);entries.Add((child,directory,entry));if(directory)pending.Push((child,next.Depth+1,entry));
                     }
                 }
                 // Complete no-follow/single-link preflight before any deletion.

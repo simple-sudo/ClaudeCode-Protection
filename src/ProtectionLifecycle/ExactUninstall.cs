@@ -178,7 +178,7 @@ internal sealed class RemovalInventory
                     if(versions is not null)
                     {
                         versionsEntry=CaptureDirectory(versions,state,"versions",null);
-                        var releases=Directory.EnumerateFileSystemEntries(versions.Path,"*",SearchOption.TopDirectoryOnly).Select(p=>Identifiers.Hex32(Path.GetFileName(p))).OrderBy(p=>p,StringComparer.Ordinal).ToArray();
+                        var releases=WindowsPathSeal.EnumerateNames(versions).Select(Identifiers.Hex32).OrderBy(p=>p,StringComparer.Ordinal).ToArray();
                         if(releases.Length>RemovalPolicy.MaximumVersions)throw new InvalidDataException("Removal master capacity exceeded; no cleanup started");
                         foreach(var release in releases)
                         {
@@ -357,7 +357,7 @@ internal sealed class RemovalInventory
         {
             using(var handle=TryDeleteHandle(path,true))
             {
-                if(handle is null)return;RemovalPolicy.DemandDirectory(WindowsPathSeal.Identity(handle)==expected.Identity && WindowsPathSeal.ReadCreationTag(handle).Sid==expected.CreationTag,!Directory.EnumerateFileSystemEntries(path).Any());
+                if(handle is null)return;RemovalPolicy.DemandDirectory(WindowsPathSeal.Identity(handle)==expected.Identity && WindowsPathSeal.ReadCreationTag(handle).Sid==expected.CreationTag,WindowsPathSeal.EnumerateNames(handle,path,1).Length==0);
                 assertRuntimeSafe();RecordAttempt(attempt,release,expected.Role,"BEFORE_DELETE",null);WindowsPathSeal.MarkDelete(handle);
             }
             using var remaining=TryDeleteHandle(path,true);if(remaining is not null)throw new IOException("Deleted directory still present");
@@ -377,7 +377,7 @@ internal sealed class RemovalInventory
         if(actual is not null && actual!=expected)throw new InvalidDataException("New/replaced/drifted file refused");
     }
     private static void CheckChildren(PathLease parent,IEnumerable<string> allowed)
-    {parent.AssertHeld();var names=new HashSet<string>(allowed,StringComparer.OrdinalIgnoreCase);foreach(var path in Directory.EnumerateFileSystemEntries(parent.Path))if(!names.Remove(Path.GetFileName(path)))throw new InvalidDataException("Unexpected/duplicate child retained");}
+    {parent.AssertHeld();var names=new HashSet<string>(allowed,StringComparer.OrdinalIgnoreCase);foreach(var name in WindowsPathSeal.EnumerateNames(parent))if(!names.Remove(name))throw new InvalidDataException("Unexpected/duplicate child retained");}
     private static PathLease? TryDirectory(string path,PathPolicy policy=PathPolicy.Protected)
     {
         try{return WindowsPathSeal.LockDirectory(path,policy);}

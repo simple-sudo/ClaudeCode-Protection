@@ -108,7 +108,7 @@ internal sealed class VerifiedVersion : IDisposable
     {
         parent.AssertHeld();
         var known=new HashSet<string>(expected,StringComparer.OrdinalIgnoreCase);
-        var actual=Directory.EnumerateFileSystemEntries(parent.Path,"*",SearchOption.TopDirectoryOnly).Select(Path.GetFileName).ToArray();
+        var actual=WindowsPathSeal.EnumerateNames(parent);
         if(actual.Length!=known.Count || actual.Any(n=>n is null || !known.Remove(n)) || known.Count!=0)
             throw new InvalidDataException("Unexpected/missing file in protected version layout");
     }
