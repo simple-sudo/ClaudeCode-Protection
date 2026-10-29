@@ -472,3 +472,10 @@ SOURCE六产品0错误/0警告；BUILD固定SDK/离线47项产品输入、17项�
 覆盖监听恢复但连接仍属另一PID、端点/状态/重复/零PID及损坏表拒绝，不包含真实TCP表/竞争/native网络验收。
 原始记录work/upstream-peer-*保留。安装仍fc2d7c8b/INACTIVE；旧Git资格不能转授新源码运行证据。
 正式网络/十四项/全宿主隔离及出口保真仍BLOCKED/UNKNOWN，完整产品未DELIVERABLE；无AV/日常FlClash/系统网络变更。
+
+## 2026-10-29：安装daily项目数据往返完成
+
+ac570b474e454a9a94db2310893d3892保持INACTIVE，manifestDE88460A1F31721FC69F151B528718DC2FE89ABE66BAEA551E3AD3D8AD8815C4；人工UAC更新及独立15文件回读通过。
+普通daily workspace-process经本人UAC，原Broker/ProtectedSession/AppContainer/Job固定Git数据处理、闭Job/精确清理和成功账本导出后返回四份明确选择文件，session d57cf00754fc45c8b599617f2c5e41be，退出0；安装daily review/extract均0，独立原包/结果/新目录摘要一致。
+work/workspace-pipe-repair-control保留终态及字节核对。原900调用者令牌权限不足缺陷、首次失败/空输出和普通自令牌复现均保留；修正QUERY|DUPLICATE及有界失败回执后才资格新工件。成果快照复用已审查class12名称查询，无旧元数据枚举回退。
+这是可用的数据操作链，不是输入项目代码、编译/测试、完整P0/网络/14项/GPU或旧中断会话恢复验收；未改日常网络/UU/FlClash/AV，未再次重启，未推送。

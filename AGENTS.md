@@ -1,5 +1,22 @@
 # ClaudeCode-Protection working rules
 
+2026-10-29 current installed workflow result: reviewed caller-rights repair
+ac570b474e454a9a94db2310893d3892, manifest
+DE88460A1F31721FC69F151B528718DC2FE89ABE66BAEA551E3AD3D8AD8815C4,
+completed human-UAC INACTIVE update at 08:31:07Z. After separate human UAC,
+installed ordinary daily workspace-process completed session
+d57cf00754fc45c8b599617f2c5e41be at 08:31:37Z, input BA1C5764...D4138,
+result AA2F0DFD...43483, four selected files unchanged. Original Broker
+ProcessWorkspaceBytes/ProtectedSession/Git owner required closed Job, successful
+exact cleanup and authoritative success receipt before result export. Installed
+daily review/extract both 0; independent base/result/extracted bytes matched.
+Evidence work/workspace-pipe-repair-control; old 90079258 refusal and empty
+output preserved. No reboot/product remnants or UU/FlClash/AV/network changes.
+This makes ordinary pack/process/review/extract usable for explicit DATA only;
+do not repeat unchanged proof. Project compilation/test execution, complete P0
+resource/network/14-item/GPU privacy and prior interrupted-session recovery
+remain unqualified. No general shell/privilege or project-code launch permit.
+
 2026-10-29 installed daily pipeline: approved human-UAC update to
 90079258ef8545f19d80e2c211744367 completed 08:18:29Z, remains INACTIVE.
 15 installed files matched hashes/protected DACLs; new Broker read-only intent
@@ -36,7 +53,7 @@ export -> fresh ordinary-user bundle. A local same-user pipe transfers bytes,
 never privileged host paths or arbitrary commands. Review/pin new artifacts;
 ordinary IPC/output tests do not need repeated stage permission. Installing a
 new package/creating a protected resource session still needs the concrete
-human-controlled system step. Keep 5bc986e1 INACTIVE and preserve crash evidence.
+human-controlled system step. Keep current installation INACTIVE and preserve crash evidence.
 This slice does not authorize input project code, real Claude or weaken the
 fourteen-item/host-privacy/network/GPU admission requirements.
 

@@ -2,7 +2,11 @@
 
 当前结论：两份原转储的有效符号栈强烈支持相同故障机制：ProtectionBroker目录枚举，经Wof/FLTMGR/NTFS，在Ntfs间接调用处跳向空地址。造成错误调用目标的根因/责任驱动及具体源码调用点仍UNKNOWN；不能将WinDbg分类直接升级为Wof自身缺陷，也不能排除本项目触发。用户后续明确重新授权修复验证，名称查询修复已通过下方限定资格，旧blanket build/runtime停止要求不再阻塞这一授权范围；原事故负载/安装/自动恢复不因临时样本通过而放行。真实Claude/AV/FlClash/UU/全机网络限制保持，事故开放，整体goal未暂停/完成。
 
-## 修复已安装，实际Broker只读入口正常返回
+## 后续授权的实际数据操作已正常返回，事故根因仍开放
+
+08:31Z安装ac570b47（INACTIVE）后的四文件daily数据往返退出0，session d57cf00754fc45c8b599617f2c5e41be；原Broker/ProtectedSession固定Git、闭Job/精确清理和成功账本导出条件均已走通，结果经普通用户比较/提取及独立摘要核对。成果快照也已复用同一class12名称查询，不再走旧元数据枚举；这把缓解证据推进到真实生产数据链。此前90079258第一次请求125保留，查出调用者令牌QUERY不足以支持WindowsPrincipal检查，修复并普通自令牌复现/复测后才使用新工件和人工UAC。未复跑旧事故会话或自动恢复，不能从新成功断言旧中断状态已清理，也不归责Wof/AV/硬件。boot仍05:44:54.5Z，AVP/BFE/FlClash/UU保持；证据work/workspace-pipe-repair-control，完整标识与摘要见STATUS。
+
+## 较早修复安装，实际Broker只读入口正常返回
 
 用户明确允许安装5bc986e1并仅做Broker只读及相关后续。07:37:29Z普通launcher持有control/source祖先和20个工件，核对helper1FB8496C、planE40CC54F、最终库70EF78FE；本人UAC后helper34408创建07:37:31.155Z。
 

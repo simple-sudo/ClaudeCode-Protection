@@ -1,5 +1,13 @@
 # 当前开发状态
 
+## 最新交付进展：已安装daily完成真实选择数据的完整往返
+
+VERIFIED / DELIVERABLE（仅数据操作）：本人手动UAC后08:31:07Z更新到ac570b474e454a9a94db2310893d3892 / manifestDE88460A1F31721FC69F151B528718DC2FE89ABE66BAEA551E3AD3D8AD8815C4，INACTIVE；15安装文件摘要、保护DACL及owner独立匹配，新Broker只读意图2/MISSING。随后普通daily workspace-process经另一次本人UAC，08:31:37Z退出0，session d57cf00754fc45c8b599617f2c5e41be。原ProcessWorkspaceBytes→ProtectedSession→AppContainer/Job→固定离线Git及独立对象核对→闭Job/精确清理→原成功账本核对/导出→同用户管道返回四文件成果；输入BA1C5764F54DF02B4E9266EE4C6414E28C6D8E8D18F9A07EB91A0CE4DC0D4138，成果AA2F0DFDC59A28A085BC47EE1082E817CC03BA23DC2EA85BC371E43919743483，Changes=[]。
+
+安装daily workspace-review、workspace-extract均0，独立解码输入/成果并核对新目录四文件摘要完全相同。日常可沿pack→process→review→extract完成数据工作流，process需要本人UAC，不再依赖外置脚本搬运特权stdin/stdout。证据work/workspace-pipe-repair-control，workflow-result SHA256=37F7AAC71C1FB25CEABE4D936E5A66F1A1B68081F908ABBDD00A548B6352A7BF，summary=2215B50EF05778DFB1C9AD611D56C9F11AB773CE52B590DCC6A920ED181B42F2，独立字节回读=E90F778D89EDABD3C9AEAB3B0FDBA6E4C2FFB0E24BAE7A45502F2E74B3F4A341。原900失败/空输出及所有旧版本保留，未自动恢复旧会话。boot仍05:44:54.5Z，AVP/BFE、FlClash/Core24520/17272和UU7056保持，无产品进程。
+
+整体仍未DELIVERABLE：输入项目源码/编译/测试未执行，完整P0资源与网络、14项准入、GPU及旧中断会话恢复未验收；真实Claude继续延期。下一步扩大同一所有者中的受审查工具链/编译能力，先解决所需真实敏感资源拒绝与准入证据，不用数据入口绕过正式代码执行门。下面“待安装/900当前”等为保留的历史阶段记录。
+
 ## 当前安装90079258：新daily往返首轮拒绝，已定位调用者身份检查缺陷
 
 VERIFIED（安装/只读）：用户明确授权后，两次人工UAC；08:18:29Z inactive update退出0，current=90079258ef8545f19d80e2c211744367 / manifest429D76D9B3245DF335D879F27F8CDCC12AF954E79685B8D40BBDC9F50BDFB5FF。15个安装文件摘要/保护DACL及管理员owner独立匹配；新Broker环境意图读取2/MISSING，无准入。证据work/workspace-pipe-control/installed-evidence及installed-readback.json。
