@@ -190,7 +190,10 @@ public static class BootstrapInstaller
             "8ACABDD78FEF52314B664CCE1F2B5D710EE1F665004177F75D9DB888D0F6DFAF",
             // Native own-token access was already10; no DACL mutation occurred.
             // Exact receipt confirms original Job closed/zero and quarantine.
-            "449AF6BA7B320FBC50E5B27F77D1C36FF902A0123CE02CBD0A074BDCC3C855B9"
+            "449AF6BA7B320FBC50E5B27F77D1C36FF902A0123CE02CBD0A074BDCC3C855B9",
+            // Cwd inheritance did not repair CreateProcess5. Exact Job3498721f
+            // receipt confirms closed/zero members, full quarantine, no stop errors.
+            "2A5D02303A96DDDFF17423C7EDAEC67BD94FD5290318E41F77F1BE1B8ED4996C"
         };
         private readonly ProtectedState state;
         private readonly BootstrapApproval approval;

@@ -125,6 +125,10 @@ internal sealed record AtomicJobCompletion(int SchemaVersion,string Installation
 
 internal sealed record AdmissionToken(bool IsAppContainer,string? PackageSid,int CapabilityCount,string IntegritySid,bool LpacAccessCheckObserved,uint ApplicationPackageAccessMask);
 internal sealed record ResourceBootstrapFailure(int SchemaVersion,string Scope,string Phase,string Type,int Code,string? NativeStage);
+// Diagnostics only. Failed queries stay unknown with their actual error;
+// these observations cannot issue a resource, network or session permit.
+internal sealed record ToolCreationEvidence(uint? ChildProcessPolicy,int? ChildPolicyQueryError,
+    uint? ImageLoadPolicy,int? ImagePolicyQueryError,int? ImageExecuteOpenError);
 internal sealed record OwnedMemberInspection(uint Pid,bool MembershipConfirmed,long? CreatedFileTime,string? ImagePath,AdmissionToken? Token,WfpErrorEvidence[] Failures);
 
 // No supplied executable/arguments/PID/token. First consumer is the installed
@@ -500,12 +504,22 @@ internal sealed class AtomicChild : IDisposable
         if(start.UseShellExecute || !start.CreateNoWindow || !start.RedirectStandardInput || !start.RedirectStandardOutput || !start.RedirectStandardError ||
             start.UserName.Length!=0 || start.Arguments.Length!=0 || !Path.IsPathFullyQualified(start.FileName) || !Path.IsPathFullyQualified(start.WorkingDirectory))
             throw WfpNative.Contract("InheritedToolStartContractRefused");
-        // The manager created this worker in the exact authorized task directory.
-        // Refuse a different directory; inherit the existing Windows directory
-        // state instead of supplying an explicit cwd for LPAC to resolve.
-        if(!string.Equals(Environment.CurrentDirectory,start.WorkingDirectory,StringComparison.OrdinalIgnoreCase))
-            throw WfpNative.Contract("InheritedToolWorkingDirectoryMismatch");
         var command=InheritedToolCommand(start.FileName,start.ArgumentList.ToArray());
+        var childPolicyKnown=GetProcessMitigationPolicy(self,13,out var childPolicy,sizeof(uint));
+        int? childPolicyError=childPolicyKnown?null:Marshal.GetLastWin32Error();
+        var imagePolicyKnown=GetProcessMitigationPolicy(self,10,out var imagePolicy,sizeof(uint));
+        int? imagePolicyError=imagePolicyKnown?null:Marshal.GetLastWin32Error();
+        var evidence=new ToolCreationEvidence(childPolicyKnown?childPolicy:null,childPolicyError,imagePolicyKnown?imagePolicy:null,imagePolicyError,null);
+        // Hash/read success does not establish FILE_EXECUTE access. Probe only
+        // the already fixed, manager-held tool image, without mapping or running
+        // it; do not read another resource or change any security descriptor.
+        using var executable=SessionResources.OpenExecutableForProbe(start.FileName);
+        if(executable.IsInvalid)
+        {
+            var code=Marshal.GetLastWin32Error();var failure=new Win32Exception(code);failure.Data["Stage"]="InheritedToolImageExecuteOpen";
+            failure.Data["ToolCreationEvidence"]=evidence with{ImageExecuteOpenError=code};throw failure;
+        }
+        evidence=evidence with{ImageExecuteOpenError=0};
         var sid=new SecurityIdentifier(token.PackageSid);var sidBytes=new byte[sid.BinaryLength];sid.GetBinaryForm(sidBytes,0);
         IntPtr attributes=IntPtr.Zero,package=IntPtr.Zero,capabilities=IntPtr.Zero,policy=IntPtr.Zero,handles=IntPtr.Zero,environment=IntPtr.Zero;
         bool initialized=false;SafeFileHandle? inputRead=null,inputWrite=null,outputRead=null,outputWrite=null,errorRead=null,errorWrite=null;
@@ -536,7 +550,8 @@ internal sealed class AtomicChild : IDisposable
             environment=Marshal.StringToHGlobalUni(string.Join('\0',env)+"\0\0");
             var startup=new StartupInfoEx{Basic=new(){Size=Marshal.SizeOf<StartupInfoEx>(),Flags=0x100,
                 Input=inputRead.DangerousGetHandle(),Output=outputWrite.DangerousGetHandle(),Error=errorWrite.DangerousGetHandle()},Attributes=attributes};
-            if(!CreateProcess(start.FileName,command,IntPtr.Zero,IntPtr.Zero,true,0x08080404,environment,null,ref startup,out var info))throw Error("InheritedToolCreateProcess");
+            if(!CreateProcess(start.FileName,command,IntPtr.Zero,IntPtr.Zero,true,0x08080404,environment,start.WorkingDirectory,ref startup,out var info))
+            {var failure=Error("InheritedToolCreateProcess");failure.Data["ToolCreationEvidence"]=evidence;throw failure;}
             process=new SafeProcessHandle(info.Process,true);thread=new SafeWaitHandle(info.Thread,true);
             var child=ReadToken(process,false);
             if(!child.IsAppContainer || child.PackageSid!=token.PackageSid || child.CapabilityCount!=0 || child.IntegritySid!="S-1-16-4096" ||
@@ -544,7 +559,7 @@ internal sealed class AtomicChild : IDisposable
             // The trusted owner still independently checks actual Job members,
             // image and LPAC AccessCheck mask before releasing the tool gate.
             if(ResumeThread(thread)!=1)throw Error("InheritedToolResume");
-            var result=new InheritedTool(process,inputWrite,outputRead,errorRead);process=null;inputWrite=null;outputRead=null;errorRead=null;return result;
+            var result=new InheritedTool(process,inputWrite,outputRead,errorRead,evidence);process=null;inputWrite=null;outputRead=null;errorRead=null;return result;
         }
         finally
         {
@@ -577,9 +592,10 @@ internal sealed class AtomicChild : IDisposable
         internal StreamWriter StandardInput {get;}
         internal StreamReader StandardOutput {get;}
         internal StreamReader StandardError {get;}
-        internal InheritedTool(SafeProcessHandle process,SafeFileHandle input,SafeFileHandle output,SafeFileHandle error)
+        internal ToolCreationEvidence CreationEvidence {get;}
+        internal InheritedTool(SafeProcessHandle process,SafeFileHandle input,SafeFileHandle output,SafeFileHandle error,ToolCreationEvidence evidence)
         {
-            this.process=process;StandardInput=new StreamWriter(new FileStream(input,FileAccess.Write),new UTF8Encoding(false)){AutoFlush=true};
+            this.process=process;CreationEvidence=evidence;StandardInput=new StreamWriter(new FileStream(input,FileAccess.Write),new UTF8Encoding(false)){AutoFlush=true};
             StandardOutput=new StreamReader(new FileStream(output,FileAccess.Read),Encoding.UTF8,true);
             StandardError=new StreamReader(new FileStream(error,FileAccess.Read),Encoding.UTF8,true);
         }
@@ -650,6 +666,7 @@ internal sealed class AtomicChild : IDisposable
     [DllImport("kernel32.dll",EntryPoint="CreatePipe",SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)] private static extern bool CreateToolPipe(out SafeFileHandle read,out SafeFileHandle write,ref KernelJobSeal.SecurityAttributes attributes,uint size);
     [DllImport("kernel32.dll",EntryPoint="SetHandleInformation",SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)] private static extern bool SetToolHandleInformation(SafeFileHandle handle,uint mask,uint flags);
     [DllImport("kernel32.dll",SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)] private static extern bool IsProcessInJob(SafeProcessHandle process,IntPtr job,[MarshalAs(UnmanagedType.Bool)]out bool present);
+    [DllImport("kernel32.dll",SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)] private static extern bool GetProcessMitigationPolicy(SafeProcessHandle process,int policy,out uint flags,nuint size);
     [DllImport("kernel32.dll",SetLastError=true)] private static extern SafeProcessHandle OpenProcess(uint access,[MarshalAs(UnmanagedType.Bool)] bool inherit,uint pid);
     [DllImport("kernel32.dll",SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)] private static extern bool GetExitCodeProcess(SafeProcessHandle process,out uint code);
     [DllImport("kernel32.dll",SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)] private static extern bool GetProcessTimes(SafeProcessHandle process,out long created,out long exited,out long kernel,out long user);

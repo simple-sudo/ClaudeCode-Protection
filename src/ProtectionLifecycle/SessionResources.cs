@@ -48,7 +48,7 @@ internal sealed record ResourceProbePlan(int SchemaVersion,string Nonce,string I
 }
 internal sealed record ResourceAccessCase(string Role,string Status,int? Error);
 internal sealed record ResourceChildReport(int SchemaVersion,int Pid,string Nonce,bool WorkspaceWriteReadMatched,int? ToolExit,
-    ResourceAccessCase[] Cases,string? FailureType,int? FailureCode,string? FailureStage,string? ToolDiagnostic,GitToolchainReport? Git);
+    ResourceAccessCase[] Cases,string? FailureType,int? FailureCode,string? FailureStage,string? ToolDiagnostic,GitToolchainReport? Git,ToolCreationEvidence? CreationEvidence=null);
 
 // The workspace belongs to the freshly created installation profile. No host
 // directory ACL is widened, adopted, recursively copied or deleted. It is task
@@ -208,6 +208,7 @@ internal sealed class SessionResources : IDisposable
         signal.Flush(true);
     }
     internal static string ToolPath=>WindowsPathSeal.Child(Environment.SystemDirectory,"WindowsPowerShell/v1.0/powershell.exe");
+    internal static SafeFileHandle OpenExecutableForProbe(string path)=>CreateFile(path,0xa0000000,1,IntPtr.Zero,3,0x80,IntPtr.Zero);
     internal static string ProfileFolder(string sid)
     {
         var status=GetAppContainerFolderPath(sid,out var pointer);
@@ -228,7 +229,7 @@ internal sealed class SessionResources : IDisposable
             Environment.GetEnvironmentVariable("CPC_GPU_PLAN") is not null || Environment.GetEnvironmentVariable("CPC_SESSION_ID") is not null ||
             !string.Equals(Environment.ProcessPath,plan.ExpectedChildImage,StringComparison.OrdinalIgnoreCase))throw WfpNative.Contract("ResourceChildPlanIdentityMismatch");
         var workspace=plan.Workspace(packageSid);var cases=new List<ResourceAccessCase>();bool matched=false;int? toolExit=null;string? failure=null;
-        string stage="READ_WORKSPACE_INPUT";int? failureCode=null;string? failureStage=null;string? toolDiagnostic=null;GitToolchainReport? gitReport=null;
+        string stage="READ_WORKSPACE_INPUT";int? failureCode=null;string? failureStage=null;string? toolDiagnostic=null;GitToolchainReport? gitReport=null;ToolCreationEvidence? creationEvidence=null;
         try
         {
             // The trusted owner holds and checks this complete ancestry and
@@ -278,7 +279,7 @@ internal sealed class SessionResources : IDisposable
             start.Environment["CPC_RESOURCE_NONCE"]=plan.Nonce;
             foreach(var arg in new[]{"-NoLogo","-NoProfile","-NonInteractive","-Command",script})start.ArgumentList.Add(arg);
             stage="START_FIXED_POWERSHELL";
-            using var process=AtomicChild.StartInheritedTool(start);process.StandardInput.Close();
+            using var process=AtomicChild.StartInheritedTool(start);creationEvidence=process.CreationEvidence;process.StandardInput.Close();
             var stdout=ReadBounded(process.StandardOutput);var stderr=ReadBounded(process.StandardError);
             stage="WAIT_FIXED_POWERSHELL";
             if(!process.WaitForExit(10000))throw new TimeoutException("Fixed offline tool deadline");
@@ -299,6 +300,7 @@ internal sealed class SessionResources : IDisposable
         catch(Exception ex)
         {
             failure=ex.GetType().Name;failureCode=ex is System.ComponentModel.Win32Exception native?native.NativeErrorCode:ex.HResult;
+            if(ex.Data["ToolCreationEvidence"] is ToolCreationEvidence observedCreation)creationEvidence=observedCreation;
             if(stage=="START_FIXED_POWERSHELL" && ex is System.ComponentModel.Win32Exception)
             {
                 // Process.Start can fail while creating/duplicating redirected
@@ -308,7 +310,7 @@ internal sealed class SessionResources : IDisposable
             }
             failureStage=stage+(ex.Data["Stage"] is string nativeStage?"/"+nativeStage:"");
         }
-        var report=new ResourceChildReport(1,Environment.ProcessId,plan.Nonce,matched,toolExit,cases.ToArray(),failure,failureCode,failureStage,toolDiagnostic,gitReport);
+        var report=new ResourceChildReport(1,Environment.ProcessId,plan.Nonce,matched,toolExit,cases.ToArray(),failure,failureCode,failureStage,toolDiagnostic,gitReport,creationEvidence);
         Console.WriteLine(JsonSerializer.Serialize(report));return Qualified(report)?0:3;
     }
     private static string ToolStartFailurePhase(Exception error)

@@ -1,21 +1,23 @@
 # ClaudeCode-Protection working rules
 
-2026-10-29 authoritative installed10efec92555a4d1985493600122a64f7,
-manifest449AF6BA7B320FBC50E5B27F77D1C36FF902A0123CE02CBD0A074BDCC3C855B9,
-manual-UAC14:39:26Z inactive update; 15 files/ACLs/read-only intent matched.
-Sessionba4e8ac25360430ebbee72c66afa0a05 still failed native CreateProcess5.
-Exact receipts work/lpac-token-control show own-token access10 BEFORE/AFTER,
-Changed=false: token-rights hypothesis refuted; no token ACL grant occurred.
-Job5245d7710ba84c0fa6bb87333793b86a closed/zero, full quarantine, no stop errors.
-Root workspace I/O and all four denials5 passed. No result, reboot, remnants,
-or daily UU/FlClash/AV/network changes. Preserve failure/empty result; no retry
-of unchanged workload or automatic recovery. Source removes the ineffective
-token-DACL mechanism/fixture; next narrow hypothesis inherits the already
-exact task cwd only after worker/current-plan equality, instead of explicit
-reopening. Same original native LPAC/Job/manager gates, no added capability
-or host ACL/privilege grant. Qualify changed artifact before native operation.
-Do not treat the cwd hypothesis as cause or verified compatibility. Older
-current-package paragraphs below are historical.
+2026-10-29 authoritative installedc37ffe49d87840bfbf50c06131205d10,
+manifest2A5D02303A96DDDFF17423C7EDAEC67BD94FD5290318E41F77F1BE1B8ED4996C,
+human UAC14:53:00Z INACTIVE; 15 files/ACLs/read-only intent matched.
+Sessionc29aed3e57c1455ba7ae5f5ed839d7ce still native CreateProcess5.
+Root workspace I/O and all four denials5 passed. Exact receipts confirm
+Job3498721f05574875bdf18868af4d4a82 closed/zero, full quarantine, no stop errors.
+Evidence work/lpac-cwd-control, receipt SHA25600C137823CE48BFFA13191D20749741162234156BC516FEBD8481C1037418830.
+No reboot/remnants/daily-network/UU/FlClash/AV changes. No result or tool
+compatibility success. Explicit launch attributes, own-token rights (already
+10/Changed=false), and cwd inheritance did not repair this failure. Ineffective
+token-DACL/cwd branches removed; artifacts/failures preserved. Do not retry
+unchanged workloads or infer safe-software exclusion from empty event logs.
+Next source uses existing same-owner tool start to query only self child/image
+policy and open the fixed held executable with execute access, attaching bounded
+numeric observations. It changes no policy/ACL/capability or admission grant.
+Source semantic checks only; review/qualify new bytes before actual execution.
+Goal remains active, no incident or full product closure. Older current-package
+paragraphs below are historical.
 2026-10-29 current installed d1b5cf615a7645d882ac982c14d1e2dc, manifest
 1F79C28F55857F788023802635F7A0A62DACEEA4BE5CD6BD45035E4A78E42681,
 human-UAC update completed14:00:44Z, remains INACTIVE. LPAC data task
