@@ -25,6 +25,22 @@ point or private state was accessed; this is not original-crash/product closure.
 Continue repair artifact preparation toward the same installed owner. Preserve
 the exact qualified library where possible; do not repeat these unchanged cases.
 
+Final installation candidate: d38901d adds ONLY the exact current ecb06a
+manifest to the existing inactive-update prior-package pins; closure/fence
+checks are unchanged. The 53-input final Broker/Lifecycle/DirectoryNames build
+passed, and the new final library 70EF78FEE0D73FE5FF9B23B446B15FE928EFE4DB5C8DA0B52FEF50453470B1D5
+passed both qualification modes again. cf63e34 embeds release
+5bc986e16e9a44ca856a1b56b90328aa / manifest
+048E974CD4611B4DB7B577B64DAA5842C5CA02FE08D63298382BBC001FBBEC37.
+Bootstrap was built WITHOUT rebuilding that library and holds the same bytes.
+The 20-file stage and 10 PE/6 managed metadata checks passed. No installation
+occurred. work/names-only-control/install-qualification.json pins the prepared
+manual-UAC path for update-inactive then inspect-session-environment only;
+no original workload, resource creation, recovery or network mutation. Wait
+for the user's decision on THIS system installation before invoking it; do
+not ask again for the completed ordinary-user qualification or rebuild/retest
+unchanged bytes. See STATUS for exact current package and evidence.
+
 2026-10-29 repair continuation: the user insists on solving the crash, not
 closing the incident at incomplete attribution. A concrete source candidate now
 routes all Lifecycle directory inventories through the existing WindowsPathSeal

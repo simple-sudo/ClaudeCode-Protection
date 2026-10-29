@@ -2,6 +2,10 @@
 
 ## 2026-10-29 当前事故修复：名称查询已通过普通用户验证；安装链待验证
 
+当前可审查安装候选（尚未安装）：d38901d仅补当前ecb06a清单的精确inactive更新pin，闭合Job/隔离检查不变；最终Broker/Lifecycle/DirectoryNames的53输入build0，零错误/警告，新库70EF78FEE0D73FE5FF9B23B446B15FE928EFE4DB5C8DA0B52FEF50453470B1D5再次通过pages-only/484项原生样本（DLL A84A2E87545FA9D73D1137D4C6C1F2A0437C31324CB68CEEE575E1BFAF282BC2）。cf63e34 Bootstrap采用同一库且禁止重建它，离线build0/零警告错误；20个staging文件、10PE/6managed/无module initializer和内嵌清单核对通过。
+
+候选5bc986e16e9a44ca856a1b56b90328aa，manifest048E974CD4611B4DB7B577B64DAA5842C5CA02FE08D63298382BBC001FBBEC37。只更新3个Broker资产，其他11项复用原审批字节；初次staging报告误写5/9，原报告保留，逐项核对后更正3/11。人工UAC准备动作只包含update-inactive→原安装Broker inspect-session-environment，不执行旧负载、recover或创建profile/Job。工件/脚本完整pin见work/names-only-control/install-qualification.json，等待这一系统安装决定，非等待普通用户验证。实际current仍ecb06a/INACTIVE。
+
 用户明确允许验证并修改此前停止要求，放行此具体修复资格，不再以旧build/runtime blanket hold重复等待同一授权。BUILD / VERIFIED（限定）：2173dcb的51输入离线Lifecycle+DirectoryNames构建0错误/0警告，生成依赖/PE/无module initializer审查后，pages-only与owned-fixture均退出0。484个顶层名称跨64KiB分页完整，Unicode/空目录/重复独立游标/容量拒绝/DELETE句柄兼容通过，嵌套子文件不可见。库SHA256=05316042C9D040BA20DF007576981ABA25EBE817F4347408C00AEDF4FAAEB5CC，测试DLL=C89DE4F2889179774A606B58BE177A1D1CE7B867B88C0AD30949429F98A64FAB。
 
 原始构建/审查/开始与终态/样本保留于work/names-only-qualification-20261029-r1；run-result SHA256=E0FA45AC48DC971721E1CC4855AE1CC7423343FFEC1B090D00F651E6C33928DE。系统boot仍05:44:54.5Z，AVP/BFE运行，FlClash24520/Core17272及UU服务保持；有限Application AV事件0，完整厂商覆盖UNKNOWN。未安装/运行Broker/读私有state/改驱动与网络。修复并未结案：下一项是复用此库准备安装Broker/Bootstrap工件，实际安装和受保护状态查询须保持人工UAC与具体工件审查。

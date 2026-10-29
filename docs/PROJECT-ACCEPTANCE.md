@@ -2,6 +2,8 @@
 
 ## 2026-10-29 名称查询修复资格通过；事故仍开放
 
+最终候选推进：d38901d补当前ecb06a的精确inactive更新pin，53输入Broker/Lifecycle/样本构建和最终70EF78FE库的两种验证均通过。cf63e34 Bootstrap复用同一库，候选5bc986e1/manifest048E974C，20文件/内嵌清单/10PE与6managed审查通过。构建和两次普通用户有限资格记录分开保留；实际安装尚未进行，待用户决定后只做inactive更新和原Broker只读意图查询，不重跑原事故负载或自动恢复。此处不记安装、原崩溃消除或正式开发能力VERIFIED。
+
 本人明确放行验证及修改旧停止要求。2173dcb的51输入Lifecycle/DirectoryNames离线restore/build0，零警告错误，工件独立审查后普通用户pages-only/owned-fixture均0。484顶层名称跨页/Unicode/空目录/独立游标/容量拒绝/嵌套不递归/DELETE句柄兼容通过；生产库05316042、测试DLL C89DE4F2，完整摘要见STATUS。证据work/names-only-qualification-20261029-r1，样本/回执保留。此为BUILD及限定VERIFIED，不是原蓝屏消除、安装产品路径或生命周期恢复验收；未改系统/AV/驱动/网络，未运行原负载。旧blanket hold对这次授权资格失效，后续实际安装保持工件审查和人工UAC。
 
 ## 2026-10-29 有效离线转储比较；不解除产品事故hold
