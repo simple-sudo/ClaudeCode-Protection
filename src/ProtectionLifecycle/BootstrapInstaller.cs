@@ -184,7 +184,10 @@ public static class BootstrapInstaller
             "1F79C28F55857F788023802635F7A0A62DACEEA4BE5CD6BD45035E4A78E42681",
             // Reviewed diagnostic package. Its actual CreateProcess denial is
             // preserved; all original closure/fence checks still apply here.
-            "599852489D7049C8944C3C41712AC1ACE5217F2E437AB2AB5D3035D2E880A02A"
+            "599852489D7049C8944C3C41712AC1ACE5217F2E437AB2AB5D3035D2E880A02A",
+            // Explicit inherited creation still returned5. Prior admission and
+            // quarantine must be closed by the unchanged update guards.
+            "8ACABDD78FEF52314B664CCE1F2B5D710EE1F665004177F75D9DB888D0F6DFAF"
         };
         private readonly ProtectedState state;
         private readonly BootstrapApproval approval;

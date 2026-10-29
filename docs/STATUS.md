@@ -1,14 +1,16 @@
 # 当前开发状态
 
-## 当前安装 dccb5fe0：LPAC子工具创建拒绝，显式继承候选开发中
+## 当前安装 02eedf61：显式LPAC派生仍拒绝，收窄自身令牌访问
 
-VERIFIED（安装限定）：人工UAC14:09:26Z更新dccb5fe0096b4e319ad123d443f564b4，manifest599852489D7049C8944C3C41712AC1ACE5217F2E437AB2AB5D3035D2E880A02A，库726408229A13058F4AF7C662D352AC2957331E12D2D91543245A0A81E82D72E8。15文件摘要/保护ACL独立回读匹配，保持INACTIVE；只读意图2/MISSING。离线55输入构建0错误/警告，普通start-failure测试0，仅验证启动失败分类。证据work/lpac-build-r6、work/lpac-start-label-control。
+VERIFIED（安装/离线限定）：f385e7c的55输入离线构建0错误/警告，新增原生面仅CreatePipe/SetHandleInformation/IsProcessInJob；Windows参数原生往返、NUL/超长拒绝及普通调用者拒绝通过，未创建产品/Job/profile。work/lpac-build-r7，库27DA38F5042A9F5C9A334197D85ABF8F2324F2DD62D3E1C7F80286FC344C95FE。56输入Bootstrap复用同库不重建，20文件、10 PE/6 managed及内嵌清单匹配。
 
-FAIL（原生数据任务）：session78cfb5fc2c0442bd9b1fb17b64a120b2退出3，daily已准确返回PowerShellCreateProcess/5；框架重定向管道创建/复制已越过，实际子进程创建遭拒绝。无成果导出，空输出和旧包/失败保留，不重复不变任务或自动恢复。boot仍05:44:54.5Z，产品进程为空，AVP/BFE/FlClash/UU保持。此次终态Job/隔离私有回执尚未独立采集，不从daily3虚构清理成功。
+人工UAC14:27:38Z更新02eedf61a5344d548e3aa14b694ff2c3，manifest8ACABDD78FEF52314B664CCE1F2B5D710EE1F665004177F75D9DB888D0F6DFAF，15文件摘要/保护ACL匹配，INACTIVE，只读意图2/MISSING。helper staging-intent的SourceCommit注释沿用e5c611f，原回执不改；正确Bootstrap f6a9abb、payload f385e7c由冻结输入/嵌入清单/摘要证明，勘误在work/lpac-inherited-control。
 
-VERIFIED（先前限定，不重测）：d1b5cf61 session641515b1ed88432d9d3816a88578dd25实际LPAC根工作区读写匹配，私有状态读/写、AAP-only非秘密文件读、Broker VM-read打开均拒绝5；管理侧LPAC mask2/挂起身份通过。其Job00f251370f83481391509b8d9fe53b97闭合/零成员、完整隔离和无stop错误有确切回执。证据work/lpac-paths-control，不能外推全宿主隐私。
+FAIL：sessionc671333cb24940429c84c3bf571e82ba仍退出3/PowerShellCreateProcess5，无成果。显式同包LPAC/handle-list创建不是已证实修复，不能继续宣称仅继承参数就能解决。保留work/lpac-inherited-control、空结果和所有旧包；boot仍05:44:54.5Z，无产品进程、UU/FlClash/AV/BFE保持。此轮私有终态Job/隔离回执尚未独立采集，不从退出码虚构清理成功。前dccb任务78cfb5fc同类error5及失败分类证据保留，均不重复不变任务。
 
-SOURCE / INTEGRATED（修复假设，未验证）：同一AtomicChild中给既有资源/Git工作进程增加显式LPAC后代创建，固定映像参数、同包零能力、AAP opt-out、三条管道handle-list、原Job继承及挂起身份检查；仍由原管理侧检查实际LPAC/Job/工具映像后打开现有门。无新执行器或提权通道，无普通AppContainer回退，不加registryRead/lpacCom能力或改宿主ACL。新增Windows参数往返/普通调用者拒绝资格待构建。不能把显式创建视为已证明的原始原因或修复；编译/项目执行、完整网络/14项/GPU和正式会话仍未验收。以下“当前”标题均为历史快照。
+SOURCE（新窄假设，待资格）：在原AtomicChild创建的确切挂起根、已核验包/LPAC/Job后，管理侧检查该新令牌对象的QUERY|DUPLICATE访问。只有请求被DACL拒绝才给同一包SID增加精确0xA，完整保留原ACE/owner/group并回读；不改TokenDefaultDacl/privileges或任何宿主对象，不给ASSIGN/IMPERSONATE/ADJUST。原before-resume/after回执记录前后mask/Changed；worker实际自开QUERY|DUPLICATE后才创建工具。这是对后代创建所需自身对象访问的可证伪修复，不声称已定位原始Windows内部失败原因。新增普通用户独立Identification token夹具只检验对象DACL原生读写和主令牌不变，绝不附加/模拟令牌或创建进程。
+
+先前可靠范围：d1b5cf61 session641515b1工作区读写与私有状态读/写、AAP-only文件读、Broker VM-read四项拒绝5，LPAC mask2/挂起身份及闭Job/零成员/完整隔离有确切证据work/lpac-paths-control，不重测其未改内容。完整宿主隐私、网络/14项、实际项目编译测试、GPU与正式Claude仍未验收。下方“当前”均历史快照。
 
 ## 最新：4fe9da3d已安装，LPAC阻碍定位到工具前的路径准备
 

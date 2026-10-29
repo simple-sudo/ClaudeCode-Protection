@@ -144,6 +144,7 @@ internal sealed class AtomicChild : IDisposable
     private ProtectedSession.Admission? sessionAdmission;
     private bool resumed,disposed;
     internal bool ResumeAttempted {get;private set;}
+    internal object? DescendantTokenAccess {get;private set;}
     internal uint Pid {get;}
     internal string ExpectedPackageSid=>packageSid;
     internal string ExpectedImagePath=>image;
@@ -335,7 +336,11 @@ internal sealed class AtomicChild : IDisposable
             var child=new AtomicChild(state,version,job,info,image,package.Value,network,gpu is not null,preparation,resources);
             try
             {
-                if(preparation is not null || resources is not null){KernelJobSeal.SessionObjectDescriptor.AssertSeal(child.process);KernelJobSeal.SessionObjectDescriptor.AssertSeal(child.thread);}
+                if(preparation is not null || resources is not null)
+                {
+                    KernelJobSeal.SessionObjectDescriptor.AssertSeal(child.process);KernelJobSeal.SessionObjectDescriptor.AssertSeal(child.thread);
+                    child.AssertSuspendedIdentity();child.DescendantTokenAccess=child.PrepareDescendantTokenAccess();
+                }
                 return child;
             }
             catch{child.Dispose();throw;}
@@ -397,7 +402,7 @@ internal sealed class AtomicChild : IDisposable
             observations.Add(observed);
         }
         var proof=new {SchemaVersion=1,state.InstallationId,job.JobId,Pid,CreatedFileTime=created.ToString("X16"),Token=token,
-            ImageSHA256=version.Package.Files.Single(f=>f.Asset.Id=="broker-exe").SHA256,Job=snapshot,Fences=observations,
+            ImageSHA256=version.Package.Files.Single(f=>f.Asset.Id=="broker-exe").SHA256,Job=snapshot,Fences=observations,DescendantTokenAccess,
             Binding="SECURITY_CAPABILITIES_AND_JOB_LIST_AT_CREATION",Status="BEFORE_FIRST_RESUME",NetworkBehaviorQualified=false,
             SessionBindingSHA256=sessionAdmission?.BindingSHA256,
             Scope=sessionAdmission is not null?"AUTHENTICATED_SESSION_GATEWAY":network?.Kind==NetworkProbeKind.Control?"UNFENCED_OWNED_LOOPBACK_CONTROL":proxyOnly?"COMPILED_IPV4_PROXY_ONLY":gpuWorkload?"FIXED_CUDA_FULL_QUARANTINE":"FULL_QUARANTINE"};
@@ -487,6 +492,63 @@ internal sealed class AtomicChild : IDisposable
                 ex is Win32Exception win32?win32.NativeErrorCode:ex.HResult,native)));return 125;
         }
     }
+    private object PrepareDescendantTokenAccess()
+    {
+        // Only this freshly created, still suspended and identity-checked root.
+        // The token's object DACL is distinct from TokenDefaultDacl. Give its
+        // exact package QUERY|DUPLICATE on its OWN token, never ADJUST, ASSIGN,
+        // IMPERSONATE, WRITE_DAC, another token, host path or capability.
+        ProtectedState.RequireAdministrator();AssertSuspendedIdentity();
+        if(!OpenProcessToken(process,0x20000|0x40000|8|2,out var token))throw Error("OpenFreshDescendantTokenSecurity");
+        using(token)
+        {
+            var original=ReadTokenObjectSecurity(token);var before=TokenObjectAccess(token,original);
+            var changed=(before&10)!=10;
+            if(changed)
+            {
+                var bytes=WithOwnTokenQueryDuplicate(original,packageSid);var descriptor=new RawSecurityDescriptor(bytes,0);
+                if(!SetTokenObjectSecurity(token,4,bytes))throw Error("GrantFreshOwnTokenQueryDuplicate");
+                var observed=new RawSecurityDescriptor(ReadTokenObjectSecurity(token),0);
+                var expectedAcl=new byte[descriptor.DiscretionaryAcl!.BinaryLength];descriptor.DiscretionaryAcl.GetBinaryForm(expectedAcl,0);
+                if(observed.Owner!=descriptor.Owner || observed.Group!=descriptor.Group || observed.DiscretionaryAcl is null)throw WfpNative.Contract("FreshTokenDescriptorChanged");
+                var actualAcl=new byte[observed.DiscretionaryAcl.BinaryLength];observed.DiscretionaryAcl.GetBinaryForm(actualAcl,0);
+                if(!expectedAcl.AsSpan().SequenceEqual(actualAcl))throw WfpNative.Contract("FreshTokenExactAclMismatch");
+            }
+            var after=TokenObjectAccess(token,ReadTokenObjectSecurity(token));
+            if((after&10)!=10)throw WfpNative.Contract("FreshOwnTokenQueryDuplicateStillDenied");
+            AssertSuspendedIdentity();return new{Scope="FRESH_ROOT_TOKEN_OBJECT_DACL_ONLY",BeforeQueryDuplicateMask=before,AfterQueryDuplicateMask=after,Changed=changed,
+                RequestedAccess=10,DefaultDaclModified=false,PrivilegesModified=false,HostResourcesModified=false};
+        }
+    }
+    private static byte[] WithOwnTokenQueryDuplicate(byte[] original,string sid)
+    {
+        var descriptor=new RawSecurityDescriptor(original,0);
+        if(descriptor.Owner is null || descriptor.Group is null || descriptor.DiscretionaryAcl is null || descriptor.DiscretionaryAcl.Count>128)
+            throw WfpNative.Contract("FreshTokenDescriptorUnconfirmed");
+        descriptor.DiscretionaryAcl.InsertAce(descriptor.DiscretionaryAcl.Count,
+            new CommonAce(AceFlags.None,AceQualifier.AccessAllowed,10,new SecurityIdentifier(sid),false,null));
+        var bytes=new byte[descriptor.BinaryLength];descriptor.GetBinaryForm(bytes,0);return bytes;
+    }
+    private static byte[] ReadTokenObjectSecurity(SafeAccessTokenHandle token)
+    {
+        var sized=GetTokenObjectSecurity(token,7,null,0,out var needed);var error=Marshal.GetLastWin32Error();
+        if(sized || error!=122 || needed is <20 or >65536)throw WfpNative.Contract("FreshTokenDescriptorSizeUnconfirmed");
+        var bytes=new byte[checked((int)needed)];
+        if(!GetTokenObjectSecurity(token,7,bytes,needed,out var actual))throw Error("ReadFreshTokenDescriptor");
+        if(actual!=needed)throw WfpNative.Contract("FreshTokenDescriptorSizeChanged");return bytes;
+    }
+    private static uint TokenObjectAccess(SafeAccessTokenHandle token,byte[] descriptor)
+    {
+        if(!DuplicateTokenEx(token,8,IntPtr.Zero,1,2,out var query))throw Error("DuplicateFreshTokenForObjectAccess");
+        using(query)
+        {
+            var mapping=new GenericMapping{Read=0x20008,Write=0x200e0,Execute=0x20000,All=0xf01ff};var privileges=new byte[64];uint length=(uint)privileges.Length;
+            // Explicit rights only. A denied request must never be represented
+            // by an uninitialised granted mask; preserve refusal as mask zero.
+            if(!AccessCheck(descriptor,query,10,ref mapping,privileges,ref length,out var granted,out var allowed))throw Error("CheckFreshTokenOwnAccess");
+            if(length>privileges.Length || (granted&~10u)!=0)throw WfpNative.Contract("FreshTokenAccessResultUnconfirmed");return allowed?granted:0;
+        }
+    }
     // The existing worker, not the elevated Broker, creates its descendants.
     // Repeat the package/OPT_OUT request explicitly instead of relying on a
     // framework's ordinary CreateProcess defaults. The original Job is inherited
@@ -497,6 +559,8 @@ internal sealed class AtomicChild : IDisposable
         if(!token.IsAppContainer || token.CapabilityCount!=0 || token.IntegritySid!="S-1-16-4096" || token.PackageSid is null ||
             !IsProcessInJob(self,IntPtr.Zero,out var inJob) || !inJob)
             throw WfpNative.Contract("InheritedToolRequiresConfinedWorker");
+        if(!OpenProcessToken(self,8|2,out var ownToken))throw Error("InheritedToolOwnTokenQueryDuplicate");
+        ownToken.Dispose();
         if(start.UseShellExecute || !start.CreateNoWindow || !start.RedirectStandardInput || !start.RedirectStandardOutput || !start.RedirectStandardError ||
             start.UserName.Length!=0 || start.Arguments.Length!=0 || !Path.IsPathFullyQualified(start.FileName) || !Path.IsPathFullyQualified(start.WorkingDirectory))
             throw WfpNative.Contract("InheritedToolStartContractRefused");
@@ -650,6 +714,8 @@ internal sealed class AtomicChild : IDisposable
     [DllImport("kernel32.dll",SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)] private static extern bool GetProcessTimes(SafeProcessHandle process,out long created,out long exited,out long kernel,out long user);
     [DllImport("kernel32.dll",EntryPoint="QueryFullProcessImageNameW",CharSet=CharSet.Unicode,SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)] private static extern bool QueryFullProcessImageName(SafeProcessHandle process,uint flags,StringBuilder path,ref uint size);
     [DllImport("advapi32.dll",SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)] private static extern bool OpenProcessToken(SafeProcessHandle process,uint access,out SafeAccessTokenHandle token);
+    [DllImport("advapi32.dll",EntryPoint="GetKernelObjectSecurity",SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)] private static extern bool GetTokenObjectSecurity(SafeAccessTokenHandle token,uint information,[Out]byte[]? descriptor,uint length,out uint needed);
+    [DllImport("advapi32.dll",EntryPoint="SetKernelObjectSecurity",SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)] private static extern bool SetTokenObjectSecurity(SafeAccessTokenHandle token,uint information,byte[] descriptor);
     [DllImport("advapi32.dll",SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)] private static extern bool GetTokenInformation(SafeAccessTokenHandle token,int type,IntPtr data,int size,out int returned);
     [StructLayout(LayoutKind.Sequential)] private struct GenericMapping {internal uint Read,Write,Execute,All;}
     [DllImport("advapi32.dll",SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)] private static extern bool DuplicateTokenEx(SafeAccessTokenHandle existing,uint access,IntPtr security,int level,int type,out SafeAccessTokenHandle token);

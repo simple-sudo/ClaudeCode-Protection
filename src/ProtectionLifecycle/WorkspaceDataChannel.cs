@@ -71,6 +71,7 @@ public static partial class InstalledBroker
                         "START_FIXED_POWERSHELL/START_UNCLASSIFIED/InheritedToolLpac"=>"PowerShellLpacPolicy",
                         "START_FIXED_POWERSHELL/START_UNCLASSIFIED/InheritedToolHandleList"=>"PowerShellHandleList",
                         "START_FIXED_POWERSHELL/START_UNCLASSIFIED/InheritedToolResume"=>"PowerShellResume",
+                        "START_FIXED_POWERSHELL/START_UNCLASSIFIED/InheritedToolOwnTokenQueryDuplicate"=>"PowerShellOwnTokenAccess",
                         "START_FIXED_POWERSHELL/START_UNCLASSIFIED" or "START_FIXED_POWERSHELL"=>"PowerShellStart",
                         _=>"ResourceSessionFailed"};
                     if(failureKind!="ResourceSessionFailed" && child.TryGetProperty("FailureCode",out var code) && code.ValueKind==JsonValueKind.Number)

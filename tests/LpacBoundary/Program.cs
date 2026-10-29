@@ -8,7 +8,7 @@ using System.Runtime.InteropServices;
 // Bound to the reviewed production library. These two modes do not create or
 // resume a process/profile/Job or open private resources. The token reader may
 // create a temporary query-only Identification duplicate, never impersonate it.
-if(args.Length!=1 || args[0] is not ("policy" or "self-token" or "runtime-paths" or "start-failure" or "inherited-command"))return 125;
+if(args.Length!=1 || args[0] is not ("policy" or "self-token" or "runtime-paths" or "start-failure" or "inherited-command" or "token-object"))return 125;
 using var identity=WindowsIdentity.GetCurrent();
 if(new WindowsPrincipal(identity).IsInRole(WindowsBuiltInRole.Administrator))throw new InvalidOperationException("Ordinary test only");
 var library=Assembly.LoadFrom(Path.Combine(AppContext.BaseDirectory,"ProtectionLifecycle.dll"));
@@ -19,6 +19,32 @@ static object? Call(MethodInfo method,params object?[] values)
     catch(TargetInvocationException ex)when(ex.InnerException is not null){ExceptionDispatchInfo.Capture(ex.InnerException).Throw();throw;}
 }
 static void Require(bool value,string reason){if(!value)throw new InvalidOperationException("LPAC: "+reason);}
+if(args[0]=="token-object")
+{
+    var atomic=library.GetType("ProtectionLifecycle.AtomicChild",true)!;
+    using var self=new SafeProcessHandle((IntPtr)(-1),false);
+    var opening=new object?[]{self,0x2000au,null};Require((bool)Call(atomic.GetMethod("OpenProcessToken",flags)!,opening)!,"own query/duplicate/read-control token opened");
+    using var primary=(SafeAccessTokenHandle)opening[2]!;
+    var read=atomic.GetMethod("ReadTokenObjectSecurity",flags)!;var access=atomic.GetMethod("TokenObjectAccess",flags)!;
+    var original=(byte[])Call(read,primary)!;
+    var cloning=new object?[]{primary,0x6000au,IntPtr.Zero,1,2,null};Require((bool)Call(atomic.GetMethod("DuplicateTokenEx",flags)!,cloning)!,"new Identification token created with bounded handle rights");
+    using var owned=(SafeAccessTokenHandle)cloning[5]!;
+    var before=(byte[])Call(read,owned)!;Require((uint)Call(access,owned,before)! == 10u,"own duplicate access observed");
+    var sid="S-1-15-2-123";var changed=(byte[])Call(atomic.GetMethod("WithOwnTokenQueryDuplicate",flags)!,before,sid)!;
+    var left=new RawSecurityDescriptor(before,0);var right=new RawSecurityDescriptor(changed,0);
+    Require(left.Owner==right.Owner && left.Group==right.Group && left.ControlFlags==right.ControlFlags,"existing descriptor identity/control unchanged");
+    Require(right.DiscretionaryAcl!.Count==left.DiscretionaryAcl!.Count+1,"only one ACE added");
+    for(var i=0;i<left.DiscretionaryAcl.Count;i++)
+    {var a=new byte[left.DiscretionaryAcl[i].BinaryLength];left.DiscretionaryAcl[i].GetBinaryForm(a,0);var b=new byte[right.DiscretionaryAcl[i].BinaryLength];right.DiscretionaryAcl[i].GetBinaryForm(b,0);Require(a.AsSpan().SequenceEqual(b),"existing ACE bytes preserved");}
+    var grant=(CommonAce)right.DiscretionaryAcl[right.DiscretionaryAcl.Count-1];
+    Require(grant.AccessMask==10 && grant.SecurityIdentifier.Value==sid && grant.AceQualifier==AceQualifier.AccessAllowed && grant.AceFlags==AceFlags.None,"exact package QUERY/DUPLICATE only");
+    Require((bool)Call(atomic.GetMethod("SetTokenObjectSecurity",flags)!,owned,4u,changed)!,"only new duplicate object's DACL written");
+    var actual=new RawSecurityDescriptor((byte[])Call(read,owned)!,0);var expectedBytes=new byte[right.DiscretionaryAcl.BinaryLength];right.DiscretionaryAcl.GetBinaryForm(expectedBytes,0);
+    var actualBytes=new byte[actual.DiscretionaryAcl!.BinaryLength];actual.DiscretionaryAcl.GetBinaryForm(actualBytes,0);
+    Require(expectedBytes.AsSpan().SequenceEqual(actualBytes),"native exact DACL readback");
+    Require(original.AsSpan().SequenceEqual((byte[])Call(read,primary)!),"original process token security untouched");
+    Console.WriteLine("PASS new Identification token DACL exact read/write; only QUERY/DUPLICATE ACE, original token unchanged; no impersonation/assign/process/Job/profile");return 0;
+}
 if(args[0]=="inherited-command")
 {
     var atomic=library.GetType("ProtectionLifecycle.AtomicChild",true)!;
