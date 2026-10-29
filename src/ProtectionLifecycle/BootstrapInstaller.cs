@@ -22,16 +22,8 @@ internal sealed class BootstrapApproval : IDisposable
         var result=new BootstrapApproval();
         try
         {
-            var root=WindowsPathSeal.Canonical(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),inactiveUpdate?"ClaudeCodeProtection-Update-20261028-git-r4":"ClaudeCodeProtection-Bootstrap"));
             var entry=Assembly.GetEntryAssembly()??throw new InvalidOperationException("Bootstrap entry missing");
-            if(entry.GetName().Name!="ProtectionBootstrap" ||
-                !Same(Environment.ProcessPath,Path.Combine(root,"ProtectionBootstrap.exe")) ||
-                !Same(entry.Location,Path.Combine(root,"ProtectionBootstrap.dll")) ||
-                !Same(typeof(BootstrapApproval).Assembly.Location,Path.Combine(root,"ProtectionLifecycle.dll")))
-                throw new InvalidOperationException("Fixed protected bootstrap host required");
-            result.HoldDirectory(root);
-            foreach(var leaf in new[]{"ProtectionBootstrap.exe","ProtectionBootstrap.dll","ProtectionBootstrap.deps.json","ProtectionBootstrap.runtimeconfig.json","ProtectionLifecycle.dll"})
-                result.HoldFile(root,leaf);
+            if(entry.GetName().Name!="ProtectionBootstrap")throw new InvalidOperationException("Bootstrap entry name differs");
             using var resource=entry.GetManifestResourceStream("ProtectionBootstrap.ApprovedPackage.json")??throw new InvalidDataException("Embedded package approval missing");
             using var bytes=new MemoryStream();
             var buffer=new byte[4096];int read;
@@ -42,14 +34,26 @@ internal sealed class BootstrapApproval : IDisposable
             }
             result.Manifest=bytes.ToArray();
             result.ManifestHash=Convert.ToHexString(SHA256.HashData(result.Manifest.Span));
-            _=PackagePolicy.ParsePinned(result.Manifest,result.ManifestHash); // Reject placeholder before creating state.
+            var parsed=PackagePolicy.ParsePinned(result.Manifest,result.ManifestHash); // Reject placeholder before creating state.
+            // Release comes ONLY from the bounded embedded approval, never the
+            // command line, environment, sidecar or executing directory. This
+            // retains one exact protected host per package without recompiling
+            // the product for an experiment-specific staging directory name.
+            var root=WindowsPathSeal.Canonical(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
+                inactiveUpdate?"ClaudeCodeProtection-Update-"+parsed.Release:"ClaudeCodeProtection-Bootstrap"));
+            if(!Same(Environment.ProcessPath,Path.Combine(root,"ProtectionBootstrap.exe")) ||
+                !Same(entry.Location,Path.Combine(root,"ProtectionBootstrap.dll")) ||
+                !Same(typeof(BootstrapApproval).Assembly.Location,Path.Combine(root,"ProtectionLifecycle.dll")))
+                throw new InvalidOperationException("Fixed protected bootstrap host required");
+            result.HoldDirectory(root);
+            foreach(var leaf in new[]{"ProtectionBootstrap.exe","ProtectionBootstrap.dll","ProtectionBootstrap.deps.json","ProtectionBootstrap.runtimeconfig.json","ProtectionLifecycle.dll"})
+                result.HoldFile(root,leaf);
             result.PayloadDirectory=WindowsPathSeal.Child(root,"payload");
             var payload=result.HoldDirectory(result.PayloadDirectory);
             var manifest=ProtectedState.ReadBound(payload,"package.json",PackagePolicy.MaxManifestBytes,true);
             if(!manifest.Bytes.AsSpan().SequenceEqual(result.Manifest.Span))throw new InvalidDataException("Payload approval differs");
             result.HoldFile(payload.Path,"package.json");
             // Hold and verify every input before creating any production state.
-            var parsed=PackagePolicy.ParsePinned(result.Manifest,result.ManifestHash);
             var lifecycle=parsed.Files.Single(f=>f.Asset.Id=="broker-lifecycle");
             if(result.files[4].Length!=lifecycle.Length || Convert.ToHexString(SHA256.HashData(result.files[4]))!=lifecycle.SHA256)
                 throw new InvalidDataException("Bootstrap and payload lifecycle library differ");
