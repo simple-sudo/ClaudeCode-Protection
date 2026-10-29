@@ -1,15 +1,36 @@
 # 当前开发状态
 
-## 2026-10-28 接续：项目数据传输与现有任务工作流接线
+## 2026-10-29 当前：项目数据传输已安装并接入原受限Git链
 
-SOURCE / INTEGRATED：daily新增普通用户workspace-pack/ workspace-review；显式清单、多文件/嵌套/二进制数据包、逐文件摘要和确切原包绑定；不执行源码或写回宿主项目。
-同一传输实现在SessionResources中为原Git资格链材料化三文件项目；管理侧递归独立核验Git树，Job零成员且完整隔离后保存结果包再进入原精确清理。
-所有I/O要求持有逐级目录/文件、NTFS最终路径、无reparse/文件硬链接，拒绝越界/大小写冲突/覆盖/已有树接管；不扩大宿主ACL，不新增特权宿主路径读取。
-六产品非生成语义检查0错误/0警告。当前新BUILD与传输实测待执行；新安装/AppContainer任务运行NOT_RUN，不继承fc2d7c8b或ab509a5证据。
-两级隐私/受控特权原则已写入PRODUCT-DIRECTION-20261028；[传输用法与限制](WORKSPACE-TRANSFER.md)。数据哈希不是身份、准入或权限许可。
+SOURCE / INTEGRATED：caeea49新增daily普通用户workspace-pack / workspace-review，以及原SessionResources中的同一材料化/快照实现。
+显式清单支持嵌套/二进制/空文件，逐文件摘要、结果绑定确切原包；不执行源代码或自动写回原项目。
+逐级持有目录/文件，要求本地NTFS最终路径、无reparse/文件硬链接，拒绝越界/大小写冲突/覆盖/已有目录接管；不扩大宿主ACL。
+Broker不接收宿主源路径或任意项目命令；固定qualify-toolchain仅用编译在包内的三文件输入走这条数据面，不能用它绕过正式准入。
+两级隐私及Broker具体资源操作的特权原则见PRODUCT-DIRECTION-20261028；[命令与限制](WORKSPACE-TRANSFER.md)。哈希不代表身份、准入或权限授权。
 
-DELIVERABLE / BLOCKED / DEFERRED：整体未交付。旧安装保持；正式会话和网络入口仍关闭，任意项目执行/成果授权交付、Python/编译器、MAC/BSSID/位置及敏感配置/管理接口完整拒绝、环境画像、受控特权开发操作、14项可信采集、NVIDIA与崩溃/重启恢复仍有缺口。
-继续原网关实机矩阵；本次未重做已可靠限定的旧Git运行。真实Claude延期，FlClash/UU/全机网络/AV/驱动不改，UAC本人决定，不推送。
+BUILD：caeea49的62个输入覆盖Broker/Lifecycle、daily及源链接传输测试；全部离线restore/build为0，零错误/警告。
+当前939f059产品49输入、aa864bc Bootstrap50输入分别构建为0，复用且持有同一Lifecycle字节；六产品非生成语义均0错误/0警告。
+新包20个staging文件/14产品资产、内嵌清单、10个PE/6个managed/无module initializer均核对；daily五项采用新构建，GUI四项复用旧批准字节且未运行。
+
+VERIFIED（普通用户传输）：真实NTFS样本的硬链接/目录联接、并发写、路径穿越、覆盖/接管拒绝，以及二进制保真、增删改/错基线拒绝均通过；测试DLL=3683D4B123E4B84A67A500D35F9460D1C808FA6192D9005ECDA31A0331471853。
+实际daily命令还打包了当前仓库显式选定的四个源码文件，并比较真实文件变化，均退出0；daily DLL=AC660FD271AA1E982CD0CCD9F540F466ECDF4128599A58986C3D73C50D061550。
+相关输入未变化，不因后续安装路径修正重跑同一测试。原始记录在work/workspace-transfer-*。
+
+VERIFIED（安装和离线任务限定）：人工UAC安装release=659d76df00d14dac9c6f46a6dc611157，保持INACTIVE；
+manifest=CB5515C9CED7D08248EA903F7EA2817B2F47D5EA952D366B31ABB775520C4264，operation=791fda19ce0a430b8c232f05e3fd1192。
+04:03Z Session=0760ef71e8fd42a78e726376bc8b556a：原管理侧核验PowerShell/Git同Job/AppContainer/Low4096/零capability，随后离线Git完成三文件提交f231d5d78177ea3105eb1b75da08280e796847a6；管理侧独立核对所有blob/嵌套tree/commit。
+原私有样本读写及Broker VM_READ均AccessDenied5，Git独立读私有样本退出128/Permission denied。
+Job=951cc0733e1a4f32a048af868cc444f7完整隔离后关闭归零，才快照工作树；原输入摘要D8F4EF6FA02AC7D5732AE8FD1D604DE66A29EDCAD7E8FD561B03E8090A8ECB59，结果F63E18E7C78562B72E4FAD5A422E6E0B44109A0A8561B922E9F4C3B4C88BB6D2。
+原精确清理删除52项、任务根缺失、跨Broker无待恢复回读通过；普通用户独立核对14安装文件/7目录、拒写/私有state拒读/旧包保留/无产品进程；安装daily成功读取Broker闭Job结果并比较为零变化。
+原始实机证据在ProgramFiles/ClaudeCodeProtection-Update-659d76df00d14dac9c6f46a6dc611157及work/workspace-transfer-r2-control；没有给任意项目签发启动许可。
+
+FAIL保留：首包44af7ba9在04:00Z退出125，Bootstrap仍固定旧git-r4路径而helper使用workspace路径，必然在安装state变更前拒绝；指针仍fc2d7c8b，无新版本目录/会话。
+939f059修正为从内嵌批准的严格Release导出唯一ProgramFiles/ClaudeCodeProtection-Update-<release>路径，并继续核对三个实际宿主映像/受保护ACL/全部字节；不接受caller路径，不再为实验目录名称重编产品。r1工件、拒绝、stderr/回读全部保留。
+
+DELIVERABLE / BLOCKED / DEFERRED：整体未交付。可用新增能力是已安装daily的显式项目打包/结果比较，以及原受限任务链的数据材料化、Git处理和闭Job成果快照。
+任意用户项目进入Broker仍缺可信工作区授权/持久成果交付及编译测试工具接线；Python/编译器、MAC/BSSID/位置/敏感软件数据与管理接口完整拒绝、环境画像、受控特权开发操作、14项可信采集、NVIDIA及控制器崩溃/重启恢复仍有缺口。
+网络入口仍关闭；本包包含既有ab509a5修复，但未运行网关/上游TCP实机矩阵，不能继承旧包网络资格。真实Claude继续延期。
+FlClash/Core24132/12484前后保持、AVP/BFE运行、有限Application AV窗口0；厂商全覆盖仍UNKNOWN。未操作UU、全机网络、AV或驱动，未自动确认UAC，未推送。
 
 ## 2026-10-28 接续：网关核对实际上游连接身份
 

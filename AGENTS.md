@@ -1,5 +1,18 @@
 # ClaudeCode-Protection working rules
 
+2026-10-29 installed continuation: 939f059 Broker/Lifecycle + aa864bc embedded
+Bootstrap completed human-UAC inactive update to 659d76df00d14dac9c6f46a6dc611157
+(manifest CB5515C9CED7D08248EA903F7EA2817B2F47D5EA952D366B31ABB775520C4264).
+Daily workspace-pack/review and original SessionResources share bounded data
+transfer. Fixed three-file Git processing, independent nested objects, closed
+Job result snapshot, 52-entry exact cleanup and installed daily result review
+passed. This is not arbitrary-project admission or broad host/network/GPU proof.
+The first workspace package's old fixed bootstrap-path refusal is preserved.
+Update placement now derives one exact protected root from embedded Release,
+never caller paths: ProgramFiles/ClaudeCodeProtection-Update-<release>.
+Reuse unchanged ordinary transfer tests; next project work needs trusted data
+authorization and persistent results in the same owner, not another executor.
+
 2026-10-28 product continuation: P0 real private data protection and enforced
 network isolation are coequal; lower-priority host environment fingerprint
 protection is also a formal goal. Preserve normal development and NVIDIA GPU.
