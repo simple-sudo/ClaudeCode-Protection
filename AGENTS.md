@@ -1,5 +1,20 @@
 # ClaudeCode-Protection working rules
 
+2026-10-29 LPAC development: source candidate
+997d514a9a6445a2925edd32855e5c61 (manifest
+3C0471F484A193EF5EFF77A259602BAB8DFF13313B8440C08BF2459DA7D86D18)
+reuses the same resource/data owner; creation requires AAP opt-out, token/member
+checks require AppContainer plus observed AccessCheck mask2 on an exact
+in-memory descriptor (AAP bit1 / ARP bit2). Class46 sizing returned error87 in
+an ordinary self-query; preserve it, do not infer LPAC=false/PASS/unsupported.
+Ordinary policy/self AccessCheck qualification passed on library8C07FACA;
+native LPAC/inherited PowerShell/Git/file denial remains NOT_RUN. No fallback
+or registry/COM blanket capability, host ACL change or input project code.
+Only newly created public product assets gain ARP RX. The new AAP-only fixture
+is non-secret and task-owned, held/ACL checked and cleaned by the original
+closed-Job owner. Keep installed ac570b47 INACTIVE until reviewed manual UAC
+qualification. Actual new installation/resource steps need human decision.
+
 2026-10-29 current installed workflow result: reviewed caller-rights repair
 ac570b474e454a9a94db2310893d3892, manifest
 DE88460A1F31721FC69F151B528718DC2FE89ABE66BAEA551E3AD3D8AD8815C4,

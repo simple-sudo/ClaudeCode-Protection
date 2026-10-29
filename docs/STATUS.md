@@ -6,6 +6,8 @@ SOURCE / INTEGRATED：AtomicChild在原Job/包身份原子创建时，对Protect
 
 BUILD（e53a7c9）0错误/0警告。policy首轮负例正确拒绝，测试错捕WfpFailure而非实际InvalidDataException；修正后单独重建测试、复用同一1E5CCF9A库，policy通过。self-token遇class46零长度查询87/size0，失败原样保留；该失败不能确立“不支持/非LPAC/通过”。新修正采用文档化DuplicateTokenEx(仅QUERY、Identification)与AccessCheck对内存SD观察实际授权行为，参考Chromium原生用法，不冒充微软专用IsLPAC接口；新工件待限定资格。原始work/lpac-build-r1及lpac-test-build-r2不覆盖；不安装/启动产品或读真实敏感数据。
 
+BUILD / VERIFIED（8038706限定）：55冻结输入离线构建0错误/0警告；工件无module initializer，新增原生面仅自令牌访问检查和新建非秘密对照文件。审查后policy/self-token均0：生产检查器对本机普通令牌得mask3且LPAC=false，实际成员策略拒绝普通根/子，确切AAP-only DACL无ARP/包SID授权。它不证明实际LPAC/文件拒绝/工具兼容。work/lpac-build-r3/run-result SHA256=5C370E2934AEF626AB50CB246D8F4028AEBFCF31DAAE1D09FC0B3009E7F5EEC8。待安装997d514a9a6445a2925edd32855e5c61，manifest3C0471F484A193EF5EFF77A259602BAB8DFF13313B8440C08BF2459DA7D86D18，库8C07FACA9F07F4335F96743D9050387A4E5FF91D9BA7D64DBD25099047857C1C，3资产变更/11复用；当前安装仍ac570b47/INACTIVE。
+
 ## 最新交付进展：已安装daily完成真实选择数据的完整往返
 
 VERIFIED / DELIVERABLE（仅数据操作）：本人手动UAC后08:31:07Z更新到ac570b474e454a9a94db2310893d3892 / manifestDE88460A1F31721FC69F151B528718DC2FE89ABE66BAEA551E3AD3D8AD8815C4，INACTIVE；15安装文件摘要、保护DACL及owner独立匹配，新Broker只读意图2/MISSING。随后普通daily workspace-process经另一次本人UAC，08:31:37Z退出0，session d57cf00754fc45c8b599617f2c5e41be。原ProcessWorkspaceBytes→ProtectedSession→AppContainer/Job→固定离线Git及独立对象核对→闭Job/精确清理→原成功账本核对/导出→同用户管道返回四文件成果；输入BA1C5764F54DF02B4E9266EE4C6414E28C6D8E8D18F9A07EB91A0CE4DC0D4138，成果AA2F0DFDC59A28A085BC47EE1082E817CC03BA23DC2EA85BC371E43919743483，Changes=[]。
