@@ -105,7 +105,12 @@ internal sealed class SessionGitToolchain : IDisposable
             // independent of .gitattributes or .gitignore in the source bundle.
             var info=WindowsPathSeal.Child(repo,".git/info");Directory.CreateDirectory(info);
             File.WriteAllText(WindowsPathSeal.Child(info,"attributes"),"* -text -filter -ident -working-tree-encoding\n",new UTF8Encoding(false));
-            stage="GIT_ADD";Require(Run(workspace,new[]{"-C",repo,"add","--force","--"}.Concat(project.Files.Select(f=>f.Path)).ToArray()));
+            // NUL pathspec input avoids Windows command-line length limits
+            // for a real multi-file project. Validated ASCII names cannot
+            // contain NUL or Git pathspec magic; no expansion is performed.
+            var selection=WindowsPathSeal.Child(workspace,"git-selected-paths.bin");
+            File.WriteAllBytes(selection,Encoding.ASCII.GetBytes(string.Join('\0',project.Files.Select(f=>f.Path))+"\0"));
+            stage="GIT_ADD";Require(Run(workspace,"--literal-pathspecs","-C",repo,"add","--force","--pathspec-from-file="+selection,"--pathspec-file-nul"));
             stage="GIT_COMMIT";Require(Run(workspace,"-C",repo,"commit","--quiet","--no-gpg-sign","-m","Controlled offline qualification"));
             stage="READ_COMMIT";var head=Run(workspace,"-C",repo,"rev-parse","--verify","HEAD");Require(head);commit=head.Out.Trim();
             if(!IsObjectId(commit))throw WfpNative.Contract("GitHeadMissing");
