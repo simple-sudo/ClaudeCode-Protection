@@ -5,7 +5,8 @@ using System.Security.Principal;
 using Microsoft.Win32.SafeHandles;
 
 // Bound to the reviewed production library. These two modes do not create or
-// resume a process, token, profile or Job, and never open private state/resources.
+// resume a process/profile/Job or open private resources. The token reader may
+// create a temporary query-only Identification duplicate, never impersonate it.
 if(args.Length!=1 || args[0] is not ("policy" or "self-token"))return 125;
 using var identity=WindowsIdentity.GetCurrent();
 if(new WindowsPrincipal(identity).IsInRole(WindowsBuiltInRole.Administrator))throw new InvalidOperationException("Ordinary test only");
@@ -22,14 +23,15 @@ if(args[0]=="self-token")
     var read=library.GetType("ProtectionLifecycle.AtomicChild",true)!.GetMethod("ReadToken",flags)!;
     using var self=new SafeProcessHandle((IntPtr)(-1),false);var token=Call(read,self)!;
     Require(!(bool)token.GetType().GetProperty("IsAppContainer")!.GetValue(token)!,"ordinary process is not an AppContainer");
-    Require(!(bool)token.GetType().GetProperty("IsLessPrivilegedAppContainer")!.GetValue(token)!,"ordinary process must never qualify as LPAC");
-    Console.WriteLine("PASS production token reader class46 on own ordinary token; no AppContainer, other process, Job or private data");return 0;
+    Require(!(bool)token.GetType().GetProperty("LpacAccessCheckObserved")!.GetValue(token)!,"ordinary process must never qualify as LPAC");
+    Require((uint)token.GetType().GetProperty("ApplicationPackageAccessMask")!.GetValue(token)! == 3u,"ordinary access mask is exactly both synthetic bits");
+    Console.WriteLine("PASS production own-token AccessCheck mask3; ordinary identity cannot qualify as LPAC; no AppContainer, other process, Job or private data");return 0;
 }
 var tokenType=library.GetType("ProtectionLifecycle.AdmissionToken",true)!;
 var memberType=library.GetType("ProtectionLifecycle.OwnedMemberInspection",true)!;
 var jobType=library.GetType("ProtectionLifecycle.JobSnapshot",true)!;
 var errorType=library.GetType("ProtectionLifecycle.WfpErrorEvidence",true)!;
-object Token(bool lpac)=>Activator.CreateInstance(tokenType,true,"S-1-15-2-123",0,"S-1-16-4096",lpac)!;
+object Token(bool lpac)=>Activator.CreateInstance(tokenType,true,"S-1-15-2-123",0,"S-1-16-4096",lpac,lpac?2u:3u)!;
 object Member(uint pid,string path,bool lpac)=>Activator.CreateInstance(memberType,pid,true,(long?)1000,path,Token(lpac),Array.CreateInstance(errorType,0))!;
 object Snapshot(uint[] pids)=>Activator.CreateInstance(jobType,new string('a',32),0x2000u,(uint)pids.Length,(uint)pids.Length,pids,DateTime.UtcNow.ToString("o"))!;
 void Verify(bool rootLpac,bool childLpac,bool hasChild=true)

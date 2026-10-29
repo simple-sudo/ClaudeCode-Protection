@@ -2,7 +2,9 @@
 
 ## 开发中：同一任务链的LPAC资源边界及工具兼容
 
-SOURCE / INTEGRATED：AtomicChild在原Job/包身份原子创建时，对ProtectedSession准备及资源/数据操作强制ALL_APPLICATION_PACKAGES_OPT_OUT，首次恢复、会话对端和实际成员核验均要求TokenIsLessPrivilegedAppContainer；无调用者开关/普通AppContainer降级。仅新建公开产品代码增加ALL_RESTRICTED_APPLICATION_PACKAGES只读执行，私有状态/既有宿主ACL未改。原SessionResources新建并持有只授予AAP读取、不授予ARP/包身份的非秘密对照文件；管理侧核对确切DACL/内容，原根/PowerShell/Git必须拒绝同一资源，沿既有闭Job/精确清理收尾。LPAC不是完整隐私保证，所有正式准入UNKNOWN保持；编译/测试及GPU兼容仍未取得许可。六产品非生成语义0错误/0警告；原安装ac570b47未替换。后续限定构建和普通自令牌/策略资格不启动产品；实际LPAC链仍需具体工件审查及本人系统步骤。
+SOURCE / INTEGRATED：AtomicChild在原Job/包身份原子创建时，对ProtectedSession准备及资源/数据操作强制ALL_APPLICATION_PACKAGES_OPT_OUT；首次恢复、会话对端和实际成员须确认AppContainer且对固定内存SD的AccessCheck仅授予ARP位2、不授予AAP位1，无调用者开关/普通AppContainer降级。仅新建公开产品代码增加ARP只读执行，私有状态/既有宿主ACL未改。原SessionResources新建并持有只授予AAP读取、不授予ARP/包身份的非秘密对照文件；管理侧核对确切DACL/内容，原根/PowerShell/Git必须拒绝同一资源，沿既有闭Job/精确清理收尾。LPAC不是完整隐私保证，所有正式准入UNKNOWN保持；编译/测试及GPU兼容仍未取得许可。六产品非生成语义0错误/0警告；原安装ac570b47未替换。
+
+BUILD（e53a7c9）0错误/0警告。policy首轮负例正确拒绝，测试错捕WfpFailure而非实际InvalidDataException；修正后单独重建测试、复用同一1E5CCF9A库，policy通过。self-token遇class46零长度查询87/size0，失败原样保留；该失败不能确立“不支持/非LPAC/通过”。新修正采用文档化DuplicateTokenEx(仅QUERY、Identification)与AccessCheck对内存SD观察实际授权行为，参考Chromium原生用法，不冒充微软专用IsLPAC接口；新工件待限定资格。原始work/lpac-build-r1及lpac-test-build-r2不覆盖；不安装/启动产品或读真实敏感数据。
 
 ## 最新交付进展：已安装daily完成真实选择数据的完整往返
 

@@ -146,7 +146,7 @@ internal static class WatchdogMemberPolicy
                 (member.Pid==primaryPid && member.CreatedFileTime!=primaryCreatedFileTime) ||
                 (member.Pid!=primaryPid && member.CreatedFileTime<primaryCreatedFileTime) ||
                 member.Failures is null || member.Failures.Length!=0 ||
-                token is null || !token.IsAppContainer || requireLpac && !token.IsLessPrivilegedAppContainer || token.PackageSid!=packageSid ||
+                token is null || !token.IsAppContainer || requireLpac && (!token.LpacAccessCheckObserved || token.ApplicationPackageAccessMask!=2) || token.PackageSid!=packageSid ||
                 token.CapabilityCount!=0 || token.IntegritySid!="S-1-16-4096" ||
                 string.IsNullOrWhiteSpace(member.ImagePath))
                 throw WfpNative.Contract("WatchdogMemberIdentityNotQualified");

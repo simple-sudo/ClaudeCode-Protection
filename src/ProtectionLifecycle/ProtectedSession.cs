@@ -173,7 +173,7 @@ internal sealed class ProtectedSession
                         var primary=member.Pid==child.Pid;
                         if(!member.MembershipConfirmed || member.Failures.Length!=0 || member.CreatedFileTime is null ||
                             member.CreatedFileTime<child.ExpectedCreatedFileTime || primary && member.CreatedFileTime!=child.ExpectedCreatedFileTime ||
-                            member.Token is not {IsAppContainer:true,IsLessPrivilegedAppContainer:true,CapabilityCount:0,IntegritySid:"S-1-16-4096"} || member.Token.PackageSid!=sid ||
+                            member.Token is not {IsAppContainer:true,LpacAccessCheckObserved:true,ApplicationPackageAccessMask:2,CapabilityCount:0,IntegritySid:"S-1-16-4096"} || member.Token.PackageSid!=sid ||
                             member.ImagePath is null)throw WfpNative.Contract("ResourceToolIdentityUnconfirmed");
                         var image=WindowsPathSeal.Canonical(member.ImagePath);
                         if(primary?!string.Equals(image,child.ExpectedImagePath,StringComparison.OrdinalIgnoreCase):
