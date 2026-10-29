@@ -1,7 +1,7 @@
 {
   "SchemaVersion": 1,
   "Scope": "UNACTIVATED_PRODUCT",
-  "Release": "ecb06a57929a45d1adf9dd1d8415c4a4",
+  "Release": "5bc986e16e9a44ca856a1b56b90328aa",
   "Files": [
     {
       "Asset": "daily-exe",
@@ -51,12 +51,12 @@
     {
       "Asset": "broker-exe",
       "Length": 151552,
-      "SHA256": "08BAAE2E0CB8E942F40F0055B263CA4620E0210F656222BF78D4705B4AD23449"
+      "SHA256": "271272D32CCBD4C311FBB143604BCBBCE4A991845790C523622BADB675649656"
     },
     {
       "Asset": "broker-dll",
-      "Length": 12288,
-      "SHA256": "22B93D989FB8912609FFCE41EC67DC8B8132CBE0EC126DEA4779C860EFBCC257"
+      "Length": 11776,
+      "SHA256": "20403867A304CC852BBFCC3013ECD0022AAC4FE19BACC5ACB0140EBD5F40744E"
     },
     {
       "Asset": "broker-deps",
@@ -70,8 +70,8 @@
     },
     {
       "Asset": "broker-lifecycle",
-      "Length": 847872,
-      "SHA256": "2B59401D305E3FA7B3A8387B7397E6F5EC5B1C66CD44DCCA0430BEE102578788"
+      "Length": 850944,
+      "SHA256": "70EF78FEE0D73FE5FF9B23B446B15FE928EFE4DB5C8DA0B52FEF50453470B1D5"
     }
   ]
 }
