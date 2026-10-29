@@ -1,5 +1,16 @@
 # ClaudeCode-Protection working rules
 
+2026-10-29 new crash hold: manual-UAC inactive update reached ecb06a57929a45d1adf9dd1d8415c4a4
+(manifest 851701939666F35F4E0C4323C408E00690B4CFB96165C81F5C6092AF5D8238C6),
+then the correct process-workspace-data invocation has no terminal receipt.
+System1001 confirms 0x1E(C0000005,0,8,0), boot 05:44:54Z. Cause/driver UNKNOWN.
+Do not retry product builds, installs, runtime, fault injection or recovery
+as a diagnostic. Preserve current/old packages and private state. Continue
+bounded read-only incident work; dump/private-state access still needs a
+reviewed human-authorized path. No AV/driver/network/UU/FlClash changes.
+See docs/INCIDENT-20261029-SYSTEM-CRASH.md and STATUS. This technical hold does
+not fabricate a successful cleanup or pause/complete the active user goal.
+
 2026-10-29 installed continuation: 939f059 Broker/Lifecycle + aa864bc embedded
 Bootstrap completed human-UAC inactive update to 659d76df00d14dac9c6f46a6dc611157
 (manifest CB5515C9CED7D08248EA903F7EA2817B2F47D5EA952D366B31ABB775520C4264).

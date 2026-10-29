@@ -1,5 +1,11 @@
 # 完整项目验收账本
 
+## 2026-10-29 第二次系统崩溃；项目数据请求未完成
+
+457d9bd新增项目数据入口/私有独立payload存储/普通用户成果恢复，传输测试及真实七文件打包通过；e0845ac修正长清单为NUL路径文件。e0845ac产品49输入、ea66eff Bootstrap50输入构建均0错误/警告。05:44:37Z人工UAC完成ecb06a57929a45d1adf9dd1d8415c4a4 INACTIVE安装（manifest851701939666F35F4E0C4323C408E00690B4CFB96165C81F5C6092AF5D8238C6、operationadfe129138634224858b9bea430a9570）；错误输入SHA拒绝125已落盘。正确数据处理无终态，不能算通过，也不能编造退出码/清理/恢复成功。
+
+System1001确认0x1E(C0000005,0,8,0)后重启，05:44:54Z启动；当前dump102926-16031-01.dmp普通读取AccessDenied，驱动/触发因果UNKNOWN。产品新增build/install/runtime停止，未重试/自动恢复/修改AV或远程网络，原始事件与回执保留于work/system-crash-20261029-0544Z。重启后FlClash、UU、BFE/AVP存在且无产品进程，只是有限观察；新版本数据处理、Job/profile/WFP恢复和正式准入仍NOT_CONFIRMED。见INCIDENT-20261029-SYSTEM-CRASH.md；不覆盖之前659d76df已限定成功记录。
+
 ## 2026-10-29 工作区数据通道与安装受限链
 
 caeea49提供普通用户显式清单打包/原包绑定比较，并接入原SessionResources/ProtectedSession；NTFS硬链接/目录联接/并发写/越界/覆盖拒绝、二进制及真实文件增删改测试通过，实际打包本仓库四个选定源码。此为数据传输证据，不授予执行源码或宿主读权限。
