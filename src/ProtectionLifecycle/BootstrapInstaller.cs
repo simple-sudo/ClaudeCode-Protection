@@ -168,7 +168,10 @@ public static class BootstrapInstaller
             // Installed daily pipe candidate. The first roundtrip was refused;
             // the existing closed-admission/Job/quarantine checks still decide
             // whether any inactive migration is safe, never this digest alone.
-            "429D76D9B3245DF335D879F27F8CDCC12AF954E79685B8D40BBDC9F50BDFB5FF"
+            "429D76D9B3245DF335D879F27F8CDCC12AF954E79685B8D40BBDC9F50BDFB5FF",
+            // Current daily data roundtrip repair. Closed Job, exact cleanup
+            // and final quarantine were required before its result export.
+            "DE88460A1F31721FC69F151B528718DC2FE89ABE66BAEA551E3AD3D8AD8815C4"
         };
         private readonly ProtectedState state;
         private readonly BootstrapApproval approval;

@@ -1,5 +1,9 @@
 # 当前开发状态
 
+## 开发中：同一任务链的LPAC资源边界及工具兼容
+
+SOURCE / INTEGRATED：AtomicChild在原Job/包身份原子创建时，对ProtectedSession准备及资源/数据操作强制ALL_APPLICATION_PACKAGES_OPT_OUT，首次恢复、会话对端和实际成员核验均要求TokenIsLessPrivilegedAppContainer；无调用者开关/普通AppContainer降级。仅新建公开产品代码增加ALL_RESTRICTED_APPLICATION_PACKAGES只读执行，私有状态/既有宿主ACL未改。原SessionResources新建并持有只授予AAP读取、不授予ARP/包身份的非秘密对照文件；管理侧核对确切DACL/内容，原根/PowerShell/Git必须拒绝同一资源，沿既有闭Job/精确清理收尾。LPAC不是完整隐私保证，所有正式准入UNKNOWN保持；编译/测试及GPU兼容仍未取得许可。六产品非生成语义0错误/0警告；原安装ac570b47未替换。后续限定构建和普通自令牌/策略资格不启动产品；实际LPAC链仍需具体工件审查及本人系统步骤。
+
 ## 最新交付进展：已安装daily完成真实选择数据的完整往返
 
 VERIFIED / DELIVERABLE（仅数据操作）：本人手动UAC后08:31:07Z更新到ac570b474e454a9a94db2310893d3892 / manifestDE88460A1F31721FC69F151B528718DC2FE89ABE66BAEA551E3AD3D8AD8815C4，INACTIVE；15安装文件摘要、保护DACL及owner独立匹配，新Broker只读意图2/MISSING。随后普通daily workspace-process经另一次本人UAC，08:31:37Z退出0，session d57cf00754fc45c8b599617f2c5e41be。原ProcessWorkspaceBytes→ProtectedSession→AppContainer/Job→固定离线Git及独立对象核对→闭Job/精确清理→原成功账本核对/导出→同用户管道返回四文件成果；输入BA1C5764F54DF02B4E9266EE4C6414E28C6D8E8D18F9A07EB91A0CE4DC0D4138，成果AA2F0DFDC59A28A085BC47EE1082E817CC03BA23DC2EA85BC371E43919743483，Changes=[]。
