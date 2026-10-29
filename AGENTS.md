@@ -1,5 +1,21 @@
 # ClaudeCode-Protection working rules
 
+2026-10-29 current installed startup revision4fe9da3d17714b949915b4b2962586ab,
+manifest0337CB5D80ECEB760AC8BF96E49FD699B51A0E9E77ED2284BE4206662EFA549F,
+completed human UAC inactive update13:53:27Z. Changed LPAC task
+ef285eed144647bf89f7205eb8e79711 failed before tools, with structured
+resource-input/InvalidOperationException, self-token query succeeded. Exact
+read-only receipt confirms full quarantine and closed/zero Job33286c30,
+stop failures empty. Not a successful data roundtrip. Preserve both LPAC
+failures/empty outputs; no automatic recovery or unchanged retry.
+Source now binds Broker-resolved ProgramFilesRoot into internal v3 resource
+plan and verifies its fixed installed child image before use, avoiding worker
+KnownFolder/registry/COM lookup. No caller host-path grant or blanket registry
+capability. Git/task/fixture subpaths stay fixed and bytes held/verified by
+original manager. Only bounded bootstrap error metadata returns to daily,
+not private state/path text. Build/targeted runtime-path qualification required
+before any new reviewed manual system step. Original full product goal stays.
+
 2026-10-29 user requested UAC again and continued development. Reviewed
 997d514a inactive update completed human UAC at 13:45:25Z; 15 installed files
 and restricted-package RX matched, read-only Broker intent2/MISSING. Separate

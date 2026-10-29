@@ -1,5 +1,11 @@
 # 当前开发状态
 
+## 最新：4fe9da3d已安装，LPAC阻碍定位到工具前的路径准备
+
+VERIFIED（安装/局部）：13:53:27Z人工UAC update到4fe9da3d17714b949915b4b2962586ab，manifest0337CB5D80ECEB760AC8BF96E49FD699B51A0E9E77ED2284BE4206662EFA549F；15文件摘要/保护ACL回读匹配，INACTIVE，只读意图2/MISSING。新任务ef285eed144647bf89f7205eb8e79711仍退出3，但新的结构化启动回执明确self-token已通过，resource-input/InvalidOperationException(-2146233079)，工具未启动。只读两份确切回执确认Job33286c302a0549cbb66bf1ae378b3824关闭/零成员，完整隔离、stop Failures=[]；work/lpac-startup-control保留失败、空成果、手工UAC及诊断回执。未再次重启，未改UU/FlClash/AV/网络。
+
+SOURCE修正：该早期路径中FixedLayout.FromWindows在ProgramFiles KnownFolder为空时显式抛InvalidOperationException，与LPAC资源发现限制相符；源代码已移除worker该查询，不能据受限回执把具体抛出行写成已证实。v3内部计划由可信Broker解析固定ProgramFilesRoot，管理侧/子侧均核对固定安装映像，Git/任务/拒绝对照路径只从固定子目录派生；System目录改原生SystemDirectory，不新增宿主读取权限或registryRead/lpacCom能力。bootstrap固定类型/阶段/码经原管道返回daily，减少额外诊断UAC。待限定构建/内部路径负例，不重试不变任务，不宣称LPAC工具或全面隐私通过。
+
 ## 当前安装997d514a：LPAC首次创建/恢复通过，工具前启动失败保留并修正
 
 VERIFIED（安装及部分原生边界）：用户要求继续并重显UAC，13:45:25Z inactive update退出0，current997d514a9a6445a2925edd32855e5c61 / manifest3C0471F484A193EF5EFF77A259602BAB8DFF13313B8440C08BF2459DA7D86D18。15安装文件摘要/保护DACL/管理员owner及ARP RX独立匹配；Broker只读意图2/MISSING。

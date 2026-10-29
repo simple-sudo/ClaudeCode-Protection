@@ -45,7 +45,19 @@ public static partial class InstalledBroker
                 // checks. Never expose a partial/private payload on failure.
                 stage="export";output=ExportWorkspaceData(session,resultHash);
             }
-            else {failureStage="processing";failureKind="ResourceSessionFailed";failureCode=exit;}
+            else
+            {
+                failureStage="processing";failureKind="ResourceSessionFailed";failureCode=exit;
+                // Return only bounded bootstrap metadata already validated by
+                // the session owner. No second elevated receipt read should
+                // be needed just to locate an early worker startup failure.
+                if(r.TryGetProperty("ChildBootstrapFailure",out var bootstrap) && bootstrap.ValueKind==JsonValueKind.Object)
+                {
+                    var type=StrictJson.Text(bootstrap,"Type");var phase=StrictJson.Text(bootstrap,"Phase");
+                    if(type.Length is >=1 and <=60 && type.All(char.IsAsciiLetterOrDigit) && phase is "self-token" or "resource-input")
+                    {failureKind=(phase=="self-token"?"SelfToken":"ResourceInput")+type;failureCode=bootstrap.GetProperty("Code").GetInt32();}
+                }
+            }
         }
         catch(Exception ex){exit=125;output=null;resultHash=null;failureStage=stage;failureKind=ex.GetType().Name;failureCode=ex is Win32Exception native?native.NativeErrorCode:ex.HResult;}
         using var completion=new CancellationTokenSource(TimeSpan.FromSeconds(15));

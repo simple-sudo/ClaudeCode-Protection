@@ -72,11 +72,11 @@ internal sealed class SessionGitToolchain : IDisposable
             {
                 // The manager holds the ancestry and each complete asset.
                 // This side performs ordinary file I/O, no privileged metadata.
-                using var file=File.OpenRead(WindowsPathSeal.Child(DirectoryPath,asset.Name));
+                using var file=File.OpenRead(WindowsPathSeal.Child(plan.GitDirectory,asset.Name));
                 if(file.Length is <1 or >16*1024*1024 || Convert.ToHexString(SHA256.HashData(file))!=asset.Hash)throw WfpNative.Contract("ChildGitAssetChanged");
             }
             stage="HASH_INPUT_WITH_INSPECTED_GIT";
-            using(var process=Process.Start(Start(workspace,"hash-object","--stdin"))??throw WfpNative.Contract("GitStartFailed"))
+            using(var process=Process.Start(Start(workspace,plan.GitDirectory,"hash-object","--stdin"))??throw WfpNative.Contract("GitStartFailed"))
             {
                 var stdout=SessionResources.ReadBounded(process.StandardOutput);var stderr=SessionResources.ReadBounded(process.StandardError);
                 Signal(workspace,"git-ready",plan.Nonce);
@@ -99,7 +99,7 @@ internal sealed class SessionGitToolchain : IDisposable
             var project=WorkspaceBundle.Parse(plan.ProjectBundle);
             foreach(var file in project.Files)
                 if(!File.ReadAllBytes(WindowsPathSeal.Child(repo,file.Path)).AsSpan().SequenceEqual(file.Content))throw WfpNative.Contract("GitProjectInputChanged");
-            stage="GIT_INIT";Require(Run(workspace,"init","--quiet","--initial-branch=qualification","--template="+WindowsPathSeal.Child(workspace,"empty-git-template"),repo));
+            stage="GIT_INIT";Require(Run(workspace,plan.GitDirectory,"init","--quiet","--initial-branch=qualification","--template="+WindowsPathSeal.Child(workspace,"empty-git-template"),repo));
             // Highest-precedence info attributes override project-controlled
             // transformations. Data processing preserves exact selected bytes,
             // independent of .gitattributes or .gitignore in the source bundle.
@@ -110,17 +110,17 @@ internal sealed class SessionGitToolchain : IDisposable
             // contain NUL or Git pathspec magic; no expansion is performed.
             var selection=WindowsPathSeal.Child(workspace,"git-selected-paths.bin");
             File.WriteAllBytes(selection,Encoding.ASCII.GetBytes(string.Join('\0',project.Files.Select(f=>f.Path))+"\0"));
-            stage="GIT_ADD";Require(Run(workspace,"--literal-pathspecs","-C",repo,"add","--force","--pathspec-from-file="+selection,"--pathspec-file-nul"));
-            stage="GIT_COMMIT";Require(Run(workspace,"-C",repo,"commit","--quiet","--no-gpg-sign","-m","Controlled offline qualification"));
-            stage="READ_COMMIT";var head=Run(workspace,"-C",repo,"rev-parse","--verify","HEAD");Require(head);commit=head.Out.Trim();
+            stage="GIT_ADD";Require(Run(workspace,plan.GitDirectory,"--literal-pathspecs","-C",repo,"add","--force","--pathspec-from-file="+selection,"--pathspec-file-nul"));
+            stage="GIT_COMMIT";Require(Run(workspace,plan.GitDirectory,"-C",repo,"commit","--quiet","--no-gpg-sign","-m","Controlled offline qualification"));
+            stage="READ_COMMIT";var head=Run(workspace,plan.GitDirectory,"-C",repo,"rev-parse","--verify","HEAD");Require(head);commit=head.Out.Trim();
             if(!IsObjectId(commit))throw WfpNative.Contract("GitHeadMissing");
             // The trusted owner verifies every committed blob and complete
             // tree below. Text-decoding `git show` cannot prove binary data.
             committed=true;
-            stage="GIT_PRIVATE_FIXTURE_DENIAL";var negative=Run(workspace,"hash-object","--",plan.Fixture);denialExit=negative.Exit;
+            stage="GIT_PRIVATE_FIXTURE_DENIAL";var negative=Run(workspace,plan.GitDirectory,"hash-object","--",plan.Fixture);denialExit=negative.Exit;
             denied=negative.Exit==128 && negative.Out.Length==0 && negative.Error.TrimEnd().EndsWith(": Permission denied",StringComparison.Ordinal);
             if(!denied)throw WfpNative.Contract("GitPrivateFixtureDenialNotConfirmed");
-            stage="GIT_ALL_PACKAGES_FIXTURE_DENIAL";var aap=Run(workspace,"hash-object","--",WindowsPathSeal.Child(workspace,"all-packages-only.json"));allPackagesExit=aap.Exit;
+            stage="GIT_ALL_PACKAGES_FIXTURE_DENIAL";var aap=Run(workspace,plan.GitDirectory,"hash-object","--",WindowsPathSeal.Child(workspace,"all-packages-only.json"));allPackagesExit=aap.Exit;
             allPackagesDenied=aap.Exit==128 && aap.Out.Length==0 && aap.Error.TrimEnd().EndsWith(": Permission denied",StringComparison.Ordinal);
             if(!allPackagesDenied)throw WfpNative.Contract("GitAllPackagesFixtureDenialNotConfirmed");
             return new(hashMatched,committed,commit,denied,denialExit,allPackagesDenied,allPackagesExit,null,null,null);
@@ -132,16 +132,16 @@ internal sealed class SessionGitToolchain : IDisposable
         File.WriteAllText(WindowsPathSeal.Child(workspace,stem+".txt"),nonce,new UTF8Encoding(false));
         File.WriteAllText(WindowsPathSeal.Child(workspace,stem+".signal"),"");
     }
-    private static ProcessStartInfo Start(string workspace,params string[] arguments)
+    private static ProcessStartInfo Start(string workspace,string directory,params string[] arguments)
     {
-        var start=new ProcessStartInfo(ToolPath){UseShellExecute=false,CreateNoWindow=true,WorkingDirectory=workspace,
+        var start=new ProcessStartInfo(WindowsPathSeal.Child(directory,"git.exe")){UseShellExecute=false,CreateNoWindow=true,WorkingDirectory=workspace,
             RedirectStandardInput=true,RedirectStandardOutput=true,RedirectStandardError=true,StandardInputEncoding=new UTF8Encoding(false),StandardOutputEncoding=new UTF8Encoding(false),StandardErrorEncoding=new UTF8Encoding(false)};
         start.Environment.Clear();
         foreach(var name in new[]{"SystemRoot","windir","SystemDrive","PROCESSOR_ARCHITECTURE"})
         {var value=Environment.GetEnvironmentVariable(name);if(value is not null)start.Environment[name]=value;}
         foreach(var name in new[]{"TEMP","TMP","HOME","USERPROFILE","LOCALAPPDATA","XDG_CONFIG_HOME"})start.Environment[name]=workspace;
-        start.Environment["PATH"]=DirectoryPath+";"+Environment.GetFolderPath(Environment.SpecialFolder.System);
-        start.Environment["GIT_EXEC_PATH"]=DirectoryPath;start.Environment["GIT_CONFIG_NOSYSTEM"]="1";start.Environment["GIT_ATTR_NOSYSTEM"]="1";
+        start.Environment["PATH"]=directory+";"+Environment.SystemDirectory;
+        start.Environment["GIT_EXEC_PATH"]=directory;start.Environment["GIT_CONFIG_NOSYSTEM"]="1";start.Environment["GIT_ATTR_NOSYSTEM"]="1";
         start.Environment["GIT_CONFIG_GLOBAL"]=WindowsPathSeal.Child(workspace,"empty-git-config");start.Environment["GIT_CONFIG_COUNT"]="0";
         start.Environment["GIT_CEILING_DIRECTORIES"]=workspace;start.Environment["GIT_DISCOVERY_ACROSS_FILESYSTEM"]="0";
         start.Environment["GIT_TERMINAL_PROMPT"]="0";start.Environment["GCM_INTERACTIVE"]="never";start.Environment["GIT_NO_LAZY_FETCH"]="1";
@@ -154,9 +154,9 @@ internal sealed class SessionGitToolchain : IDisposable
             "-c","core.hooksPath="+WindowsPathSeal.Child(workspace,"empty-git-hooks"),"-c","safe.directory="+WindowsPathSeal.Child(workspace,"git-project")}.Concat(arguments))start.ArgumentList.Add(arg);
         return start;
     }
-    private static (int Exit,string Out,string Error) Run(string workspace,params string[] args)
+    private static (int Exit,string Out,string Error) Run(string workspace,string directory,params string[] args)
     {
-        using var process=Process.Start(Start(workspace,args))??throw WfpNative.Contract("GitStartFailed");process.StandardInput.Close();
+        using var process=Process.Start(Start(workspace,directory,args))??throw WfpNative.Contract("GitStartFailed");process.StandardInput.Close();
         var result=Finish(process,SessionResources.ReadBounded(process.StandardOutput),SessionResources.ReadBounded(process.StandardError));
         RecordResult(workspace,result);return result;
     }

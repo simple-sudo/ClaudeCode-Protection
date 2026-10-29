@@ -175,7 +175,10 @@ public static class BootstrapInstaller
             // LPAC first runtime: pre-resume identity passed, child exited125;
             // exact readback established closed/zero Job and full quarantine.
             // Original lifecycle checks remain mandatory for inactive update.
-            "3C0471F484A193EF5EFF77A259602BAB8DFF13313B8440C08BF2459DA7D86D18"
+            "3C0471F484A193EF5EFF77A259602BAB8DFF13313B8440C08BF2459DA7D86D18",
+            // Startup diagnostic revision: exact receipt confirms full
+            // quarantine and closed/zero Job after resource-input failure.
+            "0337CB5D80ECEB760AC8BF96E49FD699B51A0E9E77ED2284BE4206662EFA549F"
         };
         private readonly ProtectedState state;
         private readonly BootstrapApproval approval;

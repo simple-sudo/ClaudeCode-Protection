@@ -12,17 +12,21 @@ namespace ProtectionLifecycle;
 
 // Fixed offline tool program plus optional pinned project bytes. This is
 // never an executable/path/script grant or formal development admission.
-internal sealed record ResourceProbePlan(int SchemaVersion,string Nonce,string InstallationId,string Release,int BrokerPid,string ToolSHA256,string? GitAssetSetSHA256,string? WorkspaceInputSHA256)
+internal sealed record ResourceProbePlan(int SchemaVersion,string Nonce,string InstallationId,string Release,int BrokerPid,string ToolSHA256,string? GitAssetSetSHA256,string? WorkspaceInputSHA256,string ProgramFilesRoot)
 {
     internal void Validate()
     {
-        if(SchemaVersion!=2 || BrokerPid<=0)throw WfpNative.Contract("ResourceQualificationPlanRefused");
+        if(SchemaVersion!=3 || BrokerPid<=0 || WindowsPathSeal.Canonical(ProgramFilesRoot)!=ProgramFilesRoot)throw WfpNative.Contract("ResourceQualificationPlanRefused");
         _=Identifiers.Hex32(Nonce);_=Identifiers.Hex32(InstallationId);_=Identifiers.Hex32(Release);_=Identifiers.Hash(ToolSHA256);
         if(GitAssetSetSHA256 is not null && GitAssetSetSHA256!=SessionGitToolchain.AssetSetSHA256)throw WfpNative.Contract("GitAssetSetNotReviewed");
         if(WorkspaceInputSHA256 is not null && (GitAssetSetSHA256 is null || !WorkspaceBundle.IsHash(WorkspaceInputSHA256)))throw WfpNative.Contract("WorkspaceDataPlanRefused");
     }
-    internal string Fixture=>WindowsPathSeal.Child(FixedLayout.FromWindows().StateRoot,"resource-fixture-"+Nonce+".json");
-    internal string Workspace(string sid)=>GitAssetSetSHA256 is null?WindowsPathSeal.Child(SessionResources.ProfileFolder(sid),"workspace-"+Nonce):SessionTaskWorkspace.PathFor(Nonce);
+    // Paths are resolved by the trusted owner outside LPAC. These are internal
+    // runtime facts, never a privileged host-path operation or CLI parameter.
+    internal string ExpectedChildImage=>WindowsPathSeal.Child(ProgramFilesRoot,"ClaudeCodeProtection/versions/"+Release+"/bin/admin/ProtectionBroker.exe");
+    internal string Fixture=>WindowsPathSeal.Child(ProgramFilesRoot,"ClaudeCodeProtection-State/resource-fixture-"+Nonce+".json");
+    internal string GitDirectory=>WindowsPathSeal.Child(ProgramFilesRoot,"Git/mingw64/bin");
+    internal string Workspace(string sid)=>GitAssetSetSHA256 is null?WindowsPathSeal.Child(SessionResources.ProfileFolder(sid),"workspace-"+Nonce):WindowsPathSeal.Child(ProgramFilesRoot,"ClaudeCodeProtection-Task-"+Nonce);
     internal byte[] Input=>Encoding.UTF8.GetBytes("CPC-RESOURCE:"+Nonce);
     // Same data transfer contract as daily workspace-pack, without importing
     // a caller-selected workload into this fixed qualification entry point.
@@ -34,7 +38,7 @@ internal sealed record ResourceProbePlan(int SchemaVersion,string Nonce,string I
         get
         {
             if(WorkspaceInputSHA256 is null)return FixedProjectBundle;
-            using var file=File.OpenRead(WindowsPathSeal.Child(SessionTaskWorkspace.PathFor(Nonce),"project-input.json"));
+            using var file=File.OpenRead(WindowsPathSeal.Child(Workspace(""),"project-input.json"));
             if(file.Length is <1 or >WorkspaceBundle.MaxBundleBytes)throw WfpNative.Contract("WorkspaceDataLengthRefused");
             var bytes=new byte[checked((int)file.Length)];file.ReadExactly(bytes);
             if(WorkspaceBundle.Hash(bytes)!=WorkspaceInputSHA256)throw WfpNative.Contract("WorkspaceDataDigestChanged");
@@ -70,8 +74,11 @@ internal sealed class SessionResources : IDisposable
         {
             var hash=Convert.ToHexString(SHA256.HashData(tool));tool.Position=0;
             if(includeGit)git=SessionGitToolchain.Open();
-            var plan=new ResourceProbePlan(2,Identifiers.Hex32(nonce),state.InstallationId,version.Package.Release,Environment.ProcessId,hash,
-                includeGit?SessionGitToolchain.AssetSetSHA256:null,workspaceInput is null?null:WorkspaceBundle.Hash(workspaceInput));plan.Validate();
+            var plan=new ResourceProbePlan(3,Identifiers.Hex32(nonce),state.InstallationId,version.Package.Release,Environment.ProcessId,hash,
+                includeGit?SessionGitToolchain.AssetSetSHA256:null,workspaceInput is null?null:WorkspaceBundle.Hash(workspaceInput),
+                WindowsPathSeal.Canonical(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles)));plan.Validate();
+            if(!string.Equals(plan.ExpectedChildImage,Environment.ProcessPath,StringComparison.OrdinalIgnoreCase) || includeGit && plan.Workspace("")!=SessionTaskWorkspace.PathFor(nonce))
+                throw WfpNative.Contract("ResourceRuntimePathsDifferFromInstalledOwner");
             if(workspaceInput is not null)
             {
                 var project=WorkspaceBundle.Parse(workspaceInput);
@@ -200,7 +207,7 @@ internal sealed class SessionResources : IDisposable
         using var signal=new FileStream(WindowsPathSeal.Child(Workspace,stem+".signal"),FileMode.CreateNew,FileAccess.Write,FileShare.Read);
         signal.Flush(true);
     }
-    internal static string ToolPath=>WindowsPathSeal.Child(Environment.GetFolderPath(Environment.SpecialFolder.System),"WindowsPowerShell/v1.0/powershell.exe");
+    internal static string ToolPath=>WindowsPathSeal.Child(Environment.SystemDirectory,"WindowsPowerShell/v1.0/powershell.exe");
     internal static string ProfileFolder(string sid)
     {
         var status=GetAppContainerFolderPath(sid,out var pointer);
@@ -214,12 +221,12 @@ internal sealed class SessionResources : IDisposable
     internal static int RunChild(string packageSid)
     {
         var raw=Environment.GetEnvironmentVariable("CPC_RESOURCE_PLAN");if(raw is null || raw.Length>1024)throw WfpNative.Contract("ResourcePlanBoundsRefused");
-        using var json=JsonDocument.Parse(raw);StrictJson.Fields(json.RootElement,"SchemaVersion","Nonce","InstallationId","Release","BrokerPid","ToolSHA256","GitAssetSetSHA256","WorkspaceInputSHA256");
+        using var json=JsonDocument.Parse(raw);StrictJson.Fields(json.RootElement,"SchemaVersion","Nonce","InstallationId","Release","BrokerPid","ToolSHA256","GitAssetSetSHA256","WorkspaceInputSHA256","ProgramFilesRoot");
         var plan=JsonSerializer.Deserialize<ResourceProbePlan>(raw)??throw WfpNative.Contract("ResourcePlanMissing");plan.Validate();
         using var sid=InstallationPackageSid.FromInstallationId(plan.InstallationId);
         if(sid.Value!=packageSid || Environment.GetEnvironmentVariable("CPC_NETWORK_PLAN") is not null ||
             Environment.GetEnvironmentVariable("CPC_GPU_PLAN") is not null || Environment.GetEnvironmentVariable("CPC_SESSION_ID") is not null ||
-            !string.Equals(Environment.ProcessPath,WindowsPathSeal.Child(FixedLayout.FromWindows().Version(plan.Release),"bin/admin/ProtectionBroker.exe"),StringComparison.OrdinalIgnoreCase))throw WfpNative.Contract("ResourceChildPlanIdentityMismatch");
+            !string.Equals(Environment.ProcessPath,plan.ExpectedChildImage,StringComparison.OrdinalIgnoreCase))throw WfpNative.Contract("ResourceChildPlanIdentityMismatch");
         var workspace=plan.Workspace(packageSid);var cases=new List<ResourceAccessCase>();bool matched=false;int? toolExit=null;string? failure=null;
         string stage="READ_WORKSPACE_INPUT";int? failureCode=null;string? failureStage=null;string? toolDiagnostic=null;GitToolchainReport? gitReport=null;
         try
@@ -264,8 +271,8 @@ internal sealed class SessionResources : IDisposable
             foreach(var name in new[]{"SystemRoot","windir","SystemDrive","PROCESSOR_ARCHITECTURE"})
             {var value=Environment.GetEnvironmentVariable(name);if(value is not null)start.Environment[name]=value;}
             foreach(var name in new[]{"TEMP","TMP","LOCALAPPDATA","USERPROFILE"})start.Environment[name]=workspace;
-            start.Environment["PATH"]=Environment.GetFolderPath(Environment.SpecialFolder.System);
-            start.Environment["PSModulePath"]=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System),"WindowsPowerShell\\v1.0\\Modules");
+            start.Environment["PATH"]=Environment.SystemDirectory;
+            start.Environment["PSModulePath"]=Path.Combine(Environment.SystemDirectory,"WindowsPowerShell\\v1.0\\Modules");
             start.Environment["CPC_DENIAL_FIXTURE"]=plan.Fixture;
             start.Environment["CPC_LPAC_FIXTURE"]=WindowsPathSeal.Child(workspace,"all-packages-only.json");
             start.Environment["CPC_RESOURCE_NONCE"]=plan.Nonce;

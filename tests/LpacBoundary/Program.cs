@@ -7,7 +7,7 @@ using Microsoft.Win32.SafeHandles;
 // Bound to the reviewed production library. These two modes do not create or
 // resume a process/profile/Job or open private resources. The token reader may
 // create a temporary query-only Identification duplicate, never impersonate it.
-if(args.Length!=1 || args[0] is not ("policy" or "self-token"))return 125;
+if(args.Length!=1 || args[0] is not ("policy" or "self-token" or "runtime-paths"))return 125;
 using var identity=WindowsIdentity.GetCurrent();
 if(new WindowsPrincipal(identity).IsInRole(WindowsBuiltInRole.Administrator))throw new InvalidOperationException("Ordinary test only");
 var library=Assembly.LoadFrom(Path.Combine(AppContext.BaseDirectory,"ProtectionLifecycle.dll"));
@@ -18,6 +18,28 @@ static object? Call(MethodInfo method,params object?[] values)
     catch(TargetInvocationException ex)when(ex.InnerException is not null){ExceptionDispatchInfo.Capture(ex.InnerException).Throw();throw;}
 }
 static void Require(bool value,string reason){if(!value)throw new InvalidOperationException("LPAC: "+reason);}
+if(args[0]=="runtime-paths")
+{
+    var planType=library.GetType("ProtectionLifecycle.ResourceProbePlan",true)!;
+    var gitType=library.GetType("ProtectionLifecycle.SessionGitToolchain",true)!;
+    var gitHash=(string)gitType.GetProperty("AssetSetSHA256",flags)!.GetValue(null)!;
+    var id=new string('a',32);var release=new string('b',32);var digest=new string('A',64);
+    object Plan(string root)=>Activator.CreateInstance(planType,3,id,id,release,Environment.ProcessId,digest,gitHash,digest,root)!;
+    var plan=Plan("C:\\lpac-runtime-case");planType.GetMethod("Validate",BindingFlags.Instance|BindingFlags.NonPublic)!.Invoke(plan,null);
+    object? Get(string property)=>planType.GetProperty(property,BindingFlags.Instance|BindingFlags.NonPublic)!.GetValue(plan);
+    Require((string)Get("ExpectedChildImage")! == "C:\\lpac-runtime-case\\ClaudeCodeProtection\\versions\\"+release+"\\bin\\admin\\ProtectionBroker.exe","fixed installed image derived from runtime fact");
+    Require((string)Get("GitDirectory")! == "C:\\lpac-runtime-case\\Git\\mingw64\\bin","fixed Git subdirectory only");
+    Require((string)Get("Fixture")! == "C:\\lpac-runtime-case\\ClaudeCodeProtection-State\\resource-fixture-"+id+".json","non-secret fixture fixed leaf");
+    var workspace=(string)planType.GetMethod("Workspace",BindingFlags.Instance|BindingFlags.NonPublic)!.Invoke(plan,new object[]{"unused"})!;
+    Require(workspace=="C:\\lpac-runtime-case\\ClaudeCodeProtection-Task-"+id,"task derives from owner root and nonce");
+    foreach(var root in new[]{"relative","\\\\server\\share","C:\\a\\..\\b","C:\\a.","C:\\a\\"})
+    {
+        var refused=false;try{planType.GetMethod("Validate",BindingFlags.Instance|BindingFlags.NonPublic)!.Invoke(Plan(root),null);}
+        catch(TargetInvocationException ex)when(ex.InnerException is InvalidDataException){refused=true;}
+        Require(refused,"ambiguous runtime root refused");
+    }
+    Console.WriteLine("PASS production runtime paths: fixed image/tool/task/fixture derivation and ambiguous-root rejection; no folder lookup, host read or workload");return 0;
+}
 if(args[0]=="self-token")
 {
     var read=library.GetType("ProtectionLifecycle.AtomicChild",true)!.GetMethod("ReadToken",flags)!;
