@@ -148,7 +148,10 @@ public static class BootstrapInstaller
             "1C2D5F29BB27A0ED4A003F67210C12286956FE2AD9F9547ECA34865C8BB8D2FB",
             "D6B820AE866AD68317099AFA7FF1608F9651F5F1D7289973935287BAA385A346",
             "9373F33796B44BCDFC932DFF4CB5B826CC5CF82C600A3851355389B592335AD7",
-            "66DBD24CB8A296BC0023A24E806B755973344DC95B387E3E8A21F2EDFE367EE5"
+            "66DBD24CB8A296BC0023A24E806B755973344DC95B387E3E8A21F2EDFE367EE5",
+            // Current fc2d7c8b fixed offline Git package; all admissions still
+            // require durable closure/Job-zero before this inactive update.
+            "2F23479431360CC5BE0B0E84DFB821FBF2FFD8D04BE3A100EC0F7677B0EDB20B"
         };
         private readonly ProtectedState state;
         private readonly BootstrapApproval approval;
