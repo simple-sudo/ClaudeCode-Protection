@@ -1,39 +1,30 @@
-# 当前：异常处理包已安装；下一步只读本次唯一错误证据
+# 下一次LPAC实机验证：原受限宿主的PowerShell策略上下文
 
-08:35:06Z本人UAC更新df6ae4f0/manifestD2CABD45、INACTIVE，15文件独立摘要/权限匹配；另一次授权固定运行08:35:27Z结束，session1c66ab54e7e34fdeb3e8aa69f89ab944。工具直接退出E0434352/-532462766，已返回System.Security.SecurityException，不再卡原10秒超时。仍未到READY、Git/编译未运行，无成果。原Job0f4e30d0归零、Stop无失败、四拒绝通过、宿主键不变，无强杀。报告B5A5135E。用户此前项目异常弹窗确认保留，不以空日志否定。
+当前安装df6ae4f0/manifestD2CABD45，INACTIVE。最近真实会话1c66ab54中的PowerShell已明确以System.Security.SecurityException失败。用户确认的项目异常弹窗与截图保留；原Job正常关闭归零、Stop无失败、根I/O/四拒绝5通过、宿主注册表权限不变，但PowerShell/Git/编译未完成。
 
-下一次待授权操作仅一项：work/tool-error-read-control/read-launch.ps1通过一次本人UAC，读取C:\Program Files\ClaudeCodeProtection-State\resource-tool-error-1c66ab54e7e34fdeb3e8aa69f89ab944.json这一个已由原Broker保存的错误文件，最多32768字节；严格核对可信路径/owner/保护ACL，无重定向。原始字节和SHA256只写入新受保护目录C:\Program Files\ClaudeCodeProtection-ToolError-1c66ab54-r1，允许当前用户只读审查其固定工具错误。源不修改，不读取其他私有文件，不安装、不启动任何产品/工作负载、不建Job/profile、不改权限或网络、不恢复。planD1DBD8D3EDCECCB2D944354DF735B37FC590C3C722EC461F1BF85D0DF9EDB428；helperB22934F8F20101E9FD1F821522F0104AA2B23B14CE567C355DC3DF6864EF5188。read-review.json为冻结审查，预检实际返回、未知参数拒绝，NOT_RUN。
+一次独立本人授权的只读操作已于08:39:38Z读取原唯一错误记录：1127字节，SHA256=DE28838672394EE1A633EA50C1C19B261C05F3BD17DC725CBFEE5C0AE0C62409。调用栈为RegistryKey.OpenSubKey → Utils.GetPolicySettingFromGPOImpl → GetConfigurationNameFromGroupPolicy → ConsoleHost.ParseCommandLine，错误在脚本执行之前。证据work/tool-error-read-control/evidence；原记录未改，无重跑或额外系统操作。该只读授权已消耗。
 
-该文件因产品私有权限无法由普通开发进程读取。按用户指示和AGENTS.md，新增私有资源读取需具体授权和本人UAC；前次安装/运行授权均已完成。这次不重复运行故障，只读取已有实际错误栈以决定修复。下文是已完成安装/运行的历史范围。
+## 已实施和普通限定资格
 
----
-# 当前工具故障：已确认项目异常，下一次验证具体范围
+PowerShell原生CLI无条件先读GPO，JSON设置不能替代。[官方7.4.22策略读取源码](https://github.com/PowerShell/PowerShell/blob/v7.4.22/src/System.Management.Automation/engine/Utils.cs)证实这一顺序。新源复用同一安装Broker镜像作为受限PowerShell托管入口，保留原Broker创建、LPAC/零能力包、原Job、对象权限、固定参数/清洁环境、标准流、监督/成果/清理路径；未创建另一服务或executor。
 
-当前安装df6ff338081b43e4ac4691598c108f71/manifest9239BB32，INACTIVE。本人UAC于08:23:36Z完成更新及官方PowerShell7.4.22固定目录创建；15产品文件、552工具文件/110目录的摘要、可信owner、保护DACL及无非可信写入已独立匹配。
+原所有者对12个固定PowerShell GPO/旧fallback键，在64位HKCU/HKLM都必须实际观察不存在，并在资源监督/创建/工具工作门复核。存在、读取失败或变化即拒绝，不读取并丢弃现有策略，不把UNKNOWN当无策略。当前先支持无这些键的环境；已存在策略的类型化快照尚不支持。确认实际不存在后，受限入口在精确固定7.4.22引擎（SMA7.4.6.500、逐项摘要固定）的私有GPO缓存填14个负结果；JSON配置回退保留。缓存字段/键映射/版本不匹配即拒绝，不启用测试钩子、不改厂商字节、不增加宿主注册表读取或capability。
 
-08:24:15Z sessionac45262cde9d40b1b6b79b8048f6f98f运行失败，PowerShell未到READY，原根在WAIT_FIXED_POWERSHELL到10秒期限。用户截图并明确确认刚才UAC后本项目进程弹出托管异常E0434352，地址00007FFAEB181ADA；该事实已接受并留档，不因未抓到匹配事件/PID否定。精确异常类型/根因尚未捕获。报告8E1E6153，截图及用户确认在work/powershell7-r2-control/run-evidence。原Job1bc7bc5b关闭归零、Stop无失败，未强杀owner，根I/O/四拒绝5通过；宿主SideBySide权限独立完全不变，本轮无注册表授权。PowerShell/Git/编译未成功，无成果，不能将安装和普通测试写成工具可用性。
+普通实际托管运行通过：固定I/O、两个自有非敏感ACL拒绝、同一官方Roslyn/参考程序集的C#编译及加载运行7+5=12，退出0、无错误输出；普通直接受限入口拒绝。62输入构建及63输入Bootstrap通过，Bootstrap未重建资格库C846DB6B，20文件/10PE/6managed/内嵌manifest匹配，无新增本机导入。证据work/hosted-policy-build-r2/qualification.json。原超时、测试错误收尾及Add-Type缺少入口ref目录的失败保留；测试已捕获异常退出，不制造故障弹窗。Add-Type -TypeDefinition通用托管引用布局仍未支持，本次自有编译使用真实相同Roslyn和固定ref，不声称整个开发工具兼容完成。普通资格不是LPAC证明。
 
-## 已实施并限定验证的修复
+## 待本人授权的两个操作
 
-在原Broker的工具CreateProcess窗口内串行设置其自身错误模式0x8003，子进程继承后立即精确恢复原Broker模式，避免无人值守任务被critical/GP-fault/OpenFile弹窗挂住。仅进程范围，未改全机WER、用户、AV或网络设置；仍把异常、退出和超时当失败。依据[Windows进程错误模式及继承文档](https://learn.microsoft.com/en-us/windows/win32/api/errhandlingapi/nf-errhandlingapi-seterrormode)。普通自有子进程实际继承和父进程成功/异常路径精确恢复已通过，无故意崩溃。
-
-固定工具标准流现在边读边保留有界快照；超时不再等待EOF后丢弃已收到错误。最多两段各2048字符原始文本仅由同一原Broker存入私有证据；普通响应只给已限定异常类型或摘要。普通匿名管道实测EOF前快照、4096字符上限拒绝、类型筛选通过。原准入/LPAC/零capability/原Job/对象权限/工具参数和自有C#样本不变，不为通过测试增加资源权限。
-
-源码7a39567、嵌入e686fe0：60输入Broker/Library构建和61输入Bootstrap通过，后者复用原资格库F82A46E3而未重建。10PE/6managed、内嵌manifest核对通过；生产仅增加kernel32 GetErrorMode/SetErrorMode，测试未新增本机导入。证据work/tool-fault-build-r1/qualification.json。这还不是实际LPAC无弹窗证明，更不是PowerShell启动根因已修复。
-
-## 待本人授权的两个系统操作
-
-1. 一次本人UAC：仅将产品更新为新df6ae4f0、保持INACTIVE，然后只读manifest资源检查。既有552工具文件不修改，不新建工具目录，不创建Job/profile，不授予注册表权限。
-2. 更新成功并独立核对15文件后，另一次本人UAC：一轮原Broker固定PowerShell7/Git/自有C#编译执行验证，应用上述已修改的异常处理与私有错误保留。保持严格LPAC、原Job和现有停止/拒绝/清理链。主期限40秒、排空1秒，异常只结束本次新建且持有句柄、映像/创建时刻匹配的确切Broker；不把退出当Job证明。不自动重试或恢复，不故意触发崩溃，不执行输入项目代码、真实Claude或网络访问；宿主SideBySide完整权限独立比较必须不变。
+1. 一次本人UAC：更新新包6e2cf8cd为INACTIVE，仅做只读manifest资源检查；原552工具文件不修改、不新建工具目录、不建Job/profile，不改宿主注册表/权限。
+2. 更新并独立核对15文件后，再一次本人UAC：一轮原Broker严格LPAC托管PowerShell/固定Roslyn自有编译/离线Git验证。没有输入项目代码、网络、真实Claude或管理员开发进程；40秒主期限、1秒排空；异常仅停止本次确切新owner，不自动重试/恢复。若运行失败且原Broker回执确认原Job已闭合归零、准入关闭、完整隔离、Stop无错误，同一helper才可只读本次新会话的唯一resource-tool-error记录（最多32768字节）到同一受保护结果目录；不读其他私有文件，源不改，以免为同一故障再增加一次UAC。宿主SideBySide完整权限独立比较必须完全不变。
 
 | 冻结输入 | 标识或SHA256 |
 |---|---|
-| 新Release | df6ae4f02e67434dbb91b9a0addaf80a |
-| 新manifest | D2CABD45BCF2965F8BC982669C0478958B80CD5F22807CCB76134DE8B0626AE8 |
-| Lifecycle库 | F82A46E34DC038E4C772AD0D14592E484C1C67DE30F1739C752A576FA8310B08 |
-| 安装plan | 8350912756339CBF6931FF7258E3B97C195EED6FC910A7E59C936A1356446A60 |
-| 安装helper | 70BB65DCC767DB56E8FCB5CE13C22D0443D1105D4C6B3C8BADE6EB3DF0A47686 |
-| 运行plan | E763F4518B850D1CD34BA170953B2A68016B1473C4BF3B503A86BBBDAD91B4DE |
-| 运行helper | D8068C760F9709819044AFB63AF15BF22BBE24BC0D3115BB0EAFCD557219991D |
+| 新Release | 6e2cf8cd8808409bb0b80693f7f9339c |
+| 新manifest | 6AAE651E3AFA2D592E02F70A8097048EFA7106F563FD96A766AD1A5208F2E0DA |
+| Lifecycle库 | C846DB6BA60732607FC84C9E361815B1C861EC842697D4C52622F0900CE01725 |
+| 安装plan | F229133E1B943113798CC95A18FC6E349F3ED41EF22030AD0493A33B14AD52CC |
+| 安装helper | A8438D9EB31591A68F3FF81B8FC8BFC73FD6614447C6A437D08535F8624211F8 |
+| 运行plan | DFFE1E456DBA5679A7805974F4A1353588A89839560650D87D30DF364125C44E |
+| 运行helper | CACABDCBA59A792B3C3553621F3B0C6D06E77858B2FECED1FB2336FA7F3B7634 |
 
-work/tool-fault-control/system-operation-review.json为完整冻结审查。两个launcher普通Preflight已实际返回，未知参数拒绝，无本次UAC/claim。按用户指示和AGENTS.md，新工件安装/受保护运行需要具体授权和本人UAC；这两个操作尚未授权或执行。用户此前的两个df6ff338操作已完成并消耗，不延伸为本次授权。保持日常AV/驱动/FlClash/UU/网络、现有旧证据和包。全面敏感数据/网络/14项/GPU/项目编译仍未整体验收，历史蓝屏根因未关闭。
+完整审查work/hosted-policy-r2-control/system-operation-review.json。两个launcher预检实际返回、未知参数拒绝、无本次UAC/claim。按用户指示与AGENTS.md，新安装及资源调用需要具体授权、本人UAC；两操作尚未授权或执行。保持日常AV/驱动/UU/FlClash/网络及全部旧证据。全面宿主隐私/网络/14项/GPU/正式项目仍未整体验收。

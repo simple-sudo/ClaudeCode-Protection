@@ -17,8 +17,14 @@ cache receives14 verified negative entries; configuration fallback remains.
 No host policy is silently discarded, test hook enabled, vendor byte patched,
 registry permission or privilege granted. Restricted entry refuses ordinary
 or different package/image/nonce/compiled args. This narrow absence-only
-compatibility scope is explicit, not a general host-policy bypass. Ordinary
-host/compile qualification and new system artifact decision still required;
+compatibility scope is explicit, not a general host-policy bypass. 62-input build/63-input Bootstrap reused qualified libraryC846DB6B. Ordinary
+actual hosted I/O/two owned denials and pinned Roslyn/ref compile+execution
+passed; generic Add-Type TypeDefinition host ref layout is STILL unsupported.
+Keep old timeout/test-harness/ref-layout failures. Exact new system candidate
+6e2cf8cd/manifest6AAE651E, install planF229133E/helperA8438D9E, run planDFFE1E45/
+helperCACABDCB frozen in work/hosted-policy-r2-control. Optional read is only the
+new run's one private tool error AFTER original closed-zero-Job/stop proof.
+Both strict preflights passed; new two human UAC decisions still required;
 current installeddf6ae4f0/F82A46E3 remains INACTIVE with failed tools.
 2026-10-30 actual installeddf6ae4f02e67434dbb91b9a0addaf80a,
 manifestD2CABD45BCF2965F8BC982669C0478958B80CD5F22807CCB76134DE8B0626AE8,
