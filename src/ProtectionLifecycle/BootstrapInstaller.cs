@@ -198,7 +198,8 @@ public static class BootstrapInstaller
             // closure evidence: the unchanged all-Job/quarantine gates below
             // still decide whether any inactive update is admissible.
             "2896E57A537D998D877170C5D7EE98F3B842DAA899E8CD1688F04E767911A68E",
-            "F1418ECBB01AED35559B440E60BAF37C4E79C3D6133A62F331BB9B40EF062B01"
+            "F1418ECBB01AED35559B440E60BAF37C4E79C3D6133A62F331BB9B40EF062B01",
+            "850D193EFB259C819B215333A5F7D60D49BFE5C8456957587C84424EEFB81C69"
         };
         private readonly ProtectedState state;
         private readonly BootstrapApproval approval;

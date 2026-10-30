@@ -1,5 +1,13 @@
 # 当前开发状态
 
+## 当前安装0c1613f0：安全守卫拒绝，宿主键未变；读取器修正中
+
+VERIFIED（本轮两次独立本人UAC）：06:27:07Z INACTIVE更新为0c1613f0c6a4447b83af3814b4d267d6 / manifest850D193EFB259C819B215333A5F7D60D49BFE5C8456957587C84424EEFB81C69。20文件/内嵌清单和原库C8588064复用通过，15安装文件摘要/保护DACL标记普通回读匹配；只读inspect-manifest-read-access返回0/NO_PENDING_MANIFEST_READ_ACCESS，未授予键权限。
+
+FAIL保留：06:27:41Z一次授权的无调试器工具调用session17e38d7d94334f03ace68dc661cf62b5在根恢复前被ManifestSystemKeySecurityUntrusted拒绝。Child=null/Resumed=false，无工具或成果；原Jobc76d99fe428b4b0a83a625de3a7eaa65关闭/零成员，无强杀。helper独立前后SDDL完全相同，不能写成权限授予/恢复成功。work/manifest-read-control的本轮安装/运行冻结文件及两个ProgramFiles自有输出目录保留，绝不重复不变调用。
+
+定位到新的确定性读取不一致：普通只读同一64位固定键，生产RegGetKeySecurity返回无D:P且多一条BA ACE；Windows权限provider返回原保护DACL。先前原生样本只比较同一API前后，未断言真实创建控制标记，因此不覆盖此缺陷。source改用既有对象安全读取模式GetSecurityInfo(SE_REGISTRY_KEY)，保持保护标记守卫，不消除差异或放宽ACL；普通样本增加创建时SD精确比对及固定系统键只读资格。新源未安装，需重新构建/资格后决定下一具体系统步骤。当前b419/0c旧证据均保留，AV/BFE/UU/FlClash/boot保持。
+
 ## 最新：已找到实际SideBySide键读取拒绝；最小资源修复已接入源码
 
 VERIFIED（本轮人工授权/UAC诊断）：2026-10-30T06:06:36Z，原安装b4194629的trace7正常终结，未超时/强杀。实际LPAC worker在NtCreateUserProcess=0后，于Kernel32+2777C观察ManifestPreferenceKeyOpen=C0000022，随后ManifestPreference及ConstructSxs传递同码，CreateProcessW=false/5。匹配Windows映像的静态数据/调用指令将该固定调用对应到NtOpenKey、KEY_READ(20019)、`\Registry\MACHINE\Software\Microsoft\Windows\CurrentVersion\SideBySide`，下一步值名PreferExternalManifest；本次在打开键时已失败，不能写成值读取失败或安全软件归因。该键当前保护DACL授予AAP及registryRead读取，没有ARP/本安装包读取。原始日志SHA256=51740B57EA74F1CC7372D6ADD0E2A7B782F6EE8FE86080B74D4235AFEE2DDFB2，证据work/create-process-trace-installed-r7和work/lpac-postcreate-static-r1。

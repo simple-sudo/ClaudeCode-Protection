@@ -1,32 +1,34 @@
-# LPAC工具启动：当前证据和一次必要系统观测
+# LPAC工具启动：具体修复及系统验证范围
 
-2026-10-30。开发分支codex/integrate-privacy-admission-20261027在本轮开始时本地/远端均为e101ad8。安装候选不变：b41946295d334034896319e3a0aeba7c，manifest F1418ECBB01AED35559B440E60BAF37C4E79C3D6133A62F331BB9B40EF062B01；当前安装选择仍由提升后的原helper在任何操作前重新核对，普通预检不能替代该检查。
+2026-10-30。本轮开始时本地与远端开发分支均为e101ad8；后续仅本地提交，未推送。
 
-## 已有实际进展
+## 实际阻碍与修复
 
-此前未提交到STATUS的trace6已将CreateProcess5定位到BasepConstructSxsCreateProcessMessage返回C0000022。这发生在NtCreateUserProcess成功之后。工作区读写、四项根拒绝、原Job关闭/零成员均有同次回执，工具仍未成功。原日志和空成果必须保留。
+人工授权/UAC的trace7确认：LPAC worker调用NtCreateUserProcess成功后，Windows在NtOpenKey(KEY_READ)打开固定系统SideBySide键时返回C0000022，导致SxS消息构造失败和CreateProcessW错误5。不是PreferExternalManifest值查询失败或安全软件归因。当前键DACL允许AAP及registryRead，不允许ARP/本安装包。原始证据在work/create-process-trace-installed-r7；原Job正常关闭归零，四项根拒绝通过，工具未成功。
 
-尚未辨明SxS函数内部的拒绝来源。当前没有支持放宽能力、宿主ACL或回退普通AppContainer的证据。本轮静态复核Windows映像只确认现有分支断点对应当前字节，不是实际内部调用成功/失败证据。
+原ProtectedSession资源所有者增加SessionManifestReadAccess。在根已绑定原Job且仍挂起时，为当前包SID给以下固定64位键增加一条KEY_READ、无继承ACE：
 
-## 已准备、未执行的操作
+`HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\SideBySide`
 
-复用work/create-process-trace7-control/trace-launch.ps1，由普通用户启动，只有本人确认UAC后才进入其固定helper。该操作：
+这允许读取该键自身的值、直接子键名称及安全信息，不能写值/权限，不能据此读取子键的值，不增加registryRead或其他capability，不给AAP/ARP通用访问，不改变LPAC或工具令牌。这个宿主系统权限变更需要本人明确授权。
 
-- 重新持有并核验15个安装资产、10个调试命令文件、两个固定Windows映像和Microsoft签名调试器，并核对当前安装仍INACTIVE。
-- 只运行原安装ProtectionBroker.exe qualify-toolchain一次；原所有者创建LPAC/Job，运行自有固定离线PowerShell/Git工作负载；不执行输入项目代码。
-- 在SxS内部固定分支处仅记录数值失败码及固定阶段，不读取真实FlClash/UU配置或凭据，不使用全局错误入口断点。
-- 调试主期限30秒，直接落盘日志，附加重定向管道排空各限1秒。正常停止继续由原Job所有者负责。若调试未完成，仅核对并终止这次新建、持有句柄的确切Broker owner；不附加或结束日常/其他既有进程，不推断Job关闭，不自动清理私有存储或重试。
+原Broker先保存保护意图并核对原权限，运行期持有并检查该键；只有同一Job持久关闭/零成员后才恢复完整原权限。外部权限漂移不合并、不覆盖。未完成记录阻止后续新会话和安装维护；显式恢复入口仍要求闭合准入及完整隔离。中断不能保证自动恢复，强杀owner不作为Job关闭证明。
 
-这会创建一次受保护资源会话及一个新的受保护诊断输出目录，不能在没有本人的具体授权时运行。无安装更新、全机ACL/网络/AV/驱动变更、真实Claude或远程推送。
+56输入离线构建、生产DACL策略、真实生产安全读写函数在唯一普通HKCU空样本中的精确授予/恢复，以及普通调用维护入口被拒均通过。57输入Bootstrap构建复用完全相同的已资格库，未重建库。20文件/10PE/6managed及内嵌清单匹配。以上不是宿主键授予、LPAC工具运行或中断恢复成功。
 
-冻结输入：
+## 待本人授权的两个具体操作
 
-| 输入 | SHA256 |
+1. 一次本人UAC：work/manifest-read-control/install-launch.ps1将下方候选更新为INACTIVE，然后只读检查无待处理manifest读取资源。不创建Job/profile，不授予宿主键权限。
+2. 安装及普通回读确认后，第二次本人UAC：同目录run-launch.ps1只运行原安装Broker的qualify-toolchain一次，验证固定离线PowerShell/Git、工作区及原拒绝样本、Job关闭和上述键权限精确恢复。产品原所有者临时授予该键读取；helper独立比较前后权限。无调试器、输入项目代码、网络开放或自动重试/恢复。主期限40秒；未完成时，只结束本次新建并持有句柄、映像/创建时刻匹配的确切Broker，不结束其他进程，不编造Job或清理证明。
+
+| 冻结输入 | 标识或SHA256 |
 |---|---|
-| trace-plan.json | 709283D8007DA0F2A196C1F0A7590494A45D12741127921928164D0EBF5FD832 |
-| trace-helper.ps1 | 0727AE4EDC9805CAA6C4818707E857F38079D0E7BA5EA280DF3EB05A33CB1FBB |
-| trace-launch.ps1 | 564E8E5738858148C170C57E326ED4C0795DCC19E998A62685B058A86D55B860 |
+| 新Release | 0c1613f0c6a4447b83af3814b4d267d6 |
+| 新manifest | 850D193EFB259C819B215333A5F7D60D49BFE5C8456957587C84424EEFB81C69 |
+| Lifecycle库 | C858806499789388E4E3F09A262F9630924AA89967761C8B066FAF253DB39F1A |
+| 安装plan | D97D67B41C7ACC80034526A206EECE54C64596CAD785F656654A2BB2AAECEEBB |
+| 安装helper | 17B198A919C49D7BB0558236499068A9C65484653FDA6D3DA17AE27295BB05C9 |
+| 运行plan | 7AC5A0AC256E72E8EDCF0C9414B0464E9B19CA4F6FC04096A55A4C1704148D92 |
+| 运行helper | 8BBDC597CFFF0615FF65722E30AA6122856E3D90BC50C202F2F7FD5BA84F61B6 |
 
-06:04:32Z普通预检持有校验通过，未触发UAC。原普通cmd/where跟踪样本已通过；它只证明脚本和新进程跟踪，不证明LPAC内部失败分支或工具兼容。完整审查/摘要在同目录qualification.json，实际操作仍NOT_RUN。
-
-取得内部失败点后，应据实际对象和所需操作决定最小修复，并针对修复验证；不再重做没有改变的前置诊断。若没有到达所需分支，保留失败并先分析，不自动重跑。
+普通持有文件预检和脚本语法检查完成，完整审查在work/manifest-read-control/system-operation-review.json。新安装/运行尚未授权或执行；此前b4194629安装保留。日常AV/驱动/全机ACL/网络/FlClash/UU保持，真实Claude延期；新能力不能冒充整体隐私、网络、14项准入或GPU验收。

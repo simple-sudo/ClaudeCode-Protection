@@ -204,11 +204,22 @@ internal sealed class SessionManifestReadAccess : IDisposable
     }
     private static string ReadSecurity(SafeRegistryHandle handle)
     {
-        uint size=0;var status=RegGetKeySecurity(handle,5,null,ref size);
-        if(status!=122 || size is <20 or >4096)throw WfpNative.Contract("ManifestKeySecuritySizeRefused");
-        var bytes=new byte[checked((int)size)];status=RegGetKeySecurity(handle,5,bytes,ref size);
-        if(status!=0)throw new Win32Exception(status);
-        return Canonical(new RawSecurityDescriptor(bytes,0));
+        // Read the registry OBJECT security, including its actual protection
+        // control bits. The preserved RegGetKeySecurity observation on this
+        // host synthesized an unprotected ACL and an extra owner ACE, unlike
+        // the independent Windows security provider. Never normalize that
+        // discrepancy away or use the synthesized ACL as restoration bytes.
+        var status=GetSecurityInfo(handle,4,5,out _,out _,out var dacl,out _,out var descriptor); // SE_REGISTRY_KEY.
+        if(status!=0)throw new Win32Exception(checked((int)status));
+        try
+        {
+            if(descriptor==IntPtr.Zero || dacl==IntPtr.Zero)throw WfpNative.Contract("ManifestKeySecurityMissing");
+            var size=GetSecurityDescriptorLength(descriptor);
+            if(size is <20 or >4096)throw WfpNative.Contract("ManifestKeySecuritySizeRefused");
+            var bytes=new byte[checked((int)size)];Marshal.Copy(descriptor,bytes,0,bytes.Length);
+            return Canonical(new RawSecurityDescriptor(bytes,0));
+        }
+        finally{if(descriptor!=IntPtr.Zero)LocalFree(descriptor);}
     }
     private static void WriteSecurity(SafeRegistryHandle handle,string value)
     {
@@ -217,6 +228,8 @@ internal sealed class SessionManifestReadAccess : IDisposable
     }
     [DllImport("advapi32.dll",EntryPoint="RegOpenKeyExW",CharSet=CharSet.Unicode)] private static extern int RegOpenKeyEx(IntPtr root,string path,uint options,int access,out SafeRegistryHandle key);
     [DllImport("advapi32.dll",EntryPoint="RegQueryValueExW",CharSet=CharSet.Unicode)] private static extern int RegQueryValueEx(SafeRegistryHandle key,string name,IntPtr reserved,out uint type,IntPtr data,ref uint size);
-    [DllImport("advapi32.dll")] private static extern int RegGetKeySecurity(SafeRegistryHandle key,uint information,byte[]? descriptor,ref uint size);
+    [DllImport("advapi32.dll")] private static extern uint GetSecurityInfo(SafeRegistryHandle key,int type,uint information,out IntPtr owner,out IntPtr group,out IntPtr dacl,out IntPtr sacl,out IntPtr descriptor);
+    [DllImport("advapi32.dll")] private static extern uint GetSecurityDescriptorLength(IntPtr descriptor);
+    [DllImport("kernel32.dll")] private static extern IntPtr LocalFree(IntPtr memory);
     [DllImport("advapi32.dll")] private static extern int RegSetKeySecurity(SafeRegistryHandle key,uint information,byte[] descriptor);
 }

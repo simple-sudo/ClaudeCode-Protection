@@ -1,5 +1,21 @@
 # ClaudeCode-Protection working rules
 
+2026-10-30 current installed0c1613f0c6a4447b83af3814b4d267d6 /
+manifest850D193EFB259C819B215333A5F7D60D49BFE5C8456957587C84424EEFB81C69,
+human UAC06:27:07Z INACTIVE update/read-only manifest-resource inspection0.
+Separate explicitly authorized run06:27:41Z refused before root resume with
+ManifestSystemKeySecurityUntrusted, session17e38d7d, Jobc76d99fe closed/zero,
+no tool/result/forced stop. Independent before/after host key security exact,
+NOT a successful grant/restoration. Preserve work/manifest-read-control and
+ProgramFiles output; no unchanged retry. Ordinary read-only comparison found
+legacy RegGetKeySecurity synthesized no protected flag plus an extra BA ACE,
+different from the Windows security provider. Source now uses object security
+GetSecurityInfo(SE_REGISTRY_KEY), keeps protection/ACL guards and strengthens
+native fixture to compare against the exact creation descriptor; new fixed-key
+READ ONLY mode checks this prior to another system run. New code uninstalled;
+qualify new bytes before any concrete human system decision. Current is0c161,
+not b419. Original diagnostic/refusal/crash/UNKNOWN evidence remains.
+
 2026-10-30 trace7 was separately explicitly authorized by the user and human
 UAC confirmed. Actual LPAC worker: native create0, ManifestPreferenceKeyOpen
 at Kernel32+2777C returned C0000022, then ConstructSxs and CreateProcess5.

@@ -5,7 +5,7 @@ using System.Security.AccessControl;
 using System.Security.Principal;
 using Microsoft.Win32.SafeHandles;
 
-if(args.Length!=1 || args[0] is not ("policy" or "owned-fixture"))return 125;
+if(args.Length!=1 || args[0] is not ("policy" or "owned-fixture" or "fixed-read-only"))return 125;
 using var identity=WindowsIdentity.GetCurrent();
 if(new WindowsPrincipal(identity).IsInRole(WindowsBuiltInRole.Administrator))throw new InvalidOperationException("Ordinary qualification only");
 var library=Assembly.LoadFrom(Path.Combine(AppContext.BaseDirectory,"ProtectionLifecycle.dll"));
@@ -24,6 +24,16 @@ void Refused(Action action,string expected)
 }
 const string package="S-1-15-2-11-22-33-44-55-66-77";
 string Canonical(string sddl)=>new RawSecurityDescriptor(sddl).GetSddlForm(AccessControlSections.Owner|AccessControlSections.Access);
+if(args[0]=="fixed-read-only")
+{
+    using var root=Microsoft.Win32.RegistryKey.OpenBaseKey(Microsoft.Win32.RegistryHive.LocalMachine,Microsoft.Win32.RegistryView.Registry64);
+    using var fixedKey=root.OpenSubKey("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\SideBySide",false)??throw new InvalidOperationException("fixed OS dependency missing");
+    var observed=(string)Invoke("ReadSecurity",fixedKey.Handle);
+    var sd=new RawSecurityDescriptor(observed);
+    Require(sd.Owner?.Value is "S-1-5-18" or "S-1-5-32-544" && (sd.ControlFlags&ControlFlags.DiscretionaryAclProtected)!=0,"actual system key protection bits retained");
+    _=Invoke("AddReadAce",observed,package); // Memory only, no write API.
+    Console.WriteLine("PASS production registry-object security reader retains fixed OS key protected control and accepts exact read policy; no registry mutation");return 0;
+}
 if(args[0]=="policy")
 {
     var original=Canonical("O:BAD:P(A;CIIO;KA;;;CO)(A;CI;KA;;;SY)(A;CI;KA;;;BA)(A;CI;KR;;;BU)(A;CI;KR;;;AC)");
@@ -69,6 +79,7 @@ try
     if(status!=0)throw new System.ComponentModel.Win32Exception(status);
     Require(disposition==1,"new fixture only");created=true;
     var original=(string)Invoke("ReadSecurity",key);
+    Require(original==Canonical("O:"+user+"D:P(A;;KA;;;"+user+")"),"native descriptor must retain exact creation owner, DACL and protection control");
     var grant=Canonical(original+"(A;;KR;;;"+package+")");
     Invoke("WriteSecurity",key,grant);
     Require((string)Invoke("ReadSecurity",key)==grant,"native exact added DACL observed");
