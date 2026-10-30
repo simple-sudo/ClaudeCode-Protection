@@ -8,6 +8,8 @@ FAIL保留：06:27:41Z一次授权的无调试器工具调用session17e38d7d9433
 
 定位到新的确定性读取不一致：普通只读同一64位固定键，生产RegGetKeySecurity返回无D:P且多一条BA ACE；Windows权限provider返回原保护DACL。先前原生样本只比较同一API前后，未断言真实创建控制标记，因此不覆盖此缺陷。source改用既有对象安全读取模式GetSecurityInfo(SE_REGISTRY_KEY)，保持保护标记守卫，不消除差异或放宽ACL；普通样本增加创建时SD精确比对及固定系统键只读资格。新源未安装，需重新构建/资格后决定下一具体系统步骤。当前b419/0c旧证据均保留，AV/BFE/UU/FlClash/boot保持。
 
+BUILD / VERIFIED（4510050普通限定）：56输入离线构建0错误/警告，库0BE89FA03F2363EDFA88C94B37CE728F3A9D856790F6D72C53DD1D0AE23D7716，无module initializer；新增类型原生面为固定键打开/链接值检查、GetSecurityInfo(SE_REGISTRY_KEY)/长度/LocalFree及原RegSetKeySecurity。policy、加强的自有HKCU原生样本、固定64位系统键只读资格均0；后者确认生产读取器保留真实保护标记并允许既有严格策略，未修改该键。两个普通维护入口仍125/UnauthorizedAccess。work/manifest-read-build-r2保留精确工件及运行回执。非LPAC工具修复/真实授予/中断恢复证据；准备新的具体安装候选，不复用已消耗的0c安装/运行授权。
+
 ## 最新：已找到实际SideBySide键读取拒绝；最小资源修复已接入源码
 
 VERIFIED（本轮人工授权/UAC诊断）：2026-10-30T06:06:36Z，原安装b4194629的trace7正常终结，未超时/强杀。实际LPAC worker在NtCreateUserProcess=0后，于Kernel32+2777C观察ManifestPreferenceKeyOpen=C0000022，随后ManifestPreference及ConstructSxs传递同码，CreateProcessW=false/5。匹配Windows映像的静态数据/调用指令将该固定调用对应到NtOpenKey、KEY_READ(20019)、`\Registry\MACHINE\Software\Microsoft\Windows\CurrentVersion\SideBySide`，下一步值名PreferExternalManifest；本次在打开键时已失败，不能写成值读取失败或安全软件归因。该键当前保护DACL授予AAP及registryRead读取，没有ARP/本安装包读取。原始日志SHA256=51740B57EA74F1CC7372D6ADD0E2A7B782F6EE8FE86080B74D4235AFEE2DDFB2，证据work/create-process-trace-installed-r7和work/lpac-postcreate-static-r1。
