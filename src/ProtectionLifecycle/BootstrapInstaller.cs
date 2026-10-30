@@ -197,7 +197,8 @@ public static class BootstrapInstaller
             // Installed v3 diagnostic package. Profile interruption is not
             // closure evidence: the unchanged all-Job/quarantine gates below
             // still decide whether any inactive update is admissible.
-            "2896E57A537D998D877170C5D7EE98F3B842DAA899E8CD1688F04E767911A68E"
+            "2896E57A537D998D877170C5D7EE98F3B842DAA899E8CD1688F04E767911A68E",
+            "F1418ECBB01AED35559B440E60BAF37C4E79C3D6133A62F331BB9B40EF062B01"
         };
         private readonly ProtectedState state;
         private readonly BootstrapApproval approval;

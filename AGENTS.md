@@ -1,5 +1,41 @@
 # ClaudeCode-Protection working rules
 
+2026-10-30 trace7 was separately explicitly authorized by the user and human
+UAC confirmed. Actual LPAC worker: native create0, ManifestPreferenceKeyOpen
+at Kernel32+2777C returned C0000022, then ConstructSxs and CreateProcess5.
+Matching fixed-image disassembly identifies NtOpenKey(KEY_READ) of the Windows
+SideBySide key, not a failed value query or AV attribution. Session85620ad6
+root I/O/four denials5 passed; Jobe61d5259 closed/zero, Stop failures empty,
+normal terminal at06:06:36Z. Evidence work/create-process-trace-installed-r7.
+Do not repeat broader or SxS-inner diagnosis without a new question.
+Source now integrates one fixed, non-inheritable current-package KEY_READ
+resource for this OS dependency, zero capabilities/LPAC retained. Original
+owner journals before grant; exact durable closed Job required before DACL
+restoration; drift refuses; pending intents block new sessions/maintenance.
+Explicit installed inspect/recover entries restore only exact recorded grant,
+with closed admissions/full quarantine, no automatic storage recovery. Source
+is not installed; native grant/recovery and tool repair NOT_RUN. Build/review
+the concrete candidate, then request the specific inactive update and one
+resource run that temporarily modifies this single fixed system-key DACL.
+No general registryRead or blanket host ACL grant. See STATUS.
+
+2026-10-30 current-source/evidence audit: branch/remote both e101ad8 at session
+start, but uncommitted local evidence is newer than the historical paragraphs.
+Installed b4194629 trace5 at04:59:52Z captured C0000022/common hub838FB;
+trace6 at05:09:02Z confined the actual LPAC failure to
+BasepConstructSxsCreateProcessMessage returning C0000022 after native create0.
+Session7e6509b8 root I/O/four denials passed; Job528bcd44 closed/zero, stop
+failures empty, normal terminal, no tool success. Original raw evidence stays
+in work/create-process-trace-installed-r5/r6. Do not repeat broader pre-create
+diagnostics or assume a particular inner ACL/capability. Existing trace7 SxS
+internal numeric branches are prepared, ordinary-family syntax only qualified,
+and fresh ordinary held-input preflight passed; protected run NOT_RUN, requires
+its concrete human UAC/one-call and exact new-owner timeout-stop decision.
+See docs/LPAC-TOOL-LAUNCH-NEXT.md and work/create-process-trace7-control/
+qualification.json. No product rebuild/install/runtime in this audit, no
+policy/ACL/capability/daily-network changes. Never-started recovery remains
+valid, LPAC usability and full product acceptance remain open.
+
 2026-10-30 authoritative installedb41946295d334034896319e3a0aeba7c,
 manifestF1418ECBB01AED35559B440E60BAF37C4E79C3D6133A62F331BB9B40EF062B01,
 human UAC04:45:51Z INACTIVE update/read-only inspection completed. Fifteen

@@ -42,6 +42,7 @@ internal sealed class ProtectedSession
     private Preparation? preparation;
     private ProtectionRuntimeLease? runtime;
     private SessionResources? resources;
+    private SessionManifestReadAccess? manifestAccess;
     private ProtectedSession(FixedLayout layout,ProtectedState state,VerifiedVersion version)
     {
         this.layout=layout;this.state=state;this.version=version;
@@ -78,7 +79,7 @@ internal sealed class ProtectedSession
                 owner.admission is not null || owner.preparation is not null || owner.gateway is not null || owner.sid is null ||
                 owner.state.Read("current.json",4096).SHA256!=owner.pointerSHA256 || owner.fences.Count==0 ||
                 owner.fences.Any(f=>!f.Observe().FullQuarantineObserved))throw WfpNative.Contract("OfflineResourceScopeExpiredChangedOrUnconfined");
-            owner.resources.AssertHeld();
+            owner.resources.AssertHeld();owner.manifestAccess?.AssertHeld();
         }
         internal void BeforeCreate(OwnedKernelJob job,VerifiedVersion version)
         {
@@ -123,6 +124,7 @@ internal sealed class ProtectedSession
         ResourceQualification? permit=null;ResourceChildReport? observed=null;Task<uint>? exited=null;Task<string>? text=null;
         ResourceBootstrapFailure? bootstrapFailure=null;
         JobSnapshot? zero=null;RuntimeStop? stopped=null;uint? exit=null;bool resumed=false,toolObserved=false,gitObserved=false,cleanupDeferred=false;
+        bool manifestReadRestored=false;
         var failures=new List<Exception>();
         string? workspaceResultSHA256=null;
         try
@@ -142,6 +144,7 @@ internal sealed class ProtectedSession
             text=SessionResources.ReadBounded(reader);
             child=AtomicChild.CreateResourceQualification(layout,state,version,job,profile,permit,pipe.ClientSafePipeHandle.DangerousGetHandle());
             pipe.DisposeLocalCopyOfClientHandle();
+            manifestAccess=SessionManifestReadAccess.Create(state,version,job,id);
             runtime=new ProtectionRuntimeLease(state,version,job,fences,null,resources:permit);
             _=child.ResumeQuarantined();resumed=true;runtime.Activate(20000);exited=Task.Run(child.WaitForCanaryExit);
             while(!exited.Wait(100))
@@ -218,6 +221,16 @@ internal sealed class ProtectedSession
             }
             else if(job is not null)try{zero=job.AtomicAdmissionReserved?job.CloseAtomicAdmissionAndStop():job.StopAndVerifyZero();}catch(Exception ex){failures.Add(ex);}
             if(profile?.ProcessCreationAttempted==true && zero is not null)try{profile.AfterOwnedJobZero(zero);}catch(Exception ex){failures.Add(ex);}
+            if(manifestAccess is not null)
+            {
+                try
+                {
+                    if(zero is null)throw WfpNative.Contract("ManifestReadRestoreJobZeroMissing");
+                    manifestAccess.RestoreAfterClosedJob(zero);manifestReadRestored=true;
+                }
+                catch(Exception ex){failures.Add(ex);}
+                try{manifestAccess.Dispose();}catch(Exception ex){failures.Add(ex);}
+            }
             if(includeGit && failures.Count==0 && zero?.ObservedZero==true && observed is not null && SessionResources.Qualified(observed))
                 try{workspaceResultSHA256=resources?.PreserveClosedWorkspaceResult(zero);}catch(Exception ex){failures.Add(ex);}
             if(exited is not null)try{exit=exited.WaitAsync(TimeSpan.FromSeconds(2)).GetAwaiter().GetResult();}catch(Exception ex){failures.Add(ex);}
@@ -241,7 +254,7 @@ internal sealed class ProtectedSession
             Status=success?(workspaceInput is not null?"WORKSPACE_DATA_PROCESSED_AND_CLEANED":cleanupDeferred?"OFFLINE_RESOURCE_CLOSED_JOB_CLEANUP_DEFERRED":includeGit?"FIXED_OFFLINE_GIT_TOOLCHAIN_AND_DENIAL_OBSERVED":"FIXED_OFFLINE_WORKSPACE_TOOL_AND_DENIAL_OBSERVED"):"OFFLINE_RESOURCE_SESSION_NOT_CONFIRMED",
             Scope=workspaceInput is not null?"CALLER_BYTE_PINNED_DATA_FIXED_OFFLINE_GIT_ONLY_NO_PROJECT_CODE_EXECUTION":includeGit?"FIXED_OFFLINE_GIT_INIT_ADD_COMMIT_AND_DENIAL_ONLY":"FIXED_PROFILE_WORKSPACE_WINDOWS_POWERSHELL_AND_NON_SECRET_DENIAL_FIXTURE_ONLY",
             Resumed=resumed,ChildExit=exit,Child=observed,ChildBootstrapFailure=bootstrapFailure,InheritedPowerShellIdentityObserved=toolObserved,FinalJob=zero,Stop=stopped,
-            CleanupDeferredForRecovery=cleanupDeferred,
+            CleanupDeferredForRecovery=cleanupDeferred,ManifestReadAccessRestored=manifestReadRestored,
             InheritedGitIdentityObserved=gitObserved,GitAssetSetSHA256=resources?.Plan.GitAssetSetSHA256,
             WorkspaceBaselineSHA256=includeGit && resources is not null?resources.Plan.WorkspaceInputSHA256??ClaudeCodeProtection.Workspaces.WorkspaceBundle.Hash(resources.Plan.FixedProjectBundle):null,
             ClosedWorkspaceResultSHA256=workspaceResultSHA256,

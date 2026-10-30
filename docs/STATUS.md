@@ -1,5 +1,23 @@
 # 当前开发状态
 
+## 最新：已找到实际SideBySide键读取拒绝；最小资源修复已接入源码
+
+VERIFIED（本轮人工授权/UAC诊断）：2026-10-30T06:06:36Z，原安装b4194629的trace7正常终结，未超时/强杀。实际LPAC worker在NtCreateUserProcess=0后，于Kernel32+2777C观察ManifestPreferenceKeyOpen=C0000022，随后ManifestPreference及ConstructSxs传递同码，CreateProcessW=false/5。匹配Windows映像的静态数据/调用指令将该固定调用对应到NtOpenKey、KEY_READ(20019)、`\Registry\MACHINE\Software\Microsoft\Windows\CurrentVersion\SideBySide`，下一步值名PreferExternalManifest；本次在打开键时已失败，不能写成值读取失败或安全软件归因。该键当前保护DACL授予AAP及registryRead读取，没有ARP/本安装包读取。原始日志SHA256=51740B57EA74F1CC7372D6ADD0E2A7B782F6EE8FE86080B74D4235AFEE2DDFB2，证据work/create-process-trace-installed-r7和work/lpac-postcreate-static-r1。
+
+同次session85620ad672374edf93c9ef835eb5cb3e实际根I/O及四项拒绝5仍通过；原Jobe61d5259ec7949e4ba8e4006b15bb0ba封闭/零成员、Stop失败空。没有PowerShell/Git成功或成果，未改日常AV/BFE/FlClash/UU/网络。前文未创建进程Profile恢复的成果保留，整体产品及事故未关闭。
+
+SOURCE / INTEGRATED（尚未安装/原生验证）：SessionManifestReadAccess接入同一ProtectedSession资源所有者。在根已原子绑定原Job且仍挂起时，为当前包SID添加唯一KEY_READ、无继承ACE到上述固定64位系统键，不授registryRead、其他capability、AAP/ARP或管理员权限，不改值/子键。先写保护意图并核对原DACL，运行期核对持有键，精确原Job持久关闭/归零后恢复完整原DACL；漂移不合并、不覆盖，保留恢复记录，阻止后续会话/安装维护。独立显式inspect-manifest-read-access/recover-manifest-read-access沿原InstalledBroker；恢复要求所有准入闭合和完整隔离。六产品非生成语义0错误/警告，BUILD和实际修复效果待限定资格。此修复会授权一个必要Windows依赖键的读取（包括该键自身值和直接子键名称），宿主系统权限变更必须在新工件资格及具体人工UAC授权后执行。
+
+## 2026-10-30续开发核对：实际阻碍已缩小到SxS启动消息构造
+
+VERIFIED（既有安装诊断，非本轮新运行）：本地和fetch后的远端开发分支均为e101ad8603532fb7d448d9fc93bcc46ac4df25c8；此前未纳入提交的work实际证据晚于下方状态。b4194629安装下，04:59:52Z的trace5已观察C0000022及共同错误出口838FB；05:09:02Z的trace6进一步在实际LPAC worker中观察NtCreateUserProcess=0，随后BasepConstructSxsCreateProcessMessage返回C0000022，CreateProcessW=false/5。因此当前应定位SxS构造内部，而非重做早已排除的cwd、令牌QUERY/DUPLICATE、映像执行打开或进程策略试验。尚不能归因某个内部调用、ACL、能力或安全软件。
+
+同次session7e6509b8f7134fca920adb9bf564b676实际工作区I/O及原四项拒绝5通过，原Job528bcd4409d54f6dace6e9084a1a7a69封闭、归零，Stop失败为空；无工具身份/成果或兼容成功。trace5/6均正常终结、未超时、未强杀owner。原始trace6日志SHA256=6DFFABDE21513965CF76093053AAE6B9E058C861021792319FD69E8F4FC71BA4，broker-report SHA256=BBD60BA083D6541F0D91032BD22BADBB142E75F6CA7D617A6518300009ACAAED；位置work/create-process-trace-installed-r5/r6。诊断回执不代替私有存储恢复证明。
+
+SOURCE / 静态复核：本轮仅离线查看当前Windows KernelBase/Kernel32映像及既有匹配符号，核对创建成功到SxS构造失败的分支位置；未运行产品、修改安装或试验性扩权。复用已有work/create-process-trace7-control的固定SxS内部数值分支观测，不另建执行器或重建产品。其普通cmd/where样本仅证明脚本语法和新进程跟踪，不证明LPAC内部失败分支已被覆盖。新一轮持有文件预检通过；plan709283D8、helper0727AE4E、launcher564E8E57（完整摘要见qualification.json及下方操作说明）。具体人工UAC授权尚未取得，实际受保护运行NOT_RUN。
+
+下一操作与范围见[LPAC工具启动下一步](LPAC-TOOL-LAUNCH-NEXT.md)。仅一次原安装Broker固定离线工具链，在同一所有者/Job/LPAC边界记录失败分支；无全局错误入口断点、输入项目代码、网络开放、自动重试或存储恢复。超时仅允许按持有句柄、父进程、创建时刻和固定映像核对后终止这次新建诊断owner；不将强制退出写成Job关闭。此处需要本人具体系统操作决定，不是阶段性代码审查。当前会话未解决LPAC工具可用性；已有未创建进程Profile精确恢复及普通AppContainer数据链成果保留。06:04:32Z普通预检时无产品进程，boot仍02:14:46.5Z，AV/BFE及FlClash/UU进程在运行；未改日常设置。
+
 ## 当前b4194629：未创建进程的遗留资源已实际恢复
 
 VERIFIED（安装/恢复限定）：本人分别授权并确认UAC；04:45:51Z INACTIVE更新到b41946295d334034896319e3a0aeba7c / manifestF1418ECBB01AED35559B440E60BAF37C4E79C3D6133A62F331BB9B40EF062B01。53输入Broker/Lifecycle及56输入Bootstrap均0错误/警告，后者复用库2F7AA08439315E76CCC1C06F5E044E18530BFDF7174808AEAAEF5885052AE191不重建；20文件/10PE/6managed/内嵌清单通过，15安装文件摘要/保护DACL独立匹配。首次只读回执确认唯一profile9888b7a24bd84c5f98be71c82c27988b无进程绑定及旧checkpoint，所有Job闭合。

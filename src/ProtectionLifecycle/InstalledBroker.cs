@@ -109,13 +109,13 @@ public static partial class InstalledBroker
         return(0,JsonSerializer.Serialize(new {SchemaVersion=1,Status="CONFIGURED",PolicySHA256=hash,SystemSettingsModified=false,
             LaunchAuthorized=false,ObservedEnvironmentVerified=false}));
     });
-    private static (int ExitCode,string Report) WithCurrentInstallation(Func<FixedLayout,ProtectedState,VerifiedVersion,(int ExitCode,string Report)> operation,bool forNetworkMigration=false)
+    private static (int ExitCode,string Report) WithCurrentInstallation(Func<FixedLayout,ProtectedState,VerifiedVersion,(int ExitCode,string Report)> operation,bool forNetworkMigration=false,bool forManifestAccessRecovery=false)
     {
         ProtectedState.RequireAdministrator();var layout=FixedLayout.FromWindows();using var state=ProtectedState.OpenExisting(layout);
         var current=CurrentPointer.Parse(state.Read("current.json",4096),state.InstallationId);
         using var version=VerifiedVersion.Open(layout,state,current.Release);
         if(version.Package.ManifestHash!=current.ManifestSHA256)throw WfpNative.Contract("InstalledPointerManifestMismatch");
-        AssertInstalledHost(layout,state,version);LifecycleRecovery.AssertNoPending(state,forNetworkMigration:forNetworkMigration);
+        AssertInstalledHost(layout,state,version);LifecycleRecovery.AssertNoPending(state,forNetworkMigration:forNetworkMigration,forManifestAccessRecovery:forManifestAccessRecovery);
         return operation(layout,state,version);
     }
     // The sole production development-session entry. It deliberately has no
@@ -154,6 +154,8 @@ public static partial class InstalledBroker
     public static (int ExitCode,string Report) RecoverSessionResources()=>WithCurrentInstallation((_,state,_)=>SessionProfileRecovery.RecoverClosed(state));
     public static (int ExitCode,string Report) InspectResourceRecovery()=>WithCurrentInstallation((_,state,_)=>SessionProfileRecovery.InspectRecovery(state));
     public static (int ExitCode,string Report) RecoverUnstartedSessionResources()=>WithCurrentInstallation((_,state,_)=>SessionProfileRecovery.RecoverNeverStarted(state));
+    public static (int ExitCode,string Report) InspectManifestReadAccess()=>WithCurrentInstallation((_,state,_)=>SessionManifestReadAccess.Inspect(state),forManifestAccessRecovery:true);
+    public static (int ExitCode,string Report) RecoverManifestReadAccess()=>WithCurrentInstallation((_,state,_)=>SessionManifestReadAccess.Recover(state),forManifestAccessRecovery:true);
     public static (int ExitCode,string Report) QualifyWatchdog()
     {
         ProtectedSession.AssertSystemTestingAllowed();

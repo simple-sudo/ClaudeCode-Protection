@@ -158,9 +158,10 @@ internal static class LifecycleRecovery
         }
         finally{verified?.Dispose();}
     }
-    internal static void AssertNoPending(ProtectedState state,string? exceptOperation=null,bool forNetworkMigration=false)
+    internal static void AssertNoPending(ProtectedState state,string? exceptOperation=null,bool forNetworkMigration=false,bool forManifestAccessRecovery=false)
     {
         state.AssertHeld();
+        if(!forManifestAccessRecovery)SessionManifestReadAccess.AssertNoPending(state);
         if(!forNetworkMigration)FencePlan.AssertNoPendingMigration(state);
         foreach(var leaf in state.ListLeaves("plan-"))
         {
