@@ -1,6 +1,18 @@
 # 当前开发状态
 
-## 当前安装c37ffe49：LPAC根及收尾通过，工具创建仍拒绝
+## 当前安装041374f6：原生前置权限已查明，工具创建仍拒绝
+
+VERIFIED（限定安装/诊断）：508e0bd的66输入离线构建及普通用户prerequisite-reads/reply通过；d7201fe Bootstrap复用库1C38486129E69FCAC2E0EBB309858B5FDF32CD6C8CCDACA4EB34EC3F1BDDD48C，不重建。20文件/10PE/6managed/内嵌清单通过。2026-10-30T02:39:44Z本人UAC完成INACTIVE更新，release041374f666564e41b2731ad354479c8d，manifest2896E57A537D998D877170C5D7EE98F3B842DAA899E8CD1688F04E767911A68E；15文件摘要/保护DACL及只读意图2/MISSING匹配。
+
+FAIL（工具链）：第二次本人UAC的四文件数据session125ed422eaca40c5a04600ed4a93a9e8仍PowerShellCreateProcess/5，成果为空且保留。实际LPAC自身ChildProcessPolicy=0、ImageLoadPolicy=0，固定映像执行打开error=0；不再把这些前置限制当作未测猜想。同一严格v3管道直接返回管理侧admission closed、quarantine before stop、final Job zero、stop failures0，减少额外读回执UAC；不等同于私有存储清理或本轮四项根拒绝复验。证据work/workspace-diagnostic-control，workflow-result SHA256=A96CFCBAB84F3709FF4437780F355239467D0CCC17CFC01E639F26729DC92C8E。无自动重试/恢复、产品残留或日常UU/FlClash/AV/网络改动。用户已明确02:14:46.5Z为本人正常开机，不记新增蓝屏。
+
+当前未交付LPAC开发工具链。后续定位Windows内部失败位置，避免继续猜测能力或修改宿主权限；原普通AppContainer数据链成果保留。完整隐私/网络/14项准入、授权项目编译测试及GPU未验收，真实Claude延期，原蓝屏事故未结案。以下为历史快照。
+
+VERIFIED（诊断限定，非修复）：两次独立本人授权/UAC的固定工具链调试均保持上述安装字节。首轮session1d82f229被调试器停在自有conhost首次异常，超时后原Broker闭合Job e026c732、零成员/Stop无错误；不能当成新蓝屏或原拒绝归因。修正调试器首次异常处理并保留正常Windows用户目录环境后，session35184e4d52124829b916747140b08288于03:51:34Z正常返回3：实际LPAC工作进程的NtCreateUserProcess返回0，随后CreateProcessW返回false/Win32 5；BasepInitAppCompatData未进入。由此将本轮拒绝限定到原生创建后的封装步骤；具体失败调用及权限仍待定位，不能据此归咎安全软件或宣称修好。实际工作区I/O及四项拒绝5通过，Job403ae92e25984823b46e5d903011b93e闭合/零成员，Stop无错误；无PowerShell/Git身份或结果。证据work/create-process-trace-installed-r1/r2；r2分析SHA256=F9EC03BE495146A42FD24B7EE3637FF60242E6E0AD5DFBC9967819E0E6428EED。无重启/产品残留/日常环境变更。
+
+下一项具体诊断已准备：在相同所有者中只记录固定系统映像的错误转换入口数值和返回地址，以定位创建后的失败分支；固定DLL摘要及运行中PE头双重绑定，普通用户新进程跟踪/预检通过。work/create-process-trace3-control/qualification.json。该额外受保护调用须本人具体决定，不自动重试。普通资格中缺失文件未达到内核创建入口、脚本转义、sx参数及WindowsApps普通目录租约拒绝均保留，修正仅复测对应脚本，没有重复构建产品或放宽系统ACL。
+
+## 历史安装c37ffe49：LPAC根及收尾通过，工具创建仍拒绝
 
 VERIFIED（安装/构建限定）：09e1fc3的55输入离线构建0错误/警告，移除令牌DACL修补及专用夹具；56输入Bootstrap5d1749a复用库0C29B2FBFF1ECDF954A067C19FD37632E093825A16F4B5A6FB589CF5BB2662DB不重建。20文件、10PE/6managed、内嵌清单匹配。人工UAC14:53:00Z安装c37ffe49d87840bfbf50c06131205d10，manifest2A5D02303A96DDDFF17423C7EDAEC67BD94FD5290318E41F77F1BE1B8ED4996C；15文件摘要/保护ACL匹配，INACTIVE，只读意图2/MISSING。证据work/lpac-build-r9、work/lpac-cwd-control。
 

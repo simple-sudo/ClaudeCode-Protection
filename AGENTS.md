@@ -1,14 +1,36 @@
 # ClaudeCode-Protection working rules
 
-Continuation source v3 uses the same daily/Broker pipe for bounded numeric
-creation diagnostics and four owner Stop observations, failure-only, no result
-or cleanup/admission authority. Both endpoints must update in one pinned package;
-do not downgrade schemas or execute before new artifact qualification.
+2026-10-30 authoritative installed041374f666564e41b2731ad354479c8d,
+manifest2896E57A537D998D877170C5D7EE98F3B842DAA899E8CD1688F04E767911A68E,
+human UAC02:39:44Z INACTIVE; 15 hashes/protected DACLs/read-only intent matched.
+508e0bd's 66-input build and ordinary prerequisite-reads/reply passed; d7201fe
+Bootstrap reused exact library1C384861 without rebuilding it. Session
+125ed422eaca40c5a04600ed4a93a9e8 still PowerShellCreateProcess5, empty result.
+Actual LPAC self child/image policies both0 and fixed execute-open0 observed.
+Strict same-pipe v3 returns these numbers and trusted owner Stop observations:
+admission closed, quarantine before stop, final Job zero, stop failures0.
+These do not assert private-storage cleanup or root denial requalification.
+Evidence work/workspace-diagnostic-control; workflow-result SHA256
+A96CFCBAB84F3709FF4437780F355239467D0CCC17CFC01E639F26729DC92C8E.
+No retry/recovery, product remnants or daily UU/FlClash/AV/network changes.
+Two separately human-authorized installed debugger observations are preserved.
+First session1d82f229 timed out at own conhost first-chance AV; Job e026c732
+closed/zero, no stop errors. This is debugger interference, not a new crash or
+the original CreateProcess5. Corrected trace session35184e4d52124829b916747140b08288
+completed03:51:34Z: actual worker NtCreateUserProcess returned0, then
+CreateProcessW returnedfalse/5, without BasepInitAppCompatData entry. Root I/O
+and four denials5 passed; Job403ae92e25984823b46e5d903011b93e closed/zero,
+stop failures empty, no result. Evidence work/create-process-trace-installed-r2,
+analysis SHA256F9EC03BE495146A42FD24B7EE3637FF60242E6E0AD5DFBC9967819E0E6428EED.
+This confines the observed failure to post-native-creation work, not a proven
+specific ACL/capability or responsible component. Do not retry unchanged or
+loosen policy. A fixed numeric error-setter observation is prepared separately;
+new protected/live-debug operations require their concrete human decision.
 Keep synchronization commitd2407eb. The user explicitly confirms boot
 2026-10-30T02:14:46.5Z was their own normal manual operation, not a new crash.
 Use a fresh runtime baseline; retain all older evidence and safety boundaries.
 
-2026-10-29 authoritative installedc37ffe49d87840bfbf50c06131205d10,
+Historical 2026-10-29 installedc37ffe49d87840bfbf50c06131205d10,
 manifest2A5D02303A96DDDFF17423C7EDAEC67BD94FD5290318E41F77F1BE1B8ED4996C,
 human UAC14:53:00Z INACTIVE; 15 files/ACLs/read-only intent matched.
 Sessionc29aed3e57c1455ba7ae5f5ed839d7ce still native CreateProcess5.
