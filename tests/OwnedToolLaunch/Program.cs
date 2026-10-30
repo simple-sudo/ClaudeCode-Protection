@@ -8,6 +8,8 @@ using System.Runtime.InteropServices;
 using Microsoft.Win32.SafeHandles;
 
 if(args.Length!=1 || args[0] is not ("policy" or "messages" or "handle-transfer" or "fault-mode" or "fault-mode-read" or "partial-output" or "hosted-policy"))return 125;
+try
+{
 using var identity=WindowsIdentity.GetCurrent();
 if(new WindowsPrincipal(identity).IsInRole(WindowsBuiltInRole.Administrator))throw new InvalidOperationException("Ordinary qualification only");
 var library=Assembly.LoadFrom(Path.Combine(AppContext.BaseDirectory,"ProtectionLifecycle.dll"));
@@ -192,3 +194,8 @@ Console.WriteLine("PASS production bounded report-pipe parser separates tool req
 [DllImport("kernel32.dll",SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)] static extern bool CreatePipe(out SafeFileHandle read,out SafeFileHandle write,IntPtr attributes,uint size);
 [DllImport("ntdll.dll")] static extern int NtQueryObject(SafeProcessHandle handle,int information,IntPtr buffer,int length,out int needed);
 [DllImport("kernel32.dll",SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)] static extern bool GetHandleInformation(IntPtr handle,out uint flags);
+}
+catch(Exception error)
+{
+    Console.Error.WriteLine(error);return 3;
+}
