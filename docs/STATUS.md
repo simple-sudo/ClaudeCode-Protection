@@ -1,5 +1,10 @@
 # 当前开发状态
 
+## 已构建待系统授权：PowerShell7固定工具与自有C#编译执行
+
+BUILD / 普通限定VERIFIED：source05d7fcf+a826cf9、embed3ec798e，59输入Broker/Library和60输入Bootstrap构建通过，Bootstrap未重建资格库999ED4B8；20文件/10PE/6managed/内嵌manifest匹配。官方PowerShell7.4.22完整552文件固定，383PE/366managed无模块初始化器、host有效Microsoft签名；生产工厂固定脚本在普通自有样本实测工作区读写、ACL拒绝、C#编译及加载运行7+5=12，实际coreclr8.0.28、退出0、无输出/强停。普通固定策略/消息/句柄掩码101000/三方向管道均通过。正常路径不再授予SideBySide读取；旧意图恢复保留。证据work/powershell7-build-r2/qualification.json、work/portable-powershell-r1/runtime-result-r4.json；不是LPAC成功。
+
+候选df6ff338081b43e4ac4691598c108f71/manifest9239BB32，安装plan6FA9CFFD/helper66334ECD；运行plan42945C1A/helperDE7D77B1。具体范围及完整摘要见LPAC-TOOL-LAUNCH-NEXT.md：只新建固定公共官方工具目录并INACTIVE更新/只读检查，随后一轮原Broker严格LPAC PowerShell/Git/自有C#编译执行。两次本人UAC尚未授权或执行；两个严格预检实际返回、未知参数拒绝，无新工具目录/claim。40秒原任务，异常只结束本次确切新owner、不自动恢复或重试。当前589f8b3c仍INACTIVE。
 ## 原Broker创建已实测通过；PowerShell旧运行时初始化仍失败
 
 VERIFIED / FAIL：本人授权的一次589f8b3c固定运行07:31:02Z结束，sessioneb3df4b36d354ad694833128f01b330a。PowerShell进程已由原Broker创建，在恢复前通过实际LPAC/零能力包、精确镜像、原Job、进程线程封装检查，并成功向原根转移有限句柄；越过旧CreateProcess5/14001。PowerShell自身退出-327680/FFFB0000，未到READY，Git未运行，未导出成果。输出仅留摘要6DF52D36，不猜具体缺失注册表或CLR组件。原根I/O/四项拒绝5、单键独立精确恢复和Job7c7d164c关闭归零通过，Stop无失败、无强杀，日常服务/boot不变。证据work/owned-tool-control/run-evidence，报告7E7C0A042169215AE6700888E8CD7F3921537B0852B120151927AF3A82653D25；不重复不变调用。
