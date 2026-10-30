@@ -50,7 +50,7 @@ internal sealed record ResourceProbePlan(int SchemaVersion,string Nonce,string I
 }
 internal sealed record ResourceAccessCase(string Role,string Status,int? Error);
 internal sealed record ResourceChildReport(int SchemaVersion,int Pid,string Nonce,bool WorkspaceWriteReadMatched,int? ToolExit,
-    ResourceAccessCase[] Cases,string? FailureType,int? FailureCode,string? FailureStage,string? ToolDiagnostic,GitToolchainReport? Git,ToolCreationEvidence? CreationEvidence=null);
+    ResourceAccessCase[] Cases,string? FailureType,int? FailureCode,string? FailureStage,string? ToolDiagnostic,GitToolchainReport? Git,ToolCreationEvidence? CreationEvidence=null,bool OwnedCompilationObserved=false);
 
 // The workspace belongs to the freshly created installation profile. No host
 // directory ACL is widened, adopted, recursively copied or deleted. It is task
@@ -152,6 +152,13 @@ internal sealed class SessionResources : IDisposable
             if(output.Length!=Plan.Input.Length || Convert.ToHexString(SHA256.HashData(output))!=Convert.ToHexString(SHA256.HashData(Plan.Input)))
                 throw WfpNative.Contract("SessionWorkspaceOutputMismatch");
         }
+        using(var built=new FileStream(WindowsPathSeal.Open(WindowsPathSeal.Child(Workspace,"owned-build-result.txt"),false,true),FileAccess.Read,4096,false))
+        {
+            var bytes=new byte[2];if(built.Length!=2)throw WfpNative.Contract("OwnedCompilationResultBounds");built.ReadExactly(bytes);
+            if(!bytes.AsSpan().SequenceEqual("12"u8))throw WfpNative.Contract("OwnedCompilationResultMismatch");
+        }
+        using(var assembly=new FileStream(WindowsPathSeal.Open(WindowsPathSeal.Child(Workspace,"owned-build.dll"),false,true),FileAccess.Read,4096,false))
+            if(assembly.Length is <512 or >1024*1024)throw WfpNative.Contract("OwnedCompilationArtifactBounds");
         if(git is not null)SessionGitToolchain.AssertRepository(Workspace,Plan,observed.Git??throw WfpNative.Contract("GitOutputEvidenceMissing"));
     }
     internal void PreserveGitFailure()
@@ -231,7 +238,7 @@ internal sealed class SessionResources : IDisposable
         if(sid.Value!=packageSid || Environment.GetEnvironmentVariable("CPC_NETWORK_PLAN") is not null ||
             Environment.GetEnvironmentVariable("CPC_GPU_PLAN") is not null || Environment.GetEnvironmentVariable("CPC_SESSION_ID") is not null ||
             !string.Equals(Environment.ProcessPath,plan.ExpectedChildImage,StringComparison.OrdinalIgnoreCase))throw WfpNative.Contract("ResourceChildPlanIdentityMismatch");
-        var workspace=plan.Workspace(packageSid);var cases=new List<ResourceAccessCase>();bool matched=false;int? toolExit=null;string? failure=null;
+        var workspace=plan.Workspace(packageSid);var cases=new List<ResourceAccessCase>();bool matched=false,compiled=false;int? toolExit=null;string? failure=null;
         string stage="READ_WORKSPACE_INPUT";int? failureCode=null;string? failureStage=null;string? toolDiagnostic=null;GitToolchainReport? gitReport=null;ToolCreationEvidence? creationEvidence=null;
         try
         {
@@ -282,10 +289,14 @@ internal sealed class SessionResources : IDisposable
             {
                 var diagnostic=toolError.Trim();
                 toolDiagnostic=System.Text.RegularExpressions.Regex.IsMatch(diagnostic,
-                    @"\ACPC_TOOL_FAILURE\|(READY|WAIT_OWNER|READ_OWNER_GATE|WORKSPACE_IO|DENY_PRIVATE_FIXTURE)\|[A-Za-z0-9.]{1,80}\|-?[0-9]{1,12}\z")?
+                    @"\ACPC_TOOL_FAILURE\|(READY|WAIT_OWNER|READ_OWNER_GATE|WORKSPACE_IO|DENY_PRIVATE_FIXTURE|COMPILE_OWNED_SAMPLE)\|[A-Za-z0-9.]{1,80}\|-?[0-9]{1,12}\z")?
                     diagnostic:"UNCLASSIFIED_OUTPUT_SHA256="+Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(toolOut+"\0"+toolError)));
                 throw WfpNative.Contract("FixedToolUnexpectedOutput");
             }
+            stage="VERIFY_OWNED_COMPILATION_RESULT";
+            if(toolExit!=0 || !ReadSmall(WindowsPathSeal.Child(workspace,"owned-build-result.txt")).AsSpan().SequenceEqual("12"u8))
+                throw WfpNative.Contract("OwnedCompilationResultNotConfirmed");
+            compiled=true;
             if(plan.GitAssetSetSHA256 is not null)
             {stage="FIXED_OFFLINE_GIT_TOOLCHAIN";gitReport=SessionGitToolchain.RunChild(plan,workspace);if(!SessionGitToolchain.Qualified(gitReport))throw WfpNative.Contract("FixedGitToolchainNotQualified");}
         }
@@ -302,12 +313,12 @@ internal sealed class SessionResources : IDisposable
             }
             failureStage=stage+(ex.Data["Stage"] is string nativeStage?"/"+nativeStage:"");
         }
-        var report=new ResourceChildReport(1,Environment.ProcessId,plan.Nonce,matched,toolExit,cases.ToArray(),failure,failureCode,failureStage,toolDiagnostic,gitReport,creationEvidence);
+        var report=new ResourceChildReport(1,Environment.ProcessId,plan.Nonce,matched,toolExit,cases.ToArray(),failure,failureCode,failureStage,toolDiagnostic,gitReport,creationEvidence,compiled);
         Console.WriteLine(JsonSerializer.Serialize(report));return Qualified(report)?0:3;
     }
     internal static ProcessStartInfo PowerShellStart(ResourceProbePlan plan,string workspace)
     {
-            const string script="$ErrorActionPreference='Stop';$stage='READY';try{[IO.File]::WriteAllText('tool-ready.txt',$env:CPC_RESOURCE_NONCE);[IO.File]::WriteAllText('tool-ready.signal','');$stage='WAIT_OWNER';$until=[DateTime]::UtcNow.AddSeconds(8);while(![IO.File]::Exists('tool-go.signal')){if([DateTime]::UtcNow -ge $until){exit 24};[Threading.Thread]::Sleep(20)};$stage='READ_OWNER_GATE';if([IO.File]::ReadAllText('tool-go.txt') -cne $env:CPC_RESOURCE_NONCE){exit 25};$stage='WORKSPACE_IO';$v=[IO.File]::ReadAllText('input.txt');[IO.File]::WriteAllText('tool-output.txt',$v);$stage='DENY_PRIVATE_FIXTURE';foreach($fixture in @($env:CPC_DENIAL_FIXTURE,$env:CPC_LPAC_FIXTURE)){$denied=$false;try{$f=[IO.File]::OpenRead($fixture);$f.Dispose()}catch{if($_.Exception -is [UnauthorizedAccessException] -or $_.Exception.InnerException -is [UnauthorizedAccessException]){$denied=$true}else{exit 22}};if(!$denied){exit 23}};exit 0}catch{$e=$_.Exception.GetBaseException();[Console]::Error.WriteLine('CPC_TOOL_FAILURE|'+$stage+'|'+$e.GetType().Name+'|'+$e.HResult);exit 26}";
+            const string script="$ErrorActionPreference='Stop';$stage='READY';try{[IO.File]::WriteAllText('tool-ready.txt',$env:CPC_RESOURCE_NONCE);[IO.File]::WriteAllText('tool-ready.signal','');$stage='WAIT_OWNER';$until=[DateTime]::UtcNow.AddSeconds(8);while(![IO.File]::Exists('tool-go.signal')){if([DateTime]::UtcNow -ge $until){exit 24};[Threading.Thread]::Sleep(20)};$stage='READ_OWNER_GATE';if([IO.File]::ReadAllText('tool-go.txt') -cne $env:CPC_RESOURCE_NONCE){exit 25};$stage='WORKSPACE_IO';$v=[IO.File]::ReadAllText('input.txt');[IO.File]::WriteAllText('tool-output.txt',$v);$stage='COMPILE_OWNED_SAMPLE';Add-Type -TypeDefinition 'public static class CpcOwnedBuildProbe{public static int Sum(int a,int b){return checked(a+b);}}' -OutputAssembly 'owned-build.dll' -OutputType Library -ErrorAction Stop;Add-Type -Path ([IO.Path]::GetFullPath('owned-build.dll')) -ErrorAction Stop;if([CpcOwnedBuildProbe]::Sum(7,5) -ne 12){exit 27};[IO.File]::WriteAllText('owned-build-result.txt','12');$stage='DENY_PRIVATE_FIXTURE';foreach($fixture in @($env:CPC_DENIAL_FIXTURE,$env:CPC_LPAC_FIXTURE)){$denied=$false;try{$f=[IO.File]::OpenRead($fixture);$f.Dispose()}catch{if($_.Exception -is [UnauthorizedAccessException] -or $_.Exception.InnerException -is [UnauthorizedAccessException]){$denied=$true}else{exit 22}};if(!$denied){exit 23}};exit 0}catch{$e=$_.Exception.GetBaseException();[Console]::Error.WriteLine('CPC_TOOL_FAILURE|'+$stage+'|'+$e.GetType().Name+'|'+$e.HResult);exit 26}";
             var start=new ProcessStartInfo(plan.PowerShellToolPath){UseShellExecute=false,CreateNoWindow=true,WorkingDirectory=workspace,RedirectStandardInput=true,RedirectStandardOutput=true,RedirectStandardError=true};
             start.Environment.Clear();
             foreach(var name in new[]{"SystemRoot","windir","SystemDrive","PROCESSOR_ARCHITECTURE"})
@@ -337,7 +348,7 @@ internal sealed class SessionResources : IDisposable
         return methods.Contains("CreatePipeWithSecurityAttributes")?"CREATE_REDIRECT_PIPE":methods.Contains("CreatePipe")?"DUPLICATE_REDIRECT_HANDLE":
             methods.Contains("StartWithCreateProcess")?"CREATE_PROCESS":"START_UNCLASSIFIED";
     }
-    internal static bool Qualified(ResourceChildReport report)=>report.SchemaVersion==1 && report.WorkspaceWriteReadMatched && report.ToolExit==0 && report.FailureType is null && report.FailureCode is null && report.FailureStage is null && report.ToolDiagnostic is null &&
+    internal static bool Qualified(ResourceChildReport report)=>report.SchemaVersion==1 && report.WorkspaceWriteReadMatched && report.ToolExit==0 && report.OwnedCompilationObserved && report.FailureType is null && report.FailureCode is null && report.FailureStage is null && report.ToolDiagnostic is null &&
         (report.Git is null || SessionGitToolchain.Qualified(report.Git)) && report.Cases.Length==4 && report.Cases.Select(c=>c.Role).SequenceEqual(new[]{"private-state-Read","private-state-Write","all-packages-only-Read","broker-vm-read-open"}) &&
         report.Cases.All(c=>c.Status=="ACCESS_DENIED" && c.Error==5);
     internal static async Task<string> ReadBounded(StreamReader reader)
