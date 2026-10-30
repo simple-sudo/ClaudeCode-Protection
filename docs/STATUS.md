@@ -12,6 +12,8 @@ SOURCE / INTEGRATED（待新工件资格）：同一AtomicChild的工具启动�
 
 SOURCE补充：同一daily/Broker管道v3把上述诊断及管理侧Stop的四项观察直接返回普通用户；严格数值/字段/会话校验，成功不得夹带失败诊断，失败仍无成果。停止观察不代替私有文件清理/恢复凭据。新源码已由同步提交d2407eb保存，保留该提交；本次仅修正新测试的比较表达式并资格化。2026-10-30T02:14:46.5Z启动已由用户明确说明是本人正常手动操作，不记作新增蓝屏；后续运行采用本次启动的独立基线。
 
+BUILD / VERIFIED（普通用户限定）：508e0bd的66输入离线构建0错误/警告；工件新增原生面仅GetProcessMitigationPolicy，daily及IPC测试原生面未变，无module initializer。新库1C38486129E69FCAC2E0EBB309858B5FDF32CD6C8CCDACA4EB34EC3F1BDDD48C。prerequisite-reads和reply均退出0：自身两个策略查询及固定系统映像执行打开、缺失映像错误保留；v3数值/未知值/会话绑定/畸形消息及无失败成果/无清理授权通过。未启动产品、IPC、Job/profile或提升，不能代替LPAC运行。证据work/workspace-diagnostic-build-r1，待独立打包/安装资格。
+
 本轮未交付可用LPAC开发工具链；原普通AppContainer数据链的限定成果仍保留。完整宿主隐私/网络/14项、实际授权项目编译测试、GPU及正式Claude仍未验收，事故亦未结案。下方“当前”均历史快照。
 
 ## 最新：4fe9da3d已安装，LPAC阻碍定位到工具前的路径准备
