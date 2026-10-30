@@ -185,10 +185,21 @@ internal sealed class SessionEtwProviderAccess : IDisposable
     private static string? StoredValueHash()
     {
         using var root=RegistryKey.OpenBaseKey(RegistryHive.LocalMachine,RegistryView.Registry64);
-        using var key=root.OpenSubKey(@"SYSTEM\CurrentControlSet\Control\WMI\Security",false);
-        var value=key?.GetValue("{"+ProviderId+"}",null,RegistryValueOptions.DoNotExpandEnvironmentNames);if(value is null)return null;
-        if(value is not byte[] bytes || bytes.Length is <20 or >65536)throw WfpNative.Contract("EtwStoredSecurityValueShapeUntrusted");
-        return Convert.ToHexString(SHA256.HashData(bytes));
+        using var key=root.OpenSubKey(@"SYSTEM\CurrentControlSet\Control\WMI\Security",false)
+            ??throw WfpNative.Contract("EtwSecurityStorageParentMissing");
+        // No enumeration of other providers. Refuse any existing representation
+        // of THIS GUID, rather than assuming one registry name convention.
+        string? observed=null;
+        foreach(var format in new[]{"B","D","N","P"})
+        {
+            var name=new Guid(ProviderId).ToString(format);
+            var value=key.GetValue(name,null,RegistryValueOptions.DoNotExpandEnvironmentNames);if(value is null)continue;
+            if(observed is not null || value is not byte[] bytes || bytes.Length is <20 or >65536 || key.GetValueKind(name)!=RegistryValueKind.Binary)
+                throw WfpNative.Contract("EtwStoredSecurityValueShapeUntrusted");
+            var prefix=System.Text.Encoding.ASCII.GetBytes(name+"\0");
+            observed=Convert.ToHexString(SHA256.HashData(prefix.Concat(bytes).ToArray()));
+        }
+        return observed;
     }
     private static Win32Exception Native(string stage,uint code){var error=new Win32Exception(unchecked((int)code));error.Data["Stage"]=stage;return error;}
     [DllImport("advapi32.dll",ExactSpelling=true)] private static extern uint EventAccessQuery(ref Guid provider,[Out] byte[]? buffer,ref uint length);
