@@ -1,5 +1,7 @@
 # ClaudeCode-Protection working rules
 
+SOURCE：已有workspace-process的数据/Git路径不再以PowerShell自测为前置。仅由已验证的非空工作区输入SHA派生Git数据范围（不新增CLI或协议字段）；原Broker/Job/LPAC、五拒绝、固定Git参数/环境、独立Git仓库核对、闭合快照/精确清理/权威成功后导出保持。该范围明确拒绝PowerShell请求、不持有或读取其资产/GPO、不声称编译或PowerShell身份；无输入的工具资格仍必须实际PowerShell+编译。新B23D先前包pin仍经所有Job/隔离守卫。新增纯策略负例覆盖数据范围拒绝PS、保留Git固定请求。SOURCE语义通过；构建/实机尚待，不把此代码改动当LPAC Git成功。
+
 SOURCE：本轮0800单独授权未修复启动，默认资源路径已撤下自动ETW授予；类收束为旧journal只读检查/显式恢复，删除新的EventAccessControl导入和创建工厂，保留Pending阻断及原闭合Job/隔离/漂移守卫。六产品非生成语义0错误0警告，尚未构建或安装此退役版本；实际安装仍7ffea33b/3B7105C7。不得把默认路径将不再改权限当作PowerShell修复。
 
 2026-10-30 authoritative actual installed7ffea33b977c4db1ae0c6b322bfc25ba,

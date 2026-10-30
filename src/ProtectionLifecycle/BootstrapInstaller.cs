@@ -204,7 +204,10 @@ public static class BootstrapInstaller
             "164AD85F444447B6683370309FA2EDCE2A5D000A62037FD39B1CB5FE227D04C4",
             "9239BB32E9822030B19E70E8B983CC28D89B987115EF028E733F921B56101247",
             "D2CABD45BCF2965F8BC982669C0478958B80CD5F22807CCB76134DE8B0626AE8",
-            "6AAE651E3AFA2D592E02F70A8097048EFA7106F563FD96A766AD1A5208F2E0DA"
+            "6AAE651E3AFA2D592E02F70A8097048EFA7106F563FD96A766AD1A5208F2E0DA",
+            // Installed trial: exact ETW restore and closed-zero Job verified;
+            // tool compatibility failed. Existing all-Job/fence gates remain.
+            "B23DDA0D2833F427A042CB5081A345DEA8EBBDAABFDD5E0FAA0DA155794B96AD"
         };
         private readonly ProtectedState state;
         private readonly BootstrapApproval approval;

@@ -29,6 +29,9 @@ internal sealed record ResourceProbePlan(int SchemaVersion,string Nonce,string I
     internal string PowerShellDirectory=>SessionPowerShellToolchain.DirectoryFor(ProgramFilesRoot);
     internal string PowerShellToolPath=>SessionPowerShellToolchain.ToolFor(ProgramFilesRoot);
     internal string PowerShellLaunchImage=>ExpectedChildImage;
+    // Explicit workspace bytes authorize fixed Git data processing only.
+    // General tool qualification must still prove PowerShell and compilation.
+    internal bool RequiresPowerShell=>WorkspaceInputSHA256 is null;
     internal string Workspace(string sid)=>GitAssetSetSHA256 is null?WindowsPathSeal.Child(SessionResources.ProfileFolder(sid),"workspace-"+Nonce):WindowsPathSeal.Child(ProgramFilesRoot,"ClaudeCodeProtection-Task-"+Nonce);
     internal byte[] Input=>Encoding.UTF8.GetBytes("CPC-RESOURCE:"+Nonce);
     // Same data transfer contract as daily workspace-pack, without importing
@@ -61,18 +64,18 @@ internal sealed class SessionResources : IDisposable
     private readonly ProtectedState state;
     private readonly PathLease folder;
     private readonly FileStream input,allPackagesFixture;
-    private readonly SessionPowerShellToolchain tool;
+    private readonly SessionPowerShellToolchain? tool;
     private readonly SessionGitToolchain? git;
     private readonly FileStream? projectInput;
     internal ResourceProbePlan Plan {get;}
     internal string Workspace=>folder.Path;
-    private SessionResources(ProtectedState state,PathLease folder,FileStream input,SessionPowerShellToolchain tool,ResourceProbePlan plan,SessionGitToolchain? git,FileStream? projectInput,FileStream allPackagesFixture)
+    private SessionResources(ProtectedState state,PathLease folder,FileStream input,SessionPowerShellToolchain? tool,ResourceProbePlan plan,SessionGitToolchain? git,FileStream? projectInput,FileStream allPackagesFixture)
     {this.state=state;this.folder=folder;this.input=input;this.tool=tool;Plan=plan;this.git=git;this.projectInput=projectInput;this.allPackagesFixture=allPackagesFixture;}
     internal static SessionResources Create(ProtectedState state,VerifiedVersion version,InstallationProfileLease profile,string nonce,bool includeGit=false,byte[]? workspaceInput=null)
     {
         state.AssertHeld();version.AssertHeld(state);
         using var sid=new InstallationPackageSid(state);profile.AssertPackage(sid);
-        var tool=SessionPowerShellToolchain.Open();
+        var tool=workspaceInput is null?SessionPowerShellToolchain.Open():null;
         PathLease? directory=null;FileStream? input=null,projectInput=null,allPackagesFixture=null;SessionGitToolchain? git=null;
         try
         {
@@ -129,15 +132,18 @@ internal sealed class SessionResources : IDisposable
             _=state.Read("resource-fixture-"+nonce+".json",4096);
             return new(state,directory,input,tool,plan,git,projectInput,allPackagesFixture);
         }
-        catch{allPackagesFixture?.Dispose();projectInput?.Dispose();git?.Dispose();input?.Dispose();directory?.Dispose();tool.Dispose();throw;}
+        catch{allPackagesFixture?.Dispose();projectInput?.Dispose();git?.Dispose();input?.Dispose();directory?.Dispose();tool?.Dispose();throw;}
     }
     internal void AssertHeld()
     {
         state.AssertHeld();folder.AssertHeld();
         if(input.SafeFileHandle.IsClosed)throw WfpNative.Contract("SessionResourceLeaseLost");
         WindowsPathSeal.VerifyObject(input.SafeFileHandle,WindowsPathSeal.Child(Workspace,"input.txt"),false);
-        tool.AssertHeld();
-        PowerShellPolicySnapshot.AssertActuallyAbsent();
+        if(Plan.RequiresPowerShell)
+        {
+            if(tool is null)throw WfpNative.Contract("PowerShellAssetLeaseRequired");
+            tool.AssertHeld();PowerShellPolicySnapshot.AssertActuallyAbsent();
+        }
         git?.AssertHeld();
         if(allPackagesFixture.SafeFileHandle.IsClosed)throw WfpNative.Contract("AllPackagesFixtureLeaseLost");
         WindowsPathSeal.VerifyObject(allPackagesFixture.SafeFileHandle,WindowsPathSeal.Child(Workspace,"all-packages-only.json"),false);
@@ -147,20 +153,23 @@ internal sealed class SessionResources : IDisposable
     internal void AssertOutput(ResourceChildReport observed)
     {
         AssertHeld();
-        foreach(var name in new[]{"root-output.txt","tool-output.txt"})
+        foreach(var name in Plan.RequiresPowerShell?new[]{"root-output.txt","tool-output.txt"}:new[]{"root-output.txt"})
         {
             using var handle=WindowsPathSeal.Open(WindowsPathSeal.Child(Workspace,name),false,true);
             using var output=new FileStream(handle,FileAccess.Read,4096,false);
             if(output.Length!=Plan.Input.Length || Convert.ToHexString(SHA256.HashData(output))!=Convert.ToHexString(SHA256.HashData(Plan.Input)))
                 throw WfpNative.Contract("SessionWorkspaceOutputMismatch");
         }
-        using(var built=new FileStream(WindowsPathSeal.Open(WindowsPathSeal.Child(Workspace,"owned-build-result.txt"),false,true),FileAccess.Read,4096,false))
+        if(Plan.RequiresPowerShell)
         {
-            var bytes=new byte[2];if(built.Length!=2)throw WfpNative.Contract("OwnedCompilationResultBounds");built.ReadExactly(bytes);
-            if(!bytes.AsSpan().SequenceEqual("12"u8))throw WfpNative.Contract("OwnedCompilationResultMismatch");
+            using(var built=new FileStream(WindowsPathSeal.Open(WindowsPathSeal.Child(Workspace,"owned-build-result.txt"),false,true),FileAccess.Read,4096,false))
+            {
+                var bytes=new byte[2];if(built.Length!=2)throw WfpNative.Contract("OwnedCompilationResultBounds");built.ReadExactly(bytes);
+                if(!bytes.AsSpan().SequenceEqual("12"u8))throw WfpNative.Contract("OwnedCompilationResultMismatch");
+            }
+            using(var assembly=new FileStream(WindowsPathSeal.Open(WindowsPathSeal.Child(Workspace,"owned-build.dll"),false,true),FileAccess.Read,4096,false))
+                if(assembly.Length is <512 or >1024*1024)throw WfpNative.Contract("OwnedCompilationArtifactBounds");
         }
-        using(var assembly=new FileStream(WindowsPathSeal.Open(WindowsPathSeal.Child(Workspace,"owned-build.dll"),false,true),FileAccess.Read,4096,false))
-            if(assembly.Length is <512 or >1024*1024)throw WfpNative.Contract("OwnedCompilationArtifactBounds");
         if(git is not null)SessionGitToolchain.AssertRepository(Workspace,Plan,observed.Git??throw WfpNative.Contract("GitOutputEvidenceMissing"));
     }
     internal void PreserveGitFailure()
@@ -194,7 +203,7 @@ internal sealed class SessionResources : IDisposable
         // large project output needs owned data storage, not a widened ledger.
         return Plan.WorkspaceInputSHA256 is null?state.WriteNew("workspace-result-"+Plan.Nonce+".json",bytes):state.StoreWorkspaceData(Plan.Nonce,true,bytes);
     }
-    internal bool ToolReady()=>Ready("tool-ready");
+    internal bool ToolReady()=>Plan.RequiresPowerShell && Ready("tool-ready");
     internal bool GitReady()=>git is not null && Ready("git-ready");
     private bool Ready(string stem)
     {
@@ -284,35 +293,38 @@ internal sealed class SessionResources : IDisposable
             stage="VERIFY_FIXED_TOOL_BYTES";
             using(var tool=File.OpenRead(plan.PowerShellLaunchImage))
                 if(Convert.ToHexString(SHA256.HashData(tool))!=plan.ToolSHA256)throw WfpNative.Contract("FixedToolBytesChanged");
-            var start=PowerShellStart(plan,workspace);
-            stage="START_FIXED_POWERSHELL";
-            using var process=AtomicChild.StartInheritedTool(start);creationEvidence=process.CreationEvidence;process.StandardInput.Close();
-            var outputCapture=new ToolOutputCapture(process.StandardOutput);var errorCapture=new ToolOutputCapture(process.StandardError);
-            var stdout=outputCapture.Completion;var stderr=errorCapture.Completion;
-            stage="WAIT_FIXED_POWERSHELL";
-            if(!process.WaitForExit(10000))
+            if(plan.RequiresPowerShell)
             {
-                var partialOut=outputCapture.Snapshot();var partialError=errorCapture.Snapshot();
-                toolDiagnostic=ToolOutputCapture.Classify(partialOut,partialError);
-                SaveToolFailure(workspace,partialOut,partialError,"TIMEOUT_PARTIAL_PIPE_SNAPSHOT");
-                throw new TimeoutException("Fixed offline tool deadline");
+                var start=PowerShellStart(plan,workspace);
+                stage="START_FIXED_POWERSHELL";
+                using var process=AtomicChild.StartInheritedTool(start);creationEvidence=process.CreationEvidence;process.StandardInput.Close();
+                var outputCapture=new ToolOutputCapture(process.StandardOutput);var errorCapture=new ToolOutputCapture(process.StandardError);
+                var stdout=outputCapture.Completion;var stderr=errorCapture.Completion;
+                stage="WAIT_FIXED_POWERSHELL";
+                if(!process.WaitForExit(10000))
+                {
+                    var partialOut=outputCapture.Snapshot();var partialError=errorCapture.Snapshot();
+                    toolDiagnostic=ToolOutputCapture.Classify(partialOut,partialError);
+                    SaveToolFailure(workspace,partialOut,partialError,"TIMEOUT_PARTIAL_PIPE_SNAPSHOT");
+                    throw new TimeoutException("Fixed offline tool deadline");
+                }
+                toolExit=process.ExitCode;
+                var toolOut=stdout.WaitAsync(TimeSpan.FromSeconds(1)).GetAwaiter().GetResult();
+                var toolError=stderr.WaitAsync(TimeSpan.FromSeconds(1)).GetAwaiter().GetResult();
+                if(toolOut.Length!=0 || toolError.Length!=0)
+                {
+                    var diagnostic=toolError.Trim();
+                    toolDiagnostic=System.Text.RegularExpressions.Regex.IsMatch(diagnostic,
+                        @"\ACPC_TOOL_FAILURE\|(READY|WAIT_OWNER|READ_OWNER_GATE|WORKSPACE_IO|DENY_PRIVATE_FIXTURE|COMPILE_OWNED_SAMPLE)\|[A-Za-z0-9.]{1,80}\|-?[0-9]{1,12}\z")?
+                        diagnostic:ToolOutputCapture.Classify(toolOut,toolError);
+                    SaveToolFailure(workspace,toolOut,toolError,"EXITED_UNEXPECTED_OUTPUT");
+                    throw WfpNative.Contract("FixedToolUnexpectedOutput");
+                }
+                stage="VERIFY_OWNED_COMPILATION_RESULT";
+                if(toolExit!=0 || !ReadSmall(WindowsPathSeal.Child(workspace,"owned-build-result.txt")).AsSpan().SequenceEqual("12"u8))
+                    throw WfpNative.Contract("OwnedCompilationResultNotConfirmed");
+                compiled=true;
             }
-            toolExit=process.ExitCode;
-            var toolOut=stdout.WaitAsync(TimeSpan.FromSeconds(1)).GetAwaiter().GetResult();
-            var toolError=stderr.WaitAsync(TimeSpan.FromSeconds(1)).GetAwaiter().GetResult();
-            if(toolOut.Length!=0 || toolError.Length!=0)
-            {
-                var diagnostic=toolError.Trim();
-                toolDiagnostic=System.Text.RegularExpressions.Regex.IsMatch(diagnostic,
-                    @"\ACPC_TOOL_FAILURE\|(READY|WAIT_OWNER|READ_OWNER_GATE|WORKSPACE_IO|DENY_PRIVATE_FIXTURE|COMPILE_OWNED_SAMPLE)\|[A-Za-z0-9.]{1,80}\|-?[0-9]{1,12}\z")?
-                    diagnostic:ToolOutputCapture.Classify(toolOut,toolError);
-                SaveToolFailure(workspace,toolOut,toolError,"EXITED_UNEXPECTED_OUTPUT");
-                throw WfpNative.Contract("FixedToolUnexpectedOutput");
-            }
-            stage="VERIFY_OWNED_COMPILATION_RESULT";
-            if(toolExit!=0 || !ReadSmall(WindowsPathSeal.Child(workspace,"owned-build-result.txt")).AsSpan().SequenceEqual("12"u8))
-                throw WfpNative.Contract("OwnedCompilationResultNotConfirmed");
-            compiled=true;
             if(plan.GitAssetSetSHA256 is not null)
             {stage="FIXED_OFFLINE_GIT_TOOLCHAIN";gitReport=SessionGitToolchain.RunChild(plan,workspace);if(!SessionGitToolchain.Qualified(gitReport))throw WfpNative.Contract("FixedGitToolchainNotQualified");}
         }
@@ -330,10 +342,11 @@ internal sealed class SessionResources : IDisposable
             failureStage=stage+(ex.Data["Stage"] is string nativeStage?"/"+nativeStage:"");
         }
         var report=new ResourceChildReport(1,Environment.ProcessId,plan.Nonce,matched,toolExit,cases.ToArray(),failure,failureCode,failureStage,toolDiagnostic,gitReport,creationEvidence,compiled);
-        Console.WriteLine(JsonSerializer.Serialize(report));return Qualified(report)?0:3;
+        Console.WriteLine(JsonSerializer.Serialize(report));return Qualified(report,plan.RequiresPowerShell)?0:3;
     }
     internal static ProcessStartInfo PowerShellStart(ResourceProbePlan plan,string workspace)
     {
+            if(!plan.RequiresPowerShell)throw WfpNative.Contract("WorkspaceDataCannotRequestPowerShell");
             const string script="$ErrorActionPreference='Stop';$stage='READY';try{[IO.File]::WriteAllText('tool-ready.txt',$env:CPC_RESOURCE_NONCE);[IO.File]::WriteAllText('tool-ready.signal','');$stage='WAIT_OWNER';$until=[DateTime]::UtcNow.AddSeconds(8);while(![IO.File]::Exists('tool-go.signal')){if([DateTime]::UtcNow -ge $until){exit 24};[Threading.Thread]::Sleep(20)};$stage='READ_OWNER_GATE';if([IO.File]::ReadAllText('tool-go.txt') -cne $env:CPC_RESOURCE_NONCE){exit 25};$stage='WORKSPACE_IO';$v=[IO.File]::ReadAllText('input.txt');[IO.File]::WriteAllText('tool-output.txt',$v);$stage='COMPILE_OWNED_SAMPLE';[void][Reflection.Assembly]::LoadFrom([IO.Path]::Combine($PSHOME,'Microsoft.CodeAnalysis.dll'));[void][Reflection.Assembly]::LoadFrom([IO.Path]::Combine($PSHOME,'Microsoft.CodeAnalysis.CSharp.dll'));$tree=[Microsoft.CodeAnalysis.CSharp.CSharpSyntaxTree]::ParseText('public static class CpcOwnedBuildProbe{public static int Sum(int a,int b){return checked(a+b);}}');$refs=[Collections.Generic.List[Microsoft.CodeAnalysis.MetadataReference]]::new();foreach($reference in [IO.Directory]::GetFiles([IO.Path]::Combine($PSHOME,'ref'),'*.dll')){$refs.Add([Microsoft.CodeAnalysis.MetadataReference]::CreateFromFile($reference))};$options=[Microsoft.CodeAnalysis.CSharp.CSharpCompilationOptions]::new([Microsoft.CodeAnalysis.OutputKind]::DynamicallyLinkedLibrary);$compilation=[Microsoft.CodeAnalysis.CSharp.CSharpCompilation]::Create('CpcOwnedBuildProbe',[Microsoft.CodeAnalysis.SyntaxTree[]]@($tree),$refs.ToArray(),$options);$output=[IO.File]::Create('owned-build.dll');try{$emitted=$compilation.Emit($output)}finally{$output.Dispose()};if(!$emitted.Success){exit 28};Add-Type -Path ([IO.Path]::GetFullPath('owned-build.dll')) -ErrorAction Stop;if([CpcOwnedBuildProbe]::Sum(7,5) -ne 12){exit 27};[IO.File]::WriteAllText('owned-build-result.txt','12');$stage='DENY_PRIVATE_FIXTURE';foreach($fixture in @($env:CPC_DENIAL_FIXTURE,$env:CPC_LPAC_FIXTURE)){$denied=$false;try{$f=[IO.File]::OpenRead($fixture);$f.Dispose()}catch{if($_.Exception -is [UnauthorizedAccessException] -or $_.Exception.InnerException -is [UnauthorizedAccessException]){$denied=$true}else{exit 22}};if(!$denied){exit 23}};exit 0}catch{$e=$_.Exception.GetBaseException();[Console]::Error.WriteLine('CPC_TOOL_FAILURE|'+$stage+'|'+$e.GetType().Name+'|'+$e.HResult);exit 26}";
             var start=new ProcessStartInfo(plan.PowerShellLaunchImage){UseShellExecute=false,CreateNoWindow=true,WorkingDirectory=workspace,RedirectStandardInput=true,RedirectStandardOutput=true,RedirectStandardError=true};
             start.Environment.Clear();
@@ -367,7 +380,9 @@ internal sealed class SessionResources : IDisposable
         return methods.Contains("CreatePipeWithSecurityAttributes")?"CREATE_REDIRECT_PIPE":methods.Contains("CreatePipe")?"DUPLICATE_REDIRECT_HANDLE":
             methods.Contains("StartWithCreateProcess")?"CREATE_PROCESS":"START_UNCLASSIFIED";
     }
-    internal static bool Qualified(ResourceChildReport report)=>report.SchemaVersion==1 && report.WorkspaceWriteReadMatched && report.ToolExit==0 && report.OwnedCompilationObserved && report.FailureType is null && report.FailureCode is null && report.FailureStage is null && report.ToolDiagnostic is null &&
+    internal static bool Qualified(ResourceChildReport report,bool requirePowerShell=true)=>report.SchemaVersion==1 && report.WorkspaceWriteReadMatched &&
+        (requirePowerShell?report.ToolExit==0 && report.OwnedCompilationObserved:report.ToolExit is null && !report.OwnedCompilationObserved && report.Git is not null) &&
+        report.FailureType is null && report.FailureCode is null && report.FailureStage is null && report.ToolDiagnostic is null &&
         (report.Git is null || SessionGitToolchain.Qualified(report.Git)) && report.Cases.Length==5 && report.Cases.Select(c=>c.Role).SequenceEqual(new[]{"private-state-Read","private-state-Write","all-packages-only-Read","broker-vm-read-open","etw-provider-security-query"}) &&
         report.Cases.All(c=>c.Status=="ACCESS_DENIED" && c.Error==5);
     private static void SaveToolFailure(string workspace,string stdout,string stderr,string status)
@@ -389,7 +404,7 @@ internal sealed class SessionResources : IDisposable
         using var file=File.OpenRead(path);if(file.Length is <1 or >1024)throw WfpNative.Contract("ResourceFixtureBounds");
         var data=new byte[checked((int)file.Length)];file.ReadExactly(data);return data;
     }
-    public void Dispose(){allPackagesFixture.Dispose();projectInput?.Dispose();git?.Dispose();input.Dispose();folder.Dispose();tool.Dispose();}
+    public void Dispose(){allPackagesFixture.Dispose();projectInput?.Dispose();git?.Dispose();input.Dispose();folder.Dispose();tool?.Dispose();}
     private static string AllPackagesFixtureSddl(string human)=>"O:BAG:SYD:P(A;;FA;;;SY)(A;;FA;;;BA)(A;;0x00120089;;;"+new SecurityIdentifier(human).Value+")(A;;0x00120089;;;S-1-15-2-1)";
     private static FileStream CreateAllPackagesFixture(string path,string human,byte[] content)
     {

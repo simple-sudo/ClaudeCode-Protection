@@ -123,6 +123,7 @@ internal sealed class ProtectedSession
     private (int ExitCode,string Report) ExecuteResourceQualification(bool deferCleanup=false,bool includeGit=false,byte[]? workspaceInput=null)
     {
         InstallationProfileLease? profile=null;AtomicChild? child=null;
+        var powerShellRequired=workspaceInput is null;
         System.IO.Pipes.AnonymousPipeServerStream? pipe=null;StreamReader? reader=null;
         ResourceQualification? permit=null;ResourceChildReport? observed=null;Task<uint>? exited=null;Task<string>? text=null;
         ResourceBootstrapFailure? bootstrapFailure=null;
@@ -160,7 +161,7 @@ internal sealed class ProtectedSession
                 // members have been verified together. After release, its
                 // planned exit is supervised by the runtime and exact Job
                 // drain, not mistaken for a foreign process appearing.
-                var gitPhase=toolObserved;
+                var gitPhase=!powerShellRequired || toolObserved;
                 if(gitPhase?!includeGit || gitObserved || !resources.GitReady():!resources.ToolReady())continue;
                 var expectedTool=gitPhase?SessionGitToolchain.ToolPath:resources.Plan.PowerShellLaunchImage;
                 var before=job.Observe();
@@ -210,7 +211,7 @@ internal sealed class ProtectedSession
                     bootstrapFailure=failure;throw WfpNative.Contract("ResourceChildBootstrapFailed");
                 }
             observed=JsonSerializer.Deserialize<ResourceChildReport>(childText)??throw WfpNative.Contract("ResourceChildReportMissing");
-            if(exit!=0 || observed.Pid!=child.Pid || observed.Nonce!=id || !SessionResources.Qualified(observed) || !toolObserved ||
+            if(exit!=0 || observed.Pid!=child.Pid || observed.Nonce!=id || !SessionResources.Qualified(observed,powerShellRequired) || powerShellRequired && !toolObserved ||
                 includeGit && (!gitObserved || observed.Git is null) || !includeGit && observed.Git is not null)
                 throw WfpNative.Contract("OfflineResourceOrInheritedToolBoundaryNotQualified");
             resources.AssertOutput(observed);
@@ -227,7 +228,7 @@ internal sealed class ProtectedSession
             }
             else if(job is not null)try{zero=job.AtomicAdmissionReserved?job.CloseAtomicAdmissionAndStop():job.StopAndVerifyZero();}catch(Exception ex){failures.Add(ex);}
             if(profile?.ProcessCreationAttempted==true && zero is not null)try{profile.AfterOwnedJobZero(zero);}catch(Exception ex){failures.Add(ex);}
-            if(includeGit && failures.Count==0 && zero?.ObservedZero==true && observed is not null && SessionResources.Qualified(observed))
+            if(includeGit && failures.Count==0 && zero?.ObservedZero==true && observed is not null && SessionResources.Qualified(observed,powerShellRequired))
                 try{workspaceResultSHA256=resources?.PreserveClosedWorkspaceResult(zero);}catch(Exception ex){failures.Add(ex);}
             if(exited is not null)try{exit=exited.WaitAsync(TimeSpan.FromSeconds(2)).GetAwaiter().GetResult();}catch(Exception ex){failures.Add(ex);}
             if(pipe is not null)try{pipe.DisposeLocalCopyOfClientHandle();}catch(Exception ex){failures.Add(ex);}
@@ -235,7 +236,7 @@ internal sealed class ProtectedSession
             foreach(var owned in new IDisposable?[]{child,reader,pipe,resources})try{owned?.Dispose();}catch(Exception ex){failures.Add(ex);}
             try
             {
-                if(deferCleanup && failures.Count==0 && profile is not null && zero?.ObservedZero==true && observed is not null && SessionResources.Qualified(observed))
+                if(deferCleanup && failures.Count==0 && profile is not null && zero?.ObservedZero==true && observed is not null && SessionResources.Qualified(observed,powerShellRequired))
                 {profile.DeferCleanupForRecovery();cleanupDeferred=true;}
                 else profile?.Dispose();
             }
@@ -245,13 +246,13 @@ internal sealed class ProtectedSession
             foreach(var fence in fences)try{if(!fence.Observe().FullQuarantineObserved)throw WfpNative.Contract("ResourceFinalQuarantineMissing");}catch(Exception ex){failures.Add(ex);}
             foreach(var fence in fences)try{fence.Dispose();}catch(Exception ex){failures.Add(ex);}
         }
-        var success=observed is not null && SessionResources.Qualified(observed) && toolObserved && (!includeGit || gitObserved && observed.Git is not null && workspaceResultSHA256 is not null) && zero?.ObservedZero==true && failures.Count==0;
+        var success=observed is not null && SessionResources.Qualified(observed,powerShellRequired) && (!powerShellRequired || toolObserved) && (!includeGit || gitObserved && observed.Git is not null && workspaceResultSHA256 is not null) && zero?.ObservedZero==true && failures.Count==0;
         var report=JsonSerializer.Serialize(new {SchemaVersion=1,state.InstallationId,SessionId=id,version.Package.Release,version.Package.ManifestHash,
             Status=success?(workspaceInput is not null?"WORKSPACE_DATA_PROCESSED_AND_CLEANED":cleanupDeferred?"OFFLINE_RESOURCE_CLOSED_JOB_CLEANUP_DEFERRED":includeGit?"FIXED_OFFLINE_GIT_TOOLCHAIN_AND_DENIAL_OBSERVED":"FIXED_OFFLINE_WORKSPACE_TOOL_AND_DENIAL_OBSERVED"):"OFFLINE_RESOURCE_SESSION_NOT_CONFIRMED",
             Scope=workspaceInput is not null?"CALLER_BYTE_PINNED_DATA_FIXED_OFFLINE_GIT_ONLY_NO_PROJECT_CODE_EXECUTION":includeGit?"FIXED_OFFLINE_GIT_INIT_ADD_COMMIT_AND_DENIAL_ONLY":"FIXED_PROFILE_WORKSPACE_WINDOWS_POWERSHELL_AND_NON_SECRET_DENIAL_FIXTURE_ONLY",
             Resumed=resumed,ChildExit=exit,Child=observed,ChildBootstrapFailure=bootstrapFailure,InheritedPowerShellIdentityObserved=toolObserved,FinalJob=zero,Stop=stopped,
             CleanupDeferredForRecovery=cleanupDeferred,ManifestReadAccessRequired=false,ManifestReadAccessRestored=false,
-            PowerShellVersion=SessionPowerShellToolchain.Version,PowerShellAssetSetSHA256=SessionPowerShellToolchain.AssetSetSHA256,
+            PowerShellRequired=powerShellRequired,PowerShellVersion=powerShellRequired?SessionPowerShellToolchain.Version:null,PowerShellAssetSetSHA256=powerShellRequired?SessionPowerShellToolchain.AssetSetSHA256:null,
             EtwRegistrationAccessGranted=false,EtwRegistrationAccessRestored=false,
             EtwProvider=SessionEtwProviderAccess.ProviderId,EtwRegistrationRights=0,
             ToolCreationOwner="ORIGINAL_BROKER",ToolCreationBinding="ATOMIC_LPAC_PACKAGE_AND_ORIGINAL_JOB_NOT_PARENT_INHERITANCE",

@@ -187,6 +187,14 @@ if(args[0]=="hosted-policy")
 }
 if(args[0]=="policy")
 {
+    var dataPlan=Activator.CreateInstance(planType,3,nonce,new string('b',32),new string('c',32),Environment.ProcessId,new string('A',64),
+        "9DE2A6DB90D8383F3738249D52F30DEFBEDB994513A8F2697E9D90693CD1D285",new string('D',64),programFiles)!;
+    Require((bool)planType.GetProperty("RequiresPowerShell",BindingFlags.Instance|BindingFlags.NonPublic)!.GetValue(plan)! &&
+        !(bool)planType.GetProperty("RequiresPowerShell",BindingFlags.Instance|BindingFlags.NonPublic)!.GetValue(dataPlan)!,"only explicit pinned workspace data removes the PowerShell dependency");
+    Refuse(()=>Call(resources,"PowerShellStart",dataPlan,workspace),"WorkspaceDataCannotRequestPowerShell");
+    Refuse(()=>Call(launch,"ValidateStart",dataPlan,workspace,"powershell",powerShell.ArgumentList.ToArray(),Digest(powerShell)),"WorkspaceDataCannotRequestPowerShell");
+    var dataGit=(ProcessStartInfo)Call(git,"Start",workspace,directory,new[]{"hash-object","--stdin"})!;
+    _=Call(launch,"ValidateStart",dataPlan,workspace,"git",dataGit.ArgumentList.ToArray(),Digest(dataGit));
     var policy=Call(library.GetType("ProtectionLifecycle.SessionPowerShellToolchain",true)!,"ReadAssets")!;
     Require((int)((Array)policy.GetType().GetProperty("Files")!.GetValue(policy)!).Length==552,"complete embedded official PowerShell asset set");
     Require(powerShell.FileName==Path.Combine(programFiles,"ClaudeCodeProtection","versions",new string('c',32),"bin","admin","ProtectionBroker.exe") && powerShell.ArgumentList[0]=="resource-powershell","same original fixed confined host image");
