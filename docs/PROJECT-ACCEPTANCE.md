@@ -491,3 +491,9 @@ trace7在原真实调用链确认SideBySide单键KEY_READ被拒。首次精确�
 原Broker现在可受理原根匿名管道中的编译固定工具请求，在创建时原子绑定严格LPAC/零能力包及原Job，并在恢复前检查实际令牌、映像、Job和对象权限。普通固定策略/消息边界和自有进程/管道的实际有限句柄转移通过，生产库A40E232D未因修正测试尺寸重建。589f8b3c/manifest164AD85F已于07:20:55Z保持INACTIVE更新，15文件/权限独立回读通过，无工具运行；安装launcher未声明Preflight导致预检触发UAC、先于具体授权请求完成更新，原记录保留并修正，不能当作运行授权。
 
 work/owned-tool-control及docs/LPAC-TOOL-LAUNCH-NEXT.md记录当前冻结的一次工具运行范围，仍待具体本人UAC授权。尚无严格LPAC PowerShell/Git成功、实际项目编译测试、全面宿主敏感信息/网络/14项/GPU整体验收；历史蓝屏根因仍开放。未改日常AV/驱动/网络/UU/FlClash，真实Claude延期。
+
+## 2026-10-30：官方PowerShell7工具已安装，项目异常弹窗确认，真实工具仍失败
+
+df6ff338/manifest9239BB32本人UAC更新INACTIVE及只读资源检查完成；15产品文件+552官方工具文件/110目录独立摘要/owner/保护DACL核对通过。新工具路径不授予SideBySide读取，键权限实测保持原值。sessionac45262c在PowerShell未READY时超时；用户截图并明确确认本次UAC项目进程出现E0434352托管异常，已作为实测故障保留。未抓到对应事件不能否定用户确认。Job1bc7bc5b关闭归零、Stop无失败，根I/O/四拒绝5通过，无强杀owner；PowerShell/Git/编译未确认，无成果。
+
+原Broker工具创建窗口的继承错误模式/精确恢复、私有有界部分标准流保留已修正并构建，普通自身子进程/匿名管道限定资格通过，无诱发崩溃或全机WER设置变更。候选df6ae4f0尚未安装或实际LPAC验证，不能称启动根因已修复。证据work/tool-fault-build-r1/qualification.json与work/powershell7-r2-control/run-evidence；新系统范围见LPAC-TOOL-LAUNCH-NEXT.md，等待具体本人UAC授权。

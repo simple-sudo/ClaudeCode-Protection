@@ -1,28 +1,30 @@
-# LPAC工具启动：固定PowerShell7和实际编译验证
+# 当前工具故障：已确认项目异常，下一次验证具体范围
 
-当前安装589f8b3c/manifest164AD85F，INACTIVE。07:31:02Z本人明确授权的sessioneb3df4b3已通过原Broker创建工具、创建时绑定严格LPAC/零能力包/原Job、恢复前令牌/镜像/Job/对象权限检查及有限句柄转移。原CreateProcess5/14001已越过；Windows PowerShell自身退出FFFB0000，未到READY，Git未执行。根I/O/四拒绝5、单键独立精确恢复和Job归零通过，无强杀。work/owned-tool-control/run-evidence，原报告7E7C0A04。不再重复旧路径或扩大宿主注册表授权。
+当前安装df6ff338081b43e4ac4691598c108f71/manifest9239BB32，INACTIVE。本人UAC于08:23:36Z完成更新及官方PowerShell7.4.22固定目录创建；15产品文件、552工具文件/110目录的摘要、可信owner、保护DACL及无非可信写入已独立匹配。
 
-## 已完成的新方案
+08:24:15Z sessionac45262cde9d40b1b6b79b8048f6f98f运行失败，PowerShell未到READY，原根在WAIT_FIXED_POWERSHELL到10秒期限。用户截图并明确确认刚才UAC后本项目进程弹出托管异常E0434352，地址00007FFAEB181ADA；该事实已接受并留档，不因未抓到匹配事件/PID否定。精确异常类型/根因尚未捕获。报告8E1E6153，截图及用户确认在work/powershell7-r2-control/run-evidence。原Job1bc7bc5b关闭归零、Stop无失败，未强杀owner，根I/O/四拒绝5通过；宿主SideBySide权限独立完全不变，本轮无注册表授权。PowerShell/Git/编译未成功，无成果，不能将安装和普通测试写成工具可用性。
 
-固定Microsoft官方PowerShell7.4.22 win-fxdependent分发，复用现有.NET8.0.28。官方[Release与校验和](https://github.com/PowerShell/PowerShell/releases/tag/v7.4.22)的ZIP摘要40F7ED3365CE3BA6792DEB321B9AC7D68182D749C1AD72A49A2C84C3E4C364FA已核对；552文件/83,163,466字节逐项摘要冻结在src/ProtectionLifecycle/PowerShellToolchain.json，清单61D9FDB4。383PE/366managed、无模块初始化器，pwsh.exe有效Microsoft签名；非x64 native仅官方runtimes/win-arm64或win-x86数据子树，不作为当前启动镜像。
+## 已实施并限定验证的修复
 
-原SessionResources持有完整依赖和可信目录；worker使用Broker提供的固定ProgramFilesRoot派生路径。沿用原匿名管道、固定参数和清洁环境、原Broker和Job及LPAC限制，不给管理员工具或管理句柄。正常运行不再创建SideBySide读取租约，不修改宿主注册表；旧待恢复意图检查和显式恢复保留。模块固定为分发目录，用户目录/缓存固定为任务目录，遥测及更新检查关闭。
+在原Broker的工具CreateProcess窗口内串行设置其自身错误模式0x8003，子进程继承后立即精确恢复原Broker模式，避免无人值守任务被critical/GP-fault/OpenFile弹窗挂住。仅进程范围，未改全机WER、用户、AV或网络设置；仍把异常、退出和超时当失败。依据[Windows进程错误模式及继承文档](https://learn.microsoft.com/en-us/windows/win32/api/errhandlingapi/nf-errhandlingapi-seterrormode)。普通自有子进程实际继承和父进程成功/异常路径精确恢复已通过，无故意崩溃。
 
-六产品非生成语义通过；59输入新构建和60输入Bootstrap通过，后者复用原资格库999ED4B8而未重建。固定操作/环境/消息/句柄实际转移普通资格通过。普通权限使用生产工厂原脚本完成I/O、两个自有非敏感ACL拒绝、C#样本编译与执行（7+5=12），实际加载C:\Program Files\dotnet\shared\Microsoft.NETCore.App\8.0.28\coreclr.dll；输出为空、退出0、无强停。这个自有编译样本不是输入项目代码，普通结果不是LPAC证明。原测试记录器/反射参数失败与metadata架构拒绝均保留。证据work/powershell7-build-r2/qualification.json、work/portable-powershell-r1/runtime-result-r4.json。
+固定工具标准流现在边读边保留有界快照；超时不再等待EOF后丢弃已收到错误。最多两段各2048字符原始文本仅由同一原Broker存入私有证据；普通响应只给已限定异常类型或摘要。普通匿名管道实测EOF前快照、4096字符上限拒绝、类型筛选通过。原准入/LPAC/零capability/原Job/对象权限/工具参数和自有C#样本不变，不为通过测试增加资源权限。
+
+源码7a39567、嵌入e686fe0：60输入Broker/Library构建和61输入Bootstrap通过，后者复用原资格库F82A46E3而未重建。10PE/6managed、内嵌manifest核对通过；生产仅增加kernel32 GetErrorMode/SetErrorMode，测试未新增本机导入。证据work/tool-fault-build-r1/qualification.json。这还不是实际LPAC无弹窗证明，更不是PowerShell启动根因已修复。
 
 ## 待本人授权的两个系统操作
 
-1. 一次本人UAC：仅在固定新目录C:\Program Files\ClaudeCodeProtection-PowerShell-7.4.22不存在时，创建它及其官方552文件。新目录/文件只给BA/SY完全控制、BU/AAP/ARP读取执行，不改任何既有宿主ACL、键、服务、网络或用户PowerShell。源及目录祖先在UAC期间持有，文件逐项摘要，创建后每文件摘要/保护DACL/可信owner核对；不接管既有目录、不自动清理失败。随后将新产品df6ff338更新为INACTIVE，只读检查待恢复manifest资源；不创建Job/profile或执行工具。工具复制主期限90秒，安装原固定期限120秒、输出排空1秒。更新/只读后普通独立核对15安装文件及全部工具资产。
-2. 安装成功并独立核对后，再一次本人UAC：当前安装原Broker的qualify-toolchain仅运行一轮。原工具任务包含PowerShell读写/两个限定拒绝、编译执行上述固定自有C#样本，再由固定Git完成hash/init/add/commit及拒绝样本；原根/工具令牌、映像、Job独立检查，闭Job、成果及清理沿原所有者。40秒期限、1秒排空；异常只停止本次新建且持有句柄、映像/创建时刻匹配的确切Broker，绝不把该退出当作Job关闭。独立比较宿主SideBySide完整权限，要求完全不变。无输入项目代码、网络、真实Claude、自动重试/恢复。
+1. 一次本人UAC：仅将产品更新为新df6ae4f0、保持INACTIVE，然后只读manifest资源检查。既有552工具文件不修改，不新建工具目录，不创建Job/profile，不授予注册表权限。
+2. 更新成功并独立核对15文件后，另一次本人UAC：一轮原Broker固定PowerShell7/Git/自有C#编译执行验证，应用上述已修改的异常处理与私有错误保留。保持严格LPAC、原Job和现有停止/拒绝/清理链。主期限40秒、排空1秒，异常只结束本次新建且持有句柄、映像/创建时刻匹配的确切Broker；不把退出当Job证明。不自动重试或恢复，不故意触发崩溃，不执行输入项目代码、真实Claude或网络访问；宿主SideBySide完整权限独立比较必须不变。
 
 | 冻结输入 | 标识或SHA256 |
 |---|---|
-| 新Release | df6ff338081b43e4ac4691598c108f71 |
-| 新manifest | 9239BB32E9822030B19E70E8B983CC28D89B987115EF028E733F921B56101247 |
-| Lifecycle库 | 999ED4B8445BD5AE1C797608FEF620DAA9ED347537AC803EA951997E4E69C8CF |
-| 安装plan | 6FA9CFFDE52F174F83B0B14E7FF1831A559AA8041E5AFD7C4F587C94B996C96C |
-| 安装helper | 66334ECD8A28CEF57D0761E18218A990B70F708D2A1A344BA26B68181B6291E2 |
-| 运行plan | 42945C1A921B3408F6A8C6F25B87907A81958F40A4D37D214B9822086D7FFD5C |
-| 运行helper | DE7D77B1EF93CC238A54FDE88A8B5659C92E52819AB679832CC59BC935429588 |
+| 新Release | df6ae4f02e67434dbb91b9a0addaf80a |
+| 新manifest | D2CABD45BCF2965F8BC982669C0478958B80CD5F22807CCB76134DE8B0626AE8 |
+| Lifecycle库 | F82A46E34DC038E4C772AD0D14592E484C1C67DE30F1739C752A576FA8310B08 |
+| 安装plan | 8350912756339CBF6931FF7258E3B97C195EED6FC910A7E59C936A1356446A60 |
+| 安装helper | 70BB65DCC767DB56E8FCB5CE13C22D0443D1105D4C6B3C8BADE6EB3DF0A47686 |
+| 运行plan | E763F4518B850D1CD34BA170953B2A68016B1473C4BF3B503A86BBBDAD91B4DE |
+| 运行helper | D8068C760F9709819044AFB63AF15BF22BBE24BC0D3115BB0EAFCD557219991D |
 
-完整审查work/powershell7-r2-control/system-operation-review.json。两个launcher已实际普通Preflight返回、未知参数拒绝、无UAC/claim/新工具目录。上次缺少预检开关误更新记录保留，不能成为本次权限。用户指示和AGENTS.md要求新受保护目录安装/资源运行先取得具体授权、本人确认UAC。这两个系统操作尚未执行。日常AV/驱动/FlClash/UU/网络保持；全面宿主敏感隔离、14项、真实网络、GPU、用户项目编译及旧崩溃恢复仍未整体验收。
+work/tool-fault-control/system-operation-review.json为完整冻结审查。两个launcher普通Preflight已实际返回，未知参数拒绝，无本次UAC/claim。按用户指示和AGENTS.md，新工件安装/受保护运行需要具体授权和本人UAC；这两个操作尚未授权或执行。用户此前的两个df6ff338操作已完成并消耗，不延伸为本次授权。保持日常AV/驱动/FlClash/UU/网络、现有旧证据和包。全面敏感数据/网络/14项/GPU/项目编译仍未整体验收，历史蓝屏根因未关闭。

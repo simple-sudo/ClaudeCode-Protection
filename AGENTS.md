@@ -21,8 +21,12 @@ Broker's serialized tool-create window, restores own process mode exactly and
 preserves bounded partial stdout/stderr in original PRIVATE owner evidence on
 failure, even before EOF. Only exception type/hash goes to daily metadata.
 No WER/host-wide setting change, induced crash, capability or ACL widening.
-Build/native own-child inheritance/partial-pipe qualification and new concrete
-human system operation remain required; source alone is not popup repair proof
+60-input build and61-input Bootstrap reused qualified libraryF82A46E3. Own
+ordinary child mode inheritance, success/failure restoration and partial pipe
+qualification passed without induced crash. Candidate df6ae4f0/manifestD2CABD45,
+install plan83509127/helper70BB65DC, run planE763F451/helperD8068C76 frozen in
+work/tool-fault-control. New two human-UAC operations remain NOT_AUTHORIZED/
+NOT_RUN; source and ordinary qualification are not actual popup repair proof
 or tool compatibility. Below older installed paragraphs are historical.
 2026-10-30 authorized589f8b3c resource run completed07:31:02Z, sessioneb3df4b3.
 Original Broker atomic LPAC/original Job creation and handle transfer DID pass;
