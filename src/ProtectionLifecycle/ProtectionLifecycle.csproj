@@ -26,6 +26,7 @@
     <Compile Include="OwnedToolLaunch.cs" />
     <Compile Include="SessionProfileRecovery.cs" />
     <Compile Include="SessionGitToolchain.cs" />
+    <Compile Include="SessionPowerShellToolchain.cs" />
     <Compile Include="SessionTaskWorkspace.cs" />
     <Compile Include="../Shared/WorkspaceBundle.cs;../Shared/WorkspaceFiles.cs" />
     <Compile Include="../Shared/ProxyDestinationPolicy.cs" Link="ProxyDestinationPolicy.cs" />
@@ -35,6 +36,7 @@
     <Compile Include="../Shared/FenceMigrationSelection.cs" Link="FenceMigrationSelection.cs" />
     <Compile Include="../Shared/SessionTunnel.cs" Link="SessionTunnel.cs" />
     <EmbeddedResource Include="LifecycleProtocol.json" />
+    <EmbeddedResource Include="PowerShellToolchain.json" />
     <EmbeddedResource Include="BrokerProtocol.json" />
     <EmbeddedResource Include="RecoveryProtocol.json" />
     <EmbeddedResource Include="RemovalProtocol.json" />

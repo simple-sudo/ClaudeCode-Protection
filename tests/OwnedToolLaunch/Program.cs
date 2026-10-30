@@ -72,6 +72,10 @@ void Validate(string kind,ProcessStartInfo start)=>_=Call(launch,"ValidateStart"
 var powerShell=(ProcessStartInfo)Call(resources,"PowerShellStart",plan,workspace)!;
 if(args[0]=="policy")
 {
+    var policy=Call(library.GetType("ProtectionLifecycle.SessionPowerShellToolchain",true)!,"ReadAssets")!;
+    Require((int)((Array)policy.GetType().GetProperty("Files")!.GetValue(policy)!).Length==552,"complete embedded official PowerShell asset set");
+    Require(powerShell.FileName==Path.Combine(programFiles,"ClaudeCodeProtection-PowerShell-7.4.22","pwsh.exe"),"fixed modern PowerShell image");
+    Require(powerShell.Environment["POWERSHELL_TELEMETRY_OPTOUT"]=="1" && powerShell.Environment["POWERSHELL_UPDATECHECK"]=="Off","fixed offline startup environment");
     Validate("powershell",powerShell);
     var script=powerShell.ArgumentList[^1];powerShell.ArgumentList[^1]="Write-Output unapproved";
     Refuse(()=>Validate("powershell",powerShell),"OwnedPowerShellCompiledProgramRequired");powerShell.ArgumentList[^1]=script;

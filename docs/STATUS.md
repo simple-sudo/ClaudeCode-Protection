@@ -1,5 +1,10 @@
 # 当前开发状态
 
+## 原Broker创建已实测通过；PowerShell旧运行时初始化仍失败
+
+VERIFIED / FAIL：本人授权的一次589f8b3c固定运行07:31:02Z结束，sessioneb3df4b36d354ad694833128f01b330a。PowerShell进程已由原Broker创建，在恢复前通过实际LPAC/零能力包、精确镜像、原Job、进程线程封装检查，并成功向原根转移有限句柄；越过旧CreateProcess5/14001。PowerShell自身退出-327680/FFFB0000，未到READY，Git未运行，未导出成果。输出仅留摘要6DF52D36，不猜具体缺失注册表或CLR组件。原根I/O/四项拒绝5、单键独立精确恢复和Job7c7d164c关闭归零通过，Stop无失败、无强杀，日常服务/boot不变。证据work/owned-tool-control/run-evidence，报告7E7C0A042169215AE6700888E8CD7F3921537B0852B120151927AF3A82653D25；不重复不变调用。
+
+SOURCE：替换为Microsoft官方PowerShell7.4.22框架依赖包，官方摘要40F7ED33已核对，552文件、83,163,466字节，要求.NET8.0.0起，可复用现有.NET8.0.28。新SessionPowerShellToolchain持有完整逐项摘要和可信目录、固定新公共产品目录，worker只用Broker绑定的ProgramFilesRoot派生路径，避免LPAC KnownFolder回退。保留同一固定程序/管道/原所有者和原子LPAC/Job；正常资源路径去除SideBySide授予，仅保留旧意图检查及显式恢复。PS模块/缓存/遥测与更新检查环境固定在产品或任务路径。新源六产品非生成语义已通过；新包尚未构建/安装，官方工具仅作为数据获取，尚未执行，不能当成兼容性修复成功。
 ## 当前589f8b3c INACTIVE：安装已完成，工具运行待具体授权
 
 07:20:55Z固定更新/只读资源检查完成，15文件摘要/可信所有者/保护DACL及无非可信写入独立匹配，单键权限未变，无资源运行。该更新由旧生成模板缺少Preflight参数造成预检误触发，发生在本次具体安装授权问题之前；UAC未自动确认。已公开说明并保留原脚本/记录，修正预检实际只读返回，生成器要求显式参数和UAC前return。不能把此次更新当成工作负载授权。证据work/owned-tool-control/installed-evidence；完整下一次固定运行范围见LPAC-TOOL-LAUNCH-NEXT.md，plan01559143/helper08091EDF，仍NOT_RUN。下文74c34612为历史安装快照。

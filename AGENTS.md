@@ -1,5 +1,21 @@
 # ClaudeCode-Protection working rules
 
+2026-10-30 authorized589f8b3c resource run completed07:31:02Z, sessioneb3df4b3.
+Original Broker atomic LPAC/original Job creation and handle transfer DID pass;
+PowerShell itself exitedFFFB0000/-327680 before ready, unclassified output hash
+6DF52D36, not a usable shell/Git success. Root IO/four denials5, exact single-key
+restoration and Job7c7d164c closed/zero passed, no forced stop, Stop failures
+empty. work/owned-tool-control/run-evidence, report7E7C0A04. Grant consumed;
+no unchanged retry/recovery. Current589 remains INACTIVE. Source now replaces
+Windows PowerShell legacy CLR bootstrap with official7.4.22 win-fxdependent
+.NET8 bundle (official SHA40F7ED33,552 files/83,163,466 bytes, framework min8.0.0).
+Only fresh fixed public product tools will be provisioned after review/UAC;
+source holds every pinned asset and secure ancestry, clean environment and
+same original Broker/LPAC/Job. Normal tool path NO LONGER grants SideBySide;
+legacy exact recovery stays available, no capability/host ACL widening. This
+new source and tool distribution remain uninstalled/unqualified. New builds,
+ordinary runtime qualification and concrete system review are next; do not
+turn pending plans below into current permission or success.
 2026-10-30 actual current installed589f8b3cbbd04cb4be742bb09f52e3e7,
 manifest164AD85F444447B6683370309FA2EDCE2A5D000A62037FD39B1CB5FE227D04C4,
 07:20:55Z INACTIVE update/read-only manifest inspection completed. Fifteen
