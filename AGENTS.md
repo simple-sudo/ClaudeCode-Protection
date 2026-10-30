@@ -1,5 +1,24 @@
 # ClaudeCode-Protection working rules
 
+2026-10-30 trace3 used an overbroad error-setter breakpoint during state reads
+and timed out before any CreateProcess entry (30247 observations). CDB ended,
+but its exact owner34888/created134378064365272233 stayed suspended. Separate
+human UAC authorized noninvasive stack read and exact termination; stack capture
+failed (CDB rejected pv+pd), preserved as FAIL, NOT a successful stack read.
+The exact owner ended04:09:54Z, no other process terminated, private state kept.
+No Job closure is inferred from this exit. A separately approved windowed trace4
+ended normally04:24:37Z but session648555bd01224b6191f56089deebc40d refused
+OwnedProfileCleanupRequiresRecovery before child/Job; no retry or recovery.
+Evidence work/create-process-trace-installed-r3/r4 and
+work/trace3-owner-stop-control/evidence. Do not use the old global breakpoint,
+unbounded diagnostic pipe drain, or pd+pv stack combination again.
+Source now adds installed read-only recovery inspection and a separate explicit
+never-started v2 recovery: complete owned creation, NO profile-job binding,
+all admissions durably closed and original exact storage/task owner required.
+Existing post-start recovery still requires its prior checkpoint. No missing
+Job/process is promoted to never-started proof. New source is not installed;
+build/artifact review and concrete human update/recovery decisions still apply.
+
 2026-10-30 authoritative installed041374f666564e41b2731ad354479c8d,
 manifest2896E57A537D998D877170C5D7EE98F3B842DAA899E8CD1688F04E767911A68E,
 human UAC02:39:44Z INACTIVE; 15 hashes/protected DACLs/read-only intent matched.

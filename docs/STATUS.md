@@ -1,5 +1,13 @@
 # 当前开发状态
 
+## 当前恢复缺口：中断后必须核对真实创建阶段
+
+FAIL保留（诊断限定）：trace3全局错误观测在创建进程前记录30247条状态，超时后CDB被结束，原Broker34888仍全线程挂起；04:09:54Z另一次本人UAC核对创建时间/映像并精确终止该进程。附加栈读取被CDB拒绝pv+pd组合，未取得有效栈；不按包装器退出0计PASS。原日志已落盘，私有状态未清理，不从进程退出推导闭Job。当前无产品进程，boot仍02:14:46.5Z，日常UU/FlClash/AV/BFE不变。证据work/create-process-trace-installed-r3、work/trace3-owner-stop-control/evidence。
+
+后续观测已修正为仅CreateProcessW窗口启用错误入口、直接文件日志、有限排空及预先授权的确切新进程超时停止；普通缺失文件样本实际只记录1条C000000F，最初消费者误期待C0000034，保留该错误且不重复样本。本人另行批准的trace4在04:24:37Z正常退出：session648555bd01224b6191f56089deebc40d因OwnedProfileCleanupRequiresRecovery拒绝，Child/Job/Stop均null，未达到工具窗口，不重跑。当前041374f6/INACTIVE保持。证据work/create-process-trace-installed-r4；“内核成功、后续拒绝5”的有效证据仍是下方trace2，尚未定位具体Windows调用。
+
+SOURCE / INTEGRATED：同一InstalledBroker增加inspect-resource-recovery及recover-unstarted-session-resources。后者只接受完整的原生v2创建记录、在独占state租约下确切不存在profile-job（原写入器必须先落盘再尝试创建任何进程）、所有Job均有原闭合证据及完整隔离；拒绝任何已绑定进程、legacy或未确认创建。实际删除继续用原SessionProfileRecovery/SessionTaskWorkspace的当前用户、SID、NTFS父/根身份、精确子项及删除后缺失核验，不伪造Job完成。原recover-session-resources的预先checkpoint要求不变。六产品非生成语义通过；新包尚未构建/安装，实际遗留记录及恢复尚未核对/执行。当前包清单仅作为inactive迁移pin加入，原闭准入/Job/隔离守卫不变。
+
 ## 当前安装041374f6：原生前置权限已查明，工具创建仍拒绝
 
 VERIFIED（限定安装/诊断）：508e0bd的66输入离线构建及普通用户prerequisite-reads/reply通过；d7201fe Bootstrap复用库1C38486129E69FCAC2E0EBB309858B5FDF32CD6C8CCDACA4EB34EC3F1BDDD48C，不重建。20文件/10PE/6managed/内嵌清单通过。2026-10-30T02:39:44Z本人UAC完成INACTIVE更新，release041374f666564e41b2731ad354479c8d，manifest2896E57A537D998D877170C5D7EE98F3B842DAA899E8CD1688F04E767911A68E；15文件摘要/保护DACL及只读意图2/MISSING匹配。

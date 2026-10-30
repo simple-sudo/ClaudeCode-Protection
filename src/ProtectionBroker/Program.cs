@@ -35,7 +35,7 @@ internal static class Program
             }
             catch(Exception ex){Console.Error.WriteLine("Environment intent not confirmed: "+ex.GetType().Name+"; code="+ex.HResult);return 125;}
         }
-        if (args.Length != 1 || args[0] is not ("qualify-toolchain" or "recover-session-resources" or "qualify-resource-recovery" or "qualify-resources" or "migrate-session-network" or "inspect-session-environment" or "launch" or "session-synthetic" or "quarantine" or "inspect-runtime" or "inspect-wfp" or "qualify-wfp-objects" or "inspect-installed-fence" or "qualify-admission" or "qualify-network" or "qualify-gpu" or "qualify-watchdog" or "admission-child"))
+        if (args.Length != 1 || args[0] is not ("qualify-toolchain" or "recover-session-resources" or "inspect-resource-recovery" or "recover-unstarted-session-resources" or "qualify-resource-recovery" or "qualify-resources" or "migrate-session-network" or "inspect-session-environment" or "launch" or "session-synthetic" or "quarantine" or "inspect-runtime" or "inspect-wfp" or "qualify-wfp-objects" or "inspect-installed-fence" or "qualify-admission" or "qualify-network" or "qualify-gpu" or "qualify-watchdog" or "admission-child"))
         {
             Console.Error.WriteLine("ProtectionBroker inspect-runtime | inspect-wfp; inspect-installed-fence (installed read-only); quarantine | qualify-admission | qualify-network | qualify-gpu | qualify-watchdog (installed); qualify-wfp-objects (protected qualification host). Management requires existing elevation.");
             Console.Error.WriteLine("Installed intent management: inspect-session-environment | configure-session-environment EXPECTED_SHA_OR_none WINDOWS_TIMEZONE USER_LOCALE SYSTEM_LOCALE. This never changes Windows settings or grants launch.");
@@ -43,6 +43,7 @@ internal static class Program
             Console.Error.WriteLine("Installed bounded qualification: qualify-resources (fixed offline workspace/PowerShell/denial fixture only; no formal launch or network grant).");
             Console.Error.WriteLine("Installed resource recovery: recover-session-resources; qualify-resource-recovery (fixed closed-Job cleanup checkpoint only; no forced crash).");
             Console.Error.WriteLine("Installed toolchain qualification: qualify-toolchain (fixed reviewed Git; offline init/add/commit in a fresh task workspace only).");
+            Console.Error.WriteLine("Resource recovery: inspect-resource-recovery (read only); recover-unstarted-session-resources (explicit v2 creation with no process binding only).");
             Console.Error.WriteLine("Installed data maintenance: process-workspace-data EXACT_INPUT_SHA256 (redirected bundle bytes); export-workspace-data SESSION EXACT_RESULT_SHA256 (raw bundle stdout). No project code execution or network grant.");
             return 64;
         }
@@ -60,6 +61,8 @@ internal static class Program
             var result = args[0] switch {
                 "qualify-toolchain" => ProtectionLifecycle.InstalledBroker.QualifyToolchain(),
                 "recover-session-resources" => ProtectionLifecycle.InstalledBroker.RecoverSessionResources(),
+                "inspect-resource-recovery" => ProtectionLifecycle.InstalledBroker.InspectResourceRecovery(),
+                "recover-unstarted-session-resources" => ProtectionLifecycle.InstalledBroker.RecoverUnstartedSessionResources(),
                 "qualify-resource-recovery" => ProtectionLifecycle.InstalledBroker.QualifyResourceRecovery(),
                 "qualify-resources" => ProtectionLifecycle.InstalledBroker.QualifyResources(),
                 "migrate-session-network" => ProtectionLifecycle.InstalledBroker.MigrateSessionNetwork(),

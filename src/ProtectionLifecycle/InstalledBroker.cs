@@ -152,6 +152,8 @@ public static partial class InstalledBroker
     public static (int ExitCode,string Report) QualifyToolchain()=>WithCurrentInstallation(ProtectedSession.QualifyToolchain);
     public static (int ExitCode,string Report) QualifyResourceRecovery()=>WithCurrentInstallation(ProtectedSession.QualifyResourceRecovery);
     public static (int ExitCode,string Report) RecoverSessionResources()=>WithCurrentInstallation((_,state,_)=>SessionProfileRecovery.RecoverClosed(state));
+    public static (int ExitCode,string Report) InspectResourceRecovery()=>WithCurrentInstallation((_,state,_)=>SessionProfileRecovery.InspectRecovery(state));
+    public static (int ExitCode,string Report) RecoverUnstartedSessionResources()=>WithCurrentInstallation((_,state,_)=>SessionProfileRecovery.RecoverNeverStarted(state));
     public static (int ExitCode,string Report) QualifyWatchdog()
     {
         ProtectedSession.AssertSystemTestingAllowed();

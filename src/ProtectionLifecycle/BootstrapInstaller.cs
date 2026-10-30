@@ -193,7 +193,11 @@ public static class BootstrapInstaller
             "449AF6BA7B320FBC50E5B27F77D1C36FF902A0123CE02CBD0A074BDCC3C855B9",
             // Cwd inheritance did not repair CreateProcess5. Exact Job3498721f
             // receipt confirms closed/zero members, full quarantine, no stop errors.
-            "2A5D02303A96DDDFF17423C7EDAEC67BD94FD5290318E41F77F1BE1B8ED4996C"
+            "2A5D02303A96DDDFF17423C7EDAEC67BD94FD5290318E41F77F1BE1B8ED4996C",
+            // Installed v3 diagnostic package. Profile interruption is not
+            // closure evidence: the unchanged all-Job/quarantine gates below
+            // still decide whether any inactive update is admissible.
+            "2896E57A537D998D877170C5D7EE98F3B842DAA899E8CD1688F04E767911A68E"
         };
         private readonly ProtectedState state;
         private readonly BootstrapApproval approval;

@@ -8,8 +8,11 @@ internal sealed record ProfileStorageReceipt(int SchemaVersion,string Installati
     string Name,string Sid,string StorageRoot,string StorageIdentity,string ParentIdentity,string Status);
 
 // Same profile owner as AtomicChild. Recovery accepts no caller path, SID,
-// PID, receipt, or deletion target. Only v2 creations with a durable pre-delete
-// checkpoint can be retried; legacy/uncertain creations are never adopted.
+// PID, receipt, or deletion target. Existing post-creation recovery requires a
+// durable pre-delete checkpoint. Explicit never-started recovery additionally
+// accepts a validated v2 creation with NO durable process binding; the writer
+// must persist that binding before every process creation attempt. Neither
+// path adopts legacy, incomplete-creation or uncertain post-creation state.
 internal static class SessionProfileRecovery
 {
     private static string OwnerSid()
@@ -217,6 +220,66 @@ internal static class SessionProfileRecovery
             Status=recovered.Count==0?"NO_PENDING_PROFILE_CLEANUP":"EXACT_PROFILE_STORAGE_RECOVERED",RecoveredProfileIds=recovered,
             ProfileRegistrationAbsenceQualified=false,ControllerCrashQualified=false,RebootRecoveryQualified=false,
             LaunchAuthorized=false,NetworkPolicyModified=false,ClaudeLaunched=false}));
+    }
+    internal static (int ExitCode,string Report) InspectRecovery(ProtectedState state)
+    {
+        state.AssertHeld();
+        var jobs=OwnedJobIntent.ReadAll(state);
+        var allClosed=jobs.All(job=>AtomicJobCompletion.ReadClosed(state,job) is not null);
+        var pending=Pending(state);if(pending.Count>64)throw WfpNative.Contract("ProfileRecoveryInventoryExceeded");
+        var items=new List<object>();
+        foreach(var record in pending)
+        {
+            var bound=state.ReadOptional("profile-job-"+record.ProfileId+".json") is not null;
+            var checkpoint=state.ReadOptional("profile-delete-intent-"+record.ProfileId+".json") is not null;
+            string route;
+            if(!allClosed)route="BLOCKED_ADMISSION_CLOSURE_NOT_CONFIRMED";
+            else if(!bound)
+            {
+                if(checkpoint)_=ValidateCleanupIntent(state,record);
+                route="EXPLICIT_NEVER_STARTED_RECOVERY";
+            }
+            else if(checkpoint){_=ValidateCleanupIntent(state,record);route="EXISTING_CLOSED_JOB_CHECKPOINT_RECOVERY";}
+            else route="BLOCKED_POST_CREATION_WITHOUT_CLEANUP_CHECKPOINT";
+            items.Add(new {record.ProfileId,ProcessBindingPresent=bound,CleanupCheckpointPresent=checkpoint,Route=route});
+        }
+        return(pending.Count==0?0:3,JsonSerializer.Serialize(new {SchemaVersion=1,Scope="RESOURCE_RECOVERY_JOURNAL_READ_ONLY",
+            Status=pending.Count==0?"NO_PENDING_PROFILE_CLEANUP":"PROFILE_RECOVERY_DECISION_REQUIRED",AllAdmissionsClosed=allClosed,
+            Pending=items,StorageIdentityAndQuarantineCheckedByRecoveryOnly=true,StateModified=false,JobApiCalled=false,
+            CleanupAuthorized=false,LaunchAuthorized=false}));
+    }
+    internal static (int ExitCode,string Report) RecoverNeverStarted(ProtectedState state)
+    {
+        state.AssertHeld();InstallationLoopbackLease.AssertClosedHistory(state);
+        foreach(var job in OwnedJobIntent.ReadAll(state))
+            if(AtomicJobCompletion.ReadClosed(state,job) is null)throw WfpNative.Contract("UnstartedRecoveryRequiresAllAdmissionsClosed");
+        var fences=FencePlan.ReadAll(state);if(fences.Count==0)throw WfpNative.Contract("UnstartedRecoveryNeedsQuarantine");
+        foreach(var plan in fences)
+        {using var fence=PersistentFence.OpenExisting(state,plan.Data.FenceId);if(!fence.Observe().FullQuarantineObserved)throw WfpNative.Contract("UnstartedRecoveryNeedsFullQuarantine");}
+        var records=Pending(state);if(records.Count>64)throw WfpNative.Contract("ProfileRecoveryInventoryExceeded");
+        // Validate the WHOLE target set before writing any new deletion intent.
+        // BeforeProcessCreation persists profile-job under this same exclusive
+        // state lease BEFORE calling Windows. A present binding never becomes
+        // a never-started proof merely because the process/Job is now absent.
+        foreach(var record in records)
+        {
+            if(state.ReadOptional("profile-job-"+record.ProfileId+".json") is not null)
+                throw WfpNative.Contract("UnstartedRecoveryRefusesAnyProcessBinding");
+            if(state.ReadOptional("profile-delete-intent-"+record.ProfileId+".json") is not null)_=ValidateCleanupIntent(state,record);
+        }
+        var recovered=new List<string>();
+        foreach(var record in records)
+        {
+            // The existing cleanup owner still binds current human, profile
+            // SID/name, original storage/parent IDs and exact task inventory.
+            // No fabricated Job completion or replaced/unknown tree adoption.
+            WriteCleanupIntent(state,record);Cleanup(state,record);recovered.Add(record.ProfileId);
+        }
+        AssertNoPending(state);
+        return(0,JsonSerializer.Serialize(new {SchemaVersion=1,Scope="EXPLICIT_V2_CREATED_NO_PROCESS_BINDING_RECOVERY_ONLY",
+            Status=recovered.Count==0?"NO_PENDING_PROFILE_CLEANUP":"EXACT_NEVER_STARTED_PROFILE_STORAGE_RECOVERED",RecoveredProfileIds=recovered,
+            ProcessBindingAbsenceRequired=true,AllAdmissionsClosed=true,JobCompletionInvented=false,NetworkPolicyModified=false,
+            ProfileRegistrationAbsenceQualified=false,ControllerCrashQualified=false,RebootRecoveryQualified=false,LaunchAuthorized=false}));
     }
     [DllImport("userenv.dll",CharSet=CharSet.Unicode,ExactSpelling=true)] private static extern int DeleteAppContainerProfile(string name);
 }
