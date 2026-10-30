@@ -1,5 +1,23 @@
 # ClaudeCode-Protection working rules
 
+2026-10-30 authoritative installedb41946295d334034896319e3a0aeba7c,
+manifestF1418ECBB01AED35559B440E60BAF37C4E79C3D6133A62F331BB9B40EF062B01,
+human UAC04:45:51Z INACTIVE update/read-only inspection completed. Fifteen
+installed hashes/protected DACLs independently matched. Inspector found one
+complete v2 profile9888b7a24bd84c5f98be71c82c27988b, no process binding/checkpoint,
+all Job admissions closed. Separate explicit human-UAC recovery completed
+04:54:06Z through installed RecoverNeverStarted and original exact cleanup owner;
+post-inspection returned0/NO_PENDING_PROFILE_CLEANUP, AllAdmissionsClosed=true.
+Evidence work/unstarted-profile-recovery-control/evidence and
+work/unstarted-recovery-control/installed-evidence. No workload/debugger rerun,
+reboot/remnants, fabricated Job proof or daily UU/FlClash/AV/network changes.
+This qualifies the observed never-started-profile recovery only, not post-start
+crash/reboot recovery, profile registration absence, tool compatibility or P0.
+The installed library is2F7AA084; AtomicAdmission/tool creation source and native
+imports unchanged from041. Tool CreateProcess5 remains open; any new resource
+diagnostic needs its reviewed bytes and concrete human UAC step. Below old
+"current/source uninstalled" paragraphs are historical evidence snapshots.
+
 2026-10-30 trace3 used an overbroad error-setter breakpoint during state reads
 and timed out before any CreateProcess entry (30247 observations). CDB ended,
 but its exact owner34888/created134378064365272233 stayed suspended. Separate

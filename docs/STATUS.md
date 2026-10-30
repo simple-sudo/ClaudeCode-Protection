@@ -1,5 +1,11 @@
 # 当前开发状态
 
+## 当前b4194629：未创建进程的遗留资源已实际恢复
+
+VERIFIED（安装/恢复限定）：本人分别授权并确认UAC；04:45:51Z INACTIVE更新到b41946295d334034896319e3a0aeba7c / manifestF1418ECBB01AED35559B440E60BAF37C4E79C3D6133A62F331BB9B40EF062B01。53输入Broker/Lifecycle及56输入Bootstrap均0错误/警告，后者复用库2F7AA08439315E76CCC1C06F5E044E18530BFDF7174808AEAAEF5885052AE191不重建；20文件/10PE/6managed/内嵌清单通过，15安装文件摘要/保护DACL独立匹配。首次只读回执确认唯一profile9888b7a24bd84c5f98be71c82c27988b无进程绑定及旧checkpoint，所有Job闭合。
+
+04:54:06Z另次具体本人授权后，原安装Broker重新读取条件，通过RecoverNeverStarted复用原精确清理所有者，返回EXACT_NEVER_STARTED_PROFILE_STORAGE_RECOVERED；只读后查0/NO_PENDING_PROFILE_CLEANUP、Pending=[]、AllAdmissionsClosed=true。无伪造Job完成、自动重试、新负载或日常环境变更；boot仍02:14:46.5Z，无产品残留。证据work/unstarted-recovery-control/installed-evidence、installed-readback.json及work/unstarted-profile-recovery-control/evidence。此为真实的进程创建前中断恢复，不扩大为创建后崩溃/重启恢复或profile注册表缺失保证。工具创建后拒绝5仍待定位，整体P0/网络/14项/GPU/正式项目及Claude未验收。以下为保留的阶段记录。
+
 ## 当前恢复缺口：中断后必须核对真实创建阶段
 
 FAIL保留（诊断限定）：trace3全局错误观测在创建进程前记录30247条状态，超时后CDB被结束，原Broker34888仍全线程挂起；04:09:54Z另一次本人UAC核对创建时间/映像并精确终止该进程。附加栈读取被CDB拒绝pv+pd组合，未取得有效栈；不按包装器退出0计PASS。原日志已落盘，私有状态未清理，不从进程退出推导闭Job。当前无产品进程，boot仍02:14:46.5Z，日常UU/FlClash/AV/BFE不变。证据work/create-process-trace-installed-r3、work/trace3-owner-stop-control/evidence。
