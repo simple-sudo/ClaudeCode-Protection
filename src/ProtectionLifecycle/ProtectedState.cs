@@ -12,6 +12,7 @@ internal sealed record BoundBytes(byte[] Bytes, string SHA256);
 // or a probe's unprivileged journal. No automatic adoption/ACL repair exists.
 internal sealed class ProtectedState : IDisposable
 {
+    internal const string EtwAccessIntentPrefix="etw-access-intent-";
     private readonly PathLease directory;
     private readonly SafeFileHandle mutex;
     private bool disposed;
@@ -199,11 +200,15 @@ internal sealed class ProtectedState : IDisposable
     internal string[] ListLeaves(string fixedPrefix)
     {
         AssertHeld();
-        if(fixedPrefix is not ("manifest-access-intent-" or "operation-" or "plan-" or "release-" or "restage-" or "recovery-" or "selection-" or "stage-intent-" or "job-intent-" or "fence-intent-" or "fence-migration-" or "loopback-intent-" or "profile-created-" or "profile-intent-")) throw new InvalidOperationException("Fixed inventory prefix required");
+        RequireFixedInventoryPrefix(fixedPrefix);
         // Enumeration locates names only. Each matched file must separately pass
         // the handle, ACL, strict JSON and identity checks before it is trusted.
         return WindowsPathSeal.EnumerateNames(directory).Where(n=>n.StartsWith(fixedPrefix,StringComparison.Ordinal))
             .Select(Identifiers.StateLeaf).OrderBy(n=>n,StringComparer.Ordinal).ToArray();
+    }
+    internal static void RequireFixedInventoryPrefix(string fixedPrefix)
+    {
+        if(fixedPrefix is not (EtwAccessIntentPrefix or "manifest-access-intent-" or "operation-" or "plan-" or "release-" or "restage-" or "recovery-" or "selection-" or "stage-intent-" or "job-intent-" or "fence-intent-" or "fence-migration-" or "loopback-intent-" or "profile-created-" or "profile-intent-")) throw new InvalidOperationException("Fixed inventory prefix required");
     }
     internal void AssertFreshEmpty()
     {

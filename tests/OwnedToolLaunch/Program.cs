@@ -29,6 +29,13 @@ var launch=library.GetType("ProtectionLifecycle.OwnedToolLaunch",true)!;
 if(args[0]=="etw-policy")
 {
     var type=library.GetType("ProtectionLifecycle.SessionEtwProviderAccess",true)!;
+    var prefix=(string)type.GetField("Prefix",flags)!.GetRawConstantValue()!;
+    var state=library.GetType("ProtectionLifecycle.ProtectedState",true)!;
+    Call(state,"RequireFixedInventoryPrefix",prefix);
+    var unknownRefused=false;
+    try{Call(state,"RequireFixedInventoryPrefix",prefix+"arbitrary-");}
+    catch(InvalidOperationException ex)when(ex.Message=="Fixed inventory prefix required"){unknownRefused=true;}
+    Require(unknownRefused,"ETW caller inventory accepted without allowing arbitrary prefixes");
     var original=(string)type.GetField("ObservedDefault",BindingFlags.NonPublic|BindingFlags.Static)!.GetRawConstantValue()!;
     var sid="S-1-15-2-101-102-103-104-105-106-107";
     var granted=(string)Call(type,"AddRegisterAce",original,sid)!;

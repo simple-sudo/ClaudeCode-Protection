@@ -1,3 +1,5 @@
+2026-10-30 09:42:51Z：本人明确授权后的e1829299 INACTIVE更新被拒绝125/InvalidOperationException，尚未进入已授权但未执行的工具运行，未调用ETW权限API。原6e2cf8cd/manifest6AAE651E/INACTIVE指针不变，AV/BFE/FlClash前后正常，失败完整保留work/etw-registration-r2-control/installed-evidence。源码发现ETW意图前缀未接入ProtectedState固定清单，是必然阻断新Pending检查的确定缺陷；现共享编译期常量、接入原清单，并补测实际调用前缀及未知前缀拒绝；六产品非生成语义通过。旧失败不重试；修复工件需重新构建审查。不能仅凭指针未变宣称私有状态无变化。
+
 # 当前开发状态
 
 ## 固定事件提供者原权限已实测，最小注册租约接入原所有者
