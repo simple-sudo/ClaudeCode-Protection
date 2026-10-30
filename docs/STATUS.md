@@ -1,5 +1,12 @@
 # 当前开发状态
 
+## 当前df6ff338：工具安装完成；本次项目进程异常弹窗与运行失败已确认
+
+VERIFIED / FAIL：本人两次具体授权及UAC后，08:23:36Z安装df6ff338081b43e4ac4691598c108f71/manifest9239BB32、INACTIVE。15产品文件+552官方PowerShell文件/110目录的摘要、可信所有者、保护DACL及无非可信写入独立核对通过；只读资源检查无待恢复项。新公共工具目录只读执行，未改既有宿主ACL或注册表。
+
+08:24:15Z sessionac45262cde9d40b1b6b79b8048f6f98f在WAIT_FIXED_POWERSHELL达到10秒期限，未到READY；用户截图并明确确认UAC后本项目进程弹出E0434352托管异常，地址00007FFAEB181ADA。接受该实测故障，不因未抓到对应事件/PID否定，不作无关应用推测。精确异常类型/根因未捕获。PowerShell/Git/自有编译均未确认，无成果。原根I/O/四拒绝5通过，Job1bc7bc5b关闭归零、Stop无失败，未强杀owner；宿主键独立完全不变且未授予权限。报告SHA256=8E1E61531E673F90B01B8BF9B033FD540C6FFBD2443D5E849C85D0D31F5F6B62。证据work/powershell7-r2-control/run-evidence，含用户确认和原截图摘要；旧异常/失败全部保留，不重跑不变工件。
+
+SOURCE：工具创建窗口内只改变原Broker自己的错误模式，让子进程继承无人值守错误处理、随后精确恢复原模式；不改全机WER/用户设置、不掩盖失败。固定任务在超时/异常时保留已收到的有界标准流到原私有状态，普通响应只含异常类型/摘要；避免旧代码等EOF或超时后丢失错误输出。原准入/Job/LPAC与停止保持。六产品语义通过；新的构建及普通自有子进程继承/部分管道资格待完成，尚未安装或实测无弹窗。
 ## 已构建待系统授权：PowerShell7固定工具与自有C#编译执行
 
 BUILD / 普通限定VERIFIED：source05d7fcf+a826cf9、embed3ec798e，59输入Broker/Library和60输入Bootstrap构建通过，Bootstrap未重建资格库999ED4B8；20文件/10PE/6managed/内嵌manifest匹配。官方PowerShell7.4.22完整552文件固定，383PE/366managed无模块初始化器、host有效Microsoft签名；生产工厂固定脚本在普通自有样本实测工作区读写、ACL拒绝、C#编译及加载运行7+5=12，实际coreclr8.0.28、退出0、无输出/强停。普通固定策略/消息/句柄掩码101000/三方向管道均通过。正常路径不再授予SideBySide读取；旧意图恢复保留。证据work/powershell7-build-r2/qualification.json、work/portable-powershell-r1/runtime-result-r4.json；不是LPAC成功。

@@ -1,5 +1,29 @@
 # ClaudeCode-Protection working rules
 
+2026-10-30 actual installeddf6ff338081b43e4ac4691598c108f71,
+manifest9239BB32E9822030B19E70E8B983CC28D89B987115EF028E733F921B56101247,
+human UAC08:23:36Z INACTIVE update/read-only inspection completed. Official
+PowerShell7.4.22 fixed public directory552 files/110 directories and15 product
+files independently hash/owner/protected DACL/no untrusted writer matched.
+Separate authorized resource run08:24:15Z sessionac45262c failed before tool
+READY with10s WAIT_FIXED_POWERSHELL timeout. User supplied screenshot and
+explicitly confirms this UAC project's process displayed managed exception
+E0434352 at00007FFAEB181ADA. Accept this observed project failure; absence of
+matching Application events does not refute it. Do not demand another capture
+or call it an unrelated app. Exact popup PID/cause was not captured. Evidence
+work/powershell7-r2-control/run-evidence including user screenshot/hash/record.
+Original Job1bc7bc5b closed/zero and Stop errors empty, root IO/four denials5
+passed, no forced owner stop, key independently unchanged and no grant used.
+PowerShell/Git/owned compilation NOT_CONFIRMED. Source999ED4B8 stays installed;
+no unchanged rerun or automatic recovery. Daily AV/BFE/FlClash/UU/boot intact.
+New source confines inherited critical/fatal dialog suppression to original
+Broker's serialized tool-create window, restores own process mode exactly and
+preserves bounded partial stdout/stderr in original PRIVATE owner evidence on
+failure, even before EOF. Only exception type/hash goes to daily metadata.
+No WER/host-wide setting change, induced crash, capability or ACL widening.
+Build/native own-child inheritance/partial-pipe qualification and new concrete
+human system operation remain required; source alone is not popup repair proof
+or tool compatibility. Below older installed paragraphs are historical.
 2026-10-30 authorized589f8b3c resource run completed07:31:02Z, sessioneb3df4b3.
 Original Broker atomic LPAC/original Job creation and handle transfer DID pass;
 PowerShell itself exitedFFFB0000/-327680 before ready, unclassified output hash

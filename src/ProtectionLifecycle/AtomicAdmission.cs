@@ -574,8 +574,10 @@ internal sealed class AtomicChild : IDisposable
                 Input=inputRead.DangerousGetHandle(),Output=outputWrite.DangerousGetHandle(),Error=errorWrite.DangerousGetHandle()},Attributes=attributes};
             using var descriptor=new KernelJobSeal.SessionObjectDescriptor();var processSecurity=descriptor.Attributes;var threadSecurity=descriptor.Attributes;
             permit.AssertCurrent();
-            if(!CreateSealedProcess(start.FileName,command,ref processSecurity,ref threadSecurity,true,0x08080404,environment,start.WorkingDirectory,ref startup,out var info))
-            {var failure=Error("OwnedToolCreateProcess");failure.Data["ToolCreationEvidence"]=evidence;throw failure;}
+            ProcessInfo info;
+            using(var faultMode=ToolFaultMode.Enter())
+                if(!CreateSealedProcess(start.FileName,command,ref processSecurity,ref threadSecurity,true,0x08080404,environment,start.WorkingDirectory,ref startup,out info))
+                {var failure=Error("OwnedToolCreateProcess");failure.Data["ToolCreationEvidence"]=evidence;throw failure;}
             process=new SafeProcessHandle(info.Process,true);thread=new SafeWaitHandle(info.Thread,true);
             KernelJobSeal.SessionObjectDescriptor.AssertSeal(process);KernelJobSeal.SessionObjectDescriptor.AssertSeal(thread);
             var child=ReadToken(process);

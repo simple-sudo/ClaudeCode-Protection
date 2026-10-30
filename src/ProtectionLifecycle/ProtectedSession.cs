@@ -228,7 +228,7 @@ internal sealed class ProtectedSession
                 try{workspaceResultSHA256=resources?.PreserveClosedWorkspaceResult(zero);}catch(Exception ex){failures.Add(ex);}
             if(exited is not null)try{exit=exited.WaitAsync(TimeSpan.FromSeconds(2)).GetAwaiter().GetResult();}catch(Exception ex){failures.Add(ex);}
             if(pipe is not null)try{pipe.DisposeLocalCopyOfClientHandle();}catch(Exception ex){failures.Add(ex);}
-            if(includeGit && failures.Count!=0)try{resources?.PreserveGitFailure();}catch(Exception ex){failures.Add(ex);}
+            if(failures.Count!=0)try{resources?.PreserveGitFailure();}catch(Exception ex){failures.Add(ex);}
             foreach(var owned in new IDisposable?[]{child,reader,pipe,resources})try{owned?.Dispose();}catch(Exception ex){failures.Add(ex);}
             try
             {

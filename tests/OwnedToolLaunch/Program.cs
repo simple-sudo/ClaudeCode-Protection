@@ -7,7 +7,7 @@ using System.Text.Json;
 using System.Runtime.InteropServices;
 using Microsoft.Win32.SafeHandles;
 
-if(args.Length!=1 || args[0] is not ("policy" or "messages" or "handle-transfer"))return 125;
+if(args.Length!=1 || args[0] is not ("policy" or "messages" or "handle-transfer" or "fault-mode" or "fault-mode-read" or "partial-output"))return 125;
 using var identity=WindowsIdentity.GetCurrent();
 if(new WindowsPrincipal(identity).IsInRole(WindowsBuiltInRole.Administrator))throw new InvalidOperationException("Ordinary qualification only");
 var library=Assembly.LoadFrom(Path.Combine(AppContext.BaseDirectory,"ProtectionLifecycle.dll"));
@@ -24,6 +24,54 @@ void Refuse(Action action,string reason)
     throw new InvalidOperationException("Expected refusal: "+reason);
 }
 var launch=library.GetType("ProtectionLifecycle.OwnedToolLaunch",true)!;
+if(args[0]=="fault-mode-read")
+{
+    var mode=(uint)Call(library.GetType("ProtectionLifecycle.ToolFaultMode",true)!,"CurrentMode")!;
+    Console.WriteLine(mode);return (mode&0x8003)==0x8003?0:3;
+}
+if(args[0]=="fault-mode")
+{
+    var mode=library.GetType("ProtectionLifecycle.ToolFaultMode",true)!;
+    var before=(uint)Call(mode,"CurrentMode")!;
+    using((IDisposable)Call(mode,"Enter")!)
+    {
+        Require((uint)Call(mode,"CurrentMode")! == (before|0x8003),"own process error mode only");
+        var start=new ProcessStartInfo(Environment.ProcessPath!){UseShellExecute=false,CreateNoWindow=true,RedirectStandardOutput=true,RedirectStandardError=true,WorkingDirectory=AppContext.BaseDirectory};
+        foreach(var argument in new[]{"exec","--fx-version","8.0.28",typeof(Program).Assembly.Location,"fault-mode-read"})start.ArgumentList.Add(argument);
+        start.Environment.Clear();foreach(var name in new[]{"SystemRoot","windir","TEMP","TMP"}){var value=Environment.GetEnvironmentVariable(name);if(value is not null)start.Environment[name]=value;}
+        using var child=Process.Start(start)!;var stdout=child.StandardOutput.ReadToEndAsync();var stderr=child.StandardError.ReadToEndAsync();
+        if(!child.WaitForExit(4000)){child.Kill();throw new InvalidDataException("Ordinary own mode-reader deadline");}
+        Require(stdout.Wait(1000) && stderr.Wait(1000) && child.ExitCode==0 && stderr.Result.Length==0 && uint.Parse(stdout.Result.Trim())==(before|0x8003),"actual own child inherits noninteractive failure mode");
+    }
+    Require((uint)Call(mode,"CurrentMode")! == before,"exact prior mode restored after normal creation");
+    try{using var scope=(IDisposable)Call(mode,"Enter")!;throw new InvalidOperationException("owned fixture exception");}catch(InvalidOperationException){}
+    Require((uint)Call(mode,"CurrentMode")! == before,"exact prior mode restored after exception");
+    Console.WriteLine("PASS own error-mode scope, exact restoration on success/failure and one ordinary own child inheritance; no induced crash or host setting change");return 0;
+}
+if(args[0]=="partial-output")
+{
+    var captureType=library.GetType("ProtectionLifecycle.ToolOutputCapture",true)!;
+    object Capture(StreamReader input)=>Activator.CreateInstance(captureType,BindingFlags.Instance|BindingFlags.NonPublic,null,new object[]{input},null)!;
+    string Snapshot(object capture)=>(string)captureType.GetMethod("Snapshot",BindingFlags.Instance|BindingFlags.NonPublic)!.Invoke(capture,null)!;
+    Task<string> Completion(object capture)=>(Task<string>)captureType.GetProperty("Completion",BindingFlags.Instance|BindingFlags.NonPublic)!.GetValue(capture)!;
+    using(var input=new System.IO.Pipes.AnonymousPipeServerStream(System.IO.Pipes.PipeDirection.In))
+    using(var output=new System.IO.Pipes.AnonymousPipeClientStream(System.IO.Pipes.PipeDirection.Out,input.ClientSafePipeHandle))
+    using(var reader=new StreamReader(input))
+    {
+        var capture=Capture(reader);var bytes=Encoding.UTF8.GetBytes("Unhandled exception. System.UnauthorizedAccessException: PRIVATE-PATH-CONTROL");output.Write(bytes);output.Flush();
+        Require(SpinWait.SpinUntil(()=>Snapshot(capture).Length==bytes.Length,1000),"partial bytes retained before pipe closure");
+        Require(!Completion(capture).IsCompleted,"snapshot does not wait for EOF");
+        Require((string)Call(captureType,"Classify","",Snapshot(capture))! == "MANAGED_UNHANDLED_TYPE=System.UnauthorizedAccessException","only bounded exception type leaves private error record");
+        output.Dispose();Require(Completion(capture).Wait(1000),"pipe closes normally after snapshot");
+    }
+    using(var reader=new StreamReader(new MemoryStream(Encoding.UTF8.GetBytes(new string('x',4097)))))
+    {
+        var capture=Capture(reader);try{_=Completion(capture).GetAwaiter().GetResult();throw new InvalidOperationException("Expected output bound refusal");}
+        catch(InvalidDataException ex)when(ex.Message=="ResourceReportTooLarge"){}
+        Require(Snapshot(capture).Length<=4096,"bounded retained output on overflow");
+    }
+    Console.WriteLine("PASS partial anonymous-pipe output before EOF, bounded overflow refusal and exception-type-only public metadata; no protected resource access");return 0;
+}
 if(args[0]=="handle-transfer")
 {
     var atomic=library.GetType("ProtectionLifecycle.AtomicChild",true)!;

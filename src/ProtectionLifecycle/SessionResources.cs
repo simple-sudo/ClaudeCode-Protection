@@ -163,8 +163,12 @@ internal sealed class SessionResources : IDisposable
     }
     internal void PreserveGitFailure()
     {
-        if(git is null)return;
-        var path=WindowsPathSeal.Child(Workspace,"git-last-result.json");
+        foreach(var (leaf,prefix) in new[]{("git-last-result.json","resource-git-error-"),("tool-last-result.json","resource-tool-error-")})
+            PreserveFixedFailure(leaf,prefix);
+    }
+    private void PreserveFixedFailure(string leaf,string prefix)
+    {
+        var path=WindowsPathSeal.Child(Workspace,leaf);
         try
         {
             using var file=new FileStream(WindowsPathSeal.Open(path,false,true),FileAccess.Read,4096,false);
@@ -172,7 +176,7 @@ internal sealed class SessionResources : IDisposable
             var bytes=new byte[checked((int)file.Length)];file.ReadExactly(bytes);
             // Private failure evidence only; never parsed into admission or
             // returned as a user-supplied authorization/configuration record.
-            state.WriteNew("resource-git-error-"+Plan.Nonce+".json",bytes);
+            state.WriteNew(prefix+Plan.Nonce+".json",bytes);
         }
         catch(ExactPathAbsentException ex)when(string.Equals(ex.FailedPath,path,StringComparison.OrdinalIgnoreCase)){}
     }
@@ -279,9 +283,16 @@ internal sealed class SessionResources : IDisposable
             var start=PowerShellStart(plan,workspace);
             stage="START_FIXED_POWERSHELL";
             using var process=AtomicChild.StartInheritedTool(start);creationEvidence=process.CreationEvidence;process.StandardInput.Close();
-            var stdout=ReadBounded(process.StandardOutput);var stderr=ReadBounded(process.StandardError);
+            var outputCapture=new ToolOutputCapture(process.StandardOutput);var errorCapture=new ToolOutputCapture(process.StandardError);
+            var stdout=outputCapture.Completion;var stderr=errorCapture.Completion;
             stage="WAIT_FIXED_POWERSHELL";
-            if(!process.WaitForExit(10000))throw new TimeoutException("Fixed offline tool deadline");
+            if(!process.WaitForExit(10000))
+            {
+                var partialOut=outputCapture.Snapshot();var partialError=errorCapture.Snapshot();
+                toolDiagnostic=ToolOutputCapture.Classify(partialOut,partialError);
+                SaveToolFailure(workspace,partialOut,partialError,"TIMEOUT_PARTIAL_PIPE_SNAPSHOT");
+                throw new TimeoutException("Fixed offline tool deadline");
+            }
             toolExit=process.ExitCode;
             var toolOut=stdout.WaitAsync(TimeSpan.FromSeconds(1)).GetAwaiter().GetResult();
             var toolError=stderr.WaitAsync(TimeSpan.FromSeconds(1)).GetAwaiter().GetResult();
@@ -290,7 +301,8 @@ internal sealed class SessionResources : IDisposable
                 var diagnostic=toolError.Trim();
                 toolDiagnostic=System.Text.RegularExpressions.Regex.IsMatch(diagnostic,
                     @"\ACPC_TOOL_FAILURE\|(READY|WAIT_OWNER|READ_OWNER_GATE|WORKSPACE_IO|DENY_PRIVATE_FIXTURE|COMPILE_OWNED_SAMPLE)\|[A-Za-z0-9.]{1,80}\|-?[0-9]{1,12}\z")?
-                    diagnostic:"UNCLASSIFIED_OUTPUT_SHA256="+Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(toolOut+"\0"+toolError)));
+                    diagnostic:ToolOutputCapture.Classify(toolOut,toolError);
+                SaveToolFailure(workspace,toolOut,toolError,"EXITED_UNEXPECTED_OUTPUT");
                 throw WfpNative.Contract("FixedToolUnexpectedOutput");
             }
             stage="VERIFY_OWNED_COMPILATION_RESULT";
@@ -351,6 +363,14 @@ internal sealed class SessionResources : IDisposable
     internal static bool Qualified(ResourceChildReport report)=>report.SchemaVersion==1 && report.WorkspaceWriteReadMatched && report.ToolExit==0 && report.OwnedCompilationObserved && report.FailureType is null && report.FailureCode is null && report.FailureStage is null && report.ToolDiagnostic is null &&
         (report.Git is null || SessionGitToolchain.Qualified(report.Git)) && report.Cases.Length==4 && report.Cases.Select(c=>c.Role).SequenceEqual(new[]{"private-state-Read","private-state-Write","all-packages-only-Read","broker-vm-read-open"}) &&
         report.Cases.All(c=>c.Status=="ACCESS_DENIED" && c.Error==5);
+    private static void SaveToolFailure(string workspace,string stdout,string stderr,string status)
+    {
+        if(stdout.Length>4096 || stderr.Length>4096)throw WfpNative.Contract("ToolFailureSnapshotBounds");
+        var bytes=JsonSerializer.SerializeToUtf8Bytes(new{SchemaVersion=1,Status=status,Stdout=stdout[..Math.Min(stdout.Length,2048)],
+            Stderr=stderr[..Math.Min(stderr.Length,2048)],Truncated=stdout.Length>2048 || stderr.Length>2048});
+        using var file=new FileStream(WindowsPathSeal.Child(workspace,"tool-last-result.json"),FileMode.CreateNew,FileAccess.Write,FileShare.None);
+        file.Write(bytes);file.Flush(true);
+    }
     internal static async Task<string> ReadBounded(StreamReader reader)
     {
         var data=new char[4097];var total=0;
