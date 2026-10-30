@@ -1,5 +1,7 @@
 # LPAC工具启动：具体修复及系统验证范围
 
+**当前更新**：下方0c1613f0安装与一次运行已经本人授权并完成。安装保持INACTIVE；运行在恢复根前被ManifestSystemKeySecurityUntrusted拒绝，宿主键前后权限完全相同，没有实际授予。RegGetKeySecurity返回与Windows对象安全接口不同的控制标记/ACE；新源改用GetSecurityInfo(SE_REGISTRY_KEY)，保持原守卫。加强样本及固定系统键只读资格通过。现待具体决定的替代候选为74c34612424b4e9c8ce7588dd0826fd5，manifest06C8F6F2DE0E6A289527D3B3B6166780BB92684ECFD7CA7DC68C0CDD25A44108，库0BE89FA03F2363EDFA88C94B37CE728F3A9D856790F6D72C53DD1D0AE23D7716；同样是INACTIVE更新/只读检查，再一次固定原Broker工具运行，KEY_READ及撤销/超时边界不变。新控制文件位于work/manifest-read-r2-control，安装plan52C0F750/helper1120F35B，运行plan101969E8/helper783C4B94；完整摘要见system-operation-review.json。没有安装或重跑新候选。下方为首次候选的完整范围记录。
+
 2026-10-30。本轮开始时本地与远端开发分支均为e101ad8；后续仅本地提交，未推送。
 
 ## 实际阻碍与修复

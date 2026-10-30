@@ -60,6 +60,12 @@ internal sealed class OwnedKernelJob : IDisposable
     private bool admissionClaimed,admissionClosed;
     internal string JobId=>intent.JobId;
     internal bool AtomicAdmissionReserved=>admissionClaimed;
+    internal SafeJobHandle ToolCreationHandle(ProtectedSession.ResourceQualification permit)
+    {
+        AssertHeld();permit.AssertCurrent();
+        if(!admissionClaimed || admissionClosed || permit.SessionId.Length!=32)throw WfpNative.Contract("OwnedToolJobAdmissionClosed");
+        permit.AssertExactToolJob(this);return handle;
+    }
     internal SafeJobHandle ReserveAtomicAdmission(VerifiedVersion version)
     {
         AssertHeld();version.AssertHeld(state);

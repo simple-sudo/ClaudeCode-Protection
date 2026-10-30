@@ -1,5 +1,21 @@
 # 当前开发状态
 
+## 开发中：复用原Broker创建受限工具，停止扩大宿主授权
+
+VERIFIED（本轮本人UAC原生跟踪）：06:47:15Z同一74c34612安装、session0a0adcfe71ae4d7698bb9f70e697255c再次记录14001。Microsoft sxstrace只给出固定PowerShell配置/清单解析后Activation Context generation failed，没有具体缺失资源；因此不据此扩大SideBySide子键、registryRead或lpacCom。自有WinSxs Trace Session新建/输出路径绑定/停止/解析均完成，原跟踪未被接管，Job归零及单键权限独立精确恢复，未强杀。work/sxs-activation-control/evidence，筛选文本SHA256=0FA89FA0BA0859D17EC51996CA4BC0838D70EAC255372E27CADDD41CB4010467。不再重复相似跟踪。
+
+SOURCE / INTEGRATED：改用同一原Broker完成Windows工具启动封装。原受限worker沿其已有匿名报告管道提出编译固定PowerShell/Git操作；原所有者核对序号/会话/原根PID、完整参数及清洁环境摘要，仅允许既有编译脚本和离线Git操作。工具创建时同时绑定LPAC opt-out、零capability包SID及原Job，挂起检查实际LPAC/token/精确镜像/Job/管理侧进程线程DACL后恢复。worker只得到三条标准流管道及SYNCHRONIZE|QUERY_LIMITED_INFORMATION(101000)工具句柄，不转移Job/token/thread/Broker句柄，不在高权限下运行工具或输入代码。根已有准入、运行租约、工具工作门、四项拒绝、成果/清理路径保持；没有独立服务、备用executor或普通AppContainer回退。报告明确该绑定来自原Broker原子创建，而非OS父子继承。六产品非生成语义0错误/警告，新Build/普通句柄转移资格及真实工具效果待完成，源尚未安装。
+
+## 当前74c34612：单项OS资源授予/撤销已实测；工具阻碍变为SxS14001
+
+VERIFIED（本轮独立两次本人UAC）：06:34:51Z INACTIVE更新到74c34612424b4e9c8ce7588dd0826fd5 / manifest06C8F6F2DE0E6A289527D3B3B6166780BB92684ECFD7CA7DC68C0CDD25A44108；57输入Bootstrap复用已资格库0BE89FA0，20文件/10PE/6managed/内嵌清单匹配；15安装文件摘要、管理员所有者、保护DACL及无非可信写入独立回查通过。inspect-manifest-read-access=0/NO_PENDING_MANIFEST_READ_ACCESS。
+
+06:35:19Z一次无调试器固定工具运行session609aa4b1c1f24de1bd4597ada241bc83确实完成同一包SID的SideBySide单键不继承读取授权及原DACL恢复，ManifestReadAccessRestored=true，helper独立前后完整权限完全相同。原根恢复、工作区I/O、四项拒绝5通过；Jobca9906048a424a28a9e843d6d8ac816e关闭/零成员，Stop失败空，未超时/强杀。资源读取器缺陷及本次正常结束撤销已得到真实路径证据；中断恢复仍未验证。work/manifest-read-r2-control/installed-evidence及run-evidence保留，原始broker-report SHA256=E173FF61B9F5F185EA63DC0B3AEFF99380DE36533D1B323AFBFC78DC0E11D3D4。
+
+FAIL（工具仍未可用）：PowerShellCreateProcess从5变为14001(ERROR_SXS_CANT_GEN_ACTCTX)，PowerShell/Git身份未确认，无成果。新码不能当成完整修复；也不扩大SideBySide子键/registryRead/宿主ACL授权。固定Windows PowerShell内嵌清单无外部assembly依赖；WinSxS目录及mscoree映像原ARP读取存在。确切事件窗口Application/SideBySide无匹配，已记录NoMatchingEventsFound，不排除安全软件，不归因具体缺失库。
+
+下一具体准备是work/sxs-activation-control：不更新产品，不添加权限；一轮原Broker固定工具运行周围使用Microsoft sxstrace原生激活跟踪，解析仅筛powershell.exe。只在确认没有既有WinSxs Trace Session后创建，停止前核对自有ETL完整路径，拒绝接管/停止其他跟踪；记录原始ETL仅在受保护自有目录，可能含本窗口其他应用激活元数据。主任务40秒、各原生控制命令10秒、排空1秒、16MiB跟踪大小阈值；同次资源撤销及独立回查保持，无调试器或自动重试/存储恢复。plan45CEF741/helperB3A8DB8F，签名/脚本解析/普通持有预检已完成，受保护跟踪NOT_RUN，需本人具体UAC决定。日常AV/BFE/UU/FlClash/boot不变，未推送。
+
 ## 当前安装0c1613f0：安全守卫拒绝，宿主键未变；读取器修正中
 
 VERIFIED（本轮两次独立本人UAC）：06:27:07Z INACTIVE更新为0c1613f0c6a4447b83af3814b4d267d6 / manifest850D193EFB259C819B215333A5F7D60D49BFE5C8456957587C84424EEFB81C69。20文件/内嵌清单和原库C8588064复用通过，15安装文件摘要/保护DACL标记普通回读匹配；只读inspect-manifest-read-access返回0/NO_PENDING_MANIFEST_READ_ACCESS，未授予键权限。

@@ -488,10 +488,10 @@ internal sealed class AtomicChild : IDisposable
                 ex is Win32Exception win32?win32.NativeErrorCode:ex.HResult,native)));return 125;
         }
     }
-    // The existing worker, not the elevated Broker, creates its descendants.
-    // Repeat the package/OPT_OUT request explicitly instead of relying on a
-    // framework's ordinary CreateProcess defaults. The original Job is inherited
-    // by Windows; no breakaway, alternate parent/token, capability or fallback.
+    // The restricted worker requests only the compiled fixed tool operations.
+    // Its original Broker performs Windows startup bookkeeping, while package,
+    // OPT_OUT and the original Job are atomically bound before first execution.
+    // There is no elevated tool, arbitrary command endpoint or AC fallback.
     internal static InheritedTool StartInheritedTool(ProcessStartInfo start)
     {
         using var self=new SafeProcessHandle((IntPtr)(-1),false);var token=ReadToken(self,false);
@@ -501,10 +501,21 @@ internal sealed class AtomicChild : IDisposable
         if(start.UseShellExecute || !start.CreateNoWindow || !start.RedirectStandardInput || !start.RedirectStandardOutput || !start.RedirectStandardError ||
             start.UserName.Length!=0 || start.Arguments.Length!=0 || !Path.IsPathFullyQualified(start.FileName) || !Path.IsPathFullyQualified(start.WorkingDirectory))
             throw WfpNative.Contract("InheritedToolStartContractRefused");
-        var command=InheritedToolCommand(start.FileName,start.ArgumentList.ToArray());
+        _=InheritedToolCommand(start.FileName,start.ArgumentList.ToArray());
         var evidence=InspectToolCreationPrerequisites(start.FileName);
-        return CreateInheritedTool(start,command,token,evidence);
+        return OwnedToolLaunch.Request(start,token.PackageSid,evidence);
     }
+    internal InheritedTool StartOwnedTool(OwnedKernelJob job,ProtectedSession.ResourceQualification permit,ProcessStartInfo start)
+    {
+        permit.AuthorizeToolCreation(this,job);
+        if(disposed || !resumed || !IsRunning || !job.ContainsProcess(process))throw WfpNative.Contract("OwnedToolOriginalRootRequired");
+        var token=ReadToken(process);
+        if(!token.IsAppContainer || !token.LpacAccessCheckObserved || token.PackageSid!=packageSid || token.CapabilityCount!=0 || token.IntegritySid!="S-1-16-4096")
+            throw WfpNative.Contract("OwnedToolOriginalRootTokenChanged");
+        return CreateInheritedTool(start,InheritedToolCommand(start.FileName,start.ArgumentList.ToArray()),token,
+            InspectToolCreationPrerequisites(start.FileName),job,permit);
+    }
+    internal ToolLaunchReply TransferToolHandles(InheritedTool tool,int sequence,string nonce)=>tool.TransferTo(process,checked((int)Pid),sequence,nonce);
     private static ToolCreationEvidence InspectToolCreationPrerequisites(string fixedImage)
     {
         using var self=new SafeProcessHandle((IntPtr)(-1),false);
@@ -524,31 +535,35 @@ internal sealed class AtomicChild : IDisposable
         }
         return evidence with{ImageExecuteOpenError=0};
     }
-    private static InheritedTool CreateInheritedTool(ProcessStartInfo start,StringBuilder command,AdmissionToken token,ToolCreationEvidence evidence)
+    private static InheritedTool CreateInheritedTool(ProcessStartInfo start,StringBuilder command,AdmissionToken token,ToolCreationEvidence evidence,OwnedKernelJob job,ProtectedSession.ResourceQualification permit)
     {
         if(token.PackageSid is null)throw WfpNative.Contract("InheritedToolPackageMissing");
         var sid=new SecurityIdentifier(token.PackageSid);var sidBytes=new byte[sid.BinaryLength];sid.GetBinaryForm(sidBytes,0);
-        IntPtr attributes=IntPtr.Zero,package=IntPtr.Zero,capabilities=IntPtr.Zero,policy=IntPtr.Zero,handles=IntPtr.Zero,environment=IntPtr.Zero;
+        IntPtr attributes=IntPtr.Zero,package=IntPtr.Zero,capabilities=IntPtr.Zero,policy=IntPtr.Zero,handles=IntPtr.Zero,environment=IntPtr.Zero,jobList=IntPtr.Zero;
         bool initialized=false;SafeFileHandle? inputRead=null,inputWrite=null,outputRead=null,outputWrite=null,errorRead=null,errorWrite=null;
         SafeProcessHandle? process=null;SafeWaitHandle? thread=null;
+        var jobHandle=job.ToolCreationHandle(permit);bool jobHeld=false;
         try
         {
+            jobHandle.DangerousAddRef(ref jobHeld);
             var pipeSecurity=new KernelJobSeal.SecurityAttributes{Length=Marshal.SizeOf<KernelJobSeal.SecurityAttributes>(),Inherit=1};
             if(!CreateToolPipe(out inputRead,out inputWrite,ref pipeSecurity,0))throw Error("InheritedToolInputPipe");
             if(!CreateToolPipe(out outputRead,out outputWrite,ref pipeSecurity,0))throw Error("InheritedToolOutputPipe");
             if(!CreateToolPipe(out errorRead,out errorWrite,ref pipeSecurity,0))throw Error("InheritedToolErrorPipe");
             foreach(var parent in new[]{inputWrite,outputRead,errorRead})
                 if(!SetToolHandleInformation(parent,1,0))throw Error("InheritedToolParentHandleSeal");
-            nuint size=0;_=InitializeProcThreadAttributeList(IntPtr.Zero,3,0,ref size);
+            nuint size=0;_=InitializeProcThreadAttributeList(IntPtr.Zero,4,0,ref size);
             if(size is 0 or >65536)throw Error("InheritedToolAttributeSize");
             attributes=Marshal.AllocHGlobal(checked((int)size));
-            if(!InitializeProcThreadAttributeList(attributes,3,0,ref size))throw Error("InheritedToolAttributes");initialized=true;
+            if(!InitializeProcThreadAttributeList(attributes,4,0,ref size))throw Error("InheritedToolAttributes");initialized=true;
             package=Marshal.AllocHGlobal(sidBytes.Length);Marshal.Copy(sidBytes,0,package,sidBytes.Length);
             capabilities=Marshal.AllocHGlobal(Marshal.SizeOf<SecurityCapabilities>());
             Marshal.StructureToPtr(new SecurityCapabilities{Sid=package},capabilities,false);
             if(!UpdateProcThreadAttribute(attributes,0,(IntPtr)0x20009,capabilities,(nuint)Marshal.SizeOf<SecurityCapabilities>(),IntPtr.Zero,IntPtr.Zero))throw Error("InheritedToolPackage");
             policy=Marshal.AllocHGlobal(sizeof(uint));Marshal.WriteInt32(policy,1);
             if(!UpdateProcThreadAttribute(attributes,0,(IntPtr)0x2000f,policy,sizeof(uint),IntPtr.Zero,IntPtr.Zero))throw Error("InheritedToolLpac");
+            jobList=Marshal.AllocHGlobal(IntPtr.Size);Marshal.WriteIntPtr(jobList,jobHandle.DangerousGetHandle());
+            if(!UpdateProcThreadAttribute(attributes,0,(IntPtr)0x2000d,jobList,(nuint)IntPtr.Size,IntPtr.Zero,IntPtr.Zero))throw Error("OwnedToolJobAtCreation");
             handles=Marshal.AllocHGlobal(3*IntPtr.Size);
             var inherited=new[]{inputRead,outputWrite,errorWrite};for(var i=0;i<inherited.Length;i++)Marshal.WriteIntPtr(handles,i*IntPtr.Size,inherited[i].DangerousGetHandle());
             if(!UpdateProcThreadAttribute(attributes,0,(IntPtr)0x20002,handles,(nuint)(3*IntPtr.Size),IntPtr.Zero,IntPtr.Zero))throw Error("InheritedToolHandleList");
@@ -557,12 +572,18 @@ internal sealed class AtomicChild : IDisposable
             environment=Marshal.StringToHGlobalUni(string.Join('\0',env)+"\0\0");
             var startup=new StartupInfoEx{Basic=new(){Size=Marshal.SizeOf<StartupInfoEx>(),Flags=0x100,
                 Input=inputRead.DangerousGetHandle(),Output=outputWrite.DangerousGetHandle(),Error=errorWrite.DangerousGetHandle()},Attributes=attributes};
-            if(!CreateProcess(start.FileName,command,IntPtr.Zero,IntPtr.Zero,true,0x08080404,environment,start.WorkingDirectory,ref startup,out var info))
-            {var failure=Error("InheritedToolCreateProcess");failure.Data["ToolCreationEvidence"]=evidence;throw failure;}
+            using var descriptor=new KernelJobSeal.SessionObjectDescriptor();var processSecurity=descriptor.Attributes;var threadSecurity=descriptor.Attributes;
+            permit.AssertCurrent();
+            if(!CreateSealedProcess(start.FileName,command,ref processSecurity,ref threadSecurity,true,0x08080404,environment,start.WorkingDirectory,ref startup,out var info))
+            {var failure=Error("OwnedToolCreateProcess");failure.Data["ToolCreationEvidence"]=evidence;throw failure;}
             process=new SafeProcessHandle(info.Process,true);thread=new SafeWaitHandle(info.Thread,true);
-            var child=ReadToken(process,false);
-            if(!child.IsAppContainer || child.PackageSid!=token.PackageSid || child.CapabilityCount!=0 || child.IntegritySid!="S-1-16-4096" ||
-                !IsProcessInJob(process,IntPtr.Zero,out var childInJob) || !childInJob)throw WfpNative.Contract("InheritedToolSuspendedIdentityRefused");
+            KernelJobSeal.SessionObjectDescriptor.AssertSeal(process);KernelJobSeal.SessionObjectDescriptor.AssertSeal(thread);
+            var child=ReadToken(process);
+            var actualImage=new StringBuilder(32768);uint actualSize=(uint)actualImage.Capacity;
+            if(!QueryFullProcessImageName(process,0,actualImage,ref actualSize))throw Error("OwnedToolHeldImage");
+            if(!child.IsAppContainer || !child.LpacAccessCheckObserved || child.PackageSid!=token.PackageSid || child.CapabilityCount!=0 || child.IntegritySid!="S-1-16-4096" ||
+                !job.ContainsProcess(process) || !string.Equals(WindowsPathSeal.Canonical(actualImage.ToString()),WindowsPathSeal.Canonical(start.FileName),StringComparison.OrdinalIgnoreCase))
+                throw WfpNative.Contract("OwnedToolSuspendedIdentityRefused");
             // The trusted owner still independently checks actual Job members,
             // image and LPAC AccessCheck mask before releasing the tool gate.
             if(ResumeThread(thread)!=1)throw Error("InheritedToolResume");
@@ -574,7 +595,8 @@ internal sealed class AtomicChild : IDisposable
             // Job even if setup/reporting fails; its supervisor closes that Job.
             thread?.Dispose();process?.Dispose();inputRead?.Dispose();inputWrite?.Dispose();outputRead?.Dispose();outputWrite?.Dispose();errorRead?.Dispose();errorWrite?.Dispose();
             if(initialized)DeleteProcThreadAttributeList(attributes);
-            foreach(var pointer in new[]{attributes,package,capabilities,policy,handles,environment})if(pointer!=IntPtr.Zero)Marshal.FreeHGlobal(pointer);
+            foreach(var pointer in new[]{attributes,package,capabilities,policy,handles,environment,jobList})if(pointer!=IntPtr.Zero)Marshal.FreeHGlobal(pointer);
+            if(jobHeld)jobHandle.DangerousRelease();
         }
     }
     private static StringBuilder InheritedToolCommand(string image,string[] arguments)
@@ -613,6 +635,22 @@ internal sealed class AtomicChild : IDisposable
             if(result==0)return true;if(result==258)return false;throw Error("InheritedToolWait");
         }
         internal int ExitCode=>GetExitCodeProcess(process,out var code)?unchecked((int)code):throw Error("InheritedToolExitCode");
+        internal ToolLaunchReply TransferTo(SafeProcessHandle root,int rootPid,int sequence,string nonce)
+        {
+            // No Job/token/thread/manager handle crosses into the worker.
+            // Partial transfers are bounded to this exact original root and
+            // close when the same owning Job stops after a setup failure.
+            long Copy(SafeHandle source,uint access,uint options)
+            {
+                if(!DuplicateToolHandle((IntPtr)(-1),source,root,out var transferred,access,false,options))throw Error("OwnedToolHandleTransfer");
+                return transferred.ToInt64();
+            }
+            var limitedProcess=Copy(process,0x101000,0); // SYNCHRONIZE + QUERY_LIMITED_INFORMATION.
+            var input=Copy(((FileStream)StandardInput.BaseStream).SafeFileHandle,0,2);
+            var output=Copy(((FileStream)StandardOutput.BaseStream).SafeFileHandle,0,2);
+            var error=Copy(((FileStream)StandardError.BaseStream).SafeFileHandle,0,2);
+            return new(1,nonce,rootPid,sequence,limitedProcess,input,output,error,null,null);
+        }
         public void Dispose(){StandardInput.Dispose();StandardOutput.Dispose();StandardError.Dispose();process.Dispose();}
     }
     private static AdmissionToken ReadToken(SafeProcessHandle process,bool observePackageAccess=true)
@@ -668,6 +706,7 @@ internal sealed class AtomicChild : IDisposable
     [DllImport("kernel32.dll",EntryPoint="CreateProcessW",CharSet=CharSet.Unicode,SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)] private static extern bool CreateProcess(string image,StringBuilder command,IntPtr processSecurity,IntPtr threadSecurity,[MarshalAs(UnmanagedType.Bool)] bool inherit,uint flags,IntPtr environment,string? cwd,ref StartupInfoEx startup,out ProcessInfo info);
     [DllImport("kernel32.dll",EntryPoint="CreateProcessW",CharSet=CharSet.Unicode,SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)] private static extern bool CreateSealedProcess(string image,StringBuilder command,ref KernelJobSeal.SecurityAttributes processSecurity,ref KernelJobSeal.SecurityAttributes threadSecurity,[MarshalAs(UnmanagedType.Bool)] bool inherit,uint flags,IntPtr environment,string? cwd,ref StartupInfoEx startup,out ProcessInfo info);
     [DllImport("kernel32.dll",SetLastError=true)] private static extern uint ResumeThread(SafeWaitHandle thread);
+    [DllImport("kernel32.dll",EntryPoint="DuplicateHandle",SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)] private static extern bool DuplicateToolHandle(IntPtr sourceProcess,SafeHandle source,SafeProcessHandle targetProcess,out IntPtr target,uint access,[MarshalAs(UnmanagedType.Bool)]bool inherit,uint options);
     [DllImport("kernel32.dll",SetLastError=true)] private static extern uint WaitForSingleObject(SafeProcessHandle process,uint milliseconds);
     [DllImport("kernel32.dll",SetLastError=true)] private static extern uint GetProcessId(SafeProcessHandle process);
     [DllImport("kernel32.dll",EntryPoint="CreatePipe",SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)] private static extern bool CreateToolPipe(out SafeFileHandle read,out SafeFileHandle write,ref KernelJobSeal.SecurityAttributes attributes,uint size);

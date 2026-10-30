@@ -263,21 +263,10 @@ internal sealed class SessionResources : IDisposable
             // verifies held process handles/tokens/Job before releasing this
             // compiled script. Planned startup/exit need not be atomic Job
             // membership snapshots; all traffic remains quarantined.
-            const string script="$ErrorActionPreference='Stop';$stage='READY';try{[IO.File]::WriteAllText('tool-ready.txt',$env:CPC_RESOURCE_NONCE);[IO.File]::WriteAllText('tool-ready.signal','');$stage='WAIT_OWNER';$until=[DateTime]::UtcNow.AddSeconds(8);while(![IO.File]::Exists('tool-go.signal')){if([DateTime]::UtcNow -ge $until){exit 24};[Threading.Thread]::Sleep(20)};$stage='READ_OWNER_GATE';if([IO.File]::ReadAllText('tool-go.txt') -cne $env:CPC_RESOURCE_NONCE){exit 25};$stage='WORKSPACE_IO';$v=[IO.File]::ReadAllText('input.txt');[IO.File]::WriteAllText('tool-output.txt',$v);$stage='DENY_PRIVATE_FIXTURE';foreach($fixture in @($env:CPC_DENIAL_FIXTURE,$env:CPC_LPAC_FIXTURE)){$denied=$false;try{$f=[IO.File]::OpenRead($fixture);$f.Dispose()}catch{if($_.Exception -is [UnauthorizedAccessException] -or $_.Exception.InnerException -is [UnauthorizedAccessException]){$denied=$true}else{exit 22}};if(!$denied){exit 23}};exit 0}catch{$e=$_.Exception.GetBaseException();[Console]::Error.WriteLine('CPC_TOOL_FAILURE|'+$stage+'|'+$e.GetType().Name+'|'+$e.HResult);exit 26}";
             stage="VERIFY_FIXED_TOOL_BYTES";
             using(var tool=File.OpenRead(ToolPath))
                 if(Convert.ToHexString(SHA256.HashData(tool))!=plan.ToolSHA256)throw WfpNative.Contract("FixedToolBytesChanged");
-            var start=new ProcessStartInfo(ToolPath){UseShellExecute=false,CreateNoWindow=true,WorkingDirectory=workspace,RedirectStandardInput=true,RedirectStandardOutput=true,RedirectStandardError=true};
-            start.Environment.Clear();
-            foreach(var name in new[]{"SystemRoot","windir","SystemDrive","PROCESSOR_ARCHITECTURE"})
-            {var value=Environment.GetEnvironmentVariable(name);if(value is not null)start.Environment[name]=value;}
-            foreach(var name in new[]{"TEMP","TMP","LOCALAPPDATA","USERPROFILE"})start.Environment[name]=workspace;
-            start.Environment["PATH"]=Environment.SystemDirectory;
-            start.Environment["PSModulePath"]=Path.Combine(Environment.SystemDirectory,"WindowsPowerShell\\v1.0\\Modules");
-            start.Environment["CPC_DENIAL_FIXTURE"]=plan.Fixture;
-            start.Environment["CPC_LPAC_FIXTURE"]=WindowsPathSeal.Child(workspace,"all-packages-only.json");
-            start.Environment["CPC_RESOURCE_NONCE"]=plan.Nonce;
-            foreach(var arg in new[]{"-NoLogo","-NoProfile","-NonInteractive","-Command",script})start.ArgumentList.Add(arg);
+            var start=PowerShellStart(plan,workspace);
             stage="START_FIXED_POWERSHELL";
             using var process=AtomicChild.StartInheritedTool(start);creationEvidence=process.CreationEvidence;process.StandardInput.Close();
             var stdout=ReadBounded(process.StandardOutput);var stderr=ReadBounded(process.StandardError);
@@ -313,11 +302,27 @@ internal sealed class SessionResources : IDisposable
         var report=new ResourceChildReport(1,Environment.ProcessId,plan.Nonce,matched,toolExit,cases.ToArray(),failure,failureCode,failureStage,toolDiagnostic,gitReport,creationEvidence);
         Console.WriteLine(JsonSerializer.Serialize(report));return Qualified(report)?0:3;
     }
+    internal static ProcessStartInfo PowerShellStart(ResourceProbePlan plan,string workspace)
+    {
+            const string script="$ErrorActionPreference='Stop';$stage='READY';try{[IO.File]::WriteAllText('tool-ready.txt',$env:CPC_RESOURCE_NONCE);[IO.File]::WriteAllText('tool-ready.signal','');$stage='WAIT_OWNER';$until=[DateTime]::UtcNow.AddSeconds(8);while(![IO.File]::Exists('tool-go.signal')){if([DateTime]::UtcNow -ge $until){exit 24};[Threading.Thread]::Sleep(20)};$stage='READ_OWNER_GATE';if([IO.File]::ReadAllText('tool-go.txt') -cne $env:CPC_RESOURCE_NONCE){exit 25};$stage='WORKSPACE_IO';$v=[IO.File]::ReadAllText('input.txt');[IO.File]::WriteAllText('tool-output.txt',$v);$stage='DENY_PRIVATE_FIXTURE';foreach($fixture in @($env:CPC_DENIAL_FIXTURE,$env:CPC_LPAC_FIXTURE)){$denied=$false;try{$f=[IO.File]::OpenRead($fixture);$f.Dispose()}catch{if($_.Exception -is [UnauthorizedAccessException] -or $_.Exception.InnerException -is [UnauthorizedAccessException]){$denied=$true}else{exit 22}};if(!$denied){exit 23}};exit 0}catch{$e=$_.Exception.GetBaseException();[Console]::Error.WriteLine('CPC_TOOL_FAILURE|'+$stage+'|'+$e.GetType().Name+'|'+$e.HResult);exit 26}";
+            var start=new ProcessStartInfo(ToolPath){UseShellExecute=false,CreateNoWindow=true,WorkingDirectory=workspace,RedirectStandardInput=true,RedirectStandardOutput=true,RedirectStandardError=true};
+            start.Environment.Clear();
+            foreach(var name in new[]{"SystemRoot","windir","SystemDrive","PROCESSOR_ARCHITECTURE"})
+            {var value=Environment.GetEnvironmentVariable(name);if(value is not null)start.Environment[name]=value;}
+            foreach(var name in new[]{"TEMP","TMP","LOCALAPPDATA","USERPROFILE"})start.Environment[name]=workspace;
+            start.Environment["PATH"]=Environment.SystemDirectory;
+            start.Environment["PSModulePath"]=Path.Combine(Environment.SystemDirectory,"WindowsPowerShell\\v1.0\\Modules");
+            start.Environment["CPC_DENIAL_FIXTURE"]=plan.Fixture;
+            start.Environment["CPC_LPAC_FIXTURE"]=WindowsPathSeal.Child(workspace,"all-packages-only.json");
+            start.Environment["CPC_RESOURCE_NONCE"]=plan.Nonce;
+            foreach(var arg in new[]{"-NoLogo","-NoProfile","-NonInteractive","-Command",script})start.ArgumentList.Add(arg);
+        return start;
+    }
     private static string ToolStartFailurePhase(Exception error)
     {
         if(error.Data["Stage"] is string native)
         {
-            if(native=="InheritedToolCreateProcess")return "CREATE_PROCESS";
+            if(native is "InheritedToolCreateProcess" or "OwnedToolCreateProcess")return "CREATE_PROCESS";
             if(native is "InheritedToolInputPipe" or "InheritedToolOutputPipe" or "InheritedToolErrorPipe")return "CREATE_REDIRECT_PIPE";
             if(native=="InheritedToolParentHandleSeal")return "DUPLICATE_REDIRECT_HANDLE";
         }

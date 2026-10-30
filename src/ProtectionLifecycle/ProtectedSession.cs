@@ -103,6 +103,10 @@ internal sealed class ProtectedSession
                 throw WfpNative.Contract("ResourceRuntimeOwnerMismatch");
         }
         internal void Revoke()=>Interlocked.Exchange(ref phase,3);
+        internal void AssertExactToolJob(OwnedKernelJob job)
+        {AssertCurrent();if(Volatile.Read(ref phase)!=2 || !ReferenceEquals(owner.job,job))throw WfpNative.Contract("OwnedToolExactActiveJobRequired");}
+        internal void AuthorizeToolCreation(AtomicChild child,OwnedKernelJob job)
+        {AssertExactToolJob(job);if(!ReferenceEquals(root,child) || !child.IsRunning)throw WfpNative.Contract("OwnedToolExactLiveRootRequired");}
     }
     internal static (int ExitCode,string Report) QualifyResources(FixedLayout layout,ProtectedState state,VerifiedVersion version)
         =>new ProtectedSession(layout,state,version).ExecuteResourceQualification();
@@ -125,6 +129,7 @@ internal sealed class ProtectedSession
         ResourceBootstrapFailure? bootstrapFailure=null;
         JobSnapshot? zero=null;RuntimeStop? stopped=null;uint? exit=null;bool resumed=false,toolObserved=false,gitObserved=false,cleanupDeferred=false;
         bool manifestReadRestored=false;
+        var toolLaunch=new OwnedToolLaunch();
         var failures=new List<Exception>();
         string? workspaceResultSHA256=null;
         try
@@ -141,7 +146,7 @@ internal sealed class ProtectedSession
             using(var package=new InstallationPackageSid(state))sid=package.Value;
             job=OwnedKernelJob.CreateEmpty(state,version);permit=new ResourceQualification(this);
             pipe=new(System.IO.Pipes.PipeDirection.In,HandleInheritability.Inheritable);reader=new StreamReader(pipe,Encoding.UTF8,false,4096,true);
-            text=SessionResources.ReadBounded(reader);
+            text=toolLaunch.ReadMessages(reader);
             child=AtomicChild.CreateResourceQualification(layout,state,version,job,profile,permit,pipe.ClientSafePipeHandle.DangerousGetHandle());
             pipe.DisposeLocalCopyOfClientHandle();
             manifestAccess=SessionManifestReadAccess.Create(state,version,job,id);
@@ -150,6 +155,7 @@ internal sealed class ProtectedSession
             while(!exited.Wait(100))
             {
                 runtime.AssertHealthy();
+                toolLaunch.ProcessPending(resources,child,job,permit);
                 // Fixed PowerShell waits before its workload until all held
                 // members have been verified together. After release, its
                 // planned exit is supervised by the runtime and exact Job
@@ -255,6 +261,7 @@ internal sealed class ProtectedSession
             Scope=workspaceInput is not null?"CALLER_BYTE_PINNED_DATA_FIXED_OFFLINE_GIT_ONLY_NO_PROJECT_CODE_EXECUTION":includeGit?"FIXED_OFFLINE_GIT_INIT_ADD_COMMIT_AND_DENIAL_ONLY":"FIXED_PROFILE_WORKSPACE_WINDOWS_POWERSHELL_AND_NON_SECRET_DENIAL_FIXTURE_ONLY",
             Resumed=resumed,ChildExit=exit,Child=observed,ChildBootstrapFailure=bootstrapFailure,InheritedPowerShellIdentityObserved=toolObserved,FinalJob=zero,Stop=stopped,
             CleanupDeferredForRecovery=cleanupDeferred,ManifestReadAccessRestored=manifestReadRestored,
+            ToolCreationOwner="ORIGINAL_BROKER",ToolCreationBinding="ATOMIC_LPAC_PACKAGE_AND_ORIGINAL_JOB_NOT_PARENT_INHERITANCE",
             InheritedGitIdentityObserved=gitObserved,GitAssetSetSHA256=resources?.Plan.GitAssetSetSHA256,
             WorkspaceBaselineSHA256=includeGit && resources is not null?resources.Plan.WorkspaceInputSHA256??ClaudeCodeProtection.Workspaces.WorkspaceBundle.Hash(resources.Plan.FixedProjectBundle):null,
             ClosedWorkspaceResultSHA256=workspaceResultSHA256,

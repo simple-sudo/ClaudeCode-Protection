@@ -132,7 +132,7 @@ internal sealed class SessionGitToolchain : IDisposable
         File.WriteAllText(WindowsPathSeal.Child(workspace,stem+".txt"),nonce,new UTF8Encoding(false));
         File.WriteAllText(WindowsPathSeal.Child(workspace,stem+".signal"),"");
     }
-    private static ProcessStartInfo Start(string workspace,string directory,params string[] arguments)
+    internal static ProcessStartInfo Start(string workspace,string directory,params string[] arguments)
     {
         var start=new ProcessStartInfo(WindowsPathSeal.Child(directory,"git.exe")){UseShellExecute=false,CreateNoWindow=true,WorkingDirectory=workspace,
             RedirectStandardInput=true,RedirectStandardOutput=true,RedirectStandardError=true,StandardInputEncoding=new UTF8Encoding(false),StandardOutputEncoding=new UTF8Encoding(false),StandardErrorEncoding=new UTF8Encoding(false)};

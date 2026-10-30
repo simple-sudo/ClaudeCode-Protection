@@ -23,6 +23,7 @@
     <Compile Include="SessionProxy.cs;ProtectedSession.cs" />
     <Compile Include="SessionResources.cs" />
     <Compile Include="SessionManifestReadAccess.cs" />
+    <Compile Include="OwnedToolLaunch.cs" />
     <Compile Include="SessionProfileRecovery.cs" />
     <Compile Include="SessionGitToolchain.cs" />
     <Compile Include="SessionTaskWorkspace.cs" />

@@ -1,5 +1,26 @@
 # ClaudeCode-Protection working rules
 
+2026-10-30 authoritative current installed74c34612424b4e9c8ce7588dd0826fd5,
+manifest06C8F6F2DE0E6A289527D3B3B6166780BB92684ECFD7CA7DC68C0CDD25A44108,
+human UAC06:34:51Z INACTIVE. Fifteen installed hashes/owners/protected DACLs
+and no untrusted writer matched, read-only manifest inspector0/no pending.
+Separate specifically authorized run06:35:19Z session609aa4b1 did exercise
+the fixed current-package, non-inheritable SideBySide KEY_READ resource and
+restore exact original security: owner receipt true AND independent SD match.
+Root I/O/four denials5 passed; Jobca990604 closed/zero, Stop failures empty,
+no timeout/forced stop. Source4510050, embedded12d0e5c, library0BE89FA0.
+Evidence work/manifest-read-r2-control/installed-evidence and run-evidence.
+This qualifies normal owned grant/revocation, not interruption recovery.
+PowerShell CreateProcess is now14001/SxS activation, no tool/Git/result success.
+Do not repeat unchanged or broaden registryRead/subtree/host permissions.
+Next reviewed preparation work/sxs-activation-control uses Microsoft sxstrace
+only around one original installed fixed resource run. Refuse existing named
+trace; stop only own exact output-path match; protected ETL, powershell filter,
+40s task/10s native controls/1s drains/16MiB threshold. No debugger/install,
+new grant, automatic workload retry/storage recovery or unrelated trace stop.
+This new protected trace is NOT_RUN, requires concrete human UAC decision;
+plan45CEF741/helperB3A8DB8F. Retain all earlier refusals and crash evidence.
+
 2026-10-30 current installed0c1613f0c6a4447b83af3814b4d267d6 /
 manifest850D193EFB259C819B215333A5F7D60D49BFE5C8456957587C84424EEFB81C69,
 human UAC06:27:07Z INACTIVE update/read-only manifest-resource inspection0.
