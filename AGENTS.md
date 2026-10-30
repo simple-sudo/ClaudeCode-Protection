@@ -17,7 +17,13 @@ never-started v2 recovery: complete owned creation, NO profile-job binding,
 all admissions durably closed and original exact storage/task owner required.
 Existing post-start recovery still requires its prior checkpoint. No missing
 Job/process is promoted to never-started proof. New source is not installed;
-build/artifact review and concrete human update/recovery decisions still apply.
+14917aa's 53-input build passed; native imports unchanged, no module initializer.
+Both ordinary new-command entries refused125/UnauthorizedAccess before private
+state. Library2F7AA084, candidateb41946295d334034896319e3a0aeba7c / manifest
+F1418ECBB01AED35559B440E60BAF37C4E79C3D6133A62F331BB9B40EF062B01,
+two changed/twelve reused assets. New code remains uninstalled; Bootstrap review
+and concrete human update/recovery decisions still apply. Initial update scope
+must stay read-only inspection, not automatic cleanup or another workload.
 
 2026-10-30 authoritative installed041374f666564e41b2731ad354479c8d,
 manifest2896E57A537D998D877170C5D7EE98F3B842DAA899E8CD1688F04E767911A68E,
