@@ -4,7 +4,7 @@
 
 VERIFIED（本轮本人UAC原生跟踪）：06:47:15Z同一74c34612安装、session0a0adcfe71ae4d7698bb9f70e697255c再次记录14001。Microsoft sxstrace只给出固定PowerShell配置/清单解析后Activation Context generation failed，没有具体缺失资源；因此不据此扩大SideBySide子键、registryRead或lpacCom。自有WinSxs Trace Session新建/输出路径绑定/停止/解析均完成，原跟踪未被接管，Job归零及单键权限独立精确恢复，未强杀。work/sxs-activation-control/evidence，筛选文本SHA256=0FA89FA0BA0859D17EC51996CA4BC0838D70EAC255372E27CADDD41CB4010467。不再重复相似跟踪。
 
-SOURCE / INTEGRATED：改用同一原Broker完成Windows工具启动封装。原受限worker沿其已有匿名报告管道提出编译固定PowerShell/Git操作；原所有者核对序号/会话/原根PID、完整参数及清洁环境摘要，仅允许既有编译脚本和离线Git操作。工具创建时同时绑定LPAC opt-out、零capability包SID及原Job，挂起检查实际LPAC/token/精确镜像/Job/管理侧进程线程DACL后恢复。worker只得到三条标准流管道及SYNCHRONIZE|QUERY_LIMITED_INFORMATION(101000)工具句柄，不转移Job/token/thread/Broker句柄，不在高权限下运行工具或输入代码。根已有准入、运行租约、工具工作门、四项拒绝、成果/清理路径保持；没有独立服务、备用executor或普通AppContainer回退。报告明确该绑定来自原Broker原子创建，而非OS父子继承。六产品非生成语义0错误/警告，新Build/普通句柄转移资格及真实工具效果待完成，源尚未安装。
+SOURCE / INTEGRATED：改用同一原Broker完成Windows工具启动封装。原受限worker沿其已有匿名报告管道提出编译固定PowerShell/Git操作；原所有者核对序号/会话/原根PID、完整参数及清洁环境摘要，仅允许既有编译脚本和离线Git操作。工具创建时同时绑定LPAC opt-out、零capability包SID及原Job，挂起检查实际LPAC/token/精确镜像/Job/管理侧进程线程DACL后恢复。worker只得到三条标准流管道及SYNCHRONIZE|QUERY_LIMITED_INFORMATION(101000)工具句柄，不转移Job/token/thread/Broker句柄，不在高权限下运行工具或输入代码。根已有准入、运行租约、工具工作门、四项拒绝、成果/清理路径保持；没有独立服务、备用executor或普通AppContainer回退。报告明确该绑定来自原Broker原子创建，而非OS父子继承。六产品非生成语义0错误/警告；57输入离线构建通过，库A40E232D未重复构建。固定操作/消息边界普通检查通过；本机自有进程与三条管道实际转移后，原生查询确认过程句柄101000、四句柄不继承和全部标准流方向。最初64字节和零缓冲探针均失败保留，改按Microsoft公布的56字节结构后通过。证据work/owned-tool-build-r1/qualification.json及work/owned-tool-fixture-r3。仅这些普通范围已资格，真实LPAC工具效果待安装验证；候选589f8b3c/manifest164AD85F正在冻结，当前74c34612仍INACTIVE。
 
 ## 当前74c34612：单项OS资源授予/撤销已实测；工具阻碍变为SxS14001
 
@@ -14,7 +14,7 @@ VERIFIED（本轮独立两次本人UAC）：06:34:51Z INACTIVE更新到74c346124
 
 FAIL（工具仍未可用）：PowerShellCreateProcess从5变为14001(ERROR_SXS_CANT_GEN_ACTCTX)，PowerShell/Git身份未确认，无成果。新码不能当成完整修复；也不扩大SideBySide子键/registryRead/宿主ACL授权。固定Windows PowerShell内嵌清单无外部assembly依赖；WinSxS目录及mscoree映像原ARP读取存在。确切事件窗口Application/SideBySide无匹配，已记录NoMatchingEventsFound，不排除安全软件，不归因具体缺失库。
 
-下一具体准备是work/sxs-activation-control：不更新产品，不添加权限；一轮原Broker固定工具运行周围使用Microsoft sxstrace原生激活跟踪，解析仅筛powershell.exe。只在确认没有既有WinSxs Trace Session后创建，停止前核对自有ETL完整路径，拒绝接管/停止其他跟踪；记录原始ETL仅在受保护自有目录，可能含本窗口其他应用激活元数据。主任务40秒、各原生控制命令10秒、排空1秒、16MiB跟踪大小阈值；同次资源撤销及独立回查保持，无调试器或自动重试/存储恢复。plan45CEF741/helperB3A8DB8F，签名/脚本解析/普通持有预检已完成，受保护跟踪NOT_RUN，需本人具体UAC决定。日常AV/BFE/UU/FlClash/boot不变，未推送。
+该sxstrace计划已获本人授权并执行，结果见本页顶部；原冻结计划和失败证据保留，不再作为待运行项。日常AV/BFE/UU/FlClash/boot不变，未推送。
 
 ## 当前安装0c1613f0：安全守卫拒绝，宿主键未变；读取器修正中
 

@@ -42,8 +42,12 @@ if(args[0]=="handle-transfer")
     catch(TargetInvocationException ex)when(ex.InnerException is not null){ExceptionDispatchInfo.Capture(ex.InnerException).Throw();throw;}
     long Value(string name)=>(long)reply.GetType().GetProperty(name)!.GetValue(reply)!;
     using var limited=new SafeProcessHandle((IntPtr)Value("Process"),true);
-    var buffer=Marshal.AllocHGlobal(64);
-    try{Require(NtQueryObject(limited,0,buffer,64,out _)==0,"own transferred process handle basic query");Require(unchecked((uint)Marshal.ReadInt32(buffer,4))==0x101000u,"native granted process access is exactly synchronize plus limited query");}
+    // The published PUBLIC_OBJECT_BASIC_INFORMATION has fourteen ULONGs.
+    // Preserve the failed 64-byte and zero-buffer probes; this host did not
+    // report a required size for those STATUS_INFO_LENGTH_MISMATCH results.
+    const int basicBytes=14*sizeof(uint);
+    var buffer=Marshal.AllocHGlobal(basicBytes);
+    try{var status=NtQueryObject(limited,0,buffer,basicBytes,out var returned);Require(status==0,"own transferred process handle basic query: "+status.ToString("X8")+"/"+returned);Require(unchecked((uint)Marshal.ReadInt32(buffer,4))==0x101000u,"native granted process access is exactly synchronize plus limited query");}
     finally{Marshal.FreeHGlobal(buffer);}
     using var input=new FileStream(new SafeFileHandle((IntPtr)Value("Input"),true),FileAccess.Write);
     using var output=new FileStream(new SafeFileHandle((IntPtr)Value("Output"),true),FileAccess.Read);

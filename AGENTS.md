@@ -13,13 +13,22 @@ Evidence work/manifest-read-r2-control/installed-evidence and run-evidence.
 This qualifies normal owned grant/revocation, not interruption recovery.
 PowerShell CreateProcess is now14001/SxS activation, no tool/Git/result success.
 Do not repeat unchanged or broaden registryRead/subtree/host permissions.
-Next reviewed preparation work/sxs-activation-control uses Microsoft sxstrace
-only around one original installed fixed resource run. Refuse existing named
-trace; stop only own exact output-path match; protected ETL, powershell filter,
-40s task/10s native controls/1s drains/16MiB threshold. No debugger/install,
-new grant, automatic workload retry/storage recovery or unrelated trace stop.
-This new protected trace is NOT_RUN, requires concrete human UAC decision;
-plan45CEF741/helperB3A8DB8F. Retain all earlier refusals and crash evidence.
+The separately authorized sxstrace run completed06:47:15Z, session0a0adcfe;
+trace owned/closed, Job zero and exact key restoration confirmed. The filtered
+trace only reports activation failure, no missing resource. Do not repeat it.
+Evidence work/sxs-activation-control/evidence, text0FA89FA0. Source1324444 now
+uses original Broker fixed tool-start requests over the existing root pipe;
+LPAC/package/zero capability and original Job are atomic creation attributes,
+then token/image/Job/object seals checked before resume. Only process101000
+and three noninheritable stdio handles return to the exact held root. No tool
+runs elevated. A40E232D built once; fixed-policy/message checks passed and the
+ordinary own-process/pipe fixture observed native granted101000, noninheritance
+and all stdio directions. Preserve two failed test-query probes; corrected
+56-byte documented native structure passed without rebuilding production.
+work/owned-tool-build-r1/qualification.json and work/owned-tool-fixture-r3.
+This is NOT real LPAC PowerShell/Git qualification. Candidate589f8b3c/
+manifest164AD85F is being frozen; current74c34612 remains INACTIVE. A new
+concrete reviewed installation/resource run and human UAC decision are needed.
 
 2026-10-30 current installed0c1613f0c6a4447b83af3814b4d267d6 /
 manifest850D193EFB259C819B215333A5F7D60D49BFE5C8456957587C84424EEFB81C69,
