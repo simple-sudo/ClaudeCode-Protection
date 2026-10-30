@@ -33,7 +33,7 @@ if(args[0]=="prerequisite-reads")
     {
         rejected=true;Require((string?)ex.Data["Stage"]=="InheritedToolImageExecuteOpen","exact access stage retained");
         var evidence=ex.Data["ToolCreationEvidence"]??throw new InvalidOperationException("Missing failure diagnostic");
-        Require((int)evidence.GetType().GetProperty("ImageExecuteOpenError")!.GetValue(evidence)!==2,"native missing-file error retained");
+        Require((int)evidence.GetType().GetProperty("ImageExecuteOpenError")!.GetValue(evidence)! == 2,"native missing-file error retained");
     }
     Require(rejected,"missing executable cannot become execute success");
     Console.WriteLine("PASS self policy read and fixed-image execute-open; absent image failure retained; no mapping, launch, policy/ACL mutation, Job/profile or elevation");return 0;

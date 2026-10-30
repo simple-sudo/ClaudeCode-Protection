@@ -2,7 +2,9 @@
 
 已安装入口`workspace-process BASE_BUNDLE NEW_RESULT_BUNDLE`：普通用户daily先核对并持有安装资产、创建新的输出文件，然后请求本人UAC启动同版本固定Broker。仅本人SID可访问的本地管道传入确切数据字节；双方核对内核进程PID，Broker还核对普通调用者映像及本人SID。复用原ProcessWorkspaceData/ProtectedSession，成功闭Job与精确清理后再导出绑定原包的成果。没有特权宿主路径、脚本、任意命令或通用提升入口。取消/失败保留新建的空/部分输出供检查，不能覆盖已有结果。ac570b47已实测四份本仓库文件的pack→process→review→extract完整往返；仅process请求UAC，其余日常维护始终普通用户。v2失败回执仅返回固定阶段/异常类型/错误码及可选会话编号，不返回原始异常消息或私有路径，不自动重试。
 
-daily命令必须普通用户运行。2026-10-29当前安装ac570b47 / INACTIVE；完整工件与证据边界见STATUS。
+daily命令必须普通用户运行。ac570b47的普通AppContainer数据往返是历史限定成果，不能作为后来LPAC工具链通过的证据；当前安装选择、INACTIVE及具体缺口见STATUS。
+
+开发中的v3失败回执沿同一管道返回可选的五项原生创建诊断与四项Broker停止观察：两个自身进程策略值及各自查询错误、固定映像执行打开错误；准入是否关闭、停止前隔离观察、最终Job零成员观察、停止错误数量。未知值保持null，拒绝额外/重复字段、路径文本、矛盾数值和未绑定会话。它们只在失败时出现，不释放成果，也不证明私有目录清理、恢复成功、正式准入或完整隐私保护。此版本要求同包daily/Broker一起更新，无协议降级；构建/安装/原生资格以STATUS为准。
 
 `workspace-pack ROOT SELECTION_JSON NEW_BUNDLE`从明确指定的本地NTFS项目根读取清单中的文件，将内容、相对路径与SHA256写入一个新数据包。清单是JSON字符串数组，例如`["README.md","src/main.py","tests/test_main.py"]`。没有目录递归/通配符或默认全项目扫描；未选择文件不会进入包。输出父目录必须已存在；已存在输出拒绝覆盖。终端只返回包摘要与文件数量，不打印项目内容、宿主绝对路径或环境变量。
 

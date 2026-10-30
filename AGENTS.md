@@ -1,5 +1,13 @@
 # ClaudeCode-Protection working rules
 
+Continuation source v3 uses the same daily/Broker pipe for bounded numeric
+creation diagnostics and four owner Stop observations, failure-only, no result
+or cleanup/admission authority. Both endpoints must update in one pinned package;
+do not downgrade schemas or execute before new artifact qualification.
+Keep synchronization commitd2407eb. The user explicitly confirms boot
+2026-10-30T02:14:46.5Z was their own normal manual operation, not a new crash.
+Use a fresh runtime baseline; retain all older evidence and safety boundaries.
+
 2026-10-29 authoritative installedc37ffe49d87840bfbf50c06131205d10,
 manifest2A5D02303A96DDDFF17423C7EDAEC67BD94FD5290318E41F77F1BE1B8ED4996C,
 human UAC14:53:00Z INACTIVE; 15 files/ACLs/read-only intent matched.

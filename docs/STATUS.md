@@ -10,6 +10,8 @@ FAIL（可用性未恢复）：限定sessionc29aed3e57c1455ba7ae5f5ed839d7ce仍S
 
 SOURCE / INTEGRATED（待新工件资格）：同一AtomicChild的工具启动前只读采集自身ProcessChildProcessPolicy、ProcessImageLoadPolicy，查询失败保留错误及unknown字段；用既有CreateFileW请求固定、管理侧已持有工具的GENERIC_READ|GENERIC_EXECUTE，不映射/运行映像。将执行打开失败与CreateProcess失败分开，原Child回执附5个有界数值，不输出栈、路径、凭据或host内容。不改任何能力、ACL、令牌特权、进程策略或Job；原管理侧成员/LPAC/映像门不变。六产品非生成语义0错误/警告，仅SOURCE，尚无新BUILD/原生证据。下一步验证实际拒绝对象/规则，避免继续盲改启动参数；不以注册表的空查询结果推断进程策略关闭。
 
+SOURCE补充：同一daily/Broker管道v3把上述诊断及管理侧Stop的四项观察直接返回普通用户；严格数值/字段/会话校验，成功不得夹带失败诊断，失败仍无成果。停止观察不代替私有文件清理/恢复凭据。新源码已由同步提交d2407eb保存，保留该提交；本次仅修正新测试的比较表达式并资格化。2026-10-30T02:14:46.5Z启动已由用户明确说明是本人正常手动操作，不记作新增蓝屏；后续运行采用本次启动的独立基线。
+
 本轮未交付可用LPAC开发工具链；原普通AppContainer数据链的限定成果仍保留。完整宿主隐私/网络/14项、实际授权项目编译测试、GPU及正式Claude仍未验收，事故亦未结案。下方“当前”均历史快照。
 
 ## 最新：4fe9da3d已安装，LPAC阻碍定位到工具前的路径准备
