@@ -1,3 +1,25 @@
+2026-10-30 current repair candidate7ffea33b977c4db1ae0c6b322bfc25ba, manifest
+B23DDA0D2833F427A042CB5081A345DEA8EBBDAABFDD5E0FAA0DA155794B96AD,
+library3B7105C7, source2da75da + embedded eed2d5c. Old specifically authorized
+e1829299 inactive update FAILED125/InvalidOperationException09:42:51Z; no
+tool run or ETW grant. Original admin post-read pointer remains6e2cf8cd/INACTIVE;
+15 installed hashes/protected DACL/trusted owners independently match. Do not
+infer unchanged private journals from pointer. Original ETW intent prefix missed
+ProtectedState's fixed allowlist; shared compile-time constant now connects it
+and ordinary exact caller-gate/unknown-prefix refusal tests pass. Six-product
+semantic,63-input build,64-input Bootstrap exact library reuse,20stage/10PE/
+6managed/embedded manifest review passed. First preparation bootstrap had old
+manifest, is archived UNQUALIFIED; only bootstrap-r2-receipt corresponds to new
+manifest. Strict preflights and unknown-argument refusals passed; new concrete
+two UAC operations NOT_AUTHORIZED/NOT_RUN. Install planE7BB2575/helper
+5F6F7C1A; run planEBB91E0D/helperE0C28D16;
+work/etw-registration-r3-control/system-operation-review.json. Scope remains
+only fixed provider current exact package REGISTER_GUIDS0800, original default
+plus no stored override, independent before/after, original durable closed-zero
+Job before exact removal; five resource denials5 required. No EventAccessControl
+or Remove has executed; no ETW/AMSI/AV/network disable. All older candidate
+paragraphs below are historical; e1829299/r2 controls must NOT be retried.
+
 2026-10-30 09:42:51Z：本人明确授权后的e1829299 INACTIVE更新被拒绝125/InvalidOperationException，尚未进入已授权但未执行的工具运行，未调用ETW权限API。原6e2cf8cd/manifest6AAE651E/INACTIVE指针不变，AV/BFE/FlClash前后正常，失败完整保留work/etw-registration-r2-control/installed-evidence。源码发现ETW意图前缀未接入ProtectedState固定清单，是必然阻断新Pending检查的确定缺陷；现共享编译期常量、接入原清单，并补测实际调用前缀及未知前缀拒绝；六产品非生成语义通过。旧失败不重试；修复工件需重新构建审查。不能仅凭指针未变宣称私有状态无变化。
 
 # 当前开发状态

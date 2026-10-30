@@ -2,6 +2,8 @@
 
 当前安装6e2cf8cd/manifest6AAE651E，INACTIVE。原GPO注册表拒绝已越过，最新真实工具失败点是PSEtwLogProvider.EtwRegister拒绝5，AMSI初始化连带引用同一失败日志类型；PowerShell/Git/编译未完成。原Job66f8bc5a闭合归零、Stop无失败、根I/O/四拒绝5通过、宿主SideBySide权限不变，无强杀。原报告235A0301、唯一错误874FA3FF保留于work/hosted-policy-r2-control/run-evidence；用户确认的原项目异常弹窗也保留。
 
+09:42:51Z已授权的旧包e1829299更新125拒绝，原管理员后读指针仍6e2cf8cd/INACTIVE，15文件hash/保护DACL/可信owner独立匹配；原始stderr只有InvalidOperationException，不能当作精确私有调用栈。源码发现ETW意图前缀未进入固定清单，必然阻断新Pending检查；本次以共享常量修复并直接资格实际调用前缀及未知前缀拒绝。旧安装失败/准备脚本失败均保留，旧工具运行未执行，不能将指针未变当作私有状态无变化证明。新的7ffea33b工件需要重新具体授权，不复用e1829299冻结入口。
+
 ## 原状态和修复边界
 
 本人明确授权的一次只读ETW查询09:11:57Z完成：唯一提供者F90714A8-5509-434A-BF6D-B1624C8A19A2，EventAccessQuery=0/292字节，实际默认SD包含WD/AAP/logging capability的1800；该查询检查的带括号持久值不存在。无ETW修改、注册/会话控制、日志内容读取、特权开启或产品运行。证据work/etw-provider-query-control/evidence。该次授权已完成，不扩展为权限变更。
@@ -14,23 +16,23 @@
 
 ## 已完成资格
 
-六产品非生成语义通过，sourceccad110的63输入构建及64输入Bootstrap通过，复用资格库213649E6未重建。20文件/10PE/6managed/内嵌manifest匹配；新增native仅EventAccessQuery/Control/Remove，System32绑定。纯策略实测一个精确0800 ACE、原内容、位置变化、无写入意图、授予回执前中断决策、持久值摘要漂移拒绝和宽泛SID/权限拒绝通过；两个普通维护入口均125/UnauthorizedAccess且在私有状态前拒绝。work/etw-registration-build-r2/qualification.json。尚未调用权限变更API，也未资格真实授予/撤销或工具兼容。
+六产品非生成语义通过，source2da75da的63输入构建及64输入Bootstrap通过，复用资格库3B7105C7未重建。20文件/10PE/6managed/内嵌manifest匹配；新增native仅EventAccessQuery/Control/Remove，System32绑定。纯策略实测一个精确0800 ACE、原内容、位置变化、无写入意图、授予回执前中断决策、持久值摘要漂移拒绝和宽泛SID/权限拒绝通过；两个普通维护入口均125/UnauthorizedAccess且在私有状态前拒绝。work/etw-registration-build-r3/qualification.json。尚未调用权限变更API，也未资格真实授予/撤销或工具兼容。
 
 ## 待本人授权：两次UAC
 
-1. INACTIVE更新新包e1829299，仅运行只读inspect-etw-provider-access，确认当前原默认SD/无自定义值/无待恢复意图。不创建资源、授予权限或运行工具；既有552工具文件不修改。
+1. INACTIVE更新新包7ffea33b，仅运行只读inspect-etw-provider-access，确认当前原默认SD/无自定义值/无待恢复意图。不创建资源、授予权限或运行工具；既有552工具文件不修改。
 2. 安装及独立15文件核对后，原Broker的一轮严格LPAC PowerShell/固定自有Roslyn C#编译/离线Git验证；在原根仍挂起时按上述范围临时增加当前包注册权限，原Job闭合归零后精确撤销。独立已资格的单独查询程序在前后各读取该唯一GUID的SD，并核对四种同GUID值名均不存在。主任务40秒，各只读观察10秒，排空1秒。异常只停止本次确切新owner，不重试或自动恢复；未成功还原则保留意图并阻止下一会话/维护。若任务失败且原Job关闭证明完整，仅仅读取本次唯一工具错误记录到同一受保护结果目录。
 
 不执行输入项目代码或真实Claude，不开放网络、不故意触发崩溃。不把安装、纯策略或固定自有样本当完整产品/项目编译/14项/GPU/全宿主隐私证明。
 
 | 冻结输入 | 标识或SHA256 |
 |---|---|
-| 新Release | e18292999fe949af9f95e053131bb19e |
-| 新manifest | 3B33F9494EB53D0EF7B22C3A2A1B29D7CE7E8EB57E8412371E98DFF536117B83 |
-| Lifecycle库 | 213649E62741AAAA8E09826B430BA21A402D3DDE23AF48C2589F45C094403158 |
-| 安装plan | 29B83A7F3FEFE48A936859FF9FEDAF9F69377F2361FC2607DC295663067354DB |
-| 安装helper | 32F61F384970E5A55528D24F1C88A6004F549D22C5B23185EA31BF337AFF01EE |
-| 运行plan | 17A04A75B70139B2C2497B6CBFEA413806E0F5F554DC13B5A5ECBF5B0417BD80 |
-| 运行helper | E2A94BEBB2B266C18DFA5A044773613BBAD97D9D357FD800AB1D1003F67DEC29 |
+| 新Release | 7ffea33b977c4db1ae0c6b322bfc25ba |
+| 新manifest | B23DDA0D2833F427A042CB5081A345DEA8EBBDAABFDD5E0FAA0DA155794B96AD |
+| Lifecycle库 | 3B7105C7233B1B043C6A3DB4BC91EE4D5C6B2C7158D3BDAD1CA7DF60FEB441B2 |
+| 安装plan | E7BB25753EC06EE28326D029DC009C7E47C99BD16948FD3F276EFC5AE53A88D6 |
+| 安装helper | 5F6F7C1AB551C94FB20F34C21FF74312AA432AC85C9BA76B3E9FF715A31D0563 |
+| 运行plan | EBB91E0D8B57CE430B25BFD9862DD08BFA6051DB4AFC80CEE1038906987C5342 |
+| 运行helper | E0C28D1637D4E8EFA01155AF9521140F866616C45D69A2E1EBEFBE947A4BE800 |
 
-完整冻结审查work/etw-registration-r2-control/system-operation-review.json。两个严格预检已实际返回、未知参数拒绝，无本次UAC/claim或权限变更。按用户指示和AGENTS.md，新包及本次单资源权限修改/运行需要具体授权和本人UAC；尚未授权或执行。旧候选f96d6c60/C7DD未安装，不使用其旧冻结文件。所有旧失败、权限状态和蓝屏证据保留。
+完整冻结审查work/etw-registration-r3-control/system-operation-review.json。两个严格预检已实际返回、未知参数拒绝，无本次UAC/claim或权限变更。按用户指示和AGENTS.md，新包及本次单资源权限修改/运行需要具体授权和本人UAC；尚未授权或执行。旧候选f96d6c60/C7DD未安装，不使用其旧冻结文件。所有旧失败、权限状态和蓝屏证据保留。
