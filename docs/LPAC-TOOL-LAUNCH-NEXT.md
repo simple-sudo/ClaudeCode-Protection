@@ -1,36 +1,28 @@
-# LPAC工具启动：具体修复及系统验证范围
+# LPAC工具启动：当前真实状态与下一次验证
 
-**当前更新**：下方0c1613f0安装与一次运行已经本人授权并完成。安装保持INACTIVE；运行在恢复根前被ManifestSystemKeySecurityUntrusted拒绝，宿主键前后权限完全相同，没有实际授予。RegGetKeySecurity返回与Windows对象安全接口不同的控制标记/ACE；新源改用GetSecurityInfo(SE_REGISTRY_KEY)，保持原守卫。加强样本及固定系统键只读资格通过。现待具体决定的替代候选为74c34612424b4e9c8ce7588dd0826fd5，manifest06C8F6F2DE0E6A289527D3B3B6166780BB92684ECFD7CA7DC68C0CDD25A44108，库0BE89FA03F2363EDFA88C94B37CE728F3A9D856790F6D72C53DD1D0AE23D7716；同样是INACTIVE更新/只读检查，再一次固定原Broker工具运行，KEY_READ及撤销/超时边界不变。新控制文件位于work/manifest-read-r2-control，安装plan52C0F750/helper1120F35B，运行plan101969E8/helper783C4B94；完整摘要见system-operation-review.json。没有安装或重跑新候选。下方为首次候选的完整范围记录。
+当前已安装589f8b3cbbd04cb4be742bb09f52e3e7 / manifest164AD85F444447B6683370309FA2EDCE2A5D000A62037FD39B1CB5FE227D04C4，保持INACTIVE。07:20:55Z固定更新和只读manifest资源检查完成；15文件摘要、受保护DACL、可信所有者、无非可信写入已独立核对，宿主单键权限未变，无新Job/profile/工作负载，无残留产品进程。
 
-2026-10-30。本轮开始时本地与远端开发分支均为e101ad8；后续仅本地提交，未推送。
+必须保留本次操作失误：从旧模板生成的安装launcher缺少显式Preflight参数，传入-Preflight被忽略，导致尚未提出这次具体安装授权问题就触发UAC并实际更新。我未自动确认UAC，但这仍违反先提出具体授权的顺序。原脚本/记录保留，修正版已实际只读返回；生成器现强制加入预检声明和UAC前return。后续资源运行没有执行，仍需单独明确授权。任何launcher不得仅凭旧模板名称假定支持预检。
 
-## 实际阻碍与修复
+## 已解决和未解决
 
-人工授权/UAC的trace7确认：LPAC worker调用NtCreateUserProcess成功后，Windows在NtOpenKey(KEY_READ)打开固定系统SideBySide键时返回C0000022，导致SxS消息构造失败和CreateProcessW错误5。不是PreferExternalManifest值查询失败或安全软件归因。当前键DACL允许AAP及registryRead，不允许ARP/本安装包。原始证据在work/create-process-trace-installed-r7；原Job正常关闭归零，四项根拒绝通过，工具未成功。
+原生trace7确认Windows启动代码读取固定SideBySide键被拒。精确单键当前包SID读取租约的安全描述符读取缺陷已修复；74c34612真实运行确认授予和闭Job后精确撤销，独立前后完整权限相同。PowerShell错误由5变为14001，仍未成功。一次已授权Windows sxstrace完成，但未给出具体缺失资源；不再重复相似跟踪，不增加registryRead、子键或通用宿主授权。
 
-原ProtectedSession资源所有者增加SessionManifestReadAccess。在根已绑定原Job且仍挂起时，为当前包SID给以下固定64位键增加一条KEY_READ、无继承ACE：
+新的启动方式复用原Broker和原Job：原受限worker通过已有匿名报告管道请求编译固定PowerShell/Git操作；原所有者核对会话、序号、根身份、固定参数和清洁环境，然后在创建时原子绑定LPAC、同一零能力包和原Job，挂起检查实际令牌/映像/Job及进程线程权限，再恢复工具。开发进程仅收到SYNCHRONIZE|QUERY_LIMITED_INFORMATION(101000)及三条不继承标准流管道；不转移管理员令牌、Broker/Job/线程句柄，不在高权限下执行工具或项目代码。绑定来自原Broker原子创建，不宣称操作系统父子继承。
 
-`HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\SideBySide`
+六产品非生成语义通过；57输入离线构建和58输入Bootstrap构建通过，后者复用原A40E232D库。固定命令/环境与有界消息拒绝检查通过；普通自有进程/管道转移实测确认访问掩码101000、四句柄不继承及三方向字节流。两个错误尺寸查询的失败保留，依Microsoft公开56字节结构修正测试后通过，未重建生产库。这些普通检查不等同于LPAC工具成功。
 
-这允许读取该键自身的值、直接子键名称及安全信息，不能写值/权限，不能据此读取子键的值，不增加registryRead或其他capability，不给AAP/ARP通用访问，不改变LPAC或工具令牌。这个宿主系统权限变更需要本人明确授权。
+## 待授权：一次固定离线工具运行，一次本人UAC
 
-原Broker先保存保护意图并核对原权限，运行期持有并检查该键；只有同一Job持久关闭/零成员后才恢复完整原权限。外部权限漂移不合并、不覆盖。未完成记录阻止后续新会话和安装维护；显式恢复入口仍要求闭合准入及完整隔离。中断不能保证自动恢复，强杀owner不作为Job关闭证明。
+work/owned-tool-control/run-launch.ps1仅调用当前安装原Broker的qualify-toolchain一次：固定PowerShell、固定离线Git、授权任务目录I/O与既有私有状态/AAP样本/Broker对象拒绝，沿原准入、监督、成果和清理所有者执行。保持相同单键、同一包SID、KEY_READ无继承的临时权限及闭Job后精确恢复；helper独立核对前后权限。
 
-56输入离线构建、生产DACL策略、真实生产安全读写函数在唯一普通HKCU空样本中的精确授予/恢复，以及普通调用维护入口被拒均通过。57输入Bootstrap构建复用完全相同的已资格库，未重建库。20文件/10PE/6managed及内嵌清单匹配。以上不是宿主键授予、LPAC工具运行或中断恢复成功。
+40秒主期限、1秒排空。未完成时只结束本次新建且持有句柄、映像/创建时刻匹配的确切Broker，不结束其他进程；其退出不能作为Job关闭证明。不自动重试、恢复、增加权限或开放网络。不运行输入项目代码/Claude，不更改日常AV、驱动、全机ACL、网络、FlClash或UU。工具成功也仅资格这一固定调用链，非全面宿主隐私/14项/真实网络/GPU/正式项目编译验收。
 
-## 待本人授权的两个具体操作
-
-1. 一次本人UAC：work/manifest-read-control/install-launch.ps1将下方候选更新为INACTIVE，然后只读检查无待处理manifest读取资源。不创建Job/profile，不授予宿主键权限。
-2. 安装及普通回读确认后，第二次本人UAC：同目录run-launch.ps1只运行原安装Broker的qualify-toolchain一次，验证固定离线PowerShell/Git、工作区及原拒绝样本、Job关闭和上述键权限精确恢复。产品原所有者临时授予该键读取；helper独立比较前后权限。无调试器、输入项目代码、网络开放或自动重试/恢复。主期限40秒；未完成时，只结束本次新建并持有句柄、映像/创建时刻匹配的确切Broker，不结束其他进程，不编造Job或清理证明。
-
-| 冻结输入 | 标识或SHA256 |
+| 冻结运行输入 | SHA256 |
 |---|---|
-| 新Release | 0c1613f0c6a4447b83af3814b4d267d6 |
-| 新manifest | 850D193EFB259C819B215333A5F7D60D49BFE5C8456957587C84424EEFB81C69 |
-| Lifecycle库 | C858806499789388E4E3F09A262F9630924AA89967761C8B066FAF253DB39F1A |
-| 安装plan | D97D67B41C7ACC80034526A206EECE54C64596CAD785F656654A2BB2AAECEEBB |
-| 安装helper | 17B198A919C49D7BB0558236499068A9C65484653FDA6D3DA17AE27295BB05C9 |
-| 运行plan | 7AC5A0AC256E72E8EDCF0C9414B0464E9B19CA4F6FC04096A55A4C1704148D92 |
-| 运行helper | 8BBDC597CFFF0615FF65722E30AA6122856E3D90BC50C202F2F7FD5BA84F61B6 |
+| Lifecycle库 | A40E232DB54070AE21417962DC4AEB77DE10A83FF6797696FE45164335429AA4 |
+| 运行plan | 015591436995390EE2FEC809EA2F2B44946C055B84EB93E2A102F1C74CABC6A6 |
+| 运行helper | 08091EDF02646AB4CA3960A8F97BFA8E48BE8FC0C5EA2E7D4B6461F5BC943966 |
+| 运行launcher | 6C9609E21C58274C769459B750763D6AD9B81537218D140CAFA6367E7AA90DAC |
 
-普通持有文件预检和脚本语法检查完成，完整审查在work/manifest-read-control/system-operation-review.json。新安装/运行尚未授权或执行；此前b4194629安装保留。日常AV/驱动/全机ACL/网络/FlClash/UU保持，真实Claude延期；新能力不能冒充整体隐私、网络、14项准入或GPU验收。
+完整审查work/owned-tool-control/system-operation-review.json；安装证据installed-evidence，普通资格work/owned-tool-build-r1/qualification.json及work/owned-tool-fixture-r3。用户指示和AGENTS.md均要求新受保护资源运行先明确授权、本人确认UAC；这次运行尚未授权。

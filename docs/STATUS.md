@@ -1,10 +1,14 @@
 # 当前开发状态
 
+## 当前589f8b3c INACTIVE：安装已完成，工具运行待具体授权
+
+07:20:55Z固定更新/只读资源检查完成，15文件摘要/可信所有者/保护DACL及无非可信写入独立匹配，单键权限未变，无资源运行。该更新由旧生成模板缺少Preflight参数造成预检误触发，发生在本次具体安装授权问题之前；UAC未自动确认。已公开说明并保留原脚本/记录，修正预检实际只读返回，生成器要求显式参数和UAC前return。不能把此次更新当成工作负载授权。证据work/owned-tool-control/installed-evidence；完整下一次固定运行范围见LPAC-TOOL-LAUNCH-NEXT.md，plan01559143/helper08091EDF，仍NOT_RUN。下文74c34612为历史安装快照。
+
 ## 开发中：复用原Broker创建受限工具，停止扩大宿主授权
 
 VERIFIED（本轮本人UAC原生跟踪）：06:47:15Z同一74c34612安装、session0a0adcfe71ae4d7698bb9f70e697255c再次记录14001。Microsoft sxstrace只给出固定PowerShell配置/清单解析后Activation Context generation failed，没有具体缺失资源；因此不据此扩大SideBySide子键、registryRead或lpacCom。自有WinSxs Trace Session新建/输出路径绑定/停止/解析均完成，原跟踪未被接管，Job归零及单键权限独立精确恢复，未强杀。work/sxs-activation-control/evidence，筛选文本SHA256=0FA89FA0BA0859D17EC51996CA4BC0838D70EAC255372E27CADDD41CB4010467。不再重复相似跟踪。
 
-SOURCE / INTEGRATED：改用同一原Broker完成Windows工具启动封装。原受限worker沿其已有匿名报告管道提出编译固定PowerShell/Git操作；原所有者核对序号/会话/原根PID、完整参数及清洁环境摘要，仅允许既有编译脚本和离线Git操作。工具创建时同时绑定LPAC opt-out、零capability包SID及原Job，挂起检查实际LPAC/token/精确镜像/Job/管理侧进程线程DACL后恢复。worker只得到三条标准流管道及SYNCHRONIZE|QUERY_LIMITED_INFORMATION(101000)工具句柄，不转移Job/token/thread/Broker句柄，不在高权限下运行工具或输入代码。根已有准入、运行租约、工具工作门、四项拒绝、成果/清理路径保持；没有独立服务、备用executor或普通AppContainer回退。报告明确该绑定来自原Broker原子创建，而非OS父子继承。六产品非生成语义0错误/警告；57输入离线构建通过，库A40E232D未重复构建。固定操作/消息边界普通检查通过；本机自有进程与三条管道实际转移后，原生查询确认过程句柄101000、四句柄不继承和全部标准流方向。最初64字节和零缓冲探针均失败保留，改按Microsoft公布的56字节结构后通过。证据work/owned-tool-build-r1/qualification.json及work/owned-tool-fixture-r3。仅这些普通范围已资格，真实LPAC工具效果待安装验证；候选589f8b3c/manifest164AD85F正在冻结，当前74c34612仍INACTIVE。
+SOURCE / INTEGRATED：改用同一原Broker完成Windows工具启动封装。原受限worker沿其已有匿名报告管道提出编译固定PowerShell/Git操作；原所有者核对序号/会话/原根PID、完整参数及清洁环境摘要，仅允许既有编译脚本和离线Git操作。工具创建时同时绑定LPAC opt-out、零capability包SID及原Job，挂起检查实际LPAC/token/精确镜像/Job/管理侧进程线程DACL后恢复。worker只得到三条标准流管道及SYNCHRONIZE|QUERY_LIMITED_INFORMATION(101000)工具句柄，不转移Job/token/thread/Broker句柄，不在高权限下运行工具或输入代码。根已有准入、运行租约、工具工作门、四项拒绝、成果/清理路径保持；没有独立服务、备用executor或普通AppContainer回退。报告明确该绑定来自原Broker原子创建，而非OS父子继承。六产品非生成语义0错误/警告；57输入离线构建通过，库A40E232D未重复构建。固定操作/消息边界普通检查通过；本机自有进程与三条管道实际转移后，原生查询确认过程句柄101000、四句柄不继承和全部标准流方向。最初64字节和零缓冲探针均失败保留，改按Microsoft公布的56字节结构后通过。证据work/owned-tool-build-r1/qualification.json及work/owned-tool-fixture-r3。仅这些普通范围已资格，真实LPAC工具效果待安装验证；589f8b3c/manifest164AD85F已安装为INACTIVE，尚未执行真实工具验证；74c34612为历史对照。
 
 ## 当前74c34612：单项OS资源授予/撤销已实测；工具阻碍变为SxS14001
 

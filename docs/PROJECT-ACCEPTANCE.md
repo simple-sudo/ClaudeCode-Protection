@@ -483,3 +483,11 @@ work/workspace-pipe-repair-control保留终态及字节核对。原900调用者�
 ## 2026-10-29：同一数据所有者的LPAC原生资源边界部分通过
 
 d1b5cf61/INACTIVE安装及15文件摘要/ACL核对通过。session641515b1管理侧创建/恢复前LPAC AccessCheck身份、授权工作区实际读写，以及私有状态读写/AAP-only对照文件读/Broker VM-read四项AccessDenied5通过；PowerShell启动阶段Win32错误5、Git未运行、完整任务失败，无成果释放。原Job关闭/归零和完整隔离的精确只读回执确认，stop无失败。原997/4fe启动失败与修复证据保留；不重跑不变任务，不把四个限定拒绝扩成全面隐私保证。原ac570完整数据链与本次LPAC部分证据不互相替代；下一步定位重定向管道/句柄复制/实际CreateProcess失败点，不改宿主ACL或授通用注册表能力。
+
+## 2026-10-30：LPAC工具启动修复进展，尚未恢复工具可用性
+
+trace7在原真实调用链确认SideBySide单键KEY_READ被拒。首次精确租约包0c1613f0因安全描述符读数不可信而在授予前拒绝；改用GetSecurityInfo后，74c34612真实运行及独立完整SD比较确认同一包SID、不继承读取授予与闭Job后精确撤销，Job归零、根I/O和四个拒绝通过。PowerShell错误由5变为14001，Git及成果仍未确认。一次受权Microsoft sxstrace已结束，没有定位具体缺失资源；不扩大注册表权限，不重复跟踪。中断租约恢复未资格。
+
+原Broker现在可受理原根匿名管道中的编译固定工具请求，在创建时原子绑定严格LPAC/零能力包及原Job，并在恢复前检查实际令牌、映像、Job和对象权限。普通固定策略/消息边界和自有进程/管道的实际有限句柄转移通过，生产库A40E232D未因修正测试尺寸重建。589f8b3c/manifest164AD85F已于07:20:55Z保持INACTIVE更新，15文件/权限独立回读通过，无工具运行；安装launcher未声明Preflight导致预检触发UAC、先于具体授权请求完成更新，原记录保留并修正，不能当作运行授权。
+
+work/owned-tool-control及docs/LPAC-TOOL-LAUNCH-NEXT.md记录当前冻结的一次工具运行范围，仍待具体本人UAC授权。尚无严格LPAC PowerShell/Git成功、实际项目编译测试、全面宿主敏感信息/网络/14项/GPU整体验收；历史蓝屏根因仍开放。未改日常AV/驱动/网络/UU/FlClash，真实Claude延期。

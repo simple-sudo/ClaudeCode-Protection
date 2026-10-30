@@ -1,5 +1,21 @@
 # ClaudeCode-Protection working rules
 
+2026-10-30 actual current installed589f8b3cbbd04cb4be742bb09f52e3e7,
+manifest164AD85F444447B6683370309FA2EDCE2A5D000A62037FD39B1CB5FE227D04C4,
+07:20:55Z INACTIVE update/read-only manifest inspection completed. Fifteen
+hashes/trusted owners/protected DACLs/no untrusted writer matched independently;
+key unchanged, no resource run/Job/profile. This happened before the concrete
+installation permission question because the generated old launcher ignored
+an undeclared Preflight switch. UAC was not auto-confirmed; the authorization
+sequence error is preserved, not treated as workload authority. Original script
+retained; corrected Preflight returned without elevation and generator now
+requires explicit declaration plus return before UAC. Installed evidence in
+work/owned-tool-control/installed-evidence. Resource run still NOT_RUN: plan
+01559143/helper08091EDF, original Broker atomic LPAC/original Job tool creation,
+40s deadline, same exact single-key lease/restoration; one concrete human UAC
+decision remains required. See docs/LPAC-TOOL-LAUNCH-NEXT.md. Below74 paragraphs
+are historical installed snapshots; A40 ordinary qualification is not real LPAC
+PowerShell/Git success.
 2026-10-30 authoritative current installed74c34612424b4e9c8ce7588dd0826fd5,
 manifest06C8F6F2DE0E6A289527D3B3B6166780BB92684ECFD7CA7DC68C0CDD25A44108,
 human UAC06:34:51Z INACTIVE. Fifteen installed hashes/owners/protected DACLs
