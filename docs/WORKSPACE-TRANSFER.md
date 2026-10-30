@@ -1,8 +1,12 @@
 # 授权工作区数据传输
 
+当前62eab36f（INACTIVE）已实际通过严格LPAC的Git数据处理：此前已选择的四文件数据包，经普通daily→本人UAC的原Broker→同一Job/LPAC固定离线Git→原所有者闭合/精确清理/成功权威→普通review/extract，新目录四文件字节独立一致。输入BA1C5764...D4138，结果AA2F0DFD...43483，未改原项目，未执行项目代码、未开放网络。证据work/git-data-direct-control/workflow-r2；这是已安装可复用的数据能力，不是PowerShell/编译或完整开发准入通过。
+
+仅已验证的非空工作区数据包走Git数据范围，该范围明确拒绝PowerShell请求，不以PowerShell自有编译样本为前置，也不持有/查询其资产和GPO。无输入数据的完整工具资格仍要求PowerShell与编译；其最近原生结果仍失败。现有四命令、普通用户维护、本人工具UAC、固定Git参数/环境、同一管道、身份/Job/五根拒绝和Git自身两拒绝、独立仓库核对及成果权威均保留。没有新执行器或协议字段。
+
 已安装入口`workspace-process BASE_BUNDLE NEW_RESULT_BUNDLE`：普通用户daily先核对并持有安装资产、创建新的输出文件，然后请求本人UAC启动同版本固定Broker。仅本人SID可访问的本地管道传入确切数据字节；双方核对内核进程PID，Broker还核对普通调用者映像及本人SID。复用原ProcessWorkspaceData/ProtectedSession，成功闭Job与精确清理后再导出绑定原包的成果。没有特权宿主路径、脚本、任意命令或通用提升入口。取消/失败保留新建的空/部分输出供检查，不能覆盖已有结果。ac570b47已实测四份本仓库文件的pack→process→review→extract完整往返；仅process请求UAC，其余日常维护始终普通用户。v2失败回执仅返回固定阶段/异常类型/错误码及可选会话编号，不返回原始异常消息或私有路径，不自动重试。
 
-daily命令必须普通用户运行。ac570b47的普通AppContainer数据往返是历史限定成果，不能作为后来LPAC工具链通过的证据；当前安装选择、INACTIVE及具体缺口见STATUS。
+daily命令必须普通用户运行。ac570b47的普通AppContainer往返仅是历史成果；本页顶部62eab36f才是本次严格LPAC的Git数据链实机证据。不得把两者当成PowerShell、实际项目代码或完整工具链验收，当前缺口见STATUS。
 
 开发中的v3失败回执沿同一管道返回可选的五项原生创建诊断与四项Broker停止观察：两个自身进程策略值及各自查询错误、固定映像执行打开错误；准入是否关闭、停止前隔离观察、最终Job零成员观察、停止错误数量。未知值保持null，拒绝额外/重复字段、路径文本、矛盾数值和未绑定会话。它们只在失败时出现，不释放成果，也不证明私有目录清理、恢复成功、正式准入或完整隐私保护。此版本要求同包daily/Broker一起更新，无协议降级；构建/安装/原生资格以STATUS为准。
 

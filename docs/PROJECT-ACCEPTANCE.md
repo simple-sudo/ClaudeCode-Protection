@@ -1,5 +1,9 @@
 # 完整项目验收账本
 
+## 2026-10-30 已安装严格LPAC Git数据链通过；完整工具链仍未通过
+
+62eab36f/B692EEF8/19D64CFF保持INACTIVE更新，15安装文件hash/可信owner/保护DACL独立匹配。原日常workspace-process→本人UAC原Broker→同一Job/LPAC固定Git→原所有者闭合/精确清理/权威导出→普通review/extract完成，sessionfdf20ddd571a45b6bc77695cc392c6ae，四文件输入BA1C5764...D4138、结果AA2F0DFD...43483，Changes=[]，独立提取字节一致。原Broker成功路径要求五根拒绝/两Git拒绝、原生工具身份和原Job闭合；本次没有额外私有Job回执读取。普通runner首个路径错误在UAC/产品创建前拒绝，失败保留；修正为目录清单中的bin/current后只执行一次同授权资源操作。证据work/git-data-direct-control/installed-evidence、workflow-r2。未执行项目代码、未开放网络/授予ETW/修改宿主注册表/AV/日常设置；没有残留产品进程或重启。此处VERIFIED/DELIVERABLE仅为Git数据能力，不是PowerShell/编译、宿主全面隐私、网络/14项/GPU或BSOD事故关闭。旧7ffea33b单提供者0800授予/撤销实测成功但PS依然错误5，已在新源码撤下新授予工厂，旧记录/显式恢复保留。
+
 ## 2026-10-29 修复包实际安装及原Broker只读路径通过
 
 本人授权并确认UAC后，07:37:41Z现有Bootstrap退出0完成ecb06a→5bc986e16e9a44ca856a1b56b90328aa INACTIVE更新，manifest048E974C…BEC37、operation d6e5f46005234e67b3124a7ce175cbd0。安装Broker inspect-session-environment经版本/生命周期清点后退出2/MISSING、stderr空；环境意图缺失保持FAIL-CLOSED，未配置系统或签发启动许可。15文件hash与文件/5目录ACL独立回读通过，helper及launcher终态0，boot未变，远程/AV/BFE保持。此为安装与实际只读名称清点路径VERIFIED；未创建会话/Job/profile、运行原项目负载或执行恢复。后续隔离只读核对另记，不升级为全面网络/隐私/崩溃消除验收。原始/副本证据见STATUS。

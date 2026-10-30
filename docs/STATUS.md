@@ -1,81 +1,37 @@
-2026-10-30 candidate62eab36f66ba4dc5b117b1fbe4d1170c / manifest
-B692EEF8753B737E126924E0FC6EA764F39C4BB5BDA4BBFC472A3F45701C45E8,
-qualified library19D64CFF. Sourceccc6427 reuses existing byte-pinned daily
-workspace-process -> original Broker/Job/LPAC -> fixed Git -> independent repo
-snapshot -> exact cleanup/authority -> ordinary review/fresh extraction. Only
-non-null verified WorkspaceInputSHA256 derives the data-only scope; that scope
-refuses any PowerShell request, holds no PS assets/GPO, does not claim PS or
-compilation. No-input full tool qualification STILL requires PS/compilation.
-Five root denials, Git own denials, fixed commands/env, identity, closed-zero
-and output authority remain. No new executor/CLI/protocol fields. Native ETW
-grant factory/import retired, legacy recovery/pending guards retained.
-63-input build + policy/data-PS-refusal/messages/legacy recovery/ordinary125
-refusal passed; 64-input Bootstrape050a1a reuses exact19D64CFF. 20stage/10PE/
-6managed/embedded manifest passed. Retirement-onlyCCF159 tests also passed;
-not installed. Actual installed remains7ffea33b/3B7105C7/INACTIVE and PS fails5.
-New specific two UAC operations NOT_AUTHORIZED/NOT_RUN: inactive update and one
-existing daily four-file DATA roundtrip (inputBA1C5764). Install plan4E881554 /
-helperFBCA336A; workflow plan3C8DC1D6 / runnerA5A9315B. Frozen review:
-work/git-data-direct-control/system-operation-review.json. Strict preflights
-and unknown-switch refusals passed, no new UAC/claim. No PS/compile/project code,
-ETW/registry/network/AV mutation, retries or recovery. Original resource owner
-20s scope and existing daily75s completion after connection; human UAC wait
-remains human-controlled, ordinary runner NEVER kills an elevated owner.
-This is SOURCE/BUILD integration, NOT installed LPAC Git success or full product.
-
-SOURCE：已有workspace-process的数据/Git路径不再以PowerShell自测为前置。仅由已验证的非空工作区输入SHA派生Git数据范围（不新增CLI或协议字段）；原Broker/Job/LPAC、五拒绝、固定Git参数/环境、独立Git仓库核对、闭合快照/精确清理/权威成功后导出保持。该范围明确拒绝PowerShell请求、不持有或读取其资产/GPO、不声称编译或PowerShell身份；无输入的工具资格仍必须实际PowerShell+编译。新B23D先前包pin仍经所有Job/隔离守卫。新增纯策略负例覆盖数据范围拒绝PS、保留Git固定请求。SOURCE语义通过；构建/实机尚待，不把此代码改动当LPAC Git成功。
-
-SOURCE：本轮0800单独授权未修复启动，默认资源路径已撤下自动ETW授予；类收束为旧journal只读检查/显式恢复，删除新的EventAccessControl导入和创建工厂，保留Pending阻断及原闭合Job/隔离/漂移守卫。六产品非生成语义0错误0警告，尚未构建或安装此退役版本；实际安装仍7ffea33b/3B7105C7。不得把默认路径将不再改权限当作PowerShell修复。
-
-2026-10-30 authoritative actual installed7ffea33b977c4db1ae0c6b322bfc25ba,
-manifestB23DDA0D2833F427A042CB5081A345DEA8EBBDAABFDD5E0FAA0DA155794B96AD,
-library3B7105C7. Specifically authorized human-UAC update11:50:53Z completed
-INACTIVE;15 installed hashes/protected DACL/trusted owner/no untrusted writer
-independently matched. Read-only inspector NO_PENDING_ETW_PROVIDER_ACCESS,
-original default/no override. This actually clears the fixed-inventory defect.
-Separate authorized run11:51:38Z session743967b9e0d34450928cfffb6349817e:
-exact F90714A8 provider current-package0800 grant AND original closed-zero Job
-restoration passed. Independent before/after native reader matches original SD
-and all B/D/N/P same-GUID value names absent. RootIO/five exact denials5 passed,
-including ETW security query. Job2fad4a3bfec544eca52561b7356502ad closed/zero,
-Stop failures empty, no forced stop; SideBySide unchanged; boot02:14:46.5Z,
-AV/BFE/FlClash/UU retained. BUT PowerShell EventRegister still fails5 with same
-PSEtwLogProvider/AmsiUtils chain; PS not READY, Git/compile NOT_RUN, no result.
-Both operation grants consumed; do NOT repeat unchanged0800 workload or widen
-rights/capabilities without a changed supported repair and concrete decision.
-Evidence work/etw-registration-r3-control/installed-evidence + run-evidence,
-observed-result.json. Actual vendor metadata pins F907 GUID/API-set import;
-public-system-image OFFLINE disassembly confirms native provider registration
-asks0800. Does NOT establish the installed failure's exact native branch.
-Offline kernelbase symbol wait timed out; preserved as failure, not product
-failure/live attach. No new resource run, automatic recovery, ETW/AMSI/AV or
-network disable. Earlier candidate/NOT_AUTHORIZED paragraphs below historical.
-
-2026-10-30 current repair candidate7ffea33b977c4db1ae0c6b322bfc25ba, manifest
-B23DDA0D2833F427A042CB5081A345DEA8EBBDAABFDD5E0FAA0DA155794B96AD,
-library3B7105C7, source2da75da + embedded eed2d5c. Old specifically authorized
-e1829299 inactive update FAILED125/InvalidOperationException09:42:51Z; no
-tool run or ETW grant. Original admin post-read pointer remains6e2cf8cd/INACTIVE;
-15 installed hashes/protected DACL/trusted owners independently match. Do not
-infer unchanged private journals from pointer. Original ETW intent prefix missed
-ProtectedState's fixed allowlist; shared compile-time constant now connects it
-and ordinary exact caller-gate/unknown-prefix refusal tests pass. Six-product
-semantic,63-input build,64-input Bootstrap exact library reuse,20stage/10PE/
-6managed/embedded manifest review passed. First preparation bootstrap had old
-manifest, is archived UNQUALIFIED; only bootstrap-r2-receipt corresponds to new
-manifest. Strict preflights and unknown-argument refusals passed; new concrete
-two UAC operations NOT_AUTHORIZED/NOT_RUN. Install planE7BB2575/helper
-5F6F7C1A; run planEBB91E0D/helperE0C28D16;
-work/etw-registration-r3-control/system-operation-review.json. Scope remains
-only fixed provider current exact package REGISTER_GUIDS0800, original default
-plus no stored override, independent before/after, original durable closed-zero
-Job before exact removal; five resource denials5 required. No EventAccessControl
-or Remove has executed; no ETW/AMSI/AV/network disable. All older candidate
-paragraphs below are historical; e1829299/r2 controls must NOT be retried.
-
-2026-10-30 09:42:51Z：本人明确授权后的e1829299 INACTIVE更新被拒绝125/InvalidOperationException，尚未进入已授权但未执行的工具运行，未调用ETW权限API。原6e2cf8cd/manifest6AAE651E/INACTIVE指针不变，AV/BFE/FlClash前后正常，失败完整保留work/etw-registration-r2-control/installed-evidence。源码发现ETW意图前缀未接入ProtectedState固定清单，是必然阻断新Pending检查的确定缺陷；现共享编译期常量、接入原清单，并补测实际调用前缀及未知前缀拒绝；六产品非生成语义通过。旧失败不重试；修复工件需重新构建审查。不能仅凭指针未变宣称私有状态无变化。
-
 # 当前开发状态
+
+2026-10-30 authoritative actual installed62eab36f66ba4dc5b117b1fbe4d1170c,
+manifestB692EEF8753B737E126924E0FC6EA764F39C4BB5BDA4BBFC472A3F45701C45E8,
+library19D64CFF. Human-UAC INACTIVE update12:38:07Z and installed read-only
+NO_PENDING_ETW_PROVIDER_ACCESS completed;15 hashes/protected DACL/trusted owners/
+no untrusted writer independently matched. Separate approved ordinary daily
+workspace-process human UAC completed12:40:17Z sessionfdf20ddd571a45b6bc77695cc392c6ae:
+existing original Broker/Job/strict LPAC native Git data processing, closed-Job
+snapshot, exact cleanup and authoritative success export passed. Ordinary
+review/extract0; all four selected result/extracted bytes independently match.
+InputBA1C5764...D4138, resultAA2F0DFD...43483, Changes=[] (DATA only). Source
+requires five root denials, Git two own denials and held token/Job identity;
+success is the original trusted owner receipt, not a separate raw Job read.
+Evidence work/git-data-direct-control/installed-evidence and workflow-r2,
+observed-result.json. First ordinary runner used wrong bin/daily path and failed
+BEFORE UAC/product creation; original failure/claim kept. R2 derives the exact
+bin/current daily asset, same approved product/input, only one resource run;
+no extra authorization scope or automatic protected retry/recovery. Actual R2
+planA242228F/runnerD9D0BFC8, process-resultB908CD83. No product processes left;
+boot02:14:46.5Z and AV/BFE/FlClash/UU unchanged. No new ETW/registry/AV/daily-
+network mutation or project-code execution. Both approved UAC operations done.
+SOURCE/BUILD/INTEGRATED/VERIFIED/DELIVERABLE: this installed Git DATA slice only.
+No-input full tool qualification STILL requires PowerShell/compilation; DATA
+scope cannot request PS, needs verified nonempty input, holds no PS assets/GPO.
+No new CLI/executor/protocol fields; native grants are not relaxed. No new ETW
+permission grant factory/import: older exact journal/pending/recovery retained.
+The7ffea33b package-SID0800 trial actually restored exactly but PS EventRegister
+still failed5; no unchanged retry or broad logging capability. Latest62e has no
+new PS runtime success. Full PS/development compile/tests, host-sensitive privacy,
+forced network/14 trusted admission/NVIDIA GPU and historic BSOD root cause stay
+open; real Claude deferred. Reuse this Git result rather than reprove it. Next
+main work remains a supported, narrowly scoped PowerShell ETW compatibility fix.
+Earlier current/candidate/NOT_AUTHORIZED paragraphs below are historical.
 
 ## 固定事件提供者原权限已实测，最小注册租约接入原所有者
 
