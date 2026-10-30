@@ -1,5 +1,10 @@
 # 当前开发状态
 
+## 当前df6ae4f0：异常不再停在旧超时，已捕获SecurityException
+
+VERIFIED / FAIL：本人两次具体授权及UAC后08:35:06Z INACTIVE更新到df6ae4f02e67434dbb91b9a0addaf80a/manifestD2CABD45，15文件摘要/可信owner/保护DACL及无非可信写入独立核对通过。原官方552工具文件未修改，只读manifest资源检查无待恢复。08:35:27Z session1c66ab54e7e34fdeb3e8aa69f89ab944工具不再等到原10秒超时，直接以E0434352/-532462766退出；返回限定异常类型System.Security.SecurityException，未到READY。它证实项目工具的托管异常，具体拒绝点还不能由类型确定。PowerShell/Git/自有编译仍失败，无成果。原Job0f4e30d0关闭/归零、Stop无失败，根I/O/四拒绝5通过，宿主单键完全不变，无强杀owner。证据work/tool-fault-control/run-evidence，报告SHA256=B5A5135E9BD600D5D5952F5789694B655ECA6C2C180316E5DBF26F99B1B50631。用户此前截图与明确确认保留为项目异常证据，不因未抓到事件否定。
+
+原Broker已保存唯一有界私有错误resource-tool-error-1c66ab54e7e34fdeb3e8aa69f89ab944.json。下一步仅只读该记录检查具体调用栈，避免再猜权限、再跑旧任务：work/tool-error-read-control planD1DBD8D3/helperB22934F8，预检/未知参数拒绝完成，无本次UAC或读取。只允许该一文件到新受保护审查目录，不安装、不启动产品、不建Job/profile、不改权限/网络、不恢复；需一次具体本人UAC授权。下面df6ff338及先前待授权描述是已完成的历史快照。
 ## 当前df6ff338：工具安装完成；本次项目进程异常弹窗与运行失败已确认
 
 VERIFIED / FAIL：本人两次具体授权及UAC后，08:23:36Z安装df6ff338081b43e4ac4691598c108f71/manifest9239BB32、INACTIVE。15产品文件+552官方PowerShell文件/110目录的摘要、可信所有者、保护DACL及无非可信写入独立核对通过；只读资源检查无待恢复项。新公共工具目录只读执行，未改既有宿主ACL或注册表。

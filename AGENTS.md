@@ -1,5 +1,25 @@
 # ClaudeCode-Protection working rules
 
+2026-10-30 actual installeddf6ae4f02e67434dbb91b9a0addaf80a,
+manifestD2CABD45BCF2965F8BC982669C0478958B80CD5F22807CCB76134DE8B0626AE8,
+human UAC08:35:06Z INACTIVE/read-only completed,15 hashes/trusted owners/
+protected DACL/no untrusted writer independently matched. Separate specifically
+authorized run08:35:27Z session1c66ab54e7e34fdeb3e8aa69f89ab944 now exits
+E0434352/-532462766 promptly with public typeSystem.Security.SecurityException,
+not the prior10s modal timeout. Exact original Job0f4e30d0 closed/zero, Stop
+errors empty; rootIO/four denials5 pass, no forced owner stop, key unchanged,
+no registry grant/network/Claude/project code. PowerShell/Git/compile still
+NOT_CONFIRMED. work/tool-fault-control/run-evidence reportB5A5135E. User's prior
+project-exception screenshot remains authoritative; do not deny it from logs.
+The original owner now preserves one bounded private tool error record under
+resource-tool-error-1c66ab54e7e34fdeb3e8aa69f89ab944.json. Next prepared operation
+is ONLY readonly copy of this exact one immutable error record into a fresh
+protected review directory, to inspect its stack before choosing a fix; NO
+installation, product launch/Job/profile, permissions/network/recovery. Frozen
+work/tool-error-read-control planD1DBD8D3/helperB22934F8, preflight/strict unknown
+switch refusal passed. This needs one concrete human UAC decision; NOT_RUN.
+Do not rerun unchanged workload or guess broader permissions from exception
+type. Below earlier installed/NOT_AUTHORIZED paragraphs are historical.
 2026-10-30 actual installeddf6ff338081b43e4ac4691598c108f71,
 manifest9239BB32E9822030B19E70E8B983CC28D89B987115EF028E733F921B56101247,
 human UAC08:23:36Z INACTIVE update/read-only inspection completed. Official

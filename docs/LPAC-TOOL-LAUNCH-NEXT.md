@@ -1,3 +1,12 @@
+# 当前：异常处理包已安装；下一步只读本次唯一错误证据
+
+08:35:06Z本人UAC更新df6ae4f0/manifestD2CABD45、INACTIVE，15文件独立摘要/权限匹配；另一次授权固定运行08:35:27Z结束，session1c66ab54e7e34fdeb3e8aa69f89ab944。工具直接退出E0434352/-532462766，已返回System.Security.SecurityException，不再卡原10秒超时。仍未到READY、Git/编译未运行，无成果。原Job0f4e30d0归零、Stop无失败、四拒绝通过、宿主键不变，无强杀。报告B5A5135E。用户此前项目异常弹窗确认保留，不以空日志否定。
+
+下一次待授权操作仅一项：work/tool-error-read-control/read-launch.ps1通过一次本人UAC，读取C:\Program Files\ClaudeCodeProtection-State\resource-tool-error-1c66ab54e7e34fdeb3e8aa69f89ab944.json这一个已由原Broker保存的错误文件，最多32768字节；严格核对可信路径/owner/保护ACL，无重定向。原始字节和SHA256只写入新受保护目录C:\Program Files\ClaudeCodeProtection-ToolError-1c66ab54-r1，允许当前用户只读审查其固定工具错误。源不修改，不读取其他私有文件，不安装、不启动任何产品/工作负载、不建Job/profile、不改权限或网络、不恢复。planD1DBD8D3EDCECCB2D944354DF735B37FC590C3C722EC461F1BF85D0DF9EDB428；helperB22934F8F20101E9FD1F821522F0104AA2B23B14CE567C355DC3DF6864EF5188。read-review.json为冻结审查，预检实际返回、未知参数拒绝，NOT_RUN。
+
+该文件因产品私有权限无法由普通开发进程读取。按用户指示和AGENTS.md，新增私有资源读取需具体授权和本人UAC；前次安装/运行授权均已完成。这次不重复运行故障，只读取已有实际错误栈以决定修复。下文是已完成安装/运行的历史范围。
+
+---
 # 当前工具故障：已确认项目异常，下一次验证具体范围
 
 当前安装df6ff338081b43e4ac4691598c108f71/manifest9239BB32，INACTIVE。本人UAC于08:23:36Z完成更新及官方PowerShell7.4.22固定目录创建；15产品文件、552工具文件/110目录的摘要、可信owner、保护DACL及无非可信写入已独立匹配。
