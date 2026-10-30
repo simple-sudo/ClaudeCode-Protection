@@ -30,10 +30,10 @@ if(args[0]=="token-membership")
 if(args[0]=="reply")
 {
     var hash=new string('A',64);var session=new string('a',32);
-    Dictionary<string,object?> Success()=>new(){["SchemaVersion"]=2,["ExitCode"]=0,["SessionId"]=session,["BaseSHA256"]=hash,["ResultSHA256"]=hash,
-        ["Status"]="WORKSPACE_DATA_PROCESSED_AND_CLEANED",["FailureStage"]=null,["FailureKind"]=null,["FailureCode"]=null};
-    Dictionary<string,object?> Failure()=>new(){["SchemaVersion"]=2,["ExitCode"]=125,["SessionId"]=null,["BaseSHA256"]=hash,["ResultSHA256"]=null,
-        ["Status"]="WORKSPACE_DATA_NOT_CONFIRMED",["FailureStage"]="caller",["FailureKind"]="SecurityException",["FailureCode"]=-2146233078};
+    Dictionary<string,object?> Success()=>new(){["SchemaVersion"]=3,["ExitCode"]=0,["SessionId"]=session,["BaseSHA256"]=hash,["ResultSHA256"]=hash,
+        ["Status"]="WORKSPACE_DATA_PROCESSED_AND_CLEANED",["FailureStage"]=null,["FailureKind"]=null,["FailureCode"]=null,["CreationEvidence"]=null,["StopEvidence"]=null};
+    Dictionary<string,object?> Failure()=>new(){["SchemaVersion"]=3,["ExitCode"]=125,["SessionId"]=null,["BaseSHA256"]=hash,["ResultSHA256"]=null,
+        ["Status"]="WORKSPACE_DATA_NOT_CONFIRMED",["FailureStage"]="caller",["FailureKind"]="SecurityException",["FailureCode"]=-2146233078,["CreationEvidence"]=null,["StopEvidence"]=null};
     void Reject(Dictionary<string,object?> value,string reason)
     {
         var refused=false;try{_=WorkspacePipe.ParseReply(JsonSerializer.SerializeToUtf8Bytes(value),hash);}catch(InvalidDataException){refused=true;}
@@ -53,10 +53,40 @@ if(args[0]=="reply")
     value=Failure();value["FailureStage"]="C:\\private";Reject(value,"host path as stage");
     value=Failure();value["FailureKind"]="private data";Reject(value,"arbitrary failure text");
     value=Failure();value["SessionId"]="../bad";Reject(value,"invalid session");
-    var duplicate=JsonSerializer.Serialize(Success()).Replace("\"SchemaVersion\":2","\"SchemaVersion\":2,\"SchemaVersion\":2",StringComparison.Ordinal);
+    Dictionary<string,object?> Creation()=>new(){["ChildProcessPolicy"]=0,["ChildPolicyQueryError"]=null,["ImageLoadPolicy"]=0,["ImagePolicyQueryError"]=null,["ImageExecuteOpenError"]=0};
+    Dictionary<string,object?> Stop()=>new(){["AdmissionClosed"]=true,["QuarantineObservedBeforeStop"]=true,["FinalJobZero"]=true,["StopFailureCount"]=0};
+    Dictionary<string,object?> Diagnostic(){var v=Failure();v["SessionId"]=session;v["FailureStage"]="processing";v["FailureKind"]="PowerShellCreateProcess";v["FailureCode"]=5;v["CreationEvidence"]=Creation();v["StopEvidence"]=Stop();return v;}
+    var diag=WorkspacePipe.ParseReply(JsonSerializer.SerializeToUtf8Bytes(Diagnostic()),hash);
+    Require(diag.CreationEvidence?.ImageExecuteOpenError==0 && diag.StopEvidence?.FinalJobZero==true && diag.ResultSHA256 is null,"failure diagnostics never release a result");
+    var unknown=Diagnostic();var observed=Creation();observed["ChildProcessPolicy"]=null;observed["ChildPolicyQueryError"]=87;unknown["CreationEvidence"]=observed;
+    var unknownStop=Stop();unknownStop["FinalJobZero"]=null;unknown["StopEvidence"]=unknownStop;
+    var retained=WorkspacePipe.ParseReply(JsonSerializer.SerializeToUtf8Bytes(unknown),hash);
+    Require(retained.CreationEvidence?.ChildProcessPolicy is null && retained.CreationEvidence?.ChildPolicyQueryError==87 && retained.StopEvidence?.FinalJobZero is null,"unobserved values retain null and actual error");
+    var execute=Diagnostic();observed=Creation();observed["ImageExecuteOpenError"]=5;execute["CreationEvidence"]=observed;execute["FailureKind"]="PowerShellImageExecuteOpen";
+    Require(WorkspacePipe.ParseReply(JsonSerializer.SerializeToUtf8Bytes(execute),hash).CreationEvidence?.ImageExecuteOpenError==5,"exact image access denial distinguished");
+    foreach(var key in new[]{"ChildProcessPolicy","ImageLoadPolicy"})foreach(var invalid in new object[]{-1,4294967296UL,"C:\\private"})
+    {value=Diagnostic();observed=Creation();observed[key]=invalid;value["CreationEvidence"]=observed;Reject(value,"invalid policy value");}
+    foreach(var key in new[]{"ChildPolicyQueryError","ImagePolicyQueryError","ImageExecuteOpenError"})
+    {value=Diagnostic();observed=Creation();observed[key]=-1;value["CreationEvidence"]=observed;Reject(value,"negative native error");}
+    value=Diagnostic();observed=Creation();observed["ChildProcessPolicy"]=null;value["CreationEvidence"]=observed;Reject(value,"missing policy observation and error");
+    value=Diagnostic();observed=Creation();observed["ChildPolicyQueryError"]=5;value["CreationEvidence"]=observed;Reject(value,"contradictory policy observation");
+    value=Diagnostic();observed=Creation();observed["ImageExecuteOpenError"]=null;value["CreationEvidence"]=observed;Reject(value,"missing execute observation");
+    value=Diagnostic();observed=Creation();observed["Path"]="C:\\private";value["CreationEvidence"]=observed;Reject(value,"unknown diagnostic field");
+    value=Diagnostic();var stopFields=Stop();stopFields["PrivateCleanupConfirmed"]=true;value["StopEvidence"]=stopFields;Reject(value,"cleanup claim outside stop scope");
+    foreach(var invalid in new object[]{-1,1025,"private"}){value=Diagnostic();stopFields=Stop();stopFields["StopFailureCount"]=invalid;value["StopEvidence"]=stopFields;Reject(value,"invalid stop count");}
+    value=Diagnostic();stopFields=Stop();stopFields["FinalJobZero"]=1;value["StopEvidence"]=stopFields;Reject(value,"numeric stop observation");
+    value=Diagnostic();value["SessionId"]=null;Reject(value,"unbound diagnostics");
+    value=Diagnostic();value["FailureStage"]="input";Reject(value,"pre-session diagnostics");
+    value=Success();value["CreationEvidence"]=Creation();Reject(value,"diagnostic masquerading as success");
+    value=Success();value["StopEvidence"]=Stop();Reject(value,"stop observation masquerading as result authority");
+    value=Diagnostic();value["SchemaVersion"]=2;Reject(value,"mixed-version package");
+    var duplicate=JsonSerializer.Serialize(Success()).Replace("\"SchemaVersion\":3","\"SchemaVersion\":3,\"SchemaVersion\":3",StringComparison.Ordinal);
     var refusedDuplicate=false;try{_=WorkspacePipe.ParseReply(System.Text.Encoding.UTF8.GetBytes(duplicate),hash);}catch(InvalidDataException){refusedDuplicate=true;}
     Require(refusedDuplicate,"duplicate reply fields");
-    Console.WriteLine("PASS reply contract: success/failure/session binding, strict fields, no failure result or private text; no IPC, UAC or Job");return 0;
+    duplicate=JsonSerializer.Serialize(Diagnostic()).Replace("\"ChildProcessPolicy\":0","\"ChildProcessPolicy\":0,\"ChildProcessPolicy\":0",StringComparison.Ordinal);
+    refusedDuplicate=false;try{_=WorkspacePipe.ParseReply(System.Text.Encoding.UTF8.GetBytes(duplicate),hash);}catch(InvalidDataException){refusedDuplicate=true;}
+    Require(refusedDuplicate,"duplicate nested diagnostic fields");
+    Console.WriteLine("PASS reply v3: bounded native/stop diagnostics, null stays unknown, exact session, no failed result/private text/cleanup or admission authority; no IPC/UAC/Job");return 0;
 }
 if(args[0]=="frames")
 {

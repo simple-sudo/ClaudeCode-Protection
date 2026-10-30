@@ -9,6 +9,12 @@ using Microsoft.Win32.SafeHandles;
 
 namespace ClaudeCodeProtection.Workspaces;
 
+// Read-only diagnostics, never admission or cleanup authority. Policy query
+// failures retain null flags and an error; a zero flag is an observed value.
+internal sealed record ToolCreationEvidence(uint? ChildProcessPolicy,int? ChildPolicyQueryError,
+    uint? ImageLoadPolicy,int? ImagePolicyQueryError,int? ImageExecuteOpenError);
+internal sealed record WorkspaceStopEvidence(bool AdmissionClosed,bool QuarantineObservedBeforeStop,bool? FinalJobZero,int StopFailureCount);
+
 // Local data IPC between the ordinary daily UI and its one explicitly elevated
 // installed Broker. Never a host-path, script, process or command service.
 internal static class WorkspacePipe
@@ -17,31 +23,66 @@ internal static class WorkspacePipe
     // a temporary Identification token. Query alone makes that check fail.
     // This does not request Impersonate, AssignPrimary or Adjust privileges.
     internal const uint CallerTokenQueryAccess=0x0008|0x0002;
-    internal sealed record Reply(int ExitCode,string? SessionId,string? ResultSHA256,string? FailureStage,string? FailureKind,int? FailureCode);
+    internal sealed record Reply(int ExitCode,string? SessionId,string? ResultSHA256,string? FailureStage,string? FailureKind,int? FailureCode,
+        ToolCreationEvidence? CreationEvidence,WorkspaceStopEvidence? StopEvidence);
     internal static Reply ParseReply(byte[] bytes,string expected)
     {
         if(bytes.Length is <1 or >16384 || !WorkspaceBundle.IsHash(expected))throw new InvalidDataException("Workspace reply bounds refused");
         using var doc=JsonDocument.Parse(bytes,new JsonDocumentOptions{MaxDepth=4});var r=doc.RootElement;
-        var fields=r.EnumerateObject().Select(p=>p.Name).ToArray();
-        var required=new[]{"BaseSHA256","ExitCode","FailureCode","FailureKind","FailureStage","ResultSHA256","SchemaVersion","SessionId","Status"};
-        if(fields.Length!=required.Length || fields.Distinct(StringComparer.Ordinal).Count()!=required.Length ||
-            !fields.OrderBy(n=>n,StringComparer.Ordinal).SequenceEqual(required.OrderBy(n=>n,StringComparer.Ordinal)) ||
-            r.GetProperty("SchemaVersion").GetInt32()!=2 || r.GetProperty("BaseSHA256").GetString()!=expected)
+        RequireFields(r,"BaseSHA256","CreationEvidence","ExitCode","FailureCode","FailureKind","FailureStage","ResultSHA256","SchemaVersion","SessionId","Status","StopEvidence");
+        if(r.GetProperty("SchemaVersion").GetInt32()!=3 || r.GetProperty("BaseSHA256").GetString()!=expected)
             throw new InvalidDataException("Workspace reply contract differs");
         var exit=r.GetProperty("ExitCode").GetInt32();var session=r.GetProperty("SessionId").GetString();
         var hash=r.GetProperty("ResultSHA256").GetString();var stage=r.GetProperty("FailureStage").GetString();var kind=r.GetProperty("FailureKind").GetString();
         int? code=r.GetProperty("FailureCode").ValueKind==JsonValueKind.Null?null:r.GetProperty("FailureCode").GetInt32();
+        var creation=ParseCreationEvidence(r.GetProperty("CreationEvidence"));var stop=ParseStopEvidence(r.GetProperty("StopEvidence"));
         if(session is not null && (session.Length!=32 || session.Any(c=>c is not (>= '0' and <= '9' or >= 'a' and <= 'f'))))
             throw new InvalidDataException("Workspace reply session differs");
         if(exit==0)
         {
-            if(session is null || !WorkspaceBundle.IsHash(hash) || stage is not null || kind is not null || code is not null ||
+            if(session is null || !WorkspaceBundle.IsHash(hash) || stage is not null || kind is not null || code is not null || creation is not null || stop is not null ||
                 r.GetProperty("Status").GetString()!="WORKSPACE_DATA_PROCESSED_AND_CLEANED")throw new InvalidDataException("Workspace success reply differs");
         }
         else if(exit is not (3 or 125) || hash is not null || stage is not ("installation" or "caller" or "input" or "processing" or "export") ||
             kind is null || kind.Length is <1 or >80 || kind.Any(c=>!char.IsAsciiLetterOrDigit(c)) || code is null ||
             r.GetProperty("Status").GetString()!="WORKSPACE_DATA_NOT_CONFIRMED")throw new InvalidDataException("Workspace failure reply differs");
-        return new(exit,session,hash,stage,kind,code);
+        if((creation is not null || stop is not null) && (exit==0 || stage!="processing" || session is null))throw new InvalidDataException("Workspace diagnostic session differs");
+        if(creation is not null && (kind is not ("PowerShellCreateProcess" or "PowerShellImageExecuteOpen") ||
+            kind=="PowerShellCreateProcess" && creation.ImageExecuteOpenError!=0 ||
+            kind=="PowerShellImageExecuteOpen" && (creation.ImageExecuteOpenError==0 || creation.ImageExecuteOpenError!=code)))
+            throw new InvalidDataException("Workspace creation diagnostic differs");
+        return new(exit,session,hash,stage,kind,code,creation,stop);
+    }
+    internal static ToolCreationEvidence? ParseCreationEvidence(JsonElement value)
+    {
+        if(value.ValueKind==JsonValueKind.Null)return null;
+        RequireFields(value,"ChildProcessPolicy","ChildPolicyQueryError","ImageLoadPolicy","ImagePolicyQueryError","ImageExecuteOpenError");
+        uint? Policy(string name){var item=value.GetProperty(name);if(item.ValueKind==JsonValueKind.Null)return null;
+            if(item.ValueKind!=JsonValueKind.Number || !item.TryGetUInt32(out var flag))throw new InvalidDataException("Policy flags must be bounded numbers");return flag;}
+        int? Error(string name){var item=value.GetProperty(name);if(item.ValueKind==JsonValueKind.Null)return null;
+            if(item.ValueKind!=JsonValueKind.Number || !item.TryGetInt32(out var code) || code is <0 or >65535)throw new InvalidDataException("Policy errors must be bounded numbers");return code;}
+        var child=Policy("ChildProcessPolicy");var childError=Error("ChildPolicyQueryError");
+        var image=Policy("ImageLoadPolicy");var imageError=Error("ImagePolicyQueryError");var execute=Error("ImageExecuteOpenError");
+        if((child is null)!=(childError is not null) || (image is null)!=(imageError is not null) || childError==0 || imageError==0 || execute is null)
+            throw new InvalidDataException("Unobserved policy cannot become a zero flag");
+        return new(child,childError,image,imageError,execute);
+    }
+    private static WorkspaceStopEvidence? ParseStopEvidence(JsonElement value)
+    {
+        if(value.ValueKind==JsonValueKind.Null)return null;
+        RequireFields(value,"AdmissionClosed","QuarantineObservedBeforeStop","FinalJobZero","StopFailureCount");
+        bool Flag(string name){var item=value.GetProperty(name);if(item.ValueKind is not (JsonValueKind.True or JsonValueKind.False))throw new InvalidDataException("Stop observation must be boolean");return item.GetBoolean();}
+        var zero=value.GetProperty("FinalJobZero");bool? finalZero=zero.ValueKind==JsonValueKind.Null?null:Flag("FinalJobZero");
+        var count=value.GetProperty("StopFailureCount");
+        if(count.ValueKind!=JsonValueKind.Number || !count.TryGetInt32(out var failures) || failures is <0 or >1024)throw new InvalidDataException("Stop failure count refused");
+        return new(Flag("AdmissionClosed"),Flag("QuarantineObservedBeforeStop"),finalZero,failures);
+    }
+    private static void RequireFields(JsonElement value,params string[] expected)
+    {
+        if(value.ValueKind!=JsonValueKind.Object)throw new InvalidDataException("Workspace object required");
+        var fields=value.EnumerateObject().Select(p=>p.Name).ToArray();
+        if(fields.Length!=expected.Length || fields.Distinct(StringComparer.Ordinal).Count()!=expected.Length ||
+            !fields.OrderBy(n=>n,StringComparer.Ordinal).SequenceEqual(expected.OrderBy(n=>n,StringComparer.Ordinal)))throw new InvalidDataException("Workspace diagnostic fields differ");
     }
     internal static string Name(int ownerPid,string nonce)
     {

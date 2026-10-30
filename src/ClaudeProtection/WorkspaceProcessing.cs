@@ -53,7 +53,7 @@ internal static class WorkspaceProcessing
             await broker.WaitForExitAsync(completion.Token);
             if(broker.ExitCode!=reply.ExitCode)throw new IOException("Workspace failure process exit differs");
             return(reply.ExitCode,new {Status="WORKSPACE_DATA_NOT_CONFIRMED",SessionId=session,BaseSHA256=expected,
-                reply.FailureStage,reply.FailureKind,reply.FailureCode,ResultReleased=false,AutomaticRetry=false});
+                reply.FailureStage,reply.FailureKind,reply.FailureCode,reply.CreationEvidence,reply.StopEvidence,ResultReleased=false,AutomaticRetry=false});
         }
         var result=await WorkspacePipe.Read(server,WorkspaceBundle.MaxBundleBytes,completion.Token);
         WorkspacePipe.AssertPeer(server,broker.Id,true);

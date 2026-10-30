@@ -8,7 +8,7 @@ using System.Runtime.InteropServices;
 // Bound to the reviewed production library. These two modes do not create or
 // resume a process/profile/Job or open private resources. The token reader may
 // create a temporary query-only Identification duplicate, never impersonate it.
-if(args.Length!=1 || args[0] is not ("policy" or "self-token" or "runtime-paths" or "start-failure" or "inherited-command"))return 125;
+if(args.Length!=1 || args[0] is not ("policy" or "self-token" or "runtime-paths" or "start-failure" or "inherited-command" or "prerequisite-reads"))return 125;
 using var identity=WindowsIdentity.GetCurrent();
 if(new WindowsPrincipal(identity).IsInRole(WindowsBuiltInRole.Administrator))throw new InvalidOperationException("Ordinary test only");
 var library=Assembly.LoadFrom(Path.Combine(AppContext.BaseDirectory,"ProtectionLifecycle.dll"));
@@ -19,6 +19,25 @@ static object? Call(MethodInfo method,params object?[] values)
     catch(TargetInvocationException ex)when(ex.InnerException is not null){ExceptionDispatchInfo.Capture(ex.InnerException).Throw();throw;}
 }
 static void Require(bool value,string reason){if(!value)throw new InvalidOperationException("LPAC: "+reason);}
+if(args[0]=="prerequisite-reads")
+{
+    var inspect=library.GetType("ProtectionLifecycle.AtomicChild",true)!.GetMethod("InspectToolCreationPrerequisites",flags)!;
+    var fixedImage=Path.Combine(Environment.SystemDirectory,"WindowsPowerShell","v1.0","powershell.exe");
+    var observed=Call(inspect,fixedImage)!;object? Property(string name)=>observed.GetType().GetProperty(name)!.GetValue(observed);
+    Require(Property("ChildProcessPolicy") is uint && Property("ChildPolicyQueryError") is null,"ordinary self child-policy query observed, without assigning zero");
+    Require(Property("ImageLoadPolicy") is uint && Property("ImagePolicyQueryError") is null,"ordinary self image-policy query observed");
+    Require(Property("ImageExecuteOpenError") is int code && code==0,"fixed system tool opened with execute access, not mapped or run");
+    var missing=Path.Combine(AppContext.BaseDirectory,"missing-"+Guid.NewGuid().ToString("N")+".exe");Require(!File.Exists(missing),"absent fixture");
+    var rejected=false;try{_=Call(inspect,missing);}
+    catch(System.ComponentModel.Win32Exception ex)when(ex.NativeErrorCode==2)
+    {
+        rejected=true;Require((string?)ex.Data["Stage"]=="InheritedToolImageExecuteOpen","exact access stage retained");
+        var evidence=ex.Data["ToolCreationEvidence"]??throw new InvalidOperationException("Missing failure diagnostic");
+        Require((int)evidence.GetType().GetProperty("ImageExecuteOpenError")!.GetValue(evidence)!==2,"native missing-file error retained");
+    }
+    Require(rejected,"missing executable cannot become execute success");
+    Console.WriteLine("PASS self policy read and fixed-image execute-open; absent image failure retained; no mapping, launch, policy/ACL mutation, Job/profile or elevation");return 0;
+}
 if(args[0]=="inherited-command")
 {
     var atomic=library.GetType("ProtectionLifecycle.AtomicChild",true)!;

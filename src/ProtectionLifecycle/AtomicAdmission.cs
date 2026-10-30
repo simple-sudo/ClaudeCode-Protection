@@ -6,6 +6,7 @@ using System.Security.AccessControl;
 using System.Text;
 using System.Text.Json;
 using Microsoft.Win32.SafeHandles;
+using ClaudeCodeProtection.Workspaces;
 
 namespace ProtectionLifecycle;
 
@@ -125,10 +126,6 @@ internal sealed record AtomicJobCompletion(int SchemaVersion,string Installation
 
 internal sealed record AdmissionToken(bool IsAppContainer,string? PackageSid,int CapabilityCount,string IntegritySid,bool LpacAccessCheckObserved,uint ApplicationPackageAccessMask);
 internal sealed record ResourceBootstrapFailure(int SchemaVersion,string Scope,string Phase,string Type,int Code,string? NativeStage);
-// Diagnostics only. Failed queries stay unknown with their actual error;
-// these observations cannot issue a resource, network or session permit.
-internal sealed record ToolCreationEvidence(uint? ChildProcessPolicy,int? ChildPolicyQueryError,
-    uint? ImageLoadPolicy,int? ImagePolicyQueryError,int? ImageExecuteOpenError);
 internal sealed record OwnedMemberInspection(uint Pid,bool MembershipConfirmed,long? CreatedFileTime,string? ImagePath,AdmissionToken? Token,WfpErrorEvidence[] Failures);
 
 // No supplied executable/arguments/PID/token. First consumer is the installed
@@ -505,6 +502,12 @@ internal sealed class AtomicChild : IDisposable
             start.UserName.Length!=0 || start.Arguments.Length!=0 || !Path.IsPathFullyQualified(start.FileName) || !Path.IsPathFullyQualified(start.WorkingDirectory))
             throw WfpNative.Contract("InheritedToolStartContractRefused");
         var command=InheritedToolCommand(start.FileName,start.ArgumentList.ToArray());
+        var evidence=InspectToolCreationPrerequisites(start.FileName);
+        return CreateInheritedTool(start,command,token,evidence);
+    }
+    private static ToolCreationEvidence InspectToolCreationPrerequisites(string fixedImage)
+    {
+        using var self=new SafeProcessHandle((IntPtr)(-1),false);
         var childPolicyKnown=GetProcessMitigationPolicy(self,13,out var childPolicy,sizeof(uint));
         int? childPolicyError=childPolicyKnown?null:Marshal.GetLastWin32Error();
         var imagePolicyKnown=GetProcessMitigationPolicy(self,10,out var imagePolicy,sizeof(uint));
@@ -513,13 +516,17 @@ internal sealed class AtomicChild : IDisposable
         // Hash/read success does not establish FILE_EXECUTE access. Probe only
         // the already fixed, manager-held tool image, without mapping or running
         // it; do not read another resource or change any security descriptor.
-        using var executable=SessionResources.OpenExecutableForProbe(start.FileName);
+        using var executable=SessionResources.OpenExecutableForProbe(fixedImage);
         if(executable.IsInvalid)
         {
             var code=Marshal.GetLastWin32Error();var failure=new Win32Exception(code);failure.Data["Stage"]="InheritedToolImageExecuteOpen";
             failure.Data["ToolCreationEvidence"]=evidence with{ImageExecuteOpenError=code};throw failure;
         }
-        evidence=evidence with{ImageExecuteOpenError=0};
+        return evidence with{ImageExecuteOpenError=0};
+    }
+    private static InheritedTool CreateInheritedTool(ProcessStartInfo start,StringBuilder command,AdmissionToken token,ToolCreationEvidence evidence)
+    {
+        if(token.PackageSid is null)throw WfpNative.Contract("InheritedToolPackageMissing");
         var sid=new SecurityIdentifier(token.PackageSid);var sidBytes=new byte[sid.BinaryLength];sid.GetBinaryForm(sidBytes,0);
         IntPtr attributes=IntPtr.Zero,package=IntPtr.Zero,capabilities=IntPtr.Zero,policy=IntPtr.Zero,handles=IntPtr.Zero,environment=IntPtr.Zero;
         bool initialized=false;SafeFileHandle? inputRead=null,inputWrite=null,outputRead=null,outputWrite=null,errorRead=null,errorWrite=null;

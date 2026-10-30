@@ -19,6 +19,7 @@ public static partial class InstalledBroker
             PipeOptions.Asynchronous,TokenImpersonationLevel.Identification);
         channel.Connect(15000);WorkspacePipe.AssertPeer(channel,callerPid,false);
         string? session=null,resultHash=null,failureStage=null,failureKind=null;int? failureCode=null;
+        ToolCreationEvidence? creationEvidence=null;WorkspaceStopEvidence? stopEvidence=null;
         byte[]? output=null;var exit=125;var stage="installation";
         try
         {
@@ -48,6 +49,14 @@ public static partial class InstalledBroker
             else
             {
                 failureStage="processing";failureKind="ResourceSessionFailed";failureCode=exit;
+                if(r.TryGetProperty("Stop",out var stop) && stop.ValueKind==JsonValueKind.Object)
+                {
+                    var observed=JsonSerializer.Deserialize<RuntimeStop>(stop.GetRawText())??throw new InvalidDataException("Stop observation missing");
+                    if(observed.SessionId!=session || observed.Reason!="OFFLINE_RESOURCE_QUALIFICATION_TERMINAL" || observed.Failures is null || observed.Failures.Length>1024)
+                        throw new InvalidDataException("Stop observation binding differs");
+                    stopEvidence=new(observed.AdmissionClosed,observed.QuarantineObservedBeforeStop,
+                        observed.FinalJob is null?null:observed.FinalJob.ExpectedLimits && observed.FinalJob.ObservedZero,observed.Failures.Length);
+                }
                 // Return only bounded bootstrap metadata already validated by
                 // the session owner. No second elevated receipt read should
                 // be needed just to locate an early worker startup failure.
@@ -76,14 +85,16 @@ public static partial class InstalledBroker
                         _=>"ResourceSessionFailed"};
                     if(failureKind!="ResourceSessionFailed" && child.TryGetProperty("FailureCode",out var code) && code.ValueKind==JsonValueKind.Number)
                         failureCode=code.GetInt32();
+                    if(failureKind is "PowerShellCreateProcess" or "PowerShellImageExecuteOpen" && child.TryGetProperty("CreationEvidence",out var creation))
+                        creationEvidence=WorkspacePipe.ParseCreationEvidence(creation);
                 }
             }
         }
-        catch(Exception ex){exit=125;output=null;resultHash=null;failureStage=stage;failureKind=ex.GetType().Name;failureCode=ex is Win32Exception native?native.NativeErrorCode:ex.HResult;}
+        catch(Exception ex){exit=125;output=null;resultHash=null;creationEvidence=null;stopEvidence=null;failureStage=stage;failureKind=ex.GetType().Name;failureCode=ex is Win32Exception native?native.NativeErrorCode:ex.HResult;}
         using var completion=new CancellationTokenSource(TimeSpan.FromSeconds(15));
-        var response=JsonSerializer.SerializeToUtf8Bytes(new {SchemaVersion=2,ExitCode=exit,SessionId=session,BaseSHA256=expected,
+        var response=JsonSerializer.SerializeToUtf8Bytes(new {SchemaVersion=3,ExitCode=exit,SessionId=session,BaseSHA256=expected,
             ResultSHA256=resultHash,Status=exit==0?"WORKSPACE_DATA_PROCESSED_AND_CLEANED":"WORKSPACE_DATA_NOT_CONFIRMED",
-            FailureStage=failureStage,FailureKind=failureKind,FailureCode=failureCode});
+            FailureStage=failureStage,FailureKind=failureKind,FailureCode=failureCode,CreationEvidence=creationEvidence,StopEvidence=stopEvidence});
         WorkspacePipe.AssertPeer(channel,callerPid,false);
         WorkspacePipe.Write(channel,response,16384,completion.Token).GetAwaiter().GetResult();
         if(exit==0)WorkspacePipe.Write(channel,output??throw new InvalidDataException("Closed output missing"),WorkspaceBundle.MaxBundleBytes,completion.Token).GetAwaiter().GetResult();
