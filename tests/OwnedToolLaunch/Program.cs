@@ -7,7 +7,7 @@ using System.Text.Json;
 using System.Runtime.InteropServices;
 using Microsoft.Win32.SafeHandles;
 
-if(args.Length!=1 || args[0] is not ("policy" or "messages" or "handle-transfer" or "fault-mode" or "fault-mode-read" or "partial-output" or "hosted-policy"))return 125;
+if(args.Length!=1 || args[0] is not ("policy" or "messages" or "handle-transfer" or "fault-mode" or "fault-mode-read" or "partial-output" or "hosted-policy" or "etw-policy"))return 125;
 try
 {
 using var identity=WindowsIdentity.GetCurrent();
@@ -26,6 +26,36 @@ void Refuse(Action action,string reason)
     throw new InvalidOperationException("Expected refusal: "+reason);
 }
 var launch=library.GetType("ProtectionLifecycle.OwnedToolLaunch",true)!;
+if(args[0]=="etw-policy")
+{
+    var type=library.GetType("ProtectionLifecycle.SessionEtwProviderAccess",true)!;
+    var original=(string)type.GetField("ObservedDefault",BindingFlags.NonPublic|BindingFlags.Static)!.GetRawConstantValue()!;
+    var sid="S-1-15-2-101-102-103-104-105-106-107";
+    var granted=(string)Call(type,"AddRegisterAce",original,sid)!;
+    var originalSd=new System.Security.AccessControl.RawSecurityDescriptor(original);
+    var grantedSd=new System.Security.AccessControl.RawSecurityDescriptor(granted);
+    Require(grantedSd.DiscretionaryAcl!.Count==originalSd.DiscretionaryAcl!.Count+1,"only one exact provider ACE added");
+    var added=(System.Security.AccessControl.CommonAce)grantedSd.DiscretionaryAcl[^1];
+    Require(added.SecurityIdentifier.Value==sid && added.AccessMask==0x800 && added.AceFlags==0 && added.AceQualifier==System.Security.AccessControl.AceQualifier.AccessAllowed,"register only: no query, consume, controller or blanket package rights");
+    Require((bool)Call(type,"IsExactGrant",granted,original,sid)!,"exact one ACE accepted");
+    var moved=new System.Security.AccessControl.RawSecurityDescriptor(granted);var last=moved.DiscretionaryAcl![^1];moved.DiscretionaryAcl.RemoveAce(moved.DiscretionaryAcl.Count-1);moved.DiscretionaryAcl.InsertAce(0,last);
+    Require((bool)Call(type,"IsExactGrant",moved.GetSddlForm(System.Security.AccessControl.AccessControlSections.All),original,sid)!,"native insertion position can vary without accepting other changes");
+    Require((string)Call(type,"RestoreDecision",original,null,original,sid,null)! == "ALREADY_ORIGINAL_DEFAULT","no-write intent remains original only with persisted value absent");
+    Require((string)Call(type,"RestoreDecision",granted,new string('A',64),original,sid,null)! == "REMOVE_ONLY_OWN_NEW_OVERRIDE","interrupted-before-grant-receipt exact own addition recoverable");
+    Refuse(()=>Call(type,"RestoreDecision",original,new string('A',64),original,sid,null),"EtwSecurityDriftRequiresHumanResolution");
+    Refuse(()=>Call(type,"AddRegisterAce",original,"S-1-15-2-1"),"EtwExactPackageSidRequired");
+    Refuse(()=>Call(type,"AddRegisterAce",original,"S-1-15-2-2"),"EtwExactPackageSidRequired");
+    Refuse(()=>Call(type,"AddRegisterAce",original+"(A;;0x800;;;BU)",sid),"EtwUnreviewedDefaultSecurity");
+    foreach(var mask in new[]{0x1800,0x400,0x200,0x120fff})
+    {
+        var drift=new System.Security.AccessControl.RawSecurityDescriptor(granted);((System.Security.AccessControl.CommonAce)drift.DiscretionaryAcl![^1]).AccessMask=mask;
+        Require(!(bool)Call(type,"IsExactGrant",drift.GetSddlForm(System.Security.AccessControl.AccessControlSections.All),original,sid)!,"expanded or replaced right rejected");
+    }
+    var grantType=library.GetType("ProtectionLifecycle.EtwAccessGrant",true)!;
+    var receipt=Activator.CreateInstance(grantType,1,new string('b',32),new string('c',32),new string('D',64),granted,new string('A',64));
+    Refuse(()=>Call(type,"RestoreDecision",granted,new string('E',64),original,sid,receipt),"EtwSecurityDriftRequiresHumanResolution");
+    Console.WriteLine("PASS exact provider register-only ACE, unchanged original rights, default absence, interrupted grant, recorded hash drift and no broad SID/controller/read grants; no native ETW mutation");return 0;
+}
 if(args[0]=="fault-mode-read")
 {
     var mode=(uint)Call(library.GetType("ProtectionLifecycle.ToolFaultMode",true)!,"CurrentMode")!;

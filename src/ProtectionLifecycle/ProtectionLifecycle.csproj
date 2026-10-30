@@ -23,6 +23,7 @@
     <Compile Include="SessionProxy.cs;ProtectedSession.cs" />
     <Compile Include="SessionResources.cs" />
     <Compile Include="SessionManifestReadAccess.cs" />
+    <Compile Include="SessionEtwProviderAccess.cs" />
     <Compile Include="OwnedToolLaunch.cs" />
     <Compile Include="ToolFaultMode.cs" />
     <Compile Include="PowerShellPolicySnapshot.cs;RestrictedPowerShellHost.cs" />

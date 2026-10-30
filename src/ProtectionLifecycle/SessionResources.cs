@@ -272,6 +272,8 @@ internal sealed class SessionResources : IDisposable
             {
                 var error=Marshal.GetLastWin32Error();cases.Add(new("broker-vm-read-open",!broker.IsInvalid?"OPENED":error==5?"ACCESS_DENIED":"UNKNOWN",broker.IsInvalid?error:null));
             }
+            var etwQuery=SessionEtwProviderAccess.RestrictedQueryCode();
+            cases.Add(new("etw-provider-security-query",etwQuery==5?"ACCESS_DENIED":"QUERY_NOT_DENIED",unchecked((int)etwQuery)));
             // The fixed OS tool executes no user profile, module, supplied
             // script or network request. It uses the same workspace and must
             // independently fail to read the protected non-secret fixture.
@@ -366,7 +368,7 @@ internal sealed class SessionResources : IDisposable
             methods.Contains("StartWithCreateProcess")?"CREATE_PROCESS":"START_UNCLASSIFIED";
     }
     internal static bool Qualified(ResourceChildReport report)=>report.SchemaVersion==1 && report.WorkspaceWriteReadMatched && report.ToolExit==0 && report.OwnedCompilationObserved && report.FailureType is null && report.FailureCode is null && report.FailureStage is null && report.ToolDiagnostic is null &&
-        (report.Git is null || SessionGitToolchain.Qualified(report.Git)) && report.Cases.Length==4 && report.Cases.Select(c=>c.Role).SequenceEqual(new[]{"private-state-Read","private-state-Write","all-packages-only-Read","broker-vm-read-open"}) &&
+        (report.Git is null || SessionGitToolchain.Qualified(report.Git)) && report.Cases.Length==5 && report.Cases.Select(c=>c.Role).SequenceEqual(new[]{"private-state-Read","private-state-Write","all-packages-only-Read","broker-vm-read-open","etw-provider-security-query"}) &&
         report.Cases.All(c=>c.Status=="ACCESS_DENIED" && c.Error==5);
     private static void SaveToolFailure(string workspace,string stdout,string stderr,string status)
     {

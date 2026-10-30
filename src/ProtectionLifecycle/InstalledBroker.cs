@@ -157,6 +157,8 @@ public static partial class InstalledBroker
     public static (int ExitCode,string Report) RecoverUnstartedSessionResources()=>WithCurrentInstallation((_,state,_)=>SessionProfileRecovery.RecoverNeverStarted(state));
     public static (int ExitCode,string Report) InspectManifestReadAccess()=>WithCurrentInstallation((_,state,_)=>SessionManifestReadAccess.Inspect(state),forManifestAccessRecovery:true);
     public static (int ExitCode,string Report) RecoverManifestReadAccess()=>WithCurrentInstallation((_,state,_)=>SessionManifestReadAccess.Recover(state),forManifestAccessRecovery:true);
+    public static (int ExitCode,string Report) InspectEtwProviderAccess()=>WithCurrentInstallation((_,state,_)=>SessionEtwProviderAccess.Inspect(state),forManifestAccessRecovery:true);
+    public static (int ExitCode,string Report) RecoverEtwProviderAccess()=>WithCurrentInstallation((_,state,_)=>SessionEtwProviderAccess.Recover(state),forManifestAccessRecovery:true);
     public static (int ExitCode,string Report) QualifyWatchdog()
     {
         ProtectedSession.AssertSystemTestingAllowed();

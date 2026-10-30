@@ -1,5 +1,10 @@
 # 当前开发状态
 
+## 固定事件提供者原权限已实测，最小注册租约接入原所有者
+
+VERIFIED：本人具体授权及UAC的单次查询09:11:57Z完成，EventAccessQuery=0/292字节；F90714A8提供者实际为已观察默认描述符，WD/AAP/日志capability各含1800，持久自定义值不存在。无修改权限、注册/控制会话、日志内容读取、特权开启、产品/Job/profile或强停，证据work/etw-provider-query-control/evidence。该只读授权已完成并消耗，不允许据此执行权限变更。
+
+SOURCE / INTEGRATED：SessionEtwProviderAccess在原ProtectedSession/原Job中只为当前安装包SID添加该唯一GUID的REGISTER_GUIDS0800，不给消费者、查询/会话控制或广泛capability权限。仅接受本次已核对的默认SD且原无持久值，先写意图；添加后允许Native ACE位置差异但要求只增加一个精确无继承Allow0800且所有旧内容完全保留，记录实际SD及值摘要，运行期同时检查。原Job持久闭合归零后才移除该唯一新override并验证原默认SD和原值缺席。漂移不覆盖，未完成意图阻止新会话/安装；独立只读inspect及明确恢复命令复用原OS资源恢复边界、全准入闭合/隔离与原Job证明，不自动恢复或把缺少进程当成功。受限根增加“提供者权限查询仍拒绝5”的针对性检查。日志及AMSI不禁用。六产品非生成语义通过；新构建、纯DACL/恢复决策和普通入口拒绝资格待完成，权限API尚未执行，当前6e2cf8cd/C846DB6B仍INACTIVE。
 ## 当前6e2cf8cd：组策略拒绝已越过，新阻碍是ETW提供者注册权限
 
 VERIFIED / FAIL：本人两次具体授权及UAC后，08:58:36Z INACTIVE更新到6e2cf8cd8808409bb0b80693f7f9339c/manifest6AAE651E，15产品文件独立摘要/可信owner/保护DACL及无非可信写入通过。08:58:53Z session87ee31dfc2b5405baa66a4a59844c039托管入口已越过旧GPO注册表读取，现失败于PSEtwLogProvider → EventProvider.EtwRegister → Win32拒绝5；退出E0434352，随后AmsiUtils因同一PSEtwLog链失败。不得把连带AMSI异常当关闭AMSI的理由。PowerShell未READY、Git/自有编译未运行，无成果；原根I/O/四拒绝5通过，Job66f8bc5a关闭归零、Stop无错误、无强杀owner，单键权限完全不变。原批准helper仅在闭Job后读取本次唯一错误，SHA874FA3FF16A857839BC6AADD0BEBC48F2C6B64E69C1020B217C208668A15F424、truncated=true；报告235A030177E18C3F212910DCDF2FE27CFE06D57F7196DD0CACD041F5D201F972。证据work/hosted-policy-r2-control/run-evidence。日常AV/BFE/UU/FlClash/boot不变，不重跑不变工件。

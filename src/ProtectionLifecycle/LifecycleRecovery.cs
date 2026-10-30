@@ -161,7 +161,11 @@ internal static class LifecycleRecovery
     internal static void AssertNoPending(ProtectedState state,string? exceptOperation=null,bool forNetworkMigration=false,bool forManifestAccessRecovery=false)
     {
         state.AssertHeld();
+        // Legacy parameter name; only explicit installed OS-resource inspect/
+        // recovery commands skip these two pending-resource gates. All other
+        // lifecycle, installed-host, elevation and recovery checks still run.
         if(!forManifestAccessRecovery)SessionManifestReadAccess.AssertNoPending(state);
+        if(!forManifestAccessRecovery)SessionEtwProviderAccess.AssertNoPending(state);
         if(!forNetworkMigration)FencePlan.AssertNoPendingMigration(state);
         foreach(var leaf in state.ListLeaves("plan-"))
         {

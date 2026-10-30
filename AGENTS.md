@@ -1,5 +1,27 @@
 # ClaudeCode-Protection working rules
 
+2026-10-30 specifically authorized human-UAC fixed ETW security read completed
+09:11:57Z. Native query0/292 bytes; exact provider F90714A8... has observed
+default O:BAG:BAD with WD/AAP/logging-capability1800, and NO explicit persisted
+provider security value. No ETW mutation/registration/log data/product/Job/
+profile/privilege change or forced stop. work/etw-provider-query-control/evidence.
+The one-read grant is consumed; it does NOT authorize permission mutation.
+New SOURCE SessionEtwProviderAccess reuses original ProtectedSession/Job:
+journal intent BEFORE adding current exact package SID REGISTER_GUIDS0800 to
+ONLY this provider; accept only pinned observed default AND original value
+absence. Native insertion order may vary, but only one exact no-inherit allow
+ACE and all prior descriptor content must remain exact. Persist actual granted
+SD and value hash; runtime checks both. Only original DURABLY closed/zero Job
+can remove this one newly created override and verify original default plus
+value absence. Foreign drift/custom policy refuses; pending intent blocks new
+sessions/install maintenance. Separate installed read-only inspect and explicit
+closed-Job/quarantine recovery reuse existing OS-resource recovery gate; no
+missing process is promoted to closure, no automatic recovery. New child check
+must still deny provider-security query5 after registration grant. No logging/
+AMSI disabled, no consumer/session-control or capability grant. Six-product
+non-emitting semantic check passes. Build/pure policy+ordinary refusal tests
+and artifact review/new concrete two human-UAC operations are still required;
+no EventAccessControl/Remove call has executed. Installed6e2cf8cd remains unchanged.
 2026-10-30 actual installed6e2cf8cd8808409bb0b80693f7f9339c,
 manifest6AAE651E3AFA2D592E02F70A8097048EFA7106F563FD96A766AD1A5208F2E0DA,
 human UAC08:58:36Z INACTIVE/read-only completed;15 hashes/trusted owners/

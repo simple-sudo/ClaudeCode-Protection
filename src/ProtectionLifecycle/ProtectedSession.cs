@@ -42,6 +42,7 @@ internal sealed class ProtectedSession
     private Preparation? preparation;
     private ProtectionRuntimeLease? runtime;
     private SessionResources? resources;
+    private SessionEtwProviderAccess? etwAccess;
     private ProtectedSession(FixedLayout layout,ProtectedState state,VerifiedVersion version)
     {
         this.layout=layout;this.state=state;this.version=version;
@@ -78,7 +79,7 @@ internal sealed class ProtectedSession
                 owner.admission is not null || owner.preparation is not null || owner.gateway is not null || owner.sid is null ||
                 owner.state.Read("current.json",4096).SHA256!=owner.pointerSHA256 || owner.fences.Count==0 ||
                 owner.fences.Any(f=>!f.Observe().FullQuarantineObserved))throw WfpNative.Contract("OfflineResourceScopeExpiredChangedOrUnconfined");
-            owner.resources.AssertHeld();
+            owner.resources.AssertHeld();owner.etwAccess?.AssertHeld();
         }
         internal void BeforeCreate(OwnedKernelJob job,VerifiedVersion version)
         {
@@ -128,6 +129,7 @@ internal sealed class ProtectedSession
         ResourceBootstrapFailure? bootstrapFailure=null;
         JobSnapshot? zero=null;RuntimeStop? stopped=null;uint? exit=null;bool resumed=false,toolObserved=false,gitObserved=false,cleanupDeferred=false;
         var toolLaunch=new OwnedToolLaunch();
+        bool etwAccessRestored=false;
         var failures=new List<Exception>();
         string? workspaceResultSHA256=null;
         try
@@ -147,6 +149,7 @@ internal sealed class ProtectedSession
             text=toolLaunch.ReadMessages(reader);
             child=AtomicChild.CreateResourceQualification(layout,state,version,job,profile,permit,pipe.ClientSafePipeHandle.DangerousGetHandle());
             pipe.DisposeLocalCopyOfClientHandle();
+            etwAccess=SessionEtwProviderAccess.Create(state,version,job,id);
             runtime=new ProtectionRuntimeLease(state,version,job,fences,null,resources:permit);
             _=child.ResumeQuarantined();resumed=true;runtime.Activate(20000);exited=Task.Run(child.WaitForCanaryExit);
             while(!exited.Wait(100))
@@ -224,6 +227,16 @@ internal sealed class ProtectedSession
             }
             else if(job is not null)try{zero=job.AtomicAdmissionReserved?job.CloseAtomicAdmissionAndStop():job.StopAndVerifyZero();}catch(Exception ex){failures.Add(ex);}
             if(profile?.ProcessCreationAttempted==true && zero is not null)try{profile.AfterOwnedJobZero(zero);}catch(Exception ex){failures.Add(ex);}
+            if(etwAccess is not null)
+            {
+                try
+                {
+                    if(zero is null)throw WfpNative.Contract("EtwRestoreJobZeroMissing");
+                    etwAccess.RestoreAfterClosedJob(zero);etwAccessRestored=true;
+                }
+                catch(Exception ex){failures.Add(ex);}
+                try{etwAccess.Dispose();}catch(Exception ex){failures.Add(ex);}
+            }
             if(includeGit && failures.Count==0 && zero?.ObservedZero==true && observed is not null && SessionResources.Qualified(observed))
                 try{workspaceResultSHA256=resources?.PreserveClosedWorkspaceResult(zero);}catch(Exception ex){failures.Add(ex);}
             if(exited is not null)try{exit=exited.WaitAsync(TimeSpan.FromSeconds(2)).GetAwaiter().GetResult();}catch(Exception ex){failures.Add(ex);}
@@ -249,6 +262,8 @@ internal sealed class ProtectedSession
             Resumed=resumed,ChildExit=exit,Child=observed,ChildBootstrapFailure=bootstrapFailure,InheritedPowerShellIdentityObserved=toolObserved,FinalJob=zero,Stop=stopped,
             CleanupDeferredForRecovery=cleanupDeferred,ManifestReadAccessRequired=false,ManifestReadAccessRestored=false,
             PowerShellVersion=SessionPowerShellToolchain.Version,PowerShellAssetSetSHA256=SessionPowerShellToolchain.AssetSetSHA256,
+            EtwRegistrationAccessGranted=etwAccess is not null,EtwRegistrationAccessRestored=etwAccessRestored,
+            EtwProvider=SessionEtwProviderAccess.ProviderId,EtwRegistrationRights=SessionEtwProviderAccess.RegisterRight,
             ToolCreationOwner="ORIGINAL_BROKER",ToolCreationBinding="ATOMIC_LPAC_PACKAGE_AND_ORIGINAL_JOB_NOT_PARENT_INHERITANCE",
             InheritedGitIdentityObserved=gitObserved,GitAssetSetSHA256=resources?.Plan.GitAssetSetSHA256,
             WorkspaceBaselineSHA256=includeGit && resources is not null?resources.Plan.WorkspaceInputSHA256??ClaudeCodeProtection.Workspaces.WorkspaceBundle.Hash(resources.Plan.FixedProjectBundle):null,
