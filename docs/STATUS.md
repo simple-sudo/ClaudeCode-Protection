@@ -1,5 +1,10 @@
 # 当前开发状态
 
+## 当前6e2cf8cd：组策略拒绝已越过，新阻碍是ETW提供者注册权限
+
+VERIFIED / FAIL：本人两次具体授权及UAC后，08:58:36Z INACTIVE更新到6e2cf8cd8808409bb0b80693f7f9339c/manifest6AAE651E，15产品文件独立摘要/可信owner/保护DACL及无非可信写入通过。08:58:53Z session87ee31dfc2b5405baa66a4a59844c039托管入口已越过旧GPO注册表读取，现失败于PSEtwLogProvider → EventProvider.EtwRegister → Win32拒绝5；退出E0434352，随后AmsiUtils因同一PSEtwLog链失败。不得把连带AMSI异常当关闭AMSI的理由。PowerShell未READY、Git/自有编译未运行，无成果；原根I/O/四拒绝5通过，Job66f8bc5a关闭归零、Stop无错误、无强杀owner，单键权限完全不变。原批准helper仅在闭Job后读取本次唯一错误，SHA874FA3FF16A857839BC6AADD0BEBC48F2C6B64E69C1020B217C208668A15F424、truncated=true；报告235A030177E18C3F212910DCDF2FE27CFE06D57F7196DD0CACD041F5D201F972。证据work/hosted-policy-r2-control/run-evidence。日常AV/BFE/UU/FlClash/boot不变，不重跑不变工件。
+
+下一技术假设：仅固定PowerShellCore提供者F90714A8-5509-434A-BF6D-B1624C8A19A2对当前包SID授予TRACELOG_REGISTER_GUIDS(0800)，原Job闭合后精确撤销；不授予读日志、消费实时事件、控制session/启停提供者的权限，不关闭日志/AMSI、不加宽泛logging capability。尚未实施该授权，先取得实际原描述符。普通固定EventAccessQuery只读已实际5/0拒绝，失败保留且无任何ETW修改；新受控一次UAC只读查询已冻结，唯一native入口EventAccessQuery、System32绑定、无模块初始化器，无注册/控制/删除或日志数据读取。work/etw-provider-query-control planE38DC2EA/helper5D4D1D64，10秒/1秒排空，3个固定诊断文件复制到新保护结果目录、不更新产品。预检/未知参数拒绝通过；该次具体UAC尚未授权或执行。当前已安装代码仍是C846DB6B，真实工具不可用，整体目标未完成。
 ## 拒绝点已确认，修复改为原受限宿主承载PowerShell策略上下文
 
 VERIFIED：本人明确授权的一文件只读操作08:39:38Z完成。原错误1127字节/DE28838672394EE1A633EA50C1C19B261C05F3BD17DC725CBFEE5C0AE0C62409确认Requested registry access is not allowed：RegistryKey.OpenSubKey → Utils.GetPolicySettingFromGPOImpl → GetConfigurationNameFromGroupPolicy → ConsoleHost.ParseCommandLine，脚本还未开始。原记录不变，没有产品/Job/权限/网络操作；证据work/tool-error-read-control/evidence。之前的“不能确定具体拒绝点”为读取前状态，不再作为当前判断。

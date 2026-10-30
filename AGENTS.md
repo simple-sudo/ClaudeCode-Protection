@@ -1,5 +1,32 @@
 # ClaudeCode-Protection working rules
 
+2026-10-30 actual installed6e2cf8cd8808409bb0b80693f7f9339c,
+manifest6AAE651E3AFA2D592E02F70A8097048EFA7106F563FD96A766AD1A5208F2E0DA,
+human UAC08:58:36Z INACTIVE/read-only completed;15 hashes/trusted owners/
+protected DACL/no untrusted writer independently matched. Separate authorized
+run08:58:53Z session87ee31dfc2b5405baa66a4a59844c039 passed prior GPO refusal
+but fails at PSEtwLogProvider EventProvider.EtwRegister Win32AccessDenied5,
+followed by AmsiUtils type initialization failure on same PSEtwLog chain.
+Do NOT disable/replace ETW logging or AMSI, relax AV, grant registryRead or
+blanket logging capability to make this pass. PowerShell/Git/compile remain
+NOT_CONFIRMED, no result. RootIO/four denials5 pass; Job66f8bc5a closed/zero,
+Stop errors empty, no forced owner stop, key independently unchanged. Same
+approved helper read ONLY this session's own error after closure; SHA874FA3FF,
+truncated=true. Broker report235A0301; work/hosted-policy-r2-control/run-evidence.
+All installed/task grants above are consumed; do not rerun unchanged.
+Next hypothesis is exact provider REGISTER_GUIDS0800 permission for current
+package SID with original Job-bound restoration, NOT permission to consume
+logs/control sessions. GUIDF90714A8-5509-434A-BF6D-B1624C8A19A2 confirmed in
+pinned upstream7.4.22 PSEtwLogProvider. Need actual original provider security
+before choosing mutation. Ordinary fixed EventAccessQuery failed5/0, no change.
+A one-read elevated query is frozen in work/etw-provider-query-control,
+planE38DC2EA/helper5D4D1D64. Its only native entry is EventAccessQuery, System32
+import verified; read one persisted provider-value presence, no registration,
+ACL/control/remove/trace/log-data/privilege operation, no product or Job/profile.
+10s query/1s drain, exact own diagnostic stop only;3 pinned query files staged
+in fresh protected results directory. Both preflight and strict unknown-switch
+refusal passed; this one human-UAC read remains NOT_AUTHORIZED/NOT_RUN. Current
+6e2cf8cd/C846DB6B remains INACTIVE; older current/pending paragraphs historical.
 2026-10-30 exact private error read completed with specific human UAC08:39:38Z.
 RecordDE288386/1127bytes confirms Requested registry access is not allowed at
 Microsoft.Win32.RegistryKey.OpenSubKey -> Utils.GetPolicySettingFromGPOImpl ->
