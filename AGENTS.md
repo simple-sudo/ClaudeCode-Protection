@@ -1,5 +1,31 @@
 # ClaudeCode-Protection working rules
 
+SOURCE：本轮0800单独授权未修复启动，默认资源路径已撤下自动ETW授予；类收束为旧journal只读检查/显式恢复，删除新的EventAccessControl导入和创建工厂，保留Pending阻断及原闭合Job/隔离/漂移守卫。六产品非生成语义0错误0警告，尚未构建或安装此退役版本；实际安装仍7ffea33b/3B7105C7。不得把默认路径将不再改权限当作PowerShell修复。
+
+2026-10-30 authoritative actual installed7ffea33b977c4db1ae0c6b322bfc25ba,
+manifestB23DDA0D2833F427A042CB5081A345DEA8EBBDAABFDD5E0FAA0DA155794B96AD,
+library3B7105C7. Specifically authorized human-UAC update11:50:53Z completed
+INACTIVE;15 installed hashes/protected DACL/trusted owner/no untrusted writer
+independently matched. Read-only inspector NO_PENDING_ETW_PROVIDER_ACCESS,
+original default/no override. This actually clears the fixed-inventory defect.
+Separate authorized run11:51:38Z session743967b9e0d34450928cfffb6349817e:
+exact F90714A8 provider current-package0800 grant AND original closed-zero Job
+restoration passed. Independent before/after native reader matches original SD
+and all B/D/N/P same-GUID value names absent. RootIO/five exact denials5 passed,
+including ETW security query. Job2fad4a3bfec544eca52561b7356502ad closed/zero,
+Stop failures empty, no forced stop; SideBySide unchanged; boot02:14:46.5Z,
+AV/BFE/FlClash/UU retained. BUT PowerShell EventRegister still fails5 with same
+PSEtwLogProvider/AmsiUtils chain; PS not READY, Git/compile NOT_RUN, no result.
+Both operation grants consumed; do NOT repeat unchanged0800 workload or widen
+rights/capabilities without a changed supported repair and concrete decision.
+Evidence work/etw-registration-r3-control/installed-evidence + run-evidence,
+observed-result.json. Actual vendor metadata pins F907 GUID/API-set import;
+public-system-image OFFLINE disassembly confirms native provider registration
+asks0800. Does NOT establish the installed failure's exact native branch.
+Offline kernelbase symbol wait timed out; preserved as failure, not product
+failure/live attach. No new resource run, automatic recovery, ETW/AMSI/AV or
+network disable. Earlier candidate/NOT_AUTHORIZED paragraphs below historical.
+
 2026-10-30 current repair candidate7ffea33b977c4db1ae0c6b322bfc25ba, manifest
 B23DDA0D2833F427A042CB5081A345DEA8EBBDAABFDD5E0FAA0DA155794B96AD,
 library3B7105C7, source2da75da + embedded eed2d5c. Old specifically authorized

@@ -13,57 +13,15 @@ internal sealed record EtwAccessIntent(int SchemaVersion,string InstallationId,s
 internal sealed record EtwAccessGrant(int SchemaVersion,string InstallationId,string SessionId,string IntentSHA256,
     string GrantedSecurity,string StoredValueSHA256);
 
-// Exactly one provider's REGISTER_GUIDS right. Never enable/disable logging,
-// consume events, create/control a session, change AMSI or grant a capability.
-// First release supports only the observed default/no-persisted-value state;
-// custom policy and drift require a separate human decision, never adoption.
-internal sealed class SessionEtwProviderAccess : IDisposable
+// Legacy register-only trial journals still require exact inspection/recovery.
+// That trial restored exactly but did not repair the installed EventRegister5.
+// No new permission grant is exposed here. Never alter logging or AMSI.
+internal static class SessionEtwProviderAccess
 {
     internal const string ProviderId="f90714a8-5509-434a-bf6d-b1624c8a19a2";
     internal const uint RegisterRight=0x800;
     internal const string ObservedDefault="O:BAG:BAD:(A;;0x1800;;;WD)(A;;0x120fff;;;SY)(A;;0x120fff;;;LS)(A;;0x120fff;;;NS)(A;;0x120fff;;;BA)(A;;0xee5;;;LU)(A;;LC;;;MU)(A;;0x1800;;;AC)(A;;0x1800;;;S-1-15-3-1024-3153509613-960666767-3724611135-2725662640-12138253-543910227-1950414635-4190290187)";
     private const string Prefix=ProtectedState.EtwAccessIntentPrefix,GrantPrefix="etw-access-grant-",ClosedPrefix="etw-access-closed-";
-    private readonly ProtectedState state;
-    private readonly EtwAccessIntent intent;
-    private readonly EtwAccessGrant grant;
-    private readonly string intentHash;
-    private bool restored,disposed;
-    private SessionEtwProviderAccess(ProtectedState state,EtwAccessIntent intent,EtwAccessGrant grant,string hash)
-    {this.state=state;this.intent=intent;this.grant=grant;intentHash=hash;}
-    internal static SessionEtwProviderAccess Create(ProtectedState state,VerifiedVersion version,OwnedKernelJob job,string session)
-    {
-        state.AssertHeld();version.AssertHeld(state);AssertNoPending(state);
-        if(!job.AtomicAdmissionReserved)throw WfpNative.Contract("EtwAccessRequiresOriginalAtomicJob");
-        using var package=new InstallationPackageSid(state);
-        var original=ReadSecurity();if(original!=ObservedDefault || StoredValueHash() is not null)throw WfpNative.Contract("EtwCustomOrChangedOriginalPolicyNotAdopted");
-        _=AddRegisterAce(original,package.Value);
-        var intent=new EtwAccessIntent(1,state.InstallationId,Identifiers.Hex32(session),job.JobId,version.Package.Release,version.Package.ManifestHash,package.Value,original);
-        var hash=state.WriteNew(Prefix+session+".json",JsonSerializer.SerializeToUtf8Bytes(intent));
-        if(ReadSecurity()!=original || StoredValueHash() is not null)throw WfpNative.Contract("EtwPolicyChangedBeforeGrant");
-        var sid=new SecurityIdentifier(package.Value);var bytes=new byte[sid.BinaryLength];sid.GetBinaryForm(bytes,0);var provider=new Guid(ProviderId);
-        var status=EventAccessControl(ref provider,2,bytes,RegisterRight,true);
-        if(status!=0)throw Native("GrantExactEtwRegistration",status);
-        var observed=ReadSecurity();var stored=StoredValueHash();
-        if(!IsExactGrant(observed,original,package.Value) || stored is null)throw WfpNative.Contract("EtwExactRegistrationGrantNotObserved");
-        var grant=new EtwAccessGrant(1,state.InstallationId,session,hash,observed,stored);
-        state.WriteNew(GrantPrefix+session+".json",JsonSerializer.SerializeToUtf8Bytes(grant));
-        return new(state,intent,grant,hash);
-    }
-    internal void AssertHeld()
-    {
-        state.AssertHeld();
-        if(disposed || restored || ReadSecurity()!=grant.GrantedSecurity || StoredValueHash()!=grant.StoredValueSHA256)
-            throw WfpNative.Contract("EtwProviderLeaseChanged");
-    }
-    internal void RestoreAfterClosedJob(JobSnapshot zero)
-    {
-        state.AssertHeld();
-        if(disposed || restored || zero.JobId!=intent.JobId || !zero.ExpectedLimits || !zero.ObservedZero)
-            throw WfpNative.Contract("EtwRestoreNeedsExactJobZero");
-        Restore(state,intent,intentHash);restored=true;
-    }
-    public void Dispose()
-    {if(disposed)return;disposed=true;if(!restored)throw WfpNative.Contract("EtwAccessRequiresExplicitRecovery");}
 
     internal static string AddRegisterAce(string original,string packageSid)
     {
@@ -203,6 +161,5 @@ internal sealed class SessionEtwProviderAccess : IDisposable
     }
     private static Win32Exception Native(string stage,uint code){var error=new Win32Exception(unchecked((int)code));error.Data["Stage"]=stage;return error;}
     [DllImport("advapi32.dll",ExactSpelling=true)] private static extern uint EventAccessQuery(ref Guid provider,[Out] byte[]? buffer,ref uint length);
-    [DllImport("advapi32.dll",ExactSpelling=true)] private static extern uint EventAccessControl(ref Guid provider,uint operation,byte[] sid,uint rights,[MarshalAs(UnmanagedType.U1)] bool allow);
     [DllImport("advapi32.dll",ExactSpelling=true)] private static extern uint EventAccessRemove(ref Guid provider);
 }
