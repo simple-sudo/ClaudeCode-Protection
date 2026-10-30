@@ -8,6 +8,8 @@ VERIFIED（本轮人工授权/UAC诊断）：2026-10-30T06:06:36Z，原安装b41
 
 SOURCE / INTEGRATED（尚未安装/原生验证）：SessionManifestReadAccess接入同一ProtectedSession资源所有者。在根已原子绑定原Job且仍挂起时，为当前包SID添加唯一KEY_READ、无继承ACE到上述固定64位系统键，不授registryRead、其他capability、AAP/ARP或管理员权限，不改值/子键。先写保护意图并核对原DACL，运行期核对持有键，精确原Job持久关闭/归零后恢复完整原DACL；漂移不合并、不覆盖，保留恢复记录，阻止后续会话/安装维护。独立显式inspect-manifest-read-access/recover-manifest-read-access沿原InstalledBroker；恢复要求所有准入闭合和完整隔离。六产品非生成语义0错误/警告，BUILD和实际修复效果待限定资格。此修复会授权一个必要Windows依赖键的读取（包括该键自身值和直接子键名称），宿主系统权限变更必须在新工件资格及具体人工UAC授权后执行。
 
+BUILD / VERIFIED（482b81b普通资格限定）：56输入离线Broker/Lifecycle/ManifestReadAccess构建0错误/警告；元数据复核无module initializer，产品新增原生面仅固定注册表键的RegOpenKeyExW/RegQueryValueExW/RegGetKeySecurity/RegSetKeySecurity。库C858806499789388E4E3F09A262F9630924AA89967761C8B066FAF253DB39F1A。policy与owned-fixture均0：生产DACL策略拒绝广泛主体/写权限/预先存在包ACE/非保护键，保留原ACE；真实生产安全读写函数在唯一新建普通HKCU空样本中观察精确非继承读取ACE及完整原DACL恢复，随后删除自有样本。两个新维护命令普通调用均125/UnauthorizedAccess，在私有状态前拒绝。run-result SHA256=89338A4F5E0925DB70DB83C5CFFD6F5F27A6E11B2FDAF340D50B90E893D5C972；work/manifest-read-build-r1。没有读取/修改真实HKLM目标、安装新包或创建LPAC/Job；这不能代替真实工具修复或中断恢复验证。安装候选准备中。
+
 ## 2026-10-30续开发核对：实际阻碍已缩小到SxS启动消息构造
 
 VERIFIED（既有安装诊断，非本轮新运行）：本地和fetch后的远端开发分支均为e101ad8603532fb7d448d9fc93bcc46ac4df25c8；此前未纳入提交的work实际证据晚于下方状态。b4194629安装下，04:59:52Z的trace5已观察C0000022及共同错误出口838FB；05:09:02Z的trace6进一步在实际LPAC worker中观察NtCreateUserProcess=0，随后BasepConstructSxsCreateProcessMessage返回C0000022，CreateProcessW=false/5。因此当前应定位SxS构造内部，而非重做早已排除的cwd、令牌QUERY/DUPLICATE、映像执行打开或进程策略试验。尚不能归因某个内部调用、ACL、能力或安全软件。
