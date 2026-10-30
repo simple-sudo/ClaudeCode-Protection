@@ -25,6 +25,7 @@
     <Compile Include="SessionManifestReadAccess.cs" />
     <Compile Include="OwnedToolLaunch.cs" />
     <Compile Include="ToolFaultMode.cs" />
+    <Compile Include="PowerShellPolicySnapshot.cs;RestrictedPowerShellHost.cs" />
     <Compile Include="SessionProfileRecovery.cs" />
     <Compile Include="SessionGitToolchain.cs" />
     <Compile Include="SessionPowerShellToolchain.cs" />

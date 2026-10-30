@@ -102,7 +102,7 @@ internal sealed class OwnedToolLaunch
         var plan=JsonSerializer.Deserialize<ResourceProbePlan>(raw)??throw WfpNative.Contract("OwnedToolResourcePlanRequired");plan.Validate();
         var workspace=plan.Workspace(packageSid);
         if(start.WorkingDirectory!=workspace)throw WfpNative.Contract("OwnedToolWorkspaceRefused");
-        var kind=start.FileName==plan.PowerShellToolPath?"powershell":start.FileName==WindowsPathSeal.Child(plan.GitDirectory,"git.exe")?"git":throw WfpNative.Contract("OwnedToolFixedImageRequired");
+        var kind=start.FileName==plan.PowerShellLaunchImage?"powershell":start.FileName==WindowsPathSeal.Child(plan.GitDirectory,"git.exe")?"git":throw WfpNative.Contract("OwnedToolFixedImageRequired");
         var sequence=Interlocked.Increment(ref workerSequence);var path=ReplyPath(workspace,sequence);
         var request=new ToolLaunchRequest(1,"OWNED_TOOL_START_REQUEST",plan.Nonce,Environment.ProcessId,sequence,kind,start.ArgumentList.ToArray(),StartHash(start));
         // Validate locally too, but only the trusted owner grants creation.

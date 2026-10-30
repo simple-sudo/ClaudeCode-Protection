@@ -28,6 +28,7 @@ internal sealed record ResourceProbePlan(int SchemaVersion,string Nonce,string I
     internal string GitDirectory=>WindowsPathSeal.Child(ProgramFilesRoot,"Git/mingw64/bin");
     internal string PowerShellDirectory=>SessionPowerShellToolchain.DirectoryFor(ProgramFilesRoot);
     internal string PowerShellToolPath=>SessionPowerShellToolchain.ToolFor(ProgramFilesRoot);
+    internal string PowerShellLaunchImage=>ExpectedChildImage;
     internal string Workspace(string sid)=>GitAssetSetSHA256 is null?WindowsPathSeal.Child(SessionResources.ProfileFolder(sid),"workspace-"+Nonce):WindowsPathSeal.Child(ProgramFilesRoot,"ClaudeCodeProtection-Task-"+Nonce);
     internal byte[] Input=>Encoding.UTF8.GetBytes("CPC-RESOURCE:"+Nonce);
     // Same data transfer contract as daily workspace-pack, without importing
@@ -75,7 +76,7 @@ internal sealed class SessionResources : IDisposable
         PathLease? directory=null;FileStream? input=null,projectInput=null,allPackagesFixture=null;SessionGitToolchain? git=null;
         try
         {
-            var hash=SessionPowerShellToolchain.ExecutableSHA256;
+            var hash=version.Package.Files.Single(f=>f.Asset.Id=="broker-exe").SHA256;
             if(includeGit)git=SessionGitToolchain.Open();
             var plan=new ResourceProbePlan(3,Identifiers.Hex32(nonce),state.InstallationId,version.Package.Release,Environment.ProcessId,hash,
                 includeGit?SessionGitToolchain.AssetSetSHA256:null,workspaceInput is null?null:WorkspaceBundle.Hash(workspaceInput),
@@ -136,6 +137,7 @@ internal sealed class SessionResources : IDisposable
         if(input.SafeFileHandle.IsClosed)throw WfpNative.Contract("SessionResourceLeaseLost");
         WindowsPathSeal.VerifyObject(input.SafeFileHandle,WindowsPathSeal.Child(Workspace,"input.txt"),false);
         tool.AssertHeld();
+        PowerShellPolicySnapshot.AssertActuallyAbsent();
         git?.AssertHeld();
         if(allPackagesFixture.SafeFileHandle.IsClosed)throw WfpNative.Contract("AllPackagesFixtureLeaseLost");
         WindowsPathSeal.VerifyObject(allPackagesFixture.SafeFileHandle,WindowsPathSeal.Child(Workspace,"all-packages-only.json"),false);
@@ -278,7 +280,7 @@ internal sealed class SessionResources : IDisposable
             // compiled script. Planned startup/exit need not be atomic Job
             // membership snapshots; all traffic remains quarantined.
             stage="VERIFY_FIXED_TOOL_BYTES";
-            using(var tool=File.OpenRead(plan.PowerShellToolPath))
+            using(var tool=File.OpenRead(plan.PowerShellLaunchImage))
                 if(Convert.ToHexString(SHA256.HashData(tool))!=plan.ToolSHA256)throw WfpNative.Contract("FixedToolBytesChanged");
             var start=PowerShellStart(plan,workspace);
             stage="START_FIXED_POWERSHELL";
@@ -331,7 +333,7 @@ internal sealed class SessionResources : IDisposable
     internal static ProcessStartInfo PowerShellStart(ResourceProbePlan plan,string workspace)
     {
             const string script="$ErrorActionPreference='Stop';$stage='READY';try{[IO.File]::WriteAllText('tool-ready.txt',$env:CPC_RESOURCE_NONCE);[IO.File]::WriteAllText('tool-ready.signal','');$stage='WAIT_OWNER';$until=[DateTime]::UtcNow.AddSeconds(8);while(![IO.File]::Exists('tool-go.signal')){if([DateTime]::UtcNow -ge $until){exit 24};[Threading.Thread]::Sleep(20)};$stage='READ_OWNER_GATE';if([IO.File]::ReadAllText('tool-go.txt') -cne $env:CPC_RESOURCE_NONCE){exit 25};$stage='WORKSPACE_IO';$v=[IO.File]::ReadAllText('input.txt');[IO.File]::WriteAllText('tool-output.txt',$v);$stage='COMPILE_OWNED_SAMPLE';Add-Type -TypeDefinition 'public static class CpcOwnedBuildProbe{public static int Sum(int a,int b){return checked(a+b);}}' -OutputAssembly 'owned-build.dll' -OutputType Library -ErrorAction Stop;Add-Type -Path ([IO.Path]::GetFullPath('owned-build.dll')) -ErrorAction Stop;if([CpcOwnedBuildProbe]::Sum(7,5) -ne 12){exit 27};[IO.File]::WriteAllText('owned-build-result.txt','12');$stage='DENY_PRIVATE_FIXTURE';foreach($fixture in @($env:CPC_DENIAL_FIXTURE,$env:CPC_LPAC_FIXTURE)){$denied=$false;try{$f=[IO.File]::OpenRead($fixture);$f.Dispose()}catch{if($_.Exception -is [UnauthorizedAccessException] -or $_.Exception.InnerException -is [UnauthorizedAccessException]){$denied=$true}else{exit 22}};if(!$denied){exit 23}};exit 0}catch{$e=$_.Exception.GetBaseException();[Console]::Error.WriteLine('CPC_TOOL_FAILURE|'+$stage+'|'+$e.GetType().Name+'|'+$e.HResult);exit 26}";
-            var start=new ProcessStartInfo(plan.PowerShellToolPath){UseShellExecute=false,CreateNoWindow=true,WorkingDirectory=workspace,RedirectStandardInput=true,RedirectStandardOutput=true,RedirectStandardError=true};
+            var start=new ProcessStartInfo(plan.PowerShellLaunchImage){UseShellExecute=false,CreateNoWindow=true,WorkingDirectory=workspace,RedirectStandardInput=true,RedirectStandardOutput=true,RedirectStandardError=true};
             start.Environment.Clear();
             foreach(var name in new[]{"SystemRoot","windir","SystemDrive","PROCESSOR_ARCHITECTURE"})
             {var value=Environment.GetEnvironmentVariable(name);if(value is not null)start.Environment[name]=value;}
@@ -345,6 +347,9 @@ internal sealed class SessionResources : IDisposable
             start.Environment["CPC_DENIAL_FIXTURE"]=plan.Fixture;
             start.Environment["CPC_LPAC_FIXTURE"]=WindowsPathSeal.Child(workspace,"all-packages-only.json");
             start.Environment["CPC_RESOURCE_NONCE"]=plan.Nonce;
+            start.Environment["CPC_RESOURCE_PLAN"]=JsonSerializer.Serialize(plan);
+            start.Environment["CPC_POWERSHELL_POLICY_NONCE"]=plan.Nonce;
+            start.ArgumentList.Add("resource-powershell");
             foreach(var arg in new[]{"-NoLogo","-NoProfile","-NonInteractive","-Command",script})start.ArgumentList.Add(arg);
         return start;
     }

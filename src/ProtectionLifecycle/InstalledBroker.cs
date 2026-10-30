@@ -13,6 +13,7 @@ namespace ProtectionLifecycle;
 // development build. Neither diagnostic opens the installed mutation path.
 public static partial class InstalledBroker
 {
+    public static int RunRestrictedPowerShell(string[] arguments)=>RestrictedPowerShellHost.Run(arguments);
     public static (int ExitCode,string Report) ProcessWorkspaceData(string expectedSHA256)
         =>WithCurrentInstallation((layout,state,version)=>
     {

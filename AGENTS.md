@@ -1,5 +1,25 @@
 # ClaudeCode-Protection working rules
 
+2026-10-30 exact private error read completed with specific human UAC08:39:38Z.
+RecordDE288386/1127bytes confirms Requested registry access is not allowed at
+Microsoft.Win32.RegistryKey.OpenSubKey -> Utils.GetPolicySettingFromGPOImpl ->
+GetConfigurationNameFromGroupPolicy -> ConsoleHost.ParseCommandLine. Source
+record unchanged, no product/Job/permissions/network mutation. Evidence
+work/tool-error-read-control/evidence. The one-read grant is consumed.
+Do not diagnose this as token access, unknown CLR or a script failure.
+New SOURCE uses SAME original confined Broker image as a PowerShell managed
+host (not another executor/service), same tool creation/Job/LPAC/stdio path.
+Original Broker must observe absence of ALL fixed PowerShell GPO and fallback
+keys in BOTH64-bit HKCU/HKLM before launch AND at runtime/tool gates; present,
+unreadable or changed policy FAILS CLOSED (typed present-policy snapshot is
+not supported yet). Only then the exact pinned7.4.22 engine's versioned GPO
+cache receives14 verified negative entries; configuration fallback remains.
+No host policy is silently discarded, test hook enabled, vendor byte patched,
+registry permission or privilege granted. Restricted entry refuses ordinary
+or different package/image/nonce/compiled args. This narrow absence-only
+compatibility scope is explicit, not a general host-policy bypass. Ordinary
+host/compile qualification and new system artifact decision still required;
+current installeddf6ae4f0/F82A46E3 remains INACTIVE with failed tools.
 2026-10-30 actual installeddf6ae4f02e67434dbb91b9a0addaf80a,
 manifestD2CABD45BCF2965F8BC982669C0478958B80CD5F22807CCB76134DE8B0626AE8,
 human UAC08:35:06Z INACTIVE/read-only completed,15 hashes/trusted owners/

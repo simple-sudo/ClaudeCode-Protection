@@ -159,7 +159,7 @@ internal sealed class ProtectedSession
                 // drain, not mistaken for a foreign process appearing.
                 var gitPhase=toolObserved;
                 if(gitPhase?!includeGit || gitObserved || !resources.GitReady():!resources.ToolReady())continue;
-                var expectedTool=gitPhase?SessionGitToolchain.ToolPath:SessionResources.ToolPath;
+                var expectedTool=gitPhase?SessionGitToolchain.ToolPath:resources.Plan.PowerShellLaunchImage;
                 var before=job.Observe();
                 if(before.ActiveBefore==0 && before.ActiveAfter==0)continue;
                 AtomicChild.InspectMembers(job,before,members=>

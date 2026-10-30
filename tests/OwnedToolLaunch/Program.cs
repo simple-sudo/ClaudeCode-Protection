@@ -7,7 +7,7 @@ using System.Text.Json;
 using System.Runtime.InteropServices;
 using Microsoft.Win32.SafeHandles;
 
-if(args.Length!=1 || args[0] is not ("policy" or "messages" or "handle-transfer" or "fault-mode" or "fault-mode-read" or "partial-output"))return 125;
+if(args.Length!=1 || args[0] is not ("policy" or "messages" or "handle-transfer" or "fault-mode" or "fault-mode-read" or "partial-output" or "hosted-policy"))return 125;
 using var identity=WindowsIdentity.GetCurrent();
 if(new WindowsPrincipal(identity).IsInRole(WindowsBuiltInRole.Administrator))throw new InvalidOperationException("Ordinary qualification only");
 var library=Assembly.LoadFrom(Path.Combine(AppContext.BaseDirectory,"ProtectionLifecycle.dll"));
@@ -118,11 +118,39 @@ var directory=Path.Combine(programFiles,"Git","mingw64","bin");
 string Digest(ProcessStartInfo start)=>(string)Call(launch,"StartHash",start)!;
 void Validate(string kind,ProcessStartInfo start)=>_=Call(launch,"ValidateStart",plan,workspace,kind,start.ArgumentList.ToArray(),Digest(start));
 var powerShell=(ProcessStartInfo)Call(resources,"PowerShellStart",plan,workspace)!;
+if(args[0]=="hosted-policy")
+{
+    Refuse(()=>Call(library.GetType("ProtectionLifecycle.AtomicChild",true)!,"AssertRestrictedToolSelf"),"PowerShellRequiresConfinedTool");
+    var snapshot=library.GetType("ProtectionLifecycle.PowerShellPolicySnapshot",true)!;
+    Call(snapshot,"AssertActuallyAbsent"); // Real fixed GPO absence, never fake a present policy.
+    using var assets=(IDisposable)Call(library.GetType("ProtectionLifecycle.SessionPowerShellToolchain",true)!,"Open")!;
+    var fixture=Path.Combine(AppContext.BaseDirectory,"owned-hosted-shell-fixture");
+    Require(!Directory.Exists(fixture),"new own fixture only");Directory.CreateDirectory(fixture);
+    var start=(ProcessStartInfo)Call(resources,"PowerShellStart",plan,fixture)!;
+    foreach(var pair in Environment.GetEnvironmentVariables().Keys.Cast<string>().ToArray())Environment.SetEnvironmentVariable(pair,null);
+    foreach(var pair in start.Environment)Environment.SetEnvironmentVariable(pair.Key,pair.Value);
+    Environment.CurrentDirectory=fixture;
+    File.WriteAllText(Path.Combine(fixture,"input.txt"),"OWNED-HOSTED-POWERSHELL-COMPILE");
+    foreach(var pair in new[]{("private-control.txt","CPC_DENIAL_FIXTURE"),("aap-control.txt","CPC_LPAC_FIXTURE")})
+    {
+        var path=Path.Combine(fixture,pair.Item1);File.WriteAllText(path,"NONSECRET-OWN-ACL-CONTROL");
+        var acl=new System.Security.AccessControl.FileSecurity();acl.SetOwner(identity.User!);acl.SetAccessRuleProtection(true,false);
+        acl.AddAccessRule(new System.Security.AccessControl.FileSystemAccessRule(identity.User!,System.Security.AccessControl.FileSystemRights.FullControl,System.Security.AccessControl.AccessControlType.Allow));
+        acl.AddAccessRule(new System.Security.AccessControl.FileSystemAccessRule(identity.User!,System.Security.AccessControl.FileSystemRights.ReadData,System.Security.AccessControl.AccessControlType.Deny));
+        System.IO.FileSystemAclExtensions.SetAccessControl(new FileInfo(path),acl);Environment.SetEnvironmentVariable(pair.Item2,path);
+    }
+    File.WriteAllText(Path.Combine(fixture,"tool-go.txt"),nonce);File.WriteAllBytes(Path.Combine(fixture,"tool-go.signal"),Array.Empty<byte>());
+    var host=library.GetType("ProtectionLifecycle.RestrictedPowerShellHost",true)!;
+    var code=(int)Call(host,"InvokeConfirmedAbsentPolicies",Path.Combine(programFiles,"ClaudeCodeProtection-PowerShell-7.4.22"),start.ArgumentList.Skip(1).ToArray())!;
+    Require(code==0 && File.ReadAllText(Path.Combine(fixture,"tool-output.txt"))=="OWNED-HOSTED-POWERSHELL-COMPILE" &&
+        File.ReadAllText(Path.Combine(fixture,"owned-build-result.txt"))=="12" && new FileInfo(Path.Combine(fixture,"owned-build.dll")).Length>=512,"same fixed PowerShell script compiled and executed owned CSharp with actual policy absence");
+    Console.WriteLine("PASS ordinary same .NET host invokes pinned PowerShell engine with actual absent-policy snapshot, fixed I/O, two own deny controls, CSharp compilation/execution; ordinary restricted entry refused; NOT LPAC proof");return 0;
+}
 if(args[0]=="policy")
 {
     var policy=Call(library.GetType("ProtectionLifecycle.SessionPowerShellToolchain",true)!,"ReadAssets")!;
     Require((int)((Array)policy.GetType().GetProperty("Files")!.GetValue(policy)!).Length==552,"complete embedded official PowerShell asset set");
-    Require(powerShell.FileName==Path.Combine(programFiles,"ClaudeCodeProtection-PowerShell-7.4.22","pwsh.exe"),"fixed modern PowerShell image");
+    Require(powerShell.FileName==Path.Combine(programFiles,"ClaudeCodeProtection","versions",new string('c',32),"bin","admin","ProtectionBroker.exe") && powerShell.ArgumentList[0]=="resource-powershell","same original fixed confined host image");
     Require(powerShell.Environment["POWERSHELL_TELEMETRY_OPTOUT"]=="1" && powerShell.Environment["POWERSHELL_UPDATECHECK"]=="Off","fixed offline startup environment");
     Validate("powershell",powerShell);
     var script=powerShell.ArgumentList[^1];powerShell.ArgumentList[^1]="Write-Output unapproved";

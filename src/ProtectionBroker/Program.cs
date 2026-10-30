@@ -6,6 +6,8 @@ internal static class Program
 {
     private static int Main(string[] args)
     {
+        if(args.Length>1 && args[0]=="resource-powershell")
+            return ProtectionLifecycle.InstalledBroker.RunRestrictedPowerShell(args.Skip(1).ToArray());
         if(args.Length==4 && args[0]=="process-workspace-pipe")
         {
             try

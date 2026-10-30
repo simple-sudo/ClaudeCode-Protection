@@ -1,5 +1,10 @@
 # 当前开发状态
 
+## 拒绝点已确认，修复改为原受限宿主承载PowerShell策略上下文
+
+VERIFIED：本人明确授权的一文件只读操作08:39:38Z完成。原错误1127字节/DE28838672394EE1A633EA50C1C19B261C05F3BD17DC725CBFEE5C0AE0C62409确认Requested registry access is not allowed：RegistryKey.OpenSubKey → Utils.GetPolicySettingFromGPOImpl → GetConfigurationNameFromGroupPolicy → ConsoleHost.ParseCommandLine，脚本还未开始。原记录不变，没有产品/Job/权限/网络操作；证据work/tool-error-read-control/evidence。之前的“不能确定具体拒绝点”为读取前状态，不再作为当前判断。
+
+SOURCE / INTEGRATED：沿原Broker、原LPAC/Job工具启动和标准流，将同一安装Broker镜像作为固定PowerShell托管入口，加载逐项固定的官方7.4.22引擎；不建其他executor，不给宿主注册表权限。原所有者必须读取固定PowerShell GPO及旧策略fallback的两个64位HKCU/HKLM范围并确认全部键实际不存在，在监督及工具门持续复核；存在/读取失败/变化一律拒绝。本次先支持当前无策略键环境，已存在策略的类型化迁移尚未支持，明确fail-closed，绝不把未知或已有策略当null。受限托管入口只向版本/源码结构固定的引擎缓存写14个由该证据支持的“无GPO”结果，JSON配置回退保留；不启用测试钩子、不改厂商字节、不吞掉实际策略。普通入口、异包/镜像/nonce/非编译参数均拒绝；同一任务仍含I/O、两拒绝、自有C#编译执行及固定Git。六产品非生成语义通过，新的构建及普通宿主执行资格待完成，未安装/实测LPAC效果。
 ## 当前df6ae4f0：异常不再停在旧超时，已捕获SecurityException
 
 VERIFIED / FAIL：本人两次具体授权及UAC后08:35:06Z INACTIVE更新到df6ae4f02e67434dbb91b9a0addaf80a/manifestD2CABD45，15文件摘要/可信owner/保护DACL及无非可信写入独立核对通过。原官方552工具文件未修改，只读manifest资源检查无待恢复。08:35:27Z session1c66ab54e7e34fdeb3e8aa69f89ab944工具不再等到原10秒超时，直接以E0434352/-532462766退出；返回限定异常类型System.Security.SecurityException，未到READY。它证实项目工具的托管异常，具体拒绝点还不能由类型确定。PowerShell/Git/自有编译仍失败，无成果。原Job0f4e30d0关闭/归零、Stop无失败，根I/O/四拒绝5通过，宿主单键完全不变，无强杀owner。证据work/tool-fault-control/run-evidence，报告SHA256=B5A5135E9BD600D5D5952F5789694B655ECA6C2C180316E5DBF26F99B1B50631。用户此前截图与明确确认保留为项目异常证据，不因未抓到事件否定。

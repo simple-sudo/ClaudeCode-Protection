@@ -505,6 +505,13 @@ internal sealed class AtomicChild : IDisposable
         var evidence=InspectToolCreationPrerequisites(start.FileName);
         return OwnedToolLaunch.Request(start,token.PackageSid,evidence);
     }
+    internal static string AssertRestrictedToolSelf()
+    {
+        using var self=new SafeProcessHandle((IntPtr)(-1),false);var token=ReadToken(self,false);
+        if(!token.IsAppContainer || token.CapabilityCount!=0 || token.IntegritySid!="S-1-16-4096" || token.PackageSid is null ||
+            !IsProcessInJob(self,IntPtr.Zero,out var inJob) || !inJob)throw WfpNative.Contract("PowerShellRequiresConfinedTool");
+        return token.PackageSid;
+    }
     internal InheritedTool StartOwnedTool(OwnedKernelJob job,ProtectedSession.ResourceQualification permit,ProcessStartInfo start)
     {
         permit.AuthorizeToolCreation(this,job);
