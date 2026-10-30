@@ -19,9 +19,16 @@ closed-Job/quarantine recovery reuse existing OS-resource recovery gate; no
 missing process is promoted to closure, no automatic recovery. New child check
 must still deny provider-security query5 after registration grant. No logging/
 AMSI disabled, no consumer/session-control or capability grant. Six-product
-non-emitting semantic check passes. Build/pure policy+ordinary refusal tests
-and artifact review/new concrete two human-UAC operations are still required;
-no EventAccessControl/Remove call has executed. Installed6e2cf8cd remains unchanged.
+non-emitting semantic check passes. 63-input build/64-input Bootstrap reused qualified library213649E6. Pure exact
+0800/default-absence/interrupted-grant/hash-drift/broad-rights refusal passed;
+ordinary inspect/recover refused125 before private state. Stored values check
+this GUID's B/D/N/P representations, name+bytes hash, require parent present.
+Candidatee1829299/manifest3B33F949, install plan29B83A7F/helper32F61F38, run
+plan17A04A75/helperE2A94BEB frozen in work/etw-registration-r2-control. Separate
+qualified reader verifies SD and same-GUID value absence before/after. Both
+strict preflights passed. New two human UAC operations NOT_AUTHORIZED/NOT_RUN;
+no EventAccessControl/Remove executed. Oldf96d6c60/C7DD uninstalled, do not use
+its superseded controls. Installed6e2cf8cd remains unchanged.
 2026-10-30 actual installed6e2cf8cd8808409bb0b80693f7f9339c,
 manifest6AAE651E3AFA2D592E02F70A8097048EFA7106F563FD96A766AD1A5208F2E0DA,
 human UAC08:58:36Z INACTIVE/read-only completed;15 hashes/trusted owners/

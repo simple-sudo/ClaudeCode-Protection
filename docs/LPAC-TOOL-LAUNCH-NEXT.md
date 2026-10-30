@@ -1,31 +1,36 @@
-# 下一步：只读核对固定PowerShell事件提供者权限
+# 下一次实机验证：单个PowerShell事件提供者的注册权限租约
 
-当前安装6e2cf8cd8808409bb0b80693f7f9339c/manifest6AAE651E，INACTIVE。08:58:36Z本人UAC更新/只读检查、15文件独立摘要/ACL核对完成。随后授权的一次实际session87ee31dfc2b5405baa66a4a59844c039已越过旧GPO注册表读取，现失败于PowerShell自身的ETW提供者注册：PSEtwLogProvider → EventProvider.EtwRegister → AccessDenied5。其后AmsiUtils的初始化同样引用失败的PSEtwLog。PowerShell/Git/编译未完成，无成果。
+当前安装6e2cf8cd/manifest6AAE651E，INACTIVE。原GPO注册表拒绝已越过，最新真实工具失败点是PSEtwLogProvider.EtwRegister拒绝5，AMSI初始化连带引用同一失败日志类型；PowerShell/Git/编译未完成。原Job66f8bc5a闭合归零、Stop无失败、根I/O/四拒绝5通过、宿主SideBySide权限不变，无强杀。原报告235A0301、唯一错误874FA3FF保留于work/hosted-policy-r2-control/run-evidence；用户确认的原项目异常弹窗也保留。
 
-原Job66f8bc5a闭合归零、Stop无失败、根I/O与四项拒绝5通过；无强杀owner，宿主SideBySide完整权限独立不变。按照该次明确授权，同一helper仅在闭Job后读取本次唯一错误，原字节SHA256=874FA3FF16A857839BC6AADD0BEBC48F2C6B64E69C1020B217C208668A15F424，truncated=true；Broker报告235A030177E18C3F212910DCDF2FE27CFE06D57F7196DD0CACD041F5D201F972。work/hosted-policy-r2-control/run-evidence保留。用户确认的前次项目异常弹窗及原截图、GPO错误读取、普通托管编译成功与所有失败仍保留。
+## 原状态和修复边界
 
-## 技术方向与尚未实施的部分
+本人明确授权的一次只读ETW查询09:11:57Z完成：唯一提供者F90714A8-5509-434A-BF6D-B1624C8A19A2，EventAccessQuery=0/292字节，实际默认SD包含WD/AAP/logging capability的1800；该查询检查的带括号持久值不存在。无ETW修改、注册/会话控制、日志内容读取、特权开启或产品运行。证据work/etw-provider-query-control/evidence。该次授权已完成，不扩展为权限变更。
 
-固定官方7.4.22[PSEtwLogProvider源码](https://github.com/PowerShell/PowerShell/blob/v7.4.22/src/System.Management.Automation/utils/tracing/PSEtwLogProvider.cs)将提供者GUID固定为F90714A8-5509-434A-BF6D-B1624C8A19A2。[Windows EventAccessControl文档](https://learn.microsoft.com/en-us/windows/win32/api/evntcons/nf-evntcons-eventaccesscontrol)区分注册提供者、读事件/控制会话等权限；SDK26100 wmistr.h定义TRACELOG_REGISTER_GUIDS=0800。
+新SessionEtwProviderAccess复用原ProtectedSession/原Job，仅给当前安装包SID增加该唯一GUID的TRACELOG_REGISTER_GUIDS=0800，不授予日志读取、实时消费、会话控制、提供者启停或宽泛capability。只接受已观察默认SD，且同一GUID的B/D/N/P四种表示都无现有持久值、已有存储父键存在；自定义策略拒绝、不接管。先持久意图，再调用Windows EventAccessControl；添加后只允许新增一个无继承Allow0800，原owner/group/DACL/SACL内容保持，记录实际SD以及包含值名的原始值摘要，运行期同时核对。ACE插入位置可不同，不接受其他变化。
 
-下一修复假设是原Broker仅为当前包SID临时授予这个提供者的注册权限，绑定原Job、意图先持久化、闭合归零后精确撤销。此授权尚未实现或批准：必须先核对实际原权限及是否已有自定义持久值，才能确定安全恢复方法。不会关闭/替换ETW或AMSI、修改AV、不授予通用日志读取/会话控制或宽泛logging capability。
+只有原Job持久关闭归零后才调用EventAccessRemove移除本次唯一新增覆盖值，并核对原默认SD及该GUID四种表示全部缺席。外部漂移不覆盖，未完成意图阻止新会话和安装维护；只读inspect及显式恢复命令复用原可信安装/管理员、全准入闭合、完整隔离及原Job持久证明。缺少进程/Job不是闭合证明，无自动恢复。中断恢复仍未实测；并发管理员/内核不属于当前对抗保证。
 
-## 本次仅申请一个UAC只读操作
+受限根新增“注册授权后，提供者安全描述符查询仍拒绝5”的针对性负例。ETW和AMSI保持，不修改AV、驱动、日常网络/FlClash/UU，不给开发进程管理员令牌。
 
-普通固定EventAccessQuery已返回5/0，无法读取描述符；原失败在work/etw-provider-query-build-r1/run-result.json，未修改ETW。已准备work/etw-provider-query-control/query-read-launch.ps1，只通过一次本人UAC完成以下具体范围：
+## 已完成资格
 
-- 将3个已审查、固定摘要的诊断文件复制到新受保护目录C:\Program Files\ClaudeCodeProtection-EtwRead-f90714a8-r1，并只运行一次已固定.NET8查询程序。
-- 仅调用EventAccessQuery读取上述唯一GUID的有效安全描述符；再只读HKLM\SYSTEM\CurrentControlSet\Control\WMI\Security中这个GUID对应值是否存在。最多65536字节，不枚举/读取其他提供者或日志内容。
-- 不调用注册、授权、启停、控制、删除API，不改ETW权限，不启用特权，不安装更新/启动产品，不建Job/profile，不触及AV/网络/UU/FlClash，不自动重试或恢复。
-- 主查询10秒、排空1秒；超时仅停止本次新建且持有句柄、映像/创建时刻匹配的诊断子进程。原输出及失败保留，不接管既有目录。
+六产品非生成语义通过，sourceccad110的63输入构建及64输入Bootstrap通过，复用资格库213649E6未重建。20文件/10PE/6managed/内嵌manifest匹配；新增native仅EventAccessQuery/Control/Remove，System32绑定。纯策略实测一个精确0800 ACE、原内容、位置变化、无写入意图、授予回执前中断决策、持久值摘要漂移拒绝和宽泛SID/权限拒绝通过；两个普通维护入口均125/UnauthorizedAccess且在私有状态前拒绝。work/etw-registration-build-r2/qualification.json。尚未调用权限变更API，也未资格真实授予/撤销或工具兼容。
 
-诊断构建没有生成器/分析器/网络包；唯一PInvoke为advapi32!EventAccessQuery，System32导入搜索范围已通过metadata核对，无模块初始化器。普通预检实际返回，未知参数拒绝，无本次UAC/claim。冻结审查work/etw-provider-query-control/query-read-review.json。
+## 待本人授权：两次UAC
 
-| 冻结输入 | SHA256 |
+1. INACTIVE更新新包e1829299，仅运行只读inspect-etw-provider-access，确认当前原默认SD/无自定义值/无待恢复意图。不创建资源、授予权限或运行工具；既有552工具文件不修改。
+2. 安装及独立15文件核对后，原Broker的一轮严格LPAC PowerShell/固定自有Roslyn C#编译/离线Git验证；在原根仍挂起时按上述范围临时增加当前包注册权限，原Job闭合归零后精确撤销。独立已资格的单独查询程序在前后各读取该唯一GUID的SD，并核对四种同GUID值名均不存在。主任务40秒，各只读观察10秒，排空1秒。异常只停止本次确切新owner，不重试或自动恢复；未成功还原则保留意图并阻止下一会话/维护。若任务失败且原Job关闭证明完整，仅仅读取本次唯一工具错误记录到同一受保护结果目录。
+
+不执行输入项目代码或真实Claude，不开放网络、不故意触发崩溃。不把安装、纯策略或固定自有样本当完整产品/项目编译/14项/GPU/全宿主隐私证明。
+
+| 冻结输入 | 标识或SHA256 |
 |---|---|
-| plan | E38DC2EA540F0C891D467431DFBDD919AE46F62012CD1401B84E1D7B75E28926 |
-| helper | 5D4D1D642BDCF37E13E1B23F6C46E42B1158D51CCEBEB94047EE46C84B351655 |
-| launcher | 156B0F0AC394B0C74C04E803A1925AE5D0973D24317CFAABA904C220F60BAAA4 |
-| 三文件目录清单 | 95CE3FA6B96DC132D70FECFB8AB8B5A85FB3863D4FE8AD4AB66C40E978F5B81D |
+| 新Release | e18292999fe949af9f95e053131bb19e |
+| 新manifest | 3B33F9494EB53D0EF7B22C3A2A1B29D7CE7E8EB57E8412371E98DFF536117B83 |
+| Lifecycle库 | 213649E62741AAAA8E09826B430BA21A402D3DDE23AF48C2589F45C094403158 |
+| 安装plan | 29B83A7F3FEFE48A936859FF9FEDAF9F69377F2361FC2607DC295663067354DB |
+| 安装helper | 32F61F384970E5A55528D24F1C88A6004F549D22C5B23185EA31BF337AFF01EE |
+| 运行plan | 17A04A75B70139B2C2497B6CBFEA413806E0F5F554DC13B5A5ECBF5B0417BD80 |
+| 运行helper | E2A94BEBB2B266C18DFA5A044773613BBAD97D9D357FD800AB1D1003F67DEC29 |
 
-按用户指示与AGENTS.md，新增受保护系统资源读取需要具体授权及本人UAC。前次两个安装/运行授权已完成，本次只读尚未授权或执行；它不授权后续权限修改或重跑。全面宿主隐私/网络/14项/GPU/正式项目编译仍未整体验收，旧蓝屏根因未关闭。
+完整冻结审查work/etw-registration-r2-control/system-operation-review.json。两个严格预检已实际返回、未知参数拒绝，无本次UAC/claim或权限变更。按用户指示和AGENTS.md，新包及本次单资源权限修改/运行需要具体授权和本人UAC；尚未授权或执行。旧候选f96d6c60/C7DD未安装，不使用其旧冻结文件。所有旧失败、权限状态和蓝屏证据保留。
