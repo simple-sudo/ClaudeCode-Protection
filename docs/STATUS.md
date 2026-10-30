@@ -1,3 +1,28 @@
+2026-10-30 candidate62eab36f66ba4dc5b117b1fbe4d1170c / manifest
+B692EEF8753B737E126924E0FC6EA764F39C4BB5BDA4BBFC472A3F45701C45E8,
+qualified library19D64CFF. Sourceccc6427 reuses existing byte-pinned daily
+workspace-process -> original Broker/Job/LPAC -> fixed Git -> independent repo
+snapshot -> exact cleanup/authority -> ordinary review/fresh extraction. Only
+non-null verified WorkspaceInputSHA256 derives the data-only scope; that scope
+refuses any PowerShell request, holds no PS assets/GPO, does not claim PS or
+compilation. No-input full tool qualification STILL requires PS/compilation.
+Five root denials, Git own denials, fixed commands/env, identity, closed-zero
+and output authority remain. No new executor/CLI/protocol fields. Native ETW
+grant factory/import retired, legacy recovery/pending guards retained.
+63-input build + policy/data-PS-refusal/messages/legacy recovery/ordinary125
+refusal passed; 64-input Bootstrape050a1a reuses exact19D64CFF. 20stage/10PE/
+6managed/embedded manifest passed. Retirement-onlyCCF159 tests also passed;
+not installed. Actual installed remains7ffea33b/3B7105C7/INACTIVE and PS fails5.
+New specific two UAC operations NOT_AUTHORIZED/NOT_RUN: inactive update and one
+existing daily four-file DATA roundtrip (inputBA1C5764). Install plan4E881554 /
+helperFBCA336A; workflow plan3C8DC1D6 / runnerA5A9315B. Frozen review:
+work/git-data-direct-control/system-operation-review.json. Strict preflights
+and unknown-switch refusals passed, no new UAC/claim. No PS/compile/project code,
+ETW/registry/network/AV mutation, retries or recovery. Original resource owner
+20s scope and existing daily75s completion after connection; human UAC wait
+remains human-controlled, ordinary runner NEVER kills an elevated owner.
+This is SOURCE/BUILD integration, NOT installed LPAC Git success or full product.
+
 SOURCE：已有workspace-process的数据/Git路径不再以PowerShell自测为前置。仅由已验证的非空工作区输入SHA派生Git数据范围（不新增CLI或协议字段）；原Broker/Job/LPAC、五拒绝、固定Git参数/环境、独立Git仓库核对、闭合快照/精确清理/权威成功后导出保持。该范围明确拒绝PowerShell请求、不持有或读取其资产/GPO、不声称编译或PowerShell身份；无输入的工具资格仍必须实际PowerShell+编译。新B23D先前包pin仍经所有Job/隔离守卫。新增纯策略负例覆盖数据范围拒绝PS、保留Git固定请求。SOURCE语义通过；构建/实机尚待，不把此代码改动当LPAC Git成功。
 
 SOURCE：本轮0800单独授权未修复启动，默认资源路径已撤下自动ETW授予；类收束为旧journal只读检查/显式恢复，删除新的EventAccessControl导入和创建工厂，保留Pending阻断及原闭合Job/隔离/漂移守卫。六产品非生成语义0错误0警告，尚未构建或安装此退役版本；实际安装仍7ffea33b/3B7105C7。不得把默认路径将不再改权限当作PowerShell修复。
