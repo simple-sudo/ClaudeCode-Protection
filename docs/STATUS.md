@@ -2,6 +2,8 @@
 
 ## 2026-10-31：F 盘迁移清理复核与下一次窄 ETW 诊断
 
+SOURCE / STATIC（续做证据边界）：固定公开系统 PE 的新离线检查显示 `EtwpAllocGuidEntry` 从注册表/默认源获取 SD 后将其引用存于条目+0x48，`EtwpRegisterUMProvider` 以该槽位的 SD 请求0800；旧 EventAccessControl 路径则更新 WMI GUID 对象并持久化。本次直接调用链未显示更新 ETW 槽位，不能用此前用户态精确读回代替注册当时的实际 SD；也不能据此断言缓存永不更新或已找到根因。新结果及限制见 POWERSHELL-ETW-SECURITY-EVIDENCE-20261031.md。无新产品/系统操作；一次窄跟踪仍待具体人工决定，不重做旧授权。当前工作区核对起点235a914、干净，无产品进程，C盘旧目录仍在。
+
 VERIFIED（迁移数据限定）：F 盘分支/HEAD 起点为 `codex/integrate-privacy-admission-20261027` / `901b500`。旧树 26,009 项/22,204 文件、3,478,221,289 逻辑字节已新鲜核对；三份已知路径文件及 Git 元数据共 12 份旧独有/差异记录保存到 F 盘迁移档案并哈希匹配，F 盘 Git 完整性检查通过。10 个拒读测试文件保留拒读，只核对长度/DACL并引用原完整复制校验。BLOCKED（C 盘空间清理）：明确删除请求后的精确删除命令被自动审批审核以 `blocked by policy` 整体拒绝，命令未执行，旧目录/四个联接仍在；不采用其他删除手段规避。详见 MIGRATION-20261031.md 及外部迁移档案 `cleanup-blocked.json`。
 
 VERIFIED（普通诊断资格限定）：固定微软 PowerShell 7.4.22 的匹配提供者在普通权限下实际记录 EventRegister -> NtTraceControl(0x0f) -> NTSTATUS 0 -> Win32 0，退出0/排空；固定 cmd/where 新父子调试回调通过。15 个当前公开安装资产新鲜哈希匹配；新 launcher 严格预检持有6目录/25文件、未知参数体前拒绝、无UAC claim。无产品会话或安装，无ETW权限/注册表/ACL/能力/网络配置变更；普通PowerShell按其原行为注册事件提供者。早期普通谓词/路径失败与离线符号失败均保留，不把失败算作成功。

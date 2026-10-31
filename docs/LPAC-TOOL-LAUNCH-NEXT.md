@@ -1,5 +1,7 @@
 # LPAC 工具启动：本轮结果与下一步
 
+2026-10-31 续做的公开系统 PE 离线分析补充：[ETW 安全证据边界](POWERSHELL-ETW-SECURITY-EVIDENCE-20261031.md)。实际注册路径使用 ETW 注册条目保存的描述符，而旧授权/读回经过 WMI 对象与持久值；仅凭精确读回不能证明失败中的注册判定已使用新增 ACE。缓存假设尚未实测，不推成根因或新权限理由。既定一次窄跟踪范围/哈希不变，仍未获新具体人工授权或运行。
+
 2026-10-31（F 盘开发）：新窄诊断已完成普通资格和严格预检，实际受保护调用仍 **NOT_AUTHORIZED / NOT_RUN**。新控制在 `work/etw-access-diagnosis-20261031/trace`，具体范围、哈希、停止边界及失败保留见同级父目录的 `system-operation-review.md`。目的只区分匹配 PowerShell 提供者的线程通知初始化与原生提供者注册返回路径；不再试加 0800/1800 权限，不关闭日志/AMSI，不更改安装。普通官方 7.4.22 实测匹配提供者 EventRegister -> NtTraceControl(0x0f)/NTSTATUS 0 -> Win32 0；cmd/where 新父子回调通过。这些普通结果不证明 LPAC 成功。系统步骤只启动新原 Broker/Job，需一次具体人工 UAC 决定，且必须包含超时后唯一精确新建诊断 owner 的结束范围；强停不证明 Job 闭合，不自动恢复。plan6DC84D61/helper3A56FE62/launcherFE14A1BB。历史 C 盘控制保持原字节及消费后的授权状态，不运行。
 
 当前实际安装 **62eab36f66ba4dc5b117b1fbe4d1170c / B692EEF8 / INACTIVE**，库19D64CFF。原日常入口的严格LPAC Git数据往返已实际通过，见下节及STATUS。两个对应UAC均完成，无待执行操作。下面先保留前一版7ffea33b/B23DDA0D/3B7105C7的ETW试验结果，不把它当成新安装选择。
