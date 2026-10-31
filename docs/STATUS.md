@@ -1,5 +1,13 @@
 # 当前开发状态
 
+## 2026-10-31：F 盘迁移清理复核与下一次窄 ETW 诊断
+
+VERIFIED（迁移数据限定）：F 盘分支/HEAD 起点为 `codex/integrate-privacy-admission-20261027` / `901b500`。旧树 26,009 项/22,204 文件、3,478,221,289 逻辑字节已新鲜核对；三份已知路径文件及 Git 元数据共 12 份旧独有/差异记录保存到 F 盘迁移档案并哈希匹配，F 盘 Git 完整性检查通过。10 个拒读测试文件保留拒读，只核对长度/DACL并引用原完整复制校验。BLOCKED（C 盘空间清理）：明确删除请求后的精确删除命令被自动审批审核以 `blocked by policy` 整体拒绝，命令未执行，旧目录/四个联接仍在；不采用其他删除手段规避。详见 MIGRATION-20261031.md 及外部迁移档案 `cleanup-blocked.json`。
+
+VERIFIED（普通诊断资格限定）：固定微软 PowerShell 7.4.22 的匹配提供者在普通权限下实际记录 EventRegister -> NtTraceControl(0x0f) -> NTSTATUS 0 -> Win32 0，退出0/排空；固定 cmd/where 新父子调试回调通过。15 个当前公开安装资产新鲜哈希匹配；新 launcher 严格预检持有6目录/25文件、未知参数体前拒绝、无UAC claim。无产品会话或安装，无ETW权限/注册表/ACL/能力/网络配置变更；普通PowerShell按其原行为注册事件提供者。早期普通谓词/路径失败与离线符号失败均保留，不把失败算作成功。
+
+PENDING：`work/etw-access-diagnosis-20261031/system-operation-review.md` 冻结一次原已安装62e Broker/Job/严格LPAC工具的窄数值诊断，区分线程通知初始化和提供者注册的实际返回；plan6DC84D61/helper3A56FE62/launcherFE14A1BB，30秒/2MiB，需新具体人工UAC及唯一新建诊断owner超时停止决定，尚未授权/执行。不重做旧0800试验，不禁用ETW/AMSI，不自动恢复/重试。SOURCE/BUILD产品字节与安装未变；严格LPAC PowerShell、真实项目开发/隐私阻断、网络防旁路/14项/GPU仍未通过，Git DATA既有结果复用，真实Claude延期。以下安装快照及曾经待授权项保持为历史。
+
 2026-10-30 authoritative actual installed62eab36f66ba4dc5b117b1fbe4d1170c,
 manifestB692EEF8753B737E126924E0FC6EA764F39C4BB5BDA4BBFC472A3F45701C45E8,
 library19D64CFF. Human-UAC INACTIVE update12:38:07Z and installed read-only
