@@ -4,7 +4,9 @@
 
 VERIFIED / FAIL（实机诊断限定）：本人明确授权并确认10:42:31Z UAC后，原已安装62eab36f/19D64CFF的sessionf1e78e640df744b6bbb71e72523c048c，匹配提供者 `NtTraceControl(0x0f)=C0000022`、`EventRegister=5`。提供者注册阶段已定位，具体SD/令牌判定及缓存原因未证实。调试器在第二次CLR异常停住并到30秒期限，排空后原owner正常退出，无强停；原权威报告D39A418A证明Job6cd0cb1196354c149836fcf8b17b822a闭合/零成员、完整隔离先行、Stop无失败。RuntimeLeaseExpired/OwnedToolPipeClosedWithoutTerminalReport、Child缺失仍FAIL，五拒绝未复验，无工具/项目成果。无ETW授权/网络开放/自动恢复，AV/BFE/FlClash/UU/boot前后一致，无产品残留。本次授权消费，不重跑。证据及限制见LPAC-TOOL-LAUNCH-NEXT.md；下面旧待授权记录为历史。
 
-SOURCE / INTEGRATED（未安装）：发现 `ProxyChannelLease.CheckTransport` 的在线吊销选项可在观察回调之前触发平台证书下载；仅在回调中补CRL不能限制此前下载。改用SocketsHttpHandler并直接复用现有 `SessionProxy.OfflineTls()`：离线吊销、禁止AIA下载、完整信任/名称验证，缺缓存仍拒绝；原固定显式代理、无重定向/默认凭据及固定且独立验证的CRL补充保留，补充回调须来自目标名精确为www.microsoft.com的SslStream。增加直接构造实际handler的无网络资格模式，不运行HTTP请求/套接字/证书存储操作。六产品非生成语义0错误/警告；新构建和测试尚待完成，旧安装不继承此修复。
+SOURCE / BUILD / INTEGRATED（未安装）：发现 `ProxyChannelLease.CheckTransport` 的在线吊销选项可在观察回调之前触发平台证书下载；仅在回调中补CRL不能限制此前下载。改用SocketsHttpHandler并直接复用现有 `SessionProxy.OfflineTls()`：离线吊销、禁止AIA下载、完整信任/名称验证，缺缓存仍拒绝；原固定显式代理、无重定向/默认凭据及固定且独立验证的CRL补充保留，补充回调须来自目标名精确为www.microsoft.com的SslStream。六产品非生成语义0错误/警告；source915a48f的新63输入普通离线构建通过0错误/警告，库14856075C7A4A8E3FC190BA50E94A9381BBF7AAFBAB7B936F67B21DA3F3187B7，151个原生导入与原安装库相同，无module initializer。
+
+VERIFIED（实际factory内存资格限定）：`tls-transport-policy`直接构造生产handler，验证严格离线/禁止AIA策略已在回调前设置、固定代理/无默认凭据/无重定向、每次独立策略及错误上下文回调拒绝，退出0/无stderr；没有调用HTTP发送、套接字连接、CRL获取或证书存储操作。证据work/tls-offline-build-20261031，runtime-result SHA25615E41F90884F2A1572197E251E7167FC2F01051A350605F75F36557D72644EA1。构建/fixture前后AV/BFE/FlClash/UU/boot一致，无新安装/UAC/产品入口运行；不证明实际网络零旁路，旧安装不继承此修复。详见PROXY-TLS-PRIVACY-20261031.md。
 
 ## 2026-10-31：F 盘迁移清理复核与下一次窄 ETW 诊断
 

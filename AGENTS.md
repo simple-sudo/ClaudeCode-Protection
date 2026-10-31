@@ -31,9 +31,15 @@ product processes remain. Before/after boot09:36:05.5Z/AV/BFE/FlClash/UU matched
 Evidence work/etw-access-diagnosis-20261031/installed-evidence and observed-result.
 The one UAC grant is consumed: no unchanged retry, grant or automatic recovery.
 Static WMI-readback vs cached ETW-SD distinction is not a proven cache root cause.
-New SOURCE proxy diagnostic TLS repair reuses existing offline/no-download
-chain policy; build and no-network actual-factory qualification are separate
-ordinary scopes, not new installed/network clearance. Installed bytes unchanged.
+SOURCE/BUILD/INTEGRATED proxy diagnostic TLS repair reuses existing offline/no-
+download chain policy. Source915a48f's new63-input ordinary offline build passed;
+library14856075, unchanged151 project native imports/no module initializer.
+Actual handler-factory tls-transport-policy passed0/no stderr: strict offline/
+no-AIA policy before callback, exact proxy/no credentials/redirect, independent
+policies and wrong-context callback refusal. No request/socket/CRL/store operation
+was invoked by that fixture; no product entry or new UAC. Evidence work/tls-
+offline-build-20261031. This is NOT installed or actual-network qualification;
+installed62e/19D64CFF unchanged. Reuse this ordinary result, not a new live run.
 
 2026-10-30 authoritative actual installed62eab36f66ba4dc5b117b1fbe4d1170c,
 manifestB692EEF8753B737E126924E0FC6EA764F39C4BB5BDA4BBFC472A3F45701C45E8,
