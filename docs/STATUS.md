@@ -1,5 +1,11 @@
 # 当前开发状态
 
+## 2026-10-31：授权窄诊断已完成；代理诊断 TLS 源码修复
+
+VERIFIED / FAIL（实机诊断限定）：本人明确授权并确认10:42:31Z UAC后，原已安装62eab36f/19D64CFF的sessionf1e78e640df744b6bbb71e72523c048c，匹配提供者 `NtTraceControl(0x0f)=C0000022`、`EventRegister=5`。提供者注册阶段已定位，具体SD/令牌判定及缓存原因未证实。调试器在第二次CLR异常停住并到30秒期限，排空后原owner正常退出，无强停；原权威报告D39A418A证明Job6cd0cb1196354c149836fcf8b17b822a闭合/零成员、完整隔离先行、Stop无失败。RuntimeLeaseExpired/OwnedToolPipeClosedWithoutTerminalReport、Child缺失仍FAIL，五拒绝未复验，无工具/项目成果。无ETW授权/网络开放/自动恢复，AV/BFE/FlClash/UU/boot前后一致，无产品残留。本次授权消费，不重跑。证据及限制见LPAC-TOOL-LAUNCH-NEXT.md；下面旧待授权记录为历史。
+
+SOURCE / INTEGRATED（未安装）：发现 `ProxyChannelLease.CheckTransport` 的在线吊销选项可在观察回调之前触发平台证书下载；仅在回调中补CRL不能限制此前下载。改用SocketsHttpHandler并直接复用现有 `SessionProxy.OfflineTls()`：离线吊销、禁止AIA下载、完整信任/名称验证，缺缓存仍拒绝；原固定显式代理、无重定向/默认凭据及固定且独立验证的CRL补充保留，补充回调须来自目标名精确为www.microsoft.com的SslStream。增加直接构造实际handler的无网络资格模式，不运行HTTP请求/套接字/证书存储操作。六产品非生成语义0错误/警告；新构建和测试尚待完成，旧安装不继承此修复。
+
 ## 2026-10-31：F 盘迁移清理复核与下一次窄 ETW 诊断
 
 SOURCE / STATIC（续做证据边界）：固定公开系统 PE 的新离线检查显示 `EtwpAllocGuidEntry` 从注册表/默认源获取 SD 后将其引用存于条目+0x48，`EtwpRegisterUMProvider` 以该槽位的 SD 请求0800；旧 EventAccessControl 路径则更新 WMI GUID 对象并持久化。本次直接调用链未显示更新 ETW 槽位，不能用此前用户态精确读回代替注册当时的实际 SD；也不能据此断言缓存永不更新或已找到根因。新结果及限制见 POWERSHELL-ETW-SECURITY-EVIDENCE-20261031.md。无新产品/系统操作；一次窄跟踪仍待具体人工决定，不重做旧授权。当前工作区核对起点235a914、干净，无产品进程，C盘旧目录仍在。

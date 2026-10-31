@@ -16,6 +16,25 @@ boundaries below remain applicable. See docs/MIGRATION-20261031.md.
 
 # ClaudeCode-Protection working rules
 
+2026-10-31 human explicitly authorized one new numeric ETW trace and its exact
+new diagnostic-owner stop scope; manual UAC completed10:42:31Z. Same installed
+62eab36f/19D64CFF, sessionf1e78e640df744b6bbb71e72523c048c: matching PowerShell
+provider NtTraceControl(0x0f) actually returnedC0000022, EventRegister5. This
+locates provider-registration denial, not its particular ACL/cached-SD cause.
+Debugger stopped on second-chance AmsiUtils CLR failure, hit30s deadline; pipes
+drained and original owner exited without forced stop. Original owner report
+D39A418A confirms Job6cd0cb1196354c149836fcf8b17b822a closed/zero, quarantine
+before stop, Stop failures empty. RuntimeLeaseExpired/OwnedToolPipeClosedWithout
+TerminalReport and missing Child report remain FAIL; root five denials were NOT
+requalified. No ETW grant, network opening, project compile/test or result; no
+product processes remain. Before/after boot09:36:05.5Z/AV/BFE/FlClash/UU matched.
+Evidence work/etw-access-diagnosis-20261031/installed-evidence and observed-result.
+The one UAC grant is consumed: no unchanged retry, grant or automatic recovery.
+Static WMI-readback vs cached ETW-SD distinction is not a proven cache root cause.
+New SOURCE proxy diagnostic TLS repair reuses existing offline/no-download
+chain policy; build and no-network actual-factory qualification are separate
+ordinary scopes, not new installed/network clearance. Installed bytes unchanged.
+
 2026-10-30 authoritative actual installed62eab36f66ba4dc5b117b1fbe4d1170c,
 manifestB692EEF8753B737E126924E0FC6EA764F39C4BB5BDA4BBFC472A3F45701C45E8,
 library19D64CFF. Human-UAC INACTIVE update12:38:07Z and installed read-only

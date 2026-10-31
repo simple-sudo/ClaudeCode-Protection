@@ -73,19 +73,29 @@ internal sealed class ProxyChannelLease : IDisposable
     }
     internal static async Task<int> CheckTransport(Action<TlsValidationObservation>? observe=null,Action<TlsCertificateObservation[]>? observeCertificates=null,Action<RevocationSupply>? observeRevocation=null)
     {
-        using var handler=new HttpClientHandler{UseProxy=true,Proxy=new WebProxy("http://127.0.0.1:7890"),AllowAutoRedirect=false,
-            UseCookies=false,UseDefaultCredentials=false,CheckCertificateRevocationList=true};
-        if(observe is not null || observeCertificates is not null || observeRevocation is not null)handler.ServerCertificateCustomValidationCallback=(request,certificate,chain,errors)=>
-        {
-            var result=new TlsValidationObservation((int)errors,chain?.ChainStatus.Select(s=>(int)s.Status).ToArray()??Array.Empty<int>(),certificate is not null,chain is not null);
-            observe?.Invoke(result);observeCertificates?.Invoke(ObserveCertificates(chain));
-            if(AcceptObservedTls(result))return true;
-            if(observeRevocation is null || request.RequestUri?.AbsoluteUri!="https://www.microsoft.com/" || !ProcessLocalRevocation.Eligible(result))return false;
-            var verified=ProcessLocalRevocation.Validate(certificate,chain,result);observeRevocation(verified);return verified.Accepted;
-        };
+        using var handler=CreateTransportHandler(observe,observeCertificates,observeRevocation);
         using var client=new HttpClient(handler){Timeout=TimeSpan.FromSeconds(20)};
         using var response=await client.GetAsync("https://www.microsoft.com/",HttpCompletionOption.ResponseHeadersRead);
         return (int)response.StatusCode;
+    }
+    private static SocketsHttpHandler CreateTransportHandler(Action<TlsValidationObservation>? observe,Action<TlsCertificateObservation[]>? observeCertificates,Action<RevocationSupply>? observeRevocation)
+    {
+        // Chain building runs BEFORE the observation callback. Online checks
+        // here could start OS certificate downloads outside the explicit proxy.
+        // Share the gateway's offline/no-AIA policy; missing evidence still
+        // fails unless the existing fixed, independently verified CRLs suffice.
+        var handler=new SocketsHttpHandler{UseProxy=true,Proxy=new WebProxy("http://127.0.0.1:7890"),AllowAutoRedirect=false,
+            UseCookies=false,Credentials=null,DefaultProxyCredentials=null,SslOptions=SessionProxy.OfflineTls()};
+        if(observe is not null || observeCertificates is not null || observeRevocation is not null)handler.SslOptions.RemoteCertificateValidationCallback=(sender,certificate,chain,errors)=>
+        {
+            if(sender is not SslStream transport || transport.TargetHostName!="www.microsoft.com")return false;
+            var result=new TlsValidationObservation((int)errors,chain?.ChainStatus.Select(s=>(int)s.Status).ToArray()??Array.Empty<int>(),certificate is not null,chain is not null);
+            observe?.Invoke(result);observeCertificates?.Invoke(ObserveCertificates(chain));
+            if(AcceptObservedTls(result))return true;
+            if(observeRevocation is null || !ProcessLocalRevocation.Eligible(result))return false;
+            var verified=ProcessLocalRevocation.Validate(certificate as X509Certificate2,chain,result);observeRevocation(verified);return verified.Accepted;
+        };
+        return handler;
     }
     // The diagnostic callback accepts only a present, clean chain and no name,
     // trust or availability errors. Revocation checking remains enabled.

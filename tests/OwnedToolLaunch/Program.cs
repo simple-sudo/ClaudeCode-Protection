@@ -7,7 +7,7 @@ using System.Text.Json;
 using System.Runtime.InteropServices;
 using Microsoft.Win32.SafeHandles;
 
-if(args.Length!=1 || args[0] is not ("policy" or "messages" or "handle-transfer" or "fault-mode" or "fault-mode-read" or "partial-output" or "hosted-policy" or "etw-policy"))return 125;
+if(args.Length!=1 || args[0] is not ("policy" or "messages" or "handle-transfer" or "fault-mode" or "fault-mode-read" or "partial-output" or "hosted-policy" or "etw-policy" or "tls-transport-policy"))return 125;
 try
 {
 using var identity=WindowsIdentity.GetCurrent();
@@ -26,6 +26,30 @@ void Refuse(Action action,string reason)
     throw new InvalidOperationException("Expected refusal: "+reason);
 }
 var launch=library.GetType("ProtectionLifecycle.OwnedToolLaunch",true)!;
+if(args[0]=="tls-transport-policy")
+{
+    var channel=library.GetType("ProtectionLifecycle.ProxyChannelLease",true)!;
+    System.Net.Http.SocketsHttpHandler Handler(object? observe=null)=>(System.Net.Http.SocketsHttpHandler)Call(channel,"CreateTransportHandler",observe,null,null)!;
+    using var first=Handler();
+    Require(first.UseProxy && first.Proxy is System.Net.WebProxy proxy && proxy.Address?.AbsoluteUri=="http://127.0.0.1:7890/" &&
+        !first.AllowAutoRedirect && !first.UseCookies && first.Credentials is null && first.DefaultProxyCredentials is null,"fixed explicit proxy without ambient credentials or redirect");
+    var options=first.SslOptions;
+    Require(options.CertificateRevocationCheckMode==System.Security.Cryptography.X509Certificates.X509RevocationMode.Offline &&
+        options.CertificateChainPolicy is {DisableCertificateDownloads:true,RevocationMode:System.Security.Cryptography.X509Certificates.X509RevocationMode.Offline,
+            VerificationFlags:System.Security.Cryptography.X509Certificates.X509VerificationFlags.NoFlag},"chain policy must prevent online revocation and AIA BEFORE validation callback");
+    Require(options.RemoteCertificateValidationCallback is null,"default uses platform certificate/name validation without a permissive override");
+    options.CertificateChainPolicy!.RevocationMode=System.Security.Cryptography.X509Certificates.X509RevocationMode.NoCheck;
+    using var second=Handler();
+    Require(!ReferenceEquals(first.SslOptions,second.SslOptions) && !ReferenceEquals(first.SslOptions.CertificateChainPolicy,second.SslOptions.CertificateChainPolicy) &&
+        second.SslOptions.CertificateChainPolicy!.RevocationMode==System.Security.Cryptography.X509Certificates.X509RevocationMode.Offline,"each transport gets an independent strict policy");
+    var observations=0;Action<object> observed=_=>observations++;
+    var callback=Delegate.CreateDelegate(typeof(Action<>).MakeGenericType(library.GetType("ProtectionLifecycle.TlsValidationObservation",true)!),observed.Target,observed.Method);
+    using var diagnostic=Handler(callback);
+    Require(diagnostic.SslOptions.RemoteCertificateValidationCallback is not null &&
+        !diagnostic.SslOptions.RemoteCertificateValidationCallback(new object(),null,null,System.Net.Security.SslPolicyErrors.None) && observations==0,
+        "diagnostic callback refuses a sender outside the fixed TLS transport without a CRL or network attempt");
+    Console.WriteLine("PASS actual transport factory: explicit proxy, strict offline revocation/no AIA before callback, independent policies, platform default validation and wrong-context callback refusal; no requests, sockets or certificate-store changes");return 0;
+}
 if(args[0]=="etw-policy")
 {
     var type=library.GetType("ProtectionLifecycle.SessionEtwProviderAccess",true)!;

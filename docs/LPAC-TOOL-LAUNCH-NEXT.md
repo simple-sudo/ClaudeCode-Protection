@@ -1,5 +1,15 @@
 # LPAC 工具启动：本轮结果与下一步
 
+## 2026-10-31 实机结果：提供者注册原生返回 C0000022
+
+本人明确授权本次窄诊断和精确新建 owner 停止范围，并于10:42:31Z本人确认UAC。原已安装62eab36f/19D64CFF，sessionf1e78e640df744b6bbb71e72523c048c 实际匹配 PowerShell 提供者：`NtTraceControl(0x0f)` 返回 `C0000022`，`EventRegister` 返回5。由此定位到提供者注册原生拒绝，不再把线程通知初始化作为本次未分辨的返回阶段；尚未证明是哪一项安全判定或缓存造成拒绝。未重做0800授权。
+
+调试器在第二次 AmsiUtils CLR 异常停住，30秒期限退出，两管道排空；原Broker正常退出，无强停owner。其权威报告D39A418AF1B0E9F86C249C0D3FF8485811793F3D69943E13A5A018B9553C4728记录原Job6cd0cb1196354c149836fcf8b17b822a已闭合/零成员、先完整隔离、Stop无失败；但 RuntimeLeaseExpired、OwnedToolPipeClosedWithoutTerminalReport、Child报告缺失均保留为失败，不能推成五拒绝复验或工具成功。没有PowerShell READY、Git/编译、成果释放、网络开放、ETW权限修改或自动恢复。boot09:36:05.5Z/AV/BFE/FlClash/UU前后一致，无产品进程残留。
+
+原始证据在 `work/etw-access-diagnosis-20261031/installed-evidence`、`observed-result.json`。本次授权已消费；下面原先“待授权/未运行”段落是冻结前历史，不再请求同一操作或重跑。下一项主线问题是注册访问判定所用实际SD/令牌语义，不能仅凭用户态读回推定；没有新授权或权限扩大方案。
+
+以下为准备过程历史。
+
 2026-10-31 续做的公开系统 PE 离线分析补充：[ETW 安全证据边界](POWERSHELL-ETW-SECURITY-EVIDENCE-20261031.md)。实际注册路径使用 ETW 注册条目保存的描述符，而旧授权/读回经过 WMI 对象与持久值；仅凭精确读回不能证明失败中的注册判定已使用新增 ACE。缓存假设尚未实测，不推成根因或新权限理由。既定一次窄跟踪范围/哈希不变，仍未获新具体人工授权或运行。
 
 2026-10-31（F 盘开发）：新窄诊断已完成普通资格和严格预检，实际受保护调用仍 **NOT_AUTHORIZED / NOT_RUN**。新控制在 `work/etw-access-diagnosis-20261031/trace`，具体范围、哈希、停止边界及失败保留见同级父目录的 `system-operation-review.md`。目的只区分匹配 PowerShell 提供者的线程通知初始化与原生提供者注册返回路径；不再试加 0800/1800 权限，不关闭日志/AMSI，不更改安装。普通官方 7.4.22 实测匹配提供者 EventRegister -> NtTraceControl(0x0f)/NTSTATUS 0 -> Win32 0；cmd/where 新父子回调通过。这些普通结果不证明 LPAC 成功。系统步骤只启动新原 Broker/Job，需一次具体人工 UAC 决定，且必须包含超时后唯一精确新建诊断 owner 的结束范围；强停不证明 Job 闭合，不自动恢复。plan6DC84D61/helper3A56FE62/launcherFE14A1BB。历史 C 盘控制保持原字节及消费后的授权状态，不运行。
