@@ -30,8 +30,10 @@ factory/import, CLI/protocol fields, capability, DATA-path or admission widening
 own ordinary-token allow/deny and input-SD hash qualification passed0/no stderr,
 not LPAC qualification. Six-product non-emitting semantic check passed.
 Candidate2e8e7a9486ed4295a4c80b23219752fb/manifest5988A34E staged2 changed12 reused
-assets from actual installed62e. Bootstrap build/review remains next; no install
-or new protected run authorized. Installed62e/19D64CFF remains unchanged.
+assets from actual installed62e. Source58af7f9's64-input Bootstrap build reused
+exact A49428CD without rebuilding it;20 files/10PE/6managed/no module initializer/
+embedded manifest matched. Exact system run/readback controls remain to prepare;
+no install or new protected run authorized. Installed62e/19D64CFF unchanged.
 
 2026-10-31 human explicitly authorized one new numeric ETW trace and its exact
 new diagnostic-owner stop scope; manual UAC completed10:42:31Z. Same installed
