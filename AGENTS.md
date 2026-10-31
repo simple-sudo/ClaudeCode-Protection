@@ -16,6 +16,23 @@ boundaries below remain applicable. See docs/MIGRATION-20261031.md.
 
 # ClaudeCode-Protection working rules
 
+2026-10-31 ordinary fixed-GUID EnumerateTraceGuidsEx metadata query passed:
+PowerShell supervisor had its own one registration plus2 pre-enable entries;
+native-cmd launch had zero registered instances but the same2 pre-enable entries.
+No event data/controller/permission operation, UAC, product or Job. Do not infer
+an absent provider or cached SD from a PowerShell-free launcher; no old grant retry.
+Evidence work/etw-registration-metadata-build-20261031; tool1D7748C3, sourcece7d54f.
+New source2cbea1d compares WMI default/absence SD and a memory-only exact package
+0800 addition with AccessCheck on the ORIGINAL held suspended LPAC tool token.
+Only original owner records private resource-tool-error evidence; no new grant
+factory/import, CLI/protocol fields, capability, DATA-path or admission widening.
+63-input ordinary build passed, libraryA49428CD/151 unchanged native imports;
+own ordinary-token allow/deny and input-SD hash qualification passed0/no stderr,
+not LPAC qualification. Six-product non-emitting semantic check passed.
+Candidate2e8e7a9486ed4295a4c80b23219752fb/manifest5988A34E staged2 changed12 reused
+assets from actual installed62e. Bootstrap build/review remains next; no install
+or new protected run authorized. Installed62e/19D64CFF remains unchanged.
+
 2026-10-31 human explicitly authorized one new numeric ETW trace and its exact
 new diagnostic-owner stop scope; manual UAC completed10:42:31Z. Same installed
 62eab36f/19D64CFF, sessionf1e78e640df744b6bbb71e72523c048c: matching PowerShell
