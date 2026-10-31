@@ -12,6 +12,7 @@ internal sealed record EtwAccessIntent(int SchemaVersion,string InstallationId,s
     string ManifestSHA256,string PackageSid,string OriginalSecurity);
 internal sealed record EtwAccessGrant(int SchemaVersion,string InstallationId,string SessionId,string IntentSHA256,
     string GrantedSecurity,string StoredValueSHA256);
+internal sealed record EtwTokenAccessCheck(string DescriptorSHA256,bool ApiSucceeded,bool? AccessAllowed,uint? GrantedMask,int? ApiError);
 
 // Legacy register-only trial journals still require exact inspection/recovery.
 // That trial restored exactly but did not repair the installed EventRegister5.
@@ -132,6 +133,14 @@ internal static class SessionEtwProviderAccess
             intent.JobId,IntentSHA256=hash,Status="EXACT_ORIGINAL_DEFAULT_AND_VALUE_ABSENCE_AFTER_CLOSED_JOB"}));
     }
     internal static uint RestrictedQueryCode(){var provider=new Guid(ProviderId);uint size=0;return EventAccessQuery(ref provider,null,ref size);}
+    internal static (string Readback,string InMemoryPackageAce) RegistrationCheckDescriptors(string packageSid)
+    {
+        // Readback is a WMI/registry observation, NOT the live ETW entry's SD.
+        // The second descriptor exists only in managed memory; never install it.
+        var security=ReadSecurity();
+        if(security!=ObservedDefault || StoredValueHash() is not null)throw WfpNative.Contract("EtwTokenComparisonRequiresObservedDefaultAndAbsence");
+        return(security,AddRegisterAce(security,packageSid));
+    }
     private static string ReadSecurity()
     {
         var provider=new Guid(ProviderId);uint size=0;var status=EventAccessQuery(ref provider,null,ref size);

@@ -7,7 +7,7 @@ using System.Text.Json;
 using System.Runtime.InteropServices;
 using Microsoft.Win32.SafeHandles;
 
-if(args.Length!=1 || args[0] is not ("policy" or "messages" or "handle-transfer" or "fault-mode" or "fault-mode-read" or "partial-output" or "hosted-policy" or "etw-policy" or "tls-transport-policy"))return 125;
+if(args.Length!=1 || args[0] is not ("policy" or "messages" or "handle-transfer" or "fault-mode" or "fault-mode-read" or "partial-output" or "hosted-policy" or "etw-policy" or "tls-transport-policy" or "etw-token-access"))return 125;
 try
 {
 using var identity=WindowsIdentity.GetCurrent();
@@ -26,6 +26,20 @@ void Refuse(Action action,string reason)
     throw new InvalidOperationException("Expected refusal: "+reason);
 }
 var launch=library.GetType("ProtectionLifecycle.OwnedToolLaunch",true)!;
+if(args[0]=="etw-token-access")
+{
+    var atomic=library.GetType("ProtectionLifecycle.AtomicChild",true)!;
+    using var self=new SafeProcessHandle((IntPtr)(-1),false);
+    object Check(string descriptor)=>Call(atomic,"ObserveTokenRegisterAccess",self,descriptor)!;
+    object? Value(object value,string name)=>value.GetType().GetProperty(name)!.GetValue(value);
+    var allowed=Check("O:SYG:SYD:P(A;;0x800;;;WD)");var denied=Check("O:SYG:SYD:P");
+    Require((bool)Value(allowed,"ApiSucceeded")! && (bool)Value(allowed,"AccessAllowed")! && (uint)Value(allowed,"GrantedMask")! == 0x800 && Value(allowed,"ApiError") is null,
+        "documented AccessCheck succeeds for register-only World grant on own ordinary token");
+    Require((bool)Value(denied,"ApiSucceeded")! && !(bool)Value(denied,"AccessAllowed")! && (uint)Value(denied,"GrantedMask")! == 0 && Value(denied,"ApiError") is null,
+        "access-denied result is distinct from an AccessCheck API failure");
+    Require((string)Value(allowed,"DescriptorSHA256")! != (string)Value(denied,"DescriptorSHA256")!,"observations bind to the exact input SD bytes");
+    Console.WriteLine("PASS own ordinary-token register-only AccessCheck allow/deny and descriptor binding; no ETW query, grant, other-process open, Job or product entry; not LPAC qualification");return 0;
+}
 if(args[0]=="tls-transport-policy")
 {
     var channel=library.GetType("ProtectionLifecycle.ProxyChannelLease",true)!;

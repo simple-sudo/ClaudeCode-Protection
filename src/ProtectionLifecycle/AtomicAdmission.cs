@@ -593,6 +593,12 @@ internal sealed class AtomicChild : IDisposable
             if(!child.IsAppContainer || !child.LpacAccessCheckObserved || child.PackageSid!=token.PackageSid || child.CapabilityCount!=0 || child.IntegritySid!="S-1-16-4096" ||
                 !job.ContainsProcess(process) || !string.Equals(WindowsPathSeal.Canonical(actualImage.ToString()),WindowsPathSeal.Canonical(start.FileName),StringComparison.OrdinalIgnoreCase))
                 throw WfpNative.Contract("OwnedToolSuspendedIdentityRefused");
+            if(start.ArgumentList.FirstOrDefault()=="resource-powershell")
+            {
+                var descriptors=SessionEtwProviderAccess.RegistrationCheckDescriptors(token.PackageSid);
+                permit.RecordEtwTokenAccess(checked((int)GetProcessId(process)),
+                    ObserveTokenRegisterAccess(process,descriptors.Readback),ObserveTokenRegisterAccess(process,descriptors.InMemoryPackageAce));
+            }
             // The trusted owner still independently checks actual Job members,
             // image and LPAC AccessCheck mask before releasing the tool gate.
             if(ResumeThread(thread)!=1)throw Error("InheritedToolResume");
@@ -701,6 +707,24 @@ internal sealed class AtomicChild : IDisposable
             if(!AccessCheck(bytes,query,0x02000000,ref mapping,privileges,ref size,out var granted,out var allowed))throw Error("ReadLpacAccessCheck");
             if(size>privileges.Length || !allowed || granted is <1 or >3)throw WfpNative.Contract("LpacAccessCheckResultNotQualified");
             return granted;
+        }
+    }
+    internal static EtwTokenAccessCheck ObserveTokenRegisterAccess(SafeProcessHandle process,string descriptor)
+    {
+        var security=new RawSecurityDescriptor(descriptor);var bytes=new byte[security.BinaryLength];security.GetBinaryForm(bytes,0);
+        var hash=Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(bytes));
+        if(!OpenProcessToken(process,8|2,out var token))throw Error("EtwComparisonOpenHeldToolToken");
+        using(token)
+        {
+            if(!DuplicateTokenEx(token,8,IntPtr.Zero,1,2,out var query))throw Error("EtwComparisonDuplicateQueryOnlyToken");
+            using(query)
+            {
+                var mapping=new GenericMapping();var privileges=new byte[64];uint size=(uint)privileges.Length;
+                var succeeded=AccessCheck(bytes,query,SessionEtwProviderAccess.RegisterRight,ref mapping,privileges,ref size,out var granted,out var allowed);
+                var error=succeeded?(int?)null:Marshal.GetLastWin32Error();
+                if(size>privileges.Length)return new(hash,false,null,null,error??122);
+                return new(hash,succeeded,succeeded?allowed:null,succeeded?granted:null,error);
+            }
         }
     }
     public void Dispose(){if(disposed)return;disposed=true;thread.Dispose();process.Dispose();}

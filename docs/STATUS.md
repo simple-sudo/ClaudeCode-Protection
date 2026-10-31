@@ -1,5 +1,11 @@
 # 当前开发状态
 
+## 2026-10-31：提供者预启用条目已只读确认；受限令牌比较接入源码
+
+VERIFIED（普通固定GUID元数据限定）：sourcece7d54f的新3输入离线查询工具构建及内存解析资格通过；System32只读双入口、无module initializer。EnumerateTraceGuidsEx(TraceGuidQueryInfo)普通权限实际返回0：PowerShell监督器中1个注册PID等于监督器自身，另有2个预启用条目；用原生cmd直接运行同一1D7748C3工具后注册数0但仍有2个预启用条目。未查询SD/事件载荷或控制会话，无UAC/产品/Job/权限变化；不推定控制器身份、缓存SD或旧授权失败根因，也不以换启动壳重跑工作负载。证据work/etw-registration-metadata-build-20261031及POWERSHELL-ETW-REGISTRATION-METADATA-20261031.md。
+
+SOURCE / INTEGRATED（未构建/安装）：原Broker在原Job中验证实际挂起PowerShell工具的LPAC/包SID/零能力/映像后，以持有令牌的查询级副本只执行两次0800 AccessCheck：已观察默认且无持久自定义值的WMI读回SD，以及仅在内存增加精确包SID注册权的副本。API失败与访问拒绝分开记录，摘要绑定输入SD；原owner写固定resource-tool-error前缀的私有诊断，明确不是权限或准入证据。没有EventAccessControl导入/授权工厂、权限变更、新CLI/协议字段或DATA/Git路径改变。六产品非生成语义0错误/警告；普通自身令牌比较资格和新实际LPAC比较尚未运行。
+
 ## 2026-10-31：授权窄诊断已完成；代理诊断 TLS 源码修复
 
 VERIFIED / FAIL（实机诊断限定）：本人明确授权并确认10:42:31Z UAC后，原已安装62eab36f/19D64CFF的sessionf1e78e640df744b6bbb71e72523c048c，匹配提供者 `NtTraceControl(0x0f)=C0000022`、`EventRegister=5`。提供者注册阶段已定位，具体SD/令牌判定及缓存原因未证实。调试器在第二次CLR异常停住并到30秒期限，排空后原owner正常退出，无强停；原权威报告D39A418A证明Job6cd0cb1196354c149836fcf8b17b822a闭合/零成员、完整隔离先行、Stop无失败。RuntimeLeaseExpired/OwnedToolPipeClosedWithoutTerminalReport、Child缺失仍FAIL，五拒绝未复验，无工具/项目成果。无ETW授权/网络开放/自动恢复，AV/BFE/FlClash/UU/boot前后一致，无产品残留。本次授权消费，不重跑。证据及限制见LPAC-TOOL-LAUNCH-NEXT.md；下面旧待授权记录为历史。

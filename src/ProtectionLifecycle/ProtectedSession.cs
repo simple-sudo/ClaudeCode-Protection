@@ -106,6 +106,18 @@ internal sealed class ProtectedSession
         {AssertCurrent();if(Volatile.Read(ref phase)!=2 || !ReferenceEquals(owner.job,job))throw WfpNative.Contract("OwnedToolExactActiveJobRequired");}
         internal void AuthorizeToolCreation(AtomicChild child,OwnedKernelJob job)
         {AssertExactToolJob(job);if(!ReferenceEquals(root,child) || !child.IsRunning)throw WfpNative.Contract("OwnedToolExactLiveRootRequired");}
+        internal void RecordEtwTokenAccess(int toolPid,EtwTokenAccessCheck readback,EtwTokenAccessCheck hypothetical)
+        {
+            AssertCurrent();
+            if(Volatile.Read(ref phase)!=2 || !Plan.RequiresPowerShell || toolPid<=0)throw WfpNative.Contract("EtwTokenComparisonScopeRefused");
+            // Original owner evidence only. This is not an admission, grant,
+            // tool reply or a claim to have observed ETW's kernel descriptor.
+            owner.state.WriteNew("resource-tool-error-"+owner.id+"-etw-access.json",JsonSerializer.SerializeToUtf8Bytes(new {
+                SchemaVersion=1,owner.state.InstallationId,SessionId=owner.id,JobId=owner.job!.JobId,ToolPid=toolPid,PackageSid=owner.sid,
+                Status="HELD_LPAC_TOKEN_ACCESSCHECK_ONLY_NO_ETW_GRANT",ProviderId=SessionEtwProviderAccess.ProviderId,
+                DesiredAccess=SessionEtwProviderAccess.RegisterRight,DescriptorSource="WMI_READBACK_AND_HYPOTHETICAL_MEMORY_COPY_NOT_KERNEL_ETW_SD",
+                Readback=readback,HypotheticalPackageAce=hypothetical,PermissionModified=false,AdmissionEvidence=false}));
+        }
     }
     internal static (int ExitCode,string Report) QualifyResources(FixedLayout layout,ProtectedState state,VerifiedVersion version)
         =>new ProtectedSession(layout,state,version).ExecuteResourceQualification();
