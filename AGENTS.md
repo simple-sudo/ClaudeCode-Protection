@@ -32,8 +32,15 @@ not LPAC qualification. Six-product non-emitting semantic check passed.
 Candidate2e8e7a9486ed4295a4c80b23219752fb/manifest5988A34E staged2 changed12 reused
 assets from actual installed62e. Source58af7f9's64-input Bootstrap build reused
 exact A49428CD without rebuilding it;20 files/10PE/6managed/no module initializer/
-embedded manifest matched. Exact system run/readback controls remain to prepare;
-no install or new protected run authorized. Installed62e/19D64CFF unchanged.
+embedded manifest matched. New F-root fixed system controls now prepared in
+work/etw-token-comparison-control-20261031: install plan870FD6EF/helper71583EF5,
+run plan6EE84F62/helper07CACBFA. Two held-input preflights/four unknown-switch
+refusals and16 read-gate logic fixtures passed without UAC or private state read.
+Only own new session's etw-access record may be read after original closed-zero
+Job plus matching Stop proof; diagnostics and toolchain success remain separate.
+New two human-UAC operations NOT_AUTHORIZED/NOT_RUN; no grant/debugger/recovery.
+Installed62e/19D64CFF unchanged;15 current public hashes/owners/protected DACL/
+no untrusted writer freshly matched. See control/system-operation-review.md.
 
 2026-10-31 human explicitly authorized one new numeric ETW trace and its exact
 new diagnostic-owner stop scope; manual UAC completed10:42:31Z. Same installed

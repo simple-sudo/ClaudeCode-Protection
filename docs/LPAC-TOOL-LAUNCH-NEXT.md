@@ -1,6 +1,6 @@
 # LPAC 工具启动：本轮结果与下一步
 
-2026-10-31 后续普通只读查询通过：PowerShell监督器下有1个与监督器PID相同的注册及2个预启用条目；换成原生cmd后注册数0，仍有2个预启用条目。因此不能把“无PowerShell启动壳”当成“提供者完全不存在/权限必定重新加载”，不重跑旧0800试验或关闭既有控制器。见[注册元数据记录](POWERSHELL-ETW-REGISTRATION-METADATA-20261031.md)。新源码在原Broker持有并验证的挂起PowerShell工具令牌上，只比较WMI原读回SD和内存中精确0800包SID增项的AccessCheck结果，写原私有诊断前缀；没有新授权工厂、原生导入、CLI/工具协议字段或DATA路径改变。source2cbea1d的63输入构建、库A49428CD、普通自身令牌允许/拒绝及SD摘要资格通过；不能推成LPAC/内核SD判定。候选2e8e7a9486ed4295a4c80b23219752fb/manifest5988A34E已暂存，source58af7f9的64输入Bootstrap复用原资格库未重建，20文件/10PE/6managed/内嵌manifest匹配。仍需准备精确系统运行/闭Job后取证控制，尚未安装或请求新系统操作。
+2026-10-31 后续普通只读查询通过：PowerShell监督器下有1个与监督器PID相同的注册及2个预启用条目；换成原生cmd后注册数0，仍有2个预启用条目。因此不能把“无PowerShell启动壳”当成“提供者完全不存在/权限必定重新加载”，不重跑旧0800试验或关闭既有控制器。见[注册元数据记录](POWERSHELL-ETW-REGISTRATION-METADATA-20261031.md)。新源码在原Broker持有并验证的挂起PowerShell工具令牌上，只比较WMI原读回SD和内存中精确0800包SID增项的AccessCheck结果，写原私有诊断前缀；没有新授权工厂、原生导入、CLI/工具协议字段或DATA路径改变。source2cbea1d的63输入构建、库A49428CD、普通自身令牌允许/拒绝及SD摘要资格通过；不能推成LPAC/内核SD判定。候选2e8e7a9486ed4295a4c80b23219752fb/manifest5988A34E已暂存，source58af7f9的64输入Bootstrap复用原资格库未重建，20文件/10PE/6managed/内嵌manifest匹配。精确F盘系统运行/闭Job后单份取证控制已固定，两个持有预检、四个未知参数拒绝及16个读门逻辑用例通过。install plan870FD6EF/helper71583EF5，run plan6EE84F62/helper07CACBFA；下一步需要针对work/etw-token-comparison-control-20261031/system-operation-review.md的两次新人工UAC决定。未授权、未安装、实际LPAC比较未运行；诊断观察不能充作工具链成功。
 
 ## 2026-10-31 实机结果：提供者注册原生返回 C0000022
 
