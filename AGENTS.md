@@ -1,3 +1,19 @@
+# Project location after migration (2026-10-31)
+
+The development checkout is now F:\ClaudeCode-Protection. The former
+C:\Users\simple\ClaudeCode-Protection location has no forwarding junction.
+Resolve historical project-root paths in chat/handoff/evidence to the same
+relative file under F:\ClaudeCode-Protection for read-only inspection.
+Historical evidence, frozen manifests/plans and their original hashes remain
+unchanged. They are historical records, not runnable authorization at the new
+location; do not rerun them or weaken their path/hash checks. Two old tracked
+build wrappers have only their checkout-location checks updated. Their other
+source/toolchain/hash/authorization gates remain in force. Migration ran no
+project code, build, product, UAC workload, ETW operation or recovery.
+System-installed product files and external toolchain dependencies remain at
+their system locations. The installed INACTIVE and unqualified/open work
+boundaries below remain applicable. See docs/MIGRATION-20261031.md.
+
 # ClaudeCode-Protection working rules
 
 2026-10-30 authoritative actual installed62eab36f66ba4dc5b117b1fbe4d1170c,

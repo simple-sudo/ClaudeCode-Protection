@@ -6,7 +6,7 @@
 param()
 $ErrorActionPreference='Stop'
 $root=Split-Path -Parent $PSScriptRoot
-if($root -cne 'C:\Users\simple\ClaudeCode-Protection'){throw 'Wrong checkout'}
+if($root -cne 'F:\ClaudeCode-Protection'){throw 'Wrong checkout'}
 $identity=[Security.Principal.WindowsIdentity]::GetCurrent()
 if(([Security.Principal.WindowsPrincipal]$identity).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)){throw 'Ordinary user required'}
 $freeze='C:\Users\simple\Documents\Codex\2026-10-25\claude-protection-continuation\outputs\s1-decision\s1-input-freeze.json'

@@ -7,7 +7,7 @@ param()
 $ErrorActionPreference='Stop'
 $root=Split-Path -Parent $PSScriptRoot
 $commit='8a9c4b13711598187cde8845794f24d455ea0004'
-if($root -cne 'C:\Users\simple\ClaudeCode-Protection' -or (git -C $root rev-parse HEAD) -ne $commit){throw 'Wrong checkout or source revision'}
+if($root -cne 'F:\ClaudeCode-Protection' -or (git -C $root rev-parse HEAD) -ne $commit){throw 'Wrong checkout or source revision'}
 $identity=[Security.Principal.WindowsIdentity]::GetCurrent()
 if(([Security.Principal.WindowsPrincipal]$identity).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)){throw 'Ordinary user required'}
 if(@(Get-ChildItem Env:|Where-Object Name -match '^(MSBUILD|DOTNET|NUGET|CORECLR|COMPLUS|COR_)').Count){throw 'Unexpected toolchain environment'}
