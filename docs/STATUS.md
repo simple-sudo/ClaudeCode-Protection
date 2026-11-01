@@ -5,6 +5,36 @@
 本轮没有删除，主体/发生时间UNKNOWN，未量释放空间；此前拒绝记录保留。
 详见docs/MIGRATION-20261031.md及外部cleanup-observed-absent-20261101.json。
 
+## 2026-11-01 实机：普通用户项目开发入口交付
+
+两次具体人工授权和UAC均完成并消耗。09:15:11Z实际安装14ea8f9c14044ffaabb7356dfbc96cfa /
+manifest F415392FE03AA198F1712A58AAAF0E4D197E81A850275CB027764A7356DF3A61 /
+library334E9AA8，保持INACTIVE。15公开安装资产摘要/可信所有者/受保护DACL/无不可信写者
+独立匹配；原inspect0、NO_PENDING/default/显式值缺席。原acc安装为历史版本。
+
+09:16:01Z新普通客户端sample -> develop（本人UAC）-> review -> extract完成，
+session fb3c01e8771d4461ac27f6d5e7299e7e。客户端通过当前安装映像、持有进程与两端PID、
+nonce、基线及v4/scope验证，原Broker/Job严格LPAC任务完成读改两源码、编译、六测试/
+计数器和原成功清理回执导出。七份文件独立摘要/长度匹配，五个预期变化；提取目录
+work/ordinary-project-delivery-20261101，原项目未合并/覆盖，宿主未运行输出DLL。
+本轮不读取私有Job/Stop或tool-error；闭合/清理依据是原owner成功导出和认证客户端回复，
+不是新独立raw Job快照或逐项拒绝记录。所有真实宿主敏感资源尚未资格化。
+
+输入ED3DDCB2...475B；结果5977313F04705079206F2FEDBEDD25A903511EA41384B8B6C0A4E89F719A715F；
+实际DLL F85284FC1BFB2A56BFACD50889293705C96D3475F788AED07C0BAB3133D66D49，3072字节。
+默认MVID与旧实机/fixture不同，无预置DLL摘要替换实际验证。运行Lines2/Words5、测试数6。
+证据work/ordinary-project-control-20261101/{installed-evidence,workflow-completed.json,
+independent-extracted-bytes.json,observed-result.json}，归一化记录摘要
+440B881DC8BFB19664EF46B3587153F67C69B1EE6987B8BD7F0D1BBD8458754D。
+
+无强制停止、重试/恢复、权限/AV/日常网络变化，boot07:39:57.5Z及AV/BFE/FlClash/UU匹配，
+无产品进程。SOURCE/BUILD/INTEGRATED/VERIFIED/DELIVERABLE仅针对固定项目的普通用户入口。
+接下来推进真实FlClash/UU/私人文件/标识资源门；现有五个root拒绝只是私有状态读/写、
+AAP样本、Broker VM-read、ETW查询，不覆盖这些真实资源。项目工具另有两个样本拒绝，
+也不能替代真实覆盖。PowerShell、任意项目、网络/十四准入/GPU/GUI和历史BSOD仍开放，
+真实Claude继续延期。下一候选须审查实际F415392F前置pin并做暂存包精确转换预检。
+以下READY与旧版本段落保留准备过程，不代表当前安装或未消费授权。
+
 ## 2026-11-01 ordinary project workflow — SOURCE / BUILD / INTEGRATED, ordinary VERIFIED
 
 Separate daily `workspace-sample` / `workspace-develop` commands now connect the

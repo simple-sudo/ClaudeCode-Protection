@@ -1,5 +1,16 @@
 # TextSummary 项目开发流程
 
+2026-11-01 09:16:01Z普通用户入口已实机通过：两次本人授权/UAC后，实际安装INACTIVE
+14ea8f9c/F415392F/334E9AA8。普通daily的workspace-sample -> workspace-develop ->
+workspace-review -> workspace-extract经原Broker/Job/严格LPAC完成任务和成功清理导出，
+sessionfb3c01e8771d4461ac27f6d5e7299e7e。结果5977313F...A715F，七份提取文件摘要/长度
+独立匹配；交付work/ordinary-project-delivery-20261101，六测试/Lines2/Words5，原项目
+未覆盖，宿主未执行输出DLL。无强制停止/自动恢复/权限或网络变化，无产品进程。
+本次不读私有Job/Stop/错误；原owner成功导出+认证v4回复是闭合清理依据，不称作新的
+独立raw Job快照或真实敏感资源拒绝矩阵。两次授权均消耗，固定控制不得重新运行。
+详见ordinary-project-control-20261101/observed-result.json SHA440B881D。
+以下源码/READY/旧acc版本段落是准备与历史状态，当前安装为14ea8f9c。
+
 ## Ordinary installed workflow — source integration (2026-11-01)
 
 The new daily commands are `workspace-sample NEW_BASE_BUNDLE` followed by

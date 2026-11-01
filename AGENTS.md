@@ -24,6 +24,36 @@ rerun deletion or describe historical blocked/exists paragraphs as current.
 
 # ClaudeCode-Protection working rules
 
+2026-11-01 AUTHORITATIVE ACTUAL ORDINARY WORKFLOW SUCCESS: human explicitly
+authorized both frozen14ea8f9c operations and manually confirmed both UACs.
+INACTIVE update/readonly inspection completed09:15:11Z. Actual installed
+14ea8f9c14044ffaabb7356dfbc96cfa / manifestF415392FE03AA198F1712A58AAAF0E4D197E81A850275CB027764A7356DF3A61 /
+library334E9AA8;15 public hashes/trusted owners/protected DACL/no untrusted
+writers independently match, inspect0/NO_PENDING/default/explicit value absent.
+Ordinary installed sample -> develop -> review -> extract completed09:16:01Z,
+sessionfb3c01e8771d4461ac27f6d5e7299e7e. New authenticated v4/scope pipe connects
+the original Broker/Job/strict LPAC task and original successful-cleanup export;
+six tests/run counters/2 source edits/compile passed,7 extracted bytes+lengths+
+hashes independently match. Result5977313F04705079206F2FEDBEDD25A903511EA41384B8B6C0A4E89F719A715F,
+actual DLLF85284FC (default MVID need not equal older fixture/run). Delivery
+work/ordinary-project-delivery-20261101. No raw private Job/Stop or tool-error
+read authorized/performed this run; closure/cleanup authority is original owner
+success export through the authenticated installed reply, NOT a new independent
+raw Job snapshot or exported per-case denial matrix. Existing root5 and tool
+denial checks remain source gates; not proof of all named real host resources.
+No forced daily/elevated stop, retry/recovery or host DLL execution; no product
+PIDs remain. Before/after boot07:39:57.5Z/AV/BFE/FlClash25816,20828/UU6812 match,
+full vendor alert coverage UNKNOWN. Both grants consumed. Original frozen
+READY/NOT_AUTHORIZED records below are history, not another runnable grant.
+Evidence work/ordinary-project-control-20261101/observed-result.json
+SHA440B881DC8BFB19664EF46B3587153F67C69B1EE6987B8BD7F0D1BBD8458754D.
+SOURCE/BUILD/INTEGRATED/VERIFIED/DELIVERABLE only for this fixed ordinary entry.
+Real FlClash/UU/private/identifier resource denials, PowerShell, arbitrary caller
+projects, forced network/14 admission/GPU/GUI and historic BSOD remain open;
+real Claude deferred. Next mainline real host privacy gates must reuse current
+owner and completed project/Git evidence. Next candidate must explicitly review
+actualF415392F prior pin (compiled list ends656D8690) and staged exact transition.
+
 2026-11-01 NEW ORDINARY WORKFLOW CANDIDATE READY, NOT_AUTHORIZED/NOT_RUN:
 14ea8f9c14044ffaabb7356dfbc96cfa / manifestF415392FE03AA198F1712A58AAAF0E4D197E81A850275CB027764A7356DF3A61 /
 library334E9AA8. Source9b12e1c 84-input offline build and four ordinary
