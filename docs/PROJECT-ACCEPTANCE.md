@@ -1,5 +1,15 @@
 # 完整项目验收账本
 
+## 2026-11-01 新GUI工作流包35a的INACTIVE安装与原只读检查
+
+本人具体授权并确认一次UAC，12:37:15Z安装及inspect-etw-provider-access均0，当前实际35a0106a/
+58E8D97C/core401439EE/GUI4D3E764B保持INACTIVE。十五公开资产hash/可信owner/protected DACL/
+无不可信写者与十三份本次helper回执独立匹配；固定提供者default/显式值不存在/无pending，
+无新GUI/项目/Job/profile、ETW/ACL/AV/网络修改、强停或自动重试恢复，无产品残留。
+boot/AV/BFE/FlClash/UU一致；两个普通记录/JSON时间对比错误分别保留，不冒充产品失败，未重复
+系统操作。证据gui-project-control-20261101/observed-result.json SHA74B7BE529A5D85A27F5512CD538EB56AB6110688057453ED4D65C2D0F4A7D0A6。
+限定安装VERIFIED，非GUI交互或35a原生项目资格；完整目标仍开放，真实Claude延期。
+
 ## 2026-11-01 GUI项目工作流的普通消费者与相对路径资格
 
 bb84259六项目101输入离线构建通过；e45a9cc仅修正自有夹具接收Windows已有目录183，14输入

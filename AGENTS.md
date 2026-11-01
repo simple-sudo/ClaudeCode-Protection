@@ -24,6 +24,25 @@ rerun deletion or describe historical blocked/exists paragraphs as current.
 
 # ClaudeCode-Protection working rules
 
+2026-11-01 ACTUAL35a GUI PAYLOAD INSTALL PASSED, NO GUI/PROJECT RUN:
+Human authorized ONE update/read-only scope and manually confirmed UAC12:37:01Z.
+35a0106aa1f94362ae73242f2e18da2a/58E8D97C/core401439EE/GUI4D3E764B is now
+actually installed INACTIVE. Helper/update/readonly inspector0; original installed
+inspect-etw-provider-access NO_PENDING/default/explicit value absent.15 public
+hashes/owners/protected DACL/no untrusted writers independently matched;13 own
+helper receipts copied exactly. No new GUI/project/Job/profile,ETW/host ACL/AV/
+daily network change,force/retry/recovery or extra private-state read. Boot
+07:39:57.5Z/AV/BFE/FlClash25816/20828/UU6812 unchanged,no product PIDs.
+Evidence work/gui-project-control-20261101/observed-result.json
+SHA74B7BE529A5D85A27F5512CD538EB56AB6110688057453ED4D65C2D0F4A7D0A6.
+Empty authorization serialization failure BEFORE launcher and post-review JSON
+date auto-conversion false mismatch preserved separately; corrected data read,
+no second system attempt. One installation authorization consumed. This proves
+inactive installation only,not actual GUI interaction/new CWD LPAC/native host
+privacy,network/14 admissions/GPU/recovery/full product. Reuse original42f native
+project result separately; new35a does not inherit it. Continue authorized source
+development; real Claude deferred. Earlier35a NOT_RUN/current42f are historical.
+
 2026-11-01 NEW GUI INACTIVE CANDIDATE READY, NOT_AUTHORIZED/NOT_RUN:
 35a0106aa1f94362ae73242f2e18da2a/58E8D97C/core401439EE/GUI4D3E764B/
 dailyBDD21246/BrokerB604922D;4 changed10 reused assets. d229349 adds ONLY actual

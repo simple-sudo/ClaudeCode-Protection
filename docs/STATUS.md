@@ -1,5 +1,24 @@
 # 当前开发状态
 
+## 2026-11-01 新GUI更新已实际完成，当前35a保持INACTIVE
+
+本次具体授权及本人UAC于12:37:01Z完成，安装/原只读检查12:37:15Z返回0。实际版本
+35a0106aa1f94362ae73242f2e18da2a / manifest58E8D97CE58C48EFA4C6FFFC86B236CB10DE7CFC50BB424CDDF4034136AAFCFB，
+core401439EE/GUI4D3E764B/dailyBDD21246/BrokerB604922D，保持INACTIVE。十五公开资产hash/
+可信owner/受保护DACL/无不可信写者独立匹配，十三份本次helper回执逐字一致；原安装Broker
+inspect-etw-provider-access为NO_PENDING/default/显式值不存在，没有ETW修改或事件读取。
+
+没有启动GUI、新项目、Job或profile，没有强停/重试/恢复/额外私有状态读/宿主资源权限/
+AV/日常网络修改。boot07:39:57.5Z/AV/BFE/FlClash25816/20828/UU6812前后一致，无产品残留，
+完整厂商覆盖UNKNOWN。最初授权记录序列化在启动器之前失败、空文件保留且未消耗系统尝试；
+本次唯一安装结束后，普通回执对比的JSON时间自动转换误差独立保留，改用原始字符串核对，
+没有第二次安装或检查。证据work/gui-project-control-20261101/observed-result.json
+SHA74B7BE529A5D85A27F5512CD538EB56AB6110688057453ED4D65C2D0F4A7D0A6。
+
+一次安装授权已消耗。SOURCE/BUILD/INTEGRATED及本次安装限定VERIFIED；GUI实际交互、新相对
+目录的LPAC行为和35a项目/隐私资格仍未完成，原42f真实项目/28次拒绝继续独立复用。PowerShell、
+强制网络、十四可信准入、NVIDIA、恢复与完整交付保持开放，真实Claude延期。以下待安装为历史。
+
 ## 2026-11-01 新GUI完整更新包已冻结，单次安装尚待人工决定
 
 候选35a0106aa1f94362ae73242f2e18da2a / 58E8D97CE58C48EFA4C6FFFC86B236CB10DE7CFC50BB424CDDF4034136AAFCFB，
