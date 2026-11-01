@@ -8,6 +8,22 @@ internal static class Program
     {
         if(args.Length>1 && args[0]=="resource-powershell")
             return ProtectionLifecycle.InstalledBroker.RunRestrictedPowerShell(args.Skip(1).ToArray());
+        if(args.Length==2 && args[0]=="resource-project")
+            return ProtectionLifecycle.InstalledBroker.RunRestrictedProject(args.Skip(1).ToArray());
+        if(args.Length==1 && args[0]=="develop-bundled-project")
+        {
+            try{var result=ProtectionLifecycle.InstalledBroker.DevelopBundledProject();Console.WriteLine(result.Report);return result.ExitCode;}
+            catch(Exception ex){Console.Error.WriteLine("Project task not confirmed: "+ex.GetType().Name+"; code="+ex.HResult);return 125;}
+        }
+        if(args.Length==3 && args[0]=="export-developed-project")
+        {
+            try
+            {
+                var bytes=ProtectionLifecycle.InstalledBroker.ExportDevelopedProject(args[1],args[2]);
+                using var output=Console.OpenStandardOutput();output.Write(bytes);output.Flush();return 0;
+            }
+            catch(Exception ex){Console.Error.WriteLine("Project export not confirmed: "+ex.GetType().Name+"; code="+ex.HResult);return 125;}
+        }
         if(args.Length==4 && args[0]=="process-workspace-pipe")
         {
             try

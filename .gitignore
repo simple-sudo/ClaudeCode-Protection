@@ -11,6 +11,9 @@
 !/scripts/
 !/src/
 !/tests/
+!/samples/
+/samples/*
+!/samples/TextSummary/
 !/.github/
 
 # Preserve on disk; never stage runtime state or historical evidence.

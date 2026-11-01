@@ -14,6 +14,8 @@ namespace ProtectionLifecycle;
 public static partial class InstalledBroker
 {
     public static int RunRestrictedPowerShell(string[] arguments)=>RestrictedPowerShellHost.Run(arguments);
+    public static int RunRestrictedProject(string[] arguments)=>BundledProjectDevelopment.Run(arguments);
+    public static (int ExitCode,string Report) DevelopBundledProject()=>WithCurrentInstallation(ProtectedSession.DevelopBundledProject);
     public static (int ExitCode,string Report) ProcessWorkspaceData(string expectedSHA256)
         =>WithCurrentInstallation((layout,state,version)=>
     {
@@ -30,6 +32,10 @@ public static partial class InstalledBroker
         return ProtectedSession.ProcessWorkspaceData(layout,state,version,bytes);
     }
     public static byte[] ExportWorkspaceData(string sessionId,string expectedResultSHA256)
+        =>ExportWorkspaceResult(sessionId,expectedResultSHA256,false);
+    public static byte[] ExportDevelopedProject(string sessionId,string expectedResultSHA256)
+        =>ExportWorkspaceResult(sessionId,expectedResultSHA256,true);
+    private static byte[] ExportWorkspaceResult(string sessionId,string expectedResultSHA256,bool developedProject)
     {
         byte[]? result=null;
         _=WithCurrentInstallation((_,state,_)=>
@@ -39,13 +45,19 @@ public static partial class InstalledBroker
             // terminal record after exact cleanup can release this result.
             using var doc=JsonDocument.Parse(state.Read("resource-session-after-"+id+".json").Bytes);var r=doc.RootElement;
             if(r.GetProperty("InstallationId").GetString()!=state.InstallationId || r.GetProperty("SessionId").GetString()!=id ||
-                r.GetProperty("Status").GetString()!="WORKSPACE_DATA_PROCESSED_AND_CLEANED" ||
+                r.GetProperty("Status").GetString()!=(developedProject?"BUNDLED_PROJECT_DEVELOPED_AND_CLEANED":"WORKSPACE_DATA_PROCESSED_AND_CLEANED") ||
                 r.GetProperty("ClosedWorkspaceResultSHA256").GetString()!=expected || r.GetProperty("Failures").GetArrayLength()!=0 ||
                 r.GetProperty("FormalAdmissionIssued").GetBoolean() || r.GetProperty("NetworkOpened").GetBoolean() || r.GetProperty("ClaudeLaunched").GetBoolean())
                 throw new InvalidDataException("Workspace success/cleanup receipt required");
             var baseline=state.ReadWorkspaceData(id,false);var data=state.ReadWorkspaceData(id,true);
             if(data.SHA256!=expected || baseline.SHA256!=r.GetProperty("WorkspaceBaselineSHA256").GetString())throw new InvalidDataException("Workspace export digest differs");
             _=ClaudeCodeProtection.Workspaces.WorkspaceBundle.Compare(baseline.Bytes,data.Bytes);
+            if(developedProject)
+            {
+                if(!r.GetProperty("ProjectDevelopmentRequested").GetBoolean() || !r.GetProperty("InheritedProjectToolIdentityObserved").GetBoolean() ||
+                    baseline.SHA256!=BundledProjectDevelopment.BaselineHash)throw new InvalidDataException("Explicit development receipt required");
+                BundledProjectDevelopment.VerifyResult(data.Bytes);
+            }
             result=data.Bytes;return(0,"WORKSPACE_DATA_EXPORT_READY");
         });
         return result??throw new InvalidDataException("Workspace export missing");

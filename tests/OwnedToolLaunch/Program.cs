@@ -7,7 +7,7 @@ using System.Text.Json;
 using System.Runtime.InteropServices;
 using Microsoft.Win32.SafeHandles;
 
-if(args.Length!=1 || args[0] is not ("policy" or "messages" or "handle-transfer" or "fault-mode" or "fault-mode-read" or "partial-output" or "hosted-policy" or "etw-policy" or "tls-transport-policy" or "etw-token-access" or "inactive-transition"))return 125;
+if(args.Length!=1 || args[0] is not ("policy" or "messages" or "handle-transfer" or "fault-mode" or "fault-mode-read" or "partial-output" or "hosted-policy" or "etw-policy" or "tls-transport-policy" or "etw-token-access" or "inactive-transition" or "project-policy" or "project-build"))return 125;
 try
 {
 using var identity=WindowsIdentity.GetCurrent();
@@ -26,12 +26,55 @@ void Refuse(Action action,string reason)
     throw new InvalidOperationException("Expected refusal: "+reason);
 }
 var launch=library.GetType("ProtectionLifecycle.OwnedToolLaunch",true)!;
+if(args[0] is "project-policy" or "project-build")
+{
+    var project=library.GetType("ProtectionLifecycle.BundledProjectDevelopment",true)!;
+    var baseline=(byte[])Call(project,"Baseline")!;
+    var hash=Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(baseline));
+    var planType=library.GetType("ProtectionLifecycle.ResourceProbePlan",true)!;
+    var roots=library.GetType("ProtectionLifecycle.SessionResources",true)!;
+    var nonce=new string('e',32);var programFiles=Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
+    object Plan(int schema,bool development,string input)
+    {
+        var plan=Activator.CreateInstance(planType,schema,nonce,new string('b',32),new string('c',32),Environment.ProcessId,new string('A',64),
+            "9DE2A6DB90D8383F3738249D52F30DEFBEDB994513A8F2697E9D90693CD1D285",input,programFiles)!;
+        planType.GetProperty("DevelopProject")!.SetValue(plan,development);return plan;
+    }
+    var development=Plan(4,true,hash);var data=Plan(3,false,hash);
+    var workspace=Path.Combine(programFiles,"ClaudeCodeProtection-Task-"+nonce);
+    var start=(ProcessStartInfo)Call(project,"Start",development,workspace)!;
+    var digest=(string)Call(launch,"StartHash",start)!;
+    _=Call(launch,"ValidateStart",development,workspace,"project",start.ArgumentList.ToArray(),digest);
+    Refuse(()=>Call(project,"Start",data,workspace),"ExplicitProjectDevelopmentRequired");
+    Refuse(()=>Call(launch,"ValidateStart",data,workspace,"project",start.ArgumentList.ToArray(),digest),"ExplicitProjectDevelopmentRequired");
+    Refuse(()=>Call(project,"Start",Plan(3,true,hash),workspace),"ResourceQualificationPlanRefused");
+    Refuse(()=>Call(project,"Start",Plan(4,true,new string('D',64)),workspace),"FixedDevelopmentProjectPlanRequired");
+    Refuse(()=>Call(roots,"PowerShellStart",development,workspace),"WorkspaceDataCannotRequestPowerShell");
+    var changed=start.ArgumentList.ToArray();changed[1]=new string('f',32);
+    Refuse(()=>Call(launch,"ValidateStart",development,workspace,"project",changed,digest),"OwnedProjectCompiledProgramRequired");
+    Require(!start.Environment.ContainsKey("PSModulePath") && !start.Environment.ContainsKey("CPC_POWERSHELL_POLICY_NONCE"),"project compile does not impersonate a PowerShell host");
+    _=Call(planType,"Parse",JsonSerializer.Serialize(development,planType));
+    var unknown=JsonSerializer.Serialize(data,planType).TrimEnd('}')+",\"DevelopProject\":false}";
+    var rejected=false;try{Call(planType,"Parse",unknown);}catch(InvalidDataException){rejected=true;}Require(rejected,"v3 DATA rejects the added development field even when false");
+    if(args[0]=="project-policy"){Console.WriteLine("PASS explicit v4 fixed project intent/start binding; v3 DATA cannot execute project code, no PowerShell fallback or host-path grant; pure policy only");return 0;}
+    var fixture=Path.Combine(AppContext.BaseDirectory,"ordinary-text-summary-project");
+    Require(!Directory.Exists(fixture),"new own project fixture only");Directory.CreateDirectory(fixture);
+    var files=library.GetType("ClaudeCodeProtection.Workspaces.WorkspaceFiles",true)!;
+    Call(files,"MaterializeNew",fixture,"project",baseline);
+    Call(project,"BuildAndRun",Path.Combine(programFiles,"ClaudeCodeProtection-PowerShell-7.4.22"),Path.Combine(fixture,"project"));
+    var result=(byte[])Call(files,"SnapshotResult",fixture,"project",baseline)!;Call(project,"VerifyResult",result);
+    Call(files,"ExtractResultNew",Path.Combine(fixture,"exported"),baseline,result);
+    Require(File.ReadAllText(Path.Combine(fixture,"exported","test-result.txt"))=="6" &&
+        File.ReadAllText(Path.Combine(fixture,"exported","run-result.json"))=="{\"Lines\":2,\"Words\":5}","modified source compiled/executed/tested and result extracted");
+    Require(!library.GetReferencedAssemblies().Any(a=>a.Name=="System.Management.Automation") && !AppDomain.CurrentDomain.GetAssemblies().Any(a=>a.GetName().Name=="System.Management.Automation"),"compile/run task never loaded PowerShell engine");
+    Console.WriteLine("PASS ordinary real TextSummary project: read source, add CountWords and three cases, compile pinned Roslyn, execute six tests and counters, snapshot/verify/extract result; NOT LPAC/Job/host-privacy qualification");return 0;
+}
 if(args[0]=="inactive-transition")
 {
     var lease=library.GetType("ProtectionLifecycle.BootstrapInstaller",true)!
         .GetNestedType("PinnedInactiveUpdateLease",BindingFlags.NonPublic)!;
-    const string actualRelease="62eab36f66ba4dc5b117b1fbe4d1170c";
-    const string actualManifest="B692EEF8753B737E126924E0FC6EA764F39C4BB5BDA4BBFC472A3F45701C45E8";
+    const string actualRelease="53f3ee9852c04cd6a8053a045b6ba295";
+    const string actualManifest="B5CFD0EDFEECB4CF91011D886A99961DE6762595D27048A547EB2BDDF10B9C7E";
     // The replacement is a fixture selection, not an approved package or
     // installed transition. This executes only the real pure selection guard.
     var replacementRelease=new string('a',32);var replacementManifest=new string('A',64);
@@ -49,7 +92,7 @@ if(args[0]=="inactive-transition")
     Deny(()=>Check(actualRelease,actualManifest,actualRelease,actualManifest,replacementRelease,actualManifest));
     Deny(()=>Check(actualRelease,replacementManifest,actualRelease,replacementManifest,replacementRelease,new string('B',64)));
     Deny(()=>Check(actualRelease,actualManifest.ToLowerInvariant(),actualRelease,actualManifest.ToLowerInvariant(),replacementRelease,replacementManifest));
-    Console.WriteLine("PASS actual installed62e exact pinned inactive selection and six current/prior/next/unknown/case drift refusals; pure production guard only, not live Job closure, maintenance, installation or UAC");return 0;
+    Console.WriteLine("PASS actual installed53f exact pinned inactive selection and six current/prior/next/unknown/case drift refusals; pure production guard only, not live Job closure, maintenance, installation or UAC");return 0;
 }
 if(args[0]=="etw-token-access")
 {

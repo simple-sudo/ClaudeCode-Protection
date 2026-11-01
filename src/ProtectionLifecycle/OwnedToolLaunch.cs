@@ -75,6 +75,11 @@ internal sealed class OwnedToolLaunch
             start=SessionResources.PowerShellStart(plan,workspace);
             if(!start.ArgumentList.SequenceEqual(arguments))throw WfpNative.Contract("OwnedPowerShellCompiledProgramRequired");
         }
+        else if(kind=="project")
+        {
+            start=BundledProjectDevelopment.Start(plan,workspace);
+            if(!start.ArgumentList.SequenceEqual(arguments))throw WfpNative.Contract("OwnedProjectCompiledProgramRequired");
+        }
         else if(kind=="git" && plan.GitAssetSetSHA256==SessionGitToolchain.AssetSetSHA256)
         {
             var prefix=SessionGitToolchain.Start(workspace,plan.GitDirectory).ArgumentList.ToArray();
@@ -99,10 +104,10 @@ internal sealed class OwnedToolLaunch
     internal static AtomicChild.InheritedTool Request(ProcessStartInfo start,string packageSid,ToolCreationEvidence evidence)
     {
         var raw=Environment.GetEnvironmentVariable("CPC_RESOURCE_PLAN")??throw WfpNative.Contract("OwnedToolResourcePlanRequired");
-        var plan=JsonSerializer.Deserialize<ResourceProbePlan>(raw)??throw WfpNative.Contract("OwnedToolResourcePlanRequired");plan.Validate();
+        var plan=ResourceProbePlan.Parse(raw);
         var workspace=plan.Workspace(packageSid);
         if(start.WorkingDirectory!=workspace)throw WfpNative.Contract("OwnedToolWorkspaceRefused");
-        var kind=start.FileName==plan.PowerShellLaunchImage?"powershell":start.FileName==WindowsPathSeal.Child(plan.GitDirectory,"git.exe")?"git":throw WfpNative.Contract("OwnedToolFixedImageRequired");
+        var kind=start.FileName==plan.PowerShellLaunchImage?(start.ArgumentList.FirstOrDefault()=="resource-project"?"project":"powershell"):start.FileName==WindowsPathSeal.Child(plan.GitDirectory,"git.exe")?"git":throw WfpNative.Contract("OwnedToolFixedImageRequired");
         var sequence=Interlocked.Increment(ref workerSequence);var path=ReplyPath(workspace,sequence);
         var request=new ToolLaunchRequest(1,"OWNED_TOOL_START_REQUEST",plan.Nonce,Environment.ProcessId,sequence,kind,start.ArgumentList.ToArray(),StartHash(start));
         // Validate locally too, but only the trusted owner grants creation.

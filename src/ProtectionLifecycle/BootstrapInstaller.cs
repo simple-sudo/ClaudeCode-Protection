@@ -211,7 +211,10 @@ public static class BootstrapInstaller
             // Actual installed Git DATA package. The later numeric ETW trace
             // failed, but its original Job closed/zero. This exact pin never
             // replaces the live all-admission, Job-zero and quarantine checks.
-            "B692EEF8753B737E126924E0FC6EA764F39C4BB5BDA4BBFC472A3F45701C45E8"
+            "B692EEF8753B737E126924E0FC6EA764F39C4BB5BDA4BBFC472A3F45701C45E8",
+            // Actual corrected update and held-token comparison package.
+            // Runtime admission/Job/quarantine checks remain mandatory.
+            "B5CFD0EDFEECB4CF91011D886A99961DE6762595D27048A547EB2BDDF10B9C7E"
         };
         private readonly ProtectedState state;
         private readonly BootstrapApproval approval;

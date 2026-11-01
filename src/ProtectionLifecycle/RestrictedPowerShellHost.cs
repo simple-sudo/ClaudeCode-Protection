@@ -16,7 +16,7 @@ internal static class RestrictedPowerShellHost
         {
             var actualPackage=AtomicChild.AssertRestrictedToolSelf();
             var raw=Environment.GetEnvironmentVariable("CPC_RESOURCE_PLAN")??throw WfpNative.Contract("PowerShellResourcePlanMissing");
-            var plan=JsonSerializer.Deserialize<ResourceProbePlan>(raw)??throw WfpNative.Contract("PowerShellResourcePlanMissing");plan.Validate();
+            var plan=ResourceProbePlan.Parse(raw);
             using var package=InstallationPackageSid.FromInstallationId(plan.InstallationId);
             if(actualPackage!=package.Value || Environment.GetEnvironmentVariable("CPC_POWERSHELL_POLICY_NONCE")!=plan.Nonce ||
                 !string.Equals(Environment.ProcessPath,plan.PowerShellLaunchImage,StringComparison.OrdinalIgnoreCase))

@@ -22,6 +22,7 @@
     <Compile Include="ProtectionRuntimeLease.cs" />
     <Compile Include="SessionProxy.cs;ProtectedSession.cs" />
     <Compile Include="SessionResources.cs" />
+    <Compile Include="BundledProjectDevelopment.cs" />
     <Compile Include="SessionManifestReadAccess.cs" />
     <Compile Include="SessionEtwProviderAccess.cs" />
     <Compile Include="OwnedToolLaunch.cs" />
@@ -40,6 +41,10 @@
     <Compile Include="../Shared/SessionTunnel.cs" Link="SessionTunnel.cs" />
     <EmbeddedResource Include="LifecycleProtocol.json" />
     <EmbeddedResource Include="PowerShellToolchain.json" />
+    <EmbeddedResource Include="../../samples/TextSummary/TextSummary.csproj" LogicalName="ProtectionLifecycle.TextSummary.TextSummary.csproj" />
+    <EmbeddedResource Include="../../samples/TextSummary/TextSummary.cs" LogicalName="ProtectionLifecycle.TextSummary.TextSummary.cs" />
+    <EmbeddedResource Include="../../samples/TextSummary/ProjectTests.cs" LogicalName="ProtectionLifecycle.TextSummary.ProjectTests.cs" />
+    <EmbeddedResource Include="../../samples/TextSummary/README.md" LogicalName="ProtectionLifecycle.TextSummary.README.md" />
     <EmbeddedResource Include="BrokerProtocol.json" />
     <EmbeddedResource Include="RecoveryProtocol.json" />
     <EmbeddedResource Include="RemovalProtocol.json" />
