@@ -1,5 +1,7 @@
 # TextSummary 项目开发流程
 
+2026-11-01候选/控制已READY：acc7825b881a40efb7b7f2cd7005f8d1 / manifest656D8690F56C5A085E1379B923692D2AC409F4B83E11BD18DE929033DC8C06E1，69输入Bootstrap复用A126301D、20文件暂存匹配。新持有预检与严格开关拒绝、22个helper判断逻辑用例通过，尚未授权或安装。完整两次人工UAC范围见work/bundled-project-r2-control-20261101/system-operation-review.md；普通用例不是实际Job或LPAC证明，当前安装仍53f/B5CFD0ED/04357BC8。
+
 本源码在原 Broker、原 ProtectedSession、原 Job/严格 LPAC 工具创建和关闭后导出流程内，增加显式 `develop-bundled-project`。它只执行仓库内 TextSummary 项目的固定维护任务：读取源码，给行数统计库增加 Unicode 空白分词统计，增加三个回归用例，调用已固定的 Roslyn/ref 资产编译并执行六项测试，保存运行结果，再由原 owner 在 Job 闭合后核验及保存结果。`export-developed-project SESSION HASH` 只有成功/清理回执绑定后才导出结果。
 
 普通资格已通过：source79626d9、68冻结输入、库A126301D，四模式均0/无stderr。普通自身项目确实完成上述读/改/编译/运行六项测试/快照核验/提取，七份结果文件摘要与提取副本独立一致，无SMA引擎加载。证据work/bundled-project-r2-build-20261101/qualification.json及qualification-closeout.json；前者摘要12ED9257C844B75FFAF1BCC1611099041C3E7CA977F183E3130CA011E59B89FC。这不是实际LPAC、原Job、工具拒绝或宿主隐私资格。首次构建的测试重名编译失败保留，修正r2通过；原receipt的InputCount63继承常量由伴随记录说明实际68，不改原件。

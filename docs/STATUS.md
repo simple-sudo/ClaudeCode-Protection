@@ -1,5 +1,13 @@
 # 当前开发状态
 
+## 2026-11-01 READY：固定项目候选和两次系统操作审查已备齐，尚未授权
+
+候选acc7825b881a40efb7b7f2cd7005f8d1 / manifest656D8690F56C5A085E1379B923692D2AC409F4B83E11BD18DE929033DC8C06E1 / libraryA126301D已暂存，仍为2资产变化/12复用。source25b6c7b的69输入Bootstrap构建冻结全部四份samples，复用已资格库未重建；20文件/10PE/6managed/无module initializer/内嵌manifest匹配。当前53f公开15资产摘要/可信所有者/受保护DACL/无不可信写者新核对匹配，实际新暂存包的前置精确迁移判定通过；没有读取私有current指针或现场Job状态。
+
+work/bundled-project-r2-control-20261101固定install plan92341D26/helper03F51270，run plan82318326/helper6189100A/launcher004F4EF1。两个持有输入预检、四个未知参数拒绝及22个直接提取实际helper判断的逻辑用例通过；测试覆盖闭合/Scope/工具/编译/拒绝/摘要/文件清单/内容，不是实际闭合或受保护项目执行证明。fixture反射参数设置错误和最初预检记录保留，修正后通过；没有重跑编译、旧Git或ETW工作负载。命令入口曾两次拒绝启动，原入口随后恢复，原因未知，没有替换执行路径或修改AV/权限。
+
+两项具体新操作：①INACTIVE更新及只读检查；②一次原Broker/Job内TextSummary项目代码执行与成功清理回执后的原Broker导出，失败时仅在原Job/Stop闭合证明一致后读本次一份错误记录（32KiB）。40秒owner、10秒导出、1秒排空，限定句柄/创建时间/映像绑定的新owner或导出子进程停止，不自动恢复/重试。完整来源、停止范围和六个输入摘要在该control的system-operation-review.md；**尚未授权或执行**，旧诊断/数据授权不转为新项目代码许可。
+
 ## 2026-11-01：显式 C# 项目链接入源码，普通账户完整项目测试通过
 
 新增`develop-bundled-project`/`export-developed-project`，复用原ProtectedSession、Broker映像、原Job原子LPAC工具创建、持有身份检查/放行门和闭合清理后成功回执。仓库samples/TextSummary是可编译的.NET库项目：任务读取源码，为行数统计增加Unicode空白分词统计及三个用例，使用既有固定Roslyn/ref编译、执行六项测试及运行计数，核验并导出修改后源码、3072字节DLL及运行/测试结果。具体链路见BUNDLED-PROJECT-DEVELOPMENT.md。

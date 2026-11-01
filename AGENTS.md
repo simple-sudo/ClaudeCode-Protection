@@ -16,6 +16,29 @@ boundaries below remain applicable. See docs/MIGRATION-20261031.md.
 
 # ClaudeCode-Protection working rules
 
+2026-11-01 PROJECT CANDIDATE READY, NOT_AUTHORIZED/NOT_RUN: acc7825b881a40efb7b7f2cd7005f8d1 /
+manifest656D8690F56C5A085E1379B923692D2AC409F4B83E11BD18DE929033DC8C06E1 /
+libraryA126301D.69-input Bootstrap source25b6c7b includes4 samples outside src
+and reused exact qualified library without rebuild;20 files/10PE/6managed/
+embedded manifest match. Original installed53f public15 hashes/trusted owners/
+protected DACL/no untrusted writer freshly matched, new exact staged pure prior
+transition accepted. Ordinary command launcher twice denied start then same
+entry recovered without workaround; cause unknown, no safety setting changed.
+Controls work/bundled-project-r2-control-20261101: install plan92341D26/
+helper03F51270; project run plan82318326/helper6189100A/launcher004F4EF1.
+Two held-input preflights/four strict unknown-switch refusals pass.22 exact
+helper guard fixtures pass: closure/scope/tool/compilation/denial/digest/result
+inventory and content refusals; fixture reports are NOT live Job proof. One
+fixture PSObject reflection setup failure and initial preflight snapshots kept.
+New task is develop-bundled-project, then ONLY its successful cleaned receipt's
+export-developed-project. No UAC yet; real project code is an explicit NEW scope.
+One bounded own tool error may be read ONLY on nonzero project exit AFTER exact
+original closed-zero Job/Stop proof, no other private records or raw Job read.
+40s owner/10s export/1s drains; exact held owner or export child stop only,
+no missing process closure inference, unchanged retry or automatic recovery.
+Read system-operation-review.md before concrete new human UAC decisions.
+Existing installed53f/B5CFD0ED/04357BC8 unchanged; old grants consumed.
+
 2026-11-01 NEW SOURCE/BUILD/ORDINARY VERIFIED (NOT INSTALLED): explicit
 develop-bundled-project + export-developed-project task uses SAME original
 ProtectedSession/Job/atomic LPAC tool creation/closed-cleanup receipt owner.
