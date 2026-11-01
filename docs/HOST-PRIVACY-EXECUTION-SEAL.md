@@ -1,6 +1,7 @@
 # 项目执行前由原所有者封存隐私观察
 
-当前SOURCE / INTEGRATED，六产品非执行语义检查通过；尚未构建、安装或实际运行新阶段。
+当前SOURCE / BUILD / INTEGRATED，六产品非执行语义检查通过，普通纯阶段检查VERIFIED；
+尚未安装或实际运行新受保护阶段。
 已安装00bc的固定项目与28次真实命名拒绝仍是原实测成果，不升级其历史证据，也不重跑。
 
 接入用户项目前，必须先解决子进程报告可写的问题。旧固定程序在代码执行后由owner读取任务
@@ -31,3 +32,26 @@ HostPrivacyExecutionGate是原owner的进程内状态，不接受文件中的阶
 这只保证观察在受控预执行阶段采集并被原owner保留，不代表所有宿主资源、持续任意代码访问、
 网络、十四准入或PowerShell均已通过。下一步用户项目支持必须显式声明执行范围，保持独立的
 输入摘要/编译器/结果验证；不能仅删去当前固定基线检查来扩大接入。
+
+## 本轮构建与资格
+
+source efc40ef的73输入冻结覆盖Lifecycle、Broker和WorkspacePipe及其源链接/嵌入资源。
+第一次准备模板误将原本地Lifecycle项目引用判成外部依赖，在构建/测试前拒绝；原FAIL和日志
+保留在work/privacy-owner-seal-build-20261101。独立r2仅允许ProtectionLifecycle/1.0.0、type=project、
+精确../ProtectionLifecycle/ProtectionLifecycle.csproj；继续拒绝任何外部包。r2离线构建均0错误/
+0警告，工具/引用/输入持有与输出目录限制保留。
+
+核心库3EB2AD99ECD12A6AAF8135FBA606300790817D5E04D87F9FE828ED6CC8C044DD，
+Broker040092C717460C901F3107F1CEAD836804D924E1878E58D6522C31CBFC8978A6。
+PE元数据检查无模块初始化；核心158原生导入与实际00bc/5600逐项不变，Broker0导入。
+新WorkspacePipe测试直接源链接生产HostPrivacyExecutionGate，80项普通合成观察检查0/无stderr：
+原始及返回数组逐槽改写不能污染owner副本；错阶段、双重创建/封存/释放、错会话/摘要/PID，
+以及每一个root OPENED或tool UNKNOWN槽位均阻止推进。不执行原LPAC/Job/项目/真实宿主检查。
+
+证据work/privacy-owner-seal-r2-build-20261101/qualification.json
+SHA2EE6C044DD255166DD93F226AB63E0A241FEBA7C9D3460624A4C2A522C7B56B8。
+boot07:39:57.5Z、AV/BFE、FlClash25816/20828、UU6812前后一致，厂商覆盖仍UNKNOWN。
+没有新安装/受保护操作/UAC/网络/权限变更，也未重跑已经通过的Git/项目/28次真实拒绝资格。
+这是新内存封存逻辑的普通资格，不是新两阶段原生Job放行通过或任意项目执行资格。
+GUI934E和此核心仍待后续完整候选合并交付。下一候选须加入并核对实际60EC9056前置迁移pin，
+不能直接安装此尚未准备迁移/Bootstrap/清单的核心字节或复用已消耗授权。
