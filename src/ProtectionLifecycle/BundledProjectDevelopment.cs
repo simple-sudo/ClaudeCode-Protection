@@ -13,24 +13,13 @@ namespace ProtectionLifecycle;
 // image. Never inferred from DATA input, never loaded into its elevated owner.
 internal static class BundledProjectDevelopment
 {
-    private static readonly string[] Names={"TextSummary.csproj","TextSummary.cs","ProjectTests.cs","README.md"};
     private const string Sample="alpha beta\n\n gamma delta epsilon\n";
     private const string Extension="public static int CountWords(string text) => text.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries).Length;";
     private const string Checks="if (Counter.CountWords(\"\") != 0) throw new Exception(\"empty words\");\n"+
         "if (Counter.CountWords(\"alpha beta\\n gamma delta epsilon\\n\") != 5) throw new Exception(\"multiple words\");\n"+
         "if (Counter.CountWords(\"a\\u2003b\\t c\") != 3) throw new Exception(\"unicode whitespace\");\npassed += 3;";
-    internal static byte[] Baseline()
-    {
-        var assembly=typeof(BundledProjectDevelopment).Assembly;
-        return WorkspaceBundle.Create(Names.Select(name=>
-        {
-            using var input=assembly.GetManifestResourceStream("ProtectionLifecycle.TextSummary."+name)
-                ??throw WfpNative.Contract("BundledProjectSourceMissing");
-            if(input.Length is <1 or >16384)throw WfpNative.Contract("BundledProjectSourceBounds");
-            var bytes=new byte[checked((int)input.Length)];input.ReadExactly(bytes);return(name,bytes);
-        })).Serialize();
-    }
-    internal static string BaselineHash=>WorkspaceBundle.Hash(Baseline());
+    internal static byte[] Baseline()=>TextSummarySource.Baseline();
+    internal static string BaselineHash=>TextSummarySource.BaselineHash;
     private static byte[] Modified(WorkspaceFile file)
     {
         var marker=file.Path switch {"TextSummary.cs"=>"// CPC_WORD_COUNT_EXTENSION","ProjectTests.cs"=>"// CPC_WORD_COUNT_CHECKS",_=>null};

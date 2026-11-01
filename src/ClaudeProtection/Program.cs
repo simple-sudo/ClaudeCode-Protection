@@ -14,6 +14,15 @@ internal static class Program
         {
             switch (args.FirstOrDefault())
             {
+                case "workspace-sample":
+                    if(args.Length!=2)return 64;
+                    WorkspaceFiles.RequireOrdinaryUser();
+                    var sample=TextSummarySource.Baseline();WorkspaceFiles.WriteBundleNew(args[1],sample);
+                    Console.WriteLine(JsonSerializer.Serialize(new {Status="TEXTSUMMARY_BASELINE_WRITTEN",SHA256=WorkspaceBundle.Hash(sample),FileCount=4,CodeExecuted=false}));return 0;
+                case "workspace-develop":
+                    if(args.Length!=3)return 64;
+                    var developed=await WorkspaceProcessing.Develop(args[1],args[2]);
+                    Console.WriteLine(JsonSerializer.Serialize(developed.Report));return developed.ExitCode;
                 case "workspace-process":
                     if(args.Length!=3)return 64;
                     var processed=await WorkspaceProcessing.Run(args[1],args[2]);
@@ -87,6 +96,7 @@ internal static class Program
                     Console.WriteLine("workspace-pack ROOT SELECTION_JSON NEW_BUNDLE | workspace-review BASE_BUNDLE RESULT_BUNDLE (data transfer only; no launch or host writeback)");
                     Console.WriteLine("workspace-extract BASE_BUNDLE RESULT_BUNDLE NEW_DIRECTORY (new files only; no merge or overwrite)");
                     Console.WriteLine("workspace-process BASE_BUNDLE NEW_RESULT_BUNDLE (installed Broker, human UAC; fixed offline Git data processing only)");
+                    Console.WriteLine("workspace-sample NEW_BASE_BUNDLE | workspace-develop BASE_BUNDLE NEW_RESULT_BUNDLE (TextSummary sample only; human UAC, protected source edit/build/run/six tests)");
                     return args.Length == 0 ? 0 : 64;
             }
         }

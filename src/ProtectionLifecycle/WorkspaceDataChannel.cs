@@ -13,8 +13,13 @@ namespace ProtectionLifecycle;
 public static partial class InstalledBroker
 {
     public static int ProcessWorkspacePipe(int callerPid,string nonce,string expectedSHA256)
+        =>ExchangeWorkspacePipe(callerPid,nonce,expectedSHA256,false);
+    public static int DevelopBundledProjectPipe(int callerPid,string nonce,string expectedSHA256)
+        =>ExchangeWorkspacePipe(callerPid,nonce,expectedSHA256,true);
+    private static int ExchangeWorkspacePipe(int callerPid,string nonce,string expectedSHA256,bool developProject)
     {
         ProtectedState.RequireAdministrator();var expected=Identifiers.Hash(expectedSHA256);
+        if(developProject && expected!=TextSummarySource.BaselineHash)throw new InvalidDataException("Bundled project baseline required");
         using var channel=new NamedPipeClientStream(".",WorkspacePipe.Name(callerPid,nonce),PipeDirection.InOut,
             PipeOptions.Asynchronous,TokenImpersonationLevel.Identification);
         channel.Connect(15000);WorkspacePipe.AssertPeer(channel,callerPid,false);
@@ -32,19 +37,23 @@ public static partial class InstalledBroker
                 stage="input";
                 using var transfer=new CancellationTokenSource(TimeSpan.FromSeconds(15));
                 var input=WorkspacePipe.Read(channel,WorkspaceBundle.MaxBundleBytes,transfer.Token).GetAwaiter().GetResult();
-                stage="processing";return ProcessWorkspaceBytes(layout,state,version,expected,input);
+                stage="processing";
+                if(!developProject)return ProcessWorkspaceBytes(layout,state,version,expected,input);
+                TextSummarySource.RequireBaseline(input);
+                return ProtectedSession.DevelopBundledProject(layout,state,version);
             });
             exit=processed.ExitCode;
             using var report=JsonDocument.Parse(processed.Report);var r=report.RootElement;
             session=Identifiers.Hex32(StrictJson.Text(r,"SessionId"));
             if(exit==0)
             {
-                if(StrictJson.Text(r,"Status")!="WORKSPACE_DATA_PROCESSED_AND_CLEANED" ||
-                    StrictJson.Text(r,"WorkspaceBaselineSHA256")!=expected)throw new InvalidDataException("Workspace terminal binding differs");
+                if(StrictJson.Text(r,"Status")!=(developProject?"BUNDLED_PROJECT_DEVELOPED_AND_CLEANED":"WORKSPACE_DATA_PROCESSED_AND_CLEANED") ||
+                    StrictJson.Text(r,"WorkspaceBaselineSHA256")!=expected ||
+                    developProject && StrictJson.Text(r,"Scope")!=WorkspacePipe.ProjectScope)throw new InvalidDataException("Workspace terminal binding differs");
                 resultHash=Identifiers.Hash(StrictJson.Text(r,"ClosedWorkspaceResultSHA256"));
                 // Reuse the existing authoritative success/cleanup receipt
                 // checks. Never expose a partial/private payload on failure.
-                stage="export";output=ExportWorkspaceData(session,resultHash);
+                stage="export";output=developProject?ExportDevelopedProject(session,resultHash):ExportWorkspaceData(session,resultHash);
             }
             else
             {
@@ -95,6 +104,9 @@ public static partial class InstalledBroker
         var response=JsonSerializer.SerializeToUtf8Bytes(new {SchemaVersion=3,ExitCode=exit,SessionId=session,BaseSHA256=expected,
             ResultSHA256=resultHash,Status=exit==0?"WORKSPACE_DATA_PROCESSED_AND_CLEANED":"WORKSPACE_DATA_NOT_CONFIRMED",
             FailureStage=failureStage,FailureKind=failureKind,FailureCode=failureCode,CreationEvidence=creationEvidence,StopEvidence=stopEvidence});
+        if(developProject)response=JsonSerializer.SerializeToUtf8Bytes(new {SchemaVersion=4,Scope=WorkspacePipe.ProjectScope,ExitCode=exit,SessionId=session,BaseSHA256=expected,
+            ResultSHA256=resultHash,Status=exit==0?"BUNDLED_PROJECT_DEVELOPED_AND_CLEANED":"BUNDLED_PROJECT_NOT_CONFIRMED",
+            FailureStage=failureStage,FailureKind=failureKind,FailureCode=failureCode,CreationEvidence=creationEvidence,StopEvidence=stopEvidence});
         WorkspacePipe.AssertPeer(channel,callerPid,false);
         WorkspacePipe.Write(channel,response,16384,completion.Token).GetAwaiter().GetResult();
         if(exit==0)WorkspacePipe.Write(channel,output??throw new InvalidDataException("Closed output missing"),WorkspaceBundle.MaxBundleBytes,completion.Token).GetAwaiter().GetResult();
@@ -116,6 +128,7 @@ public static partial class InstalledBroker
             using(var identity=new WindowsIdentity(token.DangerousGetHandle()))
             using(var current=WindowsIdentity.GetCurrent())
             {
+                WorkspaceFiles.RequireOrdinaryToken(token);
                 if(identity.User is null || identity.User!=current.User || new WindowsPrincipal(identity).IsInRole(WindowsBuiltInRole.Administrator))
                     throw new InvalidDataException("Ordinary caller must be the same human user as the elevated Broker");
             }

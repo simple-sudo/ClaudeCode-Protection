@@ -9,10 +9,15 @@ using ClaudeCodeProtection.Workspaces;
 internal static class WorkspaceProcessing
 {
     internal static async Task<(int ExitCode,object Report)> Run(string inputPath,string resultPath)
+        =>await Exchange(inputPath,resultPath,false);
+    internal static async Task<(int ExitCode,object Report)> Develop(string inputPath,string resultPath)
+        =>await Exchange(inputPath,resultPath,true);
+    private static async Task<(int ExitCode,object Report)> Exchange(string inputPath,string resultPath,bool developProject)
     {
         WorkspaceFiles.RequireOrdinaryUser();
         var input=WorkspaceFiles.ReadBundle(inputPath);var bundle=WorkspaceBundle.Parse(input);
         if(bundle.BaseSHA256 is not null || bundle.Files.Length==0)throw new InvalidDataException("Nonempty baseline workspace required");
+        if(developProject)TextSummarySource.RequireBaseline(input);
         var expected=WorkspaceBundle.Hash(input);
         // Only the installed sibling Broker, never a caller-supplied path or
         // dotnet command. An old installed daily binary is rejected by the
@@ -35,7 +40,7 @@ internal static class WorkspaceProcessing
         };
         // Every argument is a validated decimal/hex value. No shell or host
         // source/output path crosses elevation. UAC is always human-controlled.
-        start.Arguments="process-workspace-pipe "+Environment.ProcessId.ToString(System.Globalization.CultureInfo.InvariantCulture)+" "+nonce+" "+expected;
+        start.Arguments=(developProject?"develop-bundled-project-pipe ":"process-workspace-pipe ")+Environment.ProcessId.ToString(System.Globalization.CultureInfo.InvariantCulture)+" "+nonce+" "+expected;
         using var broker=Process.Start(start)??throw new IOException("Installed Broker did not start");
         // Hold the returned process handle through the exchange, preventing
         // PID-reuse acceptance. Never terminate an elevated session on UI loss.
@@ -47,12 +52,12 @@ internal static class WorkspaceProcessing
             await WorkspacePipe.Write(server,input,WorkspaceBundle.MaxBundleBytes,transfer.Token);
         using var completion=new CancellationTokenSource(TimeSpan.FromSeconds(75));
         var response=await WorkspacePipe.Read(server,16384,completion.Token);
-        var reply=WorkspacePipe.ParseReply(response,expected);var session=reply.SessionId;var resultHash=reply.ResultSHA256;
+        var reply=WorkspacePipe.ParseReply(response,expected,developProject);var session=reply.SessionId;var resultHash=reply.ResultSHA256;
         if(reply.ExitCode!=0)
         {
             await broker.WaitForExitAsync(completion.Token);
             if(broker.ExitCode!=reply.ExitCode)throw new IOException("Workspace failure process exit differs");
-            return(reply.ExitCode,new {Status="WORKSPACE_DATA_NOT_CONFIRMED",SessionId=session,BaseSHA256=expected,
+            return(reply.ExitCode,new {Status=developProject?"BUNDLED_PROJECT_NOT_CONFIRMED":"WORKSPACE_DATA_NOT_CONFIRMED",SessionId=session,BaseSHA256=expected,
                 reply.FailureStage,reply.FailureKind,reply.FailureCode,reply.CreationEvidence,reply.StopEvidence,ResultReleased=false,AutomaticRetry=false});
         }
         var result=await WorkspacePipe.Read(server,WorkspaceBundle.MaxBundleBytes,completion.Token);
@@ -62,8 +67,8 @@ internal static class WorkspaceProcessing
         await broker.WaitForExitAsync(completion.Token);
         if(broker.ExitCode!=0)throw new IOException("Workspace Broker did not complete successfully");
         output.Complete(result);
-        return (0,new {Status="WORKSPACE_DATA_RESULT_RECEIVED",SessionId=session,BaseSHA256=expected,ResultSHA256=resultHash,
-            FileCount=WorkspaceBundle.Parse(result).Files.Length,Changes=changes,OriginalProjectModified=false,ProjectCodeExecuted=false,
+        return (0,new {Status=developProject?"BUNDLED_PROJECT_RESULT_RECEIVED":"WORKSPACE_DATA_RESULT_RECEIVED",SessionId=session,BaseSHA256=expected,ResultSHA256=resultHash,
+            FileCount=WorkspaceBundle.Parse(result).Files.Length,Changes=changes,OriginalProjectModified=false,ProjectCodeExecuted=developProject,
             FormalAdmissionIssued=false,NetworkOpened=false,UACAutoConfirmed=false});
     }
 }

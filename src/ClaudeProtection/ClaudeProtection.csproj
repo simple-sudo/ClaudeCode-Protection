@@ -16,6 +16,11 @@
     <Compile Include="../Shared/StrictEnvironmentRequirements.cs" Link="StrictEnvironmentRequirements.cs" />
     <Compile Include="../Shared/WorkspaceBundle.cs;../Shared/WorkspaceFiles.cs" />
     <Compile Include="WorkspaceProcessing.cs;WorkspaceInstalledHost.cs;../Shared/WorkspacePipe.cs" />
+    <Compile Include="../Shared/TextSummarySource.cs" />
+    <EmbeddedResource Include="../../samples/TextSummary/TextSummary.csproj" LogicalName="ClaudeCodeProtection.TextSummary.TextSummary.csproj" />
+    <EmbeddedResource Include="../../samples/TextSummary/TextSummary.cs" LogicalName="ClaudeCodeProtection.TextSummary.TextSummary.cs" />
+    <EmbeddedResource Include="../../samples/TextSummary/ProjectTests.cs" LogicalName="ClaudeCodeProtection.TextSummary.ProjectTests.cs" />
+    <EmbeddedResource Include="../../samples/TextSummary/README.md" LogicalName="ClaudeCodeProtection.TextSummary.README.md" />
     <Compile Include="../Shared/WindowsDirectoryNames.cs;../ProtectionLifecycle/DirectoryNamePage.cs" />
     <None Include="../../scripts/Read-Environment.ps1" Link="Read-Environment.ps1" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>

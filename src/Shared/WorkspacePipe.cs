@@ -15,8 +15,9 @@ internal sealed record ToolCreationEvidence(uint? ChildProcessPolicy,int? ChildP
     uint? ImageLoadPolicy,int? ImagePolicyQueryError,int? ImageExecuteOpenError);
 internal sealed record WorkspaceStopEvidence(bool AdmissionClosed,bool QuarantineObservedBeforeStop,bool? FinalJobZero,int StopFailureCount);
 
-// Local data IPC between the ordinary daily UI and its one explicitly elevated
-// installed Broker. Never a host-path, script, process or command service.
+// Local IPC between the ordinary daily UI and its one explicitly elevated
+// installed Broker. v3 is DATA only; v4 is the explicit fixed sample task.
+// Never a host-path, script, arbitrary process or command service.
 internal static class WorkspacePipe
 {
     // WindowsPrincipal.IsInRole queries primary-token membership by making
@@ -25,12 +26,15 @@ internal static class WorkspacePipe
     internal const uint CallerTokenQueryAccess=0x0008|0x0002;
     internal sealed record Reply(int ExitCode,string? SessionId,string? ResultSHA256,string? FailureStage,string? FailureKind,int? FailureCode,
         ToolCreationEvidence? CreationEvidence,WorkspaceStopEvidence? StopEvidence);
-    internal static Reply ParseReply(byte[] bytes,string expected)
+    internal const string ProjectScope="EXPLICIT_TEXTSUMMARY_SOURCE_EDIT_BUILD_RUN_TEST";
+    internal static Reply ParseReply(byte[] bytes,string expected,bool developProject=false)
     {
         if(bytes.Length is <1 or >16384 || !WorkspaceBundle.IsHash(expected))throw new InvalidDataException("Workspace reply bounds refused");
         using var doc=JsonDocument.Parse(bytes,new JsonDocumentOptions{MaxDepth=4});var r=doc.RootElement;
-        RequireFields(r,"BaseSHA256","CreationEvidence","ExitCode","FailureCode","FailureKind","FailureStage","ResultSHA256","SchemaVersion","SessionId","Status","StopEvidence");
-        if(r.GetProperty("SchemaVersion").GetInt32()!=3 || r.GetProperty("BaseSHA256").GetString()!=expected)
+        var fields=new[]{"BaseSHA256","CreationEvidence","ExitCode","FailureCode","FailureKind","FailureStage","ResultSHA256","SchemaVersion","SessionId","Status","StopEvidence"};
+        RequireFields(r,developProject?fields.Append("Scope").ToArray():fields);
+        if(r.GetProperty("SchemaVersion").GetInt32()!=(developProject?4:3) || r.GetProperty("BaseSHA256").GetString()!=expected ||
+            developProject && (expected!=TextSummarySource.BaselineHash || r.GetProperty("Scope").GetString()!=ProjectScope))
             throw new InvalidDataException("Workspace reply contract differs");
         var exit=r.GetProperty("ExitCode").GetInt32();var session=r.GetProperty("SessionId").GetString();
         var hash=r.GetProperty("ResultSHA256").GetString();var stage=r.GetProperty("FailureStage").GetString();var kind=r.GetProperty("FailureKind").GetString();
@@ -41,11 +45,11 @@ internal static class WorkspacePipe
         if(exit==0)
         {
             if(session is null || !WorkspaceBundle.IsHash(hash) || stage is not null || kind is not null || code is not null || creation is not null || stop is not null ||
-                r.GetProperty("Status").GetString()!="WORKSPACE_DATA_PROCESSED_AND_CLEANED")throw new InvalidDataException("Workspace success reply differs");
+                r.GetProperty("Status").GetString()!=(developProject?"BUNDLED_PROJECT_DEVELOPED_AND_CLEANED":"WORKSPACE_DATA_PROCESSED_AND_CLEANED"))throw new InvalidDataException("Workspace success reply differs");
         }
         else if(exit is not (3 or 125) || hash is not null || stage is not ("installation" or "caller" or "input" or "processing" or "export") ||
             kind is null || kind.Length is <1 or >80 || kind.Any(c=>!char.IsAsciiLetterOrDigit(c)) || code is null ||
-            r.GetProperty("Status").GetString()!="WORKSPACE_DATA_NOT_CONFIRMED")throw new InvalidDataException("Workspace failure reply differs");
+            r.GetProperty("Status").GetString()!=(developProject?"BUNDLED_PROJECT_NOT_CONFIRMED":"WORKSPACE_DATA_NOT_CONFIRMED"))throw new InvalidDataException("Workspace failure reply differs");
         if((creation is not null || stop is not null) && (exit==0 || stage!="processing" || session is null))throw new InvalidDataException("Workspace diagnostic session differs");
         if(creation is not null && (kind is not ("PowerShellCreateProcess" or "PowerShellImageExecuteOpen") ||
             kind=="PowerShellCreateProcess" && creation.ImageExecuteOpenError!=0 ||
@@ -94,6 +98,7 @@ internal static class WorkspacePipe
     {
         if(ownerPid!=Environment.ProcessId)throw new InvalidDataException("Workspace channel must belong to this process");
         using var user=WindowsIdentity.GetCurrent();var sid=user.User??throw new InvalidOperationException("Human user required");
+        WorkspaceFiles.RequireOrdinaryToken(user.AccessToken);
         var security=new PipeSecurity();security.SetOwner(sid);security.SetAccessRuleProtection(true,false);
         security.AddAccessRule(new PipeAccessRule(new SecurityIdentifier(WellKnownSidType.NetworkSid,null),PipeAccessRights.FullControl,AccessControlType.Deny));
         security.AddAccessRule(new PipeAccessRule(sid,PipeAccessRights.FullControl,AccessControlType.Allow));

@@ -14,8 +14,20 @@ internal static class WorkspaceFiles
     internal static void RequireOrdinaryUser()
     {
         using var user=WindowsIdentity.GetCurrent();
+        RequireOrdinaryToken(user.AccessToken);
         if(new WindowsPrincipal(user).IsInRole(WindowsBuiltInRole.Administrator))throw new InvalidOperationException("Workspace maintenance must not be elevated");
     }
+    internal static void RequireOrdinaryToken(SafeAccessTokenHandle token)
+    {
+        // TokenIsAppContainer (29), read only. Failed queries never become
+        // ordinary-user authority; no impersonation or token adjustment.
+        if(!GetTokenInformation(token,29,out var appContainer,sizeof(int),out var length))
+            throw new Win32Exception(Marshal.GetLastWin32Error(),"Read workspace caller confinement");
+        if(length!=sizeof(int) || appContainer!=0)throw new InvalidDataException("Protected callers cannot use the ordinary workspace entry");
+    }
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
+    [DllImport("advapi32.dll",SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetTokenInformation(SafeAccessTokenHandle token,int kind,out int value,int size,out int returned);
     internal static byte[] Capture(string root,IEnumerable<string> selected)
     {
         RequireOrdinaryUser();

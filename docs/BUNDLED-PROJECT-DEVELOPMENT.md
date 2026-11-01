@@ -15,3 +15,28 @@
 2026-11-01已核对的官方源码中，PowerShell7.6.6及当时master的EventProvider仍对非零EventRegister返回抛异常，PSEtwLogProvider仍在类型构造中创建该provider。本次未下载安装或运行新版PowerShell，不能推定单纯升级修复当前LPAC问题。原始源码摘要见work/etw-supported-route-20261101/source-downloads.json。
 
 微软的[EventAccessControl](https://learn.microsoft.com/en-us/windows/win32/api/evntcons/nf-evntcons-eventaccesscontrol)、[EventAccessQuery](https://learn.microsoft.com/en-us/windows/win32/api/evntcons/nf-evntcons-eventaccessquery)、[EventAccessRemove](https://learn.microsoft.com/en-us/windows/win32/api/evntcons/nf-evntcons-eventaccessremove)说明了权限操作及注册表/默认读回；本轮检索没有找到现存内核条目同步刷新的文档化保证，不能把“未找到”当作Windows完全不存在该机制。已实测令牌判定与内核实际描述符的区别仍须保留。参考[7.6.6 EventProvider](https://raw.githubusercontent.com/PowerShell/PowerShell/v7.6.6/src/Microsoft.PowerShell.CoreCLR.Eventing/DotNetCode/Eventing/EventProvider.cs)和[7.6.6 PSEtwLogProvider](https://raw.githubusercontent.com/PowerShell/PowerShell/v7.6.6/src/System.Management.Automation/utils/tracing/PSEtwLogProvider.cs)。
+# Ordinary installed workflow — source integration (2026-11-01)
+
+The new daily commands are `workspace-sample NEW_BASE_BUNDLE` followed by
+`workspace-develop BASE_BUNDLE NEW_RESULT_BUNDLE`. The first writes only the four
+embedded TextSummary source files. The second requires their exact serialized
+baseline bytes before reserving a fresh result and requesting human UAC. It uses
+the original installed Broker, original task/Job/tool owner and successful-cleanup
+export. Existing `workspace-review` and `workspace-extract` review and extract the
+result into a new directory; no automatic source merge or host execution occurs.
+
+This is a fixed sample task, not caller-selected project execution. The separate
+Broker pipe entry and v4 reply require the explicit TextSummary scope and compiled
+baseline. The v3 `workspace-process` DATA contract stays unchanged and cannot
+accept a project reply. Both ordinary-user entry and elevated caller validation
+now query TokenIsAppContainer and reject confined tokens or failed queries before
+granting caller authority. Same human, current installed image, held process,
+authenticated pipe and original cleanup/export checks remain in place.
+
+At this source checkpoint the six-product non-emitting check passes. New build,
+ordinary IPC qualification, candidate staging and any new system operation are
+still pending; the actual acc7825b success below remains the reusable runtime
+evidence. No new UAC authorization transfers from that consumed run. The new
+token guard is not yet an observed rejection of an actual LPAC caller, and no
+broader host-sensitive privacy or arbitrary-project claim follows.
+

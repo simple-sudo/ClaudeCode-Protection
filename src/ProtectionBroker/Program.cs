@@ -24,12 +24,14 @@ internal static class Program
             }
             catch(Exception ex){Console.Error.WriteLine("Project export not confirmed: "+ex.GetType().Name+"; code="+ex.HResult);return 125;}
         }
-        if(args.Length==4 && args[0]=="process-workspace-pipe")
+        if(args.Length==4 && args[0] is "process-workspace-pipe" or "develop-bundled-project-pipe")
         {
             try
             {
                 if(!int.TryParse(args[1],System.Globalization.NumberStyles.None,System.Globalization.CultureInfo.InvariantCulture,out var owner) || owner<=0)return 64;
-                return ProtectionLifecycle.InstalledBroker.ProcessWorkspacePipe(owner,args[2],args[3]);
+                return args[0]=="develop-bundled-project-pipe"?
+                    ProtectionLifecycle.InstalledBroker.DevelopBundledProjectPipe(owner,args[2],args[3]):
+                    ProtectionLifecycle.InstalledBroker.ProcessWorkspacePipe(owner,args[2],args[3]);
             }
             catch(Exception ex){Console.Error.WriteLine("Workspace data channel not confirmed: "+ex.GetType().Name+"; code="+ex.HResult);return 125;}
         }
