@@ -43,6 +43,8 @@ internal sealed class WorkspaceResultSession
         WorkspaceFiles.RequireOrdinaryUser();
         return new(WorkspaceFiles.ReadBundle(baselinePath), WorkspaceFiles.ReadBundle(resultPath));
     }
+    internal static WorkspaceResultSession FromSnapshots(byte[] baseline,byte[] result)
+        =>new(baseline.ToArray(),result.ToArray());
 
     internal void ExtractNew(string destination)
         => WorkspaceFiles.ExtractResultNew(destination, baseline, result);

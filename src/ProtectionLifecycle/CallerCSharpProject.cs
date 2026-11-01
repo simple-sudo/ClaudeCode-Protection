@@ -26,11 +26,14 @@ internal static class CallerCSharpProject
         if(Directory.Exists(directory) || File.Exists(directory))throw WfpNative.Contract("CallerProjectFreshOutputRequired");
         Directory.CreateDirectory(directory);
         var path=BundledProjectDevelopment.Compile(tools,project,"CpcProject",task.Definition.Sources,CSharpProjectTask.Outputs[0]);
-        var stdout=new BoundedText();var stderr=new BoundedText();var originalOut=Console.Out;var originalError=Console.Error;
+        var stdout=new BoundedText();var stderr=new BoundedText();var originalOut=Console.Out;var originalError=Console.Error;var originalDirectory=Environment.CurrentDirectory;
         int exit,tests;
         try
         {
             Console.SetOut(stdout);Console.SetError(stderr);
+            // Identity/privacy gates ran in the fixed task root. User project
+            // relative I/O now belongs in its copied project, never the host.
+            Directory.SetCurrentDirectory(project);
             var compiled=AssemblyLoadContext.Default.LoadFromAssemblyPath(path);
             int Run(string type)
             {
@@ -42,7 +45,7 @@ internal static class CallerCSharpProject
             exit=Run(task.Definition.EntryType);tests=Run(task.Definition.TestType);
             if(exit!=0 || tests!=task.Definition.ExpectedTests)throw WfpNative.Contract("CallerProjectRunOrTestsFailed");
         }
-        finally{Console.SetOut(originalOut);Console.SetError(originalError);}
+        finally{Console.SetOut(originalOut);Console.SetError(originalError);Directory.SetCurrentDirectory(originalDirectory);}
         Write(CSharpProjectTask.Outputs[1],JsonSerializer.SerializeToUtf8Bytes(new{SchemaVersion=1,ExitCode=exit,TestsPassed=tests}));
         Write(CSharpProjectTask.Outputs[2],Encoding.ASCII.GetBytes(tests.ToString(System.Globalization.CultureInfo.InvariantCulture)));
         Write(CSharpProjectTask.Outputs[3],Encoding.UTF8.GetBytes(stdout.ToString()));Write(CSharpProjectTask.Outputs[4],Encoding.UTF8.GetBytes(stderr.ToString()));

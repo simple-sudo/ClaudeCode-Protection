@@ -43,4 +43,5 @@ Refuse(() => WorkspaceResultSession.Open(baselinePath, resultPath), "malformed r
 var unchanged = WorkspaceBundle.Create(WorkspaceBundle.Parse(before).Files.Select(f => (f.Path, f.Content)), WorkspaceBundle.Hash(before)).Serialize();
 File.WriteAllBytes(resultPath, unchanged);
 Require(WorkspaceResultSession.Open(baselinePath, resultPath).ReviewText.Contains("文件内容没有变化"), "unchanged result remains valid data review");
-Console.WriteLine(JsonSerializer.Serialize(new { Status = "OWN_NONSECRET_CENTER_RESULT_SESSION_PASSED", Checks = checks, Fixture = root, ProductEntryExecuted = false, ResultCodeExecuted = false, Elevated = false, HostTargetsRead = false, NetworkUsed = false, FixtureRetained = true }));
+var projectChecks=ProjectFlowCases.Run(root);
+Console.WriteLine(JsonSerializer.Serialize(new { Status = "OWN_NONSECRET_CENTER_RESULT_AND_PROJECT_FLOW_PASSED", Checks = checks, ProjectChecks=projectChecks, Fixture = root, ProductEntryExecuted = false, ResultCodeExecuted = false, Elevated = false, HostTargetsRead = false, NetworkUsed = false, FixtureRetained = true }));

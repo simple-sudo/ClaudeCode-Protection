@@ -44,7 +44,7 @@ internal static class WorkspaceProcessing
         // Every argument is a validated decimal/hex value. No shell or host
         // source/output path crosses elevation. UAC is always human-controlled.
         start.Arguments=(callerProject?"build-caller-csharp-project-pipe ":developProject?"develop-bundled-project-pipe ":"process-workspace-pipe ")+Environment.ProcessId.ToString(System.Globalization.CultureInfo.InvariantCulture)+" "+nonce+" "+expected;
-        using var broker=Process.Start(start)??throw new IOException("Installed Broker did not start");
+        using var broker=StartBroker(start);
         // Hold the returned process handle through the exchange, preventing
         // PID-reuse acceptance. Never terminate an elevated session on UI loss.
         _=broker.SafeHandle;
@@ -82,5 +82,10 @@ internal static class WorkspaceProcessing
         return (0,new {Status=developProject?"BUNDLED_PROJECT_RESULT_RECEIVED":"WORKSPACE_DATA_RESULT_RECEIVED",SessionId=session,BaseSHA256=expected,ResultSHA256=resultHash,
             FileCount=WorkspaceBundle.Parse(result).Files.Length,Changes=changes,OriginalProjectModified=false,ProjectCodeExecuted=developProject,
             FormalAdmissionIssued=false,NetworkOpened=false,UACAutoConfirmed=false});
+    }
+    private static Process StartBroker(ProcessStartInfo start)
+    {
+        try{return Process.Start(start)??throw new IOException("Installed Broker did not start");}
+        catch(System.ComponentModel.Win32Exception error){error.Data["Stage"]="UAC_START";throw;}
     }
 }

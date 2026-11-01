@@ -61,7 +61,9 @@ if(args[0] is "caller-project-build" or "caller-project-policy")
     if(args[0]=="caller-project-policy"){Console.WriteLine("PASS explicit caller v6 kind, input/privacy digest and original fixed tool start; wrong kind and v5 mixing refused; no product/Job/code execution");return 0;}
     var fixture=Path.Combine(AppContext.BaseDirectory,"ordinary-caller-project-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(fixture);
     Call(files,"MaterializeNew",fixture,"project",baseline);
+    var callerBeforeDirectory=Environment.CurrentDirectory;
     Call(executor,"BuildAndRun",Path.Combine(callerProgramFiles,"ClaudeCodeProtection-PowerShell-7.4.22"),Path.Combine(fixture,"project"),baseline);
+    Require(Environment.CurrentDirectory==callerBeforeDirectory,"ordinary caller execution restores prior working directory");
     var result=(byte[])Call(files,"SnapshotResult",fixture,"project",baseline)!;
     try{taskType.GetMethod("VerifyResult",BindingFlags.Instance|BindingFlags.NonPublic)!.Invoke(task,new object[]{result});}
     catch(TargetInvocationException error)when(error.InnerException is not null){ExceptionDispatchInfo.Capture(error.InnerException).Throw();throw;}

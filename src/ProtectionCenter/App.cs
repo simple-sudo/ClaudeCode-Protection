@@ -42,6 +42,8 @@ internal sealed class CenterWindow : Window
     private string? environmentOutput, baselineDisplay;
     private string environmentError = "";
     private bool busy, closeWhenDone;
+    private CallerProjectSession? preparedProject;
+    private Button? startProject;
     internal CenterWindow()
     {
         Title = "Claude Code 保护中心"; Width = 940; Height = 720; MinWidth = 820; MinHeight = 640;
@@ -51,11 +53,11 @@ internal sealed class CenterWindow : Window
         foreach (var height in new[] { GridLength.Auto, GridLength.Auto, GridLength.Auto, new GridLength(1, GridUnitType.Star), GridLength.Auto }) root.RowDefinitions.Add(new RowDefinition { Height = height });
         var header = new StackPanel();
         header.Children.Add(new TextBlock { Text = "Claude Code 保护中心", FontSize = 26, FontWeight = FontWeights.SemiBold });
-        header.Children.Add(new TextBlock { Text = "检查环境 · 维护代理配置 · 保留可恢复记录", Foreground = Muted, Margin = new Thickness(0, 7, 0, 0) });
+        header.Children.Add(new TextBlock { Text = "检查环境 · 项目开发 · 结果恢复", Foreground = Muted, Margin = new Thickness(0, 7, 0, 0) });
         root.Children.Add(header);
 
         var mode = new StackPanel();
-        mode.Children.Add(new TextBlock { Text = "当前模式：检查与维护", FontSize = 17, FontWeight = FontWeights.SemiBold });
+        mode.Children.Add(new TextBlock { Text = "当前模式：维护与项目任务", FontSize = 17, FontWeight = FontWeights.SemiBold });
         mode.Children.Add(new TextBlock { Text = "无需登录 Claude 账号。真实 Claude 会话与正式启动验收按你的要求延期。", Foreground = Muted, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 8, 0, 0) });
         mode.Children.Add(new TextBlock { Text = "日常网络沿用 FlClash；保护模块验收另行记录。", Foreground = Muted, Margin = new Thickness(0, 5, 0, 0) });
         var modeCard = Card(mode); modeCard.Margin = new Thickness(0, 22, 0, 16); Grid.SetRow(modeCard, 1); root.Children.Add(modeCard);
@@ -64,7 +66,7 @@ internal sealed class CenterWindow : Window
         var network = new StackPanel(); network.Children.Add(Label("日常代理")); network.Children.Add(proxy);
         network.Children.Add(new TextBlock { Text = "同时核对 Windows 的两套代理配置", Foreground = Muted, FontSize = 12, Margin = new Thickness(0, 6, 0, 0) });
         var modules = new StackPanel(); modules.Children.Add(Label("保护模块")); modules.Children.Add(components);
-        modules.Children.Add(new TextBlock { Text = "保护尚未启用；工程验证不在日常入口提供", Foreground = Muted, FontSize = 12, Margin = new Thickness(0, 6, 0, 0) });
+        modules.Children.Add(new TextBlock { Text = "正式会话尚未启用；项目任务单独确认", Foreground = Muted, FontSize = 12, Margin = new Thickness(0, 6, 0, 0) });
         var networkCard = Card(network); networkCard.Margin = new Thickness(0, 0, 8, 0);
         var modulesCard = Card(modules); modulesCard.Margin = new Thickness(8, 0, 0, 0); Grid.SetColumn(modulesCard, 1);
         status.Children.Add(networkCard); status.Children.Add(modulesCard); Grid.SetRow(status, 2); root.Children.Add(status);
@@ -75,6 +77,9 @@ internal sealed class CenterWindow : Window
         AddAction(buttons, "检查代理连通性", () => Inspect(true));
         AddAction(buttons, "修复 Claude 代理配置", Repair);
         AddAction(buttons, "撤销上次配置修改", Restore);
+        AddAction(buttons, "选择 C# 项目", () => PrepareProject(false));
+        AddAction(buttons, "导入项目任务包", () => PrepareProject(true));
+        startProject=AddAction(buttons, "开始项目开发", RunProject);startProject.IsEnabled=false;
         AddAction(buttons, "审阅开发结果", () => ReviewWorkspace(false));
         AddAction(buttons, "提取开发结果", () => ReviewWorkspace(true));
         lower.Children.Add(buttons);
@@ -82,7 +87,7 @@ internal sealed class CenterWindow : Window
         details.Text = "检查结果会显示在这里。\r\n\r\n日常入口不提供故障注入或进程终止测试。\r\n日志中保留失败和未知项，不保存提示词或登录凭据。";
         Grid.SetRow(lower, 3); root.Children.Add(lower);
         Grid.SetRow(activity, 4); root.Children.Add(activity); Content = root;
-        Closing += (_, e) => { if (busy) { closeWhenDone = true; e.Cancel = true; activity.Text = "正在完成检查或清理，结束后自动关闭。"; } };
+        Closing += (_, e) => { if (busy) { closeWhenDone = true; e.Cancel = true; activity.Text = "正在完成当前操作，结束后自动关闭。"; } };
         // Re-render freshness without repeating the worker or any network test.
         evidenceRefresh.Tick += (_, _) => { if (!busy) RefreshEnvironmentDisplay(); };
         Closed += (_, _) => evidenceRefresh.Stop();
@@ -91,17 +96,59 @@ internal sealed class CenterWindow : Window
     private static TextBlock Value(string text) => new() { Text = text, FontSize = 20, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 8, 0, 0) };
     private static TextBlock Label(string text) => new() { Text = text, Foreground = Muted, FontSize = 13 };
     private static Border Card(UIElement content) => new() { Child = content, Background = Brushes.White, BorderBrush = new SolidColorBrush(Color.FromRgb(222, 228, 236)), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(10), Padding = new Thickness(18) };
-    private void AddAction(Panel panel, string label, Func<Task> work)
+    private void RefreshActions()
+    {foreach(var action in actions)action.IsEnabled=!busy;if(startProject is not null)startProject.IsEnabled=!busy && preparedProject is not null;}
+    private Button AddAction(Panel panel, string label, Func<Task> work)
     {
         var button = new Button { Content = label, Padding = new Thickness(14, 9, 14, 9), Margin = new Thickness(0, 0, 10, 6), Background = Brushes.White, Foreground = Ink, BorderBrush = new SolidColorBrush(Color.FromRgb(200, 211, 224)), Cursor = System.Windows.Input.Cursors.Hand };
         button.Click += async (_, _) =>
         {
-            busy = true; foreach (var action in actions) action.IsEnabled = false;
+            if(busy)return;busy = true;RefreshActions();
             try { await work(); }
             catch (Exception ex) { activity.Text = "检查未完成：" + ex.GetType().Name + "。已有记录保留，请查看诊断结果。"; }
-            finally { busy = false; foreach (var action in actions) action.IsEnabled = true; if (closeWhenDone) Close(); }
+            finally { busy = false;RefreshActions(); if (closeWhenDone) Close(); }
         };
-        actions.Add(button); panel.Children.Add(button);
+        actions.Add(button); panel.Children.Add(button);return button;
+    }
+    private async Task PrepareProject(bool bundle)
+    {
+        environmentOutput=null;preparedProject=null;
+        string? path;
+        if(bundle){var dialog=new Microsoft.Win32.OpenFileDialog{Title="选择项目任务包",Filter="工作区数据包 (*.json)|*.json",CheckFileExists=true,Multiselect=false};path=dialog.ShowDialog(this)==true?dialog.FileName:null;}
+        else{var dialog=new Microsoft.Win32.OpenFolderDialog{Title="选择项目文件夹（需含 cpc-project.json）",Multiselect=false};path=dialog.ShowDialog(this)==true?dialog.FolderName:null;}
+        if(path is null){activity.Text="已取消选择，尚未准备新的项目任务。";return;}
+        activity.Text="正在读取所选项目并核对修改与测试声明……";
+        preparedProject=await Task.Run(()=>bundle?CallerProjectSession.OpenBundle(path):CallerProjectSession.OpenFolder(path));
+        details.Text=preparedProject.ReviewText;activity.Text="请审阅修改内容；点击“开始项目开发”后需确认 Windows 权限提示。";
+    }
+    private async Task RunProject()
+    {
+        var project=preparedProject??throw new InvalidOperationException("请先选择项目或导入任务包。");
+        environmentOutput=null;BackendClient.AssertProjectLocation();
+        var parent=new Microsoft.Win32.OpenFolderDialog{Title="选择本次开发记录与结果的保存位置",Multiselect=false};
+        if(parent.ShowDialog(this)!=true){activity.Text="已取消启动，准备好的项目仍保留。";return;}
+        var run=project.PlanRun(parent.FolderName);BackendResult? result=null;
+        try
+        {
+            activity.Text="正在保存已审阅的项目快照……";await Task.Run(()=>project.WriteInput(run));
+            details.Text=project.ReviewText+"\r\n本次运行目录："+run.Directory;
+            activity.Text="正在发起项目开发，请确认 Windows 权限提示。原项目保留。";
+            result=await BackendClient.BuildCallerProject(run.InputPath,run.ResultPath,project.InputSHA256);
+            if(result.ExitCode!=0 || result.Error.Length!=0){activity.Text=CallerProjectSession.FailureMessage(result);return;}
+            var restored=await Task.Run(()=>project.AcceptResult(run,result));
+            details.Text=restored.ReviewText+"\r\n本次仅核对所列的14类资源；其他保护范围尚未完整验收。\r\n本次运行目录："+run.Directory;
+            activity.Text="项目已返回结果，正在提取到新目录……";
+            await Task.Run(()=>restored.ExtractNew(Path.Combine(run.Directory,"files")));
+            activity.Text=$"本次项目已完成，{project.ExpectedTests} 项测试通过；两名执行者对所列资源的读取均被拒绝。";
+            details.Text+="\r\n结果目录："+Path.Combine(run.Directory,"files");
+        }
+        catch(OperationCanceledException){activity.Text="等待项目返回超时，任务状态未确认。请保留运行目录，并取消仍未确认的权限提示；不会自动重试。";}
+        catch(Exception ex){activity.Text="项目或结果恢复未完成："+ex.GetType().Name+"。请保留运行目录，其中可能已有部分文件；原项目保留。";}
+        finally
+        {
+            if(!details.Text.Contains(run.Directory,StringComparison.Ordinal))details.Text+="\r\n本次运行目录："+run.Directory;
+            if(result is not null)try{activity.Text+="\n诊断记录："+BackendClient.SaveReport("project-build",result);}catch(Exception ex){activity.Text+="\n诊断记录未能保存："+ex.GetType().Name+"。以上操作结果保留。";}
+        }
     }
     private async Task Inspect(bool online)
     {
