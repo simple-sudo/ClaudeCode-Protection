@@ -1,5 +1,21 @@
 # 完整项目验收账本
 
+## 2026-11-01 支持用户清单的C#项目与原owner执行前封存实测通过
+
+当前42f7fe36/917202DE/7DDC1FD0保持INACTIVE。原首次调用125/1223失败独立保留；本人重新
+授权一次项目并确认UAC后，11:55:19Z会话6afe136f45a54bbba5f95acc47245889通过原普通入口/
+原Broker/Job/严格LPAC完成CallerWordCount三源文件的一项修改、编译、运行、三个测试、成功
+清理导出及普通review/extract，十文件/六变化独立一致。root15236和compiler1488对同14项
+真实命名文件/键/进程对象分别最小read-open，28项全拒绝5；认证v6确认原owner在代码前封存
+观察、再次核验同一工具身份后才放行。最终目标身份/原Job零/隔离/精确清理仍是成功门；
+不额外读取raw Job/Stop或私有错误，不读真实秘密内容/键值/内存，不在宿主运行输出DLL。
+复用已安装版本和已验证9F07输入，未重装或重打包；无强停/恢复/自动重试/设置变化，
+boot/AV/BFE/FlClash/UU一致，无产品残留。结果305468FE0767F1441D673BE79CADAE3C6C61EF0AC9C8EB0F79EC5B8BE820D7E9，
+交付work/caller-csharp-protected-r2-delivery-20261101；观测记录SHA5EA1649150AC575D8217B831E2EEF8E76C159C76874EC02306672E41BCCD0AEA。
+本次是支持的用户C#清单及这个项目/当时命名对象VERIFIED/DELIVERABLE；复用结果，不反复
+重跑。不能推广为所有恶意程序/其他宿主API、完整网络/十四准入、PowerShell/GPU/恢复/GUI
+交互或完整产品验收。真实Claude继续延期，完整目标保持进行中。
+
 ## 2026-11-01 固定真实项目开发与28次真实命名资源拒绝通过
 
 已明确授权并本人确认两次UAC：00bcd9b7/60EC9056/5600CD36的INACTIVE更新和只读inspect0，

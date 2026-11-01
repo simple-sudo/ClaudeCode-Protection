@@ -24,6 +24,32 @@ rerun deletion or describe historical blocked/exists paragraphs as current.
 
 # ClaudeCode-Protection working rules
 
+2026-11-01 ACTUAL V6 CALLER PROJECT + ORIGINAL OWNER PRECODE SEAL PASSED:
+Human specifically authorized project-r2 once and manually confirmed its UAC.
+11:55:19Z ordinary build/review/extract0 on installed42f7fe36/917202DE/core7DDC1FD0,
+GUI934E826A,INACTIVE; no reinstall or pack/check rerun, reused exact9F07 input.
+Original Broker/Job/strict LPAC session6afe136f45a54bbba5f95acc47245889 completed
+CallerWordCount literal edit of1 of3sources, pinned Roslyn compile,Entry words=3/
+exit0,3tests, original success cleanup/export and10 files independently matching.
+root15236/compiler1488 each14 REAL named resource minimal read-open returned5;
+authenticatedv6 OwnerSealedBeforeCode=true. Pre-code owner snapshots, second
+held native tool/Job/token identity gate and final target identity controls
+were actual mandatory source paths. No file contents/key values/memory read.
+Closure/cleanup authority remains original authenticated success export, NOT
+extra raw Job/Stop read. Result305468FE0767F1441D673BE79CADAE3C6C61EF0AC9C8EB0F79EC5B8BE820D7E9;
+DLLAABF6D24/3072bytes. Delivery work/caller-csharp-protected-r2-delivery-20261101.
+Evidence work/caller-csharp-project-r2-control-20261101/observed-result.json
+SHA5EA1649150AC575D8217B831E2EEF8E76C159C76874EC02306672E41BCCD0AEA.
+No force/recovery/automatic retry/private error or host result-code execution;
+boot07:39:57.5Z/AV/BFE/FlClash25816/20828/UU6812 unchanged,no product PIDs.
+One grant consumed. Preserve prior125/1223 and empty output separately. Reuse
+this actual case, old Git/TextSummary successes; no unchanged requalification.
+SOURCE/BUILD/INTEGRATED/VERIFIED/DELIVERABLE only this supported v6 manifest/
+project/current named objects, NOT all malicious code/host APIs,PowerShell,
+forced network/14 admission/GPU/recovery/GUI interaction/full product proof.
+Continue GUI project flow and remaining full goal; actual installation INACTIVE,
+real Claude deferred. Older pending/canceled/current00bc statements historical.
+
 2026-11-01 ACTUAL42f INACTIVE INSTALL PASSED; CALLER LAUNCH CANCELED1223:
 Human authorized both frozen42f steps. Manual install UAC completed11:34:22Z,
 actual42f7fe36a4d24194ac9f2da0f967b289/917202DE/core7DDC1FD0/GUI934E826A,

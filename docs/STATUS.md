@@ -1,5 +1,32 @@
 # 当前开发状态
 
+## 2026-11-01 实机：用户C#项目、执行前封存与双端真实拒绝通过
+
+本人重新授权一次项目操作并确认UAC后，11:55:19Z当前42f7fe36/917202DE/7DDC1FD0的普通
+workspace-build-csharp -> review -> extract全部0。复用原已通过pack/check的9F07输入和现有安装，
+没有重新安装/打包。会话6afe136f45a54bbba5f95acc47245889在原Broker/原Job/严格LPAC中完成
+CallerWordCount三源文件的一项文字修改、固定Roslyn编译、Entry.Run输出words=3/退出0、
+三个测试、原成功清理导出和十文件新目录恢复；六项变化/全部提取字节与长度独立匹配。
+结果305468FE0767F1441D673BE79CADAE3C6C61EF0AC9C8EB0F79EC5B8BE820D7E9，
+实际DLL AABF6D245E58E05417CA5C38337E1B6716693422528FC5D18540CB3CDAB7F606/3072字节。
+交付work/caller-csharp-protected-r2-delivery-20261101。
+
+root15236/compiler1488各14项真实命名对象最小read-open全部ACCESS_DENIED5，原owner的
+存在性/文件ID/精确映像/持有进程及最终身份正控制均为原路径强制门。认证v6回复还明确
+OwnerSealedBeforeCode=true：在代码前由原owner封存两端观察、再次核验工具身份后才放行，
+代码后用原owner不可变副本。闭合/清理依据仍为认证安装管道中的原成功导出门，不是额外
+raw Job/Stop读取；没有真实内容/键值/进程内存读取、宿主执行输出DLL或权限/设置变化。
+
+新单次授权消耗，无强停/重试/恢复/私有错误读取。boot07:39:57.5Z、AV/BFE、FlClash25816/20828、
+UU6812前后一致，无产品残留，完整厂商覆盖UNKNOWN。原1223失败和空输出独立保留。
+证据work/caller-csharp-project-r2-control-20261101/observed-result.json
+SHA5EA1649150AC575D8217B831E2EEF8E76C159C76874EC02306672E41BCCD0AEA。
+SOURCE/BUILD/INTEGRATED/VERIFIED/DELIVERABLE仅限此支持的v6清单与实际WordCount案例/命名对象。
+复用本结果，不重跑原Git、TextSummary或本项目来补旧证据。所有可能恶意项目、其他宿主API/
+资源、PowerShell、强制网络、十四可信准入、GPU、恢复、GUI交互和完整产品仍开放；真实Claude延期。
+下一步GUI任务选择/审阅/启动/状态/结果恢复接入，当前实际安装保持INACTIVE。
+下方项目取消/待授权记录为历史，不能再次运行其已消耗入口。
+
 ## 2026-11-01 实际安装42f成功；项目调用返回取消1223，尚无新受保护项目结果
 
 两项具体授权已实际发起：本人第一次UAC后11:34:22Z更新为42f7fe36a4d24194ac9f2da0f967b289 /

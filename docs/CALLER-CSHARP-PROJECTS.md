@@ -1,8 +1,14 @@
 # 显式用户 C# 项目开发入口
 
 当前SOURCE / BUILD / INTEGRATED，六产品非执行语义检查通过，普通限定样本VERIFIED；
-当前已INACTIVE安装42f/9172/7DDC，首次开发调用返回Win32取消码1223，尚无新受保护项目成功结果。
-详见STATUS及work/caller-csharp-control-20261101/observed-result.json（SHA86D5235F）。
+当前已INACTIVE安装42f/9172/7DDC。首次取消1223保留；新单次本人授权/UAC后的project-r2
+11:55:19Z实际成功，会话6afe136f45a54bbba5f95acc47245889，原Job/严格LPAC完成WordCount
+修改/编译/运行/三个测试/成功清理导出，十文件独立一致。root15236/compiler1488各14真实对象
+全部拒绝5，认证v6的OwnerSealedBeforeCode=true，原owner封存和二次身份门真实经过。
+证据project-r2-control/observed-result SHA5EA1649150AC575D8217B831E2EEF8E76C159C76874EC02306672E41BCCD0AEA。
+交付work/caller-csharp-protected-r2-delivery-20261101，结果305468FE...820D7E9。复用现有安装及
+原9F07数据，无重打包/强停/恢复/私有错误或raw Job读取。闭合依据原认证成功导出门。
+新授权已消耗；仅此清单/项目/命名对象VERIFIED，不推导所有用户程序/其他API/网络或正式准入。
 原00bc/60EC/5600的固定TextSummary及28次真实敏感资源拒绝继续复用，不视为本入口通过。
 
 普通入口新增`workspace-check-csharp BASE_BUNDLE`，只检查任务；新增
@@ -85,3 +91,6 @@ SHA500D13483C1686CCF762D82A108C110B706896BA09EFB5A9229F45B501739791。
 需要本人明确决定一次新的UAC，因为原审查禁止自动重试；不是复用旧授权盲目恢复。
 新审查work/caller-csharp-project-r2-control-20261101/system-operation-review.md
 SHA8D2B3DF2A497FC7C9644541E6AE4F11FD92D7A64B7853AFBE634113809E66D65。NOT_AUTHORIZED/NOT_RUN。
+
+上述待授权为历史准备状态：project-r2已经本人明确授权、手动UAC并成功，不能重复使用claim。
+复用本实测，继续GUI任务发起与结果恢复、网络/十四准入/GPU/PowerShell/恢复等完整交付工作。
