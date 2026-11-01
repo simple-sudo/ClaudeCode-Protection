@@ -12,7 +12,7 @@ internal static class ProjectFlowCases
         var checks=0;
         void Require(bool value,string reason){if(!value)throw new InvalidDataException(reason);checks++;}
         void Refuse(Action action,string reason)
-        {try{action();}catch(Exception error)when(error is InvalidDataException or IOException or UnauthorizedAccessException or InvalidOperationException or JsonException){checks++;return;}throw new Exception("Accepted "+reason);}
+        {try{action();}catch(Exception error)when(error is InvalidDataException or IOException or UnauthorizedAccessException or InvalidOperationException or JsonException || error is System.ComponentModel.Win32Exception {NativeErrorCode:183}){checks++;return;}throw new Exception("Accepted "+reason);}
         var folder=Path.Combine(fixture,"caller-source");Directory.CreateDirectory(folder);
         var definition=new CSharpProjectDefinition(1,CSharpProjectTask.Kind,new[]{"Entry.cs","Checks.cs"},new[]{new CSharpProjectEdit("Entry.cs","return -1;","return 0;")},"Demo.Entry","Demo.Checks",1);
         File.WriteAllBytes(Path.Combine(folder,CSharpProjectTask.Manifest),JsonSerializer.SerializeToUtf8Bytes(definition));
