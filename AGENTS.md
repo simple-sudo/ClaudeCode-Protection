@@ -24,6 +24,28 @@ rerun deletion or describe historical blocked/exists paragraphs as current.
 
 # ClaudeCode-Protection working rules
 
+2026-11-01 subsequent GUI result review/extract SOURCE/BUILD/INTEGRATED and
+ordinary own-data/offscreen VERIFIED, NOT installed: source dbb3249's13 frozen
+inputs, offline SDK8.0.422/core+desktop8.0.28/47 desktop refs, no external packages,
+Center and CenterResults builds0 errors/warnings. GUI934E826A/testC5CE4A01,
+no module initializer;8 imports only existing WorkspaceFiles/directory reader.
+11 nonsecret own-data checks passed on actual WorkspaceResultSession, including
+replacing BOTH inputs after review yet extracting original reviewed bytes,
+refusing existing output without overwrite, wrong baseline/malformed result,
+visible add/modify/delete and no content/execution/admission claim. Ordinary
+session stores immutable bytes, reuses existing transfer path checks, no new
+executor/UAC or maintenance command dispatch. Actual offscreen GUI preview0,
+940x720 visually reviewed,6 actions fit. File/folder dialogs and installed
+interactive flow NOT exercised. Source check's first missing WPF IO/parse
+dependency failure preserved; corrected six-product non-emitting check passed.
+No original project/Git/host privacy requalification, Job/Broker/network/UAC,
+installed mutation or result-code execution; boot/AV/BFE/FlClash/UU unchanged.
+Evidence work/center-results-build-20261101/qualification.json
+SHA4E9B79902894A8419778F6A48F0C4616CDD77B6950F9D32122461731114CA48B.
+Current installed00bc/60EC/5600 and both consumed grants below remain. Bundle
+the GUI in a later complete candidate; never edit installed files in place.
+See docs/CENTER-WORKSPACE-RESULTS.md. Full product goal remains active.
+
 2026-11-01 ACTUAL FIXED PROJECT WITH NAMED HOST DENIALS DELIVERED:
 Human specifically authorized both frozen00bc operations and manually confirmed
 both UACs. INACTIVE update/read-only inspection completed10:29:49Z. Current
