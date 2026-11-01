@@ -24,6 +24,47 @@ rerun deletion or describe historical blocked/exists paragraphs as current.
 
 # ClaudeCode-Protection working rules
 
+2026-11-01 USER CONFIRMED KASPERSKY FALSE POSITIVE AND REQUESTED A DIFFERENT
+IMPLEMENTATION: accept this observation, do not repeat AV-cause investigations.
+New data-only packager now reads PE metadata/resources without product-code
+loading/invocation in packaging. Exact86 payload inputs/library5600CD36 reused;
+no product rebuild or old Git/project requalification. Same ordinary command
+entry used, no protection-setting changes. Earlier error5/blocker paragraphs
+are preserved history, not a reason to abandon authorized implementation work.
+Specific new protected/system operations still need their concrete human UAC.
+
+2026-11-01 NAMED-HOST CANDIDATE READY, NOT_AUTHORIZED/NOT_RUN:
+00bcd9b7c7a640b3a66e28648db171cf / manifest60EC905689CFB91D6D8BC4A4020B250B135FB910D2C2C7A7FDC9AF1AC7A8292F /
+library5600CD36. PE-only four-source extraction exactly matchesED3DDCB2;
+source-derived privacy policy18AC844D. Standalone ordinary fixture with zero
+native imports/no module initializer invokes ONLY actual production pure
+transition/baseline/policy members; actual stagedF415 ->60EC transition and
+data extraction match. Initial nullable compiler error/source retained, r2
+passes; no host target/protected product/Job/UAC. Bootstrap source5995c64
+84 inputs reuses exact qualified library;20files/10PE/6managed/embedded
+manifest match;3 changed11 reused assets. Current14ea public15 hashes/owners/
+protected DACL/no untrusted writers freshly match; private current remains
+original install-owner gate, not inferred from public files.
+Two held input preflights/three unknown-switch refusals and exact runner
+2 positive/68 negative guard cases pass (synthetic, NOT real Job/privacy proof).
+Controls work/host-privacy-r3-control-20261101: install planF1B83BFE/helperCFA0B456,
+workflow plan7FA10B0D/runner21E3F27D. Frozen system-operation-review.md
+SHABD7287154C7010AD4E59D203F5551325F6EFEEAFBB85A9280EA115D8A9522BD8.
+New scope: original root + inspected compiler each attempt minimal read-open
+on real FlClash3/UU4/private2 files,2 real registry keys,3 exact-image process
+objects (up to28 attempts); no content/value/memory reads. Owner metadata+
+held query/synchronize process controls and final identity checks required.
+Any OPENED/absence/drift/sharing/UNKNOWN or missing actor refuses project result.
+This is NOT all host privacy, MAC/BSSID, other API, arbitrary malicious project,
+14 environment admission, network/GPU/PowerShell/GUI qualification. No AV/ACL/
+privilege/capability/network change; no private tool-error/raw Job read allowed.
+Runner180s per daily call including human UAC/1s drain; only exact handle/
+creation/image-bound own ORDINARY daily stop, never elevated owner or host app.
+Original runtime20s/Job Stop gates remain; no automatic retry/recovery or
+missing-process closure inference. Need two concrete human decisions/UACs for
+inactive update/readonly inspect, then one actual named-resource project flow.
+Current installed14ea/F415/334E remains unchanged; older grants consumed.
+
 2026-11-01 NEW HOST-PRIVACY SOURCE/BUILD/ORDINARY VERIFIED, NOT INSTALLED:
 source915e5b4 adds paired fixed native read-open observations in SAME original
 project owner/Job/LPAC root and inspected compiler.9 real named files (FlClash3,

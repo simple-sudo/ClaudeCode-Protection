@@ -2,6 +2,18 @@
 
 ## 2026-11-01 用户明确确认误报后的打包实现调整
 
+最新READY但未授权/未运行系统操作：候选00bc/60EC/5600。source5995c64的84输入Bootstrap复用
+精确库不重建，完整20文件/10PE/6managed/module-initializer缺席/内嵌manifest匹配。当前14ea
+公开15资产摘要/可信所有者/受保护DACL/无不可信写者新复核匹配。两个持有输入预检、三个未知
+开关拒绝及本次runner2正例/68拒绝通过；后者是合成报告+旧结果，不是活Job或真实宿主拒绝。
+冻结审查work/host-privacy-r3-control-20261101/system-operation-review.md
+SHABD7287154C7010AD4E59D203F5551325F6EFEEAFBB85A9280EA115D8A9522BD8。
+install planF1B83BFE/helperCFA0B456，workflow plan7FA10B0D/runner21E3F27D。
+接下来的两次新UAC是INACTIVE更新/只读检查，然后一次原严格LPAC项目加root/compiler各14真实
+命名资源read-open检查。无数据/值/内存读取；任何失败不释放结果。180s普通客户端限时/仅精确
+自身普通进程停止，不停提升owner/宿主软件，不读私有错误/Job、不自动重试恢复。首次真实对象
+范围须具体人工决定，不是再次确认卡巴斯基误报；当前实际安装仍14ea，真实探测尚未运行。
+
 用户明确告知并确认卡巴斯基持续误拦截，要求停止反复归因、改变实现；按此继续开发，
 未改防护设置。原行内动态载入打包方式已改为只读PE元数据/资源、生成并核对清单，
 打包进程不加载/调用产品程序集。原86输入与核心库5600CD36复用，未重建产品或重跑项目/Git。
