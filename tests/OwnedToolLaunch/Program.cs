@@ -51,6 +51,7 @@ if(args[0]=="privacy-native")
     Require(File.ReadAllBytes(path).AsSpan().SequenceEqual(before),"no fixture content changed by native opens");
     Require((int)Call(probe,"FileReadOpen",Path.Combine(folder,"absent.txt"))! ==2,"absence stays actual native error, never denial");
     Require((int)Call(probe,"ProcessReadOpen",Environment.ProcessId)! ==0,"own process VM_READ handle only, no memory read");
+    using(var self=Process.GetCurrentProcess())Require((bool)Call(probe,"ProcessAlive",self.SafeHandle)!,"actual own wait object alive, not exit-code259 inference");
     Console.WriteLine("PASS actual native own-file read-data allow/deny, metadata-only positive control, absence2, exact own DACL restoration and unchanged bytes; own VM_READ handle only. No real host target/key/process, content/memory read, UAC, product or LPAC qualification");return 0;
 }
 if(args[0] is "project-policy" or "project-build")

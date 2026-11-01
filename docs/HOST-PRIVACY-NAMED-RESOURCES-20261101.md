@@ -41,7 +41,8 @@
 [进程访问权限](https://learn.microsoft.com/en-us/windows/win32/procthread/process-security-and-access-rights)。
 
 原owner先做存在性/元数据/当前映像正控制：文件无重解析、原文件ID，注册表键Open成功，
-宿主进程唯一且映像精确，持有QUERY_LIMITED_INFORMATION非继承句柄。无秘密内容hash。
+宿主进程唯一且映像精确，持有QUERY_LIMITED_INFORMATION|SYNCHRONIZE非继承句柄，
+零等待观察原对象为未退出；不把可能也是程序退出码的259当作独立存活证明。无秘密内容hash。
 计划绑定session/installation/release和摘要，原任务目录持有只读文件；没有高权限句柄传给开发侧。
 关闭原Job后、项目结果释放前，原owner再核对当前目标文件ID/存在性和所持进程仍存活，
 然后核对root PID与已在原Job中持有核验后放行的compiler PID、各14项观察。

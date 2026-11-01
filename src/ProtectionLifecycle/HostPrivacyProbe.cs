@@ -49,7 +49,9 @@ internal sealed class HostPrivacyProbe : IDisposable
                     try
                     {
                         if(candidates.Length!=1)throw WfpNative.Contract("HostPrivacyExactProcessRequired");
-                        pid=candidates[0].Id;var handle=OpenProcess(0x1000,false,checked((uint)pid));
+                        // Query plus read-only wait. Exit code259 alone is not
+                        // liveness: it can also be an application's exit code.
+                        pid=candidates[0].Id;var handle=OpenProcess(0x101000,false,checked((uint)pid));
                         if(handle.IsInvalid){handle.Dispose();throw new Win32Exception(Marshal.GetLastWin32Error(),"Host privacy process metadata");}
                         held.Add(handle);var image=new StringBuilder(32768);var length=image.Capacity;
                         if(!QueryFullProcessImageName(handle,0,image,ref length) || !string.Equals(image.ToString(),path,StringComparison.OrdinalIgnoreCase))
@@ -76,13 +78,13 @@ internal sealed class HostPrivacyProbe : IDisposable
     {
         if(published?.SafeFileHandle.IsClosed!=false)throw WfpNative.Contract("HostPrivacyPlanLeaseLost");
         foreach(var handle in processes)
-            if(handle.IsClosed || !GetExitCodeProcess(handle,out var code) || code!=259)throw WfpNative.Contract("HostPrivacyTargetProcessExited");
+            if(handle.IsClosed || !ProcessAlive(handle))throw WfpNative.Contract("HostPrivacyTargetProcessExited");
     }
     private void AssertTargetsCurrent()
     {
         for(var i=0;i<9;i++)if(FileIdentity(plan.Targets[i].Path)!=plan.Targets[i].Identity)throw WfpNative.Contract("HostPrivacyFileIdentityChanged");
         PositiveRegistry(true,plan.Targets[9].Path);PositiveRegistry(false,plan.Targets[10].Path);
-        foreach(var handle in processes)if(!GetExitCodeProcess(handle,out var code) || code!=259)throw WfpNative.Contract("HostPrivacyTargetProcessExited");
+        foreach(var handle in processes)if(!ProcessAlive(handle))throw WfpNative.Contract("HostPrivacyTargetProcessExited");
     }
     internal HostPrivacySummary ReadClosed(string workspace,int rootPid,int? toolPid)
     {
@@ -142,6 +144,7 @@ internal sealed class HostPrivacyProbe : IDisposable
     {var error=RegistryReadOpen(machine,path);if(error!=0)throw new Win32Exception(error,"Host privacy key positive control");}
     private static int ProcessReadOpen(int pid)
     {using var handle=OpenProcess(0x10,false,checked((uint)pid));return handle.IsInvalid?Marshal.GetLastWin32Error():0;}
+    private static bool ProcessAlive(SafeProcessHandle process)=>WaitForSingleObject(process,0)==258;
     private static string FileIdentity(string path)
     {
         for(var p=path;p is not null;p=Path.GetDirectoryName(p))
@@ -161,7 +164,7 @@ internal sealed class HostPrivacyProbe : IDisposable
     [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
     [DllImport("kernel32.dll",SetLastError=true)] private static extern SafeProcessHandle OpenProcess(uint access,[MarshalAs(UnmanagedType.Bool)]bool inherit,uint pid);
     [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
-    [DllImport("kernel32.dll",SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)] private static extern bool GetExitCodeProcess(SafeProcessHandle process,out uint code);
+    [DllImport("kernel32.dll",SetLastError=true)] private static extern uint WaitForSingleObject(SafeProcessHandle process,uint milliseconds);
     [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
     [DllImport("kernel32.dll",EntryPoint="QueryFullProcessImageNameW",CharSet=CharSet.Unicode,SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)] private static extern bool QueryFullProcessImageName(SafeProcessHandle process,uint flags,StringBuilder path,ref int length);
     [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
