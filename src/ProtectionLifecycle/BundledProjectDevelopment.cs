@@ -70,6 +70,7 @@ internal static class BundledProjectDevelopment
             File.WriteAllText(Path.Combine(workspace,"tool-ready.signal"),"");var clock=Stopwatch.StartNew();
             while(!File.Exists(Path.Combine(workspace,"tool-go.signal"))){if(clock.ElapsedMilliseconds>=8000)throw new TimeoutException("Original project owner gate");Thread.Sleep(20);}
             if(File.ReadAllText(Path.Combine(workspace,"tool-go.txt"))!=plan.Nonce)throw WfpNative.Contract("ProjectOwnerGateBindingDiffers");
+            HostPrivacyProbe.RunRestricted(plan,workspace,"project");
             BuildAndRun(plan.PowerShellDirectory,Path.Combine(workspace,"git-project"));
             foreach(var fixture in new[]{plan.Fixture,Path.Combine(workspace,"all-packages-only.json")})
             {

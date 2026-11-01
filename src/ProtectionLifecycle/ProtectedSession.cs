@@ -5,6 +5,7 @@ using System.Security.Principal;
 using System.Text;
 using System.Text.Json;
 using ClaudeCodeProtection.Security;
+using ClaudeCodeProtection.Workspaces;
 
 namespace ProtectionLifecycle;
 
@@ -145,6 +146,7 @@ internal sealed class ProtectedSession
         var toolLaunch=new OwnedToolLaunch();
         var failures=new List<Exception>();
         string? workspaceResultSHA256=null;
+        int? projectPid=null;HostPrivacySummary? hostPrivacy=null;
         try
         {
             LifecycleRecovery.AssertNoPending(state);InstallationLoopbackLease.AssertClosedHistory(state);
@@ -206,7 +208,8 @@ internal sealed class ProtectedSession
                             !string.Equals(image,expectedTool,StringComparison.OrdinalIgnoreCase) &&
                             !string.Equals(image,Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System),"conhost.exe"),StringComparison.OrdinalIgnoreCase))
                             throw WfpNative.Contract("ResourceUnexpectedToolImage");
-                        if(!primary && string.Equals(image,expectedTool,StringComparison.OrdinalIgnoreCase))fixedTool=true;
+                        if(!primary && string.Equals(image,expectedTool,StringComparison.OrdinalIgnoreCase))
+                        {fixedTool=true;if(developProject && !gitPhase)projectPid=checked((int)member.Pid);}
                     }
                     if(!fixedTool)throw WfpNative.Contract("ReadyResourceToolNotInHeldJobSnapshot");
                     runtime.AssertHealthy();
@@ -243,6 +246,13 @@ internal sealed class ProtectedSession
             }
             else if(job is not null)try{zero=job.AtomicAdmissionReserved?job.CloseAtomicAdmissionAndStop():job.StopAndVerifyZero();}catch(Exception ex){failures.Add(ex);}
             if(profile?.ProcessCreationAttempted==true && zero is not null)try{profile.AfterOwnedJobZero(zero);}catch(Exception ex){failures.Add(ex);}
+            if(developProject && resources is not null && child is not null && zero?.ObservedZero==true)
+                try
+                {
+                    hostPrivacy=resources.ReadClosedHostPrivacy(checked((int)child.Pid),projectPid);
+                    HostPrivacyContract.Validate(hostPrivacy,id,true);
+                }
+                catch(Exception ex){failures.Add(ex);}
             if(includeGit && failures.Count==0 && zero?.ObservedZero==true && observed is not null && SessionResources.Qualified(observed,compilerRequired))
                 try{workspaceResultSHA256=resources?.PreserveClosedWorkspaceResult(zero);}catch(Exception ex){failures.Add(ex);}
             if(exited is not null)try{exit=exited.WaitAsync(TimeSpan.FromSeconds(2)).GetAwaiter().GetResult();}catch(Exception ex){failures.Add(ex);}
@@ -267,6 +277,7 @@ internal sealed class ProtectedSession
             Scope=developProject?"EXPLICIT_TEXTSUMMARY_SOURCE_EDIT_BUILD_RUN_TEST":workspaceInput is not null?"CALLER_BYTE_PINNED_DATA_FIXED_OFFLINE_GIT_ONLY_NO_PROJECT_CODE_EXECUTION":includeGit?"FIXED_OFFLINE_GIT_INIT_ADD_COMMIT_AND_DENIAL_ONLY":"FIXED_PROFILE_WORKSPACE_WINDOWS_POWERSHELL_AND_NON_SECRET_DENIAL_FIXTURE_ONLY",
             Resumed=resumed,ChildExit=exit,Child=observed,ChildBootstrapFailure=bootstrapFailure,InheritedPowerShellIdentityObserved=powerShellRequired && toolObserved,FinalJob=zero,Stop=stopped,
             ProjectDevelopmentRequested=developProject,InheritedProjectToolIdentityObserved=developProject && toolObserved,
+            HostPrivacy=hostPrivacy,
             CleanupDeferredForRecovery=cleanupDeferred,ManifestReadAccessRequired=false,ManifestReadAccessRestored=false,
             PowerShellRequired=powerShellRequired,PowerShellVersion=powerShellRequired?SessionPowerShellToolchain.Version:null,PowerShellAssetSetSHA256=powerShellRequired?SessionPowerShellToolchain.AssetSetSHA256:null,
             EtwRegistrationAccessGranted=false,EtwRegistrationAccessRestored=false,

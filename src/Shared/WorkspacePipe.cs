@@ -16,7 +16,7 @@ internal sealed record ToolCreationEvidence(uint? ChildProcessPolicy,int? ChildP
 internal sealed record WorkspaceStopEvidence(bool AdmissionClosed,bool QuarantineObservedBeforeStop,bool? FinalJobZero,int StopFailureCount);
 
 // Local IPC between the ordinary daily UI and its one explicitly elevated
-// installed Broker. v3 is DATA only; v4 is the explicit fixed sample task.
+// installed Broker. v3 is DATA only; v5 requires paired host-resource denials.
 // Never a host-path, script, arbitrary process or command service.
 internal static class WorkspacePipe
 {
@@ -25,15 +25,15 @@ internal static class WorkspacePipe
     // This does not request Impersonate, AssignPrimary or Adjust privileges.
     internal const uint CallerTokenQueryAccess=0x0008|0x0002;
     internal sealed record Reply(int ExitCode,string? SessionId,string? ResultSHA256,string? FailureStage,string? FailureKind,int? FailureCode,
-        ToolCreationEvidence? CreationEvidence,WorkspaceStopEvidence? StopEvidence);
+        ToolCreationEvidence? CreationEvidence,WorkspaceStopEvidence? StopEvidence,HostPrivacySummary? HostPrivacy=null);
     internal const string ProjectScope="EXPLICIT_TEXTSUMMARY_SOURCE_EDIT_BUILD_RUN_TEST";
     internal static Reply ParseReply(byte[] bytes,string expected,bool developProject=false)
     {
         if(bytes.Length is <1 or >16384 || !WorkspaceBundle.IsHash(expected))throw new InvalidDataException("Workspace reply bounds refused");
         using var doc=JsonDocument.Parse(bytes,new JsonDocumentOptions{MaxDepth=4});var r=doc.RootElement;
         var fields=new[]{"BaseSHA256","CreationEvidence","ExitCode","FailureCode","FailureKind","FailureStage","ResultSHA256","SchemaVersion","SessionId","Status","StopEvidence"};
-        RequireFields(r,developProject?fields.Append("Scope").ToArray():fields);
-        if(r.GetProperty("SchemaVersion").GetInt32()!=(developProject?4:3) || r.GetProperty("BaseSHA256").GetString()!=expected ||
+        RequireFields(r,developProject?fields.Concat(new[]{"Scope","HostPrivacy"}).ToArray():fields);
+        if(r.GetProperty("SchemaVersion").GetInt32()!=(developProject?5:3) || r.GetProperty("BaseSHA256").GetString()!=expected ||
             developProject && (expected!=TextSummarySource.BaselineHash || r.GetProperty("Scope").GetString()!=ProjectScope))
             throw new InvalidDataException("Workspace reply contract differs");
         var exit=r.GetProperty("ExitCode").GetInt32();var session=r.GetProperty("SessionId").GetString();
@@ -55,7 +55,18 @@ internal static class WorkspacePipe
             kind=="PowerShellCreateProcess" && creation.ImageExecuteOpenError!=0 ||
             kind=="PowerShellImageExecuteOpen" && (creation.ImageExecuteOpenError==0 || creation.ImageExecuteOpenError!=code)))
             throw new InvalidDataException("Workspace creation diagnostic differs");
-        return new(exit,session,hash,stage,kind,code,creation,stop);
+        HostPrivacySummary? privacy=null;
+        if(developProject)
+        {
+            var value=r.GetProperty("HostPrivacy");
+            if(value.ValueKind!=JsonValueKind.Null)
+            {
+                if(session is null || exit!=0 && stage!="processing")throw new InvalidDataException("Host privacy diagnostic session differs");
+                privacy=HostPrivacyContract.Parse(value,session,exit==0);
+            }
+            else if(exit==0)throw new InvalidDataException("Successful project requires named host denials");
+        }
+        return new(exit,session,hash,stage,kind,code,creation,stop,privacy);
     }
     internal static ToolCreationEvidence? ParseCreationEvidence(JsonElement value)
     {

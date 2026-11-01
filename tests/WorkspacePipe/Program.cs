@@ -7,12 +7,48 @@ using System.Text.Json;
 using ClaudeCodeProtection.Workspaces;
 
 WorkspaceFiles.RequireOrdinaryUser();
-if(args.Length!=1 || args[0] is not ("frames" or "local-pipe" or "output" or "snapshot" or "token-membership" or "reply" or "project-contract"))return 125;
+if(args.Length!=1 || args[0] is not ("frames" or "local-pipe" or "output" or "snapshot" or "token-membership" or "reply" or "project-contract" or "privacy-contract"))return 125;
 static void Require(bool condition,string reason){if(!condition)throw new Exception("WorkspacePipe: "+reason);}
 static async Task Refuse(Func<Task> operation,string reason)
 {
     try{await operation();}catch(Exception ex)when(ex is InvalidDataException or EndOfStreamException or OperationCanceledException or IOException){return;}
     throw new Exception("WorkspacePipe accepted "+reason);
+}
+static HostPrivacySummary Privacy()
+{
+    HostPrivacyCase[] Cases()=>HostPrivacyContract.Roles.Select((role,i)=>new HostPrivacyCase(role,HostPrivacyContract.Kind(i),"ACCESS_DENIED",5)).ToArray();
+    return new(HostPrivacyContract.PolicySHA256,new string('F',64),new string('a',32),111,222,Cases(),Cases());
+}
+if(args[0]=="privacy-contract")
+{
+    var session=new string('a',32);var good=Privacy();HostPrivacyContract.Validate(good,session,true);
+    void Reject(HostPrivacySummary value,string reason,bool success=true)
+    {var rejected=false;try{HostPrivacyContract.Parse(JsonSerializer.SerializeToElement(value),session,success);}catch(InvalidDataException){rejected=true;}Require(rejected,reason);}
+    Reject(good with {PolicySHA256=new string('B',64)},"wrong compiled policy");
+    Reject(good with {PlanSHA256="DATA"},"invalid sealed plan digest");
+    Reject(good with {SessionId=new string('b',32)},"foreign session");
+    Reject(good with {RootPid=0},"missing root actor");
+    Reject(good with {ToolPid=111},"same actor cannot stand in for two identities");
+    Reject(good with {ToolPid=null,ToolCases=Array.Empty<HostPrivacyCase>()},"missing compiler observations cannot succeed");
+    var partial=good with {ToolPid=null,ToolCases=Array.Empty<HostPrivacyCase>()};HostPrivacyContract.Validate(partial,session,false);
+    Require(!HostPrivacyContract.Satisfied(partial),"root-only failure observation is not complete protection");
+    foreach(var tool in new[]{false,true})
+    {
+        foreach(var replacement in new[]{new HostPrivacyCase(HostPrivacyContract.Roles[0],HostPrivacyContract.Kind(0),"OPENED",0),
+            new HostPrivacyCase(HostPrivacyContract.Roles[0],HostPrivacyContract.Kind(0),"UNKNOWN",2),
+            new HostPrivacyCase(HostPrivacyContract.Roles[0],HostPrivacyContract.Kind(0),"UNKNOWN",32)})
+        {
+            var value=Privacy();(tool?value.ToolCases:value.RootCases)[0]=replacement;
+            HostPrivacyContract.Validate(value,session,false);Require(!HostPrivacyContract.Satisfied(value),"exposure/absence/sharing refusal remains failure evidence");
+            Reject(value,"exposure or unobserved denial cannot release project");
+        }
+        var wrong=Privacy();(tool?wrong.ToolCases:wrong.RootCases)[0]=new("C:\\private","file-read-data-open","ACCESS_DENIED",5);Reject(wrong,"no host paths or unknown roles in summary",false);
+        wrong=Privacy();(tool?wrong.ToolCases:wrong.RootCases)[0]=new(HostPrivacyContract.Roles[0],HostPrivacyContract.Kind(0),"ACCESS_DENIED",2);Reject(wrong,"file absence cannot be renamed denial",false);
+    }
+    var fields=JsonSerializer.Serialize(good).Replace("\"RootPid\":111","\"RootPid\":111,\"RootPid\":111",StringComparison.Ordinal);
+    var duplicateRejected=false;try{using var json=JsonDocument.Parse(fields);HostPrivacyContract.Parse(json.RootElement,session,true);}catch(InvalidDataException){duplicateRejected=true;}
+    Require(duplicateRejected,"duplicate summary fields refused");
+    Console.WriteLine("PASS paired named-resource contract: two actors, exact catalogue/policy/session/plan, absent tool and exposed/absent/sharing cases cannot succeed, failure observations preserved, no host paths or duplicate fields; synthetic only, no native query/UAC/Job or real host privacy proof");return 0;
 }
 if(args[0]=="project-contract")
 {
@@ -23,7 +59,7 @@ if(args[0]=="project-contract")
     void Reject(Action action,string reason){var rejected=false;try{action();}catch(InvalidDataException){rejected=true;}Require(rejected,reason);}
     var changed=(byte[])baseline.Clone();changed[^2]^=1;
     Reject(()=>TextSummarySource.RequireBaseline(changed),"different caller bytes refused before any execution");
-    Dictionary<string,object?> Reply(bool success)=>new(){["SchemaVersion"]=4,["Scope"]=WorkspacePipe.ProjectScope,["ExitCode"]=success?0:3,
+    Dictionary<string,object?> Reply(bool success)=>new(){["SchemaVersion"]=5,["Scope"]=WorkspacePipe.ProjectScope,["HostPrivacy"]=success?Privacy():null,["ExitCode"]=success?0:3,
         ["SessionId"]=new string('a',32),["BaseSHA256"]=hash,["ResultSHA256"]=success?new string('B',64):null,
         ["Status"]=success?"BUNDLED_PROJECT_DEVELOPED_AND_CLEANED":"BUNDLED_PROJECT_NOT_CONFIRMED",
         ["FailureStage"]=success?null:"processing",["FailureKind"]=success?null:"ResourceSessionFailed",["FailureCode"]=success?null:3,
@@ -40,7 +76,9 @@ if(args[0]=="project-contract")
             Reject(()=>WorkspacePipe.ParseReply(JsonSerializer.SerializeToUtf8Bytes(reply),hash,true),"mixed project/data contract "+field);
         }
     }
-    var v3=Reply(true);v3.Remove("Scope");v3["SchemaVersion"]=3;v3["Status"]="WORKSPACE_DATA_PROCESSED_AND_CLEANED";
+    var noPrivacy=Reply(true);noPrivacy["HostPrivacy"]=null;Reject(()=>WorkspacePipe.ParseReply(JsonSerializer.SerializeToUtf8Bytes(noPrivacy),hash,true),"no privacy proof cannot succeed");
+    var old=Reply(true);old["SchemaVersion"]=4;old.Remove("HostPrivacy");Reject(()=>WorkspacePipe.ParseReply(JsonSerializer.SerializeToUtf8Bytes(old),hash,true),"old project reply without privacy cannot succeed");
+    var v3=Reply(true);v3.Remove("Scope");v3.Remove("HostPrivacy");v3["SchemaVersion"]=3;v3["Status"]="WORKSPACE_DATA_PROCESSED_AND_CLEANED";
     Require(WorkspacePipe.ParseReply(JsonSerializer.SerializeToUtf8Bytes(v3),hash).ExitCode==0,"unchanged DATA contract");
     Reject(()=>WorkspacePipe.ParseReply(JsonSerializer.SerializeToUtf8Bytes(v3),hash,true),"project parser refuses DATA receipt");
     var unpinned=Reply(true);unpinned["BaseSHA256"]=new string('C',64);
@@ -49,7 +87,7 @@ if(args[0]=="project-contract")
     using var invalid=new Microsoft.Win32.SafeHandles.SafeAccessTokenHandle(IntPtr.Zero);
     var queryFailed=false;try{WorkspaceFiles.RequireOrdinaryToken(invalid);}catch(Win32Exception ex)when(ex.NativeErrorCode==6){queryFailed=true;}
     Require(queryFailed,"failed token query refuses caller");
-    Console.WriteLine("PASS fixed project IPC contract: unchanged actual baseline, caller-byte refusal, explicit v4/scope, v3 DATA separation, failure-no-output, own ordinary token and failed-query refusal; no UAC/product/Job/project execution or actual LPAC-token qualification");return 0;
+    Console.WriteLine("PASS fixed project IPC contract: unchanged actual baseline, caller-byte refusal, explicit v5/scope/paired privacy, old v4 refusal, v3 DATA separation, failure-no-output, own ordinary token and failed-query refusal; no UAC/product/Job/project execution or actual LPAC-token qualification");return 0;
 }
 if(args[0]=="token-membership")
 {

@@ -25,6 +25,7 @@ public static partial class InstalledBroker
         channel.Connect(15000);WorkspacePipe.AssertPeer(channel,callerPid,false);
         string? session=null,resultHash=null,failureStage=null,failureKind=null;int? failureCode=null;
         ToolCreationEvidence? creationEvidence=null;WorkspaceStopEvidence? stopEvidence=null;
+        HostPrivacySummary? hostPrivacy=null;
         byte[]? output=null;var exit=125;var stage="installation";
         try
         {
@@ -45,8 +46,11 @@ public static partial class InstalledBroker
             exit=processed.ExitCode;
             using var report=JsonDocument.Parse(processed.Report);var r=report.RootElement;
             session=Identifiers.Hex32(StrictJson.Text(r,"SessionId"));
+            if(developProject && r.TryGetProperty("HostPrivacy",out var privacy) && privacy.ValueKind!=JsonValueKind.Null)
+                hostPrivacy=HostPrivacyContract.Parse(privacy,session,exit==0);
             if(exit==0)
             {
+                if(developProject && hostPrivacy is null)throw new InvalidDataException("Named host privacy evidence required");
                 if(StrictJson.Text(r,"Status")!=(developProject?"BUNDLED_PROJECT_DEVELOPED_AND_CLEANED":"WORKSPACE_DATA_PROCESSED_AND_CLEANED") ||
                     StrictJson.Text(r,"WorkspaceBaselineSHA256")!=expected ||
                     developProject && StrictJson.Text(r,"Scope")!=WorkspacePipe.ProjectScope)throw new InvalidDataException("Workspace terminal binding differs");
@@ -99,12 +103,12 @@ public static partial class InstalledBroker
                 }
             }
         }
-        catch(Exception ex){exit=125;output=null;resultHash=null;creationEvidence=null;stopEvidence=null;failureStage=stage;failureKind=ex.GetType().Name;failureCode=ex is Win32Exception native?native.NativeErrorCode:ex.HResult;}
+        catch(Exception ex){exit=125;output=null;resultHash=null;creationEvidence=null;stopEvidence=null;hostPrivacy=null;failureStage=stage;failureKind=ex.GetType().Name;failureCode=ex is Win32Exception native?native.NativeErrorCode:ex.HResult;}
         using var completion=new CancellationTokenSource(TimeSpan.FromSeconds(15));
         var response=JsonSerializer.SerializeToUtf8Bytes(new {SchemaVersion=3,ExitCode=exit,SessionId=session,BaseSHA256=expected,
             ResultSHA256=resultHash,Status=exit==0?"WORKSPACE_DATA_PROCESSED_AND_CLEANED":"WORKSPACE_DATA_NOT_CONFIRMED",
             FailureStage=failureStage,FailureKind=failureKind,FailureCode=failureCode,CreationEvidence=creationEvidence,StopEvidence=stopEvidence});
-        if(developProject)response=JsonSerializer.SerializeToUtf8Bytes(new {SchemaVersion=4,Scope=WorkspacePipe.ProjectScope,ExitCode=exit,SessionId=session,BaseSHA256=expected,
+        if(developProject)response=JsonSerializer.SerializeToUtf8Bytes(new {SchemaVersion=5,Scope=WorkspacePipe.ProjectScope,HostPrivacy=hostPrivacy,ExitCode=exit,SessionId=session,BaseSHA256=expected,
             ResultSHA256=resultHash,Status=exit==0?"BUNDLED_PROJECT_DEVELOPED_AND_CLEANED":"BUNDLED_PROJECT_NOT_CONFIRMED",
             FailureStage=failureStage,FailureKind=failureKind,FailureCode=failureCode,CreationEvidence=creationEvidence,StopEvidence=stopEvidence});
         WorkspacePipe.AssertPeer(channel,callerPid,false);

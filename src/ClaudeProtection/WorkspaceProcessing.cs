@@ -57,6 +57,8 @@ internal static class WorkspaceProcessing
         {
             await broker.WaitForExitAsync(completion.Token);
             if(broker.ExitCode!=reply.ExitCode)throw new IOException("Workspace failure process exit differs");
+            if(developProject)return(reply.ExitCode,new {Status="BUNDLED_PROJECT_NOT_CONFIRMED",SessionId=session,BaseSHA256=expected,
+                reply.FailureStage,reply.FailureKind,reply.FailureCode,reply.CreationEvidence,reply.StopEvidence,reply.HostPrivacy,ResultReleased=false,AutomaticRetry=false});
             return(reply.ExitCode,new {Status=developProject?"BUNDLED_PROJECT_NOT_CONFIRMED":"WORKSPACE_DATA_NOT_CONFIRMED",SessionId=session,BaseSHA256=expected,
                 reply.FailureStage,reply.FailureKind,reply.FailureCode,reply.CreationEvidence,reply.StopEvidence,ResultReleased=false,AutomaticRetry=false});
         }
@@ -67,6 +69,9 @@ internal static class WorkspaceProcessing
         await broker.WaitForExitAsync(completion.Token);
         if(broker.ExitCode!=0)throw new IOException("Workspace Broker did not complete successfully");
         output.Complete(result);
+        if(developProject)return(0,new {Status="BUNDLED_PROJECT_RESULT_RECEIVED",SessionId=session,BaseSHA256=expected,ResultSHA256=resultHash,
+            FileCount=WorkspaceBundle.Parse(result).Files.Length,Changes=changes,OriginalProjectModified=false,ProjectCodeExecuted=true,
+            reply.HostPrivacy,FormalAdmissionIssued=false,NetworkOpened=false,UACAutoConfirmed=false});
         return (0,new {Status=developProject?"BUNDLED_PROJECT_RESULT_RECEIVED":"WORKSPACE_DATA_RESULT_RECEIVED",SessionId=session,BaseSHA256=expected,ResultSHA256=resultHash,
             FileCount=WorkspaceBundle.Parse(result).Files.Length,Changes=changes,OriginalProjectModified=false,ProjectCodeExecuted=developProject,
             FormalAdmissionIssued=false,NetworkOpened=false,UACAutoConfirmed=false});

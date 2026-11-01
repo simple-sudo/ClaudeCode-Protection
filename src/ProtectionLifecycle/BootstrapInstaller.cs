@@ -215,7 +215,8 @@ public static class BootstrapInstaller
             // Actual corrected update and held-token comparison package.
             // Runtime admission/Job/quarantine checks remain mandatory.
             "B5CFD0EDFEECB4CF91011D886A99961DE6762595D27048A547EB2BDDF10B9C7E",
-            "656D8690F56C5A085E1379B923692D2AC409F4B83E11BD18DE929033DC8C06E1"
+            "656D8690F56C5A085E1379B923692D2AC409F4B83E11BD18DE929033DC8C06E1",
+            "F415392FE03AA198F1712A58AAAF0E4D197E81A850275CB027764A7356DF3A61"
         };
         private readonly ProtectedState state;
         private readonly BootstrapApproval approval;

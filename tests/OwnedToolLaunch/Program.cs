@@ -2,12 +2,13 @@ using System.Diagnostics;
 using System.Reflection;
 using System.Runtime.ExceptionServices;
 using System.Security.Principal;
+using System.Security.AccessControl;
 using System.Text;
 using System.Text.Json;
 using System.Runtime.InteropServices;
 using Microsoft.Win32.SafeHandles;
 
-if(args.Length!=1 || args[0] is not ("policy" or "messages" or "handle-transfer" or "fault-mode" or "fault-mode-read" or "partial-output" or "hosted-policy" or "etw-policy" or "tls-transport-policy" or "etw-token-access" or "inactive-transition" or "project-policy" or "project-build"))return 125;
+if(args.Length!=1 || args[0] is not ("policy" or "messages" or "handle-transfer" or "fault-mode" or "fault-mode-read" or "partial-output" or "hosted-policy" or "etw-policy" or "tls-transport-policy" or "etw-token-access" or "inactive-transition" or "project-policy" or "project-build" or "privacy-native"))return 125;
 try
 {
 using var identity=WindowsIdentity.GetCurrent();
@@ -26,6 +27,31 @@ void Refuse(Action action,string reason)
     throw new InvalidOperationException("Expected refusal: "+reason);
 }
 var launch=library.GetType("ProtectionLifecycle.OwnedToolLaunch",true)!;
+if(args[0]=="privacy-native")
+{
+    var probe=library.GetType("ProtectionLifecycle.HostPrivacyProbe",true)!;
+    var folder=Path.Combine(AppContext.BaseDirectory,"privacy-own-file-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(folder);
+    var path=Path.Combine(folder,"non-secret.txt");File.WriteAllText(path,"OWN_NON_SECRET_NATIVE_READ_OPEN_FIXTURE");
+    var before=File.ReadAllBytes(path);var identityBefore=(string)Call(probe,"FileIdentity",path)!;
+    Require((int)Call(probe,"FileReadOpen",path)! ==0,"own allowed FILE_READ_DATA open");
+    var acl=new FileInfo(path).GetAccessControl();var original=acl.GetSecurityDescriptorBinaryForm();
+    try
+    {
+        acl.AddAccessRule(new System.Security.AccessControl.FileSystemAccessRule(identity.User!,System.Security.AccessControl.FileSystemRights.ReadData,System.Security.AccessControl.AccessControlType.Deny));
+        new FileInfo(path).SetAccessControl(acl);
+        Require((int)Call(probe,"FileReadOpen",path)! ==5,"exact own ReadData deny observed");
+        Require((string)Call(probe,"FileIdentity",path)! ==identityBefore,"metadata positive control still succeeds while ReadData denied");
+    }
+    finally
+    {
+        var restore=new System.Security.AccessControl.FileSecurity();restore.SetSecurityDescriptorBinaryForm(original);new FileInfo(path).SetAccessControl(restore);
+    }
+    Require(new FileInfo(path).GetAccessControl().GetSecurityDescriptorBinaryForm().AsSpan().SequenceEqual(original),"own fixture DACL restored exactly");
+    Require(File.ReadAllBytes(path).AsSpan().SequenceEqual(before),"no fixture content changed by native opens");
+    Require((int)Call(probe,"FileReadOpen",Path.Combine(folder,"absent.txt"))! ==2,"absence stays actual native error, never denial");
+    Require((int)Call(probe,"ProcessReadOpen",Environment.ProcessId)! ==0,"own process VM_READ handle only, no memory read");
+    Console.WriteLine("PASS actual native own-file read-data allow/deny, metadata-only positive control, absence2, exact own DACL restoration and unchanged bytes; own VM_READ handle only. No real host target/key/process, content/memory read, UAC, product or LPAC qualification");return 0;
+}
 if(args[0] is "project-policy" or "project-build")
 {
     var project=library.GetType("ProtectionLifecycle.BundledProjectDevelopment",true)!;
@@ -38,9 +64,10 @@ if(args[0] is "project-policy" or "project-build")
     {
         var valuePlan=Activator.CreateInstance(projectPlanType,schema,projectNonce,new string('b',32),new string('c',32),Environment.ProcessId,new string('A',64),
             "9DE2A6DB90D8383F3738249D52F30DEFBEDB994513A8F2697E9D90693CD1D285",input,projectProgramFiles)!;
-        projectPlanType.GetProperty("DevelopProject")!.SetValue(valuePlan,development);return valuePlan;
+        projectPlanType.GetProperty("DevelopProject")!.SetValue(valuePlan,development);
+        if(development)projectPlanType.GetProperty("HostPrivacySHA256")!.SetValue(valuePlan,new string('F',64));return valuePlan;
     }
-    var development=Plan(4,true,hash);var data=Plan(3,false,hash);
+    var development=Plan(5,true,hash);var data=Plan(3,false,hash);
     var projectWorkspace=Path.Combine(projectProgramFiles,"ClaudeCodeProtection-Task-"+projectNonce);
     var start=(ProcessStartInfo)Call(project,"Start",development,projectWorkspace)!;
     var digest=(string)Call(launch,"StartHash",start)!;
@@ -48,7 +75,10 @@ if(args[0] is "project-policy" or "project-build")
     Refuse(()=>Call(project,"Start",data,projectWorkspace),"ExplicitProjectDevelopmentRequired");
     Refuse(()=>Call(launch,"ValidateStart",data,projectWorkspace,"project",start.ArgumentList.ToArray(),digest),"ExplicitProjectDevelopmentRequired");
     Refuse(()=>Call(project,"Start",Plan(3,true,hash),projectWorkspace),"ResourceQualificationPlanRefused");
-    Refuse(()=>Call(project,"Start",Plan(4,true,new string('D',64)),projectWorkspace),"FixedDevelopmentProjectPlanRequired");
+    Refuse(()=>Call(project,"Start",Plan(4,true,hash),projectWorkspace),"ResourceQualificationPlanRefused");
+    Refuse(()=>Call(project,"Start",Plan(5,true,new string('D',64)),projectWorkspace),"FixedDevelopmentProjectPlanRequired");
+    var missingPrivacy=Plan(5,true,hash);projectPlanType.GetProperty("HostPrivacySHA256")!.SetValue(missingPrivacy,null);
+    Refuse(()=>Call(project,"Start",missingPrivacy,projectWorkspace),"ResourceQualificationPlanRefused");
     Refuse(()=>Call(roots,"PowerShellStart",development,projectWorkspace),"WorkspaceDataCannotRequestPowerShell");
     var changed=start.ArgumentList.ToArray();changed[1]=new string('f',32);
     Refuse(()=>Call(launch,"ValidateStart",development,projectWorkspace,"project",changed,digest),"OwnedProjectCompiledProgramRequired");
@@ -56,7 +86,7 @@ if(args[0] is "project-policy" or "project-build")
     _=Call(projectPlanType,"Parse",JsonSerializer.Serialize(development,projectPlanType));
     var unknownProjectField=JsonSerializer.Serialize(data,projectPlanType).TrimEnd('}')+",\"DevelopProject\":false}";
     var projectFieldRejected=false;try{Call(projectPlanType,"Parse",unknownProjectField);}catch(InvalidDataException){projectFieldRejected=true;}Require(projectFieldRejected,"v3 DATA rejects the added development field even when false");
-    if(args[0]=="project-policy"){Console.WriteLine("PASS explicit v4 fixed project intent/start binding; v3 DATA cannot execute project code, no PowerShell fallback or host-path grant; pure policy only");return 0;}
+    if(args[0]=="project-policy"){Console.WriteLine("PASS explicit v5 fixed project intent plus mandatory privacy digest/start binding; old v4/missing privacy refused; v3 DATA cannot execute project code, no PowerShell fallback or host-path grant; pure policy only");return 0;}
     var fixture=Path.Combine(AppContext.BaseDirectory,"ordinary-text-summary-project");
     Require(!Directory.Exists(fixture),"new own project fixture only");Directory.CreateDirectory(fixture);
     var files=library.GetType("ClaudeCodeProtection.Workspaces.WorkspaceFiles",true)!;
@@ -73,8 +103,8 @@ if(args[0]=="inactive-transition")
 {
     var lease=library.GetType("ProtectionLifecycle.BootstrapInstaller",true)!
         .GetNestedType("PinnedInactiveUpdateLease",BindingFlags.NonPublic)!;
-    const string actualRelease="acc7825b881a40efb7b7f2cd7005f8d1";
-    const string actualManifest="656D8690F56C5A085E1379B923692D2AC409F4B83E11BD18DE929033DC8C06E1";
+    const string actualRelease="14ea8f9c14044ffaabb7356dfbc96cfa";
+    const string actualManifest="F415392FE03AA198F1712A58AAAF0E4D197E81A850275CB027764A7356DF3A61";
     // The replacement is a fixture selection, not an approved package or
     // installed transition. This executes only the real pure selection guard.
     var replacementRelease=new string('a',32);var replacementManifest=new string('A',64);
