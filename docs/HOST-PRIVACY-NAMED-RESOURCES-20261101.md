@@ -5,6 +5,14 @@
 两名受限执行者必须分别完成固定资源的原生访问检查；任一OPENED、缺失、共享冲突、未知、目标漂移
 或缺失工具报告都不能释放本次项目结果。正式准入及AllHostResourceIsolationQualified仍为false。
 
+最终dca7afa/86输入离线构建和六普通模式通过，库5600CD36。原生自身文件夹具实测最小ReadData
+允许/拒绝、元数据可读、缺失2、DACL精确恢复/内容不变；自身进程仅句柄/等待对象，不读内存。
+契约用例证明缺失工具、OPENED/UNKNOWN/混淆schema不能成功，合成报告不是实际LPAC证明。
+证据work/host-privacy-r3-build-20261101/qualification.json SHA2B690C76。
+旧8d7/D8B911D6候选已在Bootstrap/UAC前废弃，保留但不运行。r3暂存脚本的工具进程创建两次
+报AccessDenied5，短只读入口间歇恢复；未改权限/AV或换执行路线，未创建r3候选/Bootstrap/系统控制。
+实际安装仍14ea/F415392F/334E9AA8，新具体人工系统决定尚无可批准的冻结候选，不提前请求。
+
 ## 固定清单
 
 所有路径由原owner为本机固定catalogue解析，不接受CLI/工作区包传入的宿主路径。

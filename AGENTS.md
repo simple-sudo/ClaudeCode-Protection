@@ -24,6 +24,42 @@ rerun deletion or describe historical blocked/exists paragraphs as current.
 
 # ClaudeCode-Protection working rules
 
+2026-11-01 NEW HOST-PRIVACY SOURCE/BUILD/ORDINARY VERIFIED, NOT INSTALLED:
+source915e5b4 adds paired fixed native read-open observations in SAME original
+project owner/Job/LPAC root and inspected compiler.9 real named files (FlClash3,
+UU4,private2),2 registry query-value keys (real HKU human proxy,HKLM64 crypto),
+3 exact-image host process VM_READ-open targets. No file/value/memory read,
+host ACL/token privilege change or arbitrary path/command input. Sourcev5 plans
+require sealed HostPrivacySHA256; v5 project replies require paired redacted
+cases/context before success; v3 DATA remains unchanged. Owner positive metadata
+and final file-ID/process checks prevent absence/drift from being denied PASS.
+Exact supplied TextSummary source only; mutable child reports are NOT future
+untrusted arbitrary-code attestation or all-host privacy/14 admission proof.
+source7a49cbe limits own fixture rollback to DACL and persists original descriptor;
+source dca7afa uses held query/synchronize process wait objects (no exit-code259
+liveness inference).Final86-input ordinary offline build library5600CD36 passed;
+six modes privacy-contract/project-contract/reply/project-policy/actual14ea
+inactive-transition/privacy-native0/no stderr. Own actual minimal FILE_READ_DATA
+allow/deny and metadata control, absence2, exact own DACL restoration/unchanged
+bytes, self VM_READ handle and wait object passed. No real host target/key/
+foreign-process probe, project compile/run, product entry, UAC or network.
+Metadata158 imports: prior152 retained plus ONLY six reviewed HostPrivacyProbe
+open/query/wait imports, no ReadFile/RegQueryValue/ReadProcessMemory or module
+initializer. Evidence work/host-privacy-r3-build-20261101/qualification.json
+SHA2B690C76997E9E33F5F432FACC83C3A244AC9EB8BDE32A27F1412EA476139DBA.
+Old r2 candidate8d7d7c13/7B658B9C/D8B911D6 is SUPERSEDED before Bootstrap/UAC;
+retain its files/qualification, never install/run it. First915 build was not
+fixture-executed; corrected fixture/r2 results remain distinct from final r3.
+R3 staging command twice rejected at tool CreateProcess with error5; short
+readonly entry intermittently recovers, cause UNKNOWN. Readonly filesystem
+inspection confirms86 inputs unchanged, R3 stage absent, ApprovedPackage still
+actualF415392F. No alternative execution route/AV changes. Do not repackage or
+switch executors to evade refusal. R3 candidate/Bootstrap/system controls NOT
+READY; no new human system decision requested/authorized. See command-entry-
+blocked.json in work/host-privacy-r3-control-20261101. AV/BFE last read running,
+full vendor alert coverage UNKNOWN. Actual installed14ea8f9c/F415392F/334E9AA8
+and its consumed grants unchanged; latest full goal remains active/incomplete.
+
 2026-11-01 AUTHORITATIVE ACTUAL ORDINARY WORKFLOW SUCCESS: human explicitly
 authorized both frozen14ea8f9c operations and manually confirmed both UACs.
 INACTIVE update/readonly inspection completed09:15:11Z. Actual installed

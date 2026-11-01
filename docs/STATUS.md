@@ -2,6 +2,22 @@
 
 ## 2026-11-01 新SOURCE：真实命名宿主资源门，尚未安装/实测
 
+最新资格已完成：dca7afa最终86输入离线构建成功、library5600CD36；六普通模式均0/无stderr，
+包括v5双actor契约/旧v4拒绝/原v3 DATA、v5计划必需隐私摘要、实际14ea精确迁移门，以及
+实际自身非秘密文件最小ReadData允许/拒绝、元数据正控制、缺失2、原DACL精确恢复/内容不变、
+自身VM_READ句柄和等待对象。原目标进程改为持有query/synchronize等待对象，不从退出码259
+推断存活。158原生导入仅在旧152外加入6项已审查open/query/wait；无数据/值/内存读取导入，
+无module initializer。qualification.json SHA2B690C76997E9E33F5F432FACC83C3A244AC9EB8BDE32A27F1412EA476139DBA。
+此前915构建未执行fixture；7a49修复fixture只恢复DACL并先持久化原描述符，r2资格及其8d7候选
+保留但因liveness修复已在Bootstrap/授权前废弃。不能运行或安装8d7旧候选。
+
+下一步暂存命令两次在工具CreateProcess处拒绝(error5)，未启动脚本；短只读命令能间歇恢复，
+原因UNKNOWN，不改AV/权限、不替换执行器或重包装绕过。只读复核86输入摘要全部一致，
+r3暂存目录缺席，ApprovedPackage仍F415392F。新候选/Bootstrap/系统控制尚未READY，不请求
+空泛系统授权。work/host-privacy-r3-control-20261101/command-entry-blocked.json保存状态。
+真实宿主探测/新项目运行/新UAC未执行，当前实际安装14ea保持原状。此处BUILD/普通VERIFIED
+不是LPAC真实命名资源拒绝或完整产品资格；主目标保持开放。
+
 在已交付普通项目链内接入原root与经原Job身份核验的compiler双执行者原生检查：
 FlClash3配置、UU4配置、真人私有2文件、MachineGuid/代理2注册表键、FlClash/UU3进程。
 仅申请最小读取权限并关闭句柄，不读取内容/值/内存。原owner做元数据存在性和映像正控制，
@@ -9,7 +25,7 @@ FlClash3配置、UU4配置、真人私有2文件、MachineGuid/代理2注册表�
 均阻止本次项目结果释放。v5项目计划/回复绑定隐私摘要，v3 DATA不变。六产品非执行语义检查通过。
 此处14角色不等于十四环境准入；MAC/BSSID、其他API/资源与全部产品目标仍开放。
 详见docs/HOST-PRIVACY-NAMED-RESOURCES-20261101.md。真实秘密没有被读取，只有定位元数据。
-离线构建/自身fixture、新候选与具体系统决定仍待完成；实际安装14ea8f9c/F415392F/334E9AA8未变，
+新候选与具体系统决定仍待完成；实际安装14ea8f9c/F415392F/334E9AA8未变，
 旧两次授权已消耗，不运行旧冻结控制或自动恢复。
 
 2026-11-01 09:14:06Z迁移收尾复核：旧C盘项目路径缺席、父目录可访问且精确枚举0，
