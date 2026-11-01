@@ -1,5 +1,21 @@
 # 完整项目验收账本
 
+## 2026-11-01 固定真实项目开发与28次真实命名资源拒绝通过
+
+已明确授权并本人确认两次UAC：00bcd9b7/60EC9056/5600CD36的INACTIVE更新和只读inspect0，
+继而原普通入口/原Broker/严格LPAC/Job会话2ec1eeefb2c44684b7028182a7f0b0f1完成TextSummary
+两源码修改、编译、运行、六测试、成功清理回执导出、普通review与新目录extract。七文件长度/
+摘要独立一致。root29468和compiler6132分别对同14项真实命名对象申请最小读取权限，28项均
+ACCESS_DENIED5；FlClash/UU/私人9文件、设备/真人代理2键和3个精确映像进程对象。原owner
+元数据/存在性/映像/存活和末尾身份正控制必须通过；未读秘密内容/值/内存，未改对象权限。
+闭合依据为认证v5原owner成功清理导出门，未另读私有raw Job/Stop。无强停/恢复/重试，无产品
+残留，boot/AV/BFE/FlClash/UU一致。实际结果9FCB0E8D5538B82EEE1D41035A393EFECCEB5DCBA7B7B41ECEC9619B5F98C3F6，
+交付work/host-privacy-project-delivery-20261101；证据work/host-privacy-r3-control-20261101/observed-result.json
+SHA74B6E6EC923FC8A4F222C06534FDEB09812DA9E2A5829F387A472486034B607A。15安装公开资产及权限独立匹配。
+两次授权消耗。此为固定项目与命名对象的VERIFIED/DELIVERABLE，复用而不重复运行；任意项目、
+PowerShell、其他宿主接口/资源、强制网络、十四可信准入、NVIDIA、恢复、GUI和完整产品仍未验收，
+真实Claude延期。当前切片成功不改变完整目标或历史失败。
+
 ## 2026-10-30 已安装严格LPAC Git数据链通过；完整工具链仍未通过
 
 62eab36f/B692EEF8/19D64CFF保持INACTIVE更新，15安装文件hash/可信owner/保护DACL独立匹配。原日常workspace-process→本人UAC原Broker→同一Job/LPAC固定Git→原所有者闭合/精确清理/权威导出→普通review/extract完成，sessionfdf20ddd571a45b6bc77695cc392c6ae，四文件输入BA1C5764...D4138、结果AA2F0DFD...43483，Changes=[]，独立提取字节一致。原Broker成功路径要求五根拒绝/两Git拒绝、原生工具身份和原Job闭合；本次没有额外私有Job回执读取。普通runner首个路径错误在UAC/产品创建前拒绝，失败保留；修正为目录清单中的bin/current后只执行一次同授权资源操作。证据work/git-data-direct-control/installed-evidence、workflow-r2。未执行项目代码、未开放网络/授予ETW/修改宿主注册表/AV/日常设置；没有残留产品进程或重启。此处VERIFIED/DELIVERABLE仅为Git数据能力，不是PowerShell/编译、宿主全面隐私、网络/14项/GPU或BSOD事故关闭。旧7ffea33b单提供者0800授予/撤销实测成功但PS依然错误5，已在新源码撤下新授予工厂，旧记录/显式恢复保留。

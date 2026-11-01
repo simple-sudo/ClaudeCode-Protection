@@ -24,6 +24,34 @@ rerun deletion or describe historical blocked/exists paragraphs as current.
 
 # ClaudeCode-Protection working rules
 
+2026-11-01 ACTUAL FIXED PROJECT WITH NAMED HOST DENIALS DELIVERED:
+Human specifically authorized both frozen00bc operations and manually confirmed
+both UACs. INACTIVE update/read-only inspection completed10:29:49Z. Current
+00bcd9b7c7a640b3a66e28648db171cf / manifest60EC905689CFB91D6D8BC4A4020B250B135FB910D2C2C7A7FDC9AF1AC7A8292F /
+library5600CD36.15 public hashes/trusted owners/protected DACL/no untrusted writer
+independently matched;13 new-helper public receipts copied byte-exactly. Original
+inspect0/NO_PENDING/default/explicit provider value absent. No added private read.
+Ordinary sample/develop/review/extract completed10:30:30Z, original strict LPAC/
+Job session2ec1eeefb2c44684b7028182a7f0b0f1. Root29468 and inspected compiler6132
+each returned nativeACCESS_DENIED5 on all14 fixed REAL named resources:9 files,
+2 registry keys,3 process objects. Metadata/existence/held-image controls and
+final identities were original-owner mandatory gates. No contents/values/memory
+read; no real-target permission/settings change. TextSummary2 source edits,
+compile,6 tests,Lines2/Words5 and7 extracted bytes/lengths/hashes passed. Result
+9FCB0E8D5538B82EEE1D41035A393EFECCEB5DCBA7B7B41ECEC9619B5F98C3F6;
+DLL2CF1863F/3072bytes. Delivery work/host-privacy-project-delivery-20261101.
+Closure/cleanup authority is authenticated installedv5 original-success export,
+NOT another independent raw Job/Stop read. Both grants consumed; no retry,
+forced stop,recovery or host DLL execution. Before/after boot07:39:57.5Z,AV/BFE,
+FlClash25816/20828 andUU6812 matched;no product PIDs. Vendor coverageUNKNOWN.
+Evidence work/host-privacy-r3-control-20261101/observed-result.json
+SHA74B6E6EC923FC8A4F222C06534FDEB09812DA9E2A5829F387A472486034B607A.
+Reuse this observed fixed-project/named-object result, do not requalify it.
+It is NOT arbitrary malicious-project attestation or complete host privacy,
+PowerShell,forced network,14 trusted admission,GPU,GUI or full product closure.
+Real Claude remains deferred; the full goal stays active. READY/NOT_AUTHORIZED
+and older installed paragraphs below are preserved historical preparation.
+
 2026-11-01 USER CONFIRMED KASPERSKY FALSE POSITIVE AND REQUESTED A DIFFERENT
 IMPLEMENTATION: accept this observation, do not repeat AV-cause investigations.
 New data-only packager now reads PE metadata/resources without product-code
