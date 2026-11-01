@@ -54,8 +54,8 @@ if(args[0] is "project-policy" or "project-build")
     Refuse(()=>Call(launch,"ValidateStart",development,projectWorkspace,"project",changed,digest),"OwnedProjectCompiledProgramRequired");
     Require(!start.Environment.ContainsKey("PSModulePath") && !start.Environment.ContainsKey("CPC_POWERSHELL_POLICY_NONCE"),"project compile does not impersonate a PowerShell host");
     _=Call(projectPlanType,"Parse",JsonSerializer.Serialize(development,projectPlanType));
-    var unknown=JsonSerializer.Serialize(data,projectPlanType).TrimEnd('}')+",\"DevelopProject\":false}";
-    var rejected=false;try{Call(projectPlanType,"Parse",unknown);}catch(InvalidDataException){rejected=true;}Require(rejected,"v3 DATA rejects the added development field even when false");
+    var unknownProjectField=JsonSerializer.Serialize(data,projectPlanType).TrimEnd('}')+",\"DevelopProject\":false}";
+    var projectFieldRejected=false;try{Call(projectPlanType,"Parse",unknownProjectField);}catch(InvalidDataException){projectFieldRejected=true;}Require(projectFieldRejected,"v3 DATA rejects the added development field even when false");
     if(args[0]=="project-policy"){Console.WriteLine("PASS explicit v4 fixed project intent/start binding; v3 DATA cannot execute project code, no PowerShell fallback or host-path grant; pure policy only");return 0;}
     var fixture=Path.Combine(AppContext.BaseDirectory,"ordinary-text-summary-project");
     Require(!Directory.Exists(fixture),"new own project fixture only");Directory.CreateDirectory(fixture);
