@@ -16,6 +16,18 @@ boundaries below remain applicable. See docs/MIGRATION-20261031.md.
 
 # ClaudeCode-Protection working rules
 
+2026-11-01 source9cae934 ordinary63-input offline build and actual pure
+inactive-transition guard qualification PASSED0/no stderr: exact installed
+62e/B692 prior accepted, six pointer/prior/next/same/unknown/case refusals pass.
+Library04357BC8/151 unchanged native imports/no module initializer; this does
+NOT prove live closure or installation. ResultF5700700 in work/inactive-prior-
+fix-build-20261101. Same command entry recovered; fresh build/qualification boot
+07:39:57.5Z and AV/BFE/FlClash/UU baseline stable, reboot cause not inferred.
+Candidate53f3ee9852c04cd6a8053a045b6ba295/manifestB5CFD0ED staged2 changed12 reused;
+new Bootstrap/control review still required. Installed62e remains unchanged;
+failed2e8e is not retried and its second operation is not transferable.
+Earlier new-fix UNBUILT/UNCOMMITTED paragraph is the preserved pre-build state.
+
 2026-11-01 latest: human explicitly authorized the two frozen2e8e7a94 operations;
 first manual UAC update actually ran2026-10-31T11:37:10Z and returned125 /
 InvalidOperationException. Helper readback still62eab36f/B692EEF8 INACTIVE;

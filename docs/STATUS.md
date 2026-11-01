@@ -1,5 +1,11 @@
 # 当前开发状态
 
+## 2026-11-01：迁移白名单修复已通过普通资格，新候选尚未安装
+
+source9cae934的63输入离线构建通过，0错误/警告；库04357BC89CC0A0DD77A0574CB4C297CB89E24171B6E27ADA46FB4B5D6FCB1F4F，151个原生导入未变、无module initializer。实际构造器复用的纯迁移选择门通过当前已安装62e/B692版本及六种拒绝用例，退出0/无stderr；result F57007000CFC8CD3FCA7EF1EA27A16F339F487D1F0C3FAEED3BF78F872CFE311，work/inactive-prior-fix-build-20261101。原生AccessCheck或新受保护工作负载未重跑；普通选择资格不能证明实时Job闭合/维护资格/实际安装。
+
+同一命令入口已自行恢复，未更换执行方式或修改安全设置；新资格期间boot07:39:57.5Z及AV/BFE/FlClash/UU基线稳定，未推定重启原因。候选53f3ee9852c04cd6a8053a045b6ba295 / manifestB5CFD0EDFEECB4CF91011D886A99961DE6762595D27048A547EB2BDDF10B9C7E已在F盘暂存，仍是2资产变化/12复用。Bootstrap和新控制待构建/审查；没有安装或新UAC，失败2e8e及其claim/证据不改不重试。
+
 ## 2026-11-01：首次授权更新被迁移白名单拒绝；源码修复尚未构建
 
 用户已明确授权冻结候选2e8e7a94的两项操作。第一项人工UAC更新实际于2026-10-31T11:37:10Z运行，Bootstrap返回125 / InvalidOperationException，原helper读回安装选择仍为62eab36f/B692EEF8 INACTIVE；候选安装版本目录不存在，第二次运行claim不存在，未启动受保护比较。八份helper输出已复制并核对摘要，见work/etw-token-comparison-control-20261031/inactive-update-failed-evidence及inactive-update-observed-result.json。没有重试或自动恢复。
