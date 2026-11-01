@@ -16,6 +16,38 @@ boundaries below remain applicable. See docs/MIGRATION-20261031.md.
 
 # ClaudeCode-Protection working rules
 
+2026-11-01 AUTHORITATIVE ACTUAL PROJECT SUCCESS: human authorized both fixed
+acc7825b operations and manually confirmed UAC. INACTIVE update/read-only
+inspect completed08:45:18Z, installedacc7825b881a40efb7b7f2cd7005f8d1 /
+manifest656D8690F56C5A085E1379B923692D2AC409F4B83E11BD18DE929033DC8C06E1 /
+libraryA126301D;15 installed hashes/trusted owners/protected DACL/no untrusted
+writer independently matched, inspect0/NO_PENDING/default/explicit value absent.
+One original Broker/Job strict-LPAC project task completed08:45:44Z, session
+3b009cf24b5b43e59a6cca610b36330a, Job b686565b78294c81a6a2b8db39e42170:
+real TextSummary sources read/2 edited/Roslyn compiled/executed6 tests and
+counters, cleanup/success-receipt export passed. Original owner independently
+held/verified actual tool identity/LPAC/zero caps/Job and both release gates;
+five root denials5 and Git two own denials passed. Compiler's pinned path must
+complete its own2 denials before exit0, not separate raw denial observations.
+Original Job/Stop matched closed/zero/quarantine/no failures; no forced stops,
+key security independently unchanged. No ETW grant, network or private error
+read. Report86FE817D, result85DDA341C8422E060BEB5C3C4B8E359717B5AA6F83EF36C887C680A2F9018EF0,
+baselineED3DDCB2...475B. Existing ordinary installed daily review/extract0;
+all7 extracted/exported file bytes independently match (actual DLL81F00AC8,
+not the ordinary fixture's nondeterministic MVID). Delivery work/textsummary-
+delivery-20261101; evidence work/bundled-project-r2-control-20261101 installed-
+evidence/run-evidence/actual-delivery-result/observed-result2C1E1963. Host did
+NOT execute project DLL. Boot07:39:57.5Z/AV/BFE/FlClash/UU stable/no product PIDs.
+Both concrete grants consumed; reuse success, no unchanged requalification.
+SOURCE/BUILD/INTEGRATED/VERIFIED/DELIVERABLE is this fixed repository project
+slice only. Caller-supplied projects, all named real host-sensitive resources,
+PowerShell, forced network/14 admission/GPU/GUI and historic BSOD root cause
+remain open; real Claude deferred. Next ordinary product-workflow integration
+and real host privacy gates must preserve v3 DATA no-code boundary. Before any
+new candidate explicitly review actual656D8690 prior pin (current compiled
+list ends B5CFD0ED), run exact staged-transition precheck. Older NOT_RUN/current
+53f paragraphs below are historical. No new system operation authorized.
+
 2026-11-01 PROJECT CANDIDATE READY, NOT_AUTHORIZED/NOT_RUN: acc7825b881a40efb7b7f2cd7005f8d1 /
 manifest656D8690F56C5A085E1379B923692D2AC409F4B83E11BD18DE929033DC8C06E1 /
 libraryA126301D.69-input Bootstrap source25b6c7b includes4 samples outside src

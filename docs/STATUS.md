@@ -1,5 +1,17 @@
 # 当前开发状态
 
+## 2026-11-01 实机：固定 TextSummary 项目严格 LPAC 开发闭环成功
+
+两次具体人工授权/UAC已完成并消耗。08:45:18Z更新及只读检查成功，实际安装acc7825b881a40efb7b7f2cd7005f8d1 / manifest656D8690F56C5A085E1379B923692D2AC409F4B83E11BD18DE929033DC8C06E1 / libraryA126301D，保持INACTIVE；15资产摘要/可信所有者/受保护DACL/无不可信写者独立匹配，inspect0/NO_PENDING/default/值缺席。
+
+08:45:44Z session3b009cf24b5b43e59a6cca610b36330a在原Broker/Job严格LPAC、零capabilities中实际完成读取TextSummary源码、修改两文件、固定Roslyn/ref编译、执行六项测试与计数器、闭Job后结果核验、确切清理及原成功回执导出。Git基线提交0c874ba4cee2795dc3f116e0ee0ce8bf8b1b8614。五项root拒绝5、Git自身两项拒绝128通过；编译工具的固定程序必须在自身两项拒绝通过后才能退出0，但本次没有把这两项单独导出为原始逐项观察。工具身份/LPAC/包/零能力/原Job及放行均由原owner持有核验，不能由子进程自报代替。
+
+原Job b686565b78294c81a6a2b8db39e42170与Stop绑定匹配、关闭/零成员/隔离/空失败，未强制停止owner或导出进程，SideBySide安全描述符独立不变；没有权限授予、网络打开、自动重试/恢复或读取私有错误。前后boot07:39:57.5Z及AV/BFE/FlClash/UU匹配，无产品进程。
+
+Broker报告86FE817D1F1224C2A0AE4ABD8028858748B14E50490ED0529B4D8C7211BEDA1F，输入ED3DDCB2F29D378F02186C808A68F2689EAF62B542C079B8F0892F5EAE7E475B，结果85DDA341C8422E060BEB5C3C4B8E359717B5AA6F83EF36C887C680A2F9018EF0。现有普通安装客户端review/extract均0，差异为两份源码修改及DLL/运行/测试结果三个新增，七份提取文件摘要与原导出记录独立一致。实际DLL3072字节/SHA81F00AC8812E272D47BA825097CE97A3A54EAD4FD1F8463162A2D1A02A398AF7；默认MVID与普通fixture不同属预期，未用fixture DLL哈希代替实际验证。运行结果Lines=2/Words=5，测试数6；宿主没有执行导出的DLL。
+
+交付目录work/textsummary-delivery-20261101；证据work/bundled-project-r2-control-20261101/{installed-evidence,run-evidence,actual-delivery-result.json,observed-result.json}，归一化记录SHA2C1E196310C375AFBD162E84B69853770137ABF451F5EFEBEF1CBDABB146A58D。SOURCE/BUILD/INTEGRATED/VERIFIED/DELIVERABLE仅指该固定仓库项目切片。任意调用者项目、所有真实FlClash/UU/设备标识/代理/私人资源、PowerShell、网络强制代理/防旁路、十四准入、GPU、GUI与历史崩溃根因仍未完成，真实Claude继续延期。下一步应复用本结果推进普通用户工作流和真实隐私门，不重跑相同资格；下一候选需显式审查实际656D8690前置pin并做暂存包纯转换预检。
+
 ## 2026-11-01 READY：固定项目候选和两次系统操作审查已备齐，尚未授权
 
 候选acc7825b881a40efb7b7f2cd7005f8d1 / manifest656D8690F56C5A085E1379B923692D2AC409F4B83E11BD18DE929033DC8C06E1 / libraryA126301D已暂存，仍为2资产变化/12复用。source25b6c7b的69输入Bootstrap构建冻结全部四份samples，复用已资格库未重建；20文件/10PE/6managed/无module initializer/内嵌manifest匹配。当前53f公开15资产摘要/可信所有者/受保护DACL/无不可信写者新核对匹配，实际新暂存包的前置精确迁移判定通过；没有读取私有current指针或现场Job状态。

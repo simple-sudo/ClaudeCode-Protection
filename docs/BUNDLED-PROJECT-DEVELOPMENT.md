@@ -1,5 +1,7 @@
 # TextSummary 项目开发流程
 
+2026-11-01已实际完成：人工UAC更新到INACTIVE acc7825b/656D8690/A126301D后，session3b009cf24b5b43e59a6cca610b36330a在原严格LPAC/零capabilities/Job中读改源码、编译、执行六项测试及计数器，原Job关闭/零成员、成功清理回执后导出；普通daily review/extract0，七份文件独立核对摘要一致，宿主没有执行项目DLL。结果85DDA341C8422E060BEB5C3C4B8E359717B5AA6F83EF36C887C680A2F9018EF0；交付work/textsummary-delivery-20261101，归一化证据bundled-project-r2-control-20261101/observed-result.json SHA2C1E196310C375AFBD162E84B69853770137ABF451F5EFEBEF1CBDABB146A58D。五root拒绝和Git两自身拒绝通过，编译工具需通过自身两拒绝才能退出0（非单独raw记录）；无强制停止/权限变更/网络/恢复，授权已消耗。仅此固定仓库项目切片已验证，不是任意调用者项目、全部真实宿主隐私、PowerShell或完整产品资格。
+
 2026-11-01候选/控制已READY：acc7825b881a40efb7b7f2cd7005f8d1 / manifest656D8690F56C5A085E1379B923692D2AC409F4B83E11BD18DE929033DC8C06E1，69输入Bootstrap复用A126301D、20文件暂存匹配。新持有预检与严格开关拒绝、22个helper判断逻辑用例通过，尚未授权或安装。完整两次人工UAC范围见work/bundled-project-r2-control-20261101/system-operation-review.md；普通用例不是实际Job或LPAC证明，当前安装仍53f/B5CFD0ED/04357BC8。
 
 本源码在原 Broker、原 ProtectedSession、原 Job/严格 LPAC 工具创建和关闭后导出流程内，增加显式 `develop-bundled-project`。它只执行仓库内 TextSummary 项目的固定维护任务：读取源码，给行数统计库增加 Unicode 空白分词统计，增加三个回归用例，调用已固定的 Roslyn/ref 资产编译并执行六项测试，保存运行结果，再由原 owner 在 Job 闭合后核验及保存结果。`export-developed-project SESSION HASH` 只有成功/清理回执绑定后才导出结果。
