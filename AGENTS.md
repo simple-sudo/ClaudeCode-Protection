@@ -24,6 +24,35 @@ rerun deletion or describe historical blocked/exists paragraphs as current.
 
 # ClaudeCode-Protection working rules
 
+2026-11-01 ACTUAL42f INACTIVE INSTALL PASSED; CALLER LAUNCH CANCELED1223:
+Human authorized both frozen42f steps. Manual install UAC completed11:34:22Z,
+actual42f7fe36a4d24194ac9f2da0f967b289/917202DE/core7DDC1FD0/GUI934E826A,
+INACTIVE.15 public hashes/owners/protected DACL/no untrusted writers independently
+match;13 helper public receipts copied exactly, installed readonlyinspect0.
+Ordinary pack/task-check0 and9F07 input matched11:34:54Z. Develop ordinary client
+15756 terminated11:36:57Z with125/Win32Exception1223, no authenticated project
+reply or successful result. Exact native failure stage was NOT tagged; ordinary
+poll11:36:48Z saw this client alive and no Broker then. Do NOT infer no Job,
+closed Job or caller code/native privacy success. Empty reserved output retained;
+no extraction, forced stop, private error/raw Job/Stop read, retry/recovery.
+Before/after boot07:39:57.5Z/AV/BFE/FlClash/UU unchanged, no product PIDs.
+Evidence work/caller-csharp-control-20261101/observed-result.json
+SHA86D5235FD61ADDCCEE81231902AF3DB17C5B54EF4970281C31AB1DE1374A7E2D.
+Both operation attempts consumed; do not repeat old runner/claims/installation.
+One NEW project-only control prepared, NOT_AUTHORIZED/NOT_RUN, no reinstall or
+repack/check: reuse held9F07 input and original passed data receipts; fresh result/
+extract paths. work/caller-csharp-project-r2-control-20261101 planF171A824/
+runner43E3AFB3;reviewSHA8D2B3DF2A497FC7C9644541E6AE4F11FD92D7A64B7853AFBE634113809E66D65.
+Held22-file installed/input preflight and unknown-switch refusal passed,5 guard/
+ordinary stop functions exactly match qualified prior code; reuse73 negatives.
+Needs one specific manual project UAC decision because original review explicitly
+forbids automatic retry. Same180s incl UAC/exact own ordinary daily stop only,
+original runtime/Job/admission/quarantine gates retained; no elevated development
+owner/host stop, private error/readback/recovery, ACL/AV/network/settings change.
+Current42f/9172/7DDC remains installed; GUI files installed, interaction unqualified.
+Caller native/pre-code sealing/42f privacy NOT_CONFIRMED. Older current00bc/READY/
+uninstalled-GUI claims below are historical. Full goal active; Claude deferred.
+
 2026-11-01 EXPLICIT CALLER CSHARP CANDIDATE READY, NOT_AUTHORIZED/NOT_RUN:
 42f7fe36a4d24194ac9f2da0f967b289 / manifest917202DE05F414EAA62803811D673CDD1A9071A3F7F08B0B188E358E57057399 /
 core7DDC1FD0/GUI934E826A. Explicit v6 caller task on SAME original owner/Job/

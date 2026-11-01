@@ -1,5 +1,26 @@
 # 当前开发状态
 
+## 2026-11-01 实际安装42f成功；项目调用返回取消1223，尚无新受保护项目结果
+
+两项具体授权已实际发起：本人第一次UAC后11:34:22Z更新为42f7fe36a4d24194ac9f2da0f967b289 /
+manifest917202DE/核心7DDC1FD0/GUI934E826A，保持INACTIVE。15公开资产摘要/可信owner/
+受保护DACL/无不可信写者独立匹配，13份helper公开回执字节一致，原只读inspect0。
+11:34:54Z普通pack和task-check均0，输入9F07精确匹配。开发调用11:36:57Z退出125，
+公开stderr Win32Exception/code1223，未标精确原生阶段；未取得认证项目回复或成功结果。
+原客户端15756曾被普通轮询观察到仍活跃、当时未见Broker；不以此认定Job不存在或闭合。
+空结果占位文件保留、没有提取目录、强停、自动重试/恢复或私有错误/raw Job/Stop读取。
+boot/AV/BFE/FlClash/UU前后一致，无产品残留。新v6 LPAC/执行前封存/当前版本隐私仍未实测通过。
+证据work/caller-csharp-control-20261101/observed-result.json
+SHA86D5235FD61ADDCCEE81231902AF3DB17C5B54EF4970281C31AB1DE1374A7E2D。
+
+已准备只重开一次项目的新入口，复用现有安装与已通过pack/check的同一输入，使用全新结果/
+提取目录，不安装、不重打包、不覆盖旧空输出。work/caller-csharp-project-r2-control-20261101：
+planF171A824/runner43E3AFB3，审查SHA8D2B3DF2A497FC7C9644541E6AE4F11FD92D7A64B7853AFBE634113809E66D65。
+22个当前安装/输入文件持有预检和未知开关拒绝通过；5个报告/结果/停止函数与原合格版逐字
+相同，复用73拒绝。新的单次项目UAC NOT_AUTHORIZED/NOT_RUN；原约定不自动重试，需要本人
+具体决定。原20秒/180秒和仅精确普通客户端停止/不停止提升开发owner等范围保持。
+以下READY/实际安装00bc/待安装GUI段落为历史准备，当前由本节更新；完整目标仍开放。
+
 ## 2026-11-01 新用户项目候选READY，等待具体系统决定
 
 42f7fe36a4d24194ac9f2da0f967b289 / manifest917202DE05F414EAA62803811D673CDD1A9071A3F7F08B0B188E358E57057399 /

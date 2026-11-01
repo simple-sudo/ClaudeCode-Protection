@@ -1,7 +1,8 @@
 # 显式用户 C# 项目开发入口
 
 当前SOURCE / BUILD / INTEGRATED，六产品非执行语义检查通过，普通限定样本VERIFIED；
-尚未安装或运行新受保护入口。
+当前已INACTIVE安装42f/9172/7DDC，首次开发调用返回Win32取消码1223，尚无新受保护项目成功结果。
+详见STATUS及work/caller-csharp-control-20261101/observed-result.json（SHA86D5235F）。
 原00bc/60EC/5600的固定TextSummary及28次真实敏感资源拒绝继续复用，不视为本入口通过。
 
 普通入口新增`workspace-check-csharp BASE_BUNDLE`，只检查任务；新增
@@ -75,3 +76,12 @@ SHA500D13483C1686CCF762D82A108C110B706896BA09EFB5A9229F45B501739791。
 改编运行三测试/双端真实命名检查及执行前封存/成功清理导出/普通审阅提取。只允许精确普通
 客户端超时停止，不停提升开发owner、不读私有错误/原始Job/Stop、不自动重试恢复。
 新v6用户项目和原生封存首次运行仍需具体两次本人UAC决定，READY不是授权或安装/实测通过。
+
+后续两项授权已发起：安装与只读检查完成、15公开资产及权限独立匹配，GUI934E也已安装。
+普通pack/check完成后，项目调用退出125/Win321223，无认证结果；精确原生阶段未标注。
+没有强停/重试/恢复，空输出保留，不据未见Broker或空文件推定Job闭合。原冻结入口消耗。
+新的project-r2控制只复用现有9F07输入与当前安装，重新启动一次项目并写全新结果目录；
+持有22文件预检/严格未知参数拒绝通过，五个消费/停止函数逐字复用，不重复73拒绝或编译。
+需要本人明确决定一次新的UAC，因为原审查禁止自动重试；不是复用旧授权盲目恢复。
+新审查work/caller-csharp-project-r2-control-20261101/system-operation-review.md
+SHA8D2B3DF2A497FC7C9644541E6AE4F11FD92D7A64B7853AFBE634113809E66D65。NOT_AUTHORIZED/NOT_RUN。
