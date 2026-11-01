@@ -1,5 +1,15 @@
 # 当前开发状态
 
+## 2026-11-01：显式 C# 项目链接入源码，普通账户完整项目测试通过
+
+新增`develop-bundled-project`/`export-developed-project`，复用原ProtectedSession、Broker映像、原Job原子LPAC工具创建、持有身份检查/放行门和闭合清理后成功回执。仓库samples/TextSummary是可编译的.NET库项目：任务读取源码，为行数统计增加Unicode空白分词统计及三个用例，使用既有固定Roslyn/ref编译、执行六项测试及运行计数，核验并导出修改后源码、3072字节DLL及运行/测试结果。具体链路见BUNDLED-PROJECT-DEVELOPMENT.md。
+
+权限边界：新执行任务仅允许v4/DevelopProject=true及精确嵌入项目摘要；v3 DATA不能请求project工具、不执行代码。普通无输入工具链资格仍需PowerShell，未被C#路径代替。没有新执行器、提升工具、capability/宿主ACL/ETW/AMSI/网络改变，不加载PowerShell引擎，不评估用户MSBuild项目、任务、包、分析器或生成器。当前仅仓库固定项目，任意调用者项目、LPAC实际编译/执行、工具自身及宿主敏感资源拒绝均未验证。
+
+source79626d9的68个冻结输入离线构建0错误/警告；library A126301DB47F5C1880839EFF9388514087A9903F18ADCFCE23093F8752081C9B，151个原生导入未变、无module initializer。project-policy/project-build/原policy/当前53f迁移选择门四模式退出0/无stderr，普通账户实际完成读取/修改/编译/执行六项测试/快照/独立核验/提取，七份结果与提取文件摘要独立一致。qualification SHA12ED9257C844B75FFAF1BCC1611099041C3E7CA977F183E3130CA011E59B89FC，work/bundled-project-r2-build-20261101。原receipt的InputCount63为继承常量，实际持有清单68，qualification-closeout明确纠正并保留原件；首次构建仅测试局部变量重名失败，原失败日志保留，r2修正通过。六产品非生成语义检查通过。
+
+**未安装、未运行新的受保护项目。** 当前安装仍53f3ee98/B5CFD0ED/04357BC8；本轮无UAC，boot07:39:57.5Z及AV/BFE/FlClash/UU基线匹配。下一步构建新候选Bootstrap、固定项目代码执行/结果导出操作控制并具体审查，之后再申请人工UAC；不可把旧诊断授权或Git DATA资格当作新任务许可。Bootstrap输入须包含src之外四份嵌入sample（69输入），源已补入实际B5CFD0ED前置精确pin并通过当前版本转换用例。
+
 ## 2026-11-01 实机：修正版已安装，实际 LPAC 令牌比较已取得，PowerShell 仍失败
 
 具体人工授权与两次UAC均已完成且消耗。07:49:56Z实际安装53f3ee9852c04cd6a8053a045b6ba295 / manifest B5CFD0EDFEECB4CF91011D886A99961DE6762595D27048A547EB2BDDF10B9C7E / library04357BC8，保持INACTIVE；15个安装文件摘要、可信所有者、受保护DACL和无不可信写者独立匹配。原安装Broker只读inspect返回0/NO_PENDING_ETW_PROVIDER_ACCESS，默认描述符及同GUID持久值不存在。

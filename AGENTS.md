@@ -16,6 +16,39 @@ boundaries below remain applicable. See docs/MIGRATION-20261031.md.
 
 # ClaudeCode-Protection working rules
 
+2026-11-01 NEW SOURCE/BUILD/ORDINARY VERIFIED (NOT INSTALLED): explicit
+develop-bundled-project + export-developed-project task uses SAME original
+ProtectedSession/Job/atomic LPAC tool creation/closed-cleanup receipt owner.
+New confined tool entry resource-project is the original Broker image; no
+elevated project code, PowerShell engine, ETW grant or capability widening.
+v3 DATA remains data-only and cannot select project tool; explicit v4 requires
+DevelopProject=true and exact embedded TextSummary baseline digest. Generic
+no-input qualify-toolchain STILL requires PowerShell, not replaced by this.
+Task reads repo sample, adds CountWords and3 tests, pinned Roslyn/ref compiles,
+runs6 tests and counters; owner verifies exact source edits/output inventory
+after closed Job before export. Git commits baseline BEFORE edits using old
+fixed Git path; same parent handles/identity/go gates retained. No caller-
+selected source, script, project tasks/imports/packages/analyzers/generators.
+source79626d9 build froze68 inputs incl4 embedded samples, libraryA126301D /
+151 unchanged imports/no module initializer. Four ordinary modes project-
+policy/project-build/legacy policy/actual53f inactive-transition PASSED0/no
+stderr. Own project read/edit/compile/execute6 tests/snapshot/verify/extract
+passed and all7 result/extracted file hashes independently match. NOT LPAC,
+real sensitive host denial, network, full product or arbitrary-project proof.
+Evidence work/bundled-project-r2-build-20261101 qualification12ED9257 and
+qualification-closeout. Raw receipt inherited InputCount63; held manifest68
+and companion explicitly correct it, original receipt retained. First build
+failed only test local names; logs retained, corrected r2 passes. Six-product
+non-emitting semantic check passed. Source57f1687 then3f8b367/79626d9;
+installed53f3ee98/B5CFD0ED/04357BC8 remains unchanged. No new UAC authorized.
+Next freeze new candidate/Bootstrap/reviewed project-operation controls;
+include all4 samples outside src in source freeze (69 Bootstrap inputs), use
+actual B5CFD0ED reviewed prior pin already added and pure transition precheck.
+PowerShell7.6.6 and fetched master EventProvider sources still throw on nonzero
+registration; no claim upgrading fixes this. No documented cached-SD refresh
+guarantee found, not proof none exists. Downloaded SOURCE only under work/etw-
+supported-route-20261101, not installed/executed/vendor patched. PS stays open.
+
 2026-11-01 AUTHORITATIVE ACTUAL: human authorized corrected53f3ee98 two
 operations; first manual UAC inactive update/read-only inspect completed
 07:49:56Z. Installed53f3ee9852c04cd6a8053a045b6ba295 / manifestB5CFD0EDFEECB4CF91011D886A99961DE6762595D27048A547EB2BDDF10B9C7E /

@@ -2,6 +2,8 @@
 
 本源码在原 Broker、原 ProtectedSession、原 Job/严格 LPAC 工具创建和关闭后导出流程内，增加显式 `develop-bundled-project`。它只执行仓库内 TextSummary 项目的固定维护任务：读取源码，给行数统计库增加 Unicode 空白分词统计，增加三个回归用例，调用已固定的 Roslyn/ref 资产编译并执行六项测试，保存运行结果，再由原 owner 在 Job 闭合后核验及保存结果。`export-developed-project SESSION HASH` 只有成功/清理回执绑定后才导出结果。
 
+普通资格已通过：source79626d9、68冻结输入、库A126301D，四模式均0/无stderr。普通自身项目确实完成上述读/改/编译/运行六项测试/快照核验/提取，七份结果文件摘要与提取副本独立一致，无SMA引擎加载。证据work/bundled-project-r2-build-20261101/qualification.json及qualification-closeout.json；前者摘要12ED9257C844B75FFAF1BCC1611099041C3E7CA977F183E3130CA011E59B89FC。这不是实际LPAC、原Job、工具拒绝或宿主隐私资格。首次构建的测试重名编译失败保留，修正r2通过；原receipt的InputCount63继承常量由伴随记录说明实际68，不改原件。
+
 这是新的项目代码执行范围，源码/普通测试不构成实际受保护运行授权或成功。当前安装53f3ee98仍没有这项功能；下一步需要完整构建和普通资格、具体候选审查，再取得新的人工UAC决定。不能执行历史冻结计划、把旧 DATA 输入或已消耗诊断授权转换成项目代码授权。
 
 原 DATA 使用v3计划、不执行项目代码；新任务必须有v4/DevelopProject=true、精确嵌入项目输入摘要及固定工具参数。DATA不能选择project工具，普通工具链资格仍要求PowerShell，不能由C#项目任务替代其成功条件。新工具仍是原Broker映像的受限入口，不是另建执行器或提升子进程；不载入PowerShell引擎，不改ETW/AMSI、宿主权限、网络或capabilities，不执行MSBuild项目文件、包、构建任务、生成器或分析器。任意调用者项目支持、真实宿主隐私/网络/GPU/十四准入及GUI交付仍需完成。
