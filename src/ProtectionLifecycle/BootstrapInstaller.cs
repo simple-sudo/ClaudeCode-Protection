@@ -218,7 +218,11 @@ public static class BootstrapInstaller
             "656D8690F56C5A085E1379B923692D2AC409F4B83E11BD18DE929033DC8C06E1",
             "F415392FE03AA198F1712A58AAAF0E4D197E81A850275CB027764A7356DF3A61",
             // Actual paired named-resource project package; exact prior only.
-            "60EC905689CFB91D6D8BC4A4020B250B135FB910D2C2C7A7FDC9AF1AC7A8292F"
+            "60EC905689CFB91D6D8BC4A4020B250B135FB910D2C2C7A7FDC9AF1AC7A8292F",
+            // Actual v6 caller package with original-owner pre-code sealing.
+            // This exact prior pin never substitutes for live closed admissions,
+            // zero-member Job, quarantine and pending-resource checks.
+            "917202DE05F414EAA62803811D673CDD1A9071A3F7F08B0B188E358E57057399"
         };
         private readonly ProtectedState state;
         private readonly BootstrapApproval approval;
