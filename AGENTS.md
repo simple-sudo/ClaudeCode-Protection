@@ -16,6 +16,31 @@ boundaries below remain applicable. See docs/MIGRATION-20261031.md.
 
 # ClaudeCode-Protection working rules
 
+2026-11-01 AUTHORITATIVE ACTUAL: human authorized corrected53f3ee98 two
+operations; first manual UAC inactive update/read-only inspect completed
+07:49:56Z. Installed53f3ee9852c04cd6a8053a045b6ba295 / manifestB5CFD0EDFEECB4CF91011D886A99961DE6762595D27048A547EB2BDDF10B9C7E /
+library04357BC8;15 installed hashes/trusted owners/protected DACL/no untrusted
+writer independently matched. Inspector0/NO_PENDING_ETW_PROVIDER_ACCESS,
+observed default and explicit value absent. Separate manual UAC original
+Broker/Job run completed07:50:31Z sessionda80ce81eb534cbba523784e3195b329:
+actual held suspended LPAC tool token AccessCheck on WMI default SD succeeded
+but DENIED(mask0); same token on MEMORY-ONLY exact package0800 SD succeeded
+and ALLOWED(mask0800). Record8FE317A3, not ETW kernel SD/cache observation.
+NO permission grant made; PowerShell STILL fails E0434352/TypeInitialization
+before READY, no Git/compile/project result. Original Joba477b10fa7f64f9c9139a79aa5dbc942
+closed/zero, matching Stop/quarantine/empty failures; five root denials5 pass,
+key security independently unchanged, no forced owner stop. Same helper read
+ONLY this session's own etw-access record AFTER closure; no raw tool error or
+other private record. ReportA5A5F111, work/inactive-prior-fix-control-20261101
+installed-evidence/run-evidence/observed-result. Boot07:39:57.5Z/AV/BFE/FlClash/
+UU stable, no product PIDs. Both grants consumed; no unchanged retry/recovery.
+No new network/GPU/14 admission/real Claude success. Next main question is
+supported ETW descriptor/entry update; the token-on-specified-SD uncertainty is
+now measured, do not reprove it or broaden logging capability. Before ANY next
+candidate, actual installed B5CFD0ED needs explicit reviewed prior pin and the
+new staged pure-transition precheck; current compiled pin list stops at B692.
+Earlier current62e/NOT_AUTHORIZED paragraphs are historical.
+
 2026-11-01 corrected candidate53f3ee98/B5CFD0ED is now fully staged/reviewed:
 sourceee7819b64-input Bootstrap reused04357BC8;20 files/10PE/6managed/embedded
 manifest match. Fresh controls work/inactive-prior-fix-control-20261101 install

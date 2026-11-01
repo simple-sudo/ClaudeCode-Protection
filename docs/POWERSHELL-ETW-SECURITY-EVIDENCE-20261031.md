@@ -1,5 +1,7 @@
 # PowerShell ETW：读回权限与实际注册判定的证据边界
 
+2026-11-01补充实测：原owner在实际挂起LPAC工具上验证身份/Job后，取同一持有令牌的查询级副本，AccessCheck对WMI默认SD返回API成功/拒绝0；对仅内存添加当前包SID/0800的SD返回API成功/允许0800。session da80ce81eb534cbba523784e3195b329，记录8FE317A3，实际安装53f3ee98/B5CFD0ED/04357BC8；没有安装该SD或修改权限。这补足了“对指定描述符的实际LPAC令牌判定”，仍不直接观察ETW内核SD或证明缓存根因。PowerShell仍在READY前TypeInitializationException/E0434352失败，原Job闭合零成员及Stop匹配后才导出这一份记录；全部证据见work/inactive-prior-fix-control-20261101/observed-result.json。两次具体授权均完成，不再重复相同令牌或旧权限试验。
+
 2026-10-31，checkout `F:\ClaudeCode-Protection`，检查起点 `235a914`。
 
 本记录补足旧 0800 试验的解释边界，静态部分不修改安装或授权，不把静态分析当作运行结果。后续本人已具体授权并确认10:42:31Z UAC：原已安装62e/19D64CFF在sessionf1e78e640df744b6bbb71e72523c048c的匹配提供者实际返回 `NtTraceControl(0x0f)=C0000022`、`EventRegister=5`。该次没有0800授权，不能用它证明旧0800试验所用缓存SD；实机范围和调试超时/Job闭合证据见LPAC-TOOL-LAUNCH-NEXT.md。该一次授权已消费。

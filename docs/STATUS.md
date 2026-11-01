@@ -1,5 +1,15 @@
 # 当前开发状态
 
+## 2026-11-01 实机：修正版已安装，实际 LPAC 令牌比较已取得，PowerShell 仍失败
+
+具体人工授权与两次UAC均已完成且消耗。07:49:56Z实际安装53f3ee9852c04cd6a8053a045b6ba295 / manifest B5CFD0EDFEECB4CF91011D886A99961DE6762595D27048A547EB2BDDF10B9C7E / library04357BC8，保持INACTIVE；15个安装文件摘要、可信所有者、受保护DACL和无不可信写者独立匹配。原安装Broker只读inspect返回0/NO_PENDING_ETW_PROVIDER_ACCESS，默认描述符及同GUID持久值不存在。
+
+07:50:31Z session da80ce81eb534cbba523784e3195b329 的原owner实际测量已验证挂起LPAC工具令牌：对WMI默认读回SD的AccessCheck API成功但拒绝，mask0；对仅在内存加当前包SID/0800的SD，API成功且允许，mask0800。记录SHA8FE317A3732896336CCF57B4BF55967C63BAE72C00A605FC0C5F53ADBCFEFF80；没有写权限或持久值，也不能推成ETW内核当时SD/缓存根因。下一步不再重复“包SID精确增项能否通过这个令牌的AccessCheck”这一问题。
+
+**PowerShell仍未成功。** 工具退出E0434352/-532462766，WAIT_FIXED_POWERSHELL/FixedToolUnexpectedOutput，公开类型TypeInitializationException，未到READY；Git、编译、执行及项目结果未取得。原Job a477b10fa7f64f9c9139a79aa5dbc942闭合零成员、Stop会话/Job匹配、AdmissionClosed及隔离成立、Stop失败空；五项root拒绝5通过、SideBySide安全描述符独立不变、没有强制停止。原helper只在上述闭合门全部通过后读这一份新etw-access记录，没有读取原始PS错误或其他私有记录。Broker报告SHA A5A5F11102896976C72002EC0F4AE4B3AAF77532A046AC435C08AF0337E30F60。
+
+证据：work/inactive-prior-fix-control-20261101/{installed-evidence,run-evidence,observed-result.json}，所有导出文件独立核对摘要。前后boot07:39:57.5Z、AV/BFE/FlClash/UU匹配，无产品进程；没有新网络/权限/恢复操作。安装的TLS修复仍没有实际网络资格。下一步调查受支持的ETW描述符/条目更新机制，不重跑旧0800权限试验，不改日志/AMSI、加宽泛logging capability或停止其他控制器。当前编译迁移白名单到B692；下一候选必须显式审查B5CFD0ED前置pin，并用实际暂存包纯转换预检防止再次遗漏。
+
 ## 2026-11-01：迁移白名单修复已通过普通资格，新候选尚未安装
 
 后续READY（仍未授权/安装）：sourceee7819b的64输入Bootstrap构建复用04357BC8库未重建；20文件/10PE/6managed/内嵌manifest匹配。新control目录work/inactive-prior-fix-control-20261101：install planEA2A0896/helper2F7DB92B、run plan13B98F6E/helperD4D6A078；两个持有输入预检及四个未知开关拒绝通过。实际新旧helper的四处读门AST完全相同，复用先前16个逻辑用例，未重新运行旧工作负载。编译旧候选缺少B692精确pin/新候选包含pin及实际暂存包纯转换通过已验证；15个实际安装公开资产摘要/可信所有者/受保护DACL/无不可信写者匹配。新具体人工决定仍待取得，旧失败授权不挪用；完整范围及摘要见该control的system-operation-review.md。

@@ -1,5 +1,7 @@
 # LPAC 工具启动：本轮结果与下一步
 
+2026-11-01 ACTUAL：两次新人工UAC已完成，实际INACTIVE安装53f3ee98/B5CFD0ED/04357BC8；15文件摘要/可信所有者/受保护DACL/无不可信写者匹配，inspect0/NO_PENDING。sessionda80ce81eb534cbba523784e3195b329中，同一实际挂起LPAC工具令牌对WMI默认SD的AccessCheck成功但拒绝，对仅内存包SID0800副本成功且允许。记录8FE317A3、报告A5A5F111；不是内核SD或缓存根因证明，没有授权写入。PS仍在READY前E0434352/TypeInitializationException失败，编译/项目闭环未完成。原Job a477b10fa7f64f9c9139a79aa5dbc942与Stop闭合零成员、隔离/五项root拒绝通过、无强制停止/权限变更/自动恢复，boot/AV/BFE/FlClash/UU稳定，无产品进程。证据work/inactive-prior-fix-control-20261101；两次授权均消耗，不重试。下一问题是受支持的ETW描述符/条目更新，不能重测已取得的令牌判定或据此扩大权限。下一候选还必须显式审查B5CFD0ED前置pin并通过新实际暂存包纯转换预检。下文READY/未授权为历史准备状态。
+
 2026-11-01 READY：新53f3ee98/B5CFD0ED候选Bootstrap、20文件暂存及新control预检已完成，仍未授权/安装/运行LPAC比较。work/inactive-prior-fix-control-20261101/system-operation-review.md固定install planEA2A0896/helper2F7DB92B与run plan13B98F6E/helperD4D6A078。需新的具体人工UAC决定；原失败候选不再运行，先前第二项不挪给新字节。编译旧候选缺少B692pin与修复后实际暂存包纯转换通过已核对，不声称已取得原异常确切调用栈或live维护资格。
 
 2026-11-01后续：同一命令入口恢复后，source9cae934的63输入离线构建及实际纯迁移选择门资格通过，库04357BC8；当前实际安装62e/B692精确版本通过，六种绑定/同包/未知/大小写拒绝通过，0/无stderr。候选53f3ee9852c04cd6a8053a045b6ba295/manifestB5CFD0ED已暂存，Bootstrap/新控制仍待构建审查。未重跑失败旧候选或其第二项；必须按新字节完成具体审查，不把旧授权迁移到新候选。下方未构建文字为此前状态。
