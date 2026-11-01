@@ -16,6 +16,18 @@ boundaries below remain applicable. See docs/MIGRATION-20261031.md.
 
 # ClaudeCode-Protection working rules
 
+2026-11-01 corrected candidate53f3ee98/B5CFD0ED is now fully staged/reviewed:
+sourceee7819b64-input Bootstrap reused04357BC8;20 files/10PE/6managed/embedded
+manifest match. Fresh controls work/inactive-prior-fix-control-20261101 install
+planEA2A0896/helper2F7DB92B, run plan13B98F6E/helperD4D6A078; two held preflights
+and four strict unknown-switch refusals passed. Original read-gate4 AST texts
+identical; reuse prior16 logic cases, not a new live closure claim.15 actual
+installed62e public hashes/trusted owners/protected DACL/no untrusted writer
+matched; compiled old candidate lacks B692 pin/new candidate contains it and
+actual staged pure transition passes. No private pointer/live Job read or new
+UAC yet. See new system-operation-review.md; NEW TWO OPERATIONS NOT_AUTHORIZED.
+The old2e8e failure/authorization/claim are retained, no retry or transfer.
+
 2026-11-01 source9cae934 ordinary63-input offline build and actual pure
 inactive-transition guard qualification PASSED0/no stderr: exact installed
 62e/B692 prior accepted, six pointer/prior/next/same/unknown/case refusals pass.

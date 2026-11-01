@@ -1,5 +1,7 @@
 # LPAC 工具启动：本轮结果与下一步
 
+2026-11-01 READY：新53f3ee98/B5CFD0ED候选Bootstrap、20文件暂存及新control预检已完成，仍未授权/安装/运行LPAC比较。work/inactive-prior-fix-control-20261101/system-operation-review.md固定install planEA2A0896/helper2F7DB92B与run plan13B98F6E/helperD4D6A078。需新的具体人工UAC决定；原失败候选不再运行，先前第二项不挪给新字节。编译旧候选缺少B692pin与修复后实际暂存包纯转换通过已核对，不声称已取得原异常确切调用栈或live维护资格。
+
 2026-11-01后续：同一命令入口恢复后，source9cae934的63输入离线构建及实际纯迁移选择门资格通过，库04357BC8；当前实际安装62e/B692精确版本通过，六种绑定/同包/未知/大小写拒绝通过，0/无stderr。候选53f3ee9852c04cd6a8053a045b6ba295/manifestB5CFD0ED已暂存，Bootstrap/新控制仍待构建审查。未重跑失败旧候选或其第二项；必须按新字节完成具体审查，不把旧授权迁移到新候选。下方未构建文字为此前状态。
 
 2026-11-01最新：两项冻结操作已获具体授权，但首项人工UAC更新于10-31T11:37:10Z返回125/InvalidOperationException。helper读回仍62eab36f/B692EEF8 INACTIVE，候选未安装，第二项未运行。候选源码缺少实际安装manifest的精确迁移白名单项，属于足够解释拒绝的源码缺陷，原异常具体阶段未直接捕获。现已补入仅B692EEF8一项并增加实际选择判定回归用例，保留所有原闭合/隔离门；修复未构建/测试/提交。命令工具连git status也返回Access is denied(os error5)，原因未知，随后同一入口恢复，没有绕过执行拒绝。下一步验证这份修复、生成新字节和新审查控制；保留旧失败候选、claim、授权和八份已核对摘要的证据，不执行旧第二项或自动恢复。后文未授权/下一步措辞为历史准备记录。

@@ -2,6 +2,8 @@
 
 ## 2026-11-01：迁移白名单修复已通过普通资格，新候选尚未安装
 
+后续READY（仍未授权/安装）：sourceee7819b的64输入Bootstrap构建复用04357BC8库未重建；20文件/10PE/6managed/内嵌manifest匹配。新control目录work/inactive-prior-fix-control-20261101：install planEA2A0896/helper2F7DB92B、run plan13B98F6E/helperD4D6A078；两个持有输入预检及四个未知开关拒绝通过。实际新旧helper的四处读门AST完全相同，复用先前16个逻辑用例，未重新运行旧工作负载。编译旧候选缺少B692精确pin/新候选包含pin及实际暂存包纯转换通过已验证；15个实际安装公开资产摘要/可信所有者/受保护DACL/无不可信写者匹配。新具体人工决定仍待取得，旧失败授权不挪用；完整范围及摘要见该control的system-operation-review.md。
+
 source9cae934的63输入离线构建通过，0错误/警告；库04357BC89CC0A0DD77A0574CB4C297CB89E24171B6E27ADA46FB4B5D6FCB1F4F，151个原生导入未变、无module initializer。实际构造器复用的纯迁移选择门通过当前已安装62e/B692版本及六种拒绝用例，退出0/无stderr；result F57007000CFC8CD3FCA7EF1EA27A16F339F487D1F0C3FAEED3BF78F872CFE311，work/inactive-prior-fix-build-20261101。原生AccessCheck或新受保护工作负载未重跑；普通选择资格不能证明实时Job闭合/维护资格/实际安装。
 
 同一命令入口已自行恢复，未更换执行方式或修改安全设置；新资格期间boot07:39:57.5Z及AV/BFE/FlClash/UU基线稳定，未推定重启原因。候选53f3ee9852c04cd6a8053a045b6ba295 / manifestB5CFD0EDFEECB4CF91011D886A99961DE6762595D27048A547EB2BDDF10B9C7E已在F盘暂存，仍是2资产变化/12复用。Bootstrap和新控制待构建/审查；没有安装或新UAC，失败2e8e及其claim/证据不改不重试。
