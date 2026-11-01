@@ -1,5 +1,7 @@
 # LPAC 工具启动：本轮结果与下一步
 
+2026-11-01最新：两项冻结操作已获具体授权，但首项人工UAC更新于10-31T11:37:10Z返回125/InvalidOperationException。helper读回仍62eab36f/B692EEF8 INACTIVE，候选未安装，第二项未运行。候选源码缺少实际安装manifest的精确迁移白名单项，属于足够解释拒绝的源码缺陷，原异常具体阶段未直接捕获。现已补入仅B692EEF8一项并增加实际选择判定回归用例，保留所有原闭合/隔离门；修复未构建/测试/提交。命令工具连git status也返回Access is denied(os error5)，原因未知，随后同一入口恢复，没有绕过执行拒绝。下一步验证这份修复、生成新字节和新审查控制；保留旧失败候选、claim、授权和八份已核对摘要的证据，不执行旧第二项或自动恢复。后文未授权/下一步措辞为历史准备记录。
+
 2026-10-31 后续普通只读查询通过：PowerShell监督器下有1个与监督器PID相同的注册及2个预启用条目；换成原生cmd后注册数0，仍有2个预启用条目。因此不能把“无PowerShell启动壳”当成“提供者完全不存在/权限必定重新加载”，不重跑旧0800试验或关闭既有控制器。见[注册元数据记录](POWERSHELL-ETW-REGISTRATION-METADATA-20261031.md)。新源码在原Broker持有并验证的挂起PowerShell工具令牌上，只比较WMI原读回SD和内存中精确0800包SID增项的AccessCheck结果，写原私有诊断前缀；没有新授权工厂、原生导入、CLI/工具协议字段或DATA路径改变。source2cbea1d的63输入构建、库A49428CD、普通自身令牌允许/拒绝及SD摘要资格通过；不能推成LPAC/内核SD判定。候选2e8e7a9486ed4295a4c80b23219752fb/manifest5988A34E已暂存，source58af7f9的64输入Bootstrap复用原资格库未重建，20文件/10PE/6managed/内嵌manifest匹配。精确F盘系统运行/闭Job后单份取证控制已固定，两个持有预检、四个未知参数拒绝及16个读门逻辑用例通过。install plan870FD6EF/helper71583EF5，run plan6EE84F62/helper07CACBFA；下一步需要针对work/etw-token-comparison-control-20261031/system-operation-review.md的两次新人工UAC决定。未授权、未安装、实际LPAC比较未运行；诊断观察不能充作工具链成功。
 
 ## 2026-10-31 实机结果：提供者注册原生返回 C0000022

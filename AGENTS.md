@@ -16,6 +16,25 @@ boundaries below remain applicable. See docs/MIGRATION-20261031.md.
 
 # ClaudeCode-Protection working rules
 
+2026-11-01 latest: human explicitly authorized the two frozen2e8e7a94 operations;
+first manual UAC update actually ran2026-10-31T11:37:10Z and returned125 /
+InvalidOperationException. Helper readback still62eab36f/B692EEF8 INACTIVE;
+candidate installed version absent, no second run claim. Do not repeat or run
+second operation against wrong installed bytes. Original controls/claim remain.
+Eight helper evidence files copied/hash-verified in work/etw-token-comparison-
+control-20261031/inactive-update-failed-evidence; observed-result records limits.
+Candidate source omitted actual installedB692EEF8 from pinned prior list, a
+sufficient static refusal; original exception exposed no exact failing stage.
+SOURCE repair adds ONLY this exact prior pin and extracts the same selection
+guard used by real constructor; original live all-Job/quarantine gates unchanged.
+OwnedToolLaunch inactive-transition covers actual prior selection plus six
+current/prior/next/unknown/case refusals. NEW FIX IS UNBUILT/UNTESTED/UNCOMMITTED:
+command launcher twice returned Access is denied(os error5), including git
+status, then the SAME entry recovered without a workaround; cause unknown.
+No installation, permissions or AV change. Source edits must qualify before
+any new candidate; no old failed package retry.
+Earlier NOT_AUTHORIZED/NOT_RUN2e8e paragraphs below are historical preparation.
+
 2026-10-31 ordinary fixed-GUID EnumerateTraceGuidsEx metadata query passed:
 PowerShell supervisor had its own one registration plus2 pre-enable entries;
 native-cmd launch had zero registered instances but the same2 pre-enable entries.

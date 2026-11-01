@@ -7,7 +7,7 @@ using System.Text.Json;
 using System.Runtime.InteropServices;
 using Microsoft.Win32.SafeHandles;
 
-if(args.Length!=1 || args[0] is not ("policy" or "messages" or "handle-transfer" or "fault-mode" or "fault-mode-read" or "partial-output" or "hosted-policy" or "etw-policy" or "tls-transport-policy" or "etw-token-access"))return 125;
+if(args.Length!=1 || args[0] is not ("policy" or "messages" or "handle-transfer" or "fault-mode" or "fault-mode-read" or "partial-output" or "hosted-policy" or "etw-policy" or "tls-transport-policy" or "etw-token-access" or "inactive-transition"))return 125;
 try
 {
 using var identity=WindowsIdentity.GetCurrent();
@@ -26,6 +26,31 @@ void Refuse(Action action,string reason)
     throw new InvalidOperationException("Expected refusal: "+reason);
 }
 var launch=library.GetType("ProtectionLifecycle.OwnedToolLaunch",true)!;
+if(args[0]=="inactive-transition")
+{
+    var lease=library.GetType("ProtectionLifecycle.BootstrapInstaller",true)!
+        .GetNestedType("PinnedInactiveUpdateLease",BindingFlags.NonPublic)!;
+    const string actualRelease="62eab36f66ba4dc5b117b1fbe4d1170c";
+    const string actualManifest="B692EEF8753B737E126924E0FC6EA764F39C4BB5BDA4BBFC472A3F45701C45E8";
+    // The replacement is a fixture selection, not an approved package or
+    // installed transition. This executes only the real pure selection guard.
+    var replacementRelease=new string('a',32);var replacementManifest=new string('A',64);
+    void Check(string currentRelease,string currentManifest,string priorRelease,string priorManifest,string nextRelease,string nextManifest)
+        =>Call(lease,"RequirePinnedTransition",currentRelease,currentManifest,priorRelease,priorManifest,nextRelease,nextManifest);
+    void Deny(Action check)
+    {
+        var refused=false;try{check();}catch(InvalidOperationException error)when(error.Message=="Only pinned reviewed inactive packages can migrate"){refused=true;}
+        Require(refused,"inactive selection must refuse changed, unknown or same-package transitions");
+    }
+    Check(actualRelease,actualManifest,actualRelease,actualManifest,replacementRelease,replacementManifest);
+    Deny(()=>Check(replacementRelease,actualManifest,actualRelease,actualManifest,replacementRelease,replacementManifest));
+    Deny(()=>Check(actualRelease,replacementManifest,actualRelease,actualManifest,replacementRelease,replacementManifest));
+    Deny(()=>Check(actualRelease,actualManifest,actualRelease,actualManifest,actualRelease,replacementManifest));
+    Deny(()=>Check(actualRelease,actualManifest,actualRelease,actualManifest,replacementRelease,actualManifest));
+    Deny(()=>Check(actualRelease,replacementManifest,actualRelease,replacementManifest,replacementRelease,new string('B',64)));
+    Deny(()=>Check(actualRelease,actualManifest.ToLowerInvariant(),actualRelease,actualManifest.ToLowerInvariant(),replacementRelease,replacementManifest));
+    Console.WriteLine("PASS actual installed62e exact pinned inactive selection and six current/prior/next/unknown/case drift refusals; pure production guard only, not live Job closure, maintenance, installation or UAC");return 0;
+}
 if(args[0]=="etw-token-access")
 {
     var atomic=library.GetType("ProtectionLifecycle.AtomicChild",true)!;

@@ -1,5 +1,13 @@
 # 当前开发状态
 
+## 2026-11-01：首次授权更新被迁移白名单拒绝；源码修复尚未构建
+
+用户已明确授权冻结候选2e8e7a94的两项操作。第一项人工UAC更新实际于2026-10-31T11:37:10Z运行，Bootstrap返回125 / InvalidOperationException，原helper读回安装选择仍为62eab36f/B692EEF8 INACTIVE；候选安装版本目录不存在，第二次运行claim不存在，未启动受保护比较。八份helper输出已复制并核对摘要，见work/etw-token-comparison-control-20261031/inactive-update-failed-evidence及inactive-update-observed-result.json。没有重试或自动恢复。
+
+发现候选BootstrapInstaller的精确迁移白名单缺少实际安装版本B692EEF8，这足以触发源码中的拒绝；原异常未公开具体抛出阶段，因此不声称已直接观察该调用栈。SOURCE修复仅增加这个精确摘要，把原构造器的同一纯选择判断提取为RequirePinnedTransition，供普通资格调用。原有实时维护锁、历史准入闭合、Job零成员和隔离门不变。新增inactive-transition用例覆盖实际版本与六种绑定/同包/未知摘要/大小写拒绝。
+
+**修复未构建、未测试、未提交、未安装。** 命令工具随后连续返回Access is denied(os error5)，包括git status，原因未知；没有改用其他子进程执行方式绕过；随后同一入口恢复，原因仍未确认。最后已验证提交为8d26257；当前源码/测试/状态文档有未提交编辑，须恢复命令执行后审查差异、离线构建、验证，再准备新候选，不能重用失败旧候选或把第二项授权挪给不同字节。
+
 ## 2026-10-31：提供者预启用条目已只读确认；受限令牌比较接入源码
 
 VERIFIED（普通固定GUID元数据限定）：sourcece7d54f的新3输入离线查询工具构建及内存解析资格通过；System32只读双入口、无module initializer。EnumerateTraceGuidsEx(TraceGuidQueryInfo)普通权限实际返回0：PowerShell监督器中1个注册PID等于监督器自身，另有2个预启用条目；用原生cmd直接运行同一1D7748C3工具后注册数0但仍有2个预启用条目。未查询SD/事件载荷或控制会话，无UAC/产品/Job/权限变化；不推定控制器身份、缓存SD或旧授权失败根因，也不以换启动壳重跑工作负载。证据work/etw-registration-metadata-build-20261031及POWERSHELL-ETW-REGISTRATION-METADATA-20261031.md。

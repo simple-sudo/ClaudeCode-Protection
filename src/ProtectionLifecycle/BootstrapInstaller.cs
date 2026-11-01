@@ -207,7 +207,11 @@ public static class BootstrapInstaller
             "6AAE651E3AFA2D592E02F70A8097048EFA7106F563FD96A766AD1A5208F2E0DA",
             // Installed trial: exact ETW restore and closed-zero Job verified;
             // tool compatibility failed. Existing all-Job/fence gates remain.
-            "B23DDA0D2833F427A042CB5081A345DEA8EBBDAABFDD5E0FAA0DA155794B96AD"
+            "B23DDA0D2833F427A042CB5081A345DEA8EBBDAABFDD5E0FAA0DA155794B96AD",
+            // Actual installed Git DATA package. The later numeric ETW trace
+            // failed, but its original Job closed/zero. This exact pin never
+            // replaces the live all-admission, Job-zero and quarantine checks.
+            "B692EEF8753B737E126924E0FC6EA764F39C4BB5BDA4BBFC472A3F45701C45E8"
         };
         private readonly ProtectedState state;
         private readonly BootstrapApproval approval;
@@ -218,11 +222,18 @@ public static class BootstrapInstaller
         {
             this.state=state;this.approval=approval;this.prior=prior;this.next=next;
             var current=CurrentPointer.Parse(state.Read("current.json",4096),state.InstallationId);
-            if(current.Release!=prior.Package.Release || current.ManifestSHA256!=prior.Package.ManifestHash ||
-                !(NoAdmissionManifests.Contains(prior.Package.ManifestHash,StringComparer.Ordinal) || OneShotAdmissionManifests.Contains(prior.Package.ManifestHash,StringComparer.Ordinal)) ||
-                next.Release==prior.Package.Release || next.ManifestHash==prior.Package.ManifestHash)
-                throw new InvalidOperationException("Only pinned reviewed inactive packages can migrate");
+            RequirePinnedTransition(current.Release,current.ManifestSHA256,prior.Package.Release,prior.Package.ManifestHash,next.Release,next.ManifestHash);
             AssertNoOwnedProcesses();
+        }
+        // Pure selection check used by the actual constructor and ordinary
+        // qualification before any new package is proposed for human UAC.
+        // Acceptance here says nothing about live closure or maintenance gates.
+        internal static void RequirePinnedTransition(string currentRelease,string currentManifest,string priorRelease,string priorManifest,string nextRelease,string nextManifest)
+        {
+            if(currentRelease!=priorRelease || currentManifest!=priorManifest ||
+                !(NoAdmissionManifests.Contains(priorManifest,StringComparer.Ordinal) || OneShotAdmissionManifests.Contains(priorManifest,StringComparer.Ordinal)) ||
+                nextRelease==priorRelease || nextManifest==priorManifest)
+                throw new InvalidOperationException("Only pinned reviewed inactive packages can migrate");
         }
         public void AssertLaunchAdmissionClosed()
         {
