@@ -1,5 +1,31 @@
 # 当前开发状态
 
+## 2026-11-01 ordinary project workflow — SOURCE / BUILD / INTEGRATED, ordinary VERIFIED
+
+Separate daily `workspace-sample` / `workspace-develop` commands now connect the
+fixed TextSummary task to the original authenticated installed Broker pipe and
+cleanup-success export. Shared sample bytes preserve the actual baseline hash;
+explicit v4/scope replies cannot be consumed as v3 DATA. Ordinary and elevated
+caller checks now reject AppContainer tokens and failed confinement queries.
+Source9b12e1c's 84-input offline build passed, library334E9AA8. Four ordinary
+fixtures passed: explicit project/v3 DATA separation, existing DATA diagnostics,
+local pipe peers/ACL, and actual acc7825b pinned inactive transition. Metadata
+adds only the reviewed read-only WorkspaceFiles.GetTokenInformation import to
+library/daily; no module initializer. Existing 151 library imports are retained.
+The first harness used a wrong fixture DLL name and failed before fixture entry;
+that script/log remains, qualify-r2 passes with the same built bytes. The prior
+transition fixture's raw success text still says installed53f; its actual frozen
+constants are acc7825b/656D8690. The source label is corrected separately.
+New ordinary daily dispatch also passed sample creation (same ED3DDCB2 baseline),
+different valid input refusal before UAC/output reservation, and review of the
+reused real85DDA341 result (five exact changes). No project was rebuilt or executed.
+Evidence work/ordinary-project-build-20261101/{qualification-r2.json,daily-cli/qualification.json}.
+Candidate14ea8f9c/F415392F stages3 changed/11 reused assets; Bootstrap/stage/system
+controls remain pending. Installed acc7825b/656D8690/A126301D is unchanged.
+No protected project entry, UAC, new permission, network or recovery occurred.
+The actual prior project's success is reused; PowerShell, real host-sensitive
+denials, arbitrary projects, forced network/14 admissions/GPU/GUI remain open.
+
 ## 2026-11-01 实机：固定 TextSummary 项目严格 LPAC 开发闭环成功
 
 两次具体人工授权/UAC已完成并消耗。08:45:18Z更新及只读检查成功，实际安装acc7825b881a40efb7b7f2cd7005f8d1 / manifest656D8690F56C5A085E1379B923692D2AC409F4B83E11BD18DE929033DC8C06E1 / libraryA126301D，保持INACTIVE；15资产摘要/可信所有者/受保护DACL/无不可信写者独立匹配，inspect0/NO_PENDING/default/值缺席。
@@ -871,16 +897,3 @@ request ce160d0fddd4471c977c2c36080fceec实际0，四阶段匹配、最终主机
 WER目录读取辅助进程曾异常增长；首次停止UAC取消后，经用户明确允许重显UAC，仅精确终止PID18080/创建时刻匹配的helper，停止回执08:06:15.580Z，当前不存在。单个WER的有界读取替代路径已退出0；原失败/取消/资源异常保留，原因未猜测。
 
 微软官方WinDbg工具已下载/签名核验，未系统安装/执行；离线分析调试器的启动被自动审批拒绝（仅blocked by policy），没有换入口绕过。故障模块、内核栈及测试因果仍UNKNOWN，产品构建/安装/运行/故障注入保持BLOCKED。完整事件/工具来源/证据及手动离线诊断步骤见INCIDENT-20261027-SYSTEM-CRASH.md。无产品测试进程，AV/BFE/日常FlClash保持；目标未完成。
-# 2026-11-01 ordinary project workflow — SOURCE / INTEGRATED
-
-Separate daily `workspace-sample` / `workspace-develop` commands now connect the
-fixed TextSummary task to the original authenticated installed Broker pipe and
-cleanup-success export. Shared sample bytes preserve the actual baseline hash;
-explicit v4/scope replies cannot be consumed as v3 DATA. Ordinary and elevated
-caller checks now reject AppContainer tokens and failed confinement queries.
-Six-product non-emitting semantics passes; new build/IPC tests, staging and system
-qualification remain pending. Installed acc7825b/656D8690/A126301D is unchanged.
-No project execution, UAC, new permission, network or recovery operation occurred.
-The actual prior project's success is reused; PowerShell, real host-sensitive
-denials, arbitrary projects, forced network/14 admissions/GPU/GUI remain open.
-
