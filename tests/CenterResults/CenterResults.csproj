@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Program.cs" />
+    <Compile Include="../../src/ProtectionCenter/WorkspaceResultSession.cs" Link="WorkspaceResultSession.cs" />
+    <Compile Include="../../src/Shared/WorkspaceBundle.cs" Link="WorkspaceBundle.cs" />
+    <Compile Include="../../src/Shared/WorkspaceFiles.cs" Link="WorkspaceFiles.cs" />
+    <Compile Include="../../src/Shared/WindowsDirectoryNames.cs" Link="WindowsDirectoryNames.cs" />
+    <Compile Include="../../src/ProtectionLifecycle/DirectoryNamePage.cs" Link="DirectoryNamePage.cs" />
+  </ItemGroup>
+</Project>

@@ -75,6 +75,8 @@ internal sealed class CenterWindow : Window
         AddAction(buttons, "检查代理连通性", () => Inspect(true));
         AddAction(buttons, "修复 Claude 代理配置", Repair);
         AddAction(buttons, "撤销上次配置修改", Restore);
+        AddAction(buttons, "审阅开发结果", () => ReviewWorkspace(false));
+        AddAction(buttons, "提取开发结果", () => ReviewWorkspace(true));
         lower.Children.Add(buttons);
         var report = Card(details); report.Padding = new Thickness(0); Grid.SetRow(report, 1); lower.Children.Add(report);
         details.Text = "检查结果会显示在这里。\r\n\r\n日常入口不提供故障注入或进程终止测试。\r\n日志中保留失败和未知项，不保存提示词或登录凭据。";
@@ -149,6 +151,45 @@ internal sealed class CenterWindow : Window
         environmentOutput = null;
         activity.Text = "正在核对上次修改记录；有后续编辑时拒绝覆盖。";
         ShowMaintenance(await BackendClient.Command("restore-proxy"), "config-restore");
+    }
+    private async Task ReviewWorkspace(bool extract)
+    {
+        environmentOutput = null;
+        string? SelectBundle(string title)
+        {
+            var dialog = new Microsoft.Win32.OpenFileDialog
+            {
+                Title = title, Filter = "工作区数据包 (*.json)|*.json",
+                CheckFileExists = true, Multiselect = false
+            };
+            return dialog.ShowDialog(this) == true ? dialog.FileName : null;
+        }
+        var baseline = SelectBundle("选择开发前的输入数据包");
+        if (baseline is null) { activity.Text = "已取消选择输入数据包。"; return; }
+        var result = SelectBundle("选择开发后的结果数据包");
+        if (result is null) { activity.Text = "已取消选择结果数据包。"; return; }
+        activity.Text = "正在校验所选文件并比较开发变化……";
+        var session = await Task.Run(() => WorkspaceResultSession.Open(baseline, result));
+        details.Text = session.ReviewText;
+        activity.Text = "结果文件校验完成；可以查看上方文件变化。";
+        if (!extract) return;
+        var parent = new Microsoft.Win32.OpenFolderDialog { Title = "选择结果的保存位置（将在其中创建新目录）", Multiselect = false };
+        if (parent.ShowDialog(this) != true) { activity.Text = "已取消提取；文件校验结果保留。"; return; }
+        var destination = Path.Combine(parent.FolderName, "project-result-" + DateTime.UtcNow.ToString("yyyyMMdd-HHmmss") + "-" + Guid.NewGuid().ToString("N")[..6]);
+        activity.Text = "正在将已审阅的结果提取到新目录……";
+        try
+        {
+            await Task.Run(() => session.ExtractNew(destination));
+            details.Text += "\r\n提取目录：" + destination;
+            activity.Text = $"已提取 {session.FileCount} 个文件；原项目保留，未运行结果中的程序。";
+        }
+        catch (Exception ex)
+        {
+            // The shared writer preserves partial output on failure. Do not
+            // hide its location, claim no writes, delete it or retry silently.
+            details.Text += "\r\n未确认提取完成的目录：" + destination;
+            activity.Text = "提取未完成：" + ex.GetType().Name + "。该目录可能已有部分文件，请保留检查；所选数据包和原项目保留。";
+        }
     }
     private void RefreshEnvironmentDisplay()
     {

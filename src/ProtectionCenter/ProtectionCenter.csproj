@@ -10,7 +10,11 @@
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="App.cs;BackendClient.cs;PreflightDisplay.cs" />
+    <Compile Include="App.cs;BackendClient.cs;PreflightDisplay.cs;WorkspaceResultSession.cs" />
+    <Compile Include="../Shared/WorkspaceBundle.cs" Link="WorkspaceBundle.cs" />
+    <Compile Include="../Shared/WorkspaceFiles.cs" Link="WorkspaceFiles.cs" />
+    <Compile Include="../Shared/WindowsDirectoryNames.cs" Link="WindowsDirectoryNames.cs" />
+    <Compile Include="../ProtectionLifecycle/DirectoryNamePage.cs" Link="DirectoryNamePage.cs" />
     <Compile Include="../Shared/UserDataPaths.cs" Link="UserDataPaths.cs" />
     <Compile Include="../Shared/StrictEnvironmentRequirements.cs" Link="StrictEnvironmentRequirements.cs" />
   </ItemGroup>
