@@ -8,7 +8,7 @@ using System.Text.Json;
 using System.Runtime.InteropServices;
 using Microsoft.Win32.SafeHandles;
 
-if(args.Length!=1 || args[0] is not ("policy" or "messages" or "handle-transfer" or "fault-mode" or "fault-mode-read" or "partial-output" or "hosted-policy" or "etw-policy" or "tls-transport-policy" or "etw-token-access" or "inactive-transition" or "project-policy" or "project-build" or "privacy-native"))return 125;
+if(args.Length!=1 || args[0] is not ("policy" or "messages" or "handle-transfer" or "fault-mode" or "fault-mode-read" or "partial-output" or "hosted-policy" or "etw-policy" or "tls-transport-policy" or "etw-token-access" or "inactive-transition" or "project-policy" or "project-build" or "privacy-native" or "caller-project-build" or "caller-project-policy"))return 125;
 try
 {
 using var identity=WindowsIdentity.GetCurrent();
@@ -27,6 +27,51 @@ void Refuse(Action action,string reason)
     throw new InvalidOperationException("Expected refusal: "+reason);
 }
 var launch=library.GetType("ProtectionLifecycle.OwnedToolLaunch",true)!;
+if(args[0] is "caller-project-build" or "caller-project-policy")
+{
+    var bundleType=library.GetType("ClaudeCodeProtection.Workspaces.WorkspaceBundle",true)!;
+    var taskType=library.GetType("ClaudeCodeProtection.Workspaces.CSharpProjectTask",true)!;
+    var executor=library.GetType("ProtectionLifecycle.CallerCSharpProject",true)!;
+    var files=library.GetType("ClaudeCodeProtection.Workspaces.WorkspaceFiles",true)!;
+    var fixtureData=new[]{"cpc-project.json","src/Counter.cs","src/Entry.cs","tests/Checks.cs","README.md"}.Select(name=>
+    {
+        using var resource=Assembly.GetExecutingAssembly().GetManifestResourceStream("CallerFixture."+name)??throw new InvalidDataException("Missing caller fixture");
+        using var bytes=new MemoryStream();resource.CopyTo(bytes);return (name,bytes.ToArray());
+    }).ToArray();
+    var bundle=Call(bundleType,"Create",fixtureData,null)!;
+    var baseline=(byte[])bundleType.GetMethod("Serialize",BindingFlags.Instance|BindingFlags.NonPublic)!.Invoke(bundle,null)!;
+    var task=Call(taskType,"Parse",baseline)!;
+    var planType=library.GetType("ProtectionLifecycle.ResourceProbePlan",true)!;
+    var hash=Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(baseline));
+    var nonce=new string('d',32);var programFiles=Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
+    var plan=Activator.CreateInstance(planType,6,nonce,new string('b',32),new string('c',32),Environment.ProcessId,new string('A',64),
+        "9DE2A6DB90D8383F3738249D52F30DEFBEDB994513A8F2697E9D90693CD1D285",hash,programFiles)!;
+    planType.GetProperty("DevelopProject")!.SetValue(plan,true);planType.GetProperty("HostPrivacySHA256")!.SetValue(plan,new string('F',64));
+    planType.GetProperty("CallerProjectKind")!.SetValue(plan,"CSHARP_LITERAL_EDIT_BUILD_RUN_TEST_V1");
+    var project=library.GetType("ProtectionLifecycle.BundledProjectDevelopment",true)!;
+    var workspace=Path.Combine(programFiles,"ClaudeCodeProtection-Task-"+nonce);
+    var start=(ProcessStartInfo)Call(project,"Start",plan,workspace)!;
+    _=Call(launch,"ValidateStart",plan,workspace,"project",start.ArgumentList.ToArray(),Call(launch,"StartHash",start)!);
+    _=Call(planType,"Parse",JsonSerializer.Serialize(plan,planType));
+    planType.GetProperty("CallerProjectKind")!.SetValue(plan,"OTHER_EXECUTOR");
+    Refuse(()=>Call(project,"Start",plan,workspace),"ResourceQualificationPlanRefused");
+    planType.GetProperty("CallerProjectKind")!.SetValue(plan,"CSHARP_LITERAL_EDIT_BUILD_RUN_TEST_V1");
+    planType.GetProperty("SchemaVersion")!.SetValue(plan,5);
+    Refuse(()=>Call(project,"Start",plan,workspace),"ResourceQualificationPlanRefused");
+    if(args[0]=="caller-project-policy"){Console.WriteLine("PASS explicit caller v6 kind, input/privacy digest and original fixed tool start; wrong kind and v5 mixing refused; no product/Job/code execution");return 0;}
+    var fixture=Path.Combine(AppContext.BaseDirectory,"ordinary-caller-project-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(fixture);
+    Call(files,"MaterializeNew",fixture,"project",baseline);
+    Call(executor,"BuildAndRun",Path.Combine(programFiles,"ClaudeCodeProtection-PowerShell-7.4.22"),Path.Combine(fixture,"project"),baseline);
+    var result=(byte[])Call(files,"SnapshotResult",fixture,"project",baseline)!;
+    try{taskType.GetMethod("VerifyResult",BindingFlags.Instance|BindingFlags.NonPublic)!.Invoke(task,new object[]{result});}
+    catch(TargetInvocationException error)when(error.InnerException is not null){ExceptionDispatchInfo.Capture(error.InnerException).Throw();throw;}
+    Call(files,"ExtractResultNew",Path.Combine(fixture,"exported"),baseline,result);
+    Require(File.ReadAllText(Path.Combine(fixture,"exported","cpc-output","stdout.txt"))=="words=3" &&
+        File.ReadAllText(Path.Combine(fixture,"exported","cpc-output","test-result.txt"))=="3" &&
+        File.ReadAllText(Path.Combine(fixture,"exported","src","Counter.cs")).Contains("StringSplitOptions.RemoveEmptyEntries"),"caller literal edit, run, three tests and extraction");
+    Require(!AppDomain.CurrentDomain.GetAssemblies().Any(a=>a.GetName().Name=="System.Management.Automation"),"caller project never loaded PowerShell");
+    Console.WriteLine("PASS ordinary reviewed CallerWordCount: explicit manifest, three source files, exact edit, pinned Roslyn compile, entry words=3, three tests, ten-file snapshot/verification/extraction; no PowerShell/MSBuild/project imports/network/LPAC/Job/UAC/real host probes; fixture="+fixture);return 0;
+}
 if(args[0]=="privacy-native")
 {
     var probe=library.GetType("ProtectionLifecycle.HostPrivacyProbe",true)!;
@@ -105,8 +150,8 @@ if(args[0]=="inactive-transition")
 {
     var lease=library.GetType("ProtectionLifecycle.BootstrapInstaller",true)!
         .GetNestedType("PinnedInactiveUpdateLease",BindingFlags.NonPublic)!;
-    const string actualRelease="14ea8f9c14044ffaabb7356dfbc96cfa";
-    const string actualManifest="F415392FE03AA198F1712A58AAAF0E4D197E81A850275CB027764A7356DF3A61";
+    const string actualRelease="00bcd9b7c7a640b3a66e28648db171cf";
+    const string actualManifest="60EC905689CFB91D6D8BC4A4020B250B135FB910D2C2C7A7FDC9AF1AC7A8292F";
     // The replacement is a fixture selection, not an approved package or
     // installed transition. This executes only the real pure selection guard.
     var replacementRelease=new string('a',32);var replacementManifest=new string('A',64);

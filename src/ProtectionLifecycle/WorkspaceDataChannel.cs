@@ -16,16 +16,18 @@ public static partial class InstalledBroker
         =>ExchangeWorkspacePipe(callerPid,nonce,expectedSHA256,false);
     public static int DevelopBundledProjectPipe(int callerPid,string nonce,string expectedSHA256)
         =>ExchangeWorkspacePipe(callerPid,nonce,expectedSHA256,true);
-    private static int ExchangeWorkspacePipe(int callerPid,string nonce,string expectedSHA256,bool developProject)
+    public static int BuildCallerCSharpProjectPipe(int callerPid,string nonce,string expectedSHA256)
+        =>ExchangeWorkspacePipe(callerPid,nonce,expectedSHA256,true,true);
+    private static int ExchangeWorkspacePipe(int callerPid,string nonce,string expectedSHA256,bool developProject,bool callerProject=false)
     {
         ProtectedState.RequireAdministrator();var expected=Identifiers.Hash(expectedSHA256);
-        if(developProject && expected!=TextSummarySource.BaselineHash)throw new InvalidDataException("Bundled project baseline required");
+        if(developProject && !callerProject && expected!=TextSummarySource.BaselineHash)throw new InvalidDataException("Bundled project baseline required");
         using var channel=new NamedPipeClientStream(".",WorkspacePipe.Name(callerPid,nonce),PipeDirection.InOut,
             PipeOptions.Asynchronous,TokenImpersonationLevel.Identification);
         channel.Connect(15000);WorkspacePipe.AssertPeer(channel,callerPid,false);
         string? session=null,resultHash=null,failureStage=null,failureKind=null;int? failureCode=null;
         ToolCreationEvidence? creationEvidence=null;WorkspaceStopEvidence? stopEvidence=null;
-        HostPrivacySummary? hostPrivacy=null;
+        HostPrivacySummary? hostPrivacy=null;var ownerSealedBeforeCode=false;
         byte[]? output=null;var exit=125;var stage="installation";
         try
         {
@@ -40,6 +42,11 @@ public static partial class InstalledBroker
                 var input=WorkspacePipe.Read(channel,WorkspaceBundle.MaxBundleBytes,transfer.Token).GetAwaiter().GetResult();
                 stage="processing";
                 if(!developProject)return ProcessWorkspaceBytes(layout,state,version,expected,input);
+                if(callerProject)
+                {
+                    if(WorkspaceBundle.Hash(input)!=expected)throw new InvalidDataException("Caller project byte binding differs");
+                    _=CSharpProjectTask.Parse(input);return ProtectedSession.BuildCallerProject(layout,state,version,input);
+                }
                 TextSummarySource.RequireBaseline(input);
                 return ProtectedSession.DevelopBundledProject(layout,state,version);
             });
@@ -48,16 +55,18 @@ public static partial class InstalledBroker
             session=Identifiers.Hex32(StrictJson.Text(r,"SessionId"));
             if(developProject && r.TryGetProperty("HostPrivacy",out var privacy) && privacy.ValueKind!=JsonValueKind.Null)
                 hostPrivacy=HostPrivacyContract.Parse(privacy,session,exit==0);
+            ownerSealedBeforeCode=callerProject && r.TryGetProperty("ProjectExecutionPermitConsumedAfterOwnerSealedPrivacy",out var sealedValue) && sealedValue.GetBoolean() && hostPrivacy is not null && HostPrivacyContract.Satisfied(hostPrivacy);
             if(exit==0)
             {
                 if(developProject && hostPrivacy is null)throw new InvalidDataException("Named host privacy evidence required");
-                if(StrictJson.Text(r,"Status")!=(developProject?"BUNDLED_PROJECT_DEVELOPED_AND_CLEANED":"WORKSPACE_DATA_PROCESSED_AND_CLEANED") ||
+                if(StrictJson.Text(r,"Status")!=(callerProject?"CALLER_CSHARP_PROJECT_BUILT_AND_CLEANED":developProject?"BUNDLED_PROJECT_DEVELOPED_AND_CLEANED":"WORKSPACE_DATA_PROCESSED_AND_CLEANED") ||
                     StrictJson.Text(r,"WorkspaceBaselineSHA256")!=expected ||
-                    developProject && StrictJson.Text(r,"Scope")!=WorkspacePipe.ProjectScope)throw new InvalidDataException("Workspace terminal binding differs");
+                    developProject && StrictJson.Text(r,"Scope")!=(callerProject?WorkspacePipe.CallerProjectScope:WorkspacePipe.ProjectScope) ||
+                    callerProject && !ownerSealedBeforeCode)throw new InvalidDataException("Workspace terminal binding differs");
                 resultHash=Identifiers.Hash(StrictJson.Text(r,"ClosedWorkspaceResultSHA256"));
                 // Reuse the existing authoritative success/cleanup receipt
                 // checks. Never expose a partial/private payload on failure.
-                stage="export";output=developProject?ExportDevelopedProject(session,resultHash):ExportWorkspaceData(session,resultHash);
+                stage="export";output=callerProject?ExportCallerCSharpProject(session,resultHash):developProject?ExportDevelopedProject(session,resultHash):ExportWorkspaceData(session,resultHash);
             }
             else
             {
@@ -103,13 +112,16 @@ public static partial class InstalledBroker
                 }
             }
         }
-        catch(Exception ex){exit=125;output=null;resultHash=null;creationEvidence=null;stopEvidence=null;hostPrivacy=null;failureStage=stage;failureKind=ex.GetType().Name;failureCode=ex is Win32Exception native?native.NativeErrorCode:ex.HResult;}
+        catch(Exception ex){exit=125;output=null;resultHash=null;creationEvidence=null;stopEvidence=null;hostPrivacy=null;ownerSealedBeforeCode=false;failureStage=stage;failureKind=ex.GetType().Name;failureCode=ex is Win32Exception native?native.NativeErrorCode:ex.HResult;}
         using var completion=new CancellationTokenSource(TimeSpan.FromSeconds(15));
         var response=JsonSerializer.SerializeToUtf8Bytes(new {SchemaVersion=3,ExitCode=exit,SessionId=session,BaseSHA256=expected,
             ResultSHA256=resultHash,Status=exit==0?"WORKSPACE_DATA_PROCESSED_AND_CLEANED":"WORKSPACE_DATA_NOT_CONFIRMED",
             FailureStage=failureStage,FailureKind=failureKind,FailureCode=failureCode,CreationEvidence=creationEvidence,StopEvidence=stopEvidence});
         if(developProject)response=JsonSerializer.SerializeToUtf8Bytes(new {SchemaVersion=5,Scope=WorkspacePipe.ProjectScope,HostPrivacy=hostPrivacy,ExitCode=exit,SessionId=session,BaseSHA256=expected,
             ResultSHA256=resultHash,Status=exit==0?"BUNDLED_PROJECT_DEVELOPED_AND_CLEANED":"BUNDLED_PROJECT_NOT_CONFIRMED",
+            FailureStage=failureStage,FailureKind=failureKind,FailureCode=failureCode,CreationEvidence=creationEvidence,StopEvidence=stopEvidence});
+        if(callerProject)response=JsonSerializer.SerializeToUtf8Bytes(new {SchemaVersion=6,Scope=WorkspacePipe.CallerProjectScope,HostPrivacy=hostPrivacy,OwnerSealedBeforeCode=ownerSealedBeforeCode,ExitCode=exit,SessionId=session,BaseSHA256=expected,
+            ResultSHA256=resultHash,Status=exit==0?"CALLER_CSHARP_PROJECT_BUILT_AND_CLEANED":"CALLER_CSHARP_PROJECT_NOT_CONFIRMED",
             FailureStage=failureStage,FailureKind=failureKind,FailureCode=failureCode,CreationEvidence=creationEvidence,StopEvidence=stopEvidence});
         WorkspacePipe.AssertPeer(channel,callerPid,false);
         WorkspacePipe.Write(channel,response,16384,completion.Token).GetAwaiter().GetResult();

@@ -75,7 +75,8 @@ internal static class BundledProjectDevelopment
             File.WriteAllText(Path.Combine(workspace,"project-privacy-ready.signal"),"");clock.Restart();
             while(!File.Exists(Path.Combine(workspace,"project-execution-go.signal"))){if(clock.ElapsedMilliseconds>=8000)throw new TimeoutException("Original owner privacy sealing gate");Thread.Sleep(20);}
             if(File.ReadAllText(Path.Combine(workspace,"project-execution-go.txt"))!=plan.Nonce)throw WfpNative.Contract("ProjectExecutionGateBindingDiffers");
-            BuildAndRun(plan.PowerShellDirectory,Path.Combine(workspace,"git-project"));
+            if(plan.CallerProjectKind is not null)CallerCSharpProject.BuildAndRun(plan.PowerShellDirectory,Path.Combine(workspace,"git-project"),plan.ProjectBundle);
+            else BuildAndRun(plan.PowerShellDirectory,Path.Combine(workspace,"git-project"));
             foreach(var fixture in new[]{plan.Fixture,Path.Combine(workspace,"all-packages-only.json")})
             {
                 bool denied=false;try{using var file=File.OpenRead(fixture);}catch(UnauthorizedAccessException){denied=true;}
@@ -97,6 +98,18 @@ internal static class BundledProjectDevelopment
             using var output=new FileStream(Path.Combine(project,file.Path),FileMode.Open,FileAccess.Write,FileShare.None);
             var changed=Modified(file);output.SetLength(0);output.Write(changed);output.Flush(true);
         }
+        var assemblyPath=Compile(tools,project,"TextSummary",new[]{"TextSummary.cs","ProjectTests.cs"},"TextSummary.dll");
+        var compiled=AssemblyLoadContext.Default.LoadFromAssemblyPath(assemblyPath);
+        var counter=compiled.GetType("TextSummary.Counter",true)!;
+        var lines=(int)counter.GetMethod("CountLines")!.Invoke(null,new[]{Sample})!;
+        var words=(int)counter.GetMethod("CountWords")!.Invoke(null,new[]{Sample})!;
+        var tests=(int)compiled.GetType("TextSummary.ProjectTests",true)!.GetMethod("Run")!.Invoke(null,null)!;
+        if(lines!=2 || words!=5 || tests!=6)throw WfpNative.Contract("DevelopmentRunOrTestsFailed");
+        WriteNew("run-result.json",JsonSerializer.SerializeToUtf8Bytes(new{Lines=lines,Words=words}));WriteNew("test-result.txt",Encoding.ASCII.GetBytes(tests.ToString(System.Globalization.CultureInfo.InvariantCulture)));
+        void WriteNew(string name,byte[] bytes){using var file=new FileStream(Path.Combine(project,name),FileMode.CreateNew,FileAccess.Write,FileShare.None);file.Write(bytes);file.Flush(true);}
+    }
+    internal static string Compile(string tools,string project,string assemblyName,string[] sourceNames,string outputName)
+    {
         var assets=SessionPowerShellToolchain.ReadAssets().Files;
         Assembly Load(string name)
         {
@@ -109,8 +122,8 @@ internal static class BundledProjectDevelopment
         var referenceType=common.GetType("Microsoft.CodeAnalysis.MetadataReference",true)!;
         var parse=csharp.GetType("Microsoft.CodeAnalysis.CSharp.CSharpSyntaxTree",true)!.GetMethods()
             .Single(m=>m.Name=="ParseText" && m.GetParameters()[0].ParameterType==typeof(string) && m.GetParameters().Skip(1).All(p=>p.HasDefaultValue));
-        var trees=Array.CreateInstance(treeType,2);int index=0;
-        foreach(var name in new[]{"TextSummary.cs","ProjectTests.cs"})trees.SetValue(Invoke(parse,null,File.ReadAllText(Path.Combine(project,name))),index++);
+        var trees=Array.CreateInstance(treeType,sourceNames.Length);int index=0;
+        foreach(var name in sourceNames)trees.SetValue(Invoke(parse,null,File.ReadAllText(WindowsPathSeal.Child(project,name))),index++);
         var referenceAssets=assets.Where(a=>a.Path.StartsWith("ref/",StringComparison.Ordinal) && a.Path.EndsWith(".dll",StringComparison.Ordinal)).ToArray();
         if(referenceAssets.Length<50)throw WfpNative.Contract("DevelopmentReferenceSetMissing");
         var references=Array.CreateInstance(referenceType,referenceAssets.Length);
@@ -126,23 +139,16 @@ internal static class BundledProjectDevelopment
         var constructor=optionsType.GetConstructors().Where(c=>c.GetParameters()[0].ParameterType==outputKind.GetType() && c.GetParameters().Skip(1).All(p=>p.HasDefaultValue)).OrderByDescending(c=>c.GetParameters().Length).First();
         var options=Invoke(constructor,null,outputKind);
         var create=csharp.GetType("Microsoft.CodeAnalysis.CSharp.CSharpCompilation",true)!.GetMethods().Single(m=>m.Name=="Create" && m.GetParameters().Length==4);
-        var compilation=create.Invoke(null,new[]{"TextSummary",trees,references,options})!;
+        var compilation=create.Invoke(null,new[]{assemblyName,trees,references,options})!;
         var emit=compilation.GetType().GetMethods().Where(m=>m.Name=="Emit" && m.GetParameters()[0].ParameterType==typeof(Stream) && m.GetParameters().Skip(1).All(p=>p.HasDefaultValue)).OrderByDescending(m=>m.GetParameters().Length).First();
-        var assemblyPath=Path.Combine(project,"TextSummary.dll");
+        var assemblyPath=WindowsPathSeal.Child(project,outputName);
         using(var output=new FileStream(assemblyPath,FileMode.CreateNew,FileAccess.Write,FileShare.None))
         {
             var result=Invoke(emit,compilation,output)!;
             if(result.GetType().GetProperty("Success")!.GetValue(result) is not true)throw WfpNative.Contract("DevelopmentCompilationFailed");
             output.Flush(true);
         }
-        var compiled=AssemblyLoadContext.Default.LoadFromAssemblyPath(assemblyPath);
-        var counter=compiled.GetType("TextSummary.Counter",true)!;
-        var lines=(int)counter.GetMethod("CountLines")!.Invoke(null,new[]{Sample})!;
-        var words=(int)counter.GetMethod("CountWords")!.Invoke(null,new[]{Sample})!;
-        var tests=(int)compiled.GetType("TextSummary.ProjectTests",true)!.GetMethod("Run")!.Invoke(null,null)!;
-        if(lines!=2 || words!=5 || tests!=6)throw WfpNative.Contract("DevelopmentRunOrTestsFailed");
-        WriteNew("run-result.json",JsonSerializer.SerializeToUtf8Bytes(new{Lines=lines,Words=words}));WriteNew("test-result.txt",Encoding.ASCII.GetBytes(tests.ToString(System.Globalization.CultureInfo.InvariantCulture)));
-        void WriteNew(string name,byte[] bytes){using var file=new FileStream(Path.Combine(project,name),FileMode.CreateNew,FileAccess.Write,FileShare.None);file.Write(bytes);file.Flush(true);}
+        return assemblyPath;
     }
     private static object? Invoke(MethodBase method,object? target,params object?[] required)
     {

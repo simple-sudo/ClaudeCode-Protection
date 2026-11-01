@@ -14,6 +14,12 @@
     <Compile Include="../../src/Shared/TextSummarySource.cs" />
     <Compile Include="../../src/Shared/HostPrivacyContract.cs" />
     <Compile Include="HostPrivacyExecutionGateCases.cs;../../src/ProtectionLifecycle/HostPrivacyExecutionGate.cs" />
+    <Compile Include="CallerCSharpCases.cs;../../src/Shared/CSharpProjectTask.cs" />
+    <EmbeddedResource Include="../../samples/CallerWordCount/cpc-project.json" LogicalName="CallerFixture.cpc-project.json" />
+    <EmbeddedResource Include="../../samples/CallerWordCount/src/Counter.cs" LogicalName="CallerFixture.src/Counter.cs" />
+    <EmbeddedResource Include="../../samples/CallerWordCount/src/Entry.cs" LogicalName="CallerFixture.src/Entry.cs" />
+    <EmbeddedResource Include="../../samples/CallerWordCount/tests/Checks.cs" LogicalName="CallerFixture.tests/Checks.cs" />
+    <EmbeddedResource Include="../../samples/CallerWordCount/README.md" LogicalName="CallerFixture.README.md" />
     <EmbeddedResource Include="../../samples/TextSummary/TextSummary.csproj" LogicalName="ClaudeCodeProtection.TextSummary.TextSummary.csproj" />
     <EmbeddedResource Include="../../samples/TextSummary/TextSummary.cs" LogicalName="ClaudeCodeProtection.TextSummary.TextSummary.cs" />
     <EmbeddedResource Include="../../samples/TextSummary/ProjectTests.cs" LogicalName="ClaudeCodeProtection.TextSummary.ProjectTests.cs" />

@@ -216,7 +216,9 @@ public static class BootstrapInstaller
             // Runtime admission/Job/quarantine checks remain mandatory.
             "B5CFD0EDFEECB4CF91011D886A99961DE6762595D27048A547EB2BDDF10B9C7E",
             "656D8690F56C5A085E1379B923692D2AC409F4B83E11BD18DE929033DC8C06E1",
-            "F415392FE03AA198F1712A58AAAF0E4D197E81A850275CB027764A7356DF3A61"
+            "F415392FE03AA198F1712A58AAAF0E4D197E81A850275CB027764A7356DF3A61",
+            // Actual paired named-resource project package; exact prior only.
+            "60EC905689CFB91D6D8BC4A4020B250B135FB910D2C2C7A7FDC9AF1AC7A8292F"
         };
         private readonly ProtectedState state;
         private readonly BootstrapApproval approval;

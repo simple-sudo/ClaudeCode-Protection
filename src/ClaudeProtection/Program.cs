@@ -27,6 +27,16 @@ internal static class Program
                     if(args.Length!=3)return 64;
                     var processed=await WorkspaceProcessing.Run(args[1],args[2]);
                     Console.WriteLine(JsonSerializer.Serialize(processed.Report));return processed.ExitCode;
+                case "workspace-build-csharp":
+                    if(args.Length!=3)return 64;
+                    var callerBuilt=await WorkspaceProcessing.BuildCaller(args[1],args[2]);
+                    Console.WriteLine(JsonSerializer.Serialize(callerBuilt.Report));return callerBuilt.ExitCode;
+                case "workspace-check-csharp":
+                    if(args.Length!=2)return 64;
+                    WorkspaceFiles.RequireOrdinaryUser();var callerBytes=WorkspaceFiles.ReadBundle(args[1]);var callerTask=CSharpProjectTask.Parse(callerBytes);
+                    Console.WriteLine(JsonSerializer.Serialize(new {Status="CALLER_CSHARP_TASK_VALIDATED_NOT_EXECUTED",SHA256=callerTask.BaselineSHA256,
+                        Sources=callerTask.Definition.Sources,Edits=callerTask.Definition.Edits.Length,callerTask.Definition.EntryType,callerTask.Definition.TestType,
+                        callerTask.Definition.ExpectedTests,CodeExecuted=false,AdmissionIssued=false}));return 0;
                 case "workspace-pack":
                     if(args.Length!=4)return 64;
                     WorkspaceFiles.RequireOrdinaryUser();
@@ -97,6 +107,7 @@ internal static class Program
                     Console.WriteLine("workspace-extract BASE_BUNDLE RESULT_BUNDLE NEW_DIRECTORY (new files only; no merge or overwrite)");
                     Console.WriteLine("workspace-process BASE_BUNDLE NEW_RESULT_BUNDLE (installed Broker, human UAC; fixed offline Git data processing only)");
                     Console.WriteLine("workspace-sample NEW_BASE_BUNDLE | workspace-develop BASE_BUNDLE NEW_RESULT_BUNDLE (TextSummary sample only; human UAC, protected source edit/build/run/six tests)");
+                    Console.WriteLine("workspace-check-csharp BASE_BUNDLE (validate cpc-project.json, no execution) | workspace-build-csharp BASE_BUNDLE NEW_RESULT_BUNDLE (explicit caller C# edits/build/run/tests; installed Broker, human UAC)");
                     return args.Length == 0 ? 0 : 64;
             }
         }

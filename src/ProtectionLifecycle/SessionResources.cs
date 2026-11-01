@@ -18,21 +18,26 @@ internal sealed record ResourceProbePlan(int SchemaVersion,string Nonce,string I
     public bool DevelopProject {get;init;}
     [System.Text.Json.Serialization.JsonIgnore(Condition=System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     public string? HostPrivacySHA256 {get;init;}
+    [System.Text.Json.Serialization.JsonIgnore(Condition=System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public string? CallerProjectKind {get;init;}
     internal static ResourceProbePlan Parse(string raw)
     {
         if(raw.Length>1024)throw WfpNative.Contract("ResourcePlanBoundsRefused");
         using var json=JsonDocument.Parse(raw);var fields=new[]{"SchemaVersion","Nonce","InstallationId","Release","BrokerPid","ToolSHA256","GitAssetSetSHA256","WorkspaceInputSHA256","ProgramFilesRoot"};
-        StrictJson.Fields(json.RootElement,json.RootElement.GetProperty("SchemaVersion").GetInt32()==5?fields.Concat(new[]{"DevelopProject","HostPrivacySHA256"}).ToArray():fields);
+        var schema=json.RootElement.GetProperty("SchemaVersion").GetInt32();
+        StrictJson.Fields(json.RootElement,schema==6?fields.Concat(new[]{"DevelopProject","HostPrivacySHA256","CallerProjectKind"}).ToArray():schema==5?fields.Concat(new[]{"DevelopProject","HostPrivacySHA256"}).ToArray():fields);
         var plan=JsonSerializer.Deserialize<ResourceProbePlan>(raw)??throw WfpNative.Contract("ResourcePlanMissing");plan.Validate();return plan;
     }
     internal void Validate()
     {
-        if(SchemaVersion!=(DevelopProject?5:3) || BrokerPid<=0 || WindowsPathSeal.Canonical(ProgramFilesRoot)!=ProgramFilesRoot ||
+        if(SchemaVersion!=(DevelopProject?(CallerProjectKind is null?5:6):3) || BrokerPid<=0 || WindowsPathSeal.Canonical(ProgramFilesRoot)!=ProgramFilesRoot ||
+            CallerProjectKind is not null && (!DevelopProject || CallerProjectKind!=CSharpProjectTask.Kind) ||
             (DevelopProject?!WorkspaceBundle.IsHash(HostPrivacySHA256):HostPrivacySHA256 is not null))throw WfpNative.Contract("ResourceQualificationPlanRefused");
         _=Identifiers.Hex32(Nonce);_=Identifiers.Hex32(InstallationId);_=Identifiers.Hex32(Release);_=Identifiers.Hash(ToolSHA256);
         if(GitAssetSetSHA256 is not null && GitAssetSetSHA256!=SessionGitToolchain.AssetSetSHA256)throw WfpNative.Contract("GitAssetSetNotReviewed");
         if(WorkspaceInputSHA256 is not null && (GitAssetSetSHA256 is null || !WorkspaceBundle.IsHash(WorkspaceInputSHA256)))throw WfpNative.Contract("WorkspaceDataPlanRefused");
-        if(DevelopProject && (GitAssetSetSHA256!=SessionGitToolchain.AssetSetSHA256 || WorkspaceInputSHA256!=BundledProjectDevelopment.BaselineHash))throw WfpNative.Contract("FixedDevelopmentProjectPlanRequired");
+        if(DevelopProject && (GitAssetSetSHA256!=SessionGitToolchain.AssetSetSHA256 ||
+            (CallerProjectKind is null?WorkspaceInputSHA256!=BundledProjectDevelopment.BaselineHash:!WorkspaceBundle.IsHash(WorkspaceInputSHA256))))throw WfpNative.Contract(CallerProjectKind is null?"FixedDevelopmentProjectPlanRequired":"ExplicitCallerProjectPlanRequired");
     }
     // Paths are resolved by the trusted owner outside LPAC. These are internal
     // runtime facts, never a privileged host-path operation or CLI parameter.
@@ -86,11 +91,13 @@ internal sealed class SessionResources : IDisposable
     internal string Workspace=>folder.Path;
     private SessionResources(ProtectedState state,PathLease folder,FileStream input,SessionPowerShellToolchain? tool,ResourceProbePlan plan,SessionGitToolchain? git,FileStream? projectInput,FileStream allPackagesFixture,HostPrivacyProbe? privacy)
     {this.state=state;this.folder=folder;this.input=input;this.tool=tool;Plan=plan;this.git=git;this.projectInput=projectInput;this.allPackagesFixture=allPackagesFixture;this.privacy=privacy;}
-    internal static SessionResources Create(ProtectedState state,VerifiedVersion version,InstallationProfileLease profile,string nonce,bool includeGit=false,byte[]? workspaceInput=null,bool developProject=false)
+    internal static SessionResources Create(ProtectedState state,VerifiedVersion version,InstallationProfileLease profile,string nonce,bool includeGit=false,byte[]? workspaceInput=null,bool developProject=false,bool callerProject=false)
     {
         state.AssertHeld();version.AssertHeld(state);
         using var sid=new InstallationPackageSid(state);profile.AssertPackage(sid);
-        if(developProject && (!includeGit || workspaceInput is null || WorkspaceBundle.Hash(workspaceInput)!=BundledProjectDevelopment.BaselineHash))throw WfpNative.Contract("ExplicitBundledProjectTaskRequired");
+        if(callerProject && !developProject)throw WfpNative.Contract("ExplicitCallerCodeTaskRequired");
+        if(developProject && (!includeGit || workspaceInput is null || !callerProject && WorkspaceBundle.Hash(workspaceInput)!=BundledProjectDevelopment.BaselineHash))throw WfpNative.Contract("ExplicitBundledProjectTaskRequired");
+        if(callerProject)_=CSharpProjectTask.Parse(workspaceInput!);
         var tool=workspaceInput is null || developProject?SessionPowerShellToolchain.Open():null;
         PathLease? directory=null;FileStream? input=null,projectInput=null,allPackagesFixture=null;SessionGitToolchain? git=null;
         HostPrivacyProbe? privacy=null;
@@ -99,9 +106,9 @@ internal sealed class SessionResources : IDisposable
             var hash=version.Package.Files.Single(f=>f.Asset.Id=="broker-exe").SHA256;
             if(includeGit)git=SessionGitToolchain.Open();
             if(developProject)privacy=HostPrivacyProbe.Capture(nonce,state.InstallationId,version.Package.Release);
-            var plan=new ResourceProbePlan(developProject?5:3,Identifiers.Hex32(nonce),state.InstallationId,version.Package.Release,Environment.ProcessId,hash,
+            var plan=new ResourceProbePlan(developProject?(callerProject?6:5):3,Identifiers.Hex32(nonce),state.InstallationId,version.Package.Release,Environment.ProcessId,hash,
                 includeGit?SessionGitToolchain.AssetSetSHA256:null,workspaceInput is null?null:WorkspaceBundle.Hash(workspaceInput),
-                WindowsPathSeal.Canonical(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles))){DevelopProject=developProject,HostPrivacySHA256=privacy?.SHA256};plan.Validate();
+                WindowsPathSeal.Canonical(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles))){DevelopProject=developProject,HostPrivacySHA256=privacy?.SHA256,CallerProjectKind=callerProject?CSharpProjectTask.Kind:null};plan.Validate();
             if(!string.Equals(plan.ExpectedChildImage,Environment.ProcessPath,StringComparison.OrdinalIgnoreCase) || includeGit && plan.Workspace("")!=SessionTaskWorkspace.PathFor(nonce))
                 throw WfpNative.Contract("ResourceRuntimePathsDifferFromInstalledOwner");
             if(workspaceInput is not null)
@@ -235,7 +242,8 @@ internal sealed class SessionResources : IDisposable
         var baseline=Plan.WorkspaceInputSHA256 is null?state.Read("workspace-input-"+Plan.Nonce+".json"):state.ReadWorkspaceData(Plan.Nonce,false);
         if(!baseline.Bytes.AsSpan().SequenceEqual(Plan.ProjectBundle))throw WfpNative.Contract("WorkspaceExportBaselineChanged");
         var bytes=WorkspaceFiles.SnapshotResult(Workspace,"git-project",baseline.Bytes);
-        if(Plan.DevelopProject)BundledProjectDevelopment.VerifyResult(bytes);
+        if(Plan.CallerProjectKind is not null)CSharpProjectTask.Parse(baseline.Bytes).VerifyResult(bytes);
+        else if(Plan.DevelopProject)BundledProjectDevelopment.VerifyResult(bytes);
         else if(WorkspaceBundle.Compare(baseline.Bytes,bytes).Length!=0)throw WfpNative.Contract("FixedGitWorkspaceUnexpectedChanges");
         // Current fixed sample fits the existing private journal size. Future
         // large project output needs owned data storage, not a widened ledger.

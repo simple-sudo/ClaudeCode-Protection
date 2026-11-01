@@ -1,0 +1,15 @@
+{
+  "SchemaVersion": 1,
+  "Kind": "CSHARP_LITERAL_EDIT_BUILD_RUN_TEST_V1",
+  "Sources": ["src/Counter.cs", "src/Entry.cs", "tests/Checks.cs"],
+  "Edits": [
+    {
+      "Path": "src/Counter.cs",
+      "Before": "return -1; // TODO_WORD_COUNT",
+      "After": "return text.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries).Length;"
+    }
+  ],
+  "EntryType": "CallerExample.Entry",
+  "TestType": "CallerExample.Checks",
+  "ExpectedTests": 3
+}

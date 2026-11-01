@@ -25,16 +25,17 @@ internal static class WorkspacePipe
     // This does not request Impersonate, AssignPrimary or Adjust privileges.
     internal const uint CallerTokenQueryAccess=0x0008|0x0002;
     internal sealed record Reply(int ExitCode,string? SessionId,string? ResultSHA256,string? FailureStage,string? FailureKind,int? FailureCode,
-        ToolCreationEvidence? CreationEvidence,WorkspaceStopEvidence? StopEvidence,HostPrivacySummary? HostPrivacy=null);
+        ToolCreationEvidence? CreationEvidence,WorkspaceStopEvidence? StopEvidence,HostPrivacySummary? HostPrivacy=null,bool OwnerSealedBeforeCode=false);
     internal const string ProjectScope="EXPLICIT_TEXTSUMMARY_SOURCE_EDIT_BUILD_RUN_TEST";
-    internal static Reply ParseReply(byte[] bytes,string expected,bool developProject=false)
+    internal const string CallerProjectScope="EXPLICIT_CALLER_CSHARP_LITERAL_EDITS_BUILD_RUN_TEST";
+    internal static Reply ParseReply(byte[] bytes,string expected,bool developProject=false,bool callerProject=false)
     {
-        if(bytes.Length is <1 or >16384 || !WorkspaceBundle.IsHash(expected))throw new InvalidDataException("Workspace reply bounds refused");
+        if(bytes.Length is <1 or >16384 || !WorkspaceBundle.IsHash(expected) || callerProject && !developProject)throw new InvalidDataException("Workspace reply bounds refused");
         using var doc=JsonDocument.Parse(bytes,new JsonDocumentOptions{MaxDepth=4});var r=doc.RootElement;
         var fields=new[]{"BaseSHA256","CreationEvidence","ExitCode","FailureCode","FailureKind","FailureStage","ResultSHA256","SchemaVersion","SessionId","Status","StopEvidence"};
-        RequireFields(r,developProject?fields.Concat(new[]{"Scope","HostPrivacy"}).ToArray():fields);
-        if(r.GetProperty("SchemaVersion").GetInt32()!=(developProject?5:3) || r.GetProperty("BaseSHA256").GetString()!=expected ||
-            developProject && (expected!=TextSummarySource.BaselineHash || r.GetProperty("Scope").GetString()!=ProjectScope))
+        RequireFields(r,callerProject?fields.Concat(new[]{"Scope","HostPrivacy","OwnerSealedBeforeCode"}).ToArray():developProject?fields.Concat(new[]{"Scope","HostPrivacy"}).ToArray():fields);
+        if(r.GetProperty("SchemaVersion").GetInt32()!=(callerProject?6:developProject?5:3) || r.GetProperty("BaseSHA256").GetString()!=expected ||
+            developProject && ((!callerProject && expected!=TextSummarySource.BaselineHash) || r.GetProperty("Scope").GetString()!=(callerProject?CallerProjectScope:ProjectScope)))
             throw new InvalidDataException("Workspace reply contract differs");
         var exit=r.GetProperty("ExitCode").GetInt32();var session=r.GetProperty("SessionId").GetString();
         var hash=r.GetProperty("ResultSHA256").GetString();var stage=r.GetProperty("FailureStage").GetString();var kind=r.GetProperty("FailureKind").GetString();
@@ -45,11 +46,11 @@ internal static class WorkspacePipe
         if(exit==0)
         {
             if(session is null || !WorkspaceBundle.IsHash(hash) || stage is not null || kind is not null || code is not null || creation is not null || stop is not null ||
-                r.GetProperty("Status").GetString()!=(developProject?"BUNDLED_PROJECT_DEVELOPED_AND_CLEANED":"WORKSPACE_DATA_PROCESSED_AND_CLEANED"))throw new InvalidDataException("Workspace success reply differs");
+                r.GetProperty("Status").GetString()!=(callerProject?"CALLER_CSHARP_PROJECT_BUILT_AND_CLEANED":developProject?"BUNDLED_PROJECT_DEVELOPED_AND_CLEANED":"WORKSPACE_DATA_PROCESSED_AND_CLEANED"))throw new InvalidDataException("Workspace success reply differs");
         }
         else if(exit is not (3 or 125) || hash is not null || stage is not ("installation" or "caller" or "input" or "processing" or "export") ||
             kind is null || kind.Length is <1 or >80 || kind.Any(c=>!char.IsAsciiLetterOrDigit(c)) || code is null ||
-            r.GetProperty("Status").GetString()!=(developProject?"BUNDLED_PROJECT_NOT_CONFIRMED":"WORKSPACE_DATA_NOT_CONFIRMED"))throw new InvalidDataException("Workspace failure reply differs");
+            r.GetProperty("Status").GetString()!=(callerProject?"CALLER_CSHARP_PROJECT_NOT_CONFIRMED":developProject?"BUNDLED_PROJECT_NOT_CONFIRMED":"WORKSPACE_DATA_NOT_CONFIRMED"))throw new InvalidDataException("Workspace failure reply differs");
         if((creation is not null || stop is not null) && (exit==0 || stage!="processing" || session is null))throw new InvalidDataException("Workspace diagnostic session differs");
         if(creation is not null && (kind is not ("PowerShellCreateProcess" or "PowerShellImageExecuteOpen") ||
             kind=="PowerShellCreateProcess" && creation.ImageExecuteOpenError!=0 ||
@@ -66,7 +67,10 @@ internal static class WorkspacePipe
             }
             else if(exit==0)throw new InvalidDataException("Successful project requires named host denials");
         }
-        return new(exit,session,hash,stage,kind,code,creation,stop,privacy);
+        var sealedBeforeCode=callerProject && r.GetProperty("OwnerSealedBeforeCode").GetBoolean();
+        if(callerProject && exit==0 && !sealedBeforeCode || sealedBeforeCode && (privacy is null || !HostPrivacyContract.Satisfied(privacy)))
+            throw new InvalidDataException("Caller project requires original owner sealed observations");
+        return new(exit,session,hash,stage,kind,code,creation,stop,privacy,sealedBeforeCode);
     }
     internal static ToolCreationEvidence? ParseCreationEvidence(JsonElement value)
     {
