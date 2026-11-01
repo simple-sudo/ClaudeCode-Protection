@@ -25,8 +25,15 @@ refused a changed valid baseline before UAC/output reservation and reviewed the
 reused actual result's five changes. Initial harness DLL-path failure and the raw
 prior fixture's stale installed53f text are preserved; actual fixture constants
 use acc7825b, and the source label is now corrected. No new project execution.
-Candidate14ea8f9c/F415392F stages3 changed/11 reused assets; Bootstrap and any new
-system operation are still pending; actual acc7825b success below is reusable
+Candidate14ea8f9c/F415392F stages3 changed/11 reused assets. Source9518a25's82-input
+Bootstrap reused exact334E9AA8; the complete20-file stage and embedded manifest
+match. Two held-input preflights/three strict binder refusals and exact runner
+2 positive/17 negative cases pass, not live Job proof. Controls are READY but
+NOT_AUTHORIZED/NOT_RUN, under work/ordinary-project-control-20261101; full concrete
+scope is system-operation-review.md. Only the runner's exact own ordinary daily
+may be stopped on its180s deadline, not elevated owner. No private error/raw Job
+read, automatic retry/recovery or additional network grant is included.
+Any new system operation remains pending; actual acc7825b success below is reusable
 evidence. No new UAC authorization transfers from that consumed run. The new
 token guard is not yet an observed rejection of an actual LPAC caller, and no
 broader host-sensitive privacy or arbitrary-project claim follows.

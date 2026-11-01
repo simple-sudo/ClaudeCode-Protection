@@ -16,6 +16,36 @@ boundaries below remain applicable. See docs/MIGRATION-20261031.md.
 
 # ClaudeCode-Protection working rules
 
+2026-11-01 NEW ORDINARY WORKFLOW CANDIDATE READY, NOT_AUTHORIZED/NOT_RUN:
+14ea8f9c14044ffaabb7356dfbc96cfa / manifestF415392FE03AA198F1712A58AAAF0E4D197E81A850275CB027764A7356DF3A61 /
+library334E9AA8. Source9b12e1c 84-input offline build and four ordinary
+IPC/token/DATA/actual acc7825b prior-pin modes pass; new daily sample creation,
+changed valid baseline refusal before UAC/output reservation and reused actual
+85DDA341 result review pass. Only one reviewed read-only GetTokenInformation
+import added to library/daily; old151 library imports retained/no module init.
+No new project compile/run. Initial harness wrong DLL path failed before test
+entry, retained; r2 uses same artifacts and passes. Raw prior-pin fixture says
+installed53f but actual frozen constants acc7825b/656D8690; later source label
+only corrected. Source9518a25 82-input Bootstrap reuses exact qualified library;
+20files/10PE/6managed/embedded manifest match,3 changed11 reused assets.
+Current installed acc public15 hashes/trusted owners/protected DACL/no untrusted
+writers freshly match; actual staged prior transition passes, not live Job proof.
+Controls work/ordinary-project-control-20261101: install plan108B4808/helper6208565B,
+workflow planA0927F70/runner48020F49. Two held input preflights/three strict
+unknown-switch refusals and exact runner2 positive/17 negative guard fixtures
+pass. Initial preflight checker expected stdout instead of the runner's saved
+record; raw failure and r2 correction retained. Synthetic report is NOT Job proof.
+New explicit daily workspace-sample/develop uses original installed caller/
+Broker/Job/LPAC/tool/cleanup export with v4/scope; v3 DATA remains no-code.
+Runner180s per daily call including human UAC,1s drain; only held-handle/creation/
+image-bound own ORDINARY daily may be stopped. NO elevated owner stop, private
+tool-error/raw Job read, retry or automatic recovery. Original active runtime
+lease20s and client/Broker timeouts remain; missing process is no closure proof.
+Read system-operation-review.md SHA B8C289D4C786DEEA9773BEEFDF5BCBA222496C8949D9247082DD2E29DA09394D
+before two concrete new human UAC decisions. Installed acc/656D8690/A126301D
+unchanged. Actual LPAC-caller rejection and broader real host privacy remain
+unqualified. No new system operation authorized; prior grants consumed.
+
 2026-11-01 AUTHORITATIVE ACTUAL PROJECT SUCCESS: human authorized both fixed
 acc7825b operations and manually confirmed UAC. INACTIVE update/read-only
 inspect completed08:45:18Z, installedacc7825b881a40efb7b7f2cd7005f8d1 /

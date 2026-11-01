@@ -20,8 +20,20 @@ New ordinary daily dispatch also passed sample creation (same ED3DDCB2 baseline)
 different valid input refusal before UAC/output reservation, and review of the
 reused real85DDA341 result (five exact changes). No project was rebuilt or executed.
 Evidence work/ordinary-project-build-20261101/{qualification-r2.json,daily-cli/qualification.json}.
-Candidate14ea8f9c/F415392F stages3 changed/11 reused assets; Bootstrap/stage/system
-controls remain pending. Installed acc7825b/656D8690/A126301D is unchanged.
+Candidate14ea8f9c/F415392F stages3 changed/11 reused assets. Source9518a25's82-input
+Bootstrap reuses exact334E9AA8;20files/10PE/6managed/module-initializer absent and
+embedded manifest match. Current installed15 public file hashes/owners/protected
+DACL/no untrusted writers match. New controls are READY, NOT_AUTHORIZED/NOT_RUN:
+work/ordinary-project-control-20261101/system-operation-review.md SHA B8C289D4C786DEEA9773BEEFDF5BCBA222496C8949D9247082DD2E29DA09394D.
+Two held-input preflights/three strict unknown-switch refusals and exact runner
+2 positive/17 negative checks pass, using synthetic report and reused real output,
+not live Job proof. The initial preflight checker expected stdout while the
+runner writes its record to a file; original failure and r2 correction are kept.
+Install plan108B4808/helper6208565B; workflow planA0927F70/runner48020F49. New
+normal entry requires a fresh concrete two-UAC decision. Runner180s includes
+human UAC; only its exact handle/creation/image-bound own ordinary daily can be
+stopped, never elevated owner; no private error/raw Job read or auto-recovery.
+Installed acc7825b/656D8690/A126301D is unchanged.
 No protected project entry, UAC, new permission, network or recovery occurred.
 The actual prior project's success is reused; PowerShell, real host-sensitive
 denials, arbitrary projects, forced network/14 admissions/GPU/GUI remain open.
