@@ -24,6 +24,27 @@ rerun deletion or describe historical blocked/exists paragraphs as current.
 
 # ClaudeCode-Protection working rules
 
+2026-11-01 GUI PROJECT FLOW SOURCE/BUILD/INTEGRATED, ORDINARY ONLY:
+bb84259's101-input six-project offline build passed. Core158/daily18/GUI8 imports
+exactly unchanged from installed42f; Broker0/no module initializer. GUI adds
+reviewed project selection/import, exact held input, installed daily typed call,
+strict completion/result snapshot and new-directory extraction. No maintenance
+whitelist widening/developer GUI fallback;180s incl manual UAC, exact own ordinary
+client stop only, no elevated owner stop/automatic retry/recovery. Project CWD
+temporarily enters copied project after original gates; daily tags UAC_START.
+Initial own fixture missed native existing-dir183; e45a9cc fixes test only,
+14-input consumer-only rebuild.11 data+35 project consumer checks passed; own
+relative src/Counter.cs check/compile/run3tests/CWD restore passed; offscreen
+940x720 GUI render visually checked9buttons/two rows/initial start disabled.
+No actual GUI interaction/new UAC/install/native host probe. Preserve initial
+fixture failure,r2 semicolon-list generator refusal before SDK,r3 missing-image
+tail before fixture start; remaining modes completed only, no consumer/native
+Git/project/privacy rerun. Completion evidence SHA3211999C258B812B979BB5E056D99569D0BED2A28B64B967864A58D960DDB642;
+consumer SHA7535E54A4E27BB121530EEC13D39880BBCB7609C1EA87CFBF2DF3A5CAC97136A.
+Boot/AV/BFE/FlClash/UU unchanged/vendor coverageUNKNOWN; actual installed42f/
+9172/core7DDC/GUI934E remains INACTIVE. New GUI/CWD not installed/native-qualified.
+Reuse actual42f native success below. Full goal active; Claude deferred.
+
 2026-11-01 ACTUAL V6 CALLER PROJECT + ORIGINAL OWNER PRECODE SEAL PASSED:
 Human specifically authorized project-r2 once and manually confirmed its UAC.
 11:55:19Z ordinary build/review/extract0 on installed42f7fe36/917202DE/core7DDC1FD0,
