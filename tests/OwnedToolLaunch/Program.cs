@@ -31,37 +31,37 @@ if(args[0] is "project-policy" or "project-build")
     var project=library.GetType("ProtectionLifecycle.BundledProjectDevelopment",true)!;
     var baseline=(byte[])Call(project,"Baseline")!;
     var hash=Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(baseline));
-    var planType=library.GetType("ProtectionLifecycle.ResourceProbePlan",true)!;
+    var projectPlanType=library.GetType("ProtectionLifecycle.ResourceProbePlan",true)!;
     var roots=library.GetType("ProtectionLifecycle.SessionResources",true)!;
-    var nonce=new string('e',32);var programFiles=Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
+    var projectNonce=new string('e',32);var projectProgramFiles=Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
     object Plan(int schema,bool development,string input)
     {
-        var plan=Activator.CreateInstance(planType,schema,nonce,new string('b',32),new string('c',32),Environment.ProcessId,new string('A',64),
-            "9DE2A6DB90D8383F3738249D52F30DEFBEDB994513A8F2697E9D90693CD1D285",input,programFiles)!;
-        planType.GetProperty("DevelopProject")!.SetValue(plan,development);return plan;
+        var valuePlan=Activator.CreateInstance(projectPlanType,schema,projectNonce,new string('b',32),new string('c',32),Environment.ProcessId,new string('A',64),
+            "9DE2A6DB90D8383F3738249D52F30DEFBEDB994513A8F2697E9D90693CD1D285",input,projectProgramFiles)!;
+        projectPlanType.GetProperty("DevelopProject")!.SetValue(valuePlan,development);return valuePlan;
     }
     var development=Plan(4,true,hash);var data=Plan(3,false,hash);
-    var workspace=Path.Combine(programFiles,"ClaudeCodeProtection-Task-"+nonce);
-    var start=(ProcessStartInfo)Call(project,"Start",development,workspace)!;
+    var projectWorkspace=Path.Combine(projectProgramFiles,"ClaudeCodeProtection-Task-"+projectNonce);
+    var start=(ProcessStartInfo)Call(project,"Start",development,projectWorkspace)!;
     var digest=(string)Call(launch,"StartHash",start)!;
-    _=Call(launch,"ValidateStart",development,workspace,"project",start.ArgumentList.ToArray(),digest);
-    Refuse(()=>Call(project,"Start",data,workspace),"ExplicitProjectDevelopmentRequired");
-    Refuse(()=>Call(launch,"ValidateStart",data,workspace,"project",start.ArgumentList.ToArray(),digest),"ExplicitProjectDevelopmentRequired");
-    Refuse(()=>Call(project,"Start",Plan(3,true,hash),workspace),"ResourceQualificationPlanRefused");
-    Refuse(()=>Call(project,"Start",Plan(4,true,new string('D',64)),workspace),"FixedDevelopmentProjectPlanRequired");
-    Refuse(()=>Call(roots,"PowerShellStart",development,workspace),"WorkspaceDataCannotRequestPowerShell");
+    _=Call(launch,"ValidateStart",development,projectWorkspace,"project",start.ArgumentList.ToArray(),digest);
+    Refuse(()=>Call(project,"Start",data,projectWorkspace),"ExplicitProjectDevelopmentRequired");
+    Refuse(()=>Call(launch,"ValidateStart",data,projectWorkspace,"project",start.ArgumentList.ToArray(),digest),"ExplicitProjectDevelopmentRequired");
+    Refuse(()=>Call(project,"Start",Plan(3,true,hash),projectWorkspace),"ResourceQualificationPlanRefused");
+    Refuse(()=>Call(project,"Start",Plan(4,true,new string('D',64)),projectWorkspace),"FixedDevelopmentProjectPlanRequired");
+    Refuse(()=>Call(roots,"PowerShellStart",development,projectWorkspace),"WorkspaceDataCannotRequestPowerShell");
     var changed=start.ArgumentList.ToArray();changed[1]=new string('f',32);
-    Refuse(()=>Call(launch,"ValidateStart",development,workspace,"project",changed,digest),"OwnedProjectCompiledProgramRequired");
+    Refuse(()=>Call(launch,"ValidateStart",development,projectWorkspace,"project",changed,digest),"OwnedProjectCompiledProgramRequired");
     Require(!start.Environment.ContainsKey("PSModulePath") && !start.Environment.ContainsKey("CPC_POWERSHELL_POLICY_NONCE"),"project compile does not impersonate a PowerShell host");
-    _=Call(planType,"Parse",JsonSerializer.Serialize(development,planType));
-    var unknown=JsonSerializer.Serialize(data,planType).TrimEnd('}')+",\"DevelopProject\":false}";
-    var rejected=false;try{Call(planType,"Parse",unknown);}catch(InvalidDataException){rejected=true;}Require(rejected,"v3 DATA rejects the added development field even when false");
+    _=Call(projectPlanType,"Parse",JsonSerializer.Serialize(development,projectPlanType));
+    var unknown=JsonSerializer.Serialize(data,projectPlanType).TrimEnd('}')+",\"DevelopProject\":false}";
+    var rejected=false;try{Call(projectPlanType,"Parse",unknown);}catch(InvalidDataException){rejected=true;}Require(rejected,"v3 DATA rejects the added development field even when false");
     if(args[0]=="project-policy"){Console.WriteLine("PASS explicit v4 fixed project intent/start binding; v3 DATA cannot execute project code, no PowerShell fallback or host-path grant; pure policy only");return 0;}
     var fixture=Path.Combine(AppContext.BaseDirectory,"ordinary-text-summary-project");
     Require(!Directory.Exists(fixture),"new own project fixture only");Directory.CreateDirectory(fixture);
     var files=library.GetType("ClaudeCodeProtection.Workspaces.WorkspaceFiles",true)!;
     Call(files,"MaterializeNew",fixture,"project",baseline);
-    Call(project,"BuildAndRun",Path.Combine(programFiles,"ClaudeCodeProtection-PowerShell-7.4.22"),Path.Combine(fixture,"project"));
+    Call(project,"BuildAndRun",Path.Combine(projectProgramFiles,"ClaudeCodeProtection-PowerShell-7.4.22"),Path.Combine(fixture,"project"));
     var result=(byte[])Call(files,"SnapshotResult",fixture,"project",baseline)!;Call(project,"VerifyResult",result);
     Call(files,"ExtractResultNew",Path.Combine(fixture,"exported"),baseline,result);
     Require(File.ReadAllText(Path.Combine(fixture,"exported","test-result.txt"))=="6" &&
