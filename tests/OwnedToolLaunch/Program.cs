@@ -35,6 +35,7 @@ if(args[0]=="privacy-native")
     var before=File.ReadAllBytes(path);var identityBefore=(string)Call(probe,"FileIdentity",path)!;
     Require((int)Call(probe,"FileReadOpen",path)! ==0,"own allowed FILE_READ_DATA open");
     var acl=new FileInfo(path).GetAccessControl();var original=acl.GetSecurityDescriptorBinaryForm();
+    File.WriteAllBytes(Path.Combine(folder,"original-security.bin"),original);
     try
     {
         acl.AddAccessRule(new System.Security.AccessControl.FileSystemAccessRule(identity.User!,System.Security.AccessControl.FileSystemRights.ReadData,System.Security.AccessControl.AccessControlType.Deny));
@@ -44,7 +45,7 @@ if(args[0]=="privacy-native")
     }
     finally
     {
-        var restore=new System.Security.AccessControl.FileSecurity();restore.SetSecurityDescriptorBinaryForm(original);new FileInfo(path).SetAccessControl(restore);
+        var restore=new System.Security.AccessControl.FileSecurity();restore.SetSecurityDescriptorBinaryForm(original,AccessControlSections.Access);new FileInfo(path).SetAccessControl(restore);
     }
     Require(new FileInfo(path).GetAccessControl().GetSecurityDescriptorBinaryForm().AsSpan().SequenceEqual(original),"own fixture DACL restored exactly");
     Require(File.ReadAllBytes(path).AsSpan().SequenceEqual(before),"no fixture content changed by native opens");
