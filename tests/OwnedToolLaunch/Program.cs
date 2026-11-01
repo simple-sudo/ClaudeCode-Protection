@@ -41,27 +41,27 @@ if(args[0] is "caller-project-build" or "caller-project-policy")
     var bundle=Call(bundleType,"Create",fixtureData,null)!;
     var baseline=(byte[])bundleType.GetMethod("Serialize",BindingFlags.Instance|BindingFlags.NonPublic)!.Invoke(bundle,null)!;
     var task=Call(taskType,"Parse",baseline)!;
-    var planType=library.GetType("ProtectionLifecycle.ResourceProbePlan",true)!;
+    var callerPlanType=library.GetType("ProtectionLifecycle.ResourceProbePlan",true)!;
     var hash=Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(baseline));
-    var nonce=new string('d',32);var programFiles=Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
-    var plan=Activator.CreateInstance(planType,6,nonce,new string('b',32),new string('c',32),Environment.ProcessId,new string('A',64),
-        "9DE2A6DB90D8383F3738249D52F30DEFBEDB994513A8F2697E9D90693CD1D285",hash,programFiles)!;
-    planType.GetProperty("DevelopProject")!.SetValue(plan,true);planType.GetProperty("HostPrivacySHA256")!.SetValue(plan,new string('F',64));
-    planType.GetProperty("CallerProjectKind")!.SetValue(plan,"CSHARP_LITERAL_EDIT_BUILD_RUN_TEST_V1");
+    var callerNonce=new string('d',32);var callerProgramFiles=Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
+    var callerPlan=Activator.CreateInstance(callerPlanType,6,callerNonce,new string('b',32),new string('c',32),Environment.ProcessId,new string('A',64),
+        "9DE2A6DB90D8383F3738249D52F30DEFBEDB994513A8F2697E9D90693CD1D285",hash,callerProgramFiles)!;
+    callerPlanType.GetProperty("DevelopProject")!.SetValue(callerPlan,true);callerPlanType.GetProperty("HostPrivacySHA256")!.SetValue(callerPlan,new string('F',64));
+    callerPlanType.GetProperty("CallerProjectKind")!.SetValue(callerPlan,"CSHARP_LITERAL_EDIT_BUILD_RUN_TEST_V1");
     var project=library.GetType("ProtectionLifecycle.BundledProjectDevelopment",true)!;
-    var workspace=Path.Combine(programFiles,"ClaudeCodeProtection-Task-"+nonce);
-    var start=(ProcessStartInfo)Call(project,"Start",plan,workspace)!;
-    _=Call(launch,"ValidateStart",plan,workspace,"project",start.ArgumentList.ToArray(),Call(launch,"StartHash",start)!);
-    _=Call(planType,"Parse",JsonSerializer.Serialize(plan,planType));
-    planType.GetProperty("CallerProjectKind")!.SetValue(plan,"OTHER_EXECUTOR");
-    Refuse(()=>Call(project,"Start",plan,workspace),"ResourceQualificationPlanRefused");
-    planType.GetProperty("CallerProjectKind")!.SetValue(plan,"CSHARP_LITERAL_EDIT_BUILD_RUN_TEST_V1");
-    planType.GetProperty("SchemaVersion")!.SetValue(plan,5);
-    Refuse(()=>Call(project,"Start",plan,workspace),"ResourceQualificationPlanRefused");
+    var callerWorkspace=Path.Combine(callerProgramFiles,"ClaudeCodeProtection-Task-"+callerNonce);
+    var start=(ProcessStartInfo)Call(project,"Start",callerPlan,callerWorkspace)!;
+    _=Call(launch,"ValidateStart",callerPlan,callerWorkspace,"project",start.ArgumentList.ToArray(),Call(launch,"StartHash",start)!);
+    _=Call(callerPlanType,"Parse",JsonSerializer.Serialize(callerPlan,callerPlanType));
+    callerPlanType.GetProperty("CallerProjectKind")!.SetValue(callerPlan,"OTHER_EXECUTOR");
+    Refuse(()=>Call(project,"Start",callerPlan,callerWorkspace),"ResourceQualificationPlanRefused");
+    callerPlanType.GetProperty("CallerProjectKind")!.SetValue(callerPlan,"CSHARP_LITERAL_EDIT_BUILD_RUN_TEST_V1");
+    callerPlanType.GetProperty("SchemaVersion")!.SetValue(callerPlan,5);
+    Refuse(()=>Call(project,"Start",callerPlan,callerWorkspace),"ResourceQualificationPlanRefused");
     if(args[0]=="caller-project-policy"){Console.WriteLine("PASS explicit caller v6 kind, input/privacy digest and original fixed tool start; wrong kind and v5 mixing refused; no product/Job/code execution");return 0;}
     var fixture=Path.Combine(AppContext.BaseDirectory,"ordinary-caller-project-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(fixture);
     Call(files,"MaterializeNew",fixture,"project",baseline);
-    Call(executor,"BuildAndRun",Path.Combine(programFiles,"ClaudeCodeProtection-PowerShell-7.4.22"),Path.Combine(fixture,"project"),baseline);
+    Call(executor,"BuildAndRun",Path.Combine(callerProgramFiles,"ClaudeCodeProtection-PowerShell-7.4.22"),Path.Combine(fixture,"project"),baseline);
     var result=(byte[])Call(files,"SnapshotResult",fixture,"project",baseline)!;
     try{taskType.GetMethod("VerifyResult",BindingFlags.Instance|BindingFlags.NonPublic)!.Invoke(task,new object[]{result});}
     catch(TargetInvocationException error)when(error.InnerException is not null){ExceptionDispatchInfo.Capture(error.InnerException).Throw();throw;}
