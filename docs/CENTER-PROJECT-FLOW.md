@@ -47,5 +47,12 @@ SHA7535E54A4E27BB121530EEC13D39880BBCB7609C1EA87CFBF2DF3A5CAC97136A。
 原夹具错误、r2生成器未拆分Compile分号而在SDK之前拒绝、r3尾部错误路径未启动编译夹具
 均分别保留；修复只补未完成路径，不重跑已通过的消费者/原Git/原受保护项目/28次拒绝。
 
+候选35a0106a/58E8D97C（core401439EE/GUI4D3E764B）已冻结但未安装。只加入实际42f/9172
+前置pin，77输入构建和纯选择/六拒绝通过；Bootstrap104输入复用401不重建核心，完整20文件/
+10PE/6managed/嵌入manifest匹配。当前15公开资产新鲜hash/owner/protected DACL/无不可信写者
+一致；新manifest和实际转换纯生产检查、持有安装预检、两未知开关拒绝、十个精确停止mock通过。
+准备的范围仅一次INACTIVE更新与原只读检查，不启动GUI/项目/Job、不改ETW/权限/AV/网络。
+工作控制work/gui-project-control-20261101/system-operation-review.md，具体新安装人工决定待定。
+
 GUI完整窗口交互/实际UAC、相对目录修补的受保护资格和新安装仍未完成。当前受保护验收
 来自原42f项目案例；网络/十四可信准入/GPU/其他宿主资源/PowerShell/恢复及完整产品保持开放。

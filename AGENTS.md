@@ -24,6 +24,26 @@ rerun deletion or describe historical blocked/exists paragraphs as current.
 
 # ClaudeCode-Protection working rules
 
+2026-11-01 NEW GUI INACTIVE CANDIDATE READY, NOT_AUTHORIZED/NOT_RUN:
+35a0106aa1f94362ae73242f2e18da2a/58E8D97C/core401439EE/GUI4D3E764B/
+dailyBDD21246/BrokerB604922D;4 changed10 reused assets. d229349 adds ONLY actual
+42f/9172 exact prior pin;77-input build/pure transition+6 refusals passed. Full
+Bootstrap30f2412/104 inputs reused exact401 core,20files/10PE/6managed/no module
+initializer/embedded manifest matched. Reuse below GUI/relative-I/O ordinary
+qualification; no native project/Git/privacy rerun. Current installed42f15 public
+hashes/owners/protected DACL/no untrusted writer freshly matched; actual pair/
+manifest pure production checks/held preflight/two binder refusals passed.
+New helper bounds own installer120s/readonly inspector30s and exact held handle/
+creation/image stop only;10 exact-function mock cases passed,not native proof.
+Old template consumer-directory list refusal before fixture start retained;
+completion only covered missing pure transition. Controls work/gui-project-control-20261101:
+plan4765FD7F/helperCCEDA5B8/launcher131E2184. Frozen review system-operation-review.md.
+Next requested scope is ONLY one manual-UAC INACTIVE update + original installed
+readonly inspect-etw-provider-access;no GUI launch/project/Job/profile,ETW/host
+permissions/AV/daily network change,private error/raw Job/Stop,retry/recovery.
+Fresh human decision required; all previous actual grants consumed. Actual42f/
+9172/7DDC/GUI934E unchanged. New GUI/CWD native qualification/full goal open.
+
 2026-11-01 GUI PROJECT FLOW SOURCE/BUILD/INTEGRATED, ORDINARY ONLY:
 bb84259's101-input six-project offline build passed. Core158/daily18/GUI8 imports
 exactly unchanged from installed42f; Broker0/no module initializer. GUI adds
