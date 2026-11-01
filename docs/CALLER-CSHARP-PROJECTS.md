@@ -65,4 +65,13 @@ FlClash/UU前后一致。普通测试不是新LPAC、原生两阶段放行或所
 独立普通intake仅调用实际暂存库的纯迁移、任务解析/编辑/规范序列化、隐私策略成员，确认
 实际60EC→9172选择、9F07输入及全部五个原文件预期修改与数据准备逐字节一致；不是现场current
 或Job检查。证据actual-staged-transition-review.json SHA87CBCB53FBB0CDF7EE2AA37CA2677EFEE11A3D18C4F189A188463239CDC1BEBC。
-Bootstrap/完整20文件/具体系统控制仍待完成，新系统操作未授权；实际安装仍00bc/60EC/5600。
+后续Bootstrap已完成：source978f183的106输入只构建安装器，复用精确7DDC核心与934E GUI；
+完整20文件/10PE/6managed无模块初始化，内嵌9172清单匹配。实际安装仍00bc/60EC/5600。
+两个持有预检/三个严格未知开关拒绝、直接提取本次runner的2正例/73拒绝通过，未触发UAC/
+产品入口/私有状态读取；消费者合成检查不是实际Job或隐私证明。
+work/caller-csharp-control-20261101/system-operation-review.md已冻结
+SHA500D13483C1686CCF762D82A108C110B706896BA09EFB5A9229F45B501739791。
+新范围为INACTIVE更新/只读检查，再一次固定WordCount源选择/打包/任务检查/原Job严格LPAC
+改编运行三测试/双端真实命名检查及执行前封存/成功清理导出/普通审阅提取。只允许精确普通
+客户端超时停止，不停提升开发owner、不读私有错误/原始Job/Stop、不自动重试恢复。
+新v6用户项目和原生封存首次运行仍需具体两次本人UAC决定，READY不是授权或安装/实测通过。

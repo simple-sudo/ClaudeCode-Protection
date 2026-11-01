@@ -24,6 +24,42 @@ rerun deletion or describe historical blocked/exists paragraphs as current.
 
 # ClaudeCode-Protection working rules
 
+2026-11-01 EXPLICIT CALLER CSHARP CANDIDATE READY, NOT_AUTHORIZED/NOT_RUN:
+42f7fe36a4d24194ac9f2da0f967b289 / manifest917202DE05F414EAA62803811D673CDD1A9071A3F7F08B0B188E358E57057399 /
+core7DDC1FD0/GUI934E826A. Explicit v6 caller task on SAME original owner/Job/
+LPAC tool; selected UTF8 source/literal edits/Run/tests/result bound to full
+input, mandatory owner-sealed pre-code paired privacy. v3 DATA/v5 sample cannot
+consume this scope. No project imports/packages/commands/host paths/PS engine,
+capability/permission/deadline widening. Source23f0374's96-input offline build
+and7 ordinary modes passed:40 contract checks, real owned CallerWordCount edit/
+compile/run3tests/10file snapshot and independent recovery, exact current00bc
+transition and changed v3/v5 parser regression. First fixture local-name build
+failure retained; no runtime then. Native158 imports unchanged/no initializer.
+Input9F07437B305EA7A99EDC2AA1FB08135CF9F534BE76B8B98E787D3AC821825B65;
+ordinary delivery work/caller-csharp-ordinary-delivery-20261101. NOT LPAC proof.
+Four assets changed/10 reused, GUI qualified source/bytes reused. Pure data
+packaging plus separate actual staged production pure recipe/serialization/
+policy/60EC->9172 transition checks passed. Bootstrap source978f183 freezes106
+inputs, reuses exact core/GUI without rebuild;20files/10PE/6managed/no module
+initializer/embedded manifest match. Current00bc15 public hashes/owners/protected
+DACL/no untrusted writers freshly match; original current/Job/admission gates
+still required. Two held preflights/3 unknown-switch refusals and exact runner
+2 positive/73 negative synthetic/owned-data cases pass; no native Job proof.
+Controls work/caller-csharp-control-20261101: installE823DB8D/helperFAF0F67E/
+launcher10302DF5, workflowD06B5492/runnerF157BE00. Review SHA
+500D13483C1686CCF762D82A108C110B706896BA09EFB5A9229F45B501739791.
+New human decisions still needed for inactive update/read-only inspect then
+ONE frozen WordCount v6 original strict LPAC task plus pre-code sealed real
+root/compiler14 each native read-open observations,3tests/success cleanup/export/
+ordinary review/extract.180s per ordinary daily incl UAC, exact handle/time/image
+own ordinary daily stop ONLY; no elevated development owner/host stop, private
+error/raw Job/Stop read, retry/recovery, target ACL/AV/network/settings change.
+No fresh UAC/product/real host probe yet. Actual00bc/60EC/5600 and its consumed
+grants unchanged. Build/ordinary results are not caller native success, all-host/
+PS/network/14 admission/GPU/recovery/GUI interaction/full product qualification.
+Older pending/source-refusal paragraphs below are history; full goal active,
+real Claude deferred. See docs/CALLER-CSHARP-PROJECTS.md for explicit user flow.
+
 2026-11-01 original-owner pre-code privacy sealing SOURCE/BUILD/INTEGRATED,
 ordinary pure-stage VERIFIED, NOT installed/native-qualified: source efc40ef
 seals root observations BEFORE Git release; compiler checks after its original

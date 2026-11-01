@@ -1,5 +1,24 @@
 # 当前开发状态
 
+## 2026-11-01 新用户项目候选READY，等待具体系统决定
+
+42f7fe36a4d24194ac9f2da0f967b289 / manifest917202DE05F414EAA62803811D673CDD1A9071A3F7F08B0B188E358E57057399 /
+库7DDC1FD0，GUI934E826A已完整准备，4资产变更/10复用。source978f183的106输入Bootstrap
+仅构建安装器，精确复用核心/GUI；20文件/10PE/6managed/无模块初始化及内嵌清单匹配。
+当前00bc公开15文件摘要/可信所有者/受保护DACL/无不可信写者再次匹配；私有current/活Job
+仍由原安装器门检查，公开文件不能代替。两个持有输入预检、三个未知开关拒绝以及本次runner
+2正例/73拒绝均通过，无UAC/产品入口/新私有记录读取。普通WordCount三测试/十文件成果与
+原固定项目/28次拒绝继续复用，不升级为新原生封存或新v6 LPAC资格。
+
+冻结审查work/caller-csharp-control-20261101/system-operation-review.md
+SHA500D13483C1686CCF762D82A108C110B706896BA09EFB5A9229F45B501739791。
+install planE823DB8D/helperFAF0F67E/launcher10302DF5；workflow planD06B5492/runnerF157BE00。
+新两次具体UAC：INACTIVE更新+原只读检查，再一次9F07固定WordCount的普通选择/打包/只读
+任务检查/新v6原Broker/Job/严格LPAC开发与原owner封存、三测试、成功清理导出及普通审阅提取。
+每普通客户端180秒含UAC/仅精确自身停止，绝不停止提升开发owner或宿主软件、不读私有
+错误/raw Job/Stop、不自动重试恢复、不改权限/AV/日常网络。当前NOT_AUTHORIZED/NOT_RUN。
+实际安装仍00bc/60EC/5600。旧“候选待完成”段落为准备历史；完整目标与真实Claude延期不变。
+
 ## 2026-11-01 用户C#项目：新普通编译/测试/恢复通过，候选准备中
 
 新增显式workspace-check-csharp（不执行）与workspace-build-csharp（原安装Broker/本人UAC）
