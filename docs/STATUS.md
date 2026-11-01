@@ -1,5 +1,22 @@
 # 当前开发状态
 
+## 2026-11-01 用户明确确认误报后的打包实现调整
+
+用户明确告知并确认卡巴斯基持续误拦截，要求停止反复归因、改变实现；按此继续开发，
+未改防护设置。原行内动态载入打包方式已改为只读PE元数据/资源、生成并核对清单，
+打包进程不加载/调用产品程序集。原86输入与核心库5600CD36复用，未重建产品或重跑项目/Git。
+
+新候选00bcd9b7c7a640b3a66e28648db171cf / manifest60EC905689CFB91D6D8BC4A4020B250B135FB910D2C2C7A7FDC9AF1AC7A8292F
+已以3资产变化/11复用暂存。只读PE还原四资源，输入字节精确匹配ED3DDCB2基线；源数据推导
+隐私清单摘要18AC844D。独立普通StageIntake仅调用原生产代码三项纯成员：实际暂存包的精确
+F415392F前置迁移选择、基线、隐私策略摘要，均与数据打包匹配；不是安装/现场Job或隐私证明。
+原核心库5600CD36未重建，fixture无原生导入/无module initializer，无真实宿主探测/UAC。
+首次fixture编译仅nullable诊断，原失败源码/日志保留，修正独立r2通过。
+证据work/host-privacy-r3-control-20261101/{data-intake-review.json,actual-staged-transition-review.json}
+及work/host-privacy-r3-intake-r2-build-20261101/qualification.json。Bootstrap/完整暂存/系统控制仍待完成，
+实际安装仍14ea/F415392F/334E9AA8；旧授权不转移到新的真实宿主探测。
+下方CreateProcess阻塞记录是此前状态；本轮新实现已取得进展。
+
 ## 2026-11-01 新SOURCE：真实命名宿主资源门，尚未安装/实测
 
 最新资格已完成：dca7afa最终86输入离线构建成功、library5600CD36；六普通模式均0/无stderr，
