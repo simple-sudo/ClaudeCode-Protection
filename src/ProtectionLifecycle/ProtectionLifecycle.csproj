@@ -23,7 +23,7 @@
     <Compile Include="SessionProxy.cs;ProtectedSession.cs" />
     <Compile Include="SessionResources.cs" />
     <Compile Include="BundledProjectDevelopment.cs;../Shared/TextSummarySource.cs" />
-    <Compile Include="HostPrivacyProbe.cs;../Shared/HostPrivacyContract.cs" />
+    <Compile Include="HostPrivacyProbe.cs;HostPrivacyExecutionGate.cs;../Shared/HostPrivacyContract.cs" />
     <Compile Include="SessionManifestReadAccess.cs" />
     <Compile Include="SessionEtwProviderAccess.cs" />
     <Compile Include="OwnedToolLaunch.cs" />

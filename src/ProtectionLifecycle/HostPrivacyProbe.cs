@@ -17,11 +17,12 @@ internal sealed class HostPrivacyProbe : IDisposable
     private sealed record Plan(int SchemaVersion,string SessionId,string InstallationId,string Release,Target[] Targets);
     private readonly Plan plan;
     private readonly List<SafeProcessHandle> processes;
+    private readonly HostPrivacyExecutionGate execution;
     private FileStream? published;
     internal byte[] Bytes {get;}
     internal string SHA256=>WorkspaceBundle.Hash(Bytes);
     private HostPrivacyProbe(Plan plan,List<SafeProcessHandle> processes)
-    {this.plan=plan;this.processes=processes;Bytes=JsonSerializer.SerializeToUtf8Bytes(plan);if(Bytes.Length>16384)throw WfpNative.Contract("HostPrivacyPlanBounds");}
+    {this.plan=plan;this.processes=processes;Bytes=JsonSerializer.SerializeToUtf8Bytes(plan);if(Bytes.Length>16384)throw WfpNative.Contract("HostPrivacyPlanBounds");execution=new(plan.SessionId,SHA256);}
     internal static HostPrivacyProbe Capture(string session,string installation,string release)
     {
         using var human=WindowsIdentity.GetCurrent();var sid=human.User?.Value??throw WfpNative.Contract("HostPrivacyHumanMissing");
@@ -86,22 +87,36 @@ internal sealed class HostPrivacyProbe : IDisposable
         PositiveRegistry(true,plan.Targets[9].Path);PositiveRegistry(false,plan.Targets[10].Path);
         foreach(var handle in processes)if(!ProcessAlive(handle))throw WfpNative.Contract("HostPrivacyTargetProcessExited");
     }
+    private HostPrivacyObservation ReadObservation(string workspace,string actor,int expectedPid)
+    {
+        AssertHeld();
+        using var file=new FileStream(WindowsPathSeal.Open(ReportPath(workspace,actor),false,true),FileAccess.Read);
+        if(file.Length is <1 or >16384)throw WfpNative.Contract("HostPrivacyReportBounds");
+        var bytes=new byte[(int)file.Length];file.ReadExactly(bytes);using var json=JsonDocument.Parse(bytes,new JsonDocumentOptions{MaxDepth=4});
+        var r=json.RootElement;HostPrivacyContract.Fields(r,"SchemaVersion","SessionId","PlanSHA256","Pid","Cases");
+        foreach(var c in r.GetProperty("Cases").EnumerateArray())HostPrivacyContract.Fields(c,"Role","Kind","Status","Error");
+        var result=JsonSerializer.Deserialize<HostPrivacyObservation>(bytes)??throw WfpNative.Contract("HostPrivacyReportMissing");
+        if(result.SchemaVersion!=1 || result.SessionId!=plan.SessionId || result.PlanSHA256!=SHA256 || result.Pid!=expectedPid)
+            throw WfpNative.Contract("HostPrivacyActorBindingDiffers");
+        HostPrivacyContract.ValidateCases(result.Cases);return result;
+    }
+    internal bool ExecutionReleased=>execution.ExecutionReleased;
+    internal void SealRootBeforeGit(string workspace,int rootPid)
+        =>execution.SealRoot(ReadObservation(workspace,"root",rootPid),rootPid);
+    internal void AuthorizeToolCreation()=>execution.AuthorizeToolCreation();
+    internal void SealToolBeforeExecution(string workspace,int toolPid)
+        =>execution.SealTool(ReadObservation(workspace,"project",toolPid),toolPid);
+    internal void ReleaseExecution()=>execution.ReleaseExecution();
+    internal void AssertGitCreationAllowed()
+    {if(execution.ToolCreationAuthorized)throw WfpNative.Contract("ProjectGitCreationPhaseAlreadyClosed");}
     internal HostPrivacySummary ReadClosed(string workspace,int rootPid,int? toolPid)
     {
         AssertHeld();AssertTargetsCurrent();
-        HostPrivacyObservation Read(string actor,int expectedPid)
-        {
-            using var file=new FileStream(WindowsPathSeal.Open(ReportPath(workspace,actor),false,true),FileAccess.Read);
-            if(file.Length is <1 or >16384)throw WfpNative.Contract("HostPrivacyReportBounds");
-            var bytes=new byte[(int)file.Length];file.ReadExactly(bytes);using var json=JsonDocument.Parse(bytes,new JsonDocumentOptions{MaxDepth=4});
-            var r=json.RootElement;HostPrivacyContract.Fields(r,"SchemaVersion","SessionId","PlanSHA256","Pid","Cases");
-            foreach(var c in r.GetProperty("Cases").EnumerateArray())HostPrivacyContract.Fields(c,"Role","Kind","Status","Error");
-            var result=JsonSerializer.Deserialize<HostPrivacyObservation>(bytes)??throw WfpNative.Contract("HostPrivacyReportMissing");
-            if(result.SchemaVersion!=1 || result.SessionId!=plan.SessionId || result.PlanSHA256!=SHA256 || result.Pid!=expectedPid)
-                throw WfpNative.Contract("HostPrivacyActorBindingDiffers");
-            HostPrivacyContract.ValidateCases(result.Cases);return result;
-        }
-        var root=Read("root",rootPid);var tool=toolPid is int pid?Read("project",pid):null;
+        // Once code could have run, never reopen a child-writable observation.
+        // A failed pre-code task may still expose its honest bounded diagnosis.
+        if(execution.ExecutionReleased)
+            return execution.Snapshot(rootPid,toolPid??throw WfpNative.Contract("SealedProjectToolPidMissing"));
+        var root=ReadObservation(workspace,"root",rootPid);var tool=toolPid is int pid?ReadObservation(workspace,"project",pid):null;
         var summary=new HostPrivacySummary(HostPrivacyContract.PolicySHA256,SHA256,plan.SessionId,rootPid,tool?.Pid,root.Cases,tool?.Cases??Array.Empty<HostPrivacyCase>());
         HostPrivacyContract.Validate(summary,plan.SessionId,false);return summary;
     }

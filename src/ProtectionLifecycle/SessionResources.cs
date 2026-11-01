@@ -194,6 +194,21 @@ internal sealed class SessionResources : IDisposable
     }
     internal HostPrivacySummary ReadClosedHostPrivacy(int rootPid,int? toolPid)
         =>(privacy??throw WfpNative.Contract("HostPrivacyOwnerMissing")).ReadClosed(Workspace,rootPid,toolPid);
+    internal bool ProjectExecutionReleased=>privacy?.ExecutionReleased==true;
+    internal void SealRootHostPrivacyBeforeGit(int rootPid)
+        =>(privacy??throw WfpNative.Contract("HostPrivacyOwnerMissing")).SealRootBeforeGit(Workspace,rootPid);
+    internal void BeforeOwnedToolCreation(string kind)
+    {
+        if(!Plan.DevelopProject)return;
+        if(kind=="project")(privacy??throw WfpNative.Contract("HostPrivacyOwnerMissing")).AuthorizeToolCreation();
+        else if(kind=="git")(privacy??throw WfpNative.Contract("HostPrivacyOwnerMissing")).AssertGitCreationAllowed();
+        else throw WfpNative.Contract("ExplicitProjectToolKindRequired");
+    }
+    internal void ReleaseProjectExecution(int toolPid)
+    {
+        AssertHeld();var owner=privacy??throw WfpNative.Contract("HostPrivacyOwnerMissing");
+        owner.SealToolBeforeExecution(Workspace,toolPid);owner.ReleaseExecution();Release("project-execution-go");
+    }
     internal void PreserveGitFailure()
     {
         foreach(var (leaf,prefix) in new[]{("git-last-result.json","resource-git-error-"),("tool-last-result.json","resource-tool-error-")})
@@ -227,6 +242,7 @@ internal sealed class SessionResources : IDisposable
         return Plan.WorkspaceInputSHA256 is null?state.WriteNew("workspace-result-"+Plan.Nonce+".json",bytes):state.StoreWorkspaceData(Plan.Nonce,true,bytes);
     }
     internal bool ToolReady()=>Plan.RequiresCompilerTool && Ready("tool-ready");
+    internal bool ProjectPrivacyReady()=>Plan.DevelopProject && Ready("project-privacy-ready");
     internal bool GitReady()=>git is not null && Ready("git-ready");
     private bool Ready(string stem)
     {

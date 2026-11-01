@@ -177,9 +177,10 @@ internal sealed class ProtectedSession
                 // members have been verified together. After release, its
                 // planned exit is supervised by the runtime and exact Job
                 // drain, not mistaken for a foreign process appearing.
-                if(developProject && toolObserved)continue; // Released compiler has a planned supervised exit.
+                var executionPhase=developProject && toolObserved;
+                if(executionPhase && (resources.ProjectExecutionReleased || !resources.ProjectPrivacyReady()))continue;
                 var gitPhase=developProject?!gitObserved:!powerShellRequired || toolObserved;
-                if(gitPhase?!includeGit || gitObserved || !resources.GitReady():!resources.ToolReady())continue;
+                if(!executionPhase && (gitPhase?!includeGit || gitObserved || !resources.GitReady():!resources.ToolReady()))continue;
                 var expectedTool=gitPhase?SessionGitToolchain.ToolPath:resources.Plan.PowerShellLaunchImage;
                 var before=job.Observe();
                 if(before.ActiveBefore==0 && before.ActiveAfter==0)continue;
@@ -195,7 +196,7 @@ internal sealed class ProtectedSession
                         state.WriteNew("resource-membership-failure-"+id+".json",JsonSerializer.SerializeToUtf8Bytes(new {Before=before,Members=members,After=after}));
                         throw WfpNative.Contract("ResourceToolMembershipUnstable");
                     }
-                    bool fixedTool=false;
+                    int fixedTools=0;
                     foreach(var member in members)
                     {
                         var primary=member.Pid==child.Pid;
@@ -209,11 +210,20 @@ internal sealed class ProtectedSession
                             !string.Equals(image,Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System),"conhost.exe"),StringComparison.OrdinalIgnoreCase))
                             throw WfpNative.Contract("ResourceUnexpectedToolImage");
                         if(!primary && string.Equals(image,expectedTool,StringComparison.OrdinalIgnoreCase))
-                        {fixedTool=true;if(developProject && !gitPhase)projectPid=checked((int)member.Pid);}
+                        {
+                            fixedTools++;
+                            if(developProject && !gitPhase)
+                            {
+                                if(executionPhase && projectPid!=checked((int)member.Pid))throw WfpNative.Contract("SealedProjectToolIdentityChanged");
+                                projectPid=checked((int)member.Pid);
+                            }
+                        }
                     }
-                    if(!fixedTool)throw WfpNative.Contract("ReadyResourceToolNotInHeldJobSnapshot");
+                    if(fixedTools!=1)throw WfpNative.Contract("ReadyResourceToolNotUniqueInHeldJobSnapshot");
                     runtime.AssertHealthy();
-                    if(gitPhase){resources.ReleaseInspectedGit();gitObserved=true;}else{resources.ReleaseInspectedTool();toolObserved=true;}
+                    if(executionPhase)resources.ReleaseProjectExecution(projectPid??throw WfpNative.Contract("ProjectToolPidMissing"));
+                    else if(gitPhase){if(developProject)resources.SealRootHostPrivacyBeforeGit(checked((int)child.Pid));resources.ReleaseInspectedGit();gitObserved=true;}
+                    else{resources.ReleaseInspectedTool();toolObserved=true;}
                 });
             }
             exit=exited.GetAwaiter().GetResult();runtime.AssertHealthy();
@@ -230,7 +240,7 @@ internal sealed class ProtectedSession
                 }
             observed=JsonSerializer.Deserialize<ResourceChildReport>(childText)??throw WfpNative.Contract("ResourceChildReportMissing");
             if(exit!=0 || observed.Pid!=child.Pid || observed.Nonce!=id || !SessionResources.Qualified(observed,compilerRequired) || compilerRequired && !toolObserved ||
-                includeGit && (!gitObserved || observed.Git is null) || !includeGit && observed.Git is not null)
+                includeGit && (!gitObserved || observed.Git is null) || !includeGit && observed.Git is not null || developProject && !resources.ProjectExecutionReleased)
                 throw WfpNative.Contract("OfflineResourceOrInheritedToolBoundaryNotQualified");
             resources.AssertOutput(observed);
         }
@@ -277,6 +287,7 @@ internal sealed class ProtectedSession
             Scope=developProject?"EXPLICIT_TEXTSUMMARY_SOURCE_EDIT_BUILD_RUN_TEST":workspaceInput is not null?"CALLER_BYTE_PINNED_DATA_FIXED_OFFLINE_GIT_ONLY_NO_PROJECT_CODE_EXECUTION":includeGit?"FIXED_OFFLINE_GIT_INIT_ADD_COMMIT_AND_DENIAL_ONLY":"FIXED_PROFILE_WORKSPACE_WINDOWS_POWERSHELL_AND_NON_SECRET_DENIAL_FIXTURE_ONLY",
             Resumed=resumed,ChildExit=exit,Child=observed,ChildBootstrapFailure=bootstrapFailure,InheritedPowerShellIdentityObserved=powerShellRequired && toolObserved,FinalJob=zero,Stop=stopped,
             ProjectDevelopmentRequested=developProject,InheritedProjectToolIdentityObserved=developProject && toolObserved,
+            ProjectExecutionPermitConsumedAfterOwnerSealedPrivacy=developProject && resources?.ProjectExecutionReleased==true,
             HostPrivacy=hostPrivacy,
             CleanupDeferredForRecovery=cleanupDeferred,ManifestReadAccessRequired=false,ManifestReadAccessRestored=false,
             PowerShellRequired=powerShellRequired,PowerShellVersion=powerShellRequired?SessionPowerShellToolchain.Version:null,PowerShellAssetSetSHA256=powerShellRequired?SessionPowerShellToolchain.AssetSetSHA256:null,

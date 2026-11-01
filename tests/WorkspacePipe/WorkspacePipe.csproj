@@ -13,6 +13,7 @@
     <Compile Include="../../src/Shared/WindowsDirectoryNames.cs;../../src/ProtectionLifecycle/DirectoryNamePage.cs" />
     <Compile Include="../../src/Shared/TextSummarySource.cs" />
     <Compile Include="../../src/Shared/HostPrivacyContract.cs" />
+    <Compile Include="HostPrivacyExecutionGateCases.cs;../../src/ProtectionLifecycle/HostPrivacyExecutionGate.cs" />
     <EmbeddedResource Include="../../samples/TextSummary/TextSummary.csproj" LogicalName="ClaudeCodeProtection.TextSummary.TextSummary.csproj" />
     <EmbeddedResource Include="../../samples/TextSummary/TextSummary.cs" LogicalName="ClaudeCodeProtection.TextSummary.TextSummary.cs" />
     <EmbeddedResource Include="../../samples/TextSummary/ProjectTests.cs" LogicalName="ClaudeCodeProtection.TextSummary.ProjectTests.cs" />

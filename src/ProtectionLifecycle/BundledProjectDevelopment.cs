@@ -71,6 +71,10 @@ internal static class BundledProjectDevelopment
             while(!File.Exists(Path.Combine(workspace,"tool-go.signal"))){if(clock.ElapsedMilliseconds>=8000)throw new TimeoutException("Original project owner gate");Thread.Sleep(20);}
             if(File.ReadAllText(Path.Combine(workspace,"tool-go.txt"))!=plan.Nonce)throw WfpNative.Contract("ProjectOwnerGateBindingDiffers");
             HostPrivacyProbe.RunRestricted(plan,workspace,"project");
+            File.WriteAllText(Path.Combine(workspace,"project-privacy-ready.txt"),plan.Nonce,Encoding.ASCII);
+            File.WriteAllText(Path.Combine(workspace,"project-privacy-ready.signal"),"");clock.Restart();
+            while(!File.Exists(Path.Combine(workspace,"project-execution-go.signal"))){if(clock.ElapsedMilliseconds>=8000)throw new TimeoutException("Original owner privacy sealing gate");Thread.Sleep(20);}
+            if(File.ReadAllText(Path.Combine(workspace,"project-execution-go.txt"))!=plan.Nonce)throw WfpNative.Contract("ProjectExecutionGateBindingDiffers");
             BuildAndRun(plan.PowerShellDirectory,Path.Combine(workspace,"git-project"));
             foreach(var fixture in new[]{plan.Fixture,Path.Combine(workspace,"all-packages-only.json")})
             {

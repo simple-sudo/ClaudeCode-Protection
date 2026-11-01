@@ -7,7 +7,8 @@ using System.Text.Json;
 using ClaudeCodeProtection.Workspaces;
 
 WorkspaceFiles.RequireOrdinaryUser();
-if(args.Length!=1 || args[0] is not ("frames" or "local-pipe" or "output" or "snapshot" or "token-membership" or "reply" or "project-contract" or "privacy-contract"))return 125;
+if(args.Length!=1 || args[0] is not ("frames" or "local-pipe" or "output" or "snapshot" or "token-membership" or "reply" or "project-contract" or "privacy-contract" or "privacy-execution-gate"))return 125;
+if(args[0]=="privacy-execution-gate"){ProtectionLifecycle.HostPrivacyExecutionGateCases.Run();return 0;}
 static void Require(bool condition,string reason){if(!condition)throw new Exception("WorkspacePipe: "+reason);}
 static async Task Refuse(Func<Task> operation,string reason)
 {

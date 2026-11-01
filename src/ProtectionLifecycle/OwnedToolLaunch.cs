@@ -46,7 +46,7 @@ internal sealed class OwnedToolLaunch
         if(request.SchemaVersion!=1 || request.Scope!="OWNED_TOOL_START_REQUEST" || request.Nonce!=resources.Plan.Nonce ||
             request.RootPid!=root.Pid || request.Sequence!=next || next>64)throw WfpNative.Contract("OwnedToolRequestBindingRefused");
         var start=ValidateStart(resources.Plan,resources.Workspace,request.Kind,request.Arguments,request.StartSHA256);next++;
-        resources.AssertHeld();permit.AuthorizeToolCreation(root,job);
+        resources.AssertHeld();permit.AuthorizeToolCreation(root,job);resources.BeforeOwnedToolCreation(request.Kind);
         ToolLaunchReply reply;
         try
         {
