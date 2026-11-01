@@ -1,5 +1,25 @@
 # 当前开发状态
 
+## 2026-11-01 用户C#项目：新普通编译/测试/恢复通过，候选准备中
+
+新增显式workspace-check-csharp（不执行）与workspace-build-csharp（原安装Broker/本人UAC）
+入口，严格v6任务/输入/隐私封存绑定；v3 DATA和v5固定示例保留且不能替代新执行授权。
+清单声明UTF8源码、精确唯一文字修改、运行/测试入口与预期测试数，复用原Roslyn及引用，
+不运行用户构建脚本/项目导入/包恢复。原owner两阶段封存、严格LPAC/Job/时限/清理导出不变。
+source23f0374的96输入离线五项目构建通过，七普通模式0/无stderr：40新任务/v6契约检查、
+原工具策略、CallerWordCount读改编译运行三个测试及十文件恢复、实际00bc转换和被修改解析器
+的v3/v5兼容。新库7DDC1FD0/BrokerA7401B84/dailyA1B3EA70，158原生导入不变/无模块初始化。
+第一次fixture局部变量重名编译失败保留；没有产品/测试运行，r2修正后通过。普通结果十文件
+独立匹配于work/caller-csharp-ordinary-delivery-20261101；输入9F07437B...825B65。
+证据work/caller-csharp-r2-build-20261101/qualification.json
+SHA2459F3CC5D62BD6B6ADF19103E9383015A14D51F4CB9B59DAC58CE2708103BA1。
+
+新候选42f7fe36/917202DE已暂存payload，4变更/10复用，合入已普通资格GUI934E826A。打包
+纯数据，独立intake检查实际暂存库60EC→9172迁移、9F07规范输入、五原文件预期修改及隐私策略
+均匹配；无产品入口/真实宿主探测/Job/UAC/网络。Bootstrap/完整20文件/系统控制待完成，
+未请求提前空泛授权。实际安装仍00bc/60EC/5600，已通过的固定项目/28次实际拒绝不重跑。
+详见CALLER-CSHARP-PROJECTS.md；新原生执行前封存及用户项目受保护运行尚未验证。
+
 ## 2026-11-01 后续执行边界：原owner在项目代码之前封存双端观察
 
 已将原worker报告的封存放在Git放行前；编译工具在原身份门后完成原生检查，再等待owner的

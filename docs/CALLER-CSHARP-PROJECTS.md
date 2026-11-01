@@ -1,6 +1,7 @@
 # 显式用户 C# 项目开发入口
 
-当前SOURCE / INTEGRATED，六产品非执行语义检查通过；尚未构建、安装或运行新入口。
+当前SOURCE / BUILD / INTEGRATED，六产品非执行语义检查通过，普通限定样本VERIFIED；
+尚未安装或运行新受保护入口。
 原00bc/60EC/5600的固定TextSummary及28次真实敏感资源拒绝继续复用，不视为本入口通过。
 
 普通入口新增`workspace-check-csharp BASE_BUNDLE`，只检查任务；新增
@@ -39,3 +40,29 @@
 本轮同时补入实际已安装60EC9056的精确inactive迁移白名单，并将普通纯转换检查更新为00bc。
 这一项不代替活Job闭合、quarantine、安装审查或新的本人UAC决定；没有执行新的系统操作。
 PowerShell、其他宿主资源/API、强制网络、十四可信准入、GPU、恢复和完整GUI交付仍保持开放。
+
+## 普通验证与候选准备
+
+source23f0374的96输入离线构建五项目0错/0警告。首次6cf49b1的产品构建成功，但新增fixture
+五个局部变量与原harness外层重名，测试构建失败；原日志/来源保留，未运行测试或产品。
+独立r2仅修正fixture局部变量，七个普通模式全部0/无stderr：新任务40项清单/编辑/结果/v6
+检查、新v6原工具启动策略、新WordCount真实普通编译/运行/三个测试/十文件恢复、实际00bc
+精确inactive转换，以及被修改解析器的原v3 DATA/v5固定项目兼容检查。未重跑原Git/LPAC/
+真实宿主拒绝资格。库7DDC1FD0A2F4B8C650879DC35B58D24D81794251151D5AA9B9EF91EED43CBA69，
+BrokerA7401B84、dailyA1B3EA70；158原生导入逐项不变，无模块初始化，没有加载SMA。
+work/caller-csharp-r2-build-20261101/qualification.json
+SHA2459F3CC5D62BD6B6ADF19103E9383015A14D51F4CB9B59DAC58CE2708103BA1。
+
+十文件结果独立核对后保存在work/caller-csharp-ordinary-delivery-20261101，输入
+9F07437B305EA7A99EDC2AA1FB08135CF9F534BE76B8B98E787D3AC821825B65；控制记录
+work/caller-csharp-control-20261101/ordinary-observed-result.json
+SHAC479313BDE1B5FDB69552087EFCF55CA03BEE8207A50B725D18CAA18A882392B。
+只执行了冻结自有非秘密代码，没有原产品入口/Job/UAC/网络或真实宿主探测；boot/AV/BFE/
+FlClash/UU前后一致。普通测试不是新LPAC、原生两阶段放行或所有用户项目的资格。
+
+候选42f7fe36a4d24194ac9f2da0f967b289，manifest917202DE05F414EAA62803811D673CDD1A9071A3F7F08B0B188E358E57057399，
+合入原已资格GUI934E826A，4资产变化/10复用。打包只读字节/元数据，不在打包进程调用产品代码。
+独立普通intake仅调用实际暂存库的纯迁移、任务解析/编辑/规范序列化、隐私策略成员，确认
+实际60EC→9172选择、9F07输入及全部五个原文件预期修改与数据准备逐字节一致；不是现场current
+或Job检查。证据actual-staged-transition-review.json SHA87CBCB53FBB0CDF7EE2AA37CA2677EFEE11A3D18C4F189A188463239CDC1BEBC。
+Bootstrap/完整20文件/具体系统控制仍待完成，新系统操作未授权；实际安装仍00bc/60EC/5600。
