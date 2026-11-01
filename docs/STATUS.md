@@ -1,5 +1,10 @@
 # 当前开发状态
 
+2026-11-01 09:14:06Z迁移收尾复核：旧C盘项目路径缺席、父目录可访问且精确枚举0，
+直接访问PathNotFound；F根目录正常/非重解析点，唯一开发根目录继续为F盘。
+本轮没有删除，主体/发生时间UNKNOWN，未量释放空间；此前拒绝记录保留。
+详见docs/MIGRATION-20261031.md及外部cleanup-observed-absent-20261101.json。
+
 ## 2026-11-01 ordinary project workflow — SOURCE / BUILD / INTEGRATED, ordinary VERIFIED
 
 Separate daily `workspace-sample` / `workspace-develop` commands now connect the

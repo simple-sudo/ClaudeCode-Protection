@@ -14,6 +14,14 @@ System-installed product files and external toolchain dependencies remain at
 their system locations. The installed INACTIVE and unqualified/open work
 boundaries below remain applicable. See docs/MIGRATION-20261031.md.
 
+2026-11-01T09:14:06Z fresh readonly cleanup observation: old exact C root is
+ABSENT, accessible parent enumeration has zero matching names and Get-Item
+returns PathNotFound. F root exists/non-reparse. No deletion executed this turn;
+actor/time UNKNOWN, freed bytes not measured. Prior policy rejection preserved.
+External record cleanup-observed-absent-20261101.json SHA176A138A3A28833BE74778D91FD618CB65425F9DF5EF4516D3B5DC35B9F644D7.
+The old C-root deletion outcome is now satisfied by observed absence; do not
+rerun deletion or describe historical blocked/exists paragraphs as current.
+
 # ClaudeCode-Protection working rules
 
 2026-11-01 NEW ORDINARY WORKFLOW CANDIDATE READY, NOT_AUTHORIZED/NOT_RUN:

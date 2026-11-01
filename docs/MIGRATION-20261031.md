@@ -1,5 +1,14 @@
 # 项目迁移说明 — 2026-10-31
 
+2026-11-01 09:14:06Z 最新只读复核：旧 `C:\Users\simple\ClaudeCode-Protection`
+路径已不存在。`C:\Users\simple` 父目录可正常访问，精确名称枚举匹配数0，
+直接 Get-Item 返回 PathNotFound；F盘根目录正常且不是重解析点。旧目录缺席的
+清理结果已确认，F盘继续作为唯一开发根目录。本轮没有执行删除，删除主体与
+发生时间UNKNOWN，未测量释放空间；此前自动审核拒绝删除的历史记录不改写。
+独立记录 `F:\ClaudeCode-Protection-migration-20261031\cleanup-observed-absent-20261101.json`
+SHA256 `176A138A3A28833BE74778D91FD618CB65425F9DF5EF4516D3B5DC35B9F644D7`。
+下文2026-10-31“旧目录仍存在/清理未完成”是当时真实状态，不是本次最新状态。
+
 开发项目的新根目录：`F:\ClaudeCode-Protection`。
 旧根目录：`C:\Users\simple\ClaudeCode-Protection`。不保留目录联接或快捷入口。
 
