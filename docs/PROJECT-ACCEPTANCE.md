@@ -731,3 +731,11 @@ CAPABILITY_DELIVERED(已安装续编入口与普通数据准备)。新版项目/
 最终GUI/CenterResults BUILD0/0，115普通数据检查通过（新增队列边界、无隐式丢稿、顺序错误拒绝、快照不可变、实现与测试同包及测试数更新）。原D6CE库上独立普通编译模式实际改WordCount实现和测试，Roslyn编译/四测试/十文件恢复通过；普通自有代码非LPAC/真实宿主隔离证据。后续GUI-only控制复制过宽status字面量，真实模式为数据/离屏图，单独scope-note保留，实际编译以先前multi-edit-build结果为证。
 新运行库只加精确ecbcd4e0迁移pin，原163 native imports/闭合门保持，选择正控制/六拒绝通过。20文件预检、嵌入清单及同库匹配后，持续同类安装授权/本人UAC一次更新9dd26020成功；15公开资产/8回执字节及独立ACL通过。已安装任务窗离屏图与构建后已查看图逐字节相同。证据work/project-multi-edit-20261102-01/owner-update/observed-installation.json SHA256 6FD304FA61E255795BBC33E029769BA41952DBC06B0CCB2083DA57B8F1EA6359。
 CAPABILITY_DELIVERED(已安装多文件任务准备与普通编译闭环)。新版GUI点击/受保护项目/LPAC/正式准入/Claude未运行，不继承原66拒绝；未改网络/AV/日常软件或强停/自动重试/恢复/额外私有读取。Boot/AV/BFE/FlClash/UU观察一致，厂商完整告警覆盖UNKNOWN，整机产品仍未接受。
+
+
+## 2026-11-02：原工作区调用者生存监督接入
+
+388cb14保留原PID/当前安装image/普通token/同用户/pipe对端鉴权，将查询句柄仅加SYNCHRONIZE并保持至响应结束。三种pipe工作区路径都带非空生存检查；创建/恢复前及原runtime健康/执行放行/导出发送前检查实际等待对象，失联或未知抛错走原finally关闭准入/隔离/精确Job停止，原清理路径本身不受调用者存活条件阻断。无新外部停止、路径或通用管理接口。
+三目标/Bootstrap BUILD0/0；18普通自有进程检查覆盖查询+等待正控制、查询句柄等待拒绝、实际自有子进程退出259、未知等待/空guard/重绑/已关闭拒绝。新B407库上正常实现+测试修改/编译/四测试/十文件恢复和精确9dd迁移/六拒绝通过。Native163→164仅System32 WaitForSingleObject，无模块初始化。上述不是LPAC失联Job停止/异常恢复证明。
+持续同类安装授权/本人UAC一次更新e249c895e6434c338087d70e5f39e00b/ACA706F6DD31F625A0D800DDA56582D46B13BB0D16A6C817AAC35E9840B0F993成功，INACTIVE；仅运行库载荷变化。20文件持有预检、嵌入清单/同库及15公开资产/8固定回执字节/独立ACL通过。证据work/workspace-caller-lifetime-20261102-01/observed-installation.json SHA256 4234858A868117211A0C398B97A82E6EB959FCE78A97305367C29C3C0D5C6973。
+SOURCE/BUILD/INTEGRATED + VERIFIED(普通调用者生存组件/正常编译/安装)，真实调用者失联后的准入/隔离/Job零/清理、GUI点击/新LPAC任务均NOT_RUN，不标全产品或P0-SELF-FAILURE已交付。一次只读PID查询与已结束控制器竞态，后续按原句柄终态0和helper0确认，未以进程消失当清理或重试。无网络/AV/日常环境修改、强停提升owner、自动恢复或额外私有raw读取；完整厂商告警覆盖UNKNOWN。
