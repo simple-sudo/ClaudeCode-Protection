@@ -23,17 +23,20 @@ internal sealed class ProtectionRuntimeLease
     private readonly ProtectedSession.Preparation? preparation;
     private bool startupObserved;
     internal bool StartupGuardObserved=>preparation is not null && startupObserved && !closed && clock.ElapsedMilliseconds<deadlineMs;
+    private readonly Action? assertCaller;
     private readonly Stopwatch clock=Stopwatch.StartNew();
     private readonly string pointerSHA256,id=Guid.NewGuid().ToString("N");
     private long deadlineMs=25000;
     private bool activated,closed;
     private RuntimeStop? stopped;
     internal ProtectionRuntimeLease(ProtectedState state,VerifiedVersion version,OwnedKernelJob job,IReadOnlyList<PersistentFence> fences,ProxyChannelLease? proxy,
-        SessionProxy? gateway=null,ProtectedSession.Preparation? preparation=null,ProtectedSession.ResourceQualification? resources=null)
+        SessionProxy? gateway=null,ProtectedSession.Preparation? preparation=null,ProtectedSession.ResourceQualification? resources=null,Action? assertCaller=null)
     {
         this.state=state;this.version=version;this.job=job;this.fences=fences;this.proxy=proxy;
         if(resources is null && proxy is null || resources is not null && (proxy is not null || gateway is not null || preparation is not null))
             throw WfpNative.Contract("RuntimeScopeRequiresEitherOfflineResourcesOrLiveProxy");
+        if(assertCaller is not null && resources is null)throw WfpNative.Contract("WorkspaceCallerGuardRequiresOfflineResources");
+        this.assertCaller=assertCaller;
         this.resources=resources;resources?.AssertRuntimeObjects(job,version,fences);
         if((gateway is null)!=(preparation is null))throw WfpNative.Contract("SessionGatewayAndPreparationRequiredTogether");
         if(preparation is not null && !ReferenceEquals(gateway,preparation.Gateway))throw WfpNative.Contract("StartupGatewayMismatch");
@@ -53,6 +56,7 @@ internal sealed class ProtectionRuntimeLease
     internal void AssertHealthy()
     {
         if(closed)throw WfpNative.Contract("RuntimeAdmissionClosed");
+        assertCaller?.Invoke();
         state.AssertHeld();version.AssertHeld(state);
         if(state.Read("current.json",4096).SHA256!=pointerSHA256)throw WfpNative.Contract("RuntimeInstalledSelectionDrift");
         if(clock.ElapsedMilliseconds>=deadlineMs)throw WfpNative.Contract("RuntimeLeaseExpired");

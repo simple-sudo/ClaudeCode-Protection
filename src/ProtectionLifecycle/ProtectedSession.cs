@@ -127,18 +127,31 @@ internal sealed class ProtectedSession
         =>new ProtectedSession(layout,state,version).ExecuteResourceQualification(includeGit:true);
     internal static (int ExitCode,string Report) DevelopBundledProject(FixedLayout layout,ProtectedState state,VerifiedVersion version)
         =>new ProtectedSession(layout,state,version).ExecuteResourceQualification(includeGit:true,workspaceInput:BundledProjectDevelopment.Baseline(),developProject:true);
-    internal static (int ExitCode,string Report) BuildCallerProject(FixedLayout layout,ProtectedState state,VerifiedVersion version,byte[] bytes)
-        =>new ProtectedSession(layout,state,version).ExecuteResourceQualification(includeGit:true,workspaceInput:bytes,developProject:true,callerProject:true);
+    internal static (int ExitCode,string Report) DevelopBundledProjectForCaller(FixedLayout layout,ProtectedState state,VerifiedVersion version,Action assertCaller)
+    {
+        ArgumentNullException.ThrowIfNull(assertCaller);
+        return new ProtectedSession(layout,state,version).ExecuteResourceQualification(includeGit:true,workspaceInput:BundledProjectDevelopment.Baseline(),developProject:true,assertCaller:assertCaller);
+    }
+    internal static (int ExitCode,string Report) BuildCallerProject(FixedLayout layout,ProtectedState state,VerifiedVersion version,byte[] bytes,Action assertCaller)
+    {
+        ArgumentNullException.ThrowIfNull(assertCaller);
+        return new ProtectedSession(layout,state,version).ExecuteResourceQualification(includeGit:true,workspaceInput:bytes,developProject:true,callerProject:true,assertCaller:assertCaller);
+    }
     // A data-only operation on the existing owner and fixed offline Git
     // program. Source/test/build files in the bundle are NEVER executed.
     internal static (int ExitCode,string Report) ProcessWorkspaceData(FixedLayout layout,ProtectedState state,VerifiedVersion version,byte[] bytes)
         =>new ProtectedSession(layout,state,version).ExecuteResourceQualification(includeGit:true,workspaceInput:bytes);
+    internal static (int ExitCode,string Report) ProcessWorkspaceDataForCaller(FixedLayout layout,ProtectedState state,VerifiedVersion version,byte[] bytes,Action assertCaller)
+    {
+        ArgumentNullException.ThrowIfNull(assertCaller);
+        return new ProtectedSession(layout,state,version).ExecuteResourceQualification(includeGit:true,workspaceInput:bytes,assertCaller:assertCaller);
+    }
     internal static (int ExitCode,string Report) QualifyResourceRecovery(FixedLayout layout,ProtectedState state,VerifiedVersion version)
         // Deliberately EXIT this installed owner with a durable cleanup
         // checkpoint. The NEXT installed invocation performs real journal
         // recovery; no live in-memory profile object is transferred to it.
         =>new ProtectedSession(layout,state,version).ExecuteResourceQualification(true);
-    private (int ExitCode,string Report) ExecuteResourceQualification(bool deferCleanup=false,bool includeGit=false,byte[]? workspaceInput=null,bool developProject=false,bool callerProject=false)
+    private (int ExitCode,string Report) ExecuteResourceQualification(bool deferCleanup=false,bool includeGit=false,byte[]? workspaceInput=null,bool developProject=false,bool callerProject=false,Action? assertCaller=null)
     {
         InstallationProfileLease? profile=null;AtomicChild? child=null;
         var powerShellRequired=!developProject && workspaceInput is null;var compilerRequired=powerShellRequired || developProject;
@@ -152,6 +165,7 @@ internal sealed class ProtectedSession
         int? projectPid=null;HostPrivacySummary? hostPrivacy=null;
         try
         {
+            assertCaller?.Invoke();
             LifecycleRecovery.AssertNoPending(state);InstallationLoopbackLease.AssertClosedHistory(state);
             foreach(var intent in OwnedJobIntent.ReadAll(state))
                 if(AtomicJobCompletion.ReadClosed(state,intent) is null)throw WfpNative.Contract("ResourceQualificationPriorAdmissionNotClosed");
@@ -160,17 +174,20 @@ internal sealed class ProtectedSession
             foreach(var fence in fences)if(!fence.Observe().FullQuarantineObserved)throw WfpNative.Contract("ResourceQualificationFullQuarantineRequired");
             state.WriteNew("resource-session-before-"+id+".json",JsonSerializer.SerializeToUtf8Bytes(new {SchemaVersion=1,state.InstallationId,
                 SessionId=id,version.Package.Release,version.Package.ManifestHash,Scope=callerProject?WorkspacePipe.CallerProjectScope:developProject?"EXPLICIT_BUNDLED_PROJECT_CODE_TASK":"FIXED_OFFLINE_RESOURCE_AND_POWERSHELL_QUALIFICATION",FormalAdmissionIssued=false}));
+            assertCaller?.Invoke();
             profile=InstallationProfileLease.Create(state);resources=SessionResources.Create(state,version,profile,id,includeGit,workspaceInput,developProject,callerProject);
             using(var package=new InstallationPackageSid(state))sid=package.Value;
             job=OwnedKernelJob.CreateEmpty(state,version);permit=new ResourceQualification(this);
             pipe=new(System.IO.Pipes.PipeDirection.In,HandleInheritability.Inheritable);reader=new StreamReader(pipe,Encoding.UTF8,false,4096,true);
             text=toolLaunch.ReadMessages(reader);
+            assertCaller?.Invoke();
             child=AtomicChild.CreateResourceQualification(layout,state,version,job,profile,permit,pipe.ClientSafePipeHandle.DangerousGetHandle());
             pipe.DisposeLocalCopyOfClientHandle();
             // The installed register-only ETW lease restored exactly but did
             // not repair EventRegister5. Retire that automatic permission
             // mutation; keep its journal inspection/recovery for old runs.
-            runtime=new ProtectionRuntimeLease(state,version,job,fences,null,resources:permit);
+            runtime=new ProtectionRuntimeLease(state,version,job,fences,null,resources:permit,assertCaller:assertCaller);
+            assertCaller?.Invoke();
             _=child.ResumeQuarantined();resumed=true;runtime.Activate(20000);exited=Task.Run(child.WaitForCanaryExit);
             while(!exited.Wait(100))
             {

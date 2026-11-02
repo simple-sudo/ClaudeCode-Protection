@@ -24,12 +24,13 @@ public static partial class InstalledBroker
         var bytes=ClaudeCodeProtection.Workspaces.WorkspaceFiles.ReadInput(Console.OpenStandardInput(),ClaudeCodeProtection.Workspaces.WorkspaceBundle.MaxBundleBytes);
         return ProcessWorkspaceBytes(layout,state,version,expected,bytes);
     });
-    private static (int ExitCode,string Report) ProcessWorkspaceBytes(FixedLayout layout,ProtectedState state,VerifiedVersion version,string expected,byte[] bytes)
+    private static (int ExitCode,string Report) ProcessWorkspaceBytes(FixedLayout layout,ProtectedState state,VerifiedVersion version,string expected,byte[] bytes,Action? assertCaller=null)
     {
         if(ClaudeCodeProtection.Workspaces.WorkspaceBundle.Hash(bytes)!=expected)throw new InvalidDataException("Workspace input digest differs");
         var bundle=ClaudeCodeProtection.Workspaces.WorkspaceBundle.Parse(bytes);
         if(bundle.BaseSHA256 is not null || bundle.Files.Length==0)throw new InvalidDataException("Nonempty baseline workspace required");
-        return ProtectedSession.ProcessWorkspaceData(layout,state,version,bytes);
+        return assertCaller is null?ProtectedSession.ProcessWorkspaceData(layout,state,version,bytes):
+            ProtectedSession.ProcessWorkspaceDataForCaller(layout,state,version,bytes,assertCaller);
     }
     public static byte[] ExportWorkspaceData(string sessionId,string expectedResultSHA256)
         =>ExportWorkspaceResult(sessionId,expectedResultSHA256,false);

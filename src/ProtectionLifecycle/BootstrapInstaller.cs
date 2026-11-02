@@ -248,7 +248,10 @@ public static class BootstrapInstaller
         "ACF8094509362411545F87C772A53E1D7EE7CA716DBF3BF8760EB84E34D20DFB",
         // Exact ecbcd4e0 continuation GUI package. All original live inactive
         // maintenance, admission, Job/quarantine and ownership checks still apply.
-        "699ED89C53E60A706081DF6651D0AFD19FADAC71687E54DB0BD30D7BCC5899BC"
+        "699ED89C53E60A706081DF6651D0AFD19FADAC71687E54DB0BD30D7BCC5899BC",
+        // Exact 9dd26020 multi-edit GUI package; every live inactive-owner
+        // resource, admission, Job/quarantine and ownership guard is retained.
+        "3D7B72E0873AED73A10D6B9D016FEF66ACDA0AF840B0AEE16A3946A93E07717C"
         };
         private readonly ProtectedState state;
         private readonly BootstrapApproval approval;

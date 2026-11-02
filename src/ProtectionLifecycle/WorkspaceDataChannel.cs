@@ -25,6 +25,7 @@ public static partial class InstalledBroker
         using var channel=new NamedPipeClientStream(".",WorkspacePipe.Name(callerPid,nonce),PipeDirection.InOut,
             PipeOptions.Asynchronous,TokenImpersonationLevel.Identification);
         channel.Connect(15000);WorkspacePipe.AssertPeer(channel,callerPid,false);
+        using var callerLifetime=new WorkspaceCallerLifetime();
         string? session=null,resultHash=null,failureStage=null,failureKind=null;int? failureCode=null;
         ToolCreationEvidence? creationEvidence=null;WorkspaceStopEvidence? stopEvidence=null;
         HostPrivacySummary? hostPrivacy=null;var ownerSealedBeforeCode=false;ProjectTaskFailure? projectFailure=null;var sourceCount=32;
@@ -35,20 +36,20 @@ public static partial class InstalledBroker
             {
                 // The current installation and all payload files are held by
                 // the same original owner before receiving any project bytes.
-                stage="caller";using var caller=OpenWorkspaceCaller(callerPid,layout.Version(version.Package.Release));
+                stage="caller";callerLifetime.Bind(OpenWorkspaceCaller(callerPid,layout.Version(version.Package.Release)));
                 WorkspacePipe.AssertPeer(channel,callerPid,false);
                 stage="input";
                 using var transfer=new CancellationTokenSource(TimeSpan.FromSeconds(15));
                 var input=WorkspacePipe.Read(channel,WorkspaceBundle.MaxBundleBytes,transfer.Token).GetAwaiter().GetResult();
                 stage="processing";
-                if(!developProject)return ProcessWorkspaceBytes(layout,state,version,expected,input);
+                if(!developProject)return ProcessWorkspaceBytes(layout,state,version,expected,input,callerLifetime.AssertAlive);
                 if(callerProject)
                 {
                     if(WorkspaceBundle.Hash(input)!=expected)throw new InvalidDataException("Caller project byte binding differs");
-                    sourceCount=CSharpProjectTask.Parse(input).Definition.Sources.Length;return ProtectedSession.BuildCallerProject(layout,state,version,input);
+                    sourceCount=CSharpProjectTask.Parse(input).Definition.Sources.Length;return ProtectedSession.BuildCallerProject(layout,state,version,input,callerLifetime.AssertAlive);
                 }
                 TextSummarySource.RequireBaseline(input);
-                return ProtectedSession.DevelopBundledProject(layout,state,version);
+                return ProtectedSession.DevelopBundledProjectForCaller(layout,state,version,callerLifetime.AssertAlive);
             });
             exit=processed.ExitCode;
             using var report=JsonDocument.Parse(processed.Report);var r=report.RootElement;
@@ -66,7 +67,7 @@ public static partial class InstalledBroker
                 resultHash=Identifiers.Hash(StrictJson.Text(r,"ClosedWorkspaceResultSHA256"));
                 // Reuse the existing authoritative success/cleanup receipt
                 // checks. Never expose a partial/private payload on failure.
-                stage="export";output=callerProject?ExportCallerCSharpProject(session,resultHash):developProject?ExportDevelopedProject(session,resultHash):ExportWorkspaceData(session,resultHash);
+                stage="export";callerLifetime.AssertAlive();output=callerProject?ExportCallerCSharpProject(session,resultHash):developProject?ExportDevelopedProject(session,resultHash):ExportWorkspaceData(session,resultHash);
             }
             else
             {
@@ -131,6 +132,8 @@ public static partial class InstalledBroker
         if(callerProject && projectFailure is not null)response=JsonSerializer.SerializeToUtf8Bytes(new {SchemaVersion=6,Scope=WorkspacePipe.CallerProjectScope,HostPrivacy=hostPrivacy,OwnerSealedBeforeCode=ownerSealedBeforeCode,ExitCode=exit,SessionId=session,BaseSHA256=expected,
             ResultSHA256=resultHash,Status="CALLER_CSHARP_PROJECT_NOT_CONFIRMED",FailureStage=failureStage,FailureKind=failureKind,FailureCode=failureCode,
             CreationEvidence=creationEvidence,StopEvidence=stopEvidence,ProjectFailure=projectFailure});
+        if(exit==0 && !callerLifetime.IsBound)throw WfpNative.Contract("WorkspaceCallerRequiredForResult");
+        if(callerLifetime.IsBound)callerLifetime.AssertAlive();
         WorkspacePipe.AssertPeer(channel,callerPid,false);
         WorkspacePipe.Write(channel,response,16384,completion.Token).GetAwaiter().GetResult();
         if(exit==0)WorkspacePipe.Write(channel,output??throw new InvalidDataException("Closed output missing"),WorkspaceBundle.MaxBundleBytes,completion.Token).GetAwaiter().GetResult();
@@ -143,7 +146,7 @@ public static partial class InstalledBroker
     private static SafeProcessHandle OpenWorkspaceCaller(int pid,string versionRoot)
     {
         if(pid<=0 || pid==Environment.ProcessId)throw new InvalidDataException("Ordinary daily caller required");
-        var process=OpenProcess(0x1000,false,(uint)pid); // QUERY_LIMITED_INFORMATION only
+        var process=OpenProcess(WorkspaceCallerLifetime.CallerProcessAccess,false,(uint)pid); // QUERY_LIMITED_INFORMATION | SYNCHRONIZE only
         if(process.IsInvalid){process.Dispose();throw new Win32Exception(Marshal.GetLastWin32Error(),"Open workspace caller");}
         try
         {
