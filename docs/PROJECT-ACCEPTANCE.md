@@ -7,6 +7,20 @@
 
 ## 2026-11-02 V2显式项目数据与生成结果
 
+真实V2项目VERIFIED(scope)：本人单独授权一次并确认UAC后，13:09:49Z在77a1通过原daily→
+Broker/Job/严格LPAC链完成数据报告项目。输入B530770FA523DCC12532702D9D312DD0F02FE143FB42BB4B90F7A0559F2DDECE，
+会话54273f10496648429e671975e26e61d1；root8764/compiler47316各23项拒绝5，含18项owner
+权限拒绝，OwnerSealedBeforeCode=true。实际修改/编译、所选[3,4,5]读取、生成Count3/Total12
+报告、3测试、十一文件/七变化原owner验证导出及普通新目录恢复通过；源样本与输入数据字节不变。
+结果A10B7C8112286F3B48B64C0F563D1AB581815D97D47CA276236EE67DAC002C08，生成报告
+5BA128E148DE1641385AE1C76E1E3DFB648B005E693C0E6346A7257C60E27C85。独立观察
+`work/project-data-results-20261102-01/protected-run/observed-result.json`
+SHA80663E1585210434D5D60874D346B2D618193AA7D812C888C28E65C390F31FDE。
+原成功门包含最终Job闭合/隔离/清理；无额外private/raw Job/Stop读、强停、自动重试/恢复。
+Boot/AV/BFE/FlClash/UU前后一致，正式准入/网络放行false；不启动Claude或在宿主运行结果DLL。
+CAPABILITY_DELIVERED(该固定LPAC项目的数据读取与声明报告生成/恢复)。完整P0/其他工具/网络/
+GPU/异常恢复、实机GUI仍未验收，厂商覆盖UNKNOWN。以下普通资格和NOT_RUN为真实执行前记录。
+
 SOURCE/BUILD/INTEGRATED：Sources/DataFiles/清单精确输入、独立KindV2、限定cpc-results命名空间、
 每文件/总预算、完整输出集合、输入数据不变、原owner/LPAC/Job/23项双actor门接入GUI和原编译/
 认证结果/提取链；V1字节和严格字段保留。无任意命令/脚本、MSBuild、网络或Broker宿主读入口。

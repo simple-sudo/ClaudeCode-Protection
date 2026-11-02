@@ -28,6 +28,10 @@ GUI“创建项目任务”可明确选择数据，并按行填写结果名称�
 示例[samples/CallerDataReport](../samples/CallerDataReport/README.md)读取[3,4,5]并生成
 Count=3、Total=12的JSON报告，包含三项测试。最新安装/实测状态只见CURRENT-STATE。
 
+该固定样本已于77a1/2026-11-02本人单次授权后在真实原Broker/Job/严格LPAC链完成：生成报告、
+3测试、十一文件恢复与两个actor共46项拒绝5通过，输入/原样本不变。是该项目/对象/权限的
+CAPABILITY_DELIVERED，不推广至所有代码/工具/完整P0；完整证据见验收账本。
+
 ## V1入口与限定历史证据
 
 当前SOURCE / BUILD / INTEGRATED，六产品非执行语义检查通过，普通限定样本VERIFIED；
