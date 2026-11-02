@@ -1,5 +1,30 @@
 # 项目执行前由原所有者封存隐私观察
 
+## 2026-11-02 原门禁新增保护所有者最小进程权限检查
+
+P0-SELF-READ/CONTROL/CHILD接入原HostPrivacyProbe→HostPrivacyExecutionGate→代码释放链。
+原14项宿主检查保留；根进程和编译工具各新增九项对同一原Broker所有者的最小OpenProcess：
+VM_READ、TERMINATE、CREATE_THREAD、VM_OPERATION、VM_WRITE、DUP_HANDLE、SUSPEND_RESUME、
+WRITE_DAC、WRITE_OWNER。每次只请求一个权限，立即关闭；不调用读写内存、终止、挂起、注入、
+复制句柄或权限修改。组合权限的拒绝不能代替单项拒绝。原owner只选择自身PID，持有独立
+query/wait句柄；两个actor必须与ResourceProbePlan的BrokerPid精确绑定，不接受路径/身份替换。
+owner在自身上做同权限打开正控制以保留可信维护；这不是破坏性维护演练。
+
+共同目录为23项，策略指纹升级为V2；缺少九项的旧报告或旧策略不能满足新成功门。
+原封存阶段、二次实际Job/token身份检查、不可变副本及结果/闭合/隔离/清理所有者均保持。
+没有新执行器、任意PID参数、通用提权或宿主路径读取服务。新版GUI显示实际项目数，不再硬编码14。
+
+SOURCE/BUILD/INTEGRATED，122项原owner合成阶段检查、严格IPC/项目回执、60项普通数据检查及
+九权限自有普通进程正控制通过。本人单次项目授权及UAC后，12:51:07Z完成a3b6fab8上固定
+CallerWordCount的修改/编译/3测试/十文件结果恢复：root48116/compiler29052共46项拒绝5，
+含18项owner权限拒绝；OwnerSealedBeforeCode=true，原导出成功门包含精确闭合/清理。
+证据`work/owner-control-gate-20261102-01/protected-run/observed-result.json`
+SHA58BD60BABC0311135E6E8E6CD2CE0AA3486CCE82F6824CA2270F85EA1F389C8A。
+CAPABILITY_DELIVERED(该固定项目与两个实际受保护actor的最小进程权限拒绝)。未实际破坏owner，
+不代表全部自我保护/源码保密/其他工具/IPC/失败恢复/网络/GPU或正式Claude链已验收。
+
+## 2026-11-01 封存机制与限定历史证据
+
 2026-11-01原生实测已通过：当前42f/9172/7DDC的v6 CallerWordCount，project-r2独立本人授权/
 UAC后11:55:19Z成功。会话6afe136f45a54bbba5f95acc47245889，root15236/compiler1488各14
 真实对象全拒绝5，认证回复OwnerSealedBeforeCode=true；完成改编运行三个测试/清理/十文件

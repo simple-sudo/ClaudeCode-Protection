@@ -5,6 +5,39 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-02 受保护项目执行前的owner控制权限门禁
+
+SOURCE/BUILD/INTEGRATED：原HostPrivacyProbe与原owner内存封存门加入九个独立最小OpenProcess
+权限（VM_READ、TERMINATE、CREATE_THREAD、VM_OPERATION、VM_WRITE、DUP_HANDLE、SUSPEND_RESUME、
+WRITE_DAC、WRITE_OWNER），根进程和compiler各需23项拒绝5。原owner只选自身PID并保留query/
+wait与可信维护正控制，拒绝外来PID/path/identity；不实际读取、注入、终止、挂起、复制或改ACL。
+策略V2拒绝旧14项成功报告；原身份/Job/封存/代码释放/隔离/闭合/结果导出所有者保持。
+
+普通VERIFIED：122项合成门禁、60项Center数据、严格privacy/project/caller回执及自有普通进程
+九权限正控制通过。六产品非生成检查0/0，受影响产品离线构建0/0，核心158/daily18/GUI8/
+Broker0原生imports不变，无模块初始化。初次测试编译变量重名失败保留；单独consumer修复后
+build通过，所生成不同library字节保留，普通资格实际使用原产品精确字节；未冒充相同构建。
+
+安装VERIFIED：继续安装授权及本人UAC后12:47:55Z e6bd→a3b6fab8dd684046b73a95dcd718b342，
+manifest C2BCCC13A5296971D0DE1B77BB7CC158A9FA0EDA36FCCF3B21BDDED7CF210AD2，INACTIVE。
+15公开资产hash/可信owner/protected DACL/无不可信写者及8回执独立匹配，核对报告
+`work/owner-control-gate-20261102-01/installed-public-review.json`
+SHADD55581A4E3CB2B925C3B68D5807FFC4BDFABF6E1FB2B2CD607EF4DA651691A5。
+
+真实项目VERIFIED：本人就新固定任务与46项仅打开检查答复“授权这一次”，一次UAC后12:51:07Z
+原daily→Broker→Job/严格LPAC执行9F07437B五文件WordCount，修改/编译/运行/3测试、十文件/
+六变化认证结果与新目录恢复核对通过。会话db2402d8ca2a4247b289c02ab78a6af2，root48116与
+compiler29052各23项拒绝5，含owner权限18次；OwnerSealedBeforeCode=true。原owner成功门
+要求最终身份、Job零/隔离/清理，不额外读取raw Job/Stop或private errors；无强停/自动重试/
+恢复。Boot/AV/BFE/FlClash/UU一致，原项目保留，正式准入和网络放行false；Claude未启动。
+独立观察`work/owner-control-gate-20261102-01/protected-run/observed-result.json`
+SHA58BD60BABC0311135E6E8E6CD2CE0AA3486CCE82F6824CA2270F85EA1F389C8A；结果
+DF1219C6108F7E96B958337DDA67BD5FCC7D90D3F2B30F60FD3C5308A573B8C7，输出与源字节逐项核对。
+
+CAPABILITY_DELIVERED(该固定项目及两个实际受保护actor的最小owner进程权限拒绝)。没有实际
+破坏owner，不能代表源码/文件/IPC/其他工具或异常/长时/网络/GPU/完整P0验收。真实Claude延期，
+GUI实际点击NOT_RUN，厂商完整告警覆盖UNKNOWN，PRODUCT_DELIVERY_NOT_ACCEPTED。
+
 ## 2026-11-02 普通GUI任务创建与自我保护入口初步接入
 
 后续安装VERIFIED(scope)：本人明确授权并确认一次UAC，12:38:11Z原更新所有者将35a精确更新至
