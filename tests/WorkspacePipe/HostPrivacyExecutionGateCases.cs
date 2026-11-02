@@ -68,12 +68,18 @@ internal static class HostPrivacyExecutionGateCases
         // including the case where the new fields were simply omitted.
         var legacy=Observation(111) with {Cases=Observation(111).Cases.Take(14).ToArray()};
         Refuse(()=>Gate().SealRoot(legacy,111),"old 14-slot root evidence");
-        Require(HostPrivacyContract.Roles.Length==23,"14 host and nine owner access cases required");
+        Require(HostPrivacyContract.Roles.Length==33,"14 host, nine owner and ten control file access cases required");
         var masks=Enumerable.Range(14,9).Select(HostPrivacyContract.OwnerAccess).ToArray();
         Require(masks.SequenceEqual(new uint[]{0x10,0x1,0x2,0x8,0x20,0x40,0x800,0x40000,0x80000}),"each owner right has exact minimal mask");
         Require(masks.Distinct().Count()==9 && masks.All(m=>(m&(m-1))==0),"no combined or repeated rights hide exposure");
         Refuse(()=>HostPrivacyContract.OwnerAccess(13),"host case cannot request owner rights");
         Refuse(()=>HostPrivacyContract.OwnerAccess(23),"undefined owner rights");
+        var fileMasks=new uint[]{1,2,0x40000,0x80000,2,0x40000,0x80000,2,0x40000,0x80000};
+        for(var i=0;i<fileMasks.Length;i++)Require(HostPrivacyContract.ControlFileAccess(i+23)==fileMasks[i],"one minimal file right per role");
+        Refuse(()=>HostPrivacyContract.ControlFileAccess(22),"process index is not a control file grant");
+        Refuse(()=>HostPrivacyContract.ControlFileAccess(33),"undefined control file rights");
+        var processOnly=Observation(111) with {Cases=Observation(111).Cases.Take(23).ToArray()};
+        Refuse(()=>Gate().SealRoot(processOnly,111),"previous process-only inventory omits control file checks");
         Console.WriteLine($"PASS {checks} original-owner pre-code gate checks: phase ordering, single compiler/release, exact actors/context, all{HostPrivacyContract.Roles.Length} failed slots, legacy inventory refusal, minimal owner masks, immutable snapshots; pure synthetic reports, NOT LPAC/native host privacy or live Job qualification");
     }
 }

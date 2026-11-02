@@ -39,7 +39,7 @@ if(args[0]=="privacy-contract")
     Require(!HostPrivacyContract.Satisfied(partial),"root-only failure observation is not complete protection");
     foreach(var tool in new[]{false,true})
     {
-        for(var i=14;i<23;i++)
+        for(var i=14;i<HostPrivacyContract.Roles.Length;i++)
         {
             var exposed=Privacy();(tool?exposed.ToolCases:exposed.RootCases)[i]=new(HostPrivacyContract.Roles[i],HostPrivacyContract.Kind(i),"OPENED",0);
             Reject(exposed,"each individual owner-control exposure refuses authenticated result");

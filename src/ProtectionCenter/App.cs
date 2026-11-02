@@ -179,7 +179,7 @@ internal sealed class CenterWindow : Window
             details.Text=restored.ReviewText+"\r\n本次仅核对所列的"+ClaudeCodeProtection.Workspaces.HostPrivacyContract.Roles.Length+"项资源/权限；其他保护范围尚未完整验收。\r\n本次运行目录："+run.Directory;
             activity.Text="项目已返回结果，正在提取到新目录……";
             await Task.Run(()=>restored.ExtractNew(Path.Combine(run.Directory,"files")));
-            activity.Text=$"本次项目已完成，{project.ExpectedTests} 项测试通过；两名执行者对所列资源的读取均被拒绝。";
+            activity.Text=$"本次项目已完成，{project.ExpectedTests} 项测试通过；两名执行者对所列资源的权限打开均被拒绝。";
             details.Text+="\r\n结果目录："+Path.Combine(run.Directory,"files");
         }
         catch(OperationCanceledException){activity.Text="等待项目返回超时，任务状态未确认。请保留运行目录，并取消仍未确认的权限提示；不会自动重试。";}

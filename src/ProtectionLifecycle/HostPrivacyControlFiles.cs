@@ -1,0 +1,88 @@
+using System.ComponentModel;
+using System.Runtime.InteropServices;
+using System.Security.Principal;
+using Microsoft.Win32.SafeHandles;
+using ClaudeCodeProtection.Workspaces;
+
+namespace ProtectionLifecycle;
+
+internal sealed partial class HostPrivacyProbe
+{
+    // The original installed owner derives all three paths. No source root,
+    // caller path, arbitrary maintenance target or content read is accepted.
+    private static string ControlFilePath(string programFiles,string release,int index)
+    {
+        _=HostPrivacyContract.ControlFileAccess(index);release=Identifiers.Hex32(release);
+        return WindowsPathSeal.Child(programFiles,index switch {
+            >=23 and <=26=>"ClaudeCodeProtection-State/installation.json",
+            >=27 and <=29=>"ClaudeCodeProtection-State/current.json",
+            _=>"ClaudeCodeProtection/versions/"+release+"/bin/admin/ProtectionLifecycle.dll"});
+    }
+    private static void RequireControlFileTarget(string path,int pid,string? identity,string programFiles,string release,int index)
+    {
+        if(pid!=0 || identity is not {Length:24} || identity.Any(c=>!(c is >= '0' and <= '9' or >= 'A' and <= 'F')) ||
+            !string.Equals(path,ControlFilePath(programFiles,release,index),StringComparison.OrdinalIgnoreCase))
+            throw WfpNative.Contract("ProtectionControlFileTargetBindingDiffers");
+    }
+    private static (Target[] Targets,List<SafeFileHandle> Handles) CaptureControlFiles(string release)
+    {
+        var programFiles=WindowsPathSeal.Canonical(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles));
+        var files=new Dictionary<string,SafeFileHandle>(StringComparer.OrdinalIgnoreCase);var handles=new List<SafeFileHandle>();var targets=new List<Target>();
+        try
+        {
+            for(var i=HostPrivacyContract.ControlFileStart;i<HostPrivacyContract.Roles.Length;i++)
+            {
+                var path=ControlFilePath(programFiles,release,i);
+                if(!files.TryGetValue(path,out var handle))
+                {
+                    handle=WindowsPathSeal.Open(path,false,false);handles.Add(handle);files.Add(path,handle);
+                    WindowsPathSeal.AssertAcl(handle,i==HostPrivacyContract.ControlFileStart);
+                }
+                // A write-data open could be refused by the existing owner's
+                // immutable read share. Check the trusted token's actual DACL
+                // access separately; a sharing violation is never a denial.
+                AssertControlFileMaintenanceAccess(handle,HostPrivacyContract.ControlFileAccess(i));
+                targets.Add(new(HostPrivacyContract.Roles[i],HostPrivacyContract.Kind(i),path,0,FileIdentity(path)));
+            }
+            return(targets.ToArray(),handles);
+        }
+        catch{foreach(var handle in handles)handle.Dispose();throw;}
+    }
+    private static int ControlFileOpen(string path,int index)
+    {
+        using var handle=CreateFile(path,HostPrivacyContract.ControlFileAccess(index),7,IntPtr.Zero,3,0x40200000,IntPtr.Zero);
+        // OPEN_EXISTING, no read/write/truncate/security operation. Close even
+        // an unexpectedly granted handle without using its requested right.
+        return handle.IsInvalid?Marshal.GetLastWin32Error():0;
+    }
+    private static void AssertControlFileMaintenanceAccess(SafeFileHandle file,uint access)
+    {
+        if(access is not (1 or 2 or 0x40000 or 0x80000))throw WfpNative.Contract("ProtectionControlFileMaintenanceMaskDiffers");
+        var status=GetSecurityInfo(file,1,7,out _,out _,out _,out _,out var descriptor);
+        if(status!=0)throw new Win32Exception(checked((int)status),"Control file security metadata positive control");
+        try
+        {
+            var size=GetSecurityDescriptorLength(descriptor);
+            if(size is <20 or >65536)throw WfpNative.Contract("ProtectionControlFileDescriptorBounds");
+            var bytes=new byte[size];Marshal.Copy(descriptor,bytes,0,bytes.Length);
+            using var human=WindowsIdentity.GetCurrent();
+            if(!DuplicateTokenEx(human.AccessToken,8,IntPtr.Zero,1,2,out var query))throw new Win32Exception(Marshal.GetLastWin32Error(),"Control file query token positive control");
+            using(query)
+            {
+                var mapping=new FileGenericMapping();var privileges=new byte[1024];uint length=(uint)privileges.Length;
+                if(!AccessCheck(bytes,query,access,ref mapping,privileges,ref length,out var granted,out var allowed))
+                    throw new Win32Exception(Marshal.GetLastWin32Error(),"Control file maintenance positive control");
+                if(length>privileges.Length || !allowed || (granted&access)!=access)throw WfpNative.Contract("ProtectionControlFileMaintenanceNotAllowed");
+            }
+        }
+        finally{LocalFree(descriptor);}
+    }
+    [StructLayout(LayoutKind.Sequential)] private struct FileGenericMapping {internal uint Read,Write,Execute,All;}
+    [DllImport("advapi32.dll")] private static extern uint GetSecurityInfo(SafeFileHandle file,int type,uint info,out IntPtr owner,out IntPtr group,out IntPtr dacl,out IntPtr sacl,out IntPtr descriptor);
+    [DllImport("advapi32.dll")] private static extern uint GetSecurityDescriptorLength(IntPtr descriptor);
+    [DllImport("kernel32.dll")] private static extern IntPtr LocalFree(IntPtr pointer);
+    [DllImport("advapi32.dll",SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)]
+    private static extern bool DuplicateTokenEx(SafeAccessTokenHandle existing,uint access,IntPtr security,int level,int type,out SafeAccessTokenHandle token);
+    [DllImport("advapi32.dll",SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)]
+    private static extern bool AccessCheck(byte[] descriptor,SafeAccessTokenHandle token,uint desired,ref FileGenericMapping mapping,[Out]byte[] privileges,ref uint size,out uint granted,[MarshalAs(UnmanagedType.Bool)]out bool allowed);
+}

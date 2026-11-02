@@ -11,7 +11,7 @@ namespace ProtectionLifecycle;
 
 // Original owner's fixed resource catalogue. No caller-selected host path,
 // secret bytes/value reads, permission changes, process-memory reads or stop.
-internal sealed class HostPrivacyProbe : IDisposable
+internal sealed partial class HostPrivacyProbe : IDisposable
 {
     private sealed record Target(string Role,string Kind,string Path,int Pid,string? Identity);
     private sealed record Plan(int SchemaVersion,string SessionId,string InstallationId,string Release,Target[] Targets);
@@ -19,6 +19,7 @@ internal sealed class HostPrivacyProbe : IDisposable
     private readonly List<SafeProcessHandle> processes;
     private readonly HostPrivacyExecutionGate execution;
     private FileStream? published;
+    private readonly List<SafeFileHandle> controlFiles=new();
     internal byte[] Bytes {get;}
     internal string SHA256=>WorkspaceBundle.Hash(Bytes);
     private HostPrivacyProbe(Plan plan,List<SafeProcessHandle> processes)
@@ -68,14 +69,20 @@ internal sealed class HostPrivacyProbe : IDisposable
             var owner=OpenProcess(0x101000,false,checked((uint)Environment.ProcessId));
             if(owner.IsInvalid){owner.Dispose();throw new Win32Exception(Marshal.GetLastWin32Error(),"Protection owner metadata");}
             held.Add(owner);
-            for(var i=HostPrivacyContract.HostResourceCount;i<HostPrivacyContract.Roles.Length;i++)
+            for(var i=HostPrivacyContract.HostResourceCount;i<HostPrivacyContract.OwnerProcessEnd;i++)
             {
                 var error=OwnerAccessOpen(Environment.ProcessId,i);
                 if(error!=0)throw new Win32Exception(error,"Protection owner maintenance positive control");
                 targets.Add(new(HostPrivacyContract.Roles[i],HostPrivacyContract.Kind(i),"",Environment.ProcessId,null));
             }
-            var result=new HostPrivacyProbe(new(1,Identifiers.Hex32(session),Identifiers.Hex32(installation),Identifiers.Hex32(release),targets.ToArray()),held);
-            result.AssertTargetsCurrent();return result;
+            var controls=CaptureControlFiles(release);
+            try
+            {
+                targets.AddRange(controls.Targets);
+                var result=new HostPrivacyProbe(new(1,Identifiers.Hex32(session),Identifiers.Hex32(installation),Identifiers.Hex32(release),targets.ToArray()),held);
+                result.controlFiles.AddRange(controls.Handles);result.AssertTargetsCurrent();return result;
+            }
+            catch{foreach(var file in controls.Handles)file.Dispose();throw;}
         }
         catch{foreach(var handle in held)handle.Dispose();throw;}
     }
@@ -92,10 +99,13 @@ internal sealed class HostPrivacyProbe : IDisposable
         if(published?.SafeFileHandle.IsClosed!=false)throw WfpNative.Contract("HostPrivacyPlanLeaseLost");
         foreach(var handle in processes)
             if(handle.IsClosed || !ProcessAlive(handle))throw WfpNative.Contract("HostPrivacyTargetProcessExited");
+        foreach(var handle in controlFiles)if(handle.IsClosed || handle.IsInvalid)throw WfpNative.Contract("ProtectionControlFileLeaseLost");
     }
     private void AssertTargetsCurrent()
     {
         for(var i=0;i<9;i++)if(FileIdentity(plan.Targets[i].Path)!=plan.Targets[i].Identity)throw WfpNative.Contract("HostPrivacyFileIdentityChanged");
+        for(var i=HostPrivacyContract.ControlFileStart;i<plan.Targets.Length;i++)
+            if(FileIdentity(plan.Targets[i].Path)!=plan.Targets[i].Identity)throw WfpNative.Contract("ProtectionControlFileIdentityChanged");
         PositiveRegistry(true,plan.Targets[9].Path);PositiveRegistry(false,plan.Targets[10].Path);
         foreach(var handle in processes)if(!ProcessAlive(handle))throw WfpNative.Contract("HostPrivacyTargetProcessExited");
     }
@@ -153,8 +163,9 @@ internal sealed class HostPrivacyProbe : IDisposable
                 i<HostPrivacyContract.HostResourceCount &&
                 (target.Path.Length is <1 or >1024 || target.Path.Contains('\0') || (i<11?target.Pid!=0:target.Pid<=0)))
                 throw WfpNative.Contract("HostPrivacyTargetContractDiffers");
-            if(i>=HostPrivacyContract.HostResourceCount)RequireOwnerTarget(target.Path,target.Pid,target.Identity,resource.BrokerPid,i);
-            var error=i>=HostPrivacyContract.HostResourceCount?OwnerAccessOpen(target.Pid,i):
+            if(i>=HostPrivacyContract.ControlFileStart)RequireControlFileTarget(target.Path,target.Pid,target.Identity,resource.ProgramFilesRoot,resource.Release,i);
+            else if(i>=HostPrivacyContract.HostResourceCount)RequireOwnerTarget(target.Path,target.Pid,target.Identity,resource.BrokerPid,i);
+            var error=i>=HostPrivacyContract.ControlFileStart?ControlFileOpen(target.Path,i):i>=HostPrivacyContract.HostResourceCount?OwnerAccessOpen(target.Pid,i):
                 i<9?FileReadOpen(target.Path):i<11?RegistryReadOpen(i==9,target.Path):ProcessReadOpen(target.Pid);
             return new HostPrivacyCase(target.Role,target.Kind,error==5?"ACCESS_DENIED":error==0?"OPENED":"UNKNOWN",error);
         }).ToArray();
@@ -199,7 +210,7 @@ internal sealed class HostPrivacyProbe : IDisposable
         if((info.Attributes&0x410)!=0)throw WfpNative.Contract("HostPrivacyOrdinaryFileRequired");
         return info.Volume.ToString("X8")+info.IndexHigh.ToString("X8")+info.IndexLow.ToString("X8");
     }
-    public void Dispose(){published?.Dispose();foreach(var handle in processes)handle.Dispose();}
+    public void Dispose(){published?.Dispose();foreach(var handle in controlFiles)handle.Dispose();foreach(var handle in processes)handle.Dispose();}
     [StructLayout(LayoutKind.Sequential)] private struct FileInfo
     {internal uint Attributes;internal System.Runtime.InteropServices.ComTypes.FILETIME Creation,Access,Write;internal uint Volume,SizeHigh,SizeLow,Links,IndexHigh,IndexLow;}
     [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]

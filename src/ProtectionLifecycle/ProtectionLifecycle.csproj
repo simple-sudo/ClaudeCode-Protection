@@ -21,7 +21,7 @@
     <Compile Include="ProcessLocalRevocation.cs" />
     <Compile Include="ProtectionRuntimeLease.cs" />
     <Compile Include="SessionProxy.cs;ProtectedSession.cs" />
-    <Compile Include="SessionResources.cs" />
+    <Compile Include="SessionResources.cs;HostPrivacyControlFiles.cs" />
     <Compile Include="BundledProjectDevelopment.cs;../Shared/TextSummarySource.cs" />
     <Compile Include="CallerCSharpProject.cs;../Shared/CSharpProjectTask.cs;../Shared/ProjectFailure.cs" />
     <Compile Include="HostPrivacyProbe.cs;HostPrivacyExecutionGate.cs;../Shared/HostPrivacyContract.cs" />
