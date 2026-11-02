@@ -7,6 +7,16 @@
 
 ## 2026-11-02 普通GUI任务创建与自我保护入口初步接入
 
+后续安装VERIFIED(scope)：本人明确授权并确认一次UAC，12:38:11Z原更新所有者将35a精确更新至
+e6bd574f5e24492798215f4046248441/61A02E26，保持INACTIVE；安装器/helper均0。15公开文件
+hash/可信owner/protected DACL/无不可信写者及8份固定更新回执独立匹配。AV/BFE运行，FlClash/
+Core PID前后一致，真实Claude防火墙规则保持禁用；厂商告警完整覆盖UNKNOWN。没有Job/工具/
+GUI/Claude启动、自动强停/恢复/重试或网络策略修改。原安装版本和材料保留。
+证据`work/product-task-authoring-20261102-01/installed-public-review.json`
+SHABF58B9CFDDACDA1755A62259D762A4E7C4B3DC4F5852E3B48F27BC6BC930BC3E。
+首次普通授权记录序列化失败发生在claim/UAC前，空记录与解析失败保留；不算系统操作失败或重试。
+后续真实新身份拒绝、实际GUI和受保护项目仍NOT_RUN，安装成功不证明完整P0。
+
 SOURCE/BUILD/INTEGRATED：新增明确选择源码→文字修改/测试声明→不可变内存快照→审阅→新任务包
 保存/重导入，沿用原已安装daily/Broker/Job/LPAC及认证结果恢复所有者，不增加通用执行器。
 源码捕获、任务导入与运行目录规划默认排除固定管理目录及可识别保护checkout；daily/GUI和
