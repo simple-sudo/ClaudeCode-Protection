@@ -1,7 +1,7 @@
 # 当前状态与授权摘要
 
 更新：2026-11-02（America/New_York）。本页是**唯一的最新状态摘要**；历史事实仍由原始证据
-支持。原owner/WordCount/V2报告/失败反馈成果保留；8a22控制文件门已安装并完成本人单次授权的真实LPAC数据报告任务及66项最小权限打开拒绝。
+支持。原owner/WordCount/V2报告/失败反馈及8a22真实66项拒绝成果保留；ecbcd4e0续编GUI已按持续同类安装授权/本人UAC更新INACTIVE，15公开资产/8固定回执及独立ACL核对通过，已安装界面离屏可见新入口。
 
 ## 开发基线
 
@@ -19,14 +19,20 @@
 
 | 项目 | 最近记录及边界 |
 | --- | --- |
-| 实测时刻 | 2026-11-02 13:45:41Z安装；13:54独立ACL/13:57普通持有预检通过；14:02:30Z受权项目/66项检查完成 |
-| Release | `8a22a7bb2ee142eab1c1bc9ae32bc860` |
-| Manifest SHA256 | `ACF8094509362411545F87C772A53E1D7EE7CA716DBF3BF8760EB84E34D20DFB` |
+| 实测时刻 | 2026-11-02 14:32:27Z安装完成；14:33独立ACL核对；随后已安装界面离屏观察/14:36安全观察通过 |
+| Release | `ecbcd4e0172744bb8ed7bf5c169598da` |
+| Manifest SHA256 | `699ED89C53E60A706081DF6651D0AFD19FADAC71687E54DB0BD30D7BCC5899BC` |
 | 状态 | INACTIVE；不等于正在保护Claude |
-| 已证明 | 原更新owner成功，15公开资产hash及8固定回执绑定/可信owner/保护DACL/无不可信写者独立匹配；22输入普通持有预检通过 |
-| 未证明 | GUI实机点击、保护源码/IPC/其他权限与工具、完整网络/GPU/异常恢复及真实Claude仍未证明 |
+| 已证明 | 原更新owner成功，15公开资产hash及8固定回执绑定/可信owner/保护DACL/无不可信写者独立匹配；20输入原Source持有预检及已安装续编按钮离屏观察通过 |
+| 未证明 | 新版GUI实机点击/受保护项目运行未执行，不继承8a22实测；保护源码/IPC/其他权限与工具、完整网络/GPU/异常恢复及真实Claude仍未证明 |
 
-文件API核对：`work/control-file-gate-20261102-01/installed-api-review.json`，SHA256
+新安装观察：`work/project-iteration-20261102-01/owner-update/observed-installation.json`，SHA256
+`18FF049BFBF0E35236A4445AB1D9857406F5264FE3E5EC4D63EF671C1735720E`。15公开资产/8固定回执字节核对
+`installed-api-review.json` SHA256 `A95E6BD5E4C344E8333A0E3AD81D3C0687518E23A73D0A7603B62E4EB9D05ECC`；
+独立ACL核对`installed-independent-acl-review.json` SHA256 `B746FA5A38D853C4D986801F94F9CB82B7055A76EE56370F1C8F6DAE61E4FB75`。
+两个载荷变化：续编GUI及新增精确8a22前置pin的原更新库；原163 native imports不变、Bootstrap嵌入清单及同库副本匹配。
+
+此前8a22文件API核对：`work/control-file-gate-20261102-01/installed-api-review.json`，SHA256
 `CD920340887CD7F75FA10377527A2A91B4EF121F14C45390E048BE778B3F1674`。这是最初公开字节/回执绑定。后续原System32 PowerShell独立核对：
 `work/control-file-gate-20261102-01/installed-independent-acl-review.json`，SHA256
 `9FDB14036DB1261EB8EEA6B517A3660F100EB1EF36C8FFE4F0847922DFB3CCE5`；15公开文件/8固定回执ACL通过，此记录自身不含后续受保护任务。
@@ -39,7 +45,7 @@
 | --- | --- | --- |
 | 离线Git数据流 | 原安装Broker/Job/严格LPAC、成功清理导出及四文件恢复；见WORKSPACE-TRANSFER | 不是在线Git、通用代码执行或完整网络资格 |
 | TextSummary与调用者C#清单 | 原版本实测保留；a3b6上固定WordCount修改/编译/3测试/十文件恢复及原owner封存成功，双actor共46次最小权限打开拒绝 | 不推广到任意恶意代码、其他宿主API/工具；见验收账本 |
-| GUI | 项目准备/数据选择/声明结果/审阅恢复及有界失败显示已安装；76项普通GUI数据通过，原任务窗口离屏观察保留；00ac daily实际返回限定诊断 | 实机点击未验证；不把daily回执当GUI点击证据 |
+| GUI | 项目准备/数据选择/声明结果/审阅恢复、有界失败及结果续编入口已安装；89项普通数据检查通过，ecbcd4e0已安装界面离屏观察保留；00ac daily限定诊断证据保留 | 实机点击/新版受保护任务未验证；不把daily回执或离屏图当点击证据 |
 | 开发失败反馈 | 原compiler→root→owner→IPC→daily→GUI链接入；普通Compile/Run/Tests自有失败通过；00ac固定LPAC编译失败返回CS0103/source0/物理9行52列，原46拒绝/封存/关闭回执满足，结果0字节 | 实际运行/测试失败反馈、其他工具及崩溃恢复未实测；公开关闭观察不证明profile/私有目录清理 |
 | V2项目数据/结果 | 26新合同/40旧caller/原122合成门禁和67普通GUI数据通过；77a1真实DataReport编译/读取JSON/生成报告/3测试/十一文件恢复及双actor46拒绝通过 | 仅该固定项目/所列对象与权限；导出上限不是磁盘配额，不推广至其他工具或完整产品 |
 | 控制文件执行门 | 8a22真实LPAC根/编译器各33项拒绝5，含20次控制文件最小权限打开；原owner封存后正常DataReport修改/编译/3测试/十一文件恢复通过 | 仅所列三对象/十权限及该固定项目；不证明实际破坏、保护源码/IPC/全部权限或其他工具 |
@@ -71,7 +77,8 @@
 
 - 新增GUI“用结果继续开发”：显式选择对应输入/结果，原任务严格VerifyResult后，仅读取已修改源码及原选数据的不可变快照；填写新的文字修改，生成新清单/指纹并审阅/保存/重导入。原运行/测试入口及每个结果上限保持，旧DLL/生成结果不带入新输入，不继承旧执行或准入权。只读源码预览可复制原文字；取消/失败选择保留已有任务。
   ProtectionCenter/CenterResults离线构建0错误0警告，89项普通数据检查通过，含V1/V2连续两轮、旧修改重放拒绝、错误绑定/来源拒绝、后续路径替换不影响快照、二进制数据及128字节结果限额保持。八native imports与原GUI相同、无模块初始化；工具使用原.NET8读PE，不加载目标。
-  SOURCE/BUILD/INTEGRATED + VERIFIED(普通GUI数据准备)，尚未安装此GUI变化、未实机点击或运行新受保护任务；当前安装仍为上表8a22。证据work/project-iteration-20261102-01/observed-result.json，SHA256 318441D7B6A69670F67232F36094BDB2CF2E4B03527D34D63050D17AC77E568A。候选ecbcd4e0同范围INACTIVE更新已固定20文件及审查，待本人UAC；仅GUI/原更新库两载荷变化。原8a22精确迁移/六拒绝及普通输入持有通过；新项目执行仍须单独具体授权。
+  SOURCE/BUILD/INTEGRATED + VERIFIED(89项普通GUI数据准备)，普通证据work/project-iteration-20261102-01/observed-result.json SHA256 318441D7B6A69670F67232F36094BDB2CF2E4B03527D34D63050D17AC77E568A。随后ecbcd4e0按持续同类安装授权和本人一次UAC成功更新，15公开资产/8固定回执独立hash/owner/保护DACL/无不可信写者通过；已安装界面离屏图确认续编入口可见。CAPABILITY_DELIVERED(已安装续编入口与普通数据准备)，未实机点击或运行新受保护任务。
+  安装控制按原Source目录/文件持有和固定RunAs规则移植到一次性普通.NET8控制器，编译固定目标/计划/helper/库hash，无外部脚本或路径参数；只调用原System32帮助程序，未改PS执行策略或AV。新安装不继承8a22原生任务；后续项目执行仍须单独具体授权。
 
 
 - 本人对固定审查单明确“授权这一次”，一次本人UAC后于14:02:30Z完成8a22数据报告任务。会话

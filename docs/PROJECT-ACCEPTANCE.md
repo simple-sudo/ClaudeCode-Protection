@@ -715,3 +715,11 @@ GUI新增“用结果继续开发”，从显式选定的前次输入/结果严�
 两个受影响目标ProtectionCenter/CenterResults离线构建0错误0警告，普通89检查通过：两轮V1/V2续编、旧修改重放/错误来源/非源码编辑拒绝、源预览、路径替换/数组修改不改变快照、数据字节与128字节上限保持。新GUI/测试各八native imports同原资产，无模块初始化，未加载目标程序集。
 证据work/project-iteration-20261102-01/observed-result.json SHA256 318441D7B6A69670F67232F36094BDB2CF2E4B03527D34D63050D17AC77E568A。SOURCE/BUILD/INTEGRATED + VERIFIED(普通GUI数据准备)，新GUI尚未安装、实机点击/新LPAC任务NOT_RUN；8a22原生结果保持原范围。完整产品仍未接受。
 构建环境缺失路径、选择器作用域编译失败及只读元数据工具net472兼容失败均保留；修正后只检查受影响目标。新增维护用只读.NET8元数据工具不触及产品执行所有者/系统策略，不放松原检查。
+
+
+## 2026-11-02：ecbcd4e0续编入口安装交付
+
+源码a887849，候选ecbcd4e0172744bb8ed7bf5c169598da/699ED89C53E60A706081DF6651D0AFD19FADAC71687E54DB0BD30D7BCC5899BC。仅GUI及原更新库精确8a22迁移pin两载荷变化；新库/测试/元数据工具三目标及Bootstrap构建0/0，实际D6CE库的8a22选择正控制/六拒绝通过，原163 native imports不变、无模块初始化。Bootstrap嵌入清单与载荷匹配且复用同一D6CE库。
+20文件普通Source/control祖先持有预检通过。为兼容原PS7脚本策略限制，将原普通launch输入持有/固定RunAs调用移植到固定编译.NET8一次性控制器；只支持预检或本次固定安装，不收执行路径/任意脚本/命令，计划/helper/库hash、普通身份、单次claim及fresh适用决定检查保留。原更新Bootstrap/资源/闭合资格所有者不变，无策略或AV修改。两次PS5 JSON项筛选兼容失败发生在SDK前，保留后改显式唯一项选择；未重试系统操作。
+本人持续同类安装授权+一次本人UAC，14:32:27Z安装/helper均0，INACTIVE。15公开资产/8固定回执独立字节及owner/保护DACL/无不可信写者通过；实际安装apphost以固定离屏参数显示续编按钮，布局可见，非点击证据。安装观察18FF049BFBF0E35236A4445AB1D9857406F5264FE3E5EC4D63EF671C1735720E，证据work/project-iteration-20261102-01/owner-update/observed-installation.json。
+CAPABILITY_DELIVERED(已安装续编入口与普通数据准备)。新版项目/GUI点击/LPAC/正式准入/Claude未执行，不继承8a22原生66拒绝；无网络/AV/日常软件变更、强停/自动重试/恢复/额外私有raw读取。Boot/AV/BFE/FlClash/UU观察一致，完整厂商告警覆盖UNKNOWN，完整产品仍未接受。
