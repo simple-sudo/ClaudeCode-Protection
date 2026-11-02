@@ -245,7 +245,10 @@ public static class BootstrapInstaller
         "75EC1ECA5678EAB168987BCD38BAC34EB40C2A1FFABD2CBD8268873378FD907B",
         // 8a22 fixed control-file/data-report task completed through the original owner.
         // Select only this exact predecessor; every live inactive-update guard remains.
-        "ACF8094509362411545F87C772A53E1D7EE7CA716DBF3BF8760EB84E34D20DFB"
+        "ACF8094509362411545F87C772A53E1D7EE7CA716DBF3BF8760EB84E34D20DFB",
+        // Exact ecbcd4e0 continuation GUI package. All original live inactive
+        // maintenance, admission, Job/quarantine and ownership checks still apply.
+        "699ED89C53E60A706081DF6651D0AFD19FADAC71687E54DB0BD30D7BCC5899BC"
         };
         private readonly ProtectedState state;
         private readonly BootstrapApproval approval;

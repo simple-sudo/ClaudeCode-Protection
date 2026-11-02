@@ -26,9 +26,10 @@ internal sealed class CallerProjectSession
         foreach(var source in task.Definition.Sources)text.AppendLine("源码："+source);
         foreach(var data in task.Definition.DataFiles??Array.Empty<string>())text.AppendLine("数据："+data);
         foreach(var output in task.GeneratedFiles)text.AppendLine($"结果：{output.Path}（最多 {output.MaxBytes} 字节）");
+        var editNumber=0;
         foreach(var edit in task.Definition.Edits)
         {
-            text.AppendLine();text.AppendLine("修改："+edit.Path);
+            text.AppendLine();text.AppendLine("修改 "+(++editNumber)+"："+edit.Path);
             text.AppendLine("原文字："+JsonSerializer.Serialize(edit.Before));text.AppendLine("新文字："+JsonSerializer.Serialize(edit.After));
         }
         text.AppendLine();text.AppendLine("运行："+task.Definition.EntryType+".Run()");text.AppendLine("测试："+task.Definition.TestType+".Run()");
@@ -192,6 +193,6 @@ internal sealed class CallerProjectRevision
         if(!definition.Sources.Contains(path,StringComparer.Ordinal))throw new InvalidDataException("Only declared source can be previewed");
         return new UTF8Encoding(false,true).GetString(files.Single(f=>f.Path==path).Content);
     }
-    internal CallerProjectSession Prepare(CSharpProjectEdit[] edits)
-        =>CallerProjectSession.FromRevision(files,definition with {Edits=edits});
+    internal CallerProjectSession Prepare(CSharpProjectEdit[] edits,int? expectedTests=null)
+        =>CallerProjectSession.FromRevision(files,definition with {Edits=edits,ExpectedTests=expectedTests??definition.ExpectedTests});
 }

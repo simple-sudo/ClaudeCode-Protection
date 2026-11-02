@@ -8,7 +8,7 @@ using System.Text.Json;
 using System.Runtime.InteropServices;
 using Microsoft.Win32.SafeHandles;
 
-if(args.Length!=1 || args[0] is not ("policy" or "messages" or "handle-transfer" or "fault-mode" or "fault-mode-read" or "partial-output" or "hosted-policy" or "etw-policy" or "tls-transport-policy" or "etw-token-access" or "inactive-transition" or "project-policy" or "project-build" or "privacy-native" or "caller-project-build" or "caller-project-policy" or "self-control-open" or "caller-data-build" or "caller-compile-failure" or "caller-run-failure" or "caller-test-failure" or "caller-failure-owner" or "control-file-gate"))return 125;
+if(args.Length!=1 || args[0] is not ("policy" or "messages" or "handle-transfer" or "fault-mode" or "fault-mode-read" or "partial-output" or "hosted-policy" or "etw-policy" or "tls-transport-policy" or "etw-token-access" or "inactive-transition" or "project-policy" or "project-build" or "privacy-native" or "caller-project-build" or "caller-project-policy" or "self-control-open" or "caller-data-build" or "caller-compile-failure" or "caller-run-failure" or "caller-test-failure" or "caller-failure-owner" or "control-file-gate" or "caller-multi-edit-build"))return 125;
 try
 {
 using var identity=WindowsIdentity.GetCurrent();
@@ -47,9 +47,10 @@ if(args[0]=="self-control-open")
     Require(unknownOwnerRight,"undefined right rejected before native open");
     Console.WriteLine("PASS nine minimal process-right opens on this own ordinary test process; owner binding, foreign PID/path/identity, zero PID and undefined right checked. Handles closed unused; no process memory read/write, termination, suspension, injection, duplication, ACL change, host target, UAC, Broker/Job or LPAC test");return 0;
 }
-if(args[0] is "caller-project-build" or "caller-project-policy" or "caller-data-build")
+if(args[0] is "caller-project-build" or "caller-project-policy" or "caller-data-build" or "caller-multi-edit-build")
 {
     var dataProjectFixture=args[0]=="caller-data-build";
+    var multiEditFixture=args[0]=="caller-multi-edit-build";
     var bundleType=library.GetType("ClaudeCodeProtection.Workspaces.WorkspaceBundle",true)!;
     var taskType=library.GetType("ClaudeCodeProtection.Workspaces.CSharpProjectTask",true)!;
     var executor=library.GetType("ProtectionLifecycle.CallerCSharpProject",true)!;
@@ -61,6 +62,15 @@ if(args[0] is "caller-project-build" or "caller-project-policy" or "caller-data-
         using var resource=Assembly.GetExecutingAssembly().GetManifestResourceStream((dataProjectFixture?"DataFixture.":"CallerFixture.")+name)??throw new InvalidDataException("Missing caller fixture");
         using var bytes=new MemoryStream();resource.CopyTo(bytes);return (name,bytes.ToArray());
     }).ToArray();
+    if(multiEditFixture)
+    {
+        var manifestIndex=Array.FindIndex(fixtureData,f=>f.name=="cpc-project.json");
+        var manifest=System.Text.Json.Nodes.JsonNode.Parse(fixtureData[manifestIndex].Item2)!.AsObject();
+        manifest["Edits"]!.AsArray().Add(new System.Text.Json.Nodes.JsonObject{
+            ["Path"]="tests/Checks.cs",["Before"]="return 3;",["After"]="if(Counter.CountWords(\"  one   two  \")!=2)throw new Exception(\"repeated spaces\"); return 4;"});
+        manifest["ExpectedTests"]=4;
+        fixtureData[manifestIndex]=("cpc-project.json",Encoding.UTF8.GetBytes(manifest.ToJsonString()));
+    }
     var bundle=Call(bundleType,"Create",fixtureData,null)!;
     var baseline=(byte[])bundleType.GetMethod("Serialize",BindingFlags.Instance|BindingFlags.NonPublic)!.Invoke(bundle,null)!;
     var task=Call(taskType,"Parse",baseline)!;
@@ -100,9 +110,14 @@ if(args[0] is "caller-project-build" or "caller-project-policy" or "caller-data-
         Console.WriteLine("PASS ordinary CallerDataReport: explicit data/result V2 intent and original fixed tool binding, actual Roslyn compile/run/three tests, eleven-file snapshot/verify/extract, Count=3 Total=12, unchanged data and restored CWD. No protected product/LPAC/Job/UAC/network/host probes; fixture="+fixture);return 0;
     }
     Require(File.ReadAllText(Path.Combine(fixture,"exported","cpc-output","stdout.txt"))=="words=3" &&
-        File.ReadAllText(Path.Combine(fixture,"exported","cpc-output","test-result.txt"))=="3" &&
+        File.ReadAllText(Path.Combine(fixture,"exported","cpc-output","test-result.txt"))==(multiEditFixture?"4":"3") &&
         File.ReadAllText(Path.Combine(fixture,"exported","src","Counter.cs")).Contains("StringSplitOptions.RemoveEmptyEntries"),"caller literal edit, run, three tests and extraction");
     Require(!AppDomain.CurrentDomain.GetAssemblies().Any(a=>a.GetName().Name=="System.Management.Automation"),"caller project never loaded PowerShell");
+    if(multiEditFixture)
+    {
+        Require(File.ReadAllText(Path.Combine(fixture,"exported","tests","Checks.cs")).Contains("repeated spaces"),"test source edit survives exact result verification and extraction");
+        Console.WriteLine("PASS ordinary multi-file task: implementation and test edited together, pinned Roslyn compile/run, four tests, ten-file verification/extraction. No LPAC/Job/UAC/product/host probes/network; fixture="+fixture);return 0;
+    }
     Console.WriteLine("PASS ordinary reviewed CallerWordCount: explicit manifest, three source files, exact edit, pinned Roslyn compile, entry words=3, three tests, ten-file snapshot/verification/extraction; no PowerShell/MSBuild/project imports/network/LPAC/Job/UAC/real host probes; fixture="+fixture);return 0;
 }
 if(args[0]=="privacy-native")
@@ -183,8 +198,8 @@ if(args[0]=="inactive-transition")
 {
     var lease=library.GetType("ProtectionLifecycle.BootstrapInstaller",true)!
         .GetNestedType("PinnedInactiveUpdateLease",BindingFlags.NonPublic)!;
-    const string actualRelease="8a22a7bb2ee142eab1c1bc9ae32bc860";
-    const string actualManifest="ACF8094509362411545F87C772A53E1D7EE7CA716DBF3BF8760EB84E34D20DFB";
+    const string actualRelease="ecbcd4e0172744bb8ed7bf5c169598da";
+    const string actualManifest="699ED89C53E60A706081DF6651D0AFD19FADAC71687E54DB0BD30D7BCC5899BC";
     // The replacement is a fixture selection, not an approved package or
     // installed transition. This executes only the real pure selection guard.
     var replacementRelease=new string('a',32);var replacementManifest=new string('A',64);

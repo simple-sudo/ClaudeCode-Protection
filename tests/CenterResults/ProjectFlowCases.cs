@@ -139,6 +139,8 @@ internal static class ProjectFlowCases
         var capturedResultHash=dataRevision.PreviousResultSHA256;
         File.WriteAllText(dataRun.InputPath,"later replacement");File.WriteAllText(dataRun.ResultPath,"later replacement");
         var exposed=dataRevision.Sources;exposed[0]="unreviewed.cs";
+        Require(dataRevision.Prepare(nextEdit,2).ExpectedTests==2,"continuation can explicitly update expected test count for new tests");
+        Refuse(()=>dataRevision.Prepare(nextEdit,257),"continuation cannot exceed test-count bounds");
         var nextData=dataRevision.Prepare(nextEdit);var nextDataPath=Path.Combine(fixture,"next-data-task.json");nextData.SaveBundle(nextDataPath);
         var continued=CSharpProjectTask.Parse(WorkspaceFiles.ReadBundle(nextDataPath));
         Require(capturedResultHash==WorkspaceBundle.Hash(dataResults) && continued.Definition.SchemaVersion==2 && continued.Baseline.Files.Length==4,
