@@ -112,7 +112,7 @@ public static partial class InstalledBroker
                 }
                 if(callerProject && ownerSealedBeforeCode && r.TryGetProperty("Child",out var projectChild) &&
                     projectChild.ValueKind==JsonValueKind.Object && projectChild.TryGetProperty("ProjectFailure",out var diagnostic) &&
-                    diagnostic.ValueKind!=JsonValueKind.Null && projectChild.GetProperty("FailureStage").GetString()=="WAIT_PROJECT_COMPILER" &&
+                    diagnostic.ValueKind!=JsonValueKind.Null && ProjectFailureStageMatches(projectChild.GetProperty("FailureStage").GetString()) &&
                     projectChild.GetProperty("ToolExit").ValueKind==JsonValueKind.Number && projectChild.GetProperty("ToolExit").GetInt32()!=0)
                 {projectFailure=ProjectFailureContract.Parse(diagnostic,sourceCount);failureKind="ProjectTaskFailed";}
             }
@@ -136,6 +136,10 @@ public static partial class InstalledBroker
         if(exit==0)WorkspacePipe.Write(channel,output??throw new InvalidDataException("Closed output missing"),WorkspaceBundle.MaxBundleBytes,completion.Token).GetAwaiter().GetResult();
         return exit;
     }
+    // RunChild appends the original Contract's fixed Stage to its wait phase.
+    // Do not accept a bare wait, timeout or arbitrary prefix as a project error.
+    internal static bool ProjectFailureStageMatches(string? stage)
+        =>stage=="WAIT_PROJECT_COMPILER/ProjectDevelopmentNotConfirmed";
     private static SafeProcessHandle OpenWorkspaceCaller(int pid,string versionRoot)
     {
         if(pid<=0 || pid==Environment.ProcessId)throw new InvalidDataException("Ordinary daily caller required");

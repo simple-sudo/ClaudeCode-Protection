@@ -8,13 +8,13 @@ using System.Text.Json;
 using System.Runtime.InteropServices;
 using Microsoft.Win32.SafeHandles;
 
-if(args.Length!=1 || args[0] is not ("policy" or "messages" or "handle-transfer" or "fault-mode" or "fault-mode-read" or "partial-output" or "hosted-policy" or "etw-policy" or "tls-transport-policy" or "etw-token-access" or "inactive-transition" or "project-policy" or "project-build" or "privacy-native" or "caller-project-build" or "caller-project-policy" or "self-control-open" or "caller-data-build" or "caller-compile-failure" or "caller-run-failure" or "caller-test-failure"))return 125;
+if(args.Length!=1 || args[0] is not ("policy" or "messages" or "handle-transfer" or "fault-mode" or "fault-mode-read" or "partial-output" or "hosted-policy" or "etw-policy" or "tls-transport-policy" or "etw-token-access" or "inactive-transition" or "project-policy" or "project-build" or "privacy-native" or "caller-project-build" or "caller-project-policy" or "self-control-open" or "caller-data-build" or "caller-compile-failure" or "caller-run-failure" or "caller-test-failure" or "caller-failure-owner"))return 125;
 try
 {
 using var identity=WindowsIdentity.GetCurrent();
 if(new WindowsPrincipal(identity).IsInRole(WindowsBuiltInRole.Administrator))throw new InvalidOperationException("Ordinary qualification only");
 var library=Assembly.LoadFrom(Path.Combine(AppContext.BaseDirectory,"ProtectionLifecycle.dll"));
-if(args[0] is "caller-compile-failure" or "caller-run-failure" or "caller-test-failure")
+if(args[0] is "caller-compile-failure" or "caller-run-failure" or "caller-test-failure" or "caller-failure-owner")
 {ProjectFailureExecutionCases.Run(library,args[0]);return 0;}
 const BindingFlags flags=BindingFlags.Static|BindingFlags.NonPublic;
 object? Call(Type type,string method,params object?[] values)
@@ -182,8 +182,8 @@ if(args[0]=="inactive-transition")
 {
     var lease=library.GetType("ProtectionLifecycle.BootstrapInstaller",true)!
         .GetNestedType("PinnedInactiveUpdateLease",BindingFlags.NonPublic)!;
-    const string actualRelease="77a1db7a6e664fc1b212786d196977fb";
-    const string actualManifest="A5CC9F74FBCCEF743A301419BA2095C05964591468883067B612E4440CE43D75";
+    const string actualRelease="3cfd4540adca47489be8ead41ee32d12";
+    const string actualManifest="1F541F21AA2989A56A36DB620A087190235BE2B7998B6AB1DD26433145E1C63E";
     // The replacement is a fixture selection, not an approved package or
     // installed transition. This executes only the real pure selection guard.
     var replacementRelease=new string('a',32);var replacementManifest=new string('A',64);

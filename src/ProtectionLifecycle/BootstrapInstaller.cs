@@ -236,7 +236,10 @@ public static class BootstrapInstaller
             "C2BCCC13A5296971D0DE1B77BB7CC158A9FA0EDA36FCCF3B21BDDED7CF210AD2",
             // 77a1 explicit-data package, with closed fixed data-report task.
             // All live original inactive-update guards remain mandatory.
-            "A5CC9F74FBCCEF743A301419BA2095C05964591468883067B612E4440CE43D75"
+            "A5CC9F74FBCCEF743A301419BA2095C05964591468883067B612E4440CE43D75",
+        // 3cfd expected compiler-failure task returned original closed/isolated/Job-zero observations.
+        // This exact inactive predecessor remains subject to every live resource/update guard.
+        "1F541F21AA2989A56A36DB620A087190235BE2B7998B6AB1DD26433145E1C63E"
         };
         private readonly ProtectedState state;
         private readonly BootstrapApproval approval;

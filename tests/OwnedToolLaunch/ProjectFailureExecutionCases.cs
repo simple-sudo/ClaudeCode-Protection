@@ -14,6 +14,26 @@ internal static class ProjectFailureExecutionCases
             try{return type.GetMethod(method,flags)!.Invoke(null,values);}
             catch(TargetInvocationException error)when(error.InnerException is not null){ExceptionDispatchInfo.Capture(error.InnerException).Throw();throw;}
         }
+        if(mode=="caller-failure-owner")
+        {
+            var contract=library.GetType("ProtectionLifecycle.WfpNative",true)!;
+            var error=(Exception)Call(contract,"Contract","ProjectDevelopmentNotConfirmed")!;
+            var childType=library.GetType("ProtectionLifecycle.ResourceChildReport",true)!;
+            var child=JsonSerializer.SerializeToElement(new {SchemaVersion=1,Pid=1,Nonce=new string('a',32),WorkspaceWriteReadMatched=true,
+                ToolExit=125,Cases=Array.Empty<object>(),FailureType=error.GetType().Name,FailureCode=error.HResult,
+                FailureStage="WAIT_PROJECT_COMPILER/"+error.Data["Stage"],ToolDiagnostic=(string?)null,Git=(object?)null,
+                CreationEvidence=(object?)null,OwnedCompilationObserved=false,
+                ProjectFailure=new {Stage="Compile",Diagnostics=new[]{new {Code="CS0103",SourceIndex=0,Line=9,Column=52}}}});
+            var observed=JsonSerializer.Deserialize(child.GetRawText(),childType)!;
+            var report=JsonSerializer.SerializeToElement(new {Child=observed});var value=report.GetProperty("Child");
+            var owner=library.GetType("ProtectionLifecycle.InstalledBroker",true)!;
+            if(Call(owner,"ProjectFailureStageMatches",value.GetProperty("FailureStage").GetString()) is not true ||
+                value.GetProperty("ToolExit").GetInt32()!=125 || value.GetProperty("ProjectFailure").GetProperty("Stage").GetString()!="Compile")
+                throw new InvalidDataException("Original child contract stage/serialization did not reach owner");
+            foreach(var wrong in new string?[]{null,"WAIT_PROJECT_COMPILER","WAIT_PROJECT_COMPILER/Other","WAIT_PROJECT_COMPILER/ProjectDevelopmentNotConfirmed/Other","START_PROJECT_COMPILER/ProjectDevelopmentNotConfirmed"})
+                if(Call(owner,"ProjectFailureStageMatches",wrong) is not false)throw new InvalidDataException("Unrelated failure stage accepted");
+            Console.WriteLine("PASS original Contract stage suffix through actual ResourceChildReport serialization to exact owner match; bare/foreign/prefix stages refused; pure fixture, no LPAC/UAC/private state");return;
+        }
         var names=new[]{"cpc-project.json","src/Entry.cs","tests/Checks.cs","data/values.json","README.md"};
         var selected=names.Select(name=>
         {
