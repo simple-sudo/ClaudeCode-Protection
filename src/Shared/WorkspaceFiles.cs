@@ -34,6 +34,8 @@ internal static class WorkspaceFiles
         var names=selected.Take(WorkspaceBundle.MaxFiles+1).ToArray();
         // Validate all names/collisions before reading any project content.
         WorkspaceBundle.Create(names.Select(p=>(p,Array.Empty<byte>())));
+        RequireExternalProjectPath(root);
+        foreach(var name in names)RequireExternalProjectPath(Child(root,name));
         using var held=new HeldPaths();held.DirectoryChain(root);
         var files=new List<(string Path,FileStream Stream)>();
         foreach(var relative in names)
@@ -50,6 +52,27 @@ internal static class WorkspaceFiles
         }
         return WorkspaceBundle.Create(contents).Serialize();
     }
+    // Default selection exclusion, in addition to the actual LPAC/ACL boundary.
+    // This is not content classification: an independently copied bundle has
+    // no trustworthy provenance. It cannot grant a maintenance exception.
+    internal static void RequireExternalProjectPath(string path)
+    {
+        path=Local(path);
+        var programFiles=Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
+        var local=Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        if(string.IsNullOrWhiteSpace(programFiles) || string.IsNullOrWhiteSpace(local))
+            throw new InvalidDataException("Protection resource locations unavailable");
+        foreach(var root in new[]{Path.Combine(programFiles,"ClaudeCodeProtection"),Path.Combine(programFiles,"ClaudeCodeProtection-State"),Path.Combine(local,"ClaudeCodeProtection")})
+            if(IsWithin(path,root))throw new InvalidDataException("保护系统目录不能作为日常开发输入。请选择独立项目。");
+        // Identify a development checkout by its existing product structure;
+        // no fixed drive, source bytes, Git invocation or recursive enumeration.
+        for(var parent=path;parent is not null;parent=Path.GetDirectoryName(parent))
+            if(File.Exists(Path.Combine(parent,"src","ProtectionLifecycle","ProtectionLifecycle.csproj")) &&
+                File.Exists(Path.Combine(parent,"src","ProtectionBootstrap","ApprovedPackage.json")))
+                throw new InvalidDataException("保护系统源码及工作目录不能作为日常开发输入。请选择独立项目。");
+    }
+    internal static bool IsWithin(string path,string root)=>path.Equals(root,StringComparison.OrdinalIgnoreCase) ||
+        path.StartsWith(root.TrimEnd('\\')+"\\",StringComparison.OrdinalIgnoreCase);
     internal static byte[] ReadBundle(string path)
     {
         using var held=new HeldPaths();held.DirectoryChain(Path.GetDirectoryName(Local(path))!);using var file=held.ReadFile(path);

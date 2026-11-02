@@ -10,6 +10,7 @@ internal static class UserDataPaths
 {
     internal static void AssertUserContext()
     {
+        ClaudeCodeProtection.Workspaces.WorkspaceFiles.RequireOrdinaryUser();
         using var identity=WindowsIdentity.GetCurrent();
         if(new WindowsPrincipal(identity).IsInRole(WindowsBuiltInRole.Administrator) || identity.User is null || identity.User.IsWellKnown(WellKnownSidType.LocalSystemSid))
             throw new InvalidOperationException("Daily configuration maintenance requires the ordinary user's context");

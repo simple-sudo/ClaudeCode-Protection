@@ -11,6 +11,7 @@ internal static class BackendClient
     internal static string Root => Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", ".."));
     internal static async Task<BackendResult> Command(params string[] arguments)
     {
+        WorkspaceFiles.RequireOrdinaryUser();
         // Defense in depth: the GUI cannot dispatch engineering commands even
         // if a future caller accidentally wires one into a button.
         if (arguments.Length == 0 || arguments[0] is not ("audit" or "preflight" or "system-proxy-baseline" or "repair-proxy-plan" or "repair-proxy" or "restore-proxy"))

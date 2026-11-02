@@ -12,6 +12,8 @@ internal static class Program
         Console.OutputEncoding = new System.Text.UTF8Encoding(false);
         try
         {
+            // Reject confined callers before audits, config paths or UAC entry.
+            WorkspaceFiles.RequireOrdinaryUser();
             switch (args.FirstOrDefault())
             {
                 case "workspace-sample":

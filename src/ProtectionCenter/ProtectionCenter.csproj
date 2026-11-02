@@ -10,7 +10,7 @@
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="App.cs;BackendClient.cs;PreflightDisplay.cs;WorkspaceResultSession.cs" />
+    <Compile Include="App.cs;BackendClient.cs;PreflightDisplay.cs;WorkspaceResultSession.cs;ProjectTaskWindow.cs" />
     <Compile Include="CallerProjectSession.cs;../Shared/CSharpProjectTask.cs;../Shared/HostPrivacyContract.cs" />
     <Compile Include="../ClaudeProtection/WorkspaceInstalledHost.cs" Link="WorkspaceInstalledHost.cs" />
     <Compile Include="../Shared/WorkspaceBundle.cs" Link="WorkspaceBundle.cs" />

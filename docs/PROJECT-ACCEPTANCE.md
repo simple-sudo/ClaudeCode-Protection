@@ -3,7 +3,35 @@
 > 历史证据账本，原日期、版本、失败和哈希保留。唯一最新状态及授权见[CURRENT-STATE](CURRENT-STATE.md)，
 > 正式范围/术语见[SECURITY-REQUIREMENTS](SECURITY-REQUIREMENTS.md)。本页各段“当前安装/暂停/待执行”
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
-> 范围不明保留UNKNOWN。新增自我保护/最小暴露/辅助混淆本轮仅纳入需求，没有补记实测通过。
+> 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
+
+## 2026-11-02 普通GUI任务创建与自我保护入口初步接入
+
+SOURCE/BUILD/INTEGRATED：新增明确选择源码→文字修改/测试声明→不可变内存快照→审阅→新任务包
+保存/重导入，沿用原已安装daily/Broker/Job/LPAC及认证结果恢复所有者，不增加通用执行器。
+源码捕获、任务导入与运行目录规划默认排除固定管理目录及可识别保护checkout；daily/GUI和
+用户维护数据入口明确拒绝AppContainer/提升身份，P0-SELF-READ/CONTROL/CHILD仅初步接入。
+
+普通非秘密数据VERIFIED：11项结果恢复+49项项目创建/选择/固定目录排除/输入持有/严格回执/
+不可变提取共60项通过；包括不存在清单时必须返回明确保护目录拒绝，而不是拿文件缺失冒充
+拒绝。原“拒绝已有文件”测试未识别Windows80的失败独立保留，产品当时已正确拒绝覆盖。
+两窗口940×720/700×700离屏渲染已查看，布局无裁切；实机点击NOT_RUN。
+
+复用既有有限离线构建和输入持有方式，未解锁旧Build/Assert/cmd。六产品非生成检查0错误/
+0警告；受影响managed图离线构建0错误/0警告。原生imports仍为Lifecycle158、daily18、GUI8、
+Broker0，无模块初始化。35a精确旧manifest接入原INACTIVE更新选择，纯选择正控制和六拒绝
+通过；未执行私有状态/Job/隔离或实际更新检查。Bootstrap离线构建复用同一Lifecycle字节。
+
+候选e6bd574f5e24492798215f4046248441，manifest
+61A02E2662DF4A7F5417F25777249BD3BC1D681D13B177FF5A249F64D391ACE5；20文件，四managed
+payload变化，嵌入清单/两Lifecycle副本一致。普通Source路径及20输入持有预检通过；不等于
+安装或执行授权。证据主目录`work/product-task-authoring-20261102-01/`，原失败、r2/r3、输入
+摘要、构建/测试日志、图和stage-review均保留。未更新系统安装；无UAC、ACL/网络/AV变化、
+受保护项目或真实Claude启动；完整厂商告警可见性仍UNKNOWN。
+
+CAPABILITY_DELIVERED(普通GUI任务准备/保存及默认选择排除的离线候选)。选择护栏不是OS隔离，
+不能识别任意另存源码副本；新身份检查未在真实受保护进程下验证。新候选的安装、实际GUI/
+LPAC链、完整P0/P1/网络/十四准入/GPU/异常恢复仍开放，PRODUCT_DELIVERY_NOT_ACCEPTED。
 
 ## 2026-11-01 新GUI工作流包35a的INACTIVE安装与原只读检查
 

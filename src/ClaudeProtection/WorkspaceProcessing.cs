@@ -17,6 +17,7 @@ internal static class WorkspaceProcessing
     private static async Task<(int ExitCode,object Report)> Exchange(string inputPath,string resultPath,bool developProject,bool callerProject=false)
     {
         WorkspaceFiles.RequireOrdinaryUser();
+        if(callerProject)WorkspaceFiles.RequireExternalProjectPath(inputPath);
         var input=WorkspaceFiles.ReadBundle(inputPath);var bundle=WorkspaceBundle.Parse(input);
         if(bundle.BaseSHA256 is not null || bundle.Files.Length==0)throw new InvalidDataException("Nonempty baseline workspace required");
         if(callerProject)_=CSharpProjectTask.Parse(input);

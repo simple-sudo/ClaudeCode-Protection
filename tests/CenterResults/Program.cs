@@ -6,7 +6,8 @@ using ProtectionCenter;
 // Only a new, nonsecret ordinary-user fixture beside these test artifacts.
 // No GUI/application entry, executable payload, host target or protected owner.
 WorkspaceFiles.RequireOrdinaryUser();
-var root = Path.Combine(AppContext.BaseDirectory, "fixture-" + Guid.NewGuid().ToString("N"));
+// External to the protection checkout, as required for daily project selection.
+var root = Path.Combine(Path.GetTempPath(), "cpc-center-fixture-" + Guid.NewGuid().ToString("N"));
 if (Directory.Exists(root)) throw new IOException("Fresh fixture required");
 Directory.CreateDirectory(root);
 var checks = new List<string>();

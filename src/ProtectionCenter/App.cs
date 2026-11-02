@@ -12,15 +12,18 @@ internal static class App
     [STAThread]
     private static void Main(string[] args)
     {
+        ClaudeCodeProtection.Workspaces.WorkspaceFiles.RequireOrdinaryUser();
         var application = new Application();
-        var window = new CenterWindow();
-        if (args.Length == 2 && args[0] == "--render-preview")
+        Window window = args.Length==2 && args[0]=="--render-task-preview"
+            ? new ProjectTaskWindow(@"C:\ExampleProject",new[]{"src/Entry.cs","tests/Checks.cs"}) : new CenterWindow();
+        if (args.Length == 2 && args[0] is "--render-preview" or "--render-task-preview")
         {
             var content = window.Content as UIElement ?? throw new InvalidOperationException();
             window.Content = null;
-            var frame = new Border { Background = window.Background, Width = 940, Height = 720, Child = content };
-            frame.Measure(new Size(940, 720)); frame.Arrange(new Rect(0, 0, 940, 720)); frame.UpdateLayout();
-            var bitmap = new RenderTargetBitmap(940, 720, 96, 96, PixelFormats.Pbgra32); bitmap.Render(frame);
+            var width=window.Width;var height=window.Height;
+            var frame = new Border { Background = window.Background, Width = width, Height = height, Child = content };
+            frame.Measure(new Size(width, height)); frame.Arrange(new Rect(0, 0, width, height)); frame.UpdateLayout();
+            var bitmap = new RenderTargetBitmap((int)width, (int)height, 96, 96, PixelFormats.Pbgra32); bitmap.Render(frame);
             var encoder = new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(bitmap));
             using var stream = File.Create(Path.GetFullPath(args[1])); encoder.Save(stream);
             application.Shutdown(); return;
@@ -44,6 +47,7 @@ internal sealed class CenterWindow : Window
     private bool busy, closeWhenDone;
     private CallerProjectSession? preparedProject;
     private Button? startProject;
+    private Button? saveProject;
     internal CenterWindow()
     {
         Title = "Claude Code 保护中心"; Width = 940; Height = 720; MinWidth = 820; MinHeight = 640;
@@ -78,6 +82,8 @@ internal sealed class CenterWindow : Window
         AddAction(buttons, "修复 Claude 代理配置", Repair);
         AddAction(buttons, "撤销上次配置修改", Restore);
         AddAction(buttons, "选择 C# 项目", () => PrepareProject(false));
+        AddAction(buttons, "创建项目任务", CreateProject);
+        saveProject=AddAction(buttons, "保存项目任务包", SaveProject);saveProject.IsEnabled=false;
         AddAction(buttons, "导入项目任务包", () => PrepareProject(true));
         startProject=AddAction(buttons, "开始项目开发", RunProject);startProject.IsEnabled=false;
         AddAction(buttons, "审阅开发结果", () => ReviewWorkspace(false));
@@ -97,7 +103,7 @@ internal sealed class CenterWindow : Window
     private static TextBlock Label(string text) => new() { Text = text, Foreground = Muted, FontSize = 13 };
     private static Border Card(UIElement content) => new() { Child = content, Background = Brushes.White, BorderBrush = new SolidColorBrush(Color.FromRgb(222, 228, 236)), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(10), Padding = new Thickness(18) };
     private void RefreshActions()
-    {foreach(var action in actions)action.IsEnabled=!busy;if(startProject is not null)startProject.IsEnabled=!busy && preparedProject is not null;}
+    {foreach(var action in actions)action.IsEnabled=!busy;if(startProject is not null)startProject.IsEnabled=!busy && preparedProject is not null;if(saveProject is not null)saveProject.IsEnabled=!busy && preparedProject is not null;}
     private Button AddAction(Panel panel, string label, Func<Task> work)
     {
         var button = new Button { Content = label, Padding = new Thickness(14, 9, 14, 9), Margin = new Thickness(0, 0, 10, 6), Background = Brushes.White, Foreground = Ink, BorderBrush = new SolidColorBrush(Color.FromRgb(200, 211, 224)), Cursor = System.Windows.Input.Cursors.Hand };
@@ -105,10 +111,40 @@ internal sealed class CenterWindow : Window
         {
             if(busy)return;busy = true;RefreshActions();
             try { await work(); }
-            catch (Exception ex) { activity.Text = "检查未完成：" + ex.GetType().Name + "。已有记录保留，请查看诊断结果。"; }
+            catch (InvalidDataException ex) { activity.Text = "操作未完成：" + ex.Message; }
+            catch (Exception ex) { activity.Text = "操作未完成：" + ex.GetType().Name + "。已有记录保留，请查看诊断结果。"; }
             finally { busy = false;RefreshActions(); if (closeWhenDone) Close(); }
         };
         actions.Add(button); panel.Children.Add(button);return button;
+    }
+    private Task CreateProject()
+    {
+        var folder=new Microsoft.Win32.OpenFolderDialog{Title="选择独立 C# 项目的根目录",Multiselect=false};
+        if(folder.ShowDialog(this)!=true){activity.Text="已取消创建；已有任务保留。";return Task.CompletedTask;}
+        ClaudeCodeProtection.Workspaces.WorkspaceFiles.RequireExternalProjectPath(folder.FolderName);
+        var files=new Microsoft.Win32.OpenFileDialog{Title="明确选择参与编译的 .cs 源码（最多32份）",Filter="C# 源码 (*.cs)|*.cs",InitialDirectory=folder.FolderName,Multiselect=true,CheckFileExists=true};
+        if(files.ShowDialog(this)!=true){activity.Text="已取消选择源码；已有任务保留。";return Task.CompletedTask;}
+        var sources=files.FileNames.Select(path=>Path.GetRelativePath(folder.FolderName,path).Replace('\\','/')).ToArray();
+        if(sources.Length is <1 or >32)throw new InvalidDataException("请选择1–32份源码。");
+        foreach(var source in sources)_=ClaudeCodeProtection.Workspaces.WorkspaceBundle.Relative(source);
+        var editor=new ProjectTaskWindow(folder.FolderName,sources){Owner=this};
+        if(editor.ShowDialog()==true && editor.Prepared is { } project)
+        {
+            environmentOutput=null;preparedProject=project;details.Text=project.ReviewText;
+            activity.Text="任务已准备，请审阅；可保存任务包，或通过已安装的保护链开始开发。";
+        }
+        else activity.Text="已取消准备；已有任务保留。";
+        return Task.CompletedTask;
+    }
+    private async Task SaveProject()
+    {
+        var project=preparedProject??throw new InvalidOperationException("请先准备项目任务。");
+        var dialog=new Microsoft.Win32.SaveFileDialog{Title="保存已审阅的任务快照（选择新文件）",Filter="工作区数据包 (*.json)|*.json",FileName="project-task.json",OverwritePrompt=false};
+        if(dialog.ShowDialog(this)!=true){activity.Text="已取消保存；任务仍保留。";return;}
+        try{await Task.Run(()=>project.SaveBundle(dialog.FileName));}
+        catch(System.ComponentModel.Win32Exception ex)when(ex.NativeErrorCode is 80 or 183)
+        {activity.Text="文件已存在，请选择新文件名；已有文件保留，未覆盖。";return;}
+        activity.Text="任务快照已保存，可稍后导入；未执行项目代码。";
     }
     private async Task PrepareProject(bool bundle)
     {

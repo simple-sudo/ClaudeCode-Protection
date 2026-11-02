@@ -222,7 +222,11 @@ public static class BootstrapInstaller
             // Actual v6 caller package with original-owner pre-code sealing.
             // This exact prior pin never substitutes for live closed admissions,
             // zero-member Job, quarantine and pending-resource checks.
-            "917202DE05F414EAA62803811D673CDD1A9071A3F7F08B0B188E358E57057399"
+            "917202DE05F414EAA62803811D673CDD1A9071A3F7F08B0B188E358E57057399",
+            // Recorded 35a INACTIVE GUI package. Only its exact manifest is
+            // eligible for selection; live closure, quarantine, ownership and
+            // pending-resource checks still run before an authorized update.
+            "58E8D97CE58C48EFA4C6FFFC86B236CB10DE7CFC50BB424CDDF4034136AAFCFB"
         };
         private readonly ProtectedState state;
         private readonly BootstrapApproval approval;

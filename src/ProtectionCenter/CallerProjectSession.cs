@@ -33,7 +33,21 @@ internal sealed class CallerProjectSession
         text.AppendLine("输入指纹："+InputSHA256);ReviewText=text.ToString();
     }
     internal static CallerProjectSession OpenBundle(string path)
-    {WorkspaceFiles.RequireOrdinaryUser();return new(WorkspaceFiles.ReadBundle(path));}
+    {WorkspaceFiles.RequireOrdinaryUser();WorkspaceFiles.RequireExternalProjectPath(path);return new(WorkspaceFiles.ReadBundle(path));}
+    internal static CallerProjectSession Create(string directory,string[] sources,CSharpProjectEdit[] edits,string entryType,string testType,int expectedTests)
+    {
+        // Explicit selected files only: no recursive discovery, project-file
+        // evaluation, restore, commands, or writes into the original project.
+        WorkspaceFiles.RequireOrdinaryUser();
+        if(sources.Length is <1 or >32 || sources.Any(p=>!p.EndsWith(".cs",StringComparison.Ordinal)))
+            throw new InvalidDataException("Select one to 32 CSharp source files");
+        var captured=WorkspaceBundle.Parse(WorkspaceFiles.Capture(directory,sources));
+        var definition=new CSharpProjectDefinition(1,CSharpProjectTask.Kind,sources,edits,entryType,testType,expectedTests);
+        var bytes=WorkspaceBundle.Create(captured.Files.Select(f=>(f.Path,f.Content)).Append(
+            (CSharpProjectTask.Manifest,JsonSerializer.SerializeToUtf8Bytes(definition)))).Serialize();
+        return new(bytes);
+    }
+    internal void SaveBundle(string path)=>WorkspaceFiles.WriteBundleNew(path,input);
     internal static CallerProjectSession OpenFolder(string directory)
     {
         WorkspaceFiles.RequireOrdinaryUser();
@@ -51,6 +65,7 @@ internal sealed class CallerProjectSession
     }
     internal CallerProjectRun PlanRun(string parent)
     {
+        WorkspaceFiles.RequireExternalProjectPath(parent);
         var leaf="project-run-"+DateTime.UtcNow.ToString("yyyyMMdd-HHmmss")+"-"+Guid.NewGuid().ToString("N");
         var directory=Path.Combine(parent,leaf);var baseline=Path.Combine(directory,"input.bundle.json");
         return new(directory,baseline,Path.Combine(directory,"result.bundle.json"));

@@ -12,7 +12,9 @@ internal static class ProjectFlowCases
         var checks=0;
         void Require(bool value,string reason){if(!value)throw new InvalidDataException(reason);checks++;}
         void Refuse(Action action,string reason)
-        {try{action();}catch(Exception error)when(error is InvalidDataException or IOException or UnauthorizedAccessException or InvalidOperationException or JsonException || error is System.ComponentModel.Win32Exception {NativeErrorCode:183}){checks++;return;}throw new Exception("Accepted "+reason);}
+        {try{action();}catch(Exception error)when(error is InvalidDataException or IOException or UnauthorizedAccessException or InvalidOperationException or JsonException || error is System.ComponentModel.Win32Exception {NativeErrorCode:80 or 183}){checks++;return;}throw new Exception("Accepted "+reason);}
+        void RefuseSelf(Action action)
+        {try{action();}catch(InvalidDataException error)when(error.Message.StartsWith("保护系统",StringComparison.Ordinal)){checks++;return;}throw new Exception("Protection directory selection accepted");}
         var folder=Path.Combine(fixture,"caller-source");Directory.CreateDirectory(folder);
         var definition=new CSharpProjectDefinition(1,CSharpProjectTask.Kind,new[]{"Entry.cs","Checks.cs"},new[]{new CSharpProjectEdit("Entry.cs","return -1;","return 0;")},"Demo.Entry","Demo.Checks",1);
         File.WriteAllBytes(Path.Combine(folder,CSharpProjectTask.Manifest),JsonSerializer.SerializeToUtf8Bytes(definition));
@@ -20,6 +22,26 @@ internal static class ProjectFlowCases
         File.WriteAllText(Path.Combine(folder,"Checks.cs"),"namespace Demo; public static class Checks {public static int Run(){return 1;}}");
         File.WriteAllText(Path.Combine(folder,"unselected.txt"),"OWN_NONSECRET_UNSELECTED");
         var session=CallerProjectSession.OpenFolder(folder);
+        var authored=CallerProjectSession.Create(folder,definition.Sources,definition.Edits,definition.EntryType,definition.TestType,1);
+        Require(authored.InputSHA256==session.InputSHA256,"authoring produces same task as explicit existing manifest");
+        var saved=Path.Combine(fixture,"authored-task.json");authored.SaveBundle(saved);
+        Require(CallerProjectSession.OpenBundle(saved).InputSHA256==authored.InputSHA256,"authored snapshot saves and reopens");
+        Refuse(()=>authored.SaveBundle(saved),"saved task cannot overwrite existing file");
+        Refuse(()=>CallerProjectSession.Create(folder,new[]{"../Entry.cs"},definition.Edits,definition.EntryType,definition.TestType,1),"selection cannot escape project root");
+        Refuse(()=>CallerProjectSession.Create(folder,new[]{"unselected.txt"},definition.Edits,definition.EntryType,definition.TestType,1),"authoring cannot compile arbitrary selected data");
+        Refuse(()=>CallerProjectSession.Create(folder,definition.Sources,new[]{new CSharpProjectEdit("Entry.cs","not present","replacement")},definition.EntryType,definition.TestType,1),"authoring rejects absent edit before execution");
+        Refuse(()=>CallerProjectSession.Create(folder,definition.Sources,definition.Edits,definition.EntryType,definition.EntryType,1),"authoring requires separate entry and tests");
+        var own=Path.Combine(fixture,"protection-checkout");
+        Directory.CreateDirectory(Path.Combine(own,"src","ProtectionLifecycle"));Directory.CreateDirectory(Path.Combine(own,"src","ProtectionBootstrap"));
+        File.WriteAllText(Path.Combine(own,"src","ProtectionLifecycle","ProtectionLifecycle.csproj"),"OWN_NONSECRET_MARKER");
+        File.WriteAllText(Path.Combine(own,"src","ProtectionBootstrap","ApprovedPackage.json"),"OWN_NONSECRET_MARKER");
+        RefuseSelf(()=>CallerProjectSession.OpenFolder(own));
+        RefuseSelf(()=>CallerProjectSession.OpenBundle(Path.Combine(own,"task.json")));
+        RefuseSelf(()=>authored.PlanRun(own));
+        var pf=Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
+        foreach(var reserved in new[]{Path.Combine(pf,"ClaudeCodeProtection"),Path.Combine(pf,"ClaudeCodeProtection-State"),Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"ClaudeCodeProtection")})
+            RefuseSelf(()=>WorkspaceFiles.RequireExternalProjectPath(Path.Combine(reserved,"absent.cs")));
+        Require(!WorkspaceFiles.IsWithin(Path.Combine(pf,"ClaudeCodeProtection-Independent","Entry.cs"),Path.Combine(pf,"ClaudeCodeProtection")),"prefix sibling is not protection root");
         Require(session.ReviewText.Contains("Entry.cs") && session.ReviewText.Contains("return -1;") && session.ExpectedTests==1,"GUI displays declared project edits/tests");
         var run=session.PlanRun(fixture);Require(!Directory.Exists(run.Directory),"planning does not create output");session.WriteInput(run);
         var input=WorkspaceFiles.ReadBundle(run.InputPath);var task=CSharpProjectTask.Parse(input);
