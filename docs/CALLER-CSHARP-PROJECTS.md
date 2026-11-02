@@ -3,6 +3,33 @@
 > 文档效力（2026-11-02）：显式调用者项目切片。原v6项目/命名对象结果不等于任意恶意代码或保护系统自我保护全面通过；数据导入、代码执行和维护授权分开，不能以项目清单绕过保护源码与管理面边界。
 > 最新状态/授权只见[CURRENT-STATE](CURRENT-STATE.md)，正式目标与术语见[SECURITY-REQUIREMENTS](SECURITY-REQUIREMENTS.md)。以下旧状态与操作许可不自动延续。
 
+## 2026-11-02 显式数据与生成结果合同
+
+V1七字段、Kind与原输入字节保持。新V2显式声明`SchemaVersion=2`和
+`Kind=CSHARP_LITERAL_EDIT_DATA_BUILD_RUN_TEST_V2`，新增`DataFiles`和`GeneratedFiles`数组。
+V2输入必须恰好为Sources、DataFiles和任务清单；数据至多64份，与源码/清单不重叠，不自动
+发现目录。源码仍至多32份，数据本身不加入编译列表，也不授予代码执行或宿主路径读取权。
+普通文件夹选择与任务创建均先复用原目录排除/NTFS路径验证，再只捕获声明内容。
+
+生成结果至多32份，每项为`{"Path":"cpc-results/summary.json","MaxBytes":1024}`；路径须位于
+新`cpc-results/`命名空间，不允许基线预占、大小写/目录碰撞、设备/ADS/跳出或替代固定五输出。
+每份声明1–1048576字节，输入+声明总额+固定输出预留不得超过原8MiB bundle内容上限。
+这些是输入/结果导出资格与内存预算，不是运行时磁盘配额。结果缺失、未声明额外文件、数据
+改写、未声明源码修改、结果超限，均不得经成功门导出；内容作为数据恢复，不在宿主执行。
+
+仍经原daily→Broker→ProtectedSession→Job/严格LPAC→固定编译器运行，资源计划绑定具体Kind
+与输入摘要，编译前再次核对Kind，不能把V2隐藏成V1。原两actor各23项拒绝、owner执行前封存、
+二次真实身份和Job闭合/隔离/清理门保持。最终文件集合由同一个CSharpProjectTask验证，GUI/
+daily/Broker/结果导出均复用；没有通用脚本、命令、MSBuild或新的高权限宿主读服务。
+
+GUI“创建项目任务”可明确选择数据，并按行填写结果名称（位于cpc-results，每份64KiB）；
+清单入口可声明更细的每份上限。准备界面、主审阅、保存/重导入都绑定同一不可变快照，
+取消数据选择不改变原选择；后续项目数据变化不改变已审阅输入。结果恢复仍仅写新目录。
+示例[samples/CallerDataReport](../samples/CallerDataReport/README.md)读取[3,4,5]并生成
+Count=3、Total=12的JSON报告，包含三项测试。最新安装/实测状态只见CURRENT-STATE。
+
+## V1入口与限定历史证据
+
 当前SOURCE / BUILD / INTEGRATED，六产品非执行语义检查通过，普通限定样本VERIFIED；
 当前已INACTIVE安装42f/9172/7DDC。首次取消1223保留；新单次本人授权/UAC后的project-r2
 11:55:19Z实际成功，会话6afe136f45a54bbba5f95acc47245889，原Job/严格LPAC完成WordCount

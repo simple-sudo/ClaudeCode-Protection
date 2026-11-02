@@ -5,6 +5,32 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-02 V2显式项目数据与生成结果
+
+SOURCE/BUILD/INTEGRATED：Sources/DataFiles/清单精确输入、独立KindV2、限定cpc-results命名空间、
+每文件/总预算、完整输出集合、输入数据不变、原owner/LPAC/Job/23项双actor门接入GUI和原编译/
+认证结果/提取链；V1字节和严格字段保留。无任意命令/脚本、MSBuild、网络或Broker宿主读入口。
+导出上限不是实际磁盘写入配额。样本CallerDataReport只含非秘密代码/数据，不是保护源码导入。
+
+普通限定VERIFIED：七目标离线build0错误/0警告，六产品非生成0/0，原生imports未变，无模块
+初始化。26新合同、40旧caller、122原合成门禁、67普通GUI数据通过；元数据样本不作为执行证据。
+另有真实自有普通DataReport经过固定Roslyn编译、运行、3测试、十一文件snapshot/验证/恢复，
+生成Count=3 Total=12且原JSON数据不变，CWD恢复；不是LPAC/Job/宿主隔离资格。700×820任务
+窗口离屏已查看，无裁切；实机GUI点击NOT_RUN。65检查记录及增补消费者构建均保留。
+
+安装VERIFIED：继续安装授权及本人UAC一次更新a3b6→77a1db7a6e664fc1b212786d196977fb，
+manifest A5CC9F74FBCCEF743A301419BA2095C05964591468883067B612E4440CE43D75；13:03:34Z
+helper/Bootstrap均0，INACTIVE。15公开文件hash/可信owner/protected DACL/无不可信写者和8份
+固定回执匹配，报告`work/project-data-results-20261102-01/installed-public-review.json`
+SHAF2C59E87F44DBE3A5CDC825D70AA87273FFAF57E9F6C930D744AF0F77D44EC4F。
+没有项目/Job/探测/Claude、强停/重试/恢复，AV/BFE与FlClash/Core观察一致；厂商完整覆盖UNKNOWN。
+
+新安装普通pack/check均0，输入B530770F…2DDECE，五文件数据合同校验通过且CodeExecuted=false。
+固定真实执行计划和22输入普通持有预检通过，受保护V2项目NOT_RUN，已提出单次具体执行问题
+待答复；安装授权不代替代码执行授权。证据`work/project-data-results-20261102-01/`。
+CAPABILITY_DELIVERED(V2项目数据/生成结果的已安装候选与普通数据/自有代码路径)；完整P0、
+网络/十四准入/GPU/异常恢复、GUI实际操作和真实Claude仍未验收，PRODUCT_DELIVERY_NOT_ACCEPTED。
+
 ## 2026-11-02 受保护项目执行前的owner控制权限门禁
 
 SOURCE/BUILD/INTEGRATED：原HostPrivacyProbe与原owner内存封存门加入九个独立最小OpenProcess
