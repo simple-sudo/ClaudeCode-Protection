@@ -678,3 +678,16 @@ ProjectFailure接入原编译/执行/owner/IPC/daily/GUI；最多8条CS代码/�
 正常DataReport及3测试通过。最终Library/Broker与精确77a1迁移正控制/六拒绝通过；imports未增，无模块初始化。
 证据work/project-failure-feedback-20261102-01的runtime-result.json及update-r2/runtime-result.json。
 普通自有测试非LPAC/Job证明；候选安装及实际失败后的owner闭合均另记，完整产品仍未接受。
+
+## 2026-11-02 固定LPAC失败反馈实测及修正
+
+3cfd首次单次受权任务返回通用失败、无ProjectFailure，FAIL保留；46拒绝/封存/公开关闭满足。
+源码定位原Contract追加固定Stage后缀，新gate误匹配裸阶段；99dde71修正完整精确匹配，补原实际
+ResourceChildReport序列化到owner测试，拒绝裸/其他后缀/前缀。无私有报告读取或自动重试。
+修正版00ac同范围安装及15公开资产/8固定回执匹配；本人新一次授权/UAC后，同一冻结输入在LPAC
+返回CS0103/source0/物理9行52列，无#line路径/文本，结果0字节、原样本不变、入口/测试未运行。
+原两actor46拒绝、封存与公开准入关闭/隔离/Job零/停止0满足；不证明profile/私有目录清理。
+证据work/project-failure-feedback-20261102-01/protected-check-r4/observed-result.json，SHA256
+858A45EC7C17C5B0114AD39664841631BEE9B8630DE42C46DFC9B1028FC0BA99。
+CAPABILITY_DELIVERED(固定LPAC编译失败有界诊断与公开停止观察)。运行/测试失败只有普通证据，GUI未点击。
+两次具体运行授权均消耗，未真实Claude/改网络/强停/恢复/额外私有读取；完整产品仍未接受。
