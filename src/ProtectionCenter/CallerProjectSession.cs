@@ -53,6 +53,22 @@ internal sealed class CallerProjectSession
             (CSharpProjectTask.Manifest,JsonSerializer.SerializeToUtf8Bytes(definition)))).Serialize();
         return new(bytes);
     }
+    // Result files are data. Verify the exact previous task before carrying only
+    // its declared sources/data into a fresh baseline; never import its DLL or
+    // generated outputs, and never reuse its completion/admission as permission.
+    internal static CallerProjectRevision OpenRevision(string inputPath,string resultPath)
+    {
+        var previous=OpenBundle(inputPath);
+        WorkspaceFiles.RequireExternalProjectPath(resultPath);
+        return previous.CreateRevision(WorkspaceFiles.ReadBundle(resultPath));
+    }
+    internal CallerProjectRevision CreateRevision(byte[] result)=>new(task,result);
+    internal static CallerProjectSession FromRevision(WorkspaceFile[] files,CSharpProjectDefinition definition)
+    {
+        WorkspaceFiles.RequireOrdinaryUser();
+        return new(WorkspaceBundle.Create(files.Select(f=>(f.Path,f.Content)).Append(
+            (CSharpProjectTask.Manifest,JsonSerializer.SerializeToUtf8Bytes(definition)))).Serialize());
+    }
     internal void SaveBundle(string path)=>WorkspaceFiles.WriteBundleNew(path,input);
     internal static CallerProjectSession OpenFolder(string directory)
     {
@@ -147,4 +163,35 @@ internal sealed class CallerProjectSession
         }
         catch(Exception error)when(error is JsonException or InvalidDataException or InvalidOperationException or KeyNotFoundException or FormatException){return fallback;}
     }
+}
+
+// Immutable ordinary-data continuation, including the original per-output limits.
+internal sealed class CallerProjectRevision
+{
+    private readonly WorkspaceFile[] files;
+    private readonly CSharpProjectDefinition definition;
+    internal string PreviousResultSHA256 {get;}
+    internal string[] Sources=>definition.Sources.ToArray();
+    internal string[] DataFiles=>(definition.DataFiles??Array.Empty<string>()).ToArray();
+    internal CSharpProjectOutput[] GeneratedFiles=>(definition.GeneratedFiles??Array.Empty<CSharpProjectOutput>()).ToArray();
+    internal string EntryType=>definition.EntryType;
+    internal string TestType=>definition.TestType;
+    internal int ExpectedTests=>definition.ExpectedTests;
+    internal CallerProjectRevision(CSharpProjectTask previous,byte[] result)
+    {
+        var snapshot=result.ToArray();previous.VerifyResult(snapshot);
+        PreviousResultSHA256=WorkspaceBundle.Hash(snapshot);
+        // Parse our own immutable manifest so no caller-owned arrays are retained.
+        definition=JsonSerializer.Deserialize<CSharpProjectDefinition>(previous.Baseline.Files.Single(f=>f.Path==CSharpProjectTask.Manifest).Content)
+            ??throw new InvalidDataException("Previous project definition missing");
+        var names=definition.Sources.Concat(definition.DataFiles??Array.Empty<string>()).ToHashSet(StringComparer.Ordinal);
+        files=WorkspaceBundle.Parse(snapshot).Files.Where(f=>names.Contains(f.Path)).ToArray();
+    }
+    internal string ReadSource(string path)
+    {
+        if(!definition.Sources.Contains(path,StringComparer.Ordinal))throw new InvalidDataException("Only declared source can be previewed");
+        return new UTF8Encoding(false,true).GetString(files.Single(f=>f.Path==path).Content);
+    }
+    internal CallerProjectSession Prepare(CSharpProjectEdit[] edits)
+        =>CallerProjectSession.FromRevision(files,definition with {Edits=edits});
 }

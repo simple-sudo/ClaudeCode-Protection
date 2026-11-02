@@ -707,3 +707,11 @@ CAPABILITY_DELIVERED(固定LPAC编译失败有界诊断与公开停止观察)。
 本人新一次具体授权/本人UAC后，固定输入B530770FA523DCC12532702D9D312DD0F02FE143FB42BB4B90F7A0559F2DDECE，会话0748ee3bfec14c61b02ddf802ffe1bbc于14:02:30Z完成。根32184/编译器27916各33项ACCESS_DENIED5；新三控制对象十权限共20次仅打开拒绝，原46项同时保持，原owner封存true。维护正控制为原owner metadata/DACL/query token AccessCheck，非实际写维护；未读秘密或使用危险句柄。
 修改sum/编译/JSON读取/Count3 Total12/三测试，十一结果/七变化，独立逐文件恢复一致、原输入未改。原成功成果门要求Job闭合/隔离/精确清理，无额外private/raw Job/Stop读取、强停、重试或恢复。结果38333FFCA3EE15D8E38CC38E1EF117612E63543F8D601C4793BCB2E8F323A543。observed-result.json SHA256 FE18122C71627E9AD6E22E593D6A4885E4EFD172CF449AAD07E91C5F50AF869F，位于work/control-file-gate-20261102-01/protected-run。
 CAPABILITY_DELIVERED(固定LPAC控制文件权限门与正常DataReport开发闭环)。一次授权已消耗；无真实Claude/正式准入/网络或日常环境修改；Boot/AV/BFE/FlClash/UU观察一致，厂商完整覆盖UNKNOWN。不是全部自我保护/源码/IPC/其他工具/GPU/异常恢复或GUI点击验收。
+
+
+## 2026-11-02：GUI结果续编普通数据闭环
+
+GUI新增“用结果继续开发”，从显式选定的前次输入/结果严格核对来源、修改、测试结果及文件清单，保留已修改源码/原数据的内存快照，填新修改后生成独立任务指纹。原入口/测试/结果限额保持，编译DLL及生成结果不进入新输入；数据校验不签发执行/保护/准入许可。取消选择/加载失败保留旧任务。
+两个受影响目标ProtectionCenter/CenterResults离线构建0错误0警告，普通89检查通过：两轮V1/V2续编、旧修改重放/错误来源/非源码编辑拒绝、源预览、路径替换/数组修改不改变快照、数据字节与128字节上限保持。新GUI/测试各八native imports同原资产，无模块初始化，未加载目标程序集。
+证据work/project-iteration-20261102-01/observed-result.json SHA256 318441D7B6A69670F67232F36094BDB2CF2E4B03527D34D63050D17AC77E568A。SOURCE/BUILD/INTEGRATED + VERIFIED(普通GUI数据准备)，新GUI尚未安装、实机点击/新LPAC任务NOT_RUN；8a22原生结果保持原范围。完整产品仍未接受。
+构建环境缺失路径、选择器作用域编译失败及只读元数据工具net472兼容失败均保留；修正后只检查受影响目标。新增维护用只读.NET8元数据工具不触及产品执行所有者/系统策略，不放松原检查。

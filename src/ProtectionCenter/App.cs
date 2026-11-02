@@ -86,6 +86,7 @@ internal sealed class CenterWindow : Window
         saveProject=AddAction(buttons, "保存项目任务包", SaveProject);saveProject.IsEnabled=false;
         AddAction(buttons, "导入项目任务包", () => PrepareProject(true));
         startProject=AddAction(buttons, "开始项目开发", RunProject);startProject.IsEnabled=false;
+        AddAction(buttons, "用结果继续开发", ContinueProject);
         AddAction(buttons, "审阅开发结果", () => ReviewWorkspace(false));
         AddAction(buttons, "提取开发结果", () => ReviewWorkspace(true));
         lower.Children.Add(buttons);
@@ -136,6 +137,23 @@ internal sealed class CenterWindow : Window
         else activity.Text="已取消准备；已有任务保留。";
         return Task.CompletedTask;
     }
+    private async Task ContinueProject()
+    {
+        var input=SelectBundle("选择上一次的项目输入包（input.bundle.json）");
+        if(input is null){activity.Text="已取消选择；已有任务保留。";return;}
+        var result=SelectBundle("选择对应的结果包（result.bundle.json）");
+        if(result is null){activity.Text="已取消选择；已有任务保留。";return;}
+        activity.Text="正在校验上一次的修改、测试结果和文件清单……";
+        var revision=await Task.Run(()=>CallerProjectSession.OpenRevision(input,result));
+        var editor=new ProjectTaskWindow("",revision.Sources,revision){Owner=this};
+        if(editor.ShowDialog()==true && editor.Prepared is { } next)
+        {
+            environmentOutput=null;preparedProject=next;details.Text=next.ReviewText;
+            details.Text+="\r\n沿用的结果指纹："+revision.PreviousResultSHA256;
+            activity.Text="下一次任务已准备；请重新审阅修改，再开始开发。本次仅校验所选文件，未运行项目。";
+        }
+        else activity.Text="已取消继续开发；已有任务保留。";
+    }
     private async Task SaveProject()
     {
         var project=preparedProject??throw new InvalidOperationException("请先准备项目任务。");
@@ -148,13 +166,13 @@ internal sealed class CenterWindow : Window
     }
     private async Task PrepareProject(bool bundle)
     {
-        environmentOutput=null;preparedProject=null;
         string? path;
         if(bundle){var dialog=new Microsoft.Win32.OpenFileDialog{Title="选择项目任务包",Filter="工作区数据包 (*.json)|*.json",CheckFileExists=true,Multiselect=false};path=dialog.ShowDialog(this)==true?dialog.FileName:null;}
         else{var dialog=new Microsoft.Win32.OpenFolderDialog{Title="选择项目文件夹（需含 cpc-project.json）",Multiselect=false};path=dialog.ShowDialog(this)==true?dialog.FolderName:null;}
-        if(path is null){activity.Text="已取消选择，尚未准备新的项目任务。";return;}
+        if(path is null){activity.Text="已取消选择；已有任务保留。";return;}
         activity.Text="正在读取所选项目并核对修改与测试声明……";
-        preparedProject=await Task.Run(()=>bundle?CallerProjectSession.OpenBundle(path):CallerProjectSession.OpenFolder(path));
+        var selected=await Task.Run(()=>bundle?CallerProjectSession.OpenBundle(path):CallerProjectSession.OpenFolder(path));
+        environmentOutput=null;preparedProject=selected;
         details.Text=preparedProject.ReviewText;activity.Text="请审阅修改内容；点击“开始项目开发”后需确认 Windows 权限提示。";
     }
     private async Task RunProject()
@@ -239,18 +257,18 @@ internal sealed class CenterWindow : Window
         activity.Text = "正在核对上次修改记录；有后续编辑时拒绝覆盖。";
         ShowMaintenance(await BackendClient.Command("restore-proxy"), "config-restore");
     }
+    private string? SelectBundle(string title)
+    {
+        var dialog = new Microsoft.Win32.OpenFileDialog
+        {
+            Title = title, Filter = "工作区数据包 (*.json)|*.json",
+            CheckFileExists = true, Multiselect = false
+        };
+        return dialog.ShowDialog(this) == true ? dialog.FileName : null;
+    }
     private async Task ReviewWorkspace(bool extract)
     {
         environmentOutput = null;
-        string? SelectBundle(string title)
-        {
-            var dialog = new Microsoft.Win32.OpenFileDialog
-            {
-                Title = title, Filter = "工作区数据包 (*.json)|*.json",
-                CheckFileExists = true, Multiselect = false
-            };
-            return dialog.ShowDialog(this) == true ? dialog.FileName : null;
-        }
         var baseline = SelectBundle("选择开发前的输入数据包");
         if (baseline is null) { activity.Text = "已取消选择输入数据包。"; return; }
         var result = SelectBundle("选择开发后的结果数据包");

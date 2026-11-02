@@ -90,6 +90,22 @@ internal static class ProjectFlowCases
         {var json=JsonNode.Parse(Reply())!.AsObject();mutate(json);Refuse(()=>session.AcceptResult(run,new(0,json.ToJsonString(),"")),"GUI rejects weakened project completion");}
         Refuse(()=>session.AcceptResult(run,new(3,Reply(),"")),"failed caller cannot release results");
         Refuse(()=>session.AcceptResult(run,new(0,Reply(),"failure")),"stderr contradicts success");
+        var revision=session.CreateRevision(resultBytes);
+        Require(revision.Sources.SequenceEqual(definition.Sources) && revision.ExpectedTests==1,"continuation preserves source order and tests");
+        Require(revision.ReadSource("Entry.cs").Contains("return 0;"),"preview exposes selected modified source for next literal edit");
+        Refuse(()=>revision.ReadSource(CSharpProjectTask.Outputs[0]),"preview cannot expose compiled output as source");
+        Refuse(()=>revision.Prepare(definition.Edits),"old edit cannot be blindly replayed on modified source");
+        var nextEdit=new[]{new CSharpProjectEdit("Entry.cs","return 0;","return 2;")};
+        var next=revision.Prepare(nextEdit);var nextPath=Path.Combine(fixture,"next-task.json");next.SaveBundle(nextPath);
+        var nextParsed=CSharpProjectTask.Parse(WorkspaceFiles.ReadBundle(nextPath));
+        Require(nextParsed.Baseline.Files.Length==3 && nextParsed.Baseline.BaseSHA256 is null &&
+            nextParsed.Definition.SchemaVersion==1 && next.InputSHA256!=session.InputSHA256,"revision is a new V1 baseline without prior output/admission");
+        Require(Encoding.UTF8.GetString(nextParsed.Baseline.Files.Single(f=>f.Path=="Entry.cs").Content).Contains("return 0;") &&
+            Encoding.UTF8.GetString(nextParsed.ModifiedFiles().Single(f=>f.Path=="Entry.cs").Content).Contains("return 2;"),"next edit starts with previously modified source");
+        var wrong=WorkspaceBundle.Create(task.ModifiedFiles().Select(f=>(f.Path,f.Content)).Concat(outputs),new string('A',64)).Serialize();
+        Refuse(()=>session.CreateRevision(wrong),"continuation refuses wrong previous baseline");
+        var tampered=WorkspaceBundle.Create(task.ModifiedFiles().Select(f=>(f.Path,f.Path=="Entry.cs"?"unreviewed"u8.ToArray():f.Content)).Concat(outputs),session.InputSHA256).Serialize();
+        Refuse(()=>session.CreateRevision(tampered),"continuation refuses unexpected previous source");
         File.WriteAllText(run.InputPath,"replaced");File.WriteAllText(run.ResultPath,"replaced");
         var extracted=Path.Combine(run.Directory,"files");accepted.ExtractNew(extracted);
         Require(File.ReadAllText(Path.Combine(extracted,"Entry.cs")).Contains("return 0;"),"accepted immutable snapshots survive later input/result replacement");
@@ -119,6 +135,26 @@ internal static class ProjectFlowCases
         var dataExtracted=Path.Combine(dataRun.Directory,"files");dataAccepted.ExtractNew(dataExtracted);
         Require(File.ReadAllText(Path.Combine(dataExtracted,"cpc-results","report.json"))=="{\"ok\":true}" &&
             File.ReadAllBytes(Path.Combine(dataExtracted,"input.bin")).AsSpan().SequenceEqual(new byte[]{0,128,255}),"GUI restores declared result with reviewed unchanged binary data");
+        var dataRevision=CallerProjectSession.OpenRevision(dataRun.InputPath,dataRun.ResultPath);
+        var capturedResultHash=dataRevision.PreviousResultSHA256;
+        File.WriteAllText(dataRun.InputPath,"later replacement");File.WriteAllText(dataRun.ResultPath,"later replacement");
+        var exposed=dataRevision.Sources;exposed[0]="unreviewed.cs";
+        var nextData=dataRevision.Prepare(nextEdit);var nextDataPath=Path.Combine(fixture,"next-data-task.json");nextData.SaveBundle(nextDataPath);
+        var continued=CSharpProjectTask.Parse(WorkspaceFiles.ReadBundle(nextDataPath));
+        Require(capturedResultHash==WorkspaceBundle.Hash(dataResults) && continued.Definition.SchemaVersion==2 && continued.Baseline.Files.Length==4,
+            "selected V2 result is held as immutable snapshot through later path replacement");
+        Require(continued.Definition.Sources.SequenceEqual(definition.Sources) && continued.Definition.DataFiles!.SequenceEqual(new[]{"input.bin"}) &&
+            continued.GeneratedFiles.Single()==new CSharpProjectOutput("cpc-results/report.json",128),"V2 declaration and original output limit preserved without mutable arrays");
+        Require(continued.Baseline.Files.All(f=>!f.Path.StartsWith("cpc-output/") && !f.Path.StartsWith("cpc-results/")) &&
+            continued.Baseline.Files.Single(f=>f.Path=="input.bin").Content.AsSpan().SequenceEqual(new byte[]{0,128,255}),
+            "previous DLL and generated files excluded while binary data bytes preserved");
+        Refuse(()=>dataRevision.Prepare(new[]{new CSharpProjectEdit("input.bin","x","y")}),"data selection does not become editable executable source");
+        var secondResults=WorkspaceBundle.Create(continued.ModifiedFiles().Select(f=>(f.Path,f.Content)).Concat(outputs).Append(
+            ("cpc-results/report.json","{}"u8.ToArray())),nextData.InputSHA256).Serialize();
+        var secondRevision=nextData.CreateRevision(secondResults);
+        var third=secondRevision.Prepare(new[]{new CSharpProjectEdit("Entry.cs","return 2;","return 3;")});
+        Require(third.ReviewText.Contains("return 2;") && third.ReviewText.Contains("return 3;") && third.InputSHA256!=nextData.InputSHA256,
+            "repeated continuation advances the source with a new reviewed digest each time");
         Refuse(()=>CallerProjectSession.Create(dataFolder,definition.Sources,definition.Edits,definition.EntryType,definition.TestType,1,
             new[]{"../input.bin"},Array.Empty<CSharpProjectOutput>()),"data cannot escape selected project");
         return checks;

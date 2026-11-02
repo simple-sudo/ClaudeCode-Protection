@@ -17,13 +17,13 @@ internal sealed class ProjectTaskWindow : Window
     private string[] dataFiles=Array.Empty<string>();
     private bool busy;
     internal CallerProjectSession? Prepared {get;private set;}
-    internal ProjectTaskWindow(string directory,string[] sources)
+    internal ProjectTaskWindow(string directory,string[] sources,CallerProjectRevision? revision=null)
     {
         this.directory=directory;this.sources=sources;
         Title="准备 C# 项目任务";Width=700;Height=820;MinWidth=580;MinHeight=540;WindowStartupLocation=WindowStartupLocation.CenterOwner;
         Background=System.Windows.Media.Brushes.White;FontFamily=new System.Windows.Media.FontFamily("Microsoft YaHei UI");FontSize=14;
         var panel=new StackPanel{Margin=new Thickness(22)};
-        panel.Children.Add(new TextBlock{Text="仅复制所选源码；原项目保持原样。填写一项文字修改及编译后的运行、测试入口。",TextWrapping=TextWrapping.Wrap});
+        panel.Children.Add(new TextBlock{Text=revision is null?"仅复制所选源码；原项目保持原样。填写一项文字修改及编译后的运行、测试入口。":"继续修改已校验的结果源码。沿用原数据、运行/测试入口及结果限制；填写新的文字修改。",TextWrapping=TextWrapping.Wrap});
         var files=new TextBox{Text=string.Join(Environment.NewLine,sources),IsReadOnly=true,MaxHeight=90,VerticalScrollBarVisibility=ScrollBarVisibility.Auto,Margin=new Thickness(0,8,0,0)};
         panel.Children.Add(files);
         var dataList=new TextBox{IsReadOnly=true,MaxHeight=70,VerticalScrollBarVisibility=ScrollBarVisibility.Auto,Text="尚未选择数据文件"};
@@ -40,13 +40,30 @@ internal sealed class ProjectTaskWindow : Window
             }
             catch(InvalidDataException error){status.Text=error.Message;}
         };
+        if(revision is not null)
+        {
+            selectData.IsEnabled=false;dataFiles=revision.DataFiles;
+            dataList.Text=dataFiles.Length==0?"原任务未选择数据文件":string.Join(Environment.NewLine,dataFiles);
+            entry.Text=revision.EntryType;tests.Text=revision.TestType;count.Text=revision.ExpectedTests.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            results.Text=string.Join(Environment.NewLine,revision.GeneratedFiles.Select(f=>f.Path+"（最多 "+f.MaxBytes+" 字节）"));
+            foreach(var field in new[]{entry,tests,count,results})field.IsReadOnly=true;
+        }
         panel.Children.Add(selectData);panel.Children.Add(dataList);
         foreach(var source in sources)editSource.Items.Add(source);editSource.SelectedIndex=0;
-        Field("要修改的源码",editSource);Field("原文字（必须恰好匹配一次）",before);Field("替换后的文字（可留空）",after);
+        Field("要修改的源码",editSource);
+        if(revision is not null)
+        {
+            var preview=new TextBox{IsReadOnly=true,Text=revision.ReadSource(sources[0]),AcceptsReturn=true,MinHeight=90,MaxHeight=180,
+                VerticalScrollBarVisibility=ScrollBarVisibility.Auto,HorizontalScrollBarVisibility=ScrollBarVisibility.Auto,
+                FontFamily=new System.Windows.Media.FontFamily("Consolas")};
+            editSource.SelectionChanged+=(_,_)=>preview.Text=revision.ReadSource((string)editSource.SelectedItem);
+            Field("本次所选源码（可复制原文字）",preview);
+        }
+        Field("原文字（必须恰好匹配一次）",before);Field("替换后的文字（可留空）",after);
         Field("运行类型（公开 static int Run()，例如 Demo.Entry）",entry);
         Field("测试类型（公开 static int Run()，返回通过项数，例如 Demo.Checks）",tests);
-        count.Text="1";Field("预期通过项数（1–256）",count);
-        Field("要保存的结果文件（每行一个，如 summary.json；保存在 cpc-results 下，每份最多64 KiB）",results);
+        if(revision is null)count.Text="1";Field("预期通过项数（1–256）",count);
+        Field(revision is null?"要保存的结果文件（每行一个，如 summary.json；保存在 cpc-results 下，每份最多64 KiB）":"沿用的结果文件及大小限制",results);
         var buttons=new StackPanel{Orientation=Orientation.Horizontal,Margin=new Thickness(0,14,0,0)};
         var prepare=new Button{Content="准备并审阅",Padding=new Thickness(14,7,14,7),IsDefault=true};
         var cancel=new Button{Content="取消",Padding=new Thickness(14,7,14,7),Margin=new Thickness(10,0,0,0),IsCancel=true};
@@ -62,7 +79,7 @@ internal sealed class ProjectTaskWindow : Window
             busy=true;prepare.IsEnabled=false;cancel.IsEnabled=false;panel.IsEnabled=false;status.Text="正在保存所选源码的内存快照并校验任务……";
             try
             {
-                Prepared=await Task.Run(()=>CallerProjectSession.Create(directory,sources,edits,entryType,testType,expected,
+                Prepared=await Task.Run(()=>revision is not null?revision.Prepare(edits):CallerProjectSession.Create(directory,sources,edits,entryType,testType,expected,
                     data.Length==0 && outputs.Length==0?null:data,data.Length==0 && outputs.Length==0?null:outputs));
                 DialogResult=true;
             }
