@@ -87,3 +87,5 @@ Compile/Run/Tests失败和正常DataReport通过；最终library/Broker及77a1�
 2026-11-02：原控制文件执行门接入并普通验证，5d0f971；8a22同范围INACTIVE更新成功，文件API核对15公开hash/8固定回执绑定。命令工具后续拒绝5，本人确认Kaspersky误报；保留独立ACL及新增LPAC验证NOT_RUN。原失败/普通资格/安装/准备材料见work/control-file-gate-20261102-01及验收账本，无AV/网络调整。
 
 后续已按本人要求使用应用接口直接调用原System32 PowerShell/Git，完成15+8独立ACL及22输入普通预检。PS7普通策略拒绝原样保留，PS5兼容控制未改策略/产品/工具；新增保护任务单独请求，见最新CURRENT-STATE。
+
+2026-11-02 14:02:30Z：8a22固定DataReport单次受权LPAC运行完成，根/编译器各33拒绝5、owner封存，正常修改/编译/3测试/十一文件恢复及Count3 Total12独立通过。证据work/control-file-gate-20261102-01/protected-run，见验收账本/CURRENT-STATE；无额外私有读取/强停/重试/恢复/Claude/网络修改，授权已消耗。

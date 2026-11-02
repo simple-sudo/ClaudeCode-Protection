@@ -1,7 +1,7 @@
 # 当前状态与授权摘要
 
 更新：2026-11-02（America/New_York）。本页是**唯一的最新状态摘要**；历史事实仍由原始证据
-支持。原owner/WordCount/V2报告/失败反馈成果保留；控制文件门候选已安装；命令工具被AV阻止后按本人要求换原程序接口，独立ACL/普通预检通过，新增原生验证尚未运行。
+支持。原owner/WordCount/V2报告/失败反馈成果保留；8a22控制文件门已安装并完成本人单次授权的真实LPAC数据报告任务及66项最小权限打开拒绝。
 
 ## 开发基线
 
@@ -19,17 +19,17 @@
 
 | 项目 | 最近记录及边界 |
 | --- | --- |
-| 实测时刻 | 2026-11-02 13:45:41Z原安装完成；13:54独立ACL核对及13:57普通持有预检通过 |
+| 实测时刻 | 2026-11-02 13:45:41Z安装；13:54独立ACL/13:57普通持有预检通过；14:02:30Z受权项目/66项检查完成 |
 | Release | `8a22a7bb2ee142eab1c1bc9ae32bc860` |
 | Manifest SHA256 | `ACF8094509362411545F87C772A53E1D7EE7CA716DBF3BF8760EB84E34D20DFB` |
 | 状态 | INACTIVE；不等于正在保护Claude |
 | 已证明 | 原更新owner成功，15公开资产hash及8固定回执绑定/可信owner/保护DACL/无不可信写者独立匹配；22输入普通持有预检通过 |
-| 未证明 | 新增控制文件真实LPAC验证；GUI点击及完整产品仍未证明 |
+| 未证明 | GUI实机点击、保护源码/IPC/其他权限与工具、完整网络/GPU/异常恢复及真实Claude仍未证明 |
 
 文件API核对：`work/control-file-gate-20261102-01/installed-api-review.json`，SHA256
 `CD920340887CD7F75FA10377527A2A91B4EF121F14C45390E048BE778B3F1674`。这是最初公开字节/回执绑定。后续原System32 PowerShell独立核对：
 `work/control-file-gate-20261102-01/installed-independent-acl-review.json`，SHA256
-`9FDB14036DB1261EB8EEA6B517A3660F100EB1EF36C8FFE4F0847922DFB3CCE5`；15公开文件/8固定回执ACL通过，无新受保护任务。
+`9FDB14036DB1261EB8EEA6B517A3660F100EB1EF36C8FFE4F0847922DFB3CCE5`；15公开文件/8固定回执ACL通过，此记录自身不含后续受保护任务。
 该记录是此时快照，**不证明未来安装状态未变**。00ac/77a1/3cfd及更早记录完整保留；历史42f等“当前”只指
 原段落时刻，新版本不继承其原生项目结论。
 
@@ -42,7 +42,7 @@
 | GUI | 项目准备/数据选择/声明结果/审阅恢复及有界失败显示已安装；76项普通GUI数据通过，原任务窗口离屏观察保留；00ac daily实际返回限定诊断 | 实机点击未验证；不把daily回执当GUI点击证据 |
 | 开发失败反馈 | 原compiler→root→owner→IPC→daily→GUI链接入；普通Compile/Run/Tests自有失败通过；00ac固定LPAC编译失败返回CS0103/source0/物理9行52列，原46拒绝/封存/关闭回执满足，结果0字节 | 实际运行/测试失败反馈、其他工具及崩溃恢复未实测；公开关闭观察不证明profile/私有目录清理 |
 | V2项目数据/结果 | 26新合同/40旧caller/原122合成门禁和67普通GUI数据通过；77a1真实DataReport编译/读取JSON/生成报告/3测试/十一文件恢复及双actor46拒绝通过 | 仅该固定项目/所列对象与权限；导出上限不是磁盘配额，不推广至其他工具或完整产品 |
-| 控制文件执行门 | 十新增权限已接入原33项封存门，普通175门/77自有文件检查、8a22安装及15+8独立ACL通过 | 新66项真实LPAC任务待具体单次决定，当前NOT_RUN；不继承旧46项结论 |
+| 控制文件执行门 | 8a22真实LPAC根/编译器各33项拒绝5，含20次控制文件最小权限打开；原owner封存后正常DataReport修改/编译/3测试/十一文件恢复通过 | 仅所列三对象/十权限及该固定项目；不证明实际破坏、保护源码/IPC/全部权限或其他工具 |
 | 网络/身份/工具 | 有限版本矩阵、受限进程和原生GPU历史实测分别保留 | 当前版本的完整强制网络、十四项可信准入、PowerShell及代表性工具/GPU兼容、长时稳定性 |
 | 生命周期 | 固定安装及部分已关闭/从未启动资源恢复有证据 | 控制器异常、崩溃/重启、更新/回滚/卸载与故障恢复完整验收；历史蓝屏根因仍UNKNOWN |
 | 自我保护 | 原选择排除/日常身份拒绝保留；原执行门新增九项owner最小权限打开检查，两个受保护actor的18次owner打开均拒绝5，可信owner自我维护打开正控制通过；SOURCE/BUILD/INTEGRATED及该项目限定VERIFIED | 未实际破坏owner；源码读/文件写/服务/IPC/其他工具/异常恢复完整矩阵及日常入口真实受保护身份验证仍缺。P1/P2未验收；命名/离线部署未实施 |
@@ -69,9 +69,19 @@
 
 ## 本轮真实功能结果与下一步
 
+- 本人对固定审查单明确“授权这一次”，一次本人UAC后于14:02:30Z完成8a22数据报告任务。会话
+  0748ee3bfec14c61b02ddf802ffe1bbc，root32184/compiler27916各33拒绝5，含新增控制文件20次最小打开，owner封存true。
+  私有identity读/写data/DACL/owner、当前指针及当前运行库写data/DACL/owner均只开句柄未使用；可信owner维护AccessCheck仅metadata/query token，不是实际写维护证明。
+  修改/编译/读取[3,4,5]/生成Count3 Total12/三测试/十一文件七变化与新目录逐字节恢复独立通过，原输入不变。
+  原owner成功导出门要求Job闭合/隔离/精确清理，未额外读取私有错误/raw Job/Stop；无强停/自动重试/恢复/真实Claude/网络变更。
+  结果SHA256 38333FFCA3EE15D8E38CC38E1EF117612E63543F8D601C4793BCB2E8F323A543；
+  work/control-file-gate-20261102-01/protected-run/observed-result.json SHA256
+  FE18122C71627E9AD6E22E593D6A4885E4EFD172CF449AAD07E91C5F50AF869F。CAPABILITY_DELIVERED(固定LPAC控制文件权限门与正常数据报告开发闭环)。
+  单次授权已消耗，Boot/AV/BFE/FlClash/UU观察一致，厂商完整覆盖UNKNOWN；不推广为完整自我保护或全产品。
+
 - 5d0f971接入原HostPrivacyProbe/ExecutionGate的十个控制文件最小权限项；原23项扩至33，两actor全部拒绝5才可运行代码。
   原owner固定派生私有identity/当前选择/当前运行库，不收外部路径；metadata对象持有、DACL AccessCheck维护正控制、共享32/缺失不算拒绝。
-  SOURCE/BUILD/INTEGRATED，当前新增文件门真实LPAC NOT_RUN，不能把旧46拒绝当新66项通过。
+  SOURCE/BUILD/INTEGRATED及8a22固定范围VERIFIED；本次66拒绝有新原生证据，不继承旧46项结论。
 - 五目标产品/GUI普通构建0/0；初次WorkspacePipe测试变量重名失败，修正后仅构建两测试。运行控制目录引用失败在fixture前停止；
   新独立控制通过76 GUI、175封存、25失败/40caller/26数据、77自身文件与DACL正控制、正常DataReport/3测试/十一文件恢复及精确00ac迁移/六拒绝。
   实际测试用原已审阅产品library，重编consumer库分开保留。新增五native imports只metadata/query token，无写SD/权限调整。

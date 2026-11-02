@@ -47,3 +47,5 @@ v1上限：512文件、每文件1MiB、总内容8MiB、序列化12MiB、相对�
 
 
 控制文件执行门（2026-11-02）：原33项门包括原14宿主/9owner进程与新增十个私有identity/当前指针/运行库最小文件权限打开；仅真实拒绝5可执行代码。原owner派生固定路径/持有对象身份、query token与DACL AccessCheck维护正控制，文件占用32不算拒绝。没有内容读/写或SD修改。新版policy拒绝旧23项报告。新增门已安装/普通验证；真实LPAC NOT_RUN，见CURRENT-STATE。
+
+8a22后续本人单次授权实测：新33项两actor全部拒绝5，包含控制文件十权限共20次句柄打开；原owner封存后正常DataReport修改/编译/三测试/十一文件恢复与Count3 Total12通过。原owner成功结果门保持，未额外private/raw Job/Stop读取或实际危险句柄操作。仅该固定对象/权限/项目范围，非完整P0或GUI点击验收；原NOT_RUN段落为运行前历史。

@@ -700,3 +700,10 @@ CAPABILITY_DELIVERED(固定LPAC编译失败有界诊断与公开停止观察)。
 8a22原安装帮助程序及update0，INACTIVE；15公开文件hash/8固定回执绑定经文件API独立核对。安装后命令工具创建进程拒绝5，本人确认Kaspersky误报，不重复归因。独立ACL/新受保护33项验证NOT_RUN；不使用替代进程绕拒绝，不改AV/网络/ACL策略。证据work/control-file-gate-20261102-01；尚非新增门CAPABILITY_DELIVERED或完整产品通过。
 
 后续按本人明确换方式要求，应用接口直接调用未改名的原System32 PowerShell，15公开资产和8固定回执的独立hash/owner/保护DACL/无不可信写者核对通过，证据installed-independent-acl-review.json SHA256 9FDB14036DB1261EB8EEA6B517A3660F100EB1EF36C8FFE4F0847922DFB3CCE5。原PS7普通脚本策略拒绝保留；PS5兼容控制只替换控制器API，不改执行策略/AV/产品/编译器，22输入持有预检通过，无UAC/项目。原Git普通调用可用，新增受保护运行仍需具体决定。
+
+
+## 2026-11-02：8a22原控制文件门与正常开发真实闭环
+
+本人新一次具体授权/本人UAC后，固定输入B530770FA523DCC12532702D9D312DD0F02FE143FB42BB4B90F7A0559F2DDECE，会话0748ee3bfec14c61b02ddf802ffe1bbc于14:02:30Z完成。根32184/编译器27916各33项ACCESS_DENIED5；新三控制对象十权限共20次仅打开拒绝，原46项同时保持，原owner封存true。维护正控制为原owner metadata/DACL/query token AccessCheck，非实际写维护；未读秘密或使用危险句柄。
+修改sum/编译/JSON读取/Count3 Total12/三测试，十一结果/七变化，独立逐文件恢复一致、原输入未改。原成功成果门要求Job闭合/隔离/精确清理，无额外private/raw Job/Stop读取、强停、重试或恢复。结果38333FFCA3EE15D8E38CC38E1EF117612E63543F8D601C4793BCB2E8F323A543。observed-result.json SHA256 FE18122C71627E9AD6E22E593D6A4885E4EFD172CF449AAD07E91C5F50AF869F，位于work/control-file-gate-20261102-01/protected-run。
+CAPABILITY_DELIVERED(固定LPAC控制文件权限门与正常DataReport开发闭环)。一次授权已消耗；无真实Claude/正式准入/网络或日常环境修改；Boot/AV/BFE/FlClash/UU观察一致，厂商完整覆盖UNKNOWN。不是全部自我保护/源码/IPC/其他工具/GPU/异常恢复或GUI点击验收。
