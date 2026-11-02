@@ -691,3 +691,12 @@ ResourceChildReport序列化到owner测试，拒绝裸/其他后缀/前缀。无
 858A45EC7C17C5B0114AD39664841631BEE9B8630DE42C46DFC9B1028FC0BA99。
 CAPABILITY_DELIVERED(固定LPAC编译失败有界诊断与公开停止观察)。运行/测试失败只有普通证据，GUI未点击。
 两次具体运行授权均消耗，未真实Claude/改网络/强停/恢复/额外私有读取；完整产品仍未接受。
+
+
+## 2026-11-02：控制文件门接入/普通验证与安装观察
+
+5d0f971扩原HostPrivacyProbe/ExecutionGate至33项，两actor须全部拒绝5；十新增权限覆盖私有identity读/写data/DACL/owner与当前选择/运行库写data/DACL/owner。只打开句柄，无内容/权限修改；原固定路径/持有对象/维护AccessCheck正控制，无外部路径入口。
+五产品/GUI目标构建0/0，测试变量重名失败保留；修正仅构建两测试0/0。首次运行控制旧目录引用失败无fixture执行，后续独立控制76 GUI/175封存/25失败/40caller/26数据/77自身文件检查和正常DataReport3测试/十一文件恢复、exact00ac迁移/六拒绝通过。
+8a22原安装帮助程序及update0，INACTIVE；15公开文件hash/8固定回执绑定经文件API独立核对。安装后命令工具创建进程拒绝5，本人确认Kaspersky误报，不重复归因。独立ACL/新受保护33项验证NOT_RUN；不使用替代进程绕拒绝，不改AV/网络/ACL策略。证据work/control-file-gate-20261102-01；尚非新增门CAPABILITY_DELIVERED或完整产品通过。
+
+后续按本人明确换方式要求，应用接口直接调用未改名的原System32 PowerShell，15公开资产和8固定回执的独立hash/owner/保护DACL/无不可信写者核对通过，证据installed-independent-acl-review.json SHA256 9FDB14036DB1261EB8EEA6B517A3660F100EB1EF36C8FFE4F0847922DFB3CCE5。原PS7普通脚本策略拒绝保留；PS5兼容控制只替换控制器API，不改执行策略/AV/产品/编译器，22输入持有预检通过，无UAC/项目。原Git普通调用可用，新增受保护运行仍需具体决定。

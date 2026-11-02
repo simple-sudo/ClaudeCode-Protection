@@ -82,3 +82,8 @@ Compile/Run/Tests失败和正常DataReport通过；最终library/Broker及77a1�
 2026-11-02后续：首次真实编译失败诊断未返回（FAIL保留），修正原Stage后缀匹配并补实际报告序列化检查。
 00ac INACTIVE安装独立核对后，新单次授权LPAC样本返回CS0103及真实9行52列，46拒绝/封存/公开停止满足、
 零结果，无私有读取/重试/恢复/Claude/网络变更。证据work/project-failure-feedback-20261102-01，详见账本/CURRENT-STATE。
+
+
+2026-11-02：原控制文件执行门接入并普通验证，5d0f971；8a22同范围INACTIVE更新成功，文件API核对15公开hash/8固定回执绑定。命令工具后续拒绝5，本人确认Kaspersky误报；保留独立ACL及新增LPAC验证NOT_RUN。原失败/普通资格/安装/准备材料见work/control-file-gate-20261102-01及验收账本，无AV/网络调整。
+
+后续已按本人要求使用应用接口直接调用原System32 PowerShell/Git，完成15+8独立ACL及22输入普通预检。PS7普通策略拒绝原样保留，PS5兼容控制未改策略/产品/工具；新增保护任务单独请求，见最新CURRENT-STATE。
