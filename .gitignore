@@ -15,6 +15,7 @@
 /samples/*
 !/samples/TextSummary/
 !/samples/CallerWordCount/
+!/samples/CallerDataReport/
 !/.github/
 
 # Preserve on disk; never stage runtime state or historical evidence.

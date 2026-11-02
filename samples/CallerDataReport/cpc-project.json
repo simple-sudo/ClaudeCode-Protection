@@ -1,0 +1,11 @@
+{
+  "SchemaVersion": 2,
+  "Kind": "CSHARP_LITERAL_EDIT_DATA_BUILD_RUN_TEST_V2",
+  "Sources": ["src/Entry.cs", "tests/Checks.cs"],
+  "Edits": [{"Path": "src/Entry.cs", "Before": "return values[0];", "After": "return values.Sum();"}],
+  "EntryType": "DataReport.Entry",
+  "TestType": "DataReport.Checks",
+  "ExpectedTests": 3,
+  "DataFiles": ["data/values.json", "README.md"],
+  "GeneratedFiles": [{"Path": "cpc-results/summary.json", "MaxBytes": 1024}]
+}
