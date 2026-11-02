@@ -1,5 +1,8 @@
 # 受保护Job成员控制源码
 
+> 文档效力（2026-11-02）：Job/进程归属专题。按原版本和场景解释实测，不把树状名称或进程缺席作为权限/闭合证明。自我保护覆盖派生工具与控制面，仍须实际对象权限及鉴权依据。
+> 最新状态/授权只见[CURRENT-STATE](CURRENT-STATE.md)，正式目标与术语见[SECURITY-REQUIREMENTS](SECURITY-REQUIREMENTS.md)。以下旧状态与操作许可不自动延续。
+
 2026-10-26接续：固定quarantine入口已在SOURCE消费本owner，非完整runtime lease。停止集合现保留各Job失败并继续其余已核验对象，最终观察schema 2必须核对预期数量/缺失/失败/零成员；全局锁或清单丢失仍停止。实际构建及故障验收尚未进行。下文原始实现阶段的缺口描述保留为历史，当前状态见STATUS。
 
 日期：2026-10-26（America/New_York）。状态：SOURCE_IMPLEMENTED_NOT_COMPILED。新增KernelJobSeal.cs、PrivateJobNamespace.cs、OwnedJobs.cs；没有调用Job/namespace API、启动/停止进程、编译或安装。

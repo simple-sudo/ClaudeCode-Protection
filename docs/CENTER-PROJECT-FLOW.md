@@ -1,5 +1,8 @@
 # 保护中心项目操作流程
 
+> 文档效力（2026-11-02）：GUI机制及日期证据。下文35a安装观察、42f原项目与普通/离屏资格各有范围；旧“尚未安装/当前42f”不能覆盖后续安装记录。GUI报告不签发正式许可，也不授予任意宿主管理。
+> 最新状态/授权只见[CURRENT-STATE](CURRENT-STATE.md)，正式目标与术语见[SECURITY-REQUIREMENTS](SECURITY-REQUIREMENTS.md)。以下旧状态与操作许可不自动延续。
+
 2026-11-01T12:37:15Z本次具体人工UAC的INACTIVE更新/原只读检查已成功，实际安装35a0106a/
 58E8D97C/core401439EE/GUI4D3E764B。十五公开资产hash/owner/protected DACL/无不可信写者和十三
 本次回执独立匹配，没有启动GUI/项目/Job，没有强停/重试/恢复/权限/AV/网络修改。

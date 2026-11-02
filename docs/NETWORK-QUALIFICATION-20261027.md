@@ -1,10 +1,13 @@
 # 四阶段限定网络资格：2026-10-27
 
+> 文档效力（2026-11-02）：2026-10-27限定网络资格记录。此版本结果可复用其范围，不能继承到其他包、真实Claude或当前网络安全状态。
+> 最新状态/授权只见[CURRENT-STATE](CURRENT-STATE.md)，正式目标与术语见[SECURITY-REQUIREMENTS](SECURITY-REQUIREMENTS.md)。以下旧状态与操作许可不自动延续。
+
 ## 结果和身份
 
-**INTEGRATED、限定VERIFIED：当前安装Broker的四阶段矩阵实际退出0。**这不是完整产品交付、物理出口无泄漏、真实Claude会话、系统DNS服务归属或故障恢复验收。
+**2026-10-27当次版本INTEGRATED、限定VERIFIED：该次安装Broker的四阶段矩阵实际退出0。**这不是完整产品交付、物理出口无泄漏、真实Claude会话、系统DNS服务归属或故障恢复验收。
 
-当前release fd4f9f85655342cebc46aab4d19982d8；manifest7EC62DE8F572CBED678616FF2E1F1A815C520463BD172E998A546CA975A7593C；生命周期DLL A8C9ACF27EC9BF1CEDAD03F9ACBBBA6C4E07C84DFC8AFE412AC0578318D1F8C1。固定INACTIVE更新operation3f63a9da217f47fdada03d298146cfce；管理图34输入/独立bootstrap35输入BUILD0，无module initializer。6项目非生成检查0错误0警告；28项既有判据、6项吊销候选拒绝、6项内存native原语通过，普通管理/子进程入口拒绝符合预期。
+当次release fd4f9f85655342cebc46aab4d19982d8；manifest7EC62DE8F572CBED678616FF2E1F1A815C520463BD172E998A546CA975A7593C；生命周期DLL A8C9ACF27EC9BF1CEDAD03F9ACBBBA6C4E07C84DFC8AFE412AC0578318D1F8C1。固定INACTIVE更新operation3f63a9da217f47fdada03d298146cfce；管理图34输入/独立bootstrap35输入BUILD0，无module initializer。6项目非生成检查0错误0警告；28项既有判据、6项吊销候选拒绝、6项内存native原语通过，普通管理/子进程入口拒绝符合预期。
 
 request ce160d0fddd4471c977c2c36080fceec；原始ProgramFiles/ClaudeCodeProtection-Network-20261027-r8，工作控制work/network-run-r8-control，私有state原始回执保留、不入Git。FlClash20944/Core14268保持，实际磁盘映像/创建时间/127.0.0.1:7890监听持有核对；没有启动/重配/停止日常代理。
 

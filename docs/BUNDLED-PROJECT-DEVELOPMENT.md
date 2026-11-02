@@ -1,5 +1,8 @@
 # TextSummary 项目开发流程
 
+> 文档效力（2026-11-02）：固定项目开发切片与原版本证据。支持的TextSummary路径不等于任意项目、正式Claude会话或完整产品；不将其工具能力扩张为宿主路径/管理员权限。
+> 最新状态/授权只见[CURRENT-STATE](CURRENT-STATE.md)，正式目标与术语见[SECURITY-REQUIREMENTS](SECURITY-REQUIREMENTS.md)。以下旧状态与操作许可不自动延续。
+
 2026-11-01 09:16:01Z普通用户入口已实机通过：两次本人授权/UAC后，实际安装INACTIVE
 14ea8f9c/F415392F/334E9AA8。普通daily的workspace-sample -> workspace-develop ->
 workspace-review -> workspace-extract经原Broker/Job/严格LPAC完成任务和成功清理导出，

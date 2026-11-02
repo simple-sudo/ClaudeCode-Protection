@@ -1,5 +1,8 @@
 # 完成回执的新观察恢复与状态发布源码
 
+> 文档效力（2026-11-02）：完成回执恢复专题。重新观察不重建历史成功、不推进未证实阶段；不能凭本页自动恢复系统。P0自我保护同时保留可信用户诊断及恢复权，拒绝不可信调用者借用。
+> 最新状态/授权只见[CURRENT-STATE](CURRENT-STATE.md)，正式目标与术语见[SECURITY-REQUIREMENTS](SECURITY-REQUIREMENTS.md)。以下旧状态与操作许可不自动延续。
+
 日期：2026-10-26（America/New_York）。状态：SOURCE_IMPLEMENTED_NOT_COMPILED。新增CompletionRecovery.cs，接入原完成记录生产者及卸载读取器。没有执行该库、调用安全/文件变更API、编译或类型检查。
 
 ## 状态记录先完整暂存再发布

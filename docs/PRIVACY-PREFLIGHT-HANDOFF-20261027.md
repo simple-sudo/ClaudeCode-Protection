@@ -1,5 +1,8 @@
 # ChatGPT GitHub handoff — 网络隐私边界与十四项只读门禁
 
+> 文档效力（2026-11-02）：历史GitHub源码交接，非当前执行单。旧检出/运行建议不授权新聊天、worktree、构建或系统操作；原CI/源码不能证明本机安全。保留其非权威诊断与可信准入分离。
+> 最新状态/授权只见[CURRENT-STATE](CURRENT-STATE.md)，正式目标与术语见[SECURITY-REQUIREMENTS](SECURITY-REQUIREMENTS.md)。以下旧状态与操作许可不自动延续。
+
 基线：`main@8e5b4ee15d9ff250e2858dbea3d3cee8e00bbe32`
 分支：`dev/chatgpt-privacy-preflight-20261027`
 证据：**SOURCE ONLY**。本轮通过 GitHub 读写源码，未在用户电脑执行、编译、安装、提权或开启任何 Windows 原生实验。

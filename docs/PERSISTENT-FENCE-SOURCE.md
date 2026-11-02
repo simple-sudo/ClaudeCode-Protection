@@ -1,5 +1,8 @@
 # 安装身份WFP隔离屏障源码
 
+> 文档效力（2026-11-02）：持久网络屏障专题。历史规则/有限矩阵不等于今天完整网络验收；控制器退出后的拒绝边界是P0要求，须与精确停止/恢复分别验证。
+> 最新状态/授权只见[CURRENT-STATE](CURRENT-STATE.md)，正式目标与术语见[SECURITY-REQUIREMENTS](SECURITY-REQUIREMENTS.md)。以下旧状态与操作许可不自动延续。
+
 日期：2026-10-26（America/New_York）。状态：SOURCE_IMPLEMENTED_NOT_COMPILED。新增WfpNative.cs、FencePlan.cs、PersistentFence.cs；没有加载项目库、编译、调用WFP/安全API、创建AppContainer profile或修改规则。
 
 ## 具体实现与当前状态

@@ -1,5 +1,8 @@
 # 显式用户 C# 项目开发入口
 
+> 文档效力（2026-11-02）：显式调用者项目切片。原v6项目/命名对象结果不等于任意恶意代码或保护系统自我保护全面通过；数据导入、代码执行和维护授权分开，不能以项目清单绕过保护源码与管理面边界。
+> 最新状态/授权只见[CURRENT-STATE](CURRENT-STATE.md)，正式目标与术语见[SECURITY-REQUIREMENTS](SECURITY-REQUIREMENTS.md)。以下旧状态与操作许可不自动延续。
+
 当前SOURCE / BUILD / INTEGRATED，六产品非执行语义检查通过，普通限定样本VERIFIED；
 当前已INACTIVE安装42f/9172/7DDC。首次取消1223保留；新单次本人授权/UAC后的project-r2
 11:55:19Z实际成功，会话6afe136f45a54bbba5f95acc47245889，原Job/严格LPAC完成WordCount

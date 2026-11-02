@@ -1,10 +1,13 @@
 # GitHub 两批成果的本机整合
 
+> 文档效力（2026-11-02）：历史GitHub整合记录。PR头、CI、fetch和合并状态均限当次观察；本轮不联网重验或推送。不要按旧接收步骤覆盖本地改动或重新合并。
+> 最新状态/授权只见[CURRENT-STATE](CURRENT-STATE.md)，正式目标与术语见[SECURITY-REQUIREMENTS](SECURITY-REQUIREMENTS.md)。以下旧状态与操作许可不自动延续。
+
 日期：2026-10-27。类型：工程交付记录；状态：本轮源码接收完成，完整产品未交付。
 适用范围：本轮本地分支；原始 CI、安装和运行证据独立保留。
 
 后续阶段已接入会话所有者与受限转发源码，当前状态转见[保护会话主链](PROTECTED-SESSION-CHAIN.md)
-和STATUS顶部。本页的PR接收/资格窗口为历史，不给新代码转授BUILD或运行证据。
+和CURRENT-STATE。本页的PR接收/资格窗口为历史，不给新代码转授BUILD或运行证据。
 
 ## 接收决定与实际调用链
 

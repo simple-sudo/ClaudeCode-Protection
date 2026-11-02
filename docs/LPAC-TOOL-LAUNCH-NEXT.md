@@ -1,5 +1,8 @@
 # LPAC 工具启动：本轮结果与下一步
 
+> 文档效力（2026-11-02）：多日期工具启动过程记录。标题及段落中的“最新/当前/下一步”仅指原阶段，不能选择旧安装、恢复旧ETW尝试或重跑已消耗操作；适用成果按证据复用。
+> 最新状态/授权只见[CURRENT-STATE](CURRENT-STATE.md)，正式目标与术语见[SECURITY-REQUIREMENTS](SECURITY-REQUIREMENTS.md)。以下旧状态与操作许可不自动延续。
+
 2026-11-01最新实机：00bc/60EC/5600已本人两次UAC，INACTIVE安装/inspect0及普通项目链完成。
 原Job/严格LPAC会话2ec1eeefb2c44684b7028182a7f0b0f1的root29468/compiler6132各14真实命名
 资源read-open全部原生拒绝5，同时TextSummary修改/编译/运行六测试和七文件导出独立一致。

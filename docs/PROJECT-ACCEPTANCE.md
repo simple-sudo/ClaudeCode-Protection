@@ -1,5 +1,10 @@
 # 完整项目验收账本
 
+> 历史证据账本，原日期、版本、失败和哈希保留。唯一最新状态及授权见[CURRENT-STATE](CURRENT-STATE.md)，
+> 正式范围/术语见[SECURITY-REQUIREMENTS](SECURITY-REQUIREMENTS.md)。本页各段“当前安装/暂停/待执行”
+> 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
+> 范围不明保留UNKNOWN。新增自我保护/最小暴露/辅助混淆本轮仅纳入需求，没有补记实测通过。
+
 ## 2026-11-01 新GUI工作流包35a的INACTIVE安装与原只读检查
 
 本人具体授权并确认一次UAC，12:37:15Z安装及inspect-etw-provider-access均0，当前实际35a0106a/

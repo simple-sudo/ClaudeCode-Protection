@@ -1,5 +1,8 @@
 # 版本切换与中断恢复源码
 
+> 文档效力（2026-11-02）：恢复机制与原阶段证据。只按原安装、对象身份、阶段和所有权恢复；未启动/已闭Job恢复不等于控制器崩溃或重启恢复。P0要求异常退出也不增加Claude权限，不以进程缺席推导安全。
+> 最新状态/授权只见[CURRENT-STATE](CURRENT-STATE.md)，正式目标与术语见[SECURITY-REQUIREMENTS](SECURITY-REQUIREMENTS.md)。以下旧状态与操作许可不自动延续。
+
 日期：2026-10-25（America/New_York）。状态：SOURCE_IMPLEMENTED_NOT_COMPILED。新增具体的版本核验、安装/更新/回滚未激活切换和恢复阅读器；没有执行库、创建安装目录或进行本机安装验收。
 
 ## 版本事实和切换

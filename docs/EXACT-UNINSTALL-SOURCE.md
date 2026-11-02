@@ -1,5 +1,8 @@
 # 精确卸载与中断续接源码
 
+> 文档效力（2026-11-02）：卸载机制与原阶段证据。可信用户的固定卸载权限必须保留；受保护Claude不得未经授权调用或绕过。精确归属、快照及恢复门不因新命名/部署设计降低；本轮未卸载。
+> 最新状态/授权只见[CURRENT-STATE](CURRENT-STATE.md)，正式目标与术语见[SECURITY-REQUIREMENTS](SECURITY-REQUIREMENTS.md)。以下旧状态与操作许可不自动延续。
+
 日期：2026-10-25（America/New_York）。状态：SOURCE_IMPLEMENTED_NOT_COMPILED。新增 ExactUninstall.cs、RemovalPolicy.cs 和嵌入 RemovalProtocol.json，补入实际卸载与恢复方法；没有调用它们，没有删除文件或创建安装目录。
 
 ## 顺序和权限

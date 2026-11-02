@@ -1,5 +1,8 @@
 # 管理员边界与生命周期源码内核
 
+> 文档效力（2026-11-02）：早期生命周期源码设计。未编译、空批准pin等属于原阶段，并非今天全项目状态。保护源码/配置/状态/管理接口及可信维护属于P0自我保护；旧DACL或安装通过不能覆盖全部目标。
+> 最新状态/授权只见[CURRENT-STATE](CURRENT-STATE.md)，正式目标与术语见[SECURITY-REQUIREMENTS](SECURITY-REQUIREMENTS.md)。以下旧状态与操作许可不自动延续。
+
 日期：2026-10-25（America/New_York）。状态：SOURCE_IMPLEMENTED_NOT_COMPILED。本轮只新增源码、协议数据和纯文本检查；未创建系统安装目录、提升、安装或运行项目程序。完整项目仍未完成。
 
 ## 新模块的实际边界
