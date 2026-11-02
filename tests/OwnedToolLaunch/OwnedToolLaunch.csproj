@@ -9,6 +9,11 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Program.cs" />
+    <EmbeddedResource Include="../../samples/CallerDataReport/cpc-project.json" LogicalName="DataFixture.cpc-project.json" />
+    <EmbeddedResource Include="../../samples/CallerDataReport/src/Entry.cs" LogicalName="DataFixture.src/Entry.cs" />
+    <EmbeddedResource Include="../../samples/CallerDataReport/tests/Checks.cs" LogicalName="DataFixture.tests/Checks.cs" />
+    <EmbeddedResource Include="../../samples/CallerDataReport/data/values.json" LogicalName="DataFixture.data/values.json" />
+    <EmbeddedResource Include="../../samples/CallerDataReport/README.md" LogicalName="DataFixture.README.md" />
     <EmbeddedResource Include="../../samples/CallerWordCount/cpc-project.json" LogicalName="CallerFixture.cpc-project.json" />
     <EmbeddedResource Include="../../samples/CallerWordCount/src/Counter.cs" LogicalName="CallerFixture.src/Counter.cs" />
     <EmbeddedResource Include="../../samples/CallerWordCount/src/Entry.cs" LogicalName="CallerFixture.src/Entry.cs" />

@@ -10,26 +10,43 @@ namespace ProtectionCenter;
 internal sealed class ProjectTaskWindow : Window
 {
     private readonly ComboBox editSource=new(){MinWidth=240};
-    private readonly TextBox before=Editor(true),after=Editor(true),entry=Editor(false),tests=Editor(false),count=Editor(false);
+    private readonly TextBox before=Editor(true),after=Editor(true),entry=Editor(false),tests=Editor(false),count=Editor(false),results=Editor(true);
     private readonly TextBlock status=new(){TextWrapping=TextWrapping.Wrap,Margin=new Thickness(0,12,0,0)};
     private readonly string directory;
     private readonly string[] sources;
+    private string[] dataFiles=Array.Empty<string>();
     private bool busy;
     internal CallerProjectSession? Prepared {get;private set;}
     internal ProjectTaskWindow(string directory,string[] sources)
     {
         this.directory=directory;this.sources=sources;
-        Title="准备 C# 项目任务";Width=700;Height=700;MinWidth=580;MinHeight=540;WindowStartupLocation=WindowStartupLocation.CenterOwner;
+        Title="准备 C# 项目任务";Width=700;Height=820;MinWidth=580;MinHeight=540;WindowStartupLocation=WindowStartupLocation.CenterOwner;
         Background=System.Windows.Media.Brushes.White;FontFamily=new System.Windows.Media.FontFamily("Microsoft YaHei UI");FontSize=14;
         var panel=new StackPanel{Margin=new Thickness(22)};
         panel.Children.Add(new TextBlock{Text="仅复制所选源码；原项目保持原样。填写一项文字修改及编译后的运行、测试入口。",TextWrapping=TextWrapping.Wrap});
         var files=new TextBox{Text=string.Join(Environment.NewLine,sources),IsReadOnly=true,MaxHeight=90,VerticalScrollBarVisibility=ScrollBarVisibility.Auto,Margin=new Thickness(0,8,0,0)};
         panel.Children.Add(files);
+        var dataList=new TextBox{IsReadOnly=true,MaxHeight=70,VerticalScrollBarVisibility=ScrollBarVisibility.Auto,Text="尚未选择数据文件"};
+        var selectData=new Button{Content="选择项目数据文件",HorizontalAlignment=HorizontalAlignment.Left,Padding=new Thickness(10,5,10,5),Margin=new Thickness(0,8,0,4)};
+        selectData.Click+=(_,_)=>
+        {
+            var dialog=new Microsoft.Win32.OpenFileDialog{Title="选择项目内需要读取的数据（最多64份；本次选择会替换之前的数据选择）",InitialDirectory=directory,Multiselect=true,CheckFileExists=true};
+            if(dialog.ShowDialog(this)!=true)return;
+            try
+            {
+                var selected=dialog.FileNames.Select(path=>WorkspaceBundle.Relative(Path.GetRelativePath(directory,path).Replace('\\','/'))).ToArray();
+                if(selected.Length>64 || selected.Intersect(sources,StringComparer.OrdinalIgnoreCase).Any())throw new InvalidDataException("请选择最多64份源码以外的数据文件。");
+                dataFiles=selected;dataList.Text=string.Join(Environment.NewLine,selected);status.Text="数据文件已选择，准备任务时才会读取内容。";
+            }
+            catch(InvalidDataException error){status.Text=error.Message;}
+        };
+        panel.Children.Add(selectData);panel.Children.Add(dataList);
         foreach(var source in sources)editSource.Items.Add(source);editSource.SelectedIndex=0;
         Field("要修改的源码",editSource);Field("原文字（必须恰好匹配一次）",before);Field("替换后的文字（可留空）",after);
         Field("运行类型（公开 static int Run()，例如 Demo.Entry）",entry);
         Field("测试类型（公开 static int Run()，返回通过项数，例如 Demo.Checks）",tests);
         count.Text="1";Field("预期通过项数（1–256）",count);
+        Field("要保存的结果文件（每行一个，如 summary.json；保存在 cpc-results 下，每份最多64 KiB）",results);
         var buttons=new StackPanel{Orientation=Orientation.Horizontal,Margin=new Thickness(0,14,0,0)};
         var prepare=new Button{Content="准备并审阅",Padding=new Thickness(14,7,14,7),IsDefault=true};
         var cancel=new Button{Content="取消",Padding=new Thickness(14,7,14,7),Margin=new Thickness(10,0,0,0),IsCancel=true};
@@ -40,10 +57,13 @@ internal sealed class ProjectTaskWindow : Window
             {status.Text="请输入 1–256 之间的预期通过项数。";return;}
             var edits=new[]{new CSharpProjectEdit((string)editSource.SelectedItem,before.Text,after.Text)};
             var entryType=entry.Text.Trim();var testType=tests.Text.Trim();
+            var outputs=results.Text.Split(new[]{'\r','\n'},StringSplitOptions.RemoveEmptyEntries).Select(p=>new CSharpProjectOutput(CSharpProjectTask.ResultDirectory+"/"+p.Trim(),65536)).ToArray();
+            var data=dataFiles.ToArray();
             busy=true;prepare.IsEnabled=false;cancel.IsEnabled=false;panel.IsEnabled=false;status.Text="正在保存所选源码的内存快照并校验任务……";
             try
             {
-                Prepared=await Task.Run(()=>CallerProjectSession.Create(directory,sources,edits,entryType,testType,expected));
+                Prepared=await Task.Run(()=>CallerProjectSession.Create(directory,sources,edits,entryType,testType,expected,
+                    data.Length==0 && outputs.Length==0?null:data,data.Length==0 && outputs.Length==0?null:outputs));
                 DialogResult=true;
             }
             catch(Exception ex)when(ex is IOException or InvalidDataException or UnauthorizedAccessException or ArgumentException or System.ComponentModel.Win32Exception)

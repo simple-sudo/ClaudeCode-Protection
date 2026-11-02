@@ -230,7 +230,10 @@ public static class BootstrapInstaller
             // e6bd task-authoring package installed with human-controlled UAC.
             // This pin only selects the known prior manifest; every original
             // live inactive-maintenance check remains required.
-            "61A02E2662DF4A7F5417F25777249BD3BC1D681D13B177FF5A249F64D391ACE5"
+            "61A02E2662DF4A7F5417F25777249BD3BC1D681D13B177FF5A249F64D391ACE5",
+            // a3b6 paired owner-control gate package. The fixed project closed
+            // successfully; a pin is still not live Job/quarantine authority.
+            "C2BCCC13A5296971D0DE1B77BB7CC158A9FA0EDA36FCCF3B21BDDED7CF210AD2"
         };
         private readonly ProtectedState state;
         private readonly BootstrapApproval approval;

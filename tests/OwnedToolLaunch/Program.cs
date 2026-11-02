@@ -8,7 +8,7 @@ using System.Text.Json;
 using System.Runtime.InteropServices;
 using Microsoft.Win32.SafeHandles;
 
-if(args.Length!=1 || args[0] is not ("policy" or "messages" or "handle-transfer" or "fault-mode" or "fault-mode-read" or "partial-output" or "hosted-policy" or "etw-policy" or "tls-transport-policy" or "etw-token-access" or "inactive-transition" or "project-policy" or "project-build" or "privacy-native" or "caller-project-build" or "caller-project-policy" or "self-control-open"))return 125;
+if(args.Length!=1 || args[0] is not ("policy" or "messages" or "handle-transfer" or "fault-mode" or "fault-mode-read" or "partial-output" or "hosted-policy" or "etw-policy" or "tls-transport-policy" or "etw-token-access" or "inactive-transition" or "project-policy" or "project-build" or "privacy-native" or "caller-project-build" or "caller-project-policy" or "self-control-open" or "caller-data-build"))return 125;
 try
 {
 using var identity=WindowsIdentity.GetCurrent();
@@ -44,15 +44,18 @@ if(args[0]=="self-control-open")
     Require(unknownOwnerRight,"undefined right rejected before native open");
     Console.WriteLine("PASS nine minimal process-right opens on this own ordinary test process; owner binding, foreign PID/path/identity, zero PID and undefined right checked. Handles closed unused; no process memory read/write, termination, suspension, injection, duplication, ACL change, host target, UAC, Broker/Job or LPAC test");return 0;
 }
-if(args[0] is "caller-project-build" or "caller-project-policy")
+if(args[0] is "caller-project-build" or "caller-project-policy" or "caller-data-build")
 {
+    var dataProjectFixture=args[0]=="caller-data-build";
     var bundleType=library.GetType("ClaudeCodeProtection.Workspaces.WorkspaceBundle",true)!;
     var taskType=library.GetType("ClaudeCodeProtection.Workspaces.CSharpProjectTask",true)!;
     var executor=library.GetType("ProtectionLifecycle.CallerCSharpProject",true)!;
     var files=library.GetType("ClaudeCodeProtection.Workspaces.WorkspaceFiles",true)!;
-    var fixtureData=new[]{"cpc-project.json","src/Counter.cs","src/Entry.cs","tests/Checks.cs","README.md"}.Select(name=>
+    var fixtureNames=dataProjectFixture?new[]{"cpc-project.json","src/Entry.cs","tests/Checks.cs","data/values.json","README.md"}:
+        new[]{"cpc-project.json","src/Counter.cs","src/Entry.cs","tests/Checks.cs","README.md"};
+    var fixtureData=fixtureNames.Select(name=>
     {
-        using var resource=Assembly.GetExecutingAssembly().GetManifestResourceStream("CallerFixture."+name)??throw new InvalidDataException("Missing caller fixture");
+        using var resource=Assembly.GetExecutingAssembly().GetManifestResourceStream((dataProjectFixture?"DataFixture.":"CallerFixture.")+name)??throw new InvalidDataException("Missing caller fixture");
         using var bytes=new MemoryStream();resource.CopyTo(bytes);return (name,bytes.ToArray());
     }).ToArray();
     var bundle=Call(bundleType,"Create",fixtureData,null)!;
@@ -64,7 +67,8 @@ if(args[0] is "caller-project-build" or "caller-project-policy")
     var callerPlan=Activator.CreateInstance(callerPlanType,6,callerNonce,new string('b',32),new string('c',32),Environment.ProcessId,new string('A',64),
         "9DE2A6DB90D8383F3738249D52F30DEFBEDB994513A8F2697E9D90693CD1D285",hash,callerProgramFiles)!;
     callerPlanType.GetProperty("DevelopProject")!.SetValue(callerPlan,true);callerPlanType.GetProperty("HostPrivacySHA256")!.SetValue(callerPlan,new string('F',64));
-    callerPlanType.GetProperty("CallerProjectKind")!.SetValue(callerPlan,"CSHARP_LITERAL_EDIT_BUILD_RUN_TEST_V1");
+    var selectedCallerKind=dataProjectFixture?"CSHARP_LITERAL_EDIT_DATA_BUILD_RUN_TEST_V2":"CSHARP_LITERAL_EDIT_BUILD_RUN_TEST_V1";
+    callerPlanType.GetProperty("CallerProjectKind")!.SetValue(callerPlan,selectedCallerKind);
     var project=library.GetType("ProtectionLifecycle.BundledProjectDevelopment",true)!;
     var callerWorkspace=Path.Combine(callerProgramFiles,"ClaudeCodeProtection-Task-"+callerNonce);
     var start=(ProcessStartInfo)Call(project,"Start",callerPlan,callerWorkspace)!;
@@ -72,7 +76,7 @@ if(args[0] is "caller-project-build" or "caller-project-policy")
     _=Call(callerPlanType,"Parse",JsonSerializer.Serialize(callerPlan,callerPlanType));
     callerPlanType.GetProperty("CallerProjectKind")!.SetValue(callerPlan,"OTHER_EXECUTOR");
     Refuse(()=>Call(project,"Start",callerPlan,callerWorkspace),"ResourceQualificationPlanRefused");
-    callerPlanType.GetProperty("CallerProjectKind")!.SetValue(callerPlan,"CSHARP_LITERAL_EDIT_BUILD_RUN_TEST_V1");
+    callerPlanType.GetProperty("CallerProjectKind")!.SetValue(callerPlan,selectedCallerKind);
     callerPlanType.GetProperty("SchemaVersion")!.SetValue(callerPlan,5);
     Refuse(()=>Call(project,"Start",callerPlan,callerWorkspace),"ResourceQualificationPlanRefused");
     if(args[0]=="caller-project-policy"){Console.WriteLine("PASS explicit caller v6 kind, input/privacy digest and original fixed tool start; wrong kind and v5 mixing refused; no product/Job/code execution");return 0;}
@@ -85,6 +89,13 @@ if(args[0] is "caller-project-build" or "caller-project-policy")
     try{taskType.GetMethod("VerifyResult",BindingFlags.Instance|BindingFlags.NonPublic)!.Invoke(task,new object[]{result});}
     catch(TargetInvocationException error)when(error.InnerException is not null){ExceptionDispatchInfo.Capture(error.InnerException).Throw();throw;}
     Call(files,"ExtractResultNew",Path.Combine(fixture,"exported"),baseline,result);
+    if(dataProjectFixture)
+    {
+        Require(File.ReadAllText(Path.Combine(fixture,"exported","cpc-results","summary.json"))=="{\"Count\":3,\"Total\":12}" &&
+            File.ReadAllBytes(Path.Combine(fixture,"exported","data","values.json")).AsSpan().SequenceEqual(fixtureData.Single(f=>f.name=="data/values.json").Item2) &&
+            File.ReadAllText(Path.Combine(fixture,"exported","cpc-output","test-result.txt"))=="3","selected data, generated JSON, unchanged input and three tests");
+        Console.WriteLine("PASS ordinary CallerDataReport: explicit data/result V2 intent and original fixed tool binding, actual Roslyn compile/run/three tests, eleven-file snapshot/verify/extract, Count=3 Total=12, unchanged data and restored CWD. No protected product/LPAC/Job/UAC/network/host probes; fixture="+fixture);return 0;
+    }
     Require(File.ReadAllText(Path.Combine(fixture,"exported","cpc-output","stdout.txt"))=="words=3" &&
         File.ReadAllText(Path.Combine(fixture,"exported","cpc-output","test-result.txt"))=="3" &&
         File.ReadAllText(Path.Combine(fixture,"exported","src","Counter.cs")).Contains("StringSplitOptions.RemoveEmptyEntries"),"caller literal edit, run, three tests and extraction");
@@ -169,8 +180,8 @@ if(args[0]=="inactive-transition")
 {
     var lease=library.GetType("ProtectionLifecycle.BootstrapInstaller",true)!
         .GetNestedType("PinnedInactiveUpdateLease",BindingFlags.NonPublic)!;
-    const string actualRelease="e6bd574f5e24492798215f4046248441";
-    const string actualManifest="61A02E2662DF4A7F5417F25777249BD3BC1D681D13B177FF5A249F64D391ACE5";
+    const string actualRelease="a3b6fab8dd684046b73a95dcd718b342";
+    const string actualManifest="C2BCCC13A5296971D0DE1B77BB7CC158A9FA0EDA36FCCF3B21BDDED7CF210AD2";
     // The replacement is a fixture selection, not an approved package or
     // installed transition. This executes only the real pure selection guard.
     var replacementRelease=new string('a',32);var replacementManifest=new string('A',64);

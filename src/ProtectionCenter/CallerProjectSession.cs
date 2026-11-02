@@ -24,6 +24,8 @@ internal sealed class CallerProjectSession
         text.AppendLine("原项目保留；本次结果写入你选择位置下的新目录。");
         text.AppendLine();
         foreach(var source in task.Definition.Sources)text.AppendLine("源码："+source);
+        foreach(var data in task.Definition.DataFiles??Array.Empty<string>())text.AppendLine("数据："+data);
+        foreach(var output in task.GeneratedFiles)text.AppendLine($"结果：{output.Path}（最多 {output.MaxBytes} 字节）");
         foreach(var edit in task.Definition.Edits)
         {
             text.AppendLine();text.AppendLine("修改："+edit.Path);
@@ -34,15 +36,19 @@ internal sealed class CallerProjectSession
     }
     internal static CallerProjectSession OpenBundle(string path)
     {WorkspaceFiles.RequireOrdinaryUser();WorkspaceFiles.RequireExternalProjectPath(path);return new(WorkspaceFiles.ReadBundle(path));}
-    internal static CallerProjectSession Create(string directory,string[] sources,CSharpProjectEdit[] edits,string entryType,string testType,int expectedTests)
+    internal static CallerProjectSession Create(string directory,string[] sources,CSharpProjectEdit[] edits,string entryType,string testType,int expectedTests,
+        string[]? dataFiles=null,CSharpProjectOutput[]? generatedFiles=null)
     {
         // Explicit selected files only: no recursive discovery, project-file
         // evaluation, restore, commands, or writes into the original project.
         WorkspaceFiles.RequireOrdinaryUser();
         if(sources.Length is <1 or >32 || sources.Any(p=>!p.EndsWith(".cs",StringComparison.Ordinal)))
             throw new InvalidDataException("Select one to 32 CSharp source files");
-        var captured=WorkspaceBundle.Parse(WorkspaceFiles.Capture(directory,sources));
-        var definition=new CSharpProjectDefinition(1,CSharpProjectTask.Kind,sources,edits,entryType,testType,expectedTests);
+        var extended=dataFiles is not null || generatedFiles is not null;
+        dataFiles=extended?dataFiles??Array.Empty<string>():null;generatedFiles=extended?generatedFiles??Array.Empty<CSharpProjectOutput>():null;
+        if(dataFiles is {Length:>64} || generatedFiles is {Length:>32})throw new InvalidDataException("Project data/result count exceeds limit");
+        var captured=WorkspaceBundle.Parse(WorkspaceFiles.Capture(directory,sources.Concat(dataFiles??Array.Empty<string>())));
+        var definition=new CSharpProjectDefinition(extended?2:1,extended?CSharpProjectTask.DataKind:CSharpProjectTask.Kind,sources,edits,entryType,testType,expectedTests,dataFiles,generatedFiles);
         var bytes=WorkspaceBundle.Create(captured.Files.Select(f=>(f.Path,f.Content)).Append(
             (CSharpProjectTask.Manifest,JsonSerializer.SerializeToUtf8Bytes(definition)))).Serialize();
         return new(bytes);
@@ -58,7 +64,14 @@ internal sealed class CallerProjectSession
         if(sources.ValueKind!=JsonValueKind.Array || sources.GetArrayLength() is <1 or >32)throw new InvalidDataException("Project source selection bounds");
         var selected=sources.EnumerateArray().Select(s=>WorkspaceBundle.Relative(s.GetString()??throw new InvalidDataException("Project source missing"))).ToArray();
         if(selected.Any(s=>!s.EndsWith(".cs",StringComparison.Ordinal)))throw new InvalidDataException("Only declared CSharp source files selected");
-        var bytes=WorkspaceFiles.Capture(directory,selected.Append(CSharpProjectTask.Manifest));
+        var dataFiles=Array.Empty<string>();
+        if(json.RootElement.GetProperty("SchemaVersion").GetInt32()==2)
+        {
+            var data=json.RootElement.GetProperty("DataFiles");
+            if(data.ValueKind!=JsonValueKind.Array || data.GetArrayLength()>64)throw new InvalidDataException("Project data selection bounds");
+            dataFiles=data.EnumerateArray().Select(s=>WorkspaceBundle.Relative(s.GetString()??throw new InvalidDataException("Project data path missing"))).ToArray();
+        }
+        var bytes=WorkspaceFiles.Capture(directory,selected.Concat(dataFiles).Append(CSharpProjectTask.Manifest));
         if(!WorkspaceBundle.Parse(bytes).Files.Single(f=>f.Path==CSharpProjectTask.Manifest).Content.AsSpan().SequenceEqual(first))
             throw new InvalidDataException("Project manifest changed during selection");
         return new(bytes);
@@ -93,7 +106,7 @@ internal sealed class CallerProjectSession
             r.GetProperty("NetworkOpened").GetBoolean() || r.GetProperty("UACAutoConfirmed").GetBoolean())throw new InvalidDataException("Project completion scope differs");
         _=HostPrivacyContract.Parse(r.GetProperty("HostPrivacy"),session,true);
         var bytes=WorkspaceFiles.ReadBundle(run.ResultPath);task.VerifyResult(bytes);
-        if(WorkspaceBundle.Hash(bytes)!=r.GetProperty("ResultSHA256").GetString() || r.GetProperty("FileCount").GetInt32()!=task.Baseline.Files.Length+CSharpProjectTask.Outputs.Length)
+        if(WorkspaceBundle.Hash(bytes)!=r.GetProperty("ResultSHA256").GetString() || r.GetProperty("FileCount").GetInt32()!=task.ResultPaths.Length)
             throw new InvalidDataException("Project completion digest/inventory differs");
         var changes=r.GetProperty("Changes");foreach(var change in changes.EnumerateArray())HostPrivacyContract.Fields(change,"Path","Kind","BeforeSHA256","AfterSHA256");
         var reported=JsonSerializer.Deserialize<WorkspaceChange[]>(changes.GetRawText())??throw new InvalidDataException("Project changes missing");

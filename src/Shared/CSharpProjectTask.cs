@@ -1,17 +1,23 @@
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace ClaudeCodeProtection.Workspaces;
 
 internal sealed record CSharpProjectEdit(string Path,string Before,string After);
+internal sealed record CSharpProjectOutput(string Path,int MaxBytes);
 internal sealed record CSharpProjectDefinition(int SchemaVersion,string Kind,string[] Sources,
-    CSharpProjectEdit[] Edits,string EntryType,string TestType,int ExpectedTests);
+    CSharpProjectEdit[] Edits,string EntryType,string TestType,int ExpectedTests,
+    [property:JsonIgnore(Condition=JsonIgnoreCondition.WhenWritingNull)] string[]? DataFiles=null,
+    [property:JsonIgnore(Condition=JsonIgnoreCondition.WhenWritingNull)] CSharpProjectOutput[]? GeneratedFiles=null);
 
 // Explicit caller code task, separate from DATA and the embedded sample. This
 // manifest is data: no MSBuild imports, package restore, commands or host paths.
 internal sealed class CSharpProjectTask
 {
     internal const string Manifest="cpc-project.json",Kind="CSHARP_LITERAL_EDIT_BUILD_RUN_TEST_V1";
+    internal const string DataKind="CSHARP_LITERAL_EDIT_DATA_BUILD_RUN_TEST_V2",ResultDirectory="cpc-results";
+    internal static bool IsKind(string? kind)=>kind is Kind or DataKind;
     internal const string OutputDirectory="cpc-output";
     internal static readonly string[] Outputs={"cpc-output/CpcProject.dll","cpc-output/run-result.json",
         "cpc-output/test-result.txt","cpc-output/stdout.txt","cpc-output/stderr.txt"};
@@ -19,6 +25,8 @@ internal sealed class CSharpProjectTask
     internal CSharpProjectDefinition Definition {get;}
     internal WorkspaceBundle Baseline {get;}
     internal string BaselineSHA256 {get;}
+    internal CSharpProjectOutput[] GeneratedFiles=>Definition.GeneratedFiles??Array.Empty<CSharpProjectOutput>();
+    internal string[] ResultPaths=>Baseline.Files.Select(f=>f.Path).Concat(Outputs).Concat(GeneratedFiles.Select(f=>f.Path)).ToArray();
     private CSharpProjectTask(CSharpProjectDefinition definition,WorkspaceBundle baseline,string digest)
     {Definition=definition;Baseline=baseline;BaselineSHA256=digest;}
     internal static CSharpProjectTask Parse(byte[] bytes)
@@ -30,12 +38,21 @@ internal sealed class CSharpProjectTask
         var manifests=baseline.Files.Where(f=>f.Path==Manifest).ToArray();
         if(manifests.Length!=1 || manifests[0].Content.Length is <1 or >65536)throw new InvalidDataException("Explicit CSharp project manifest required");
         using var json=JsonDocument.Parse(manifests[0].Content,new JsonDocumentOptions{MaxDepth=5});
-        Fields(json.RootElement,"SchemaVersion","Kind","Sources","Edits","EntryType","TestType","ExpectedTests");
+        var schema=json.RootElement.GetProperty("SchemaVersion").GetInt32();
+        var fields=new[]{"SchemaVersion","Kind","Sources","Edits","EntryType","TestType","ExpectedTests"};
+        Fields(json.RootElement,schema==2?fields.Concat(new[]{"DataFiles","GeneratedFiles"}).ToArray():fields);
         if(json.RootElement.GetProperty("Edits").ValueKind!=JsonValueKind.Array || json.RootElement.GetProperty("Edits").GetArrayLength()>32)
             throw new InvalidDataException("Caller project edit bounds");
         foreach(var edit in json.RootElement.GetProperty("Edits").EnumerateArray())Fields(edit,"Path","Before","After");
+        if(schema==2)
+        {
+            var generated=json.RootElement.GetProperty("GeneratedFiles");
+            if(generated.ValueKind!=JsonValueKind.Array || generated.GetArrayLength()>32)throw new InvalidDataException("Caller generated file bounds");
+            foreach(var file in generated.EnumerateArray())Fields(file,"Path","MaxBytes");
+        }
         var definition=JsonSerializer.Deserialize<CSharpProjectDefinition>(manifests[0].Content)??throw new InvalidDataException("Caller project manifest missing");
-        if(definition.SchemaVersion!=1 || definition.Kind!=Kind || definition.Sources is null || definition.Sources.Length is <1 or >32 ||
+        if(!(definition.SchemaVersion==1 && definition.Kind==Kind || definition.SchemaVersion==2 && definition.Kind==DataKind) ||
+            definition.Sources is null || definition.Sources.Length is <1 or >32 ||
             definition.Edits is null || definition.Edits.Length is <1 or >32 || definition.ExpectedTests is <1 or >256 ||
             !TypeName(definition.EntryType) || !TypeName(definition.TestType) || definition.EntryType==definition.TestType)
             throw new InvalidDataException("Caller project task contract refused");
@@ -45,6 +62,25 @@ internal sealed class CSharpProjectTask
             if(WorkspaceBundle.Relative(path)!=path || !path.EndsWith(".cs",StringComparison.Ordinal) || !names.Add(path) ||
                 !baseline.Files.Any(f=>f.Path==path))throw new InvalidDataException("Caller source inventory refused");
             _=Utf8.GetString(baseline.Files.Single(f=>f.Path==path).Content);
+        }
+        if(schema==2)
+        {
+            if(definition.DataFiles is null || definition.DataFiles.Length>64 || definition.GeneratedFiles is null || definition.GeneratedFiles.Length>32)
+                throw new InvalidDataException("Explicit data/result selection required");
+            foreach(var path in definition.DataFiles)
+                if(WorkspaceBundle.Relative(path)!=path || !names.Add(path) || !baseline.Files.Any(f=>f.Path==path))
+                    throw new InvalidDataException("Caller data inventory refused");
+            if(!names.Add(Manifest) || baseline.Files.Length!=names.Count || baseline.Files.Any(f=>!names.Contains(f.Path)))
+                throw new InvalidDataException("Only declared sources and data can enter the project");
+            foreach(var output in definition.GeneratedFiles)
+                if(output is null || WorkspaceBundle.Relative(output.Path)!=output.Path || !output.Path.StartsWith(ResultDirectory+"/",StringComparison.Ordinal) ||
+                    output.MaxBytes is <1 or >WorkspaceBundle.MaxFileBytes || !names.Add(output.Path))
+                    throw new InvalidDataException("Caller generated file declaration refused");
+            if(baseline.Files.Any(f=>f.Path.Equals(ResultDirectory,StringComparison.OrdinalIgnoreCase) || f.Path.StartsWith(ResultDirectory+"/",StringComparison.OrdinalIgnoreCase)) ||
+                baseline.Files.Sum(f=>(long)f.Content.Length)+definition.GeneratedFiles.Sum(f=>(long)f.MaxBytes)+WorkspaceBundle.MaxFileBytes+65536>WorkspaceBundle.MaxTotalBytes)
+                throw new InvalidDataException("Caller generated file budget or fresh namespace refused");
+            // Reuse canonical directory/file collision validation before work.
+            _=WorkspaceBundle.Create(names.Concat(Outputs).Select(p=>(p,Array.Empty<byte>())));
         }
         foreach(var edit in definition.Edits)
             if(edit is null || !definition.Sources.Contains(edit.Path,StringComparer.Ordinal) || edit.Before is null || edit.Before.Length is <1 or >16384 ||
@@ -70,8 +106,8 @@ internal sealed class CSharpProjectTask
     internal void VerifyResult(byte[] bytes)
     {
         var result=WorkspaceBundle.Parse(bytes);
-        if(result.BaseSHA256!=BaselineSHA256 || result.Files.Length!=Baseline.Files.Length+Outputs.Length ||
-            !new HashSet<string>(result.Files.Select(f=>f.Path),StringComparer.Ordinal).SetEquals(Baseline.Files.Select(f=>f.Path).Concat(Outputs)))
+        if(result.BaseSHA256!=BaselineSHA256 || result.Files.Length!=ResultPaths.Length ||
+            !new HashSet<string>(result.Files.Select(f=>f.Path),StringComparer.Ordinal).SetEquals(ResultPaths))
             throw new InvalidDataException("Caller project result inventory differs");
         foreach(var expected in ModifiedFiles())
             if(!result.Files.Single(f=>f.Path==expected.Path).Content.AsSpan().SequenceEqual(expected.Content))throw new InvalidDataException("Caller project result source edit differs");
@@ -88,6 +124,8 @@ internal sealed class CSharpProjectTask
         if(!File(Outputs[2]).AsSpan().SequenceEqual(Encoding.ASCII.GetBytes(Definition.ExpectedTests.ToString(System.Globalization.CultureInfo.InvariantCulture))))
             throw new InvalidDataException("Caller project test count differs");
         foreach(var path in Outputs.Skip(3)){var output=File(path);if(output.Length>16384)throw new InvalidDataException("Caller project text output bounds");_=Utf8.GetString(output);}
+        foreach(var output in GeneratedFiles)
+            if(File(output.Path).Length>output.MaxBytes)throw new InvalidDataException("Caller generated file exceeds reviewed size limit");
     }
     private static void Fields(JsonElement value,params string[] expected)
     {

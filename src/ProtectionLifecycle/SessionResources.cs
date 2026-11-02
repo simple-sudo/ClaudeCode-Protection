@@ -31,7 +31,7 @@ internal sealed record ResourceProbePlan(int SchemaVersion,string Nonce,string I
     internal void Validate()
     {
         if(SchemaVersion!=(DevelopProject?(CallerProjectKind is null?5:6):3) || BrokerPid<=0 || WindowsPathSeal.Canonical(ProgramFilesRoot)!=ProgramFilesRoot ||
-            CallerProjectKind is not null && (!DevelopProject || CallerProjectKind!=CSharpProjectTask.Kind) ||
+            CallerProjectKind is not null && (!DevelopProject || !CSharpProjectTask.IsKind(CallerProjectKind)) ||
             (DevelopProject?!WorkspaceBundle.IsHash(HostPrivacySHA256):HostPrivacySHA256 is not null))throw WfpNative.Contract("ResourceQualificationPlanRefused");
         _=Identifiers.Hex32(Nonce);_=Identifiers.Hex32(InstallationId);_=Identifiers.Hex32(Release);_=Identifiers.Hash(ToolSHA256);
         if(GitAssetSetSHA256 is not null && GitAssetSetSHA256!=SessionGitToolchain.AssetSetSHA256)throw WfpNative.Contract("GitAssetSetNotReviewed");
@@ -97,7 +97,7 @@ internal sealed class SessionResources : IDisposable
         using var sid=new InstallationPackageSid(state);profile.AssertPackage(sid);
         if(callerProject && !developProject)throw WfpNative.Contract("ExplicitCallerCodeTaskRequired");
         if(developProject && (!includeGit || workspaceInput is null || !callerProject && WorkspaceBundle.Hash(workspaceInput)!=BundledProjectDevelopment.BaselineHash))throw WfpNative.Contract("ExplicitBundledProjectTaskRequired");
-        if(callerProject)_=CSharpProjectTask.Parse(workspaceInput!);
+        var callerTask=callerProject?CSharpProjectTask.Parse(workspaceInput!):null;
         var tool=workspaceInput is null || developProject?SessionPowerShellToolchain.Open():null;
         PathLease? directory=null;FileStream? input=null,projectInput=null,allPackagesFixture=null;SessionGitToolchain? git=null;
         HostPrivacyProbe? privacy=null;
@@ -108,7 +108,7 @@ internal sealed class SessionResources : IDisposable
             if(developProject)privacy=HostPrivacyProbe.Capture(nonce,state.InstallationId,version.Package.Release);
             var plan=new ResourceProbePlan(developProject?(callerProject?6:5):3,Identifiers.Hex32(nonce),state.InstallationId,version.Package.Release,Environment.ProcessId,hash,
                 includeGit?SessionGitToolchain.AssetSetSHA256:null,workspaceInput is null?null:WorkspaceBundle.Hash(workspaceInput),
-                WindowsPathSeal.Canonical(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles))){DevelopProject=developProject,HostPrivacySHA256=privacy?.SHA256,CallerProjectKind=callerProject?CSharpProjectTask.Kind:null};plan.Validate();
+                WindowsPathSeal.Canonical(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles))){DevelopProject=developProject,HostPrivacySHA256=privacy?.SHA256,CallerProjectKind=callerTask?.Definition.Kind};plan.Validate();
             if(!string.Equals(plan.ExpectedChildImage,Environment.ProcessPath,StringComparison.OrdinalIgnoreCase) || includeGit && plan.Workspace("")!=SessionTaskWorkspace.PathFor(nonce))
                 throw WfpNative.Contract("ResourceRuntimePathsDifferFromInstalledOwner");
             if(workspaceInput is not null)

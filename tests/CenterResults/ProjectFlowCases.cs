@@ -83,6 +83,33 @@ internal static class ProjectFlowCases
         var extracted=Path.Combine(run.Directory,"files");accepted.ExtractNew(extracted);
         Require(File.ReadAllText(Path.Combine(extracted,"Entry.cs")).Contains("return 0;"),"accepted immutable snapshots survive later input/result replacement");
         Require(File.ReadAllText(Path.Combine(folder,"Entry.cs")).Contains("return -1;"),"original source tree unchanged");
+        var dataFolder=Path.Combine(fixture,"data-project");Directory.CreateDirectory(dataFolder);
+        File.WriteAllText(Path.Combine(dataFolder,"Entry.cs"),"namespace Demo; public static class Entry {public static int Run(){return -1;}}");
+        File.WriteAllText(Path.Combine(dataFolder,"Checks.cs"),"namespace Demo; public static class Checks {public static int Run(){return 1;}}");
+        File.WriteAllBytes(Path.Combine(dataFolder,"input.bin"),new byte[]{0,128,255});
+        File.WriteAllText(Path.Combine(dataFolder,"unselected.txt"),"not selected");
+        var dataTask=CallerProjectSession.Create(dataFolder,definition.Sources,definition.Edits,definition.EntryType,definition.TestType,1,
+            new[]{"input.bin"},new[]{new CSharpProjectOutput("cpc-results/report.json",128)});
+        Require(dataTask.ReviewText.Contains("数据：input.bin") && dataTask.ReviewText.Contains("cpc-results/report.json") && dataTask.ReviewText.Contains("128 字节"),"data and result limits reviewed before execution");
+        var dataRun=dataTask.PlanRun(fixture);dataTask.WriteInput(dataRun);var dataBytes=WorkspaceFiles.ReadBundle(dataRun.InputPath);var dataParsed=CSharpProjectTask.Parse(dataBytes);
+        Require(dataParsed.Definition.SchemaVersion==2 && dataParsed.Baseline.Files.Length==4 && dataParsed.ResultPaths.Length==10,"GUI captures explicit source/data/manifest only");
+        File.WriteAllBytes(Path.Combine(dataFolder,CSharpProjectTask.Manifest),dataParsed.Baseline.Files.Single(f=>f.Path==CSharpProjectTask.Manifest).Content);
+        Require(CallerProjectSession.OpenFolder(dataFolder).InputSHA256==dataTask.InputSHA256,"V2 folder import reads exactly declared data");
+        File.WriteAllBytes(Path.Combine(dataFolder,"input.bin"),new byte[]{1});
+        var savedData=Path.Combine(fixture,"data-task.json");dataTask.SaveBundle(savedData);
+        Require(CallerProjectSession.OpenBundle(savedData).InputSHA256==dataTask.InputSHA256,"later data edits cannot change prepared snapshot");
+        var dataResults=WorkspaceBundle.Create(dataParsed.ModifiedFiles().Select(f=>(f.Path,f.Content)).Concat(outputs).Append(
+            ("cpc-results/report.json","{\"ok\":true}"u8.ToArray())),dataTask.InputSHA256).Serialize();
+        WorkspaceFiles.WriteBundleNew(dataRun.ResultPath,dataResults);
+        var dataReply=JsonSerializer.Serialize(new{Status="CALLER_CSHARP_PROJECT_RESULT_RECEIVED",SessionId=id,BaseSHA256=dataTask.InputSHA256,
+            ResultSHA256=WorkspaceBundle.Hash(dataResults),FileCount=dataParsed.ResultPaths.Length,Changes=WorkspaceBundle.Compare(dataBytes,dataResults),
+            OriginalProjectModified=false,ProjectCodeExecuted=true,HostPrivacy=privacy,OwnerSealedBeforeCode=true,FormalAdmissionIssued=false,NetworkOpened=false,UACAutoConfirmed=false});
+        var dataAccepted=dataTask.AcceptResult(dataRun,new(0,dataReply,""));checks++;
+        var dataExtracted=Path.Combine(dataRun.Directory,"files");dataAccepted.ExtractNew(dataExtracted);
+        Require(File.ReadAllText(Path.Combine(dataExtracted,"cpc-results","report.json"))=="{\"ok\":true}" &&
+            File.ReadAllBytes(Path.Combine(dataExtracted,"input.bin")).AsSpan().SequenceEqual(new byte[]{0,128,255}),"GUI restores declared result with reviewed unchanged binary data");
+        Refuse(()=>CallerProjectSession.Create(dataFolder,definition.Sources,definition.Edits,definition.EntryType,definition.TestType,1,
+            new[]{"../input.bin"},Array.Empty<CSharpProjectOutput>()),"data cannot escape selected project");
         return checks;
     }
 }
