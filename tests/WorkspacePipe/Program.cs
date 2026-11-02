@@ -27,6 +27,7 @@ if(args[0]=="privacy-contract")
     void Reject(HostPrivacySummary value,string reason,bool success=true)
     {var rejected=false;try{HostPrivacyContract.Parse(JsonSerializer.SerializeToElement(value),session,success);}catch(InvalidDataException){rejected=true;}Require(rejected,reason);}
     Reject(good with {PolicySHA256=new string('B',64)},"wrong compiled policy");
+    Reject(good with {RootCases=good.RootCases.Take(14).ToArray(),ToolCases=good.ToolCases.Take(14).ToArray()},"legacy inventory lacks owner-control denials");
     Reject(good with {PlanSHA256="DATA"},"invalid sealed plan digest");
     Reject(good with {SessionId=new string('b',32)},"foreign session");
     Reject(good with {RootPid=0},"missing root actor");
@@ -36,6 +37,11 @@ if(args[0]=="privacy-contract")
     Require(!HostPrivacyContract.Satisfied(partial),"root-only failure observation is not complete protection");
     foreach(var tool in new[]{false,true})
     {
+        for(var i=14;i<23;i++)
+        {
+            var exposed=Privacy();(tool?exposed.ToolCases:exposed.RootCases)[i]=new(HostPrivacyContract.Roles[i],HostPrivacyContract.Kind(i),"OPENED",0);
+            Reject(exposed,"each individual owner-control exposure refuses authenticated result");
+        }
         foreach(var replacement in new[]{new HostPrivacyCase(HostPrivacyContract.Roles[0],HostPrivacyContract.Kind(0),"OPENED",0),
             new HostPrivacyCase(HostPrivacyContract.Roles[0],HostPrivacyContract.Kind(0),"UNKNOWN",2),
             new HostPrivacyCase(HostPrivacyContract.Roles[0],HostPrivacyContract.Kind(0),"UNKNOWN",32)})

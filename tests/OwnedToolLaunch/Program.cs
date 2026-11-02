@@ -8,7 +8,7 @@ using System.Text.Json;
 using System.Runtime.InteropServices;
 using Microsoft.Win32.SafeHandles;
 
-if(args.Length!=1 || args[0] is not ("policy" or "messages" or "handle-transfer" or "fault-mode" or "fault-mode-read" or "partial-output" or "hosted-policy" or "etw-policy" or "tls-transport-policy" or "etw-token-access" or "inactive-transition" or "project-policy" or "project-build" or "privacy-native" or "caller-project-build" or "caller-project-policy"))return 125;
+if(args.Length!=1 || args[0] is not ("policy" or "messages" or "handle-transfer" or "fault-mode" or "fault-mode-read" or "partial-output" or "hosted-policy" or "etw-policy" or "tls-transport-policy" or "etw-token-access" or "inactive-transition" or "project-policy" or "project-build" or "privacy-native" or "caller-project-build" or "caller-project-policy" or "self-control-open"))return 125;
 try
 {
 using var identity=WindowsIdentity.GetCurrent();
@@ -27,6 +27,23 @@ void Refuse(Action action,string reason)
     throw new InvalidOperationException("Expected refusal: "+reason);
 }
 var launch=library.GetType("ProtectionLifecycle.OwnedToolLaunch",true)!;
+if(args[0]=="self-control-open")
+{
+    var probe=library.GetType("ProtectionLifecycle.HostPrivacyProbe",true)!;
+    for(var index=14;index<23;index++)
+    {
+        Call(probe,"RequireOwnerTarget","",Environment.ProcessId,null,Environment.ProcessId,index);
+        Require((int)Call(probe,"OwnerAccessOpen",Environment.ProcessId,index)! ==0,"ordinary self maintenance minimal-right positive control "+index);
+    }
+    Refuse(()=>Call(probe,"RequireOwnerTarget","",Environment.ProcessId+1,null,Environment.ProcessId,15),"ProtectionOwnerTargetBindingDiffers");
+    Refuse(()=>Call(probe,"RequireOwnerTarget","supplied-host-path",Environment.ProcessId,null,Environment.ProcessId,15),"ProtectionOwnerTargetBindingDiffers");
+    Refuse(()=>Call(probe,"RequireOwnerTarget","",Environment.ProcessId,"supplied-identity",Environment.ProcessId,15),"ProtectionOwnerTargetBindingDiffers");
+    Refuse(()=>Call(probe,"RequireOwnerTarget","",0,null,0,15),"ProtectionOwnerTargetBindingDiffers");
+    Refuse(()=>Call(probe,"OwnerAccessOpen",0,15),"ProtectionOwnerProcessRequired");
+    var unknownOwnerRight=false;try{Call(probe,"OwnerAccessOpen",Environment.ProcessId,23);}catch(InvalidDataException){unknownOwnerRight=true;}
+    Require(unknownOwnerRight,"undefined right rejected before native open");
+    Console.WriteLine("PASS nine minimal process-right opens on this own ordinary test process; owner binding, foreign PID/path/identity, zero PID and undefined right checked. Handles closed unused; no process memory read/write, termination, suspension, injection, duplication, ACL change, host target, UAC, Broker/Job or LPAC test");return 0;
+}
 if(args[0] is "caller-project-build" or "caller-project-policy")
 {
     var bundleType=library.GetType("ClaudeCodeProtection.Workspaces.WorkspaceBundle",true)!;
@@ -152,8 +169,8 @@ if(args[0]=="inactive-transition")
 {
     var lease=library.GetType("ProtectionLifecycle.BootstrapInstaller",true)!
         .GetNestedType("PinnedInactiveUpdateLease",BindingFlags.NonPublic)!;
-    const string actualRelease="35a0106aa1f94362ae73242f2e18da2a";
-    const string actualManifest="58E8D97CE58C48EFA4C6FFFC86B236CB10DE7CFC50BB424CDDF4034136AAFCFB";
+    const string actualRelease="e6bd574f5e24492798215f4046248441";
+    const string actualManifest="61A02E2662DF4A7F5417F25777249BD3BC1D681D13B177FF5A249F64D391ACE5";
     // The replacement is a fixture selection, not an approved package or
     // installed transition. This executes only the real pure selection guard.
     var replacementRelease=new string('a',32);var replacementManifest=new string('A',64);

@@ -64,6 +64,16 @@ internal static class HostPrivacyExecutionGateCases
             Refuse(()=>deniedTool.SealTool(unknown,222),"unknown tool slot "+i);
             Refuse(deniedTool.ReleaseExecution,"invalid tool cannot release code "+i);
         }
-        Console.WriteLine($"PASS {checks} original-owner pre-code gate checks: phase ordering, single compiler/release, exact actors/context, all14 failed slots, immutable source/returned snapshots; pure synthetic reports, NOT LPAC/native host privacy or live Job qualification");
+        // Earlier V1 evidence cannot satisfy the new protection-owner policy,
+        // including the case where the new fields were simply omitted.
+        var legacy=Observation(111) with {Cases=Observation(111).Cases.Take(14).ToArray()};
+        Refuse(()=>Gate().SealRoot(legacy,111),"old 14-slot root evidence");
+        Require(HostPrivacyContract.Roles.Length==23,"14 host and nine owner access cases required");
+        var masks=Enumerable.Range(14,9).Select(HostPrivacyContract.OwnerAccess).ToArray();
+        Require(masks.SequenceEqual(new uint[]{0x10,0x1,0x2,0x8,0x20,0x40,0x800,0x40000,0x80000}),"each owner right has exact minimal mask");
+        Require(masks.Distinct().Count()==9 && masks.All(m=>(m&(m-1))==0),"no combined or repeated rights hide exposure");
+        Refuse(()=>HostPrivacyContract.OwnerAccess(13),"host case cannot request owner rights");
+        Refuse(()=>HostPrivacyContract.OwnerAccess(23),"undefined owner rights");
+        Console.WriteLine($"PASS {checks} original-owner pre-code gate checks: phase ordering, single compiler/release, exact actors/context, all{HostPrivacyContract.Roles.Length} failed slots, legacy inventory refusal, minimal owner masks, immutable snapshots; pure synthetic reports, NOT LPAC/native host privacy or live Job qualification");
     }
 }

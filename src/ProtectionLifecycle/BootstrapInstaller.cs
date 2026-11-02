@@ -226,7 +226,11 @@ public static class BootstrapInstaller
             // Recorded 35a INACTIVE GUI package. Only its exact manifest is
             // eligible for selection; live closure, quarantine, ownership and
             // pending-resource checks still run before an authorized update.
-            "58E8D97CE58C48EFA4C6FFFC86B236CB10DE7CFC50BB424CDDF4034136AAFCFB"
+            "58E8D97CE58C48EFA4C6FFFC86B236CB10DE7CFC50BB424CDDF4034136AAFCFB",
+            // e6bd task-authoring package installed with human-controlled UAC.
+            // This pin only selects the known prior manifest; every original
+            // live inactive-maintenance check remains required.
+            "61A02E2662DF4A7F5417F25777249BD3BC1D681D13B177FF5A249F64D391ACE5"
         };
         private readonly ProtectedState state;
         private readonly BootstrapApproval approval;

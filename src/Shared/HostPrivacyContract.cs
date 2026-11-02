@@ -13,13 +13,27 @@ internal sealed record HostPrivacySummary(string PolicySHA256,string PlanSHA256,
 // a claim that all host information, MAC/BSSID, COM or device APIs are hidden.
 internal static class HostPrivacyContract
 {
+    internal const int HostResourceCount=14;
     internal static readonly string[] Roles={"flclash-config-json","flclash-config-yaml","flclash-preferences",
         "uu-user-settings","uu-user-configures","uu-system-user","uu-system-assist",
         "private-claude-settings","private-git-config","device-machine-guid","proxy-user-key",
-        "flclash-ui-memory","flclash-core-memory","uu-service-memory"};
-    internal static string Kind(int index)=>index<9?"file-read-data-open":index<11?"registry-query-value-open":"process-vm-read-open";
+        "flclash-ui-memory","flclash-core-memory","uu-service-memory",
+        "protection-owner-memory","protection-owner-terminate","protection-owner-create-thread",
+        "protection-owner-vm-operation","protection-owner-vm-write","protection-owner-duplicate-handle",
+        "protection-owner-suspend-resume","protection-owner-write-dacl","protection-owner-write-owner"};
+    // One minimal right per open: denial of an unrelated additional right
+    // must never hide an exposed terminate/injection/handle-control right.
+    internal static uint OwnerAccess(int index)=>index switch {
+        14=>0x10,15=>0x1,16=>0x2,17=>0x8,18=>0x20,19=>0x40,20=>0x800,21=>0x40000,22=>0x80000,
+        _=>throw new InvalidDataException("Unknown protection owner access case")};
+    internal static string Kind(int index)=>index switch {
+        >=0 and <9=>"file-read-data-open",>=9 and <11=>"registry-query-value-open",>=11 and <=14=>"process-vm-read-open",
+        15=>"process-terminate-open",16=>"process-create-thread-open",17=>"process-vm-operation-open",18=>"process-vm-write-open",
+        19=>"process-duplicate-handle-open",20=>"process-suspend-resume-open",21=>"process-write-dacl-open",22=>"process-write-owner-open",
+        _=>throw new InvalidDataException("Unknown host privacy case")};
     internal static string PolicySHA256=>Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(
-        "CPC-HOST-PRIVACY-OPEN-ONLY-V1\nFILE_READ_DATA=1;OVERLAPPED;SHARE=7;REG_QUERY_VALUE=1;VIEW64;PROCESS_VM_READ=16;NO_CONTENT_READ\n"+
+        "CPC-HOST-PRIVACY-OWNER-CONTROL-OPEN-ONLY-V2\nFILE_READ_DATA=1;OVERLAPPED;SHARE=7;REG_QUERY_VALUE=1;VIEW64;PROCESS_VM_READ=16;NO_CONTENT_READ;NO_PROCESS_OPERATION\n"+
+        string.Join(";",Enumerable.Range(HostResourceCount,Roles.Length-HostResourceCount).Select(i=>Roles[i]+"="+OwnerAccess(i)))+"\n"+
         string.Join("\n",Roles.Select((role,i)=>role+"|"+Kind(i))))));
     internal static void ValidateCases(HostPrivacyCase[] cases,bool allowEmpty=false)
     {

@@ -61,8 +61,20 @@ internal sealed class HostPrivacyProbe : IDisposable
                     finally{foreach(var process in candidates)process.Dispose();}
                 }
                 return new Target(HostPrivacyContract.Roles[i],HostPrivacyContract.Kind(i),path,pid,identity);
-            }).ToArray();
-            var result=new HostPrivacyProbe(new(1,Identifiers.Hex32(session),Identifiers.Hex32(installation),Identifiers.Hex32(release),targets),held);
+            }).ToList();
+            // The original installed owner selects ONLY itself, never a
+            // caller PID or a process-name discovery. Keep an independent
+            // query/wait handle alive through both actors and result release.
+            var owner=OpenProcess(0x101000,false,checked((uint)Environment.ProcessId));
+            if(owner.IsInvalid){owner.Dispose();throw new Win32Exception(Marshal.GetLastWin32Error(),"Protection owner metadata");}
+            held.Add(owner);
+            for(var i=HostPrivacyContract.HostResourceCount;i<HostPrivacyContract.Roles.Length;i++)
+            {
+                var error=OwnerAccessOpen(Environment.ProcessId,i);
+                if(error!=0)throw new Win32Exception(error,"Protection owner maintenance positive control");
+                targets.Add(new(HostPrivacyContract.Roles[i],HostPrivacyContract.Kind(i),"",Environment.ProcessId,null));
+            }
+            var result=new HostPrivacyProbe(new(1,Identifiers.Hex32(session),Identifiers.Hex32(installation),Identifiers.Hex32(release),targets.ToArray()),held);
             result.AssertTargetsCurrent();return result;
         }
         catch{foreach(var handle in held)handle.Dispose();throw;}
@@ -137,9 +149,13 @@ internal sealed class HostPrivacyProbe : IDisposable
             throw WfpNative.Contract("HostPrivacyPlanContextDiffers");
         var observations=plan.Targets.Select((target,i)=>
         {
-            if(target.Role!=HostPrivacyContract.Roles[i] || target.Kind!=HostPrivacyContract.Kind(i) || target.Path.Length is <1 or >1024 ||
-                target.Path.Contains('\0') || (i<11?target.Pid!=0:target.Pid<=0))throw WfpNative.Contract("HostPrivacyTargetContractDiffers");
-            var error=i<9?FileReadOpen(target.Path):i<11?RegistryReadOpen(i==9,target.Path):ProcessReadOpen(target.Pid);
+            if(target.Role!=HostPrivacyContract.Roles[i] || target.Kind!=HostPrivacyContract.Kind(i) ||
+                i<HostPrivacyContract.HostResourceCount &&
+                (target.Path.Length is <1 or >1024 || target.Path.Contains('\0') || (i<11?target.Pid!=0:target.Pid<=0)))
+                throw WfpNative.Contract("HostPrivacyTargetContractDiffers");
+            if(i>=HostPrivacyContract.HostResourceCount)RequireOwnerTarget(target.Path,target.Pid,target.Identity,resource.BrokerPid,i);
+            var error=i>=HostPrivacyContract.HostResourceCount?OwnerAccessOpen(target.Pid,i):
+                i<9?FileReadOpen(target.Path):i<11?RegistryReadOpen(i==9,target.Path):ProcessReadOpen(target.Pid);
             return new HostPrivacyCase(target.Role,target.Kind,error==5?"ACCESS_DENIED":error==0?"OPENED":"UNKNOWN",error);
         }).ToArray();
         var report=new HostPrivacyObservation(1,resource.Nonce,resource.HostPrivacySHA256,Environment.ProcessId,observations);
@@ -159,6 +175,20 @@ internal sealed class HostPrivacyProbe : IDisposable
     {var error=RegistryReadOpen(machine,path);if(error!=0)throw new Win32Exception(error,"Host privacy key positive control");}
     private static int ProcessReadOpen(int pid)
     {using var handle=OpenProcess(0x10,false,checked((uint)pid));return handle.IsInvalid?Marshal.GetLastWin32Error():0;}
+    private static int OwnerAccessOpen(int pid,int index)
+    {
+        var access=HostPrivacyContract.OwnerAccess(index);
+        if(pid<=0)throw WfpNative.Contract("ProtectionOwnerProcessRequired");
+        // Close immediately. Never use the acquired right, even on exposure.
+        using var handle=OpenProcess(access,false,checked((uint)pid));
+        return handle.IsInvalid?Marshal.GetLastWin32Error():0;
+    }
+    private static void RequireOwnerTarget(string path,int pid,string? identity,int ownerPid,int index)
+    {
+        _=HostPrivacyContract.OwnerAccess(index);
+        if(path!="" || identity is not null || ownerPid<=0 || pid!=ownerPid)
+            throw WfpNative.Contract("ProtectionOwnerTargetBindingDiffers");
+    }
     private static bool ProcessAlive(SafeProcessHandle process)=>WaitForSingleObject(process,0)==258;
     private static string FileIdentity(string path)
     {
