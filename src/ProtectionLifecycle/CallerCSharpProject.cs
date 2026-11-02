@@ -1,5 +1,4 @@
 using System.Reflection;
-using System.Runtime.ExceptionServices;
 using System.Runtime.Loader;
 using System.Text;
 using System.Text.Json;
@@ -35,15 +34,17 @@ internal static class CallerCSharpProject
             // relative I/O now belongs in its copied project, never the host.
             Directory.SetCurrentDirectory(project);
             var compiled=AssemblyLoadContext.Default.LoadFromAssemblyPath(path);
-            int Run(string type)
+            int Run(string type,string stage)
             {
-                var method=compiled.GetType(type,true)!.GetMethod("Run",BindingFlags.Public|BindingFlags.Static|BindingFlags.DeclaredOnly,null,Type.EmptyTypes,null);
-                if(method is null || method.ReturnType!=typeof(int) || method.ContainsGenericParameters)throw WfpNative.Contract("CallerProjectPublicStaticIntRunRequired");
+                var method=compiled.GetType(type,false)?.GetMethod("Run",BindingFlags.Public|BindingFlags.Static|BindingFlags.DeclaredOnly,null,Type.EmptyTypes,null);
+                if(method is null || method.ReturnType!=typeof(int) || method.ContainsGenericParameters)throw new ProjectTaskException(new("Entry",Array.Empty<ProjectCompilerDiagnostic>()));
                 try{return (int)method.Invoke(null,null)!;}
-                catch(TargetInvocationException error)when(error.InnerException is not null){ExceptionDispatchInfo.Capture(error.InnerException).Throw();throw;}
+                catch(TargetInvocationException){throw new ProjectTaskException(new(stage,Array.Empty<ProjectCompilerDiagnostic>()));}
             }
-            exit=Run(task.Definition.EntryType);tests=Run(task.Definition.TestType);
-            if(exit!=0 || tests!=task.Definition.ExpectedTests)throw WfpNative.Contract("CallerProjectRunOrTestsFailed");
+            exit=Run(task.Definition.EntryType,"Run");
+            if(exit!=0)throw new ProjectTaskException(new("Run",Array.Empty<ProjectCompilerDiagnostic>()));
+            tests=Run(task.Definition.TestType,"Tests");
+            if(tests!=task.Definition.ExpectedTests)throw new ProjectTaskException(new("Tests",Array.Empty<ProjectCompilerDiagnostic>()));
         }
         finally{Console.SetOut(originalOut);Console.SetError(originalError);Directory.SetCurrentDirectory(originalDirectory);}
         Write(CSharpProjectTask.Outputs[1],JsonSerializer.SerializeToUtf8Bytes(new{SchemaVersion=1,ExitCode=exit,TestsPassed=tests}));

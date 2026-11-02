@@ -120,4 +120,31 @@ internal sealed class CallerProjectSession
             return "Windows取消了启动请求，本次任务未确认完成。记录已保留；如需重新操作，请在新的权限提示中确认。";
         return "本次项目任务未确认完成（返回码"+result.ExitCode+"）。请保留运行目录；已有文件不会被自动覆盖或删除。";
     }
+    internal string DescribeFailure(BackendResult result)
+    {
+        var fallback=FailureMessage(result);
+        if(result.ExitCode is not (3 or 125) || result.Error.Length!=0 || result.Output.Length is <1 or >16384)return fallback;
+        try
+        {
+            using var json=JsonDocument.Parse(result.Output,new JsonDocumentOptions{MaxDepth=5});var r=json.RootElement;
+            HostPrivacyContract.Fields(r,"Status","SessionId","BaseSHA256","FailureStage","FailureKind","FailureCode","CreationEvidence","StopEvidence",
+                "HostPrivacy","OwnerSealedBeforeCode","ProjectFailure","ResultReleased","AutomaticRetry");
+            if(r.GetProperty("Status").GetString()!="CALLER_CSHARP_PROJECT_NOT_CONFIRMED" || r.GetProperty("BaseSHA256").GetString()!=InputSHA256 ||
+                r.GetProperty("FailureStage").GetString()!="processing" || r.GetProperty("FailureKind").GetString()!="ProjectTaskFailed" ||
+                !r.GetProperty("OwnerSealedBeforeCode").GetBoolean() || r.GetProperty("ResultReleased").GetBoolean() || r.GetProperty("AutomaticRetry").GetBoolean())return fallback;
+            var session=r.GetProperty("SessionId").GetString()??"";
+            _=HostPrivacyContract.Parse(r.GetProperty("HostPrivacy"),session,true);
+            var failure=ProjectFailureContract.Parse(r.GetProperty("ProjectFailure"),task.Definition.Sources.Length);
+            var text=new StringBuilder(failure.Stage switch {
+                "Compile"=>"项目编译失败。请按错误码和源码位置检查代码。",
+                "Entry"=>"项目运行或测试入口不符合要求，请检查公开 static int Run() 声明。",
+                "Run"=>"项目运行失败或未返回0，请检查入口代码。",
+                _=>"项目测试失败或通过项数不符合声明，请检查测试代码。"});
+            foreach(var diagnostic in failure.Diagnostics)
+                text.AppendLine().Append(diagnostic.Code).Append(diagnostic.SourceIndex is int index?
+                    $"  {task.Definition.Sources[index]}：第{diagnostic.Line}行，第{diagnostic.Column}列":"  编译设置或引用");
+            return text.AppendLine().Append("本次结果未导出；请保留运行目录，不会自动重试。").ToString();
+        }
+        catch(Exception error)when(error is JsonException or InvalidDataException or InvalidOperationException or KeyNotFoundException or FormatException){return fallback;}
+    }
 }

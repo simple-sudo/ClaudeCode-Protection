@@ -669,3 +669,12 @@ trace7在原真实调用链确认SideBySide单键KEY_READ被拒。首次精确�
 df6ff338/manifest9239BB32本人UAC更新INACTIVE及只读资源检查完成；15产品文件+552官方工具文件/110目录独立摘要/owner/保护DACL核对通过。新工具路径不授予SideBySide读取，键权限实测保持原值。sessionac45262c在PowerShell未READY时超时；用户截图并明确确认本次UAC项目进程出现E0434352托管异常，已作为实测故障保留。未抓到对应事件不能否定用户确认。Job1bc7bc5b关闭归零、Stop无失败，根I/O/四拒绝5通过，无强杀owner；PowerShell/Git/编译未确认，无成果。
 
 原Broker工具创建窗口的继承错误模式/精确恢复、私有有界部分标准流保留已修正并构建，普通自身子进程/匿名管道限定资格通过，无诱发崩溃或全机WER设置变更。后续df6ae4f0本人授权安装/运行完成，捕获SecurityException；一次明确授权读取原唯一错误确认GPO注册表读取被拒。再经本人授权6e2cf8cd更新/运行，实际越过GPO错误，现固定PowerShellCore ETW提供者注册AccessDenied5并连带PSEtwLog/AMSI类型初始化失败，仍无工具成功。原Job66f8bc5a闭合归零、Stop无失败、四拒绝通过、键权限完全不变；同次批准只读原唯一错误已完成。不得关闭ETW/AMSI或修改AV。当前6e2cf8cd/INACTIVE，下一次仅仅读取提供者安全描述符需具体本人UAC；范围见LPAC-TOOL-LAUNCH-NEXT.md，证据work/hosted-policy-r2-control/run-evidence。
+
+## 2026-11-02：项目失败反馈SOURCE/BUILD/普通限定验证
+
+ProjectFailure接入原编译/执行/owner/IPC/daily/GUI；最多8条CS代码/源码序号/物理行列或失败阶段，
+不传异常消息、源码片段/栈/映射路径，不授成功/清理/导出权威。V1/V2成功合同保持。
+七目标离线BUILD0/0；76 GUI、25失败合同、40旧caller、26数据合同；自有实际Compile/Run/Tests失败、
+正常DataReport及3测试通过。最终Library/Broker与精确77a1迁移正控制/六拒绝通过；imports未增，无模块初始化。
+证据work/project-failure-feedback-20261102-01的runtime-result.json及update-r2/runtime-result.json。
+普通自有测试非LPAC/Job证明；候选安装及实际失败后的owner闭合均另记，完整产品仍未接受。

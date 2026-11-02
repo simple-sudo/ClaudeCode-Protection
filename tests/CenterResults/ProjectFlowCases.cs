@@ -71,6 +71,17 @@ internal static class ProjectFlowCases
             ResultSHA256=WorkspaceBundle.Hash(resultBytes),FileCount=8,Changes=WorkspaceBundle.Compare(input,resultBytes),OriginalProjectModified=false,ProjectCodeExecuted=true,
             HostPrivacy=privacy,OwnerSealedBeforeCode=true,FormalAdmissionIssued=false,NetworkOpened=false,UACAutoConfirmed=false});
         var response=new BackendResult(0,Reply(),"");var accepted=session.AcceptResult(run,response);checks++;
+        var compilerFailure=new ProjectTaskFailure("Compile",new[]{new ProjectCompilerDiagnostic("CS0103",0,7,9)});
+        JsonObject Failure()=>JsonSerializer.SerializeToNode(new{Status="CALLER_CSHARP_PROJECT_NOT_CONFIRMED",SessionId=id,BaseSHA256=session.InputSHA256,
+            FailureStage="processing",FailureKind="ProjectTaskFailed",FailureCode=3,CreationEvidence=(object?)null,StopEvidence=(object?)null,
+            HostPrivacy=privacy,OwnerSealedBeforeCode=true,ProjectFailure=compilerFailure,ResultReleased=false,AutomaticRetry=false})!.AsObject();
+        var display=session.DescribeFailure(new(3,Failure().ToJsonString(),""));
+        Require(display.Contains("CS0103  Entry.cs：第7行，第9列") && display.Contains("结果未导出"),"compiler failure maps index to reviewed source name");
+        foreach(var mutate in new Action<JsonObject>[]{j=>j["BaseSHA256"]=new string('A',64),j=>j["ResultReleased"]=true,j=>j["AutomaticRetry"]=true,
+            j=>j["OwnerSealedBeforeCode"]=false,j=>j["ProjectFailure"]!["Diagnostics"]![0]!["SourceIndex"]=31,
+            j=>j["ProjectFailure"]!["Diagnostics"]![0]!["SourcePath"]="C:\\PRIVATE",j=>j["PrivateMessage"]="SECRET"})
+        {var json=Failure();mutate(json);Require(!session.DescribeFailure(new(3,json.ToJsonString(),"")).Contains("CS0103"),"unbound or unbounded diagnostic stays generic");}
+        Refuse(()=>session.AcceptResult(run,new(3,Failure().ToJsonString(),"")),"failure feedback cannot enter result recovery");
         foreach(var mutate in new Action<JsonObject>[] {j=>j["OwnerSealedBeforeCode"]=false,j=>j["OwnerSealedBeforeCode"]=1,j=>j["OwnerSealedBeforeCode"]="true",
             j=>j["FormalAdmissionIssued"]=true,j=>j["OriginalProjectModified"]=true,j=>j["NetworkOpened"]=true,j=>j["UACAutoConfirmed"]=true,
             j=>j["BaseSHA256"]=new string('A',64),j=>j["ResultSHA256"]=new string('A',64),j=>j["FileCount"]=7,

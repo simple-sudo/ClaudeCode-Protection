@@ -233,7 +233,10 @@ public static class BootstrapInstaller
             "61A02E2662DF4A7F5417F25777249BD3BC1D681D13B177FF5A249F64D391ACE5",
             // a3b6 paired owner-control gate package. The fixed project closed
             // successfully; a pin is still not live Job/quarantine authority.
-            "C2BCCC13A5296971D0DE1B77BB7CC158A9FA0EDA36FCCF3B21BDDED7CF210AD2"
+            "C2BCCC13A5296971D0DE1B77BB7CC158A9FA0EDA36FCCF3B21BDDED7CF210AD2",
+            // 77a1 explicit-data package, with closed fixed data-report task.
+            // All live original inactive-update guards remain mandatory.
+            "A5CC9F74FBCCEF743A301419BA2095C05964591468883067B612E4440CE43D75"
         };
         private readonly ProtectedState state;
         private readonly BootstrapApproval approval;

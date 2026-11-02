@@ -27,7 +27,7 @@ public static partial class InstalledBroker
         channel.Connect(15000);WorkspacePipe.AssertPeer(channel,callerPid,false);
         string? session=null,resultHash=null,failureStage=null,failureKind=null;int? failureCode=null;
         ToolCreationEvidence? creationEvidence=null;WorkspaceStopEvidence? stopEvidence=null;
-        HostPrivacySummary? hostPrivacy=null;var ownerSealedBeforeCode=false;
+        HostPrivacySummary? hostPrivacy=null;var ownerSealedBeforeCode=false;ProjectTaskFailure? projectFailure=null;var sourceCount=32;
         byte[]? output=null;var exit=125;var stage="installation";
         try
         {
@@ -45,7 +45,7 @@ public static partial class InstalledBroker
                 if(callerProject)
                 {
                     if(WorkspaceBundle.Hash(input)!=expected)throw new InvalidDataException("Caller project byte binding differs");
-                    _=CSharpProjectTask.Parse(input);return ProtectedSession.BuildCallerProject(layout,state,version,input);
+                    sourceCount=CSharpProjectTask.Parse(input).Definition.Sources.Length;return ProtectedSession.BuildCallerProject(layout,state,version,input);
                 }
                 TextSummarySource.RequireBaseline(input);
                 return ProtectedSession.DevelopBundledProject(layout,state,version);
@@ -110,9 +110,14 @@ public static partial class InstalledBroker
                     if(failureKind is "PowerShellCreateProcess" or "PowerShellImageExecuteOpen" && child.TryGetProperty("CreationEvidence",out var creation))
                         creationEvidence=WorkspacePipe.ParseCreationEvidence(creation);
                 }
+                if(callerProject && ownerSealedBeforeCode && r.TryGetProperty("Child",out var projectChild) &&
+                    projectChild.ValueKind==JsonValueKind.Object && projectChild.TryGetProperty("ProjectFailure",out var diagnostic) &&
+                    diagnostic.ValueKind!=JsonValueKind.Null && projectChild.GetProperty("FailureStage").GetString()=="WAIT_PROJECT_COMPILER" &&
+                    projectChild.GetProperty("ToolExit").ValueKind==JsonValueKind.Number && projectChild.GetProperty("ToolExit").GetInt32()!=0)
+                {projectFailure=ProjectFailureContract.Parse(diagnostic,sourceCount);failureKind="ProjectTaskFailed";}
             }
         }
-        catch(Exception ex){exit=125;output=null;resultHash=null;creationEvidence=null;stopEvidence=null;hostPrivacy=null;ownerSealedBeforeCode=false;failureStage=stage;failureKind=ex.GetType().Name;failureCode=ex is Win32Exception native?native.NativeErrorCode:ex.HResult;}
+        catch(Exception ex){exit=125;output=null;resultHash=null;creationEvidence=null;stopEvidence=null;hostPrivacy=null;ownerSealedBeforeCode=false;projectFailure=null;failureStage=stage;failureKind=ex.GetType().Name;failureCode=ex is Win32Exception native?native.NativeErrorCode:ex.HResult;}
         using var completion=new CancellationTokenSource(TimeSpan.FromSeconds(15));
         var response=JsonSerializer.SerializeToUtf8Bytes(new {SchemaVersion=3,ExitCode=exit,SessionId=session,BaseSHA256=expected,
             ResultSHA256=resultHash,Status=exit==0?"WORKSPACE_DATA_PROCESSED_AND_CLEANED":"WORKSPACE_DATA_NOT_CONFIRMED",
@@ -123,6 +128,9 @@ public static partial class InstalledBroker
         if(callerProject)response=JsonSerializer.SerializeToUtf8Bytes(new {SchemaVersion=6,Scope=WorkspacePipe.CallerProjectScope,HostPrivacy=hostPrivacy,OwnerSealedBeforeCode=ownerSealedBeforeCode,ExitCode=exit,SessionId=session,BaseSHA256=expected,
             ResultSHA256=resultHash,Status=exit==0?"CALLER_CSHARP_PROJECT_BUILT_AND_CLEANED":"CALLER_CSHARP_PROJECT_NOT_CONFIRMED",
             FailureStage=failureStage,FailureKind=failureKind,FailureCode=failureCode,CreationEvidence=creationEvidence,StopEvidence=stopEvidence});
+        if(callerProject && projectFailure is not null)response=JsonSerializer.SerializeToUtf8Bytes(new {SchemaVersion=6,Scope=WorkspacePipe.CallerProjectScope,HostPrivacy=hostPrivacy,OwnerSealedBeforeCode=ownerSealedBeforeCode,ExitCode=exit,SessionId=session,BaseSHA256=expected,
+            ResultSHA256=resultHash,Status="CALLER_CSHARP_PROJECT_NOT_CONFIRMED",FailureStage=failureStage,FailureKind=failureKind,FailureCode=failureCode,
+            CreationEvidence=creationEvidence,StopEvidence=stopEvidence,ProjectFailure=projectFailure});
         WorkspacePipe.AssertPeer(channel,callerPid,false);
         WorkspacePipe.Write(channel,response,16384,completion.Token).GetAwaiter().GetResult();
         if(exit==0)WorkspacePipe.Write(channel,output??throw new InvalidDataException("Closed output missing"),WorkspaceBundle.MaxBundleBytes,completion.Token).GetAwaiter().GetResult();

@@ -89,6 +89,7 @@ internal static class BundledProjectDevelopment
             }
             File.WriteAllBytes(Path.Combine(workspace,"tool-output.txt"),plan.Input);return 0;
         }
+        catch(ProjectTaskException error){Console.Error.WriteLine(ProjectFailureContract.Encode(error.Failure));return 125;}
         catch(Exception error){Console.Error.WriteLine(error);return 125;}
     }
     // Shared by the confined tool and the ordinary own-project fixture. This
@@ -150,7 +151,32 @@ internal static class BundledProjectDevelopment
         using(var output=new FileStream(assemblyPath,FileMode.CreateNew,FileAccess.Write,FileShare.None))
         {
             var result=Invoke(emit,compilation,output)!;
-            if(result.GetType().GetProperty("Success")!.GetValue(result) is not true)throw WfpNative.Contract("DevelopmentCompilationFailed");
+            if(result.GetType().GetProperty("Success")!.GetValue(result) is not true)
+            {
+                var errors=new List<ProjectCompilerDiagnostic>();
+                foreach(var diagnostic in (System.Collections.IEnumerable)result.GetType().GetProperty("Diagnostics")!.GetValue(result)!)
+                {
+                    var type=diagnostic.GetType();
+                    if(type.GetProperty("Severity")!.GetValue(diagnostic)!.ToString()!="Error")continue;
+                    var code=(string)type.GetProperty("Id")!.GetValue(diagnostic)!;
+                    var location=type.GetProperty("Location")!.GetValue(diagnostic)!;
+                    var tree=location.GetType().GetProperty("SourceTree")!.GetValue(location);
+                    var sourceIndex=Array.FindIndex(trees.Cast<object>().ToArray(),t=>ReferenceEquals(t,tree));
+                    var line=0;var column=0;
+                    if(sourceIndex>=0)
+                    {
+                        // Physical positions, never #line mapped paths/text.
+                        var span=Invoke(location.GetType().GetMethod("GetLineSpan",Type.EmptyTypes)!,location)!;
+                        var start=span.GetType().GetProperty("StartLinePosition")!.GetValue(span)!;
+                        line=(int)start.GetType().GetProperty("Line")!.GetValue(start)!+1;
+                        column=(int)start.GetType().GetProperty("Character")!.GetValue(start)!+1;
+                    }
+                    var item=new ProjectCompilerDiagnostic(code,sourceIndex<0?null:sourceIndex,line,column);
+                    ProjectFailureContract.Validate(new("Compile",new[]{item}),sourceNames.Length);errors.Add(item);
+                    if(errors.Count==8)break;
+                }
+                throw new ProjectTaskException(new("Compile",errors.ToArray()));
+            }
             output.Flush(true);
         }
         return assemblyPath;

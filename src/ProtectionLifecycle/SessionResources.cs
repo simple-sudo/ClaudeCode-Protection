@@ -73,7 +73,8 @@ internal sealed record ResourceProbePlan(int SchemaVersion,string Nonce,string I
 }
 internal sealed record ResourceAccessCase(string Role,string Status,int? Error);
 internal sealed record ResourceChildReport(int SchemaVersion,int Pid,string Nonce,bool WorkspaceWriteReadMatched,int? ToolExit,
-    ResourceAccessCase[] Cases,string? FailureType,int? FailureCode,string? FailureStage,string? ToolDiagnostic,GitToolchainReport? Git,ToolCreationEvidence? CreationEvidence=null,bool OwnedCompilationObserved=false);
+    ResourceAccessCase[] Cases,string? FailureType,int? FailureCode,string? FailureStage,string? ToolDiagnostic,GitToolchainReport? Git,ToolCreationEvidence? CreationEvidence=null,bool OwnedCompilationObserved=false,
+    [property:System.Text.Json.Serialization.JsonIgnore(Condition=System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] ProjectTaskFailure? ProjectFailure=null);
 
 // The workspace belongs to the freshly created installation profile. No host
 // directory ACL is widened, adopted, recursively copied or deleted. It is task
@@ -300,7 +301,7 @@ internal sealed class SessionResources : IDisposable
             Environment.GetEnvironmentVariable("CPC_GPU_PLAN") is not null || Environment.GetEnvironmentVariable("CPC_SESSION_ID") is not null ||
             !string.Equals(Environment.ProcessPath,plan.ExpectedChildImage,StringComparison.OrdinalIgnoreCase))throw WfpNative.Contract("ResourceChildPlanIdentityMismatch");
         var workspace=plan.Workspace(packageSid);var cases=new List<ResourceAccessCase>();bool matched=false,compiled=false;int? toolExit=null;string? failure=null;
-        string stage="READ_WORKSPACE_INPUT";int? failureCode=null;string? failureStage=null;string? toolDiagnostic=null;GitToolchainReport? gitReport=null;ToolCreationEvidence? creationEvidence=null;
+        string stage="READ_WORKSPACE_INPUT";int? failureCode=null;string? failureStage=null;string? toolDiagnostic=null;GitToolchainReport? gitReport=null;ToolCreationEvidence? creationEvidence=null;ProjectTaskFailure? projectFailure=null;
         try
         {
             // The trusted owner holds and checks this complete ancestry and
@@ -350,7 +351,12 @@ internal sealed class SessionResources : IDisposable
                 stage="WAIT_PROJECT_COMPILER";
                 if(!project.WaitForExit(10000))throw new TimeoutException("Fixed development task deadline");
                 toolExit=project.ExitCode;var stdout=output.Completion.WaitAsync(TimeSpan.FromSeconds(1)).GetAwaiter().GetResult();var stderr=errors.Completion.WaitAsync(TimeSpan.FromSeconds(1)).GetAwaiter().GetResult();
-                if(toolExit!=0 || stdout.Length!=0 || stderr.Length!=0){toolDiagnostic=ToolOutputCapture.Classify(stdout,stderr);SaveToolFailure(workspace,stdout,stderr,"EXITED_UNEXPECTED_OUTPUT");throw WfpNative.Contract("ProjectDevelopmentNotConfirmed");}
+                if(toolExit!=0 || stdout.Length!=0 || stderr.Length!=0)
+                {
+                    if(toolExit!=0 && plan.CallerProjectKind is not null)
+                        projectFailure=ProjectFailureContract.ReadToolError(stdout,stderr,CSharpProjectTask.Parse(plan.ProjectBundle).Definition.Sources.Length);
+                    toolDiagnostic=ToolOutputCapture.Classify(stdout,stderr);SaveToolFailure(workspace,stdout,stderr,"EXITED_UNEXPECTED_OUTPUT");throw WfpNative.Contract("ProjectDevelopmentNotConfirmed");
+                }
                 compiled=true;
             }
             if(plan.RequiresPowerShell)
@@ -401,7 +407,7 @@ internal sealed class SessionResources : IDisposable
             }
             failureStage=stage+(ex.Data["Stage"] is string nativeStage?"/"+nativeStage:"");
         }
-        var report=new ResourceChildReport(1,Environment.ProcessId,plan.Nonce,matched,toolExit,cases.ToArray(),failure,failureCode,failureStage,toolDiagnostic,gitReport,creationEvidence,compiled);
+        var report=new ResourceChildReport(1,Environment.ProcessId,plan.Nonce,matched,toolExit,cases.ToArray(),failure,failureCode,failureStage,toolDiagnostic,gitReport,creationEvidence,compiled,projectFailure);
         Console.WriteLine(JsonSerializer.Serialize(report));return Qualified(report,plan.RequiresCompilerTool)?0:3;
     }
     internal static ProcessStartInfo PowerShellStart(ResourceProbePlan plan,string workspace)
@@ -442,7 +448,7 @@ internal sealed class SessionResources : IDisposable
     }
     internal static bool Qualified(ResourceChildReport report,bool requirePowerShell=true)=>report.SchemaVersion==1 && report.WorkspaceWriteReadMatched &&
         (requirePowerShell?report.ToolExit==0 && report.OwnedCompilationObserved:report.ToolExit is null && !report.OwnedCompilationObserved && report.Git is not null) &&
-        report.FailureType is null && report.FailureCode is null && report.FailureStage is null && report.ToolDiagnostic is null &&
+        report.FailureType is null && report.FailureCode is null && report.FailureStage is null && report.ToolDiagnostic is null && report.ProjectFailure is null &&
         (report.Git is null || SessionGitToolchain.Qualified(report.Git)) && report.Cases.Length==5 && report.Cases.Select(c=>c.Role).SequenceEqual(new[]{"private-state-Read","private-state-Write","all-packages-only-Read","broker-vm-read-open","etw-provider-security-query"}) &&
         report.Cases.All(c=>c.Status=="ACCESS_DENIED" && c.Error==5);
     private static void SaveToolFailure(string workspace,string stdout,string stderr,string status)

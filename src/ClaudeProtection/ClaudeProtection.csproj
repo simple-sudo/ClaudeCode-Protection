@@ -18,7 +18,7 @@
     <Compile Include="WorkspaceProcessing.cs;WorkspaceInstalledHost.cs;../Shared/WorkspacePipe.cs" />
     <Compile Include="../Shared/TextSummarySource.cs" />
     <Compile Include="../Shared/CSharpProjectTask.cs" />
-    <Compile Include="../Shared/HostPrivacyContract.cs" />
+    <Compile Include="../Shared/HostPrivacyContract.cs;../Shared/ProjectFailure.cs" />
     <EmbeddedResource Include="../../samples/TextSummary/TextSummary.csproj" LogicalName="ClaudeCodeProtection.TextSummary.TextSummary.csproj" />
     <EmbeddedResource Include="../../samples/TextSummary/TextSummary.cs" LogicalName="ClaudeCodeProtection.TextSummary.TextSummary.cs" />
     <EmbeddedResource Include="../../samples/TextSummary/ProjectTests.cs" LogicalName="ClaudeCodeProtection.TextSummary.ProjectTests.cs" />

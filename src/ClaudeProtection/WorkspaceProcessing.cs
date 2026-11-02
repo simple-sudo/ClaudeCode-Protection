@@ -61,7 +61,9 @@ internal static class WorkspaceProcessing
         {
             await broker.WaitForExitAsync(completion.Token);
             if(broker.ExitCode!=reply.ExitCode)throw new IOException("Workspace failure process exit differs");
-            if(developProject)return(reply.ExitCode,new {Status=callerProject?"CALLER_CSHARP_PROJECT_NOT_CONFIRMED":"BUNDLED_PROJECT_NOT_CONFIRMED",SessionId=session,BaseSHA256=expected,
+            if(callerProject)return(reply.ExitCode,new {Status="CALLER_CSHARP_PROJECT_NOT_CONFIRMED",SessionId=session,BaseSHA256=expected,
+                reply.FailureStage,reply.FailureKind,reply.FailureCode,reply.CreationEvidence,reply.StopEvidence,reply.HostPrivacy,reply.OwnerSealedBeforeCode,reply.ProjectFailure,ResultReleased=false,AutomaticRetry=false});
+            if(developProject)return(reply.ExitCode,new {Status="BUNDLED_PROJECT_NOT_CONFIRMED",SessionId=session,BaseSHA256=expected,
                 reply.FailureStage,reply.FailureKind,reply.FailureCode,reply.CreationEvidence,reply.StopEvidence,reply.HostPrivacy,ResultReleased=false,AutomaticRetry=false});
             return(reply.ExitCode,new {Status=developProject?"BUNDLED_PROJECT_NOT_CONFIRMED":"WORKSPACE_DATA_NOT_CONFIRMED",SessionId=session,BaseSHA256=expected,
                 reply.FailureStage,reply.FailureKind,reply.FailureCode,reply.CreationEvidence,reply.StopEvidence,ResultReleased=false,AutomaticRetry=false});

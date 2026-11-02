@@ -25,7 +25,7 @@ internal static class WorkspacePipe
     // This does not request Impersonate, AssignPrimary or Adjust privileges.
     internal const uint CallerTokenQueryAccess=0x0008|0x0002;
     internal sealed record Reply(int ExitCode,string? SessionId,string? ResultSHA256,string? FailureStage,string? FailureKind,int? FailureCode,
-        ToolCreationEvidence? CreationEvidence,WorkspaceStopEvidence? StopEvidence,HostPrivacySummary? HostPrivacy=null,bool OwnerSealedBeforeCode=false);
+        ToolCreationEvidence? CreationEvidence,WorkspaceStopEvidence? StopEvidence,HostPrivacySummary? HostPrivacy=null,bool OwnerSealedBeforeCode=false,ProjectTaskFailure? ProjectFailure=null);
     internal const string ProjectScope="EXPLICIT_TEXTSUMMARY_SOURCE_EDIT_BUILD_RUN_TEST";
     internal const string CallerProjectScope="EXPLICIT_CALLER_CSHARP_LITERAL_EDITS_BUILD_RUN_TEST";
     internal static Reply ParseReply(byte[] bytes,string expected,bool developProject=false,bool callerProject=false)
@@ -33,7 +33,9 @@ internal static class WorkspacePipe
         if(bytes.Length is <1 or >16384 || !WorkspaceBundle.IsHash(expected) || callerProject && !developProject)throw new InvalidDataException("Workspace reply bounds refused");
         using var doc=JsonDocument.Parse(bytes,new JsonDocumentOptions{MaxDepth=4});var r=doc.RootElement;
         var fields=new[]{"BaseSHA256","CreationEvidence","ExitCode","FailureCode","FailureKind","FailureStage","ResultSHA256","SchemaVersion","SessionId","Status","StopEvidence"};
-        RequireFields(r,callerProject?fields.Concat(new[]{"Scope","HostPrivacy","OwnerSealedBeforeCode"}).ToArray():developProject?fields.Concat(new[]{"Scope","HostPrivacy"}).ToArray():fields);
+        var hasProjectFailure=r.TryGetProperty("ProjectFailure",out var failureValue);
+        var expectedFields=callerProject?fields.Concat(new[]{"Scope","HostPrivacy","OwnerSealedBeforeCode"}).ToArray():developProject?fields.Concat(new[]{"Scope","HostPrivacy"}).ToArray():fields;
+        RequireFields(r,callerProject && hasProjectFailure?expectedFields.Append("ProjectFailure").ToArray():expectedFields);
         if(r.GetProperty("SchemaVersion").GetInt32()!=(callerProject?6:developProject?5:3) || r.GetProperty("BaseSHA256").GetString()!=expected ||
             developProject && ((!callerProject && expected!=TextSummarySource.BaselineHash) || r.GetProperty("Scope").GetString()!=(callerProject?CallerProjectScope:ProjectScope)))
             throw new InvalidDataException("Workspace reply contract differs");
@@ -70,7 +72,14 @@ internal static class WorkspacePipe
         var sealedBeforeCode=callerProject && r.GetProperty("OwnerSealedBeforeCode").GetBoolean();
         if(callerProject && exit==0 && !sealedBeforeCode || sealedBeforeCode && (privacy is null || !HostPrivacyContract.Satisfied(privacy)))
             throw new InvalidDataException("Caller project requires original owner sealed observations");
-        return new(exit,session,hash,stage,kind,code,creation,stop,privacy,sealedBeforeCode);
+        ProjectTaskFailure? projectFailure=null;
+        if(hasProjectFailure)
+        {
+            if(!callerProject || exit==0 || stage!="processing" || kind!="ProjectTaskFailed" || session is null || !sealedBeforeCode || creation is not null || failureValue.ValueKind==JsonValueKind.Null)
+                throw new InvalidDataException("Project failure cannot authorize success or replace owner evidence");
+            projectFailure=ProjectFailureContract.Parse(failureValue);
+        }
+        return new(exit,session,hash,stage,kind,code,creation,stop,privacy,sealedBeforeCode,projectFailure);
     }
     internal static ToolCreationEvidence? ParseCreationEvidence(JsonElement value)
     {

@@ -170,7 +170,11 @@ internal sealed class CenterWindow : Window
             details.Text=project.ReviewText+"\r\n本次运行目录："+run.Directory;
             activity.Text="正在发起项目开发，请确认 Windows 权限提示。原项目保留。";
             result=await BackendClient.BuildCallerProject(run.InputPath,run.ResultPath,project.InputSHA256);
-            if(result.ExitCode!=0 || result.Error.Length!=0){activity.Text=CallerProjectSession.FailureMessage(result);return;}
+            if(result.ExitCode!=0 || result.Error.Length!=0)
+            {
+                var message=project.DescribeFailure(result);activity.Text=message;
+                details.Text+="\r\n\r\n"+message;return;
+            }
             var restored=await Task.Run(()=>project.AcceptResult(run,result));
             details.Text=restored.ReviewText+"\r\n本次仅核对所列的"+ClaudeCodeProtection.Workspaces.HostPrivacyContract.Roles.Length+"项资源/权限；其他保护范围尚未完整验收。\r\n本次运行目录："+run.Directory;
             activity.Text="项目已返回结果，正在提取到新目录……";

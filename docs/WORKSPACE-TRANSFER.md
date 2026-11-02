@@ -32,3 +32,11 @@ v1上限：512文件、每文件1MiB、总内容8MiB、序列化12MiB、相对�
 普通用户`workspace-extract BASE_BUNDLE RESULT_BUNDLE NEW_DIRECTORY`先比较确切原包绑定，然后只创建全新目录及文件；不合并既有树、不写回原项目、不删除文件。原JSON包无BOM；通过标准输入时须保留字节，不用会改编码/换行的文本管道。结果导出应定向到用户自己选择的新包文件，stdout包含源数据，仅在主动导出时输出。
 
 真实项目的.gitattributes及.gitignore作为文件保留，但数据处理固定在.git/info/attributes中取消text/filter/ident/working-tree-encoding转换，Git add --force仅作用显式清单，使二进制/CRLF与被忽略的已选文件完整进入独立对象核对。依据：[Git属性优先级](https://git-scm.com/docs/gitattributes)、[Git显式强制添加](https://git-scm.com/docs/git-add)。不执行项目hooks、filter、MSBuild或测试。该入口是数据维护，不是正式会话或完整隐私资格的替代入口。
+
+## 有界项目失败反馈（2026-11-02）
+
+显式caller项目沿原编译/运行/测试、owner、管道、daily及GUI链返回可选ProjectFailure。
+仅阶段Compile/Entry/Run/Tests，以及最多8条CS错误码、所选源码序号与物理行列；不传编译消息、
+异常消息/栈、源码内容或#line映射路径。GUI只按自己审阅的Sources映射名称。字段/大小/阶段/绑定严格校验，
+仅失败、原封存和隐私观察满足时可出现；不改变成功、停止、清理和成果权威，不自动重试或导出失败结果。
+旧V1/V2成功与旧失败回执保留。普通自有失败验证与安装/真实LPAC验证分别记账，最新范围见CURRENT-STATE。

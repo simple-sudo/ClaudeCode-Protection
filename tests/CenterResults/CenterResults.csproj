@@ -9,6 +9,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Program.cs" />
+    <Compile Include="../../src/Shared/ProjectFailure.cs" />
     <Compile Include="../../src/ProtectionCenter/WorkspaceResultSession.cs" Link="WorkspaceResultSession.cs" />
     <Compile Include="ProjectFlowCases.cs;../../src/ProtectionCenter/CallerProjectSession.cs;../../src/ProtectionCenter/BackendClient.cs" />
     <Compile Include="../../src/ClaudeProtection/WorkspaceInstalledHost.cs;../../src/Shared/CSharpProjectTask.cs;../../src/Shared/HostPrivacyContract.cs;../../src/Shared/UserDataPaths.cs" />
