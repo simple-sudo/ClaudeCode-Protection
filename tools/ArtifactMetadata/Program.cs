@@ -14,6 +14,15 @@ foreach(var path in args){
    if((method.Attributes&MethodAttributes.PinvokeImpl)!=0){var i=method.GetImport();imports.Add(typeName+"|"+md.GetString(md.GetModuleReference(i.Module).Name)+"|"+md.GetString(i.Name));}
   }
  }
- file.Position=0;reviews.Add(new{Path=path,SHA256=Convert.ToHexString(SHA256.HashData(file)),Imports=imports.OrderBy(x=>x,StringComparer.Ordinal).ToArray(),ModuleInitializer=false,LoadedDuringReview=false});
+ string? approvedPackageSHA256=null;
+ foreach(var rh in md.ManifestResources){var resource=md.GetManifestResource(rh);
+  if(md.GetString(resource.Name)!="ProtectionBootstrap.ApprovedPackage.json")continue;
+  if(approvedPackageSHA256 is not null || !resource.Implementation.IsNil)throw new InvalidDataException("Embedded approval identity refused");
+  var block=pe.GetSectionData(pe.PEHeaders.CorHeader!.ResourcesDirectory.RelativeVirtualAddress);
+  var length=block.GetReader(checked((int)resource.Offset),4).ReadInt32();
+  if(length is <1 or >65536)throw new InvalidDataException("Embedded approval bounds");
+  approvedPackageSHA256=Convert.ToHexString(SHA256.HashData(block.GetContent(checked((int)resource.Offset+4),length).ToArray()));
+ }
+ file.Position=0;reviews.Add(new{Path=path,SHA256=Convert.ToHexString(SHA256.HashData(file)),Imports=imports.OrderBy(x=>x,StringComparer.Ordinal).ToArray(),ModuleInitializer=false,LoadedDuringReview=false,ApprovedPackageSHA256=approvedPackageSHA256});
 }
 Console.WriteLine(JsonSerializer.Serialize(reviews));

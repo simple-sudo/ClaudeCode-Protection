@@ -242,7 +242,10 @@ public static class BootstrapInstaller
         "1F541F21AA2989A56A36DB620A087190235BE2B7998B6AB1DD26433145E1C63E",
         // 00ac fixed compiler-failure task returned bounded diagnosis and original public closed/isolated/Job-zero observations.
         // Exact predecessor pin only; all live update/resource gates remain.
-        "75EC1ECA5678EAB168987BCD38BAC34EB40C2A1FFABD2CBD8268873378FD907B"
+        "75EC1ECA5678EAB168987BCD38BAC34EB40C2A1FFABD2CBD8268873378FD907B",
+        // 8a22 fixed control-file/data-report task completed through the original owner.
+        // Select only this exact predecessor; every live inactive-update guard remains.
+        "ACF8094509362411545F87C772A53E1D7EE7CA716DBF3BF8760EB84E34D20DFB"
         };
         private readonly ProtectedState state;
         private readonly BootstrapApproval approval;

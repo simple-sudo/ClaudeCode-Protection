@@ -183,8 +183,8 @@ if(args[0]=="inactive-transition")
 {
     var lease=library.GetType("ProtectionLifecycle.BootstrapInstaller",true)!
         .GetNestedType("PinnedInactiveUpdateLease",BindingFlags.NonPublic)!;
-    const string actualRelease="00ac6304f4ba4241aca902f6bfcc2df5";
-    const string actualManifest="75EC1ECA5678EAB168987BCD38BAC34EB40C2A1FFABD2CBD8268873378FD907B";
+    const string actualRelease="8a22a7bb2ee142eab1c1bc9ae32bc860";
+    const string actualManifest="ACF8094509362411545F87C772A53E1D7EE7CA716DBF3BF8760EB84E34D20DFB";
     // The replacement is a fixture selection, not an approved package or
     // installed transition. This executes only the real pure selection guard.
     var replacementRelease=new string('a',32);var replacementManifest=new string('A',64);
