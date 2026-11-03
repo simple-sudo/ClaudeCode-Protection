@@ -289,9 +289,7 @@ internal sealed class ProtectedState : IDisposable
     }
     internal static void RequireAdministrator()
     {
-        using var identity = WindowsIdentity.GetCurrent();
-        if (!new WindowsPrincipal(identity).IsInRole(WindowsBuiltInRole.Administrator))
-            throw new UnauthorizedAccessException("An existing elevated token is required; no automatic elevation");
+        MaintenanceIdentity.RequireCurrentAdministrator();
     }
     public void Dispose() { if (disposed) return; disposed = true; mutex.Dispose(); directory.Dispose(); }
 }

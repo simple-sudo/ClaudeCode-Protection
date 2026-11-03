@@ -5,6 +5,16 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-02（UTC11月3日）共用管理身份门
+
+原ProtectedState.RequireAdministrator统一委托MaintenanceIdentity：要求实际主令牌、TokenIsAppContainer=0、TokenElevation=1、受限SID数0及管理员成员；未知长度/失败/超界查询拒绝。只用System32 GetTokenInformation，WindowsPrincipal角色查询仅用自身Query|Duplicate令牌，未引入提升/调整/赋予令牌/通用管理入口。原安装、受保护状态、Broker、维护/恢复调用点共用此门，可信用户仍按原UAC/固定安装链维护。SOURCE/BUILD/INTEGRATED。
+
+两目标BUILD0/0，91源输入持有并逐字节摘要核对；19普通身份检查通过，含实际普通token/共用门拒绝、同用户线程冒充及恢复、失败查询；主管理员许可/限制矩阵为纯策略对照。正常多文件修改/实际编译/4测试/10文件恢复及精确225b迁移1正6拒绝通过。Native只增加一个只读GetTokenInformation至165，无模块初始化。普通证据work/maintenance-identity-20261102-01/observed-result.json SHA256 9682F20F69500FEE0DCBB4ED46A240364C9F0670660B8E751E932789F39CE5A6。
+
+持续同类安装授权/本人一次UAC，d51b3807cea14b06a8d545f1de5f44ca / 4EAB9E8E35D4CD1D58344EB3EC824769308D48005156BBC33349BE55361C362E 于2026-11-03T03:09:00Z更新成功，INACTIVE。原安装器实际通过新管理门；仅原库变化，其余十三载荷字节保持。15公开资产/8固定回执hash及独立可信owner/保护DACL/无不可信写者匹配；无项目/Job/profile创建、WFP/配置变化或Claude。安装证据work/maintenance-identity-20261102-01/observed-installation.json SHA256 AA57E4977F5D86D15DB190842122F2B30367EF2661643BBECB8755ED6ED2050A；独立ACL SHA256 AD11B7EFBD4F3DC3DD17A8705BA2F4EDAE5976342CAD17E3743D7893AD21C324。FlClash/UU前后一致，AV/BFE Running，无观察到的Application AV事件，完整厂商覆盖UNKNOWN。
+
+CAPABILITY_DELIVERED(已安装共用管理身份门及可信固定更新路径)。实际受限令牌/LPAC维护调用负向未执行，不继承旧33项门或失联的原生实测；全部P0/IPC/工具/网络/GPU/异常恢复/真实Claude仍未验收，PRODUCT_DELIVERY_NOT_ACCEPTED。
+
 ## 2026-11-02 V2显式项目数据与生成结果
 
 真实V2项目VERIFIED(scope)：本人单独授权一次并确认UAC后，13:09:49Z在77a1通过原daily→

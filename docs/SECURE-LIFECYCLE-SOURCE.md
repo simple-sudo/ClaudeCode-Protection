@@ -84,3 +84,10 @@ Job子组件已有具体Win32所有权/查询/停止源码，使用管理员boun
 ## 2026-10-26安装身份WFP源码更新
 
 WFP子组件已有实际原生API声明和事务/精确对象所有权/初始隔离/重建实现，私有计划摘要绑定对象providerData；无provider服务绑定假设，无外部SID/编号/端点入口。只报告安装package的ALE_CONNECT范围，不组成完整runtime lease，不授予代理、启动、即时全流量断网或跨重启资格；最终屏障卸载尚无接口。未编译/执行，见 PERSISTENT-FENCE-SOURCE.md。
+## 2026-11-02 共用维护令牌约束
+
+原ProtectedState.RequireAdministrator现统一调用MaintenanceIdentity。安装、受保护状态及原Broker/恢复入口仍保留现有安装映像、版本、所有权和资源门，新增要求当前有效令牌为primary、非AppContainer、已提升、无受限SID且属于Administrators；线程冒充即使携带管理员身份也不成为维护权。
+
+只查询自身token；Query|Duplicate仅供WindowsPrincipal成员查询，不模拟身份、不调整权限、不创建令牌、不自动提升。固定GetTokenInformation类8/29/20和11分别检查类型/容器/提升/受限组；定长必须4字节，变长查询必须明确122及4–65536字节，失败/未知拒绝。SID值不导出。此门不是新的执行器或管理IPC，也不替代原LPAC/DACL、持有路径/版本及Job/WFP/准入资格。
+
+普通19检查与可信提升安装路径的限定证据见PROJECT-ACCEPTANCE相应日期；真实受限/LPAC维护接口负向尚未执行。当前版本及授权仍只见CURRENT-STATE。

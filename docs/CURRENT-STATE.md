@@ -1,7 +1,7 @@
 # 当前状态与授权摘要
 
 更新：2026-11-02（America/New_York）。本页是**唯一的最新状态摘要**；历史事实仍由原始证据
-支持。e249固定LPAC调用者失联闭环与原66拒绝实测保留；225b7214已安装“取消本次项目”GUI，保持INACTIVE，15公开资产/8固定回执及独立ACL通过。126项普通检查及离屏入口观察通过；新版真实GUI点击/受保护项目取消未执行，取消提示不会把请求当作Job/profile清理成功。
+支持。d51b3807已安装共用管理身份门，保持INACTIVE；原提升安装链通过新门、15公开资产/8固定回执及独立ACL匹配。19普通身份检查及正常多文件编译/4测试/10文件恢复通过；实际受限/LPAC维护负向未执行。原225b GUI取消及e249限定失联实测分别保留，不向新版本转授原生证明。
 
 ## 开发基线
 
@@ -19,18 +19,20 @@
 
 | 项目 | 最近记录及边界 |
 | --- | --- |
-| 实测时刻 | 2026-11-03 02:56:54Z安装完成；02:57独立ACL、已安装界面离屏及安全观察通过 |
-| Release | `225b7214ee594f89aa554612fbfc6d8c` |
-| Manifest SHA256 | `732A198283CD62847079A75847891ECAE549D3C96363180FE33A7C8B74D31FCF` |
+| 实测时刻 | 2026-11-03 03:09:00Z安装完成；03:09独立ACL及安全观察通过 |
+| Release | `d51b3807cea14b06a8d545f1de5f44ca` |
+| Manifest SHA256 | `4EAB9E8E35D4CD1D58344EB3EC824769308D48005156BBC33349BE55361C362E` |
 | 状态 | INACTIVE；不等于正在保护Claude |
 | 最近运行观察 | 原e249于2026-11-03 02:45:42Z固定调用者失联：原owner关闭准入/隔离/同Job零/停止失败0、66拒绝保持、结果0；原失败另保留 |
-| 已证明 | 原更新owner成功，15公开资产hash及8固定回执绑定/可信owner/保护DACL/无不可信写者独立匹配；20输入原Source持有预检通过；仅GUI和原库精确迁移pin两载荷改变，其他十二载荷保持字节 |
-| 未证明 | 新GUI实机点击/受保护任务取消未执行，不继承e249原生失联结论；owner崩溃/重启/全部恢复、保护源码/IPC/其他权限与工具、完整网络/GPU/真实Claude仍未证明 |
+| 已证明 | 原提升安装器通过新管理身份门并更新成功，15公开资产/8固定回执绑定及可信owner/保护DACL/无不可信写者独立匹配；20输入原Source持有预检通过；仅管理库载荷改变，其他十三载荷保持字节 |
+| 未证明 | 实际受限令牌/LPAC管理接口负向、新GUI实机点击/受保护任务取消未执行；保护源码/IPC/其他权限/工具、owner崩溃/重启/全部恢复、完整网络/GPU/真实Claude未验收 |
 
-新安装观察：`work/project-cancel-20261102-01/owner-update/observed-installation.json`，SHA256
-`0917521FAC7C91A07805890C672DA9DF37C80F04AF6024E122517C201E05C6B7`。15公开资产/8固定回执字节核对 SHA256 `1577721AE6A4373C0156FE6CF2F9B3F1593AD0F9A79C9CA67DD4ACBFEED60084`；
-独立ACL SHA256 `BF8FCBF8103D6AA02F991F30D0F4F5AC29AA13785CDE7163426A9F2E01015F64`。已安装界面离屏图与已检查构建图逐字节相同。
-GUI115数据+11实际自有普通进程取消检查通过；原库只增精确e249迁移pin，原164 native imports不变、同库/嵌入清单匹配。
+新安装观察：`work/maintenance-identity-20261102-01/observed-installation.json`，SHA256
+`AA57E4977F5D86D15DB190842122F2B30367EF2661643BBECB8755ED6ED2050A`。15公开资产/8固定回执字节核对 SHA256 `CE38981E6E1DB402A6BE10CF1A36CAB24EF41B037DAA3FCD9FD83BBD47EFB100`；
+独立ACL SHA256 `AD11B7EFBD4F3DC3DD17A8705BA2F4EDAE5976342CAD17E3743D7893AD21C324`。新库165 native imports（只增加System32只读GetTokenInformation），无模块初始化；原Bootstrap嵌入清单及同库匹配。
+
+此前225b取消GUI安装观察：`work/project-cancel-20261102-01/owner-update/observed-installation.json`，SHA256
+`0917521FAC7C91A07805890C672DA9DF37C80F04AF6024E122517C201E05C6B7`。15公开资产/8固定回执/独立ACL通过及已安装离屏图字节同构建图。115数据+11自有普通client检查保留；本次GUI字节保持，未另执行点击/离屏或受保护取消。
 
 此前e249安装观察：`work/workspace-caller-lifetime-20261102-01/observed-installation.json`，SHA256
 `4234858A868117211A0C398B97A82E6EB959FCE78A97305367C29C3C0D5C6973`。15公开资产/8固定回执字节核对 SHA256 `9DF3C23B854A3751896D409571404994B5A8B8E6B8A3E8523540EE921D61E0F9`；
@@ -67,7 +69,7 @@ ecbcd4e0两载荷变化为续编GUI及精确8a22前置pin；本次9dd26020两载
 | 控制文件执行门 | 8a22真实LPAC根/编译器各33项拒绝5，含20次控制文件最小权限打开；原owner封存后正常DataReport修改/编译/3测试/十一文件恢复通过 | 仅所列三对象/十权限及该固定项目；不证明实际破坏、保护源码/IPC/全部权限或其他工具 |
 | 网络/身份/工具 | 有限版本矩阵、受限进程和原生GPU历史实测分别保留 | 当前版本的完整强制网络、十四项可信准入、PowerShell及代表性工具/GPU兼容、长时稳定性 |
 | 生命周期 | 固定安装及部分已关闭/从未启动资源恢复保留；e249c895原pipe调用者监督18组件检查、实际固定LPAC调用者被结束后原owner关闭准入/隔离/Job零/0停止失败通过 | profile/私有目录清理未由本次观察证明；owner/控制器异常、崩溃重启、更新/回滚/卸载与故障恢复完整验收仍缺；历史蓝屏根因UNKNOWN |
-| 自我保护 | 原选择排除/日常身份拒绝保留；原执行门新增九项owner最小权限打开检查，两个受保护actor的18次owner打开均拒绝5，可信owner自我维护打开正控制通过；SOURCE/BUILD/INTEGRATED及该项目限定VERIFIED | 未实际破坏owner；源码读/文件写/服务/IPC/其他工具/异常恢复完整矩阵及日常入口真实受保护身份验证仍缺。P1/P2未验收；命名/离线部署未实施 |
+| 自我保护 | d51共用管理身份门拒绝非主令牌/容器/未提升/受限SID/非管理员，19普通检查与可信UAC原安装路径通过；实际LPAC管理调用未执行。原选择排除/日常身份拒绝保留；原执行门新增九项owner最小权限打开检查，两个受保护actor的18次owner打开均拒绝5，可信owner自我维护打开正控制通过；SOURCE/BUILD/INTEGRATED及该项目限定VERIFIED | 未实际破坏owner；源码读/文件写/服务/IPC/其他工具/异常恢复完整矩阵及日常入口真实受保护身份验证仍缺。P1/P2未验收；命名/离线部署未实施 |
 
 完整产品：`PRODUCT_DELIVERY_NOT_ACCEPTED`。完整受保护Claude执行链尚未交付。
 有限历史GPU/网络通过不等于当前版本没有缺口，也不能被抹成“从未实测”。
@@ -90,6 +92,9 @@ ecbcd4e0两载荷变化为续编GUI及精确8a22前置pin；本次9dd26020两载
   下一真实GUI项目操作须先准备冻结输入/输出/停止边界审查，再取得新的具体决定；没有现成可重跑授权。
 
 ## 本轮真实功能结果与下一步
+
+- 共用管理身份门已安装：原ProtectedState管理调用统一要求实际不受限、已提升、非AppContainer主管理员令牌，失败查询拒绝；无新提权/通用管理IPC。91输入持有的两目标BUILD0/0，19身份检查及正常多文件编译/4测试/10文件恢复、精确迁移1正6拒绝通过。普通证据work/maintenance-identity-20261102-01/observed-result.json SHA256 9682F20F69500FEE0DCBB4ED46A240364C9F0670660B8E751E932789F39CE5A6。
+  d51b3807经持续安装授权/本人一次UAC更新成功，原安装器实际通过新门，其他十三载荷不变；15公开资产/8固定回执字节及独立ACL匹配。CAPABILITY_DELIVERED(已安装共用管理身份门及可信固定更新路径)。真实受限/LPAC管理负向NOT_RUN，未继承旧66拒绝/失联实测；完整产品仍未验收。
 
 - GUI新增“取消本次项目”，仅本次项目等待期间启用；只结束自己刚创建并持有的普通daily，同创建时间/规范化固定映像校验保留，由原Broker调用者失联监督负责保护侧停止。取消后结果不自动提取、运行目录保留，固定130诊断明确OwnerClosureConfirmed=false/AutomaticRetry=false，无新管理IPC/提升停止接口。
   GUI/CenterResults BUILD0/0，126普通检查（115数据+11取消）及离屏空闲按钮禁用/布局通过，含真实自有普通子进程取消、259正常输出、错误映像不停止、预取消不启动。8 native imports未变、无模块初始化。证据work/project-cancel-20261102-01/observed-result.json SHA256 84AD5BE45FA940C5ECFC8805659B8CA28D91BA486ED8EC0E904D4C2C1DB199C1。SOURCE/BUILD/INTEGRATED+普通组件VERIFIED；225b7214经持续同类安装授权/本人一次UAC更新成功，15公开资产/8固定回执hash/可信owner/保护DACL/无不可信写者独立匹配，已安装离屏图同已检查构建图。CAPABILITY_DELIVERED(已安装当前项目取消入口与普通调用者取消组件)。新GUI点击/LPAC取消未执行，不继承e249故障实测；取消报告不授成功/清理/准入权。

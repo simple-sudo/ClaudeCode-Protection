@@ -1,7 +1,7 @@
 {
   "SchemaVersion": 1,
   "Scope": "UNACTIVATED_PRODUCT",
-  "Release": "225b7214ee594f89aa554612fbfc6d8c",
+  "Release": "d51b3807cea14b06a8d545f1de5f44ca",
   "Files": [
     {
       "Asset": "daily-exe",
@@ -70,8 +70,8 @@
     },
     {
       "Asset": "broker-lifecycle",
-      "Length": 1215488,
-      "SHA256": "251A34CE45148DA8F469A698B0D3D7D5BA3A3921C85BED9B91443819391B722B"
+      "Length": 1218560,
+      "SHA256": "E3852BF785D33907837BD7676E5924432BD1E9EC7993F047E3BE0B943B8B5852"
     }
   ]
 }
