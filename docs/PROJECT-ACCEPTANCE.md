@@ -754,3 +754,11 @@ SOURCE/BUILD/INTEGRATED + VERIFIED(普通调用者生存组件/正常编译/安�
 原owner有限投影WorkspaceCallerExited=true，准入关闭/停止前隔离/同Job归零/停止失败0，66最小打开拒绝5与执行前封存保持。结果未保存、普通结果0字节、原输入hash不变；三份新保护摘要由普通接口独立核对hash/可信owner/保护DACL/无不可信写者通过。所有者报告只在冻结观察器内读三份限定记录并作有界投影，root未额外读原私有/错误/独立raw Job/Stop。
 CAPABILITY_DELIVERED(固定LPAC调用者失联的原owner停止闭环)。证据work/workspace-caller-lifetime-20261102-01/protected-loss-r2/observed-result.json SHA256 E8C8CA32B005C27401A5435777D4CD42FBB8EB72A6136057989BE87D74B531EB。Controller/observer均0，两个具体授权均已消耗，前次FAIL保持；无自动重试/恢复/删除/额外探针/网络或安全软件更改/Claude。Boot/AV/BFE/FlClash/UU观察一致，完整厂商告警覆盖UNKNOWN。
 只证明该版本该输入的调用者退出，不证明profile/私有目录清理、Broker/控制器崩溃重启或完整P0-SELF-FAILURE；GUI点击、全网络/GPU及整机仍未接受。
+
+
+## 2026-11-02（UTC11月3日）当前项目取消入口安装
+
+83a731d在原BackendClient的自有普通daily等待中接入CancellationToken，启动前取消不启动、等待中取消经持有进程/创建时间/规范化固定映像校验只结束该client，保持原Broker调用者失联监督负责保护侧停止。没有任意PID/树/提升owner停止或新管理IPC。GUI仅本项目等待时启用取消，取消后保留目录/记录、不自动提取，固定130诊断OwnerClosureConfirmed=false/ResultAutomaticallyExtracted=false/AutomaticRetry=false；未确认的权限提示由本人取消。
+两GUI/测试目标BUILD0/0，115数据+11取消=126检查通过。固定自有普通子进程验证自然exit259及输出、实际取消、错误映像不停止、预取消不启动，非LPAC/Job/owner停止实验；8 native imports不变。新库仅精确e249迁移pin，164 imports不变、选择正控制/六拒绝/嵌入清单及同库匹配。
+按持续同类安装授权/本人一次UAC，225b7214ee594f89aa554612fbfc6d8c/732A198283CD62847079A75847891ECAE549D3C96363180FE33A7C8B74D31FCF于02:56:54Z更新INACTIVE成功。15公开资产/8固定回执独立字节/ACL通过；已安装离屏图逐字节同已查看构建图，空闲取消按钮禁用。证据work/project-cancel-20261102-01/owner-update/observed-installation.json SHA256 0917521FAC7C91A07805890C672DA9DF37C80F04AF6024E122517C201E05C6B7。
+CAPABILITY_DELIVERED(已安装当前项目取消入口与普通调用者取消组件)。实际GUI点击/新版受保护取消NOT_RUN，不借e249原故障实测升级；Job/profile清理或整机仍未接受。无新项目/UAC自动确认/网络或AV变更/强停提升owner/恢复/额外私有raw读取；Boot/AV/BFE/FlClash/UU观察一致，完整厂商告警覆盖UNKNOWN。

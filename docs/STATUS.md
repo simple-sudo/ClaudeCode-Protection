@@ -5,6 +5,10 @@
 历史页的“当前/待执行/暂停/DELIVERABLE”按段落日期及限定范围解释，不是今天的状态或操作许可。
 不在本页复制当前安装和授权摘要。
 
+## 2026-11-02（UTC11月3日）当前项目取消入口
+
+83a731d接入普通GUI当前任务取消：只停止自建持有普通daily，由原Broker失联监督处理Job；未取消前启动/成功路径保持。取消无自动提取/重试，明确保护侧关闭未确认。126普通检查（115数据+11自有client）及离屏布局通过；精确e249迁移/六拒绝和固定20文件后，持续安装授权/本人UAC安装225b7214 INACTIVE，15公开资产/8回执字节/独立ACL匹配。已安装离屏图同构建图。新GUI点击/受保护取消未执行，不继承旧故障证明。证据work/project-cancel-20261102-01/owner-update/observed-installation.json SHA256 0917521FAC7C91A07805890C672DA9DF37C80F04AF6024E122517C201E05C6B7。
+
 ## 2026-11-02（UTC11月3日）固定调用者失联闭环
 
 原受权控制器身份字符串核对拒绝、未注入故障，FAIL保留。只修正固定控制器完整路径比较并补五项普通对照；本人新一次具体授权/两次UAC后，e249真实LPAC会话8f1e66d5中仅结束本次普通调用者，原owner报告CallerExited/准入关闭/隔离/同Job零/停止0，66拒绝/执行前封存保持、结果0字节。三份有限保护摘要独立hash/ACL通过。证据work/workspace-caller-lifetime-20261102-01/protected-loss-r2/observed-result.json SHA256 E8C8CA32B005C27401A5435777D4CD42FBB8EB72A6136057989BE87D74B531EB；profile清理/owner崩溃/全恢复不因此通过，两个单次许可消耗，无自动重试或提升owner外部停止。

@@ -1,7 +1,7 @@
 # 当前状态与授权摘要
 
 更新：2026-11-02（America/New_York）。本页是**唯一的最新状态摘要**；历史事实仍由原始证据
-支持。原owner/WordCount/V2报告/失败反馈及8a22真实66项拒绝成果保留；e249c895原运行库已接入调用者生存监督，按持续同类安装授权/本人UAC更新INACTIVE，15公开资产/8固定回执及独立ACL通过。18项自有进程与新库正常四测试/十文件恢复通过。首次受权失联验证未注入故障的FAIL保留；本人对修正版重新单独授权后，e249真实LPAC固定任务的调用者退出/原owner关闭准入/隔离/Job零已通过，66拒绝保持、结果0字节。仅该固定场景，非全部异常恢复。
+支持。e249固定LPAC调用者失联闭环与原66拒绝实测保留；225b7214已安装“取消本次项目”GUI，保持INACTIVE，15公开资产/8固定回执及独立ACL通过。126项普通检查及离屏入口观察通过；新版真实GUI点击/受保护项目取消未执行，取消提示不会把请求当作Job/profile清理成功。
 
 ## 开发基线
 
@@ -19,18 +19,23 @@
 
 | 项目 | 最近记录及边界 |
 | --- | --- |
-| 实测时刻 | 2026-11-02 15:14:51Z安装完成；15:15独立ACL及安全观察通过 |
-| Release | `e249c895e6434c338087d70e5f39e00b` |
-| Manifest SHA256 | `ACA706F6DD31F625A0D800DDA56582D46B13BB0D16A6C817AAC35E9840B0F993` |
+| 实测时刻 | 2026-11-03 02:56:54Z安装完成；02:57独立ACL、已安装界面离屏及安全观察通过 |
+| Release | `225b7214ee594f89aa554612fbfc6d8c` |
+| Manifest SHA256 | `732A198283CD62847079A75847891ECAE549D3C96363180FE33A7C8B74D31FCF` |
 | 状态 | INACTIVE；不等于正在保护Claude |
-| 最近运行观察 | 2026-11-03 02:45:42Z固定调用者失联：原owner关闭准入/隔离/同Job零/停止失败0、66拒绝保持、结果0；原失败另保留 |
-| 已证明 | 原更新owner成功，15公开资产hash及8固定回执绑定/可信owner/保护DACL/无不可信写者独立匹配；20输入原Source持有预检通过；仅原运行库载荷改变，其他十三载荷保持字节 |
-| 未证明 | GUI实机点击未执行；e249固定调用者失联停止通过不推广为owner崩溃/重启/全部恢复。保护源码/IPC/其他权限与工具、完整网络/GPU/真实Claude仍未证明 |
+| 最近运行观察 | 原e249于2026-11-03 02:45:42Z固定调用者失联：原owner关闭准入/隔离/同Job零/停止失败0、66拒绝保持、结果0；原失败另保留 |
+| 已证明 | 原更新owner成功，15公开资产hash及8固定回执绑定/可信owner/保护DACL/无不可信写者独立匹配；20输入原Source持有预检通过；仅GUI和原库精确迁移pin两载荷改变，其他十二载荷保持字节 |
+| 未证明 | 新GUI实机点击/受保护任务取消未执行，不继承e249原生失联结论；owner崩溃/重启/全部恢复、保护源码/IPC/其他权限与工具、完整网络/GPU/真实Claude仍未证明 |
 
-新安装观察：`work/workspace-caller-lifetime-20261102-01/observed-installation.json`，SHA256
+新安装观察：`work/project-cancel-20261102-01/owner-update/observed-installation.json`，SHA256
+`0917521FAC7C91A07805890C672DA9DF37C80F04AF6024E122517C201E05C6B7`。15公开资产/8固定回执字节核对 SHA256 `1577721AE6A4373C0156FE6CF2F9B3F1593AD0F9A79C9CA67DD4ACBFEED60084`；
+独立ACL SHA256 `BF8FCBF8103D6AA02F991F30D0F4F5AC29AA13785CDE7163426A9F2E01015F64`。已安装界面离屏图与已检查构建图逐字节相同。
+GUI115数据+11实际自有普通进程取消检查通过；原库只增精确e249迁移pin，原164 native imports不变、同库/嵌入清单匹配。
+
+此前e249安装观察：`work/workspace-caller-lifetime-20261102-01/observed-installation.json`，SHA256
 `4234858A868117211A0C398B97A82E6EB959FCE78A97305367C29C3C0D5C6973`。15公开资产/8固定回执字节核对 SHA256 `9DF3C23B854A3751896D409571404994B5A8B8E6B8A3E8523540EE921D61E0F9`；
 独立ACL SHA256 `578F733A721758F39F91B6450591B6294F50E40E7D229D660D556043901F2912`。运行库B407普通18项生存检查、正常四测试与十文件恢复通过；
-新原生接口仅增加System32 WaitForSingleObject至164，调用者句柄仅查询/等待。真实失联Job停止尚未执行。
+新原生接口仅增加System32 WaitForSingleObject至164，调用者句柄仅查询/等待。该安装时刻还没有真实失联Job停止证据；后续e249固定实测见最近运行观察。
 
 此前9dd26020安装观察：`work/project-multi-edit-20261102-01/owner-update/observed-installation.json`，SHA256
 `6FD304FA61E255795BBC33E029769BA41952DBC06B0CCB2083DA57B8F1EA6359`。15公开资产/8固定回执字节核对 SHA256 `32113B601D2F264E7AA0FFDCA3F682F092E1F568B4D9D68B5A511772C9123381`；
@@ -56,7 +61,7 @@ ecbcd4e0两载荷变化为续编GUI及精确8a22前置pin；本次9dd26020两载
 | --- | --- | --- |
 | 离线Git数据流 | 原安装Broker/Job/严格LPAC、成功清理导出及四文件恢复；见WORKSPACE-TRANSFER | 不是在线Git、通用代码执行或完整网络资格 |
 | TextSummary与调用者C#清单 | 原版本实测保留；a3b6上固定WordCount修改/编译/3测试/十文件恢复及原owner封存成功，双actor共46次最小权限打开拒绝 | 不推广到任意恶意代码、其他宿主API/工具；见验收账本 |
-| GUI | 项目准备/数据选择/声明结果/审阅恢复、有界失败及结果续编入口已安装；115项普通数据检查通过，9dd26020已安装任务窗离屏观察保留；00ac daily限定诊断证据保留 | 实机点击/新版受保护任务未验证；不把daily回执或离屏图当点击证据 |
+| GUI | 项目准备/数据选择/声明结果/审阅恢复、有界失败、结果续编/多文件修改及当前项目取消入口已安装；126项普通检查、225b界面离屏观察通过，原诊断证据保留 | 实机点击/新版受保护任务取消未验证；不把ordinary组件/daily回执/离屏图当点击证据 |
 | 开发失败反馈 | 原compiler→root→owner→IPC→daily→GUI链接入；普通Compile/Run/Tests自有失败通过；00ac固定LPAC编译失败返回CS0103/source0/物理9行52列，原46拒绝/封存/关闭回执满足，结果0字节 | 实际运行/测试失败反馈、其他工具及崩溃恢复未实测；公开关闭观察不证明profile/私有目录清理 |
 | V2项目数据/结果 | 26新合同/40旧caller/原122合成门禁和67普通GUI数据通过；77a1真实DataReport编译/读取JSON/生成报告/3测试/十一文件恢复及双actor46拒绝通过 | 仅该固定项目/所列对象与权限；导出上限不是磁盘配额，不推广至其他工具或完整产品 |
 | 控制文件执行门 | 8a22真实LPAC根/编译器各33项拒绝5，含20次控制文件最小权限打开；原owner封存后正常DataReport修改/编译/3测试/十一文件恢复通过 | 仅所列三对象/十权限及该固定项目；不证明实际破坏、保护源码/IPC/全部权限或其他工具 |
@@ -87,7 +92,7 @@ ecbcd4e0两载荷变化为续编GUI及精确8a22前置pin；本次9dd26020两载
 ## 本轮真实功能结果与下一步
 
 - GUI新增“取消本次项目”，仅本次项目等待期间启用；只结束自己刚创建并持有的普通daily，同创建时间/规范化固定映像校验保留，由原Broker调用者失联监督负责保护侧停止。取消后结果不自动提取、运行目录保留，固定130诊断明确OwnerClosureConfirmed=false/AutomaticRetry=false，无新管理IPC/提升停止接口。
-  GUI/CenterResults BUILD0/0，126普通检查（115数据+11取消）及离屏空闲按钮禁用/布局通过，含真实自有普通子进程取消、259正常输出、错误映像不停止、预取消不启动。8 native imports未变、无模块初始化。证据work/project-cancel-20261102-01/observed-result.json SHA256 84AD5BE45FA940C5ECFC8805659B8CA28D91BA486ED8EC0E904D4C2C1DB199C1。SOURCE/BUILD/INTEGRATED+普通组件VERIFIED；候选225b7214固定20文件/精确e249迁移预检通过，待本人UAC。新GUI点击/LPAC取消未执行，不继承e249故障实测。
+  GUI/CenterResults BUILD0/0，126普通检查（115数据+11取消）及离屏空闲按钮禁用/布局通过，含真实自有普通子进程取消、259正常输出、错误映像不停止、预取消不启动。8 native imports未变、无模块初始化。证据work/project-cancel-20261102-01/observed-result.json SHA256 84AD5BE45FA940C5ECFC8805659B8CA28D91BA486ED8EC0E904D4C2C1DB199C1。SOURCE/BUILD/INTEGRATED+普通组件VERIFIED；225b7214经持续同类安装授权/本人一次UAC更新成功，15公开资产/8固定回执hash/可信owner/保护DACL/无不可信写者独立匹配，已安装离屏图同已检查构建图。CAPABILITY_DELIVERED(已安装当前项目取消入口与普通调用者取消组件)。新GUI点击/LPAC取消未执行，不继承e249故障实测；取消报告不授成功/清理/准入权。
 
 - 本人对protected-loss-r2新固定审查重新明确“授权这一次”并确认两次UAC。2026-11-03 02:45:42Z，会话8f1e66d5137f4b448c7b90fd1cbbd16f，Job7775a7ba616e4cb789d355802749409e；普通调用者14972的同一持有进程/PID/创建时间/规范化固定映像/存活全部匹配后，只结束该调用者。原owner有界回执CallerExitedFailureObserved=true、AdmissionClosed=true、QuarantineBeforeStop=true、FinalJobZero=true、StopFailureCount=0，双actor66项拒绝5/执行前封存保持；无结果保存、普通结果0字节、原输入未变。
   三份新保护摘要hash/可信owner/保护DACL/无不可信写者独立核对通过；root未读取原私有报告，只核对已具体授权的有限投影。证据work/workspace-caller-lifetime-20261102-01/protected-loss-r2/observed-result.json SHA256 E8C8CA32B005C27401A5435777D4CD42FBB8EB72A6136057989BE87D74B531EB。CAPABILITY_DELIVERED(固定LPAC调用者失联的原owner停止闭环)，不证明profile/私有目录清理、owner崩溃或全部故障恢复。
