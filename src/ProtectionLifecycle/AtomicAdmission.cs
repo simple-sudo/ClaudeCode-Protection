@@ -306,10 +306,13 @@ internal sealed class AtomicChild : IDisposable
             if(resources is not null)
             {
                 env["CPC_RESOURCE_PLAN"]=JsonSerializer.Serialize(resources.Plan);
-                foreach(var name in new[]{"TEMP","TMP","LOCALAPPDATA","USERPROFILE"})env[name]=resources.Workspace;
+                SetPrivateRuntimeDirectories(env,resources.Workspace);
             }
             if(preparation is not null)
             {
+                // Creation requires LOCALAPPDATA; use the original freshly
+                // owned profile, never the host user profile or inherited temp.
+                SetPrivateRuntimeDirectories(env,profile.WorkspaceRoot());
                 env["CPC_SESSION_ID"]=preparation.SessionId;env["CPC_SESSION_SECRET"]=preparation.Gateway.Secret;
                 var endpoint="http://"+preparation.SessionId+":"+preparation.Gateway.Secret+"@127.0.0.1:"+SessionProxy.Port;
                 foreach(var name in new[]{"HTTP_PROXY","HTTPS_PROXY","ALL_PROXY"})env[name]=endpoint;
@@ -417,6 +420,14 @@ internal sealed class AtomicChild : IDisposable
         if(status==0x102)throw new TimeoutException("Finite atomic canary did not exit");
         if(status!=0)throw Error("AtomicCanaryWait");
         if(!GetExitCodeProcess(process,out var code))throw Error("AtomicCanaryExitCode");return code;
+    }
+    internal static void SetPrivateRuntimeDirectories(IDictionary<string,string> environment,string ownedDirectory)
+    {
+        // Pure mapping only. The creation owner supplies its bound profile or
+        // resource workspace; this helper accepts no path operation or grant.
+        if(string.IsNullOrEmpty(ownedDirectory) || ownedDirectory.Contains('\0'))
+            throw new InvalidDataException("OwnedRuntimeDirectoryRequired");
+        foreach(var name in new[]{"TEMP","TMP","LOCALAPPDATA","USERPROFILE"})environment[name]=ownedDirectory;
     }
     internal static int RunGatewayQualificationCanary()
     {

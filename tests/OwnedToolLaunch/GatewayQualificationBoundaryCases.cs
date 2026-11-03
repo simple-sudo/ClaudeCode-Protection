@@ -41,6 +41,19 @@ internal static class GatewayQualificationBoundaryCases
             blocked=false;try{Call("RunSyntheticSession");}catch(InvalidOperationException ex)when(ex.Message.StartsWith("SYSTEM_ARTIFACT_NOT_QUALIFIED:",StringComparison.Ordinal)){blocked=true;}Check(blocked);
         }
         finally{for(var i=0;i<names.Length;i++)Environment.SetEnvironmentVariable(names[i],saved[i]);}
-        Console.WriteLine($"PASS {count} ordinary gateway qualification boundary checks; common maintenance gate, actual ordinary self token, conflicting plans and unchanged formal holds. No UAC, protected-state access, gateway, network, Job or WFP operation.");
+        var atomic=library.GetType("ProtectionLifecycle.AtomicChild",true)!;
+        var map=atomic.GetMethod("SetPrivateRuntimeDirectories",BindingFlags.Static|BindingFlags.NonPublic)!;
+        var env=new SortedDictionary<string,string>(StringComparer.OrdinalIgnoreCase){["PATH"]="fixed-system-path",["HTTP_PROXY"]="fixed-session-endpoint",["LOCALAPPDATA"]="host-value-must-be-replaced"};
+        const string owned=@"C:\fixed-nonexistent-container-fixture";
+        map.Invoke(null,new object[]{env,owned});
+        foreach(var name in new[]{"TEMP","TMP","LOCALAPPDATA","USERPROFILE"})Check(env[name]==owned);
+        Check(env["PATH"]=="fixed-system-path");Check(env["HTTP_PROXY"]=="fixed-session-endpoint");Check(env.Count==6);
+        foreach(var invalid in new[]{"", "bad\0value"})
+        {
+            var before=string.Join(";",env.Select(x=>x.Key+"="+x.Value));var refused=false;
+            try{map.Invoke(null,new object[]{env,invalid});}catch(TargetInvocationException ex)when(ex.InnerException is InvalidDataException){refused=true;}
+            Check(refused && before==string.Join(";",env.Select(x=>x.Key+"="+x.Value)));
+        }
+        Console.WriteLine($"PASS {count} ordinary gateway qualification boundary checks; common maintenance gate, actual ordinary self token, conflicting plans, unchanged formal holds and pure private-directory mapping. No UAC, protected-state access, gateway, network, Job or WFP operation.");
     }
 }

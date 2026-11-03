@@ -1,7 +1,7 @@
 # 当前状态与授权摘要
 
 更新：2026-11-03（America/New_York）。本页是**唯一的最新状态摘要**；历史事实仍由原始证据
-支持。401e5f52已安装原会话网关的宿主单播目的地拒绝/漂移撤销，保持INACTIVE；36固定地址组件检查与精确迁移通过、15公开资产/8回执/独立ACL匹配。本次未采集真实网卡地址或运行网关/联网会话，新网络资格未验收。原7535重置兼容固定LPAC项目的64拒绝+两缺失、三测试/十一文件恢复证据保留，不转授为新网络证明。
+支持。92e39631固定网关入口已安装INACTIVE。一次本人授权/UAC实测在挂起创建处返回203，未放行/未发HTTPS，原Job归零，FAIL保留；15公开资产/13本次公开回执/独立ACL匹配。40d755fa已修正容器专属环境变量并通过21普通检查，尚未安装或系统复测。原7535重置兼容项目实测保留，不转授为网络证明。
 
 ## 开发基线
 
@@ -19,15 +19,17 @@
 
 | 项目 | 最近记录及边界 |
 | --- | --- |
-| 实测时刻 | 2026-11-03 06:17:45Z安装、06:18独立ACL与安全观察通过 |
-| Release | `401e5f52d5ef4e68afd4f53631e6c94a` |
-| Manifest SHA256 | `8E09CB551E27BFD89C5F31F375DDC0D1D13E5F3DCB5E0547FE9E5344D6C3B86D` |
+| 实测时刻 | 2026-11-03 06:44Z安装/固定网关尝试，06:46独立ACL与安全观察通过 |
+| Release | `92e39631676f45168f1bc52125068fb9` |
+| Manifest SHA256 | `ADC8BEE33E205CF4F0411492D1F3A54A5A63FEF7F7E27DC95FE11C05C3D233A2` |
 | 状态 | INACTIVE；没有开放正式网络或Claude |
-| 最近运行观察 | 原7535会话81f4e1a0：64拒绝5、两旧配置缺失3、owner封存、三测试/十一文件恢复；本次未重复项目 |
-| 已证明 | 原更新owner成功；15公开资产/8回执/独立ACL匹配，20输入持有；Broker/管理库两载荷变化，其余十二字节保持；36固定地址组件与精确迁移通过 |
-| 未证明 | 实际网关地址采集/联网路径/本地管理接口隔离及十四准入、GUI点击、其他宿主API/凭据/全部P0/GPU/恢复/真实Claude未验收 |
+| 最近运行观察 | 92e3会话d8a3151e：挂起创建失败203，未确认创建/未放行，原Job零；未发HTTPS。7535原项目证据保留 |
+| 已证明 | 原更新owner成功；15公开资产/13固定失败尝试回执/独立ACL匹配；20输入持有；Broker apphost/DLL/管理库三载荷变化，其余十一保持；12普通边界与精确迁移通过 |
+| 未证明 | HTTPS转发、全部网络旁路/管理接口隔离及十四准入、GUI点击、其他宿主API/凭据/全部P0/GPU/恢复/真实Claude未验收；本次未独立私有清理观察 |
 
-新安装：`work/gateway-host-target-20261103-01/observed-installation.json`，SHA256 `2EEF5E6CA7658C57A99777737C4C41098B8E9B6CBFF2715193C8750EBEAA6D98`。15公开资产/8回执核对SHA256 `541ECEC0AF21B94115666020151F301307AB6AF713F394406506532AF767CFAD`；独立ACL SHA256 `AD49041AF8DCF9CD10E9AA0D5BE68A06C94A896412DB9987694219CBF2F57426`。原生产native imports165/0保持、无模块初始化。网络策略NET3 SHA256 `77348BD30C3F8006CCE90C582087D19B5B181181917F21B09B3D8C09C98D430C`；旧意图/规则不满足新正式会话，未自动迁移/改变系统设置，现行hold保持。
+新安装：`work/session-gateway-qualification-20261103-01/observed-installation.json` SHA256 `3C13BF26AC7659561D3199F9D4933FF1A7044084D7AA903A7A6CC564C4905BE9`，管理库 `2F2C6DEB51EE41064E1CF0178EBAE09999107D43A408A298DCE5897DA08D4A9C`；固定网关失败 `observed-result.json` SHA256 `1619260F165B3CF49D4E5C72C3A56CE9DAE3A4EECA4A5516F6EC968EDC26169B`。原owner返回仅203创建失败、FinalJob ActiveBefore/After=0及空ProcessIds；StopObservation=null（尚未形成runtime），不能写成运行期watchdog/停止实验通过。没有复用本次许可；无额外私有错误/raw Job/Stop读取或恢复。独立ACL `A242D9BC19D9BC5B333B2D9967CE60D4B4353E85EE6D49D5469CE96C280EE727`，公开字节 `1819205D71D8815E9F07716B61CF91EE3D407A41C6933CE3498EAE2CA7397E50`。原调用顺序已完成网关构造/私有地址快照及精确SID回环准备才到达创建失败；这是按固定代码阶段的判断，不是实际HTTPS或地址漂移/旁路验证。
+
+此前401e安装：`work/gateway-host-target-20261103-01/observed-installation.json`，SHA256 `2EEF5E6CA7658C57A99777737C4C41098B8E9B6CBFF2715193C8750EBEAA6D98`。15公开资产/8回执核对SHA256 `541ECEC0AF21B94115666020151F301307AB6AF713F394406506532AF767CFAD`；独立ACL SHA256 `AD49041AF8DCF9CD10E9AA0D5BE68A06C94A896412DB9987694219CBF2F57426`。原生产native imports165/0保持、无模块初始化。网络策略NET3 SHA256 `77348BD30C3F8006CCE90C582087D19B5B181181917F21B09B3D8C09C98D430C`；旧意图/规则不满足新正式会话，未自动迁移/改变系统设置，现行hold保持。
 
 此前7535重置兼容安装观察：`work/reset-settings-compat-20261103-01/observed-installation.json`，SHA256 `A2D7D3347D1927BD98497B7251A217941BC3E9115636B50F24273B5C964D74B5`。另一次本人授权/UAC后固定LPAC结果：`work/reset-settings-compat-20261103-01/protected-run/observed-result.json` SHA256 `52A197709EBCD802A7A2000A3B5E3476608CD4FF73049E215D0B6E030ED244DE`。原成功导出门包含Job闭合/隔离/清理；未额外raw Job/Stop/私有读取。两条缺失不算拒绝，只证明当时owner检查时刻缺失；许可已消耗，不因新版安装追认网络资格。
 
@@ -71,22 +73,20 @@ ecbcd4e0两载荷变化为续编GUI及精确8a22前置pin；本次9dd26020两载
 | 开发失败反馈 | 原compiler→root→owner→IPC→daily→GUI链接入；普通Compile/Run/Tests自有失败通过；00ac固定LPAC编译失败返回CS0103/source0/物理9行52列，原46拒绝/封存/关闭回执满足，结果0字节 | 实际运行/测试失败反馈、其他工具及崩溃恢复未实测；公开关闭观察不证明profile/私有目录清理 |
 | V2项目数据/结果 | 26新合同/40旧caller/原122合成门禁和67普通GUI数据通过；77a1真实DataReport编译/读取JSON/生成报告/3测试/十一文件恢复及双actor46拒绝通过 | 仅该固定项目/所列对象与权限；导出上限不是磁盘配额，不推广至其他工具或完整产品 |
 | 控制文件执行门 | 原8a22真实LPAC根/编译器各33项拒绝5保留；7535同32项各拒绝5，另slot7各为缺失3（不计拒绝），含20次控制文件最小权限打开；原owner封存后正常DataReport修改/编译/3测试/十一文件恢复通过 | 仅所列三对象/十权限及该固定项目；不证明实际破坏、保护源码/IPC/全部权限或其他工具 |
-| 网络/身份/工具 | 401e原网关宿主单播地址拒绝/漂移撤销已安装，36固定地址组件通过，实际网卡/网络未运行；有限版本矩阵、受限进程和原生GPU历史实测分别保留 | 当前版本的完整强制网络、十四项可信准入、PowerShell及代表性工具/GPU兼容、长时稳定性 |
+| 网络/身份/工具 | 92e原网关构造后在创建处失败203，未放行/未发HTTPS；36固定地址组件及12原普通门检查保留，40d7修正目录环境21普通检查通过未安装；有限版本矩阵、受限进程和原生GPU历史实测分别保留 | 当前版本的完整强制网络、十四项可信准入、PowerShell及代表性工具/GPU兼容、长时稳定性 |
 | 生命周期 | 固定安装及部分已关闭/从未启动资源恢复保留；e249c895原pipe调用者监督18组件检查、实际固定LPAC调用者被结束后原owner关闭准入/隔离/Job零/0停止失败通过 | profile/私有目录清理未由本次观察证明；owner/控制器异常、崩溃重启、更新/回滚/卸载与故障恢复完整验收仍缺；历史蓝屏根因UNKNOWN |
 | 自我保护 | d51共用管理身份门拒绝非主令牌/容器/未提升/受限SID/非管理员，19普通检查与可信UAC原安装路径通过；实际LPAC管理调用未执行。原选择排除/日常身份拒绝保留；原执行门新增九项owner最小权限打开检查，两个受保护actor的18次owner打开均拒绝5，可信owner自我维护打开正控制通过；SOURCE/BUILD/INTEGRATED及该项目限定VERIFIED | 未实际破坏owner；源码读/文件写/服务/IPC/其他工具/异常恢复完整矩阵及日常入口真实受保护身份验证仍缺。P1/P2未验收；命名/离线部署未实施 |
 
 完整产品：`PRODUCT_DELIVERY_NOT_ACCEPTED`。完整受保护Claude执行链尚未交付。
 有限历史GPU/网络通过不等于当前版本没有缺口，也不能被抹成“从未实测”。
 
-## 已完成普通准备、待具体决定的原网关真实路径
+## 固定网关创建失败后的修正版
 
-- 候选 `92e39631676f45168f1bc52125068fb9` / manifest `ADC8BEE33E205CF4F0411492D1F3A54A5A63FEF7F7E27DC95FE11C05C3D233A2` 已构建并冻结，**未安装**；上表最近安装仍为401e。
-- 原ProtectedSession新增固定无参数网关资格入口，经原Preparation/Admission/SessionProxy/Runtime/Job/WFP/停止链，固定已安装LPAC程序只发Microsoft HTTPS HEAD，30秒资格期限；不接收项目/脚本/目标、不转换十四项环境或系统安全UNKNOWN。正式launch/session-synthetic/admission-child旧门禁保持。
-- 唯一已知raw7890策略可由原迁移owner在全隔离中移至NET3；未知/旧网关策略和待迁移状态拒绝。系统执行尚未授权、未枚举真实接口、未运行网关/DNS/HTTP或变更WFP/回环。
-- 12普通边界检查、迁移pin1正6拒绝、9固定关闭回执样例、二十输入持有预检通过；三个构建目标0警告0错误，生产165 native imports不变、Bootstrap嵌入清单/同库/控制器核对通过。管理库 `2F2C6DEB51EE41064E1CF0178EBAE09999107D43A408A298DCE5897DA08D4A9C`。
-- 准备证据 `work/session-gateway-qualification-20261103-01/observed-preparation.json` SHA256 `537B7D04331E77993C07933937AF7634FF6C86B68A16E25FC689560CC9C91200`。
-- [固定审查单](../work/session-gateway-qualification-20261103-01/system-operation-review.md)包括一次本人UAC下的INACTIVE更新及固定网关运行、仅本SID WFP/回环影响、30秒资格/90秒owner等待、原owner隔离与Job停止、有限公开回执及失败不重试。站立安装授权不自动包含该网络实验；尚无决定/claim。
-- SOURCE/BUILD/INTEGRATED及上述ordinary范围VERIFIED；新网络功能NOT_RUN，不能据此标局部native交付或完整产品验收。
+- 8008f59原会话固定用途已安装；一次本人具体授权/UAC的203失败见上，许可已消耗，未自动重试。正式launch/session-synthetic/admission-child门继续关闭，十四项环境/安全UNKNOWN未转PASS。
+- 修正`AtomicChild`挂起准备路径：复用原`profile.WorkspaceRoot()`，补TEMP/TMP/LOCALAPPDATA/USERPROFILE四项；不继承宿主用户目录。原资源路径改调同一纯映射，保留其原workspace值；不增加目录/ACL/工具/执行能力。错误203与已通过资源路径的差异支持此修正方向，实际解决与否仍NOT_RUN。
+- 新候选 `40d755fa7b36494e9e2a78beafeaed38` / manifest `0E3FC10A86DB6D61F6CB774AE4D74CBF4D9CEE9E147393F020F59A55ACF97C5B`，库 `10F3CD1F507D2303C574FC7FC07E3B489C99F03E8566BDD9334BC8D2A79B895B` 已构建/冻结，**未安装**；唯一前置为已安装92e3。三个目标BUILD0警告0错误，21普通身份/目录映射/旧门检查、精确pin1正6拒绝、9关闭回执样例、20输入持有预检通过；165/0/4 native imports保持。
+- 准备证据 `work/session-gateway-qualification-20261103-01/environment-r2/observed-preparation.json` SHA256 `6341E93173CDE3800016314C65FCEDD745541B9EDB6EC8719CD0584C75890CBB`。
+- [修正版固定审查单](../work/session-gateway-qualification-20261103-01/environment-r2/system-operation-review.md)沿用一次本人UAC下安装+固定Microsoft HEAD、仅本SID WFP/回环、30秒资格/90秒等待、原隔离/Job/profile/回环所有者停止和有限公开观察；不得复用上次已消耗许可。新具体决定尚待本人，不写为网络交付。
 
 ## 当前授权及下一阶段
 
