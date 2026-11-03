@@ -86,6 +86,9 @@ ecbcd4e0两载荷变化为续编GUI及精确8a22前置pin；本次9dd26020两载
 
 ## 本轮真实功能结果与下一步
 
+- GUI新增“取消本次项目”，仅本次项目等待期间启用；只结束自己刚创建并持有的普通daily，同创建时间/规范化固定映像校验保留，由原Broker调用者失联监督负责保护侧停止。取消后结果不自动提取、运行目录保留，固定130诊断明确OwnerClosureConfirmed=false/AutomaticRetry=false，无新管理IPC/提升停止接口。
+  GUI/CenterResults BUILD0/0，126普通检查（115数据+11取消）及离屏空闲按钮禁用/布局通过，含真实自有普通子进程取消、259正常输出、错误映像不停止、预取消不启动。8 native imports未变、无模块初始化。证据work/project-cancel-20261102-01/observed-result.json SHA256 84AD5BE45FA940C5ECFC8805659B8CA28D91BA486ED8EC0E904D4C2C1DB199C1。SOURCE/BUILD/INTEGRATED+普通组件VERIFIED；候选225b7214固定20文件/精确e249迁移预检通过，待本人UAC。新GUI点击/LPAC取消未执行，不继承e249故障实测。
+
 - 本人对protected-loss-r2新固定审查重新明确“授权这一次”并确认两次UAC。2026-11-03 02:45:42Z，会话8f1e66d5137f4b448c7b90fd1cbbd16f，Job7775a7ba616e4cb789d355802749409e；普通调用者14972的同一持有进程/PID/创建时间/规范化固定映像/存活全部匹配后，只结束该调用者。原owner有界回执CallerExitedFailureObserved=true、AdmissionClosed=true、QuarantineBeforeStop=true、FinalJobZero=true、StopFailureCount=0，双actor66项拒绝5/执行前封存保持；无结果保存、普通结果0字节、原输入未变。
   三份新保护摘要hash/可信owner/保护DACL/无不可信写者独立核对通过；root未读取原私有报告，只核对已具体授权的有限投影。证据work/workspace-caller-lifetime-20261102-01/protected-loss-r2/observed-result.json SHA256 E8C8CA32B005C27401A5435777D4CD42FBB8EB72A6136057989BE87D74B531EB。CAPABILITY_DELIVERED(固定LPAC调用者失联的原owner停止闭环)，不证明profile/私有目录清理、owner崩溃或全部故障恢复。
   新一次授权已消耗，前一次FAIL原字节保留；无自动重试/恢复/强停提升owner/额外私有错误或独立raw Job/Stop读取/网络或AV改动/Claude。Boot=2026-11-03T02:20:15.500Z、AV/BFE Running、FlClash/UU观察一致，厂商完整告警覆盖UNKNOWN。产品安装与源码仍e249/a090基线，本轮只修正固定实验控制器并取得实测，不另建产品执行器。

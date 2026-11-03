@@ -251,7 +251,10 @@ public static class BootstrapInstaller
         "699ED89C53E60A706081DF6651D0AFD19FADAC71687E54DB0BD30D7BCC5899BC",
         // Exact 9dd26020 multi-edit GUI package; every live inactive-owner
         // resource, admission, Job/quarantine and ownership guard is retained.
-        "3D7B72E0873AED73A10D6B9D016FEF66ACDA0AF840B0AEE16A3946A93E07717C"
+        "3D7B72E0873AED73A10D6B9D016FEF66ACDA0AF840B0AEE16A3946A93E07717C",
+        // Exact e249 caller-lifetime package. Its fixed caller-loss stop is
+        // recorded; all live closed-admission/Job/quarantine guards remain.
+        "ACA706F6DD31F625A0D800DDA56582D46B13BB0D16A6C817AAC35E9840B0F993"
         };
         private readonly ProtectedState state;
         private readonly BootstrapApproval approval;

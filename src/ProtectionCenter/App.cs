@@ -48,6 +48,8 @@ internal sealed class CenterWindow : Window
     private CallerProjectSession? preparedProject;
     private Button? startProject;
     private Button? saveProject;
+    private readonly Button cancelProject=new(){Content="取消本次项目",Padding=new Thickness(14,9,14,9),Margin=new Thickness(0,0,10,6),IsEnabled=false};
+    private CancellationTokenSource? projectCancellation;
     internal CenterWindow()
     {
         Title = "Claude Code 保护中心"; Width = 940; Height = 720; MinWidth = 820; MinHeight = 640;
@@ -86,6 +88,8 @@ internal sealed class CenterWindow : Window
         saveProject=AddAction(buttons, "保存项目任务包", SaveProject);saveProject.IsEnabled=false;
         AddAction(buttons, "导入项目任务包", () => PrepareProject(true));
         startProject=AddAction(buttons, "开始项目开发", RunProject);startProject.IsEnabled=false;
+        cancelProject.Click+=(_,_)=>{if(projectCancellation is null || projectCancellation.IsCancellationRequested)return;projectCancellation.Cancel();cancelProject.IsEnabled=false;activity.Text="已请求取消，正在等待本次操作结束；保护侧关闭与清理状态尚未确认。";};
+        buttons.Children.Add(cancelProject);
         AddAction(buttons, "用结果继续开发", ContinueProject);
         AddAction(buttons, "审阅开发结果", () => ReviewWorkspace(false));
         AddAction(buttons, "提取开发结果", () => ReviewWorkspace(true));
@@ -104,7 +108,7 @@ internal sealed class CenterWindow : Window
     private static TextBlock Label(string text) => new() { Text = text, Foreground = Muted, FontSize = 13 };
     private static Border Card(UIElement content) => new() { Child = content, Background = Brushes.White, BorderBrush = new SolidColorBrush(Color.FromRgb(222, 228, 236)), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(10), Padding = new Thickness(18) };
     private void RefreshActions()
-    {foreach(var action in actions)action.IsEnabled=!busy;if(startProject is not null)startProject.IsEnabled=!busy && preparedProject is not null;if(saveProject is not null)saveProject.IsEnabled=!busy && preparedProject is not null;}
+    {foreach(var action in actions)action.IsEnabled=!busy;if(startProject is not null)startProject.IsEnabled=!busy && preparedProject is not null;if(saveProject is not null)saveProject.IsEnabled=!busy && preparedProject is not null;cancelProject.IsEnabled=busy && projectCancellation is not null && !projectCancellation.IsCancellationRequested;}
     private Button AddAction(Panel panel, string label, Func<Task> work)
     {
         var button = new Button { Content = label, Padding = new Thickness(14, 9, 14, 9), Margin = new Thickness(0, 0, 10, 6), Background = Brushes.White, Foreground = Ink, BorderBrush = new SolidColorBrush(Color.FromRgb(200, 211, 224)), Cursor = System.Windows.Input.Cursors.Hand };
@@ -182,12 +186,16 @@ internal sealed class CenterWindow : Window
         var parent=new Microsoft.Win32.OpenFolderDialog{Title="选择本次开发记录与结果的保存位置",Multiselect=false};
         if(parent.ShowDialog(this)!=true){activity.Text="已取消启动，准备好的项目仍保留。";return;}
         var run=project.PlanRun(parent.FolderName);BackendResult? result=null;
+        using var cancel=new CancellationTokenSource();
         try
         {
             activity.Text="正在保存已审阅的项目快照……";await Task.Run(()=>project.WriteInput(run));
             details.Text=project.ReviewText+"\r\n本次运行目录："+run.Directory;
             activity.Text="正在发起项目开发，请确认 Windows 权限提示。原项目保留。";
-            result=await BackendClient.BuildCallerProject(run.InputPath,run.ResultPath,project.InputSHA256);
+            projectCancellation=cancel;RefreshActions();
+            try{result=await BackendClient.BuildCallerProject(run.InputPath,run.ResultPath,project.InputSHA256,cancel.Token);}
+            finally{projectCancellation=null;RefreshActions();}
+            cancel.Token.ThrowIfCancellationRequested();
             if(result.ExitCode!=0 || result.Error.Length!=0)
             {
                 var message=project.DescribeFailure(result);activity.Text=message;
@@ -200,10 +208,17 @@ internal sealed class CenterWindow : Window
             activity.Text=$"本次项目已完成，{project.ExpectedTests} 项测试通过；两名执行者对所列资源的权限打开均被拒绝。";
             details.Text+="\r\n结果目录："+Path.Combine(run.Directory,"files");
         }
+        catch(OperationCanceledException)when(cancel.IsCancellationRequested)
+        {
+            result=BackendClient.CancelledProjectResult();
+            activity.Text="本次操作已取消，结果未自动提取。请保留运行目录；保护侧关闭与清理状态尚未从界面确认。若权限提示仍在等待，请取消该提示。";
+            details.Text+="\r\n"+activity.Text;
+        }
         catch(OperationCanceledException){activity.Text="等待项目返回超时，任务状态未确认。请保留运行目录，并取消仍未确认的权限提示；不会自动重试。";}
         catch(Exception ex){activity.Text="项目或结果恢复未完成："+ex.GetType().Name+"。请保留运行目录，其中可能已有部分文件；原项目保留。";}
         finally
         {
+            projectCancellation=null;RefreshActions();
             if(!details.Text.Contains(run.Directory,StringComparison.Ordinal))details.Text+="\r\n本次运行目录："+run.Directory;
             if(result is not null)try{activity.Text+="\n诊断记录："+BackendClient.SaveReport("project-build",result);}catch(Exception ex){activity.Text+="\n诊断记录未能保存："+ex.GetType().Name+"。以上操作结果保留。";}
         }

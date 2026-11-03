@@ -50,8 +50,9 @@ internal static class BackendClient
         }
         catch{held.Dispose();throw;}
     }
-    internal static async Task<BackendResult> BuildCallerProject(string inputPath,string resultPath,string expectedSHA256)
+    internal static async Task<BackendResult> BuildCallerProject(string inputPath,string resultPath,string expectedSHA256,CancellationToken cancellation=default)
     {
+        cancellation.ThrowIfCancellationRequested();
         AssertProjectLocation();using var held=new ClaudeProtection.WorkspaceInstalledHost(Root);
         using var reviewed=HoldReviewedInput(inputPath,expectedSHA256);
         var executable=Path.Combine(Root,"bin","current","ClaudeProtection.exe");
@@ -63,7 +64,14 @@ internal static class BackendClient
         info.Environment["PATH"]=@"C:\Program Files\dotnet;C:\Windows\System32;C:\Windows";
         info.Environment["DOTNET_ROOT"]=@"C:\Program Files\dotnet";info.Environment["DOTNET_ROLL_FORWARD"]="LatestPatch";
         info.ArgumentList.Add("workspace-build-csharp");info.ArgumentList.Add(inputPath);info.ArgumentList.Add(resultPath);
+        cancellation.ThrowIfCancellationRequested();
         using var process=Process.Start(info)??throw new IOException("项目调用未能启动");
+        return await WaitProjectClient(process,executable,cancellation);
+    }
+    // Only receives the process returned by the immediately preceding ordinary
+    // Start. No PID lookup/tree stop or elevated-owner management is provided.
+    internal static async Task<BackendResult> WaitProjectClient(Process process,string executable,CancellationToken cancellation)
+    {
         var created=process.StartTime.ToFileTimeUtc();_=process.SafeHandle;
         try
         {
@@ -73,8 +81,9 @@ internal static class BackendClient
                 while(true){var count=await reader.ReadAsync(buffer);if(count==0)return text.ToString();if(text.Length+count>maximum)throw new IOException("项目调用输出超出上限");text.Append(buffer,0,count);}
             }
             var output=ReadBounded(process.StandardOutput,65536);var error=ReadBounded(process.StandardError,16384);
-            using var deadline=new CancellationTokenSource(TimeSpan.FromSeconds(180));
+            using var deadline=CancellationTokenSource.CreateLinkedTokenSource(cancellation);deadline.CancelAfter(TimeSpan.FromSeconds(180));
             await process.WaitForExitAsync(deadline.Token);
+            cancellation.ThrowIfCancellationRequested();
             var stdout=await output.WaitAsync(TimeSpan.FromSeconds(1));var stderr=await error.WaitAsync(TimeSpan.FromSeconds(1));
             return new(process.ExitCode,stdout,stderr);
         }
@@ -82,7 +91,7 @@ internal static class BackendClient
         {
             if(!process.HasExited)
             {
-                if(process.StartTime.ToFileTimeUtc()!=created || !string.Equals(process.MainModule?.FileName,executable,StringComparison.OrdinalIgnoreCase))
+                if(process.StartTime.ToFileTimeUtc()!=created || !SameProjectClientImage(process.MainModule?.FileName,executable))
                     throw new IOException("普通调用身份无法核对，未结束任何进程。");
                 // Only this held ordinary client, never the elevated owner or
                 // a process tree. Its disappearance does not prove Job closure.
@@ -90,6 +99,11 @@ internal static class BackendClient
             }
         }
     }
+    internal static bool SameProjectClientImage(string? actual,string expected)
+        =>actual is not null && Path.IsPathFullyQualified(actual) && Path.IsPathFullyQualified(expected) &&
+            string.Equals(Path.GetFullPath(actual),Path.GetFullPath(expected),StringComparison.OrdinalIgnoreCase);
+    internal static BackendResult CancelledProjectResult()=>new(130,JsonSerializer.Serialize(new {
+        Status="PROJECT_OPERATION_CANCELLED",OwnerClosureConfirmed=false,ResultAutomaticallyExtracted=false,AutomaticRetry=false}),"");
     private static async Task<BackendResult> Run(string executable, IEnumerable<string> arguments)
     {
         var info = new ProcessStartInfo(executable)

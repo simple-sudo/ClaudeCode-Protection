@@ -4,8 +4,16 @@ using ClaudeCodeProtection.Workspaces;
 using ProtectionCenter;
 
 // Only a new, nonsecret ordinary-user fixture beside these test artifacts.
-// No GUI/application entry, executable payload, host target or protected owner.
+// No GUI/product entry, result-code, host target or protected owner.
+// Only the fixed ordinary own-child routines above are executed for cancellation.
 WorkspaceFiles.RequireOrdinaryUser();
+if(args.Length==2 && args[0]=="--own-project-client")
+{
+    if(args[1]=="complete"){Console.WriteLine("OWN_CLIENT_COMPLETE");return 259;}
+    if(args[1]=="wait"){Console.WriteLine("OWN_CLIENT_READY");Console.ReadLine();return 0;}
+    return 125;
+}
+if(args.Length!=0)return 125;
 // External to the protection checkout, as required for daily project selection.
 var root = Path.Combine(Path.GetTempPath(), "cpc-center-fixture-" + Guid.NewGuid().ToString("N"));
 if (Directory.Exists(root)) throw new IOException("Fresh fixture required");
@@ -45,4 +53,7 @@ var unchanged = WorkspaceBundle.Create(WorkspaceBundle.Parse(before).Files.Selec
 File.WriteAllBytes(resultPath, unchanged);
 Require(WorkspaceResultSession.Open(baselinePath, resultPath).ReviewText.Contains("文件内容没有变化"), "unchanged result remains valid data review");
 var projectChecks=ProjectFlowCases.Run(root)+ProjectEditQueueCases.Run(root);
-Console.WriteLine(JsonSerializer.Serialize(new { Status = "OWN_NONSECRET_CENTER_RESULT_AND_PROJECT_FLOW_PASSED", Checks = checks, ProjectChecks=projectChecks, Fixture = root, ProductEntryExecuted = false, ResultCodeExecuted = false, Elevated = false, HostTargetsRead = false, NetworkUsed = false, FixtureRetained = true }));
+var cancellationChecks=await ProjectClientCancellationCases.Run();
+Console.WriteLine(JsonSerializer.Serialize(new { Status = "OWN_NONSECRET_CENTER_RESULT_AND_PROJECT_FLOW_PASSED", Checks = checks, ProjectChecks=projectChecks, CancellationChecks=cancellationChecks, OwnOrdinaryClientProcessesExecuted=true, Fixture = root, ProductEntryExecuted = false, ResultCodeExecuted = false, Elevated = false, HostTargetsRead = false, NetworkUsed = false, FixtureRetained = true }));
+
+return 0;
