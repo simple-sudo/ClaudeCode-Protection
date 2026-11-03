@@ -318,7 +318,7 @@ internal sealed class AtomicChild : IDisposable
             environment=Marshal.StringToHGlobalUni(string.Join('\0',env.Select(p=>p.Key+"="+p.Value))+"\0\0");
             var startup=new StartupInfoEx{Basic=new(){Size=Marshal.SizeOf<StartupInfoEx>()},Attributes=attributes};
             if(report){startup.Basic.Flags=0x100;startup.Basic.Output=output;startup.Basic.Error=output;}
-            var command=new StringBuilder("\""+image+"\" admission-child");
+            var command=new StringBuilder("\""+image+"\" "+(preparation?.IsGatewayQualification==true?"gateway-qualification-child":"admission-child"));
             // The OS binds BOTH identity and Job before returning a suspended
             // initial thread. Only the explicit qualification report handle
             // may be inherited; no breakaway permission is enabled.
@@ -417,6 +417,15 @@ internal sealed class AtomicChild : IDisposable
         if(status==0x102)throw new TimeoutException("Finite atomic canary did not exit");
         if(status!=0)throw Error("AtomicCanaryWait");
         if(!GetExitCodeProcess(process,out var code))throw Error("AtomicCanaryExitCode");return code;
+    }
+    internal static int RunGatewayQualificationCanary()
+    {
+        // This dispatcher cannot enable the retired admission-child entry or
+        // select any of its resource, network-plan or GPU workloads. The actual
+        // LPAC token is checked before the sole compiled HTTPS request.
+        if(Environment.GetEnvironmentVariable("CPC_SESSION_ID") is null || Environment.GetEnvironmentVariable("CPC_SESSION_SECRET") is null ||
+            new[]{"CPC_RESOURCE_PLAN","CPC_NETWORK_PLAN","CPC_GPU_PLAN"}.Any(name=>Environment.GetEnvironmentVariable(name) is not null))return 125;
+        return RunCanary();
     }
     internal static int RunCanary()
     {

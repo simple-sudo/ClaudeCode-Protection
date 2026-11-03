@@ -166,6 +166,8 @@ public static partial class InstalledBroker
         AssertInstalledHost(layout,state,version);return ProtectedSession.Request(layout,state,version,true);
     }
 
+    public static (int ExitCode,string Report) QualifySessionGateway()=>WithCurrentInstallation(ProtectedSession.QualifySessionGateway);
+    public static int RunGatewayQualificationCanary()=>AtomicChild.RunGatewayQualificationCanary();
     public static int RunAdmissionCanary()
     {
         if(Environment.GetEnvironmentVariable("CPC_RESOURCE_PLAN") is not null)return AtomicChild.RunResourceCanary();

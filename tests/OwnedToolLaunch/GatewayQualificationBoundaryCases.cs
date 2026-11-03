@@ -1,0 +1,46 @@
+using System.Reflection;
+using System.Runtime.ExceptionServices;
+
+internal static class GatewayQualificationBoundaryCases
+{
+    internal static void Run(Assembly library)
+    {
+        var broker=library.GetType("ProtectionLifecycle.InstalledBroker",true)!;
+        var session=library.GetType("ProtectionLifecycle.ProtectedSession",true)!;
+        var count=0;
+        void Check(bool value){if(!value)throw new InvalidOperationException("Gateway qualification boundary refused");count++;}
+        object? Call(string method)
+        {
+            try{return broker.GetMethod(method,BindingFlags.Public|BindingFlags.Static)!.Invoke(null,null);}
+            catch(TargetInvocationException ex)when(ex.InnerException is not null){ExceptionDispatchInfo.Capture(ex.InnerException).Throw();throw;}
+        }
+        Check((bool)session.GetProperty("SystemTestingBlocked",BindingFlags.Static|BindingFlags.NonPublic)!.GetValue(null)!);
+        Check(broker.GetMethod("QualifySessionGateway")!.GetParameters().Length==0);
+        Check(broker.GetMethod("RunGatewayQualificationCanary")!.GetParameters().Length==0);
+        // Ordinary callers must be rejected by the common administrator gate,
+        // before opening protected state or creating native runtime objects.
+        var denied=false;try{Call("QualifySessionGateway");}catch(UnauthorizedAccessException){denied=true;}Check(denied);
+        var names=new[]{"CPC_SESSION_ID","CPC_SESSION_SECRET","CPC_RESOURCE_PLAN","CPC_NETWORK_PLAN","CPC_GPU_PLAN"};
+        var saved=names.Select(Environment.GetEnvironmentVariable).ToArray();
+        try
+        {
+            foreach(var name in names)Environment.SetEnvironmentVariable(name,null);
+            Check((int)Call("RunGatewayQualificationCanary")! ==125);
+            Environment.SetEnvironmentVariable(names[0],new string('a',32));
+            Check((int)Call("RunGatewayQualificationCanary")! ==125);
+            Environment.SetEnvironmentVariable(names[1],new string('B',64));
+            // Well-shaped environment strings cannot manufacture a real LPAC.
+            Check((int)Call("RunGatewayQualificationCanary")! ==125);
+            foreach(var name in names.Skip(2))
+            {
+                Environment.SetEnvironmentVariable(name,"{}");
+                Check((int)Call("RunGatewayQualificationCanary")! ==125);
+                Environment.SetEnvironmentVariable(name,null);
+            }
+            var blocked=false;try{Call("RunAdmissionCanary");}catch(InvalidOperationException ex)when(ex.Message.StartsWith("SYSTEM_ARTIFACT_NOT_QUALIFIED:",StringComparison.Ordinal)){blocked=true;}Check(blocked);
+            blocked=false;try{Call("RunSyntheticSession");}catch(InvalidOperationException ex)when(ex.Message.StartsWith("SYSTEM_ARTIFACT_NOT_QUALIFIED:",StringComparison.Ordinal)){blocked=true;}Check(blocked);
+        }
+        finally{for(var i=0;i<names.Length;i++)Environment.SetEnvironmentVariable(names[i],saved[i]);}
+        Console.WriteLine($"PASS {count} ordinary gateway qualification boundary checks; common maintenance gate, actual ordinary self token, conflicting plans and unchanged formal holds. No UAC, protected-state access, gateway, network, Job or WFP operation.");
+    }
+}

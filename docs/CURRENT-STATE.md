@@ -78,6 +78,16 @@ ecbcd4e0两载荷变化为续编GUI及精确8a22前置pin；本次9dd26020两载
 完整产品：`PRODUCT_DELIVERY_NOT_ACCEPTED`。完整受保护Claude执行链尚未交付。
 有限历史GPU/网络通过不等于当前版本没有缺口，也不能被抹成“从未实测”。
 
+## 已完成普通准备、待具体决定的原网关真实路径
+
+- 候选 `92e39631676f45168f1bc52125068fb9` / manifest `ADC8BEE33E205CF4F0411492D1F3A54A5A63FEF7F7E27DC95FE11C05C3D233A2` 已构建并冻结，**未安装**；上表最近安装仍为401e。
+- 原ProtectedSession新增固定无参数网关资格入口，经原Preparation/Admission/SessionProxy/Runtime/Job/WFP/停止链，固定已安装LPAC程序只发Microsoft HTTPS HEAD，30秒资格期限；不接收项目/脚本/目标、不转换十四项环境或系统安全UNKNOWN。正式launch/session-synthetic/admission-child旧门禁保持。
+- 唯一已知raw7890策略可由原迁移owner在全隔离中移至NET3；未知/旧网关策略和待迁移状态拒绝。系统执行尚未授权、未枚举真实接口、未运行网关/DNS/HTTP或变更WFP/回环。
+- 12普通边界检查、迁移pin1正6拒绝、9固定关闭回执样例、二十输入持有预检通过；三个构建目标0警告0错误，生产165 native imports不变、Bootstrap嵌入清单/同库/控制器核对通过。管理库 `2F2C6DEB51EE41064E1CF0178EBAE09999107D43A408A298DCE5897DA08D4A9C`。
+- 准备证据 `work/session-gateway-qualification-20261103-01/observed-preparation.json` SHA256 `537B7D04331E77993C07933937AF7634FF6C86B68A16E25FC689560CC9C91200`。
+- [固定审查单](../work/session-gateway-qualification-20261103-01/system-operation-review.md)包括一次本人UAC下的INACTIVE更新及固定网关运行、仅本SID WFP/回环影响、30秒资格/90秒owner等待、原owner隔离与Job停止、有限公开回执及失败不重试。站立安装授权不自动包含该网络实验；尚无决定/claim。
+- SOURCE/BUILD/INTEGRATED及上述ordinary范围VERIFIED；新网络功能NOT_RUN，不能据此标局部native交付或完整产品验收。
+
 ## 当前授权及下一阶段
 
 - 用户2026-11-02的产品开发goal已替代文档治理阶段范围；可自主推进实现、必要重构及普通有限验证。

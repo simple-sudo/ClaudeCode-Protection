@@ -38,3 +38,14 @@ IPv6阻断与必要负向测试继续有效，转发优化不属当前要求；�
 网络策略升级NET3，SHA256 77348BD30C3F8006CCE90C582087D19B5B181181917F21B09B3D8C09C98D430C；旧意图/规则不能满足新会话的精确策略比较。旧记录保留可检查，未自动迁移/重写；原migrate/session/qualification hold保持，安装不启用网络。地址guard只覆盖分配在宿主接口上的地址，不能覆盖未知NAT公网别名、上游重写或整个真实物理出口；一秒健康采样不是Windows网络状态的原子持续证明。
 
 SOURCE/BUILD/INTEGRATED；36固定非秘密地址检查及精确前置选择通过。已安装401e5f52 INACTIVE，公开载荷/回执/独立ACL匹配；未运行实际接口采集/网关/Socket/DNS/代理/9090或新受保护任务。实测边界见PROJECT-ACCEPTANCE，最新安装见CURRENT-STATE。
+
+
+## 固定网关资格与正式会话的权限分离
+
+原安装Broker的`qualify-session-gateway`只创建一个编译固定的LPAC HTTPS根程序。它继续使用原ProtectedSession的挂起Preparation、一次性Admission、SessionProxy、ProtectionRuntimeLease、WFP和原Job停止所有者，不引入通用执行器。资格用途仅在私有构造中选定，纳入Admission绑定摘要；外部不提供用途flag、项目、脚本、目标、证据或序列化permit。
+
+该固定用途最多30秒，网关每次转发仍要求已放行阶段及原runtime两秒健康租期；实际LPAC、零能力、固定安装映像、创建时间、Job、进程/线程seal及持有上游身份仍按原链核对。它不制造环境/系统安全PASS，不借`SystemTestingBlocked`解锁旧入口。新增子入口仅接受会话形状并重新核对实际LPAC令牌，拒绝resource/network/GPU计划；普通令牌与伪造字符串均不能启动访问。
+
+前置必须原所有Job准入已关闭、回环历史已闭合、无待恢复/迁移；旧已知raw7890策略仅经原迁移owner、原SID/七个键/全隔离事务转换到当前17891策略。未知或旧网关policy失败，不能静默采用。执行后沿原owner先撤销转发/准入、隔离、Job停止/零成员，再处理本次profile和精确SID回环例外。失败不授予额外恢复或再次执行权。
+
+固定工作负载只经认证17891和原7890上游请求Microsoft HEAD，DoH仍经同一上游，私有宿主单播地址快照不导出。此用途有独立系统操作审查和一次人类决定；源码接入、普通测试、构建或安装不证明实际传输/全部旁路/物理出口。最新工件、运行与授权见CURRENT-STATE，不以此机制说明自授运行。

@@ -802,3 +802,12 @@ CAPABILITY_DELIVERED(固定LPAC调用者失联的原owner停止闭环)。证据w
 两GUI/测试目标BUILD0/0，115数据+11取消=126检查通过。固定自有普通子进程验证自然exit259及输出、实际取消、错误映像不停止、预取消不启动，非LPAC/Job/owner停止实验；8 native imports不变。新库仅精确e249迁移pin，164 imports不变、选择正控制/六拒绝/嵌入清单及同库匹配。
 按持续同类安装授权/本人一次UAC，225b7214ee594f89aa554612fbfc6d8c/732A198283CD62847079A75847891ECAE549D3C96363180FE33A7C8B74D31FCF于02:56:54Z更新INACTIVE成功。15公开资产/8固定回执独立字节/ACL通过；已安装离屏图逐字节同已查看构建图，空闲取消按钮禁用。证据work/project-cancel-20261102-01/owner-update/observed-installation.json SHA256 0917521FAC7C91A07805890C672DA9DF37C80F04AF6024E122517C201E05C6B7。
 CAPABILITY_DELIVERED(已安装当前项目取消入口与普通调用者取消组件)。实际GUI点击/新版受保护取消NOT_RUN，不借e249原故障实测升级；Job/profile清理或整机仍未接受。无新项目/UAC自动确认/网络或AV变更/强停提升owner/恢复/额外私有raw读取；Boot/AV/BFE/FlClash/UU观察一致，完整厂商告警覆盖UNKNOWN。
+
+
+## 2026-11-03 原会话网关固定资格入口：普通准备
+
+SOURCE/BUILD/INTEGRATED：新候选92e39631676f45168f1bc52125068fb9、清单ADC8BEE33E205CF4F0411492D1F3A54A5A63FEF7F7E27DC95FE11C05C3D233A2；原ProtectedSession私有固定用途、30秒期限、原挂起/一次准入/健康租期/网关/WFP/Job停止链。新增无参数入口不接受项目/目标/脚本；独立固定子入口重新核对实际LPAC，旧正式/历史资格门保持。仅已知raw7890可经原迁移owner全隔离转为NET3，未知/待迁移拒绝。
+
+普通范围VERIFIED：12检查包含共同管理身份门、真实普通自令牌拒绝、缺少/伪造会话与冲突计划、旧canary/synthetic门保持；精确401e迁移选择1正6拒绝；关闭回执9样例（含活动进程、非空PID、外来Job、隔离晚于停止、准入未关闭/正式与Claude标志/状态漂移）；三个目标BUILD0警告0错误。生产165/ Broker0/测试4 native imports保持，无模块初始化；Bootstrap嵌入清单和管理库副本一致，控制器0 imports，二十输入持有预检通过且未UAC。
+
+证据work/session-gateway-qualification-20261103-01/observed-preparation.json SHA256 537B7D04331E77993C07933937AF7634FF6C86B68A16E25FC689560CC9C91200，库2F2C6DEB51EE41064E1CF0178EBAE09999107D43A408A298DCE5897DA08D4A9C。本次尚未安装/枚举接口/运行网关/DNS/HTTPS/修改WFP或回环；上述不是native网络、隐私、物理出口或正式Claude证明，不标CAPABILITY_DELIVERED。固定系统审查已准备，具体决定尚待本人；完整产品仍PRODUCT_DELIVERY_NOT_ACCEPTED。

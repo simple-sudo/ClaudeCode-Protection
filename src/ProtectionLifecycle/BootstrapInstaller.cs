@@ -128,6 +128,7 @@ public static class BootstrapInstaller
             "D21A7D9F39A93E82087062EAD14F49329E7DBDD2743B2DC12DE98CAB6DC691F1"
         }; // Exact reviewed packages expose no launch/admission command.
         private static readonly string[] OneShotAdmissionManifests={
+            "8E09CB551E27BFD89C5F31F375DDC0D1D13E5F3DCB5E0547FE9E5344D6C3B86D", // 401e inactive gateway guard baseline; no activation grant.
             "3209392BE51C01C3D84254D1177182A414813BBB3FF9B7AA0F8C9D21177F42F4", // 7535 reset-compatible fixed task; original inactive guards remain.
             "62ED7BE063B28D63F34EDA0BF5267343FF4C386506B367901C552EB23C81AD2D", // 8932aff8 task editing; inactive closure guards remain.
             "4EAB9E8E35D4CD1D58344EB3EC824769308D48005156BBC33349BE55361C362E", // d51b3807 shared maintenance gate; all closure checks remain.

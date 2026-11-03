@@ -129,3 +129,6 @@ Compile/Run/Tests失败和正常DataReport通过；最终library/Broker及77a1�
 后续已按本人要求使用应用接口直接调用原System32 PowerShell/Git，完成15+8独立ACL及22输入普通预检。PS7普通策略拒绝原样保留，PS5兼容控制未改策略/产品/工具；新增保护任务单独请求，见最新CURRENT-STATE。
 
 2026-11-02 14:02:30Z：8a22固定DataReport单次受权LPAC运行完成，根/编译器各33拒绝5、owner封存，正常修改/编译/3测试/十一文件恢复及Count3 Total12独立通过。证据work/control-file-gate-20261102-01/protected-run，见验收账本/CURRENT-STATE；无额外私有读取/强停/重试/恢复/Claude/网络修改，授权已消耗。
+
+
+2026-11-03：原ProtectedSession接入固定网关资格用途及固定Broker/LPAC子入口，复用原挂起、准入、网关、WFP、Runtime/Job停止链，保留正式门禁。新候选92e39631已冻结未安装；三个目标BUILD0/0，12普通边界、精确pin1正6拒绝、9回执样例和二十输入预检通过。准备证据work/session-gateway-qualification-20261103-01/observed-preparation.json SHA256 537B7D04331E77993C07933937AF7634FF6C86B68A16E25FC689560CC9C91200；实际接口采集/网关/DNS/HTTPS/WFP/回环均NOT_RUN，具体系统决定待取得。
