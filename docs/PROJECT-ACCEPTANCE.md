@@ -739,3 +739,10 @@ CAPABILITY_DELIVERED(已安装多文件任务准备与普通编译闭环)。新�
 三目标/Bootstrap BUILD0/0；18普通自有进程检查覆盖查询+等待正控制、查询句柄等待拒绝、实际自有子进程退出259、未知等待/空guard/重绑/已关闭拒绝。新B407库上正常实现+测试修改/编译/四测试/十文件恢复和精确9dd迁移/六拒绝通过。Native163→164仅System32 WaitForSingleObject，无模块初始化。上述不是LPAC失联Job停止/异常恢复证明。
 持续同类安装授权/本人UAC一次更新e249c895e6434c338087d70e5f39e00b/ACA706F6DD31F625A0D800DDA56582D46B13BB0D16A6C817AAC35E9840B0F993成功，INACTIVE；仅运行库载荷变化。20文件持有预检、嵌入清单/同库及15公开资产/8固定回执字节/独立ACL通过。证据work/workspace-caller-lifetime-20261102-01/observed-installation.json SHA256 4234858A868117211A0C398B97A82E6EB959FCE78A97305367C29C3C0D5C6973。
 SOURCE/BUILD/INTEGRATED + VERIFIED(普通调用者生存组件/正常编译/安装)，真实调用者失联后的准入/隔离/Job零/清理、GUI点击/新LPAC任务均NOT_RUN，不标全产品或P0-SELF-FAILURE已交付。一次只读PID查询与已结束控制器竞态，后续按原句柄终态0和helper0确认，未以进程消失当清理或重试。无网络/AV/日常环境修改、强停提升owner、自动恢复或额外私有raw读取；完整厂商告警覆盖UNKNOWN。
+
+
+## 2026-11-02（UTC11月3日）调用者失联验证未注入故障
+
+本人一次具体决定/两次本人UAC后，e249固定非秘密六秒任务出现原放行信号。普通控制器在身份核对处拒绝故障结束，没有停止意图或调用者停止回执；FAIL_CALLER_LOSS_NOT_INJECTED_IDENTITY_CHECK_REFUSED保留。原只读观察器仅按冻结范围投影会话44bdde39d4f94046b0f194935402e823：66拒绝/封存true、原准入关闭/隔离/同Job零/停止失败0；CallerExitedFailureObserved=false、ResultPreserved=true，结果5232字节未读内容，不能作为失联停止验收。未通过删除/重试/额外读取制造成功。
+证据work/workspace-caller-lifetime-20261102-01/protected-loss/observed-result.json SHA256 B5A7573B4FAAEBDDE59DA0A1B20F9929F43065D70911923550DF05E7882B0A5B。控制器退出码3762504530、失败保存；原观察器输出有界终态，已知PID后续不存在不充当清理证据，未终止提升owner。
+源码发现固定预期映像含混合路径分隔符，原精确字符串可错误拒绝；修正版只规范化完整路径，保留同一句柄/PID/创建时间/活着/映像条件，新增有限身份记录。protected-loss-r2普通构建0/0、五项路径正反例/15资产/输入/原parser/目录持有预检通过，尚未获新执行授权。此为控制材料修正，产品安装/执行边界无变化，旧一次许可已消耗。
