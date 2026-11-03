@@ -1,7 +1,7 @@
 # 当前状态与授权摘要
 
 更新：2026-11-03（America/New_York）。本页是**唯一的最新状态摘要**；历史事实仍由原始证据
-支持。75352f3b已安装旧Claude配置缺失兼容，保持INACTIVE。本人另一次授权/UAC后，固定DataReport在同LPAC根/编译器得到64次拒绝5与2条owner观察缺失3，原owner封存后完成修改/编译/三测试/十一文件恢复。缺失不算拒绝；真实GUI点击、其他宿主API/网络/GPU/官方Claude仍未验收。原225b取消/e249失联/d51管理门及8932任务编辑成果保留。
+支持。401e5f52已安装原会话网关的宿主单播目的地拒绝/漂移撤销，保持INACTIVE；36固定地址组件检查与精确迁移通过、15公开资产/8回执/独立ACL匹配。本次未采集真实网卡地址或运行网关/联网会话，新网络资格未验收。原7535重置兼容固定LPAC项目的64拒绝+两缺失、三测试/十一文件恢复证据保留，不转授为新网络证明。
 
 ## 开发基线
 
@@ -19,17 +19,17 @@
 
 | 项目 | 最近记录及边界 |
 | --- | --- |
-| 实测时刻 | 2026-11-03 06:04:24Z安装、06:04独立ACL；06:06:51Z固定受保护DataReport恢复通过 |
-| Release | `75352f3b43d7431f84e3d7c80d4671cb` |
-| Manifest SHA256 | `3209392BE51C01C3D84254D1177182A414813BBB3FF9B7AA0F8C9D21177F42F4` |
-| 状态 | INACTIVE；固定项目资格不等于正在保护Claude |
-| 最近运行观察 | 固定会话81f4e1a0原LPAC root17560/compiler30308：64拒绝5、两条旧配置缺失3，OwnerSealedBeforeCode=true，三测试/十一文件恢复及原输入未变 |
-| 已证明 | 原安装owner/15公开资产/8回执及独立ACL匹配；20输入持有；四程序集同步V4合同、十载荷字节不变；仅该固定项目/角色/权限的重置兼容及原成功导出链通过 |
-| 未证明 | 新GUI点击/受保护取消、持续缺失/其他reset文件、CIM/WMI/物理网络/9090/跨工具认证/全部P0/完整网络/GPU/恢复/真实Claude未验收 |
+| 实测时刻 | 2026-11-03 06:17:45Z安装、06:18独立ACL与安全观察通过 |
+| Release | `401e5f52d5ef4e68afd4f53631e6c94a` |
+| Manifest SHA256 | `8E09CB551E27BFD89C5F31F375DDC0D1D13E5F3DCB5E0547FE9E5344D6C3B86D` |
+| 状态 | INACTIVE；没有开放正式网络或Claude |
+| 最近运行观察 | 原7535会话81f4e1a0：64拒绝5、两旧配置缺失3、owner封存、三测试/十一文件恢复；本次未重复项目 |
+| 已证明 | 原更新owner成功；15公开资产/8回执/独立ACL匹配，20输入持有；Broker/管理库两载荷变化，其余十二字节保持；36固定地址组件与精确迁移通过 |
+| 未证明 | 实际网关地址采集/联网路径/本地管理接口隔离及十四准入、GUI点击、其他宿主API/凭据/全部P0/GPU/恢复/真实Claude未验收 |
 
-安装观察：`work/reset-settings-compat-20261103-01/observed-installation.json`，SHA256 `A2D7D3347D1927BD98497B7251A217941BC3E9115636B50F24273B5C964D74B5`。15公开资产/回执核对SHA256 `23F59CA6A5826F36828872E65A167825A519EBB0EB6A5FFA92D36185B89C6EB9`；独立ACL SHA256 `2622624A0650D7F8072B1330EF62C894EA00D76D7F7DA4F73697E516879E27B1`。四产品native imports165/0/18/8不变，无模块初始化。
+新安装：`work/gateway-host-target-20261103-01/observed-installation.json`，SHA256 `2EEF5E6CA7658C57A99777737C4C41098B8E9B6CBFF2715193C8750EBEAA6D98`。15公开资产/8回执核对SHA256 `541ECEC0AF21B94115666020151F301307AB6AF713F394406506532AF767CFAD`；独立ACL SHA256 `AD49041AF8DCF9CD10E9AA0D5BE68A06C94A896412DB9987694219CBF2F57426`。原生产native imports165/0保持、无模块初始化。网络策略NET3 SHA256 `77348BD30C3F8006CCE90C582087D19B5B181181917F21B09B3D8C09C98D430C`；旧意图/规则不满足新正式会话，未自动迁移/改变系统设置，现行hold保持。
 
-受保护结果：`work/reset-settings-compat-20261103-01/protected-run/observed-result.json`，SHA256 `52A197709EBCD802A7A2000A3B5E3476608CD4FF73049E215D0B6E030ED244DE`。原owner成功导出门包含Job闭合/隔离/清理；未额外读取raw Job/Stop/私有错误，不从进程消失推导清理。两条OWNER_OBSERVED_ABSENT不是拒绝；只证明原owner检查时刻缺失。具体单次授权已消耗。
+此前7535重置兼容安装观察：`work/reset-settings-compat-20261103-01/observed-installation.json`，SHA256 `A2D7D3347D1927BD98497B7251A217941BC3E9115636B50F24273B5C964D74B5`。另一次本人授权/UAC后固定LPAC结果：`work/reset-settings-compat-20261103-01/protected-run/observed-result.json` SHA256 `52A197709EBCD802A7A2000A3B5E3476608CD4FF73049E215D0B6E030ED244DE`。原成功导出门包含Job闭合/隔离/清理；未额外raw Job/Stop/私有读取。两条缺失不算拒绝，只证明当时owner检查时刻缺失；许可已消耗，不因新版安装追认网络资格。
 
 此前8932任务编辑安装观察：`work/project-task-edit-20261102-01/owner-update/observed-installation.json`，SHA256 `0516B27A3EA5ED586344EFA434DB776ADCFD04C6E8CEED65E8829FBB14C0C652`。145普通数据/自有client及普通失败修正编译/2测试/10文件恢复、已查看离屏图保留；当时新版LPAC未执行。
 
@@ -71,7 +71,7 @@ ecbcd4e0两载荷变化为续编GUI及精确8a22前置pin；本次9dd26020两载
 | 开发失败反馈 | 原compiler→root→owner→IPC→daily→GUI链接入；普通Compile/Run/Tests自有失败通过；00ac固定LPAC编译失败返回CS0103/source0/物理9行52列，原46拒绝/封存/关闭回执满足，结果0字节 | 实际运行/测试失败反馈、其他工具及崩溃恢复未实测；公开关闭观察不证明profile/私有目录清理 |
 | V2项目数据/结果 | 26新合同/40旧caller/原122合成门禁和67普通GUI数据通过；77a1真实DataReport编译/读取JSON/生成报告/3测试/十一文件恢复及双actor46拒绝通过 | 仅该固定项目/所列对象与权限；导出上限不是磁盘配额，不推广至其他工具或完整产品 |
 | 控制文件执行门 | 原8a22真实LPAC根/编译器各33项拒绝5保留；7535同32项各拒绝5，另slot7各为缺失3（不计拒绝），含20次控制文件最小权限打开；原owner封存后正常DataReport修改/编译/3测试/十一文件恢复通过 | 仅所列三对象/十权限及该固定项目；不证明实际破坏、保护源码/IPC/全部权限或其他工具 |
-| 网络/身份/工具 | 有限版本矩阵、受限进程和原生GPU历史实测分别保留 | 当前版本的完整强制网络、十四项可信准入、PowerShell及代表性工具/GPU兼容、长时稳定性 |
+| 网络/身份/工具 | 401e原网关宿主单播地址拒绝/漂移撤销已安装，36固定地址组件通过，实际网卡/网络未运行；有限版本矩阵、受限进程和原生GPU历史实测分别保留 | 当前版本的完整强制网络、十四项可信准入、PowerShell及代表性工具/GPU兼容、长时稳定性 |
 | 生命周期 | 固定安装及部分已关闭/从未启动资源恢复保留；e249c895原pipe调用者监督18组件检查、实际固定LPAC调用者被结束后原owner关闭准入/隔离/Job零/0停止失败通过 | profile/私有目录清理未由本次观察证明；owner/控制器异常、崩溃重启、更新/回滚/卸载与故障恢复完整验收仍缺；历史蓝屏根因UNKNOWN |
 | 自我保护 | d51共用管理身份门拒绝非主令牌/容器/未提升/受限SID/非管理员，19普通检查与可信UAC原安装路径通过；实际LPAC管理调用未执行。原选择排除/日常身份拒绝保留；原执行门新增九项owner最小权限打开检查，两个受保护actor的18次owner打开均拒绝5，可信owner自我维护打开正控制通过；SOURCE/BUILD/INTEGRATED及该项目限定VERIFIED | 未实际破坏owner；源码读/文件写/服务/IPC/其他工具/异常恢复完整矩阵及日常入口真实受保护身份验证仍缺。P1/P2未验收；命名/离线部署未实施 |
 
@@ -112,6 +112,10 @@ Claude四处状态重置、普通用户物理网络/IPv6、9090、UU与开发认
 固定非秘密任务是过渡，最终仍需官方Claude及工具真实工作。完整产品继续PRODUCT_DELIVERY_NOT_ACCEPTED。
 
 ## 本轮真实功能结果与下一步
+
+- 原SessionProxy接入GatewayDestinationGuard：只在可信网关私有内存保留有界单播地址快照，隧道socket前/CONNECT前/200后强制核对并拒绝宿主同地址，转发/健康每秒重核，失败/漂移永久撤销；不导出地址/名称/MAC，不引入新网络权限或执行器。四目标/最终三受影响目标BUILD0/0、36纯地址检查及精确7535迁移通过，普通证据work/gateway-host-target-20261103-01/observed-result.json SHA256 64F9D18639845AB20E3DFEADF19097256D0F497D3218782BC0E321A6AFBA4257。
+  持续同类安装授权/本人UAC更新401e5f52成功，15公开资产/8回执/独立ACL匹配，原全局系统资格hold保持。SOURCE/BUILD/INTEGRATED+VERIFIED(纯组件及INACTIVE安装)，不声称线上网络能力已交付。地址guard不覆盖未知NAT别名/上游重写，不是瞬时原子网络证明。
+  下一关键工作仍是原会话网关的有界实际功能资格、当前可信采集与正式开发网络接入；本次没有开启网络、读真实网卡地址/9090或改日常环境。
 
 - 旧Claude配置缺失兼容已在原HostPrivacyProbe/ExecutionGate/IPC/daily/GUI落地：仅slot7可由原owner按元数据/祖先ID选定缺失模式，封存/放行/结束复核，其他32角色仍需实际拒绝；GUI分开计数。134输入七目标0/0，82自身状态、221阶段、40caller与148普通GUI检查及正常三测试/十一文件恢复通过，普通证据SHA256 4039C93E18D7D09C7EB50BA8702E2F783669D0775F122389FAF160C2C3B93B93。
   7535持续安装授权/本人UAC后成功，15公开资产/8回执/独立ACL匹配。本人再单独“授权这一次”及一次UAC后06:06:51Z固定LPAC DataReport成功，session81f4e1a0/root17560/compiler30308：64拒绝5+两缺失3、原owner封存、三测试/11文件恢复及原输入未变。CAPABILITY_DELIVERED(重置后固定受保护开发闭环)。授权消耗，无自动重试/恢复/额外私有读取/Claude/网络AV变化。

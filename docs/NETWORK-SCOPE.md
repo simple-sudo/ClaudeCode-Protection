@@ -28,3 +28,13 @@ IPv6阻断与必要负向测试继续有效，转发优化不属当前要求；�
 5. 安装、升级、恢复、卸载的精确所有权和用户原配置保护；补齐 DNS/UDP 归属边界与日志隐私验收。
 
 每项保留历史失败、`UNKNOWN`、工件身份和测试范围。探针通过不能代替真实会话证明，用户延期的真实会话不计通过也不强求现在执行。
+
+## 2026-11-03 原会话网关拒绝宿主单播目的地
+
+原SessionProxy除现有公网/私网/端口/固定域名、解析结果和字面IP隧道检查外，接入GatewayDestinationGuard。可信网关内部读取全部可见接口的UnicastAddresses（含虚拟/关闭接口，不根据默认路由过滤），最多256接口/4096地址；读取为空、超界或失败拒绝。来源API语义见[NetworkInterface.GetAllNetworkInterfaces](https://learn.microsoft.com/en-us/dotnet/api/system.net.networkinformation.networkinterface.getallnetworkinterfaces)和[UnicastAddresses](https://learn.microsoft.com/en-us/dotnet/api/system.net.networkinformation.ipinterfaceproperties.unicastaddresses)。实现未读取MAC/名称字段、未导出地址；私有快照没有公开属性，错误只输出固定种类。
+
+原OpenTunnel在创建socket前、上游CONNECT写入前和200后强制重新核对地址集与目的地；当目的地等于本机已分配地址时拒绝，IPv4映射别名/IPv6scope不能绕过按地址字节比较。转发/健康检查最多一秒间隔重读快照，漂移或未知永久撤销该owner快照，恢复旧地址不自动恢复资格，走原gateway失败/租约停止链；首次采集失败清理原构造资源。没有新执行器、替代代理、通用端点或无保护回退。
+
+网络策略升级NET3，SHA256 77348BD30C3F8006CCE90C582087D19B5B181181917F21B09B3D8C09C98D430C；旧意图/规则不能满足新会话的精确策略比较。旧记录保留可检查，未自动迁移/重写；原migrate/session/qualification hold保持，安装不启用网络。地址guard只覆盖分配在宿主接口上的地址，不能覆盖未知NAT公网别名、上游重写或整个真实物理出口；一秒健康采样不是Windows网络状态的原子持续证明。
+
+SOURCE/BUILD/INTEGRATED；36固定非秘密地址检查及精确前置选择通过。已安装401e5f52 INACTIVE，公开载荷/回执/独立ACL匹配；未运行实际接口采集/网关/Socket/DNS/代理/9090或新受保护任务。实测边界见PROJECT-ACCEPTANCE，最新安装见CURRENT-STATE。

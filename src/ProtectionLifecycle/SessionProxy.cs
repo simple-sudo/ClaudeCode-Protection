@@ -17,12 +17,13 @@ internal sealed class SessionProxy : IDisposable
     internal const int Port = 17891;
     internal const string Target = "www.microsoft.com";
     internal static readonly string PolicySHA256 = Convert.ToHexString(SHA256.HashData(Encoding.ASCII.GetBytes(
-        "CPC-SESSION-NET2;listen=127.0.0.1:17891;upstream=127.0.0.1:7890+held-reverse-established-tuple;connect=www.microsoft.com:443;doh=1.1.1.1:443/cloudflare-dns.com;A-only;ipv6=deny;no-direct-fallback;tls=offline-no-download;auth=per-session+held-job-peer+AC-low-zero;max-connections=4;accepted=32;max-bytes=8MiB-per-direction+64MiB-total;connection-seconds=20;session-seconds=60;half-close=send-fin+drain-peer;fault=cancel+drain-both;forward=bound-admission+runtime-health-2s+per-write;client-hello=visible-matching-SNI+http-ALPN;hello=32KiB+8records;no-ECH")));
+        "CPC-SESSION-NET3;host-target=refuse-current-unicast-v4-v6+bounded-private-snapshot+drift-fail-closed;listen=127.0.0.1:17891;upstream=127.0.0.1:7890+held-reverse-established-tuple;connect=www.microsoft.com:443;doh=1.1.1.1:443/cloudflare-dns.com;A-only;ipv6=deny;no-direct-fallback;tls=offline-no-download;auth=per-session+held-job-peer+AC-low-zero;max-connections=4;accepted=32;max-bytes=8MiB-per-direction+64MiB-total;connection-seconds=20;session-seconds=60;half-close=send-fin+drain-peer;fault=cancel+drain-both;forward=bound-admission+runtime-health-2s+per-write;client-hello=visible-matching-SNI+http-ALPN;hello=32KiB+8records;no-ECH")));
     private readonly TcpListener listener = new(IPAddress.Loopback, Port);
     private readonly CancellationTokenSource stop = new(TimeSpan.FromSeconds(60));
     private readonly ConcurrentDictionary<int, (TcpClient Client, Task Work)> clients = new();
     private readonly OwnedKernelJob job;
     private readonly ProxyChannelLease upstream;
+    private readonly GatewayDestinationGuard destinations;
     private readonly string packageSid, sessionId;
     private readonly byte[] authorization;
     private readonly Task accept;
@@ -38,15 +39,15 @@ internal sealed class SessionProxy : IDisposable
         this.job = job; this.upstream = upstream; this.packageSid = packageSid; this.sessionId = Identifiers.Hex32(sessionId);
         authorization = Encoding.ASCII.GetBytes("Basic " + Convert.ToBase64String(Encoding.ASCII.GetBytes(sessionId + ":" + Secret)));
         listener.Server.ExclusiveAddressUse = true;
-        try { upstream.AssertHealthy(); listener.Start(8); accept = Accept(); }
-        catch { listener.Stop(); stop.Dispose(); throw; }
+        try { destinations=GatewayDestinationGuard.CaptureCurrent();upstream.AssertHealthy(); listener.Start(8); accept = Accept(); }
+        catch { CryptographicOperations.ZeroMemory(authorization);listener.Stop(); stop.Dispose(); throw; }
     }
     internal void AssertHealthy()
     {
         if (disposed || stop.IsCancellationRequested || failure is not null || accept.IsCompleted || clients.Values.Any(entry=>entry.Work.IsFaulted))
             throw WfpNative.Contract("SessionGatewayStoppedExpiredOrFailed");
         if(ProxyChannelLease.SessionListenerOwner()!=unchecked((uint)Environment.ProcessId))throw WfpNative.Contract("SessionGatewayListenerOwnerDrift");
-        upstream.AssertHealthy();
+        upstream.AssertHealthy();destinations.AssertCurrent();
     }
     internal void BindAdmission(ProtectedSession.Admission permit)
     {
@@ -63,6 +64,7 @@ internal sealed class SessionProxy : IDisposable
     {
         (Volatile.Read(ref admission)??throw WfpNative.Contract("GatewayAdmissionMissing")).AssertForwardingCurrent();
         if(disposed || stop.IsCancellationRequested || failure is not null)throw WfpNative.Contract("GatewayForwardingStopped");
+        destinations.AssertCurrent();
     }
     private async Task Accept()
     {
@@ -166,20 +168,21 @@ internal sealed class SessionProxy : IDisposable
     {
         if (ip.AddressFamily != AddressFamily.InterNetwork || !ProxyDestinationPolicy.IsPublicAddressCandidate(ip))
             throw new InvalidDataException("PublicIPv4TunnelRequired");
-        AssertForwardingCurrent();upstream.AssertHealthy();
+        AssertForwardingCurrent();upstream.AssertHealthy();destinations.RequireRemotePublicAddress(ip);
         var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
         try
         {
             await socket.ConnectAsync(new IPEndPoint(IPAddress.Loopback, CompiledFencePolicy.ProxyPort), token);
             upstream.AssertConnectedPeer(socket);AssertForwardingCurrent();
             var stream = new NetworkStream(socket, ownsSocket: true);
+            destinations.RequireRemotePublicAddress(ip);
             var authority = ip + ":443";
             await stream.WriteAsync(Encoding.ASCII.GetBytes("CONNECT " + authority + " HTTP/1.1\r\nHost: " + authority + "\r\n\r\n"), token);
             var reply = await ReadHeader(stream, token);
             var status = reply.Split("\r\n", StringSplitOptions.None)[0].Split(' ');
             if (status.Length < 2 || status[0] is not ("HTTP/1.1" or "HTTP/1.0") || status[1] != "200")
                 throw new InvalidDataException("UpstreamLiteralConnectRefused");
-            upstream.AssertConnectedPeer(socket);AssertForwardingCurrent();return stream;
+            upstream.AssertConnectedPeer(socket);AssertForwardingCurrent();destinations.RequireRemotePublicAddress(ip);return stream;
         }
         catch { socket.Dispose(); throw; }
     }

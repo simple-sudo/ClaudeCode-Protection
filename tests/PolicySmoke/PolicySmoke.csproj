@@ -10,7 +10,7 @@
   <ItemGroup>
     <!-- Source-link the exact production policy without executing application,
          native code, product scripts, WFP, Job, CUDA or proxy diagnostics. -->
-    <Compile Include="Program.cs" />
+    <Compile Include="Program.cs;GatewayDestinationGuardCases.cs;../../src/ProtectionLifecycle/GatewayDestinationGuard.cs" />
     <Compile Include="DirectoryNamePageCases.cs" />
     <Compile Include="../../src/ProtectionLifecycle/DirectoryNamePage.cs" Link="DirectoryNamePage.cs" />
     <Compile Include="LoopbackTcpTableCases.cs" />

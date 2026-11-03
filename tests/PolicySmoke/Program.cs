@@ -8,6 +8,7 @@ static void Require(bool truth,string reason)
 }
 static StrictPreflightCheck Find(StrictPreflightReport report,string name)=>
     report.Checks.Single(c=>c.Id==name);
+if(args.Length==1 && args[0]=="gateway-destination-guard"){GatewayDestinationGuardCases.Run();return;}
 var now=DateTimeOffset.UtcNow;
 if(args.Length==1 && args[0]=="directory-name-pages")
 {

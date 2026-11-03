@@ -5,6 +5,16 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-03 原网关宿主目的地拒绝
+
+GatewayDestinationGuard接入原SessionProxy：只在可信网关内保留有界接口单播地址，原字面IP隧道在socket前/CONNECT前/200后强制重核并拒绝宿主同地址，健康/转发每秒重核，漂移/失败永久撤销。无新网络权限/端点/进程执行器；初次采集失败清理构造资源。NET3策略77348BD30C3F8006CCE90C582087D19B5B181181917F21B09B3D8C09C98D430C令旧意图/规则不满足新正式会话；原全局SystemTestingBlocked及正式Claude延期保持，不自动迁移策略。
+
+130输入持有，初四目标及构造清理后的三受影响目标BUILD0/0；36纯固定地址正反/漂移/错误/不可恢复检查、最终精确7535迁移1正6拒绝通过。新guard/测试源在两次构建间相同，原生产native imports165/0不变且无模块初始化；最初错误预期PolicySmoke导入为0而拒绝的元数据记录保留，核实原SessionProfileRecovery单导入存在后仅执行提前返回的专用固定地址入口，不运行聚合路径。普通证据work/gateway-host-target-20261103-01/observed-result.json SHA256 64F9D18639845AB20E3DFEADF19097256D0F497D3218782BC0E321A6AFBA4257。
+
+持续同类安装授权/本人一次UAC，06:17:45Z安装401e5f52d5ef4e68afd4f53631e6c94a / 8E09CB551E27BFD89C5F31F375DDC0D1D13E5F3DCB5E0547FE9E5344D6C3B86D INACTIVE。仅Broker/管理库两载荷变化，其他十二字节保持。15公开资产/8固定回执hash、可信owner/保护DACL/无不可信写者独立匹配；证据work/gateway-host-target-20261103-01/observed-installation.json SHA256 2EEF5E6CA7658C57A99777737C4C41098B8E9B6CBFF2715193C8750EBEAA6D98。
+
+VERIFIED(固定地址组件行为、构建与INACTIVE安装)，尚不具实际网关联网使用/强制网络交付资格。无真实地址枚举、Socket/DNS/代理/管理接口/外网或新受保护任务；不将源码接入当线上安全证明。AV/BFE Running、FlClash/UU/boot一致、有限AV事件0，完整厂商覆盖UNKNOWN；无Claude/WFP/全机网络/配置/AV变化。未知NAT别名/上游改路、当前14准入/真实网关/工具/GPU/故障恢复仍未验收，PRODUCT_DELIVERY_NOT_ACCEPTED。
+
 ## 2026-11-03 重置兼容与原受保护开发闭环
 
 原HostPrivacyProbe/ExecutionGate内加入仅slot7的owner观察缺失模式，计划schema2/V4策略；存在文件仍需拒绝，其他32角色不变。原owner元数据ID与至多两级普通祖先绑定，封存/放行/最终门复核；子进程不能选择缺失或豁免其他资源。GUI分开显示拒绝/缺失。源码/BUILD/INTEGRATED；七目标最终0错误0警告，134输入持有；初次两方法调用名遗漏构建失败及普通预检保留变量名失败原样保留，修正后只跑必要普通检查，无失败系统自动重试。82自身metadata转换/221封存合成/40caller、148 GUI数据及自身client检查通过，原编译器实际普通DataReport三测试/十一文件恢复通过，四产品native imports165/0/18/8不变，无模块初始化。普通证据work/reset-settings-compat-20261103-01/observed-result.json SHA256 4039C93E18D7D09C7EB50BA8702E2F783669D0775F122389FAF160C2C3B93B93。
