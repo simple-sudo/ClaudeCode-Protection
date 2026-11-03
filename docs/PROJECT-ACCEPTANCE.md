@@ -746,3 +746,11 @@ SOURCE/BUILD/INTEGRATED + VERIFIED(普通调用者生存组件/正常编译/安�
 本人一次具体决定/两次本人UAC后，e249固定非秘密六秒任务出现原放行信号。普通控制器在身份核对处拒绝故障结束，没有停止意图或调用者停止回执；FAIL_CALLER_LOSS_NOT_INJECTED_IDENTITY_CHECK_REFUSED保留。原只读观察器仅按冻结范围投影会话44bdde39d4f94046b0f194935402e823：66拒绝/封存true、原准入关闭/隔离/同Job零/停止失败0；CallerExitedFailureObserved=false、ResultPreserved=true，结果5232字节未读内容，不能作为失联停止验收。未通过删除/重试/额外读取制造成功。
 证据work/workspace-caller-lifetime-20261102-01/protected-loss/observed-result.json SHA256 B5A7573B4FAAEBDDE59DA0A1B20F9929F43065D70911923550DF05E7882B0A5B。控制器退出码3762504530、失败保存；原观察器输出有界终态，已知PID后续不存在不充当清理证据，未终止提升owner。
 源码发现固定预期映像含混合路径分隔符，原精确字符串可错误拒绝；修正版只规范化完整路径，保留同一句柄/PID/创建时间/活着/映像条件，新增有限身份记录。protected-loss-r2普通构建0/0、五项路径正反例/15资产/输入/原parser/目录持有预检通过，尚未获新执行授权。此为控制材料修正，产品安装/执行边界无变化，旧一次许可已消耗。
+
+
+## 2026-11-02（UTC11月3日）修正版单次LPAC调用者失联通过
+
+本人重新具体授权protected-loss-r2/两次本人UAC后，于02:45:42Z完成。固定e249/B407库、同一非秘密输入F326D384（睡眠6000ms），会话8f1e66d5137f4b448c7b90fd1cbbd16f、Job7775a7ba616e4cb789d355802749409e。普通控制器记录同一持有调用者14972的PID/创建时间/规范化固定映像/存活匹配，只结束它一次；未终止提升owner或Job成员。
+原owner有限投影WorkspaceCallerExited=true，准入关闭/停止前隔离/同Job归零/停止失败0，66最小打开拒绝5与执行前封存保持。结果未保存、普通结果0字节、原输入hash不变；三份新保护摘要由普通接口独立核对hash/可信owner/保护DACL/无不可信写者通过。所有者报告只在冻结观察器内读三份限定记录并作有界投影，root未额外读原私有/错误/独立raw Job/Stop。
+CAPABILITY_DELIVERED(固定LPAC调用者失联的原owner停止闭环)。证据work/workspace-caller-lifetime-20261102-01/protected-loss-r2/observed-result.json SHA256 E8C8CA32B005C27401A5435777D4CD42FBB8EB72A6136057989BE87D74B531EB。Controller/observer均0，两个具体授权均已消耗，前次FAIL保持；无自动重试/恢复/删除/额外探针/网络或安全软件更改/Claude。Boot/AV/BFE/FlClash/UU观察一致，完整厂商告警覆盖UNKNOWN。
+只证明该版本该输入的调用者退出，不证明profile/私有目录清理、Broker/控制器崩溃重启或完整P0-SELF-FAILURE；GUI点击、全网络/GPU及整机仍未接受。
