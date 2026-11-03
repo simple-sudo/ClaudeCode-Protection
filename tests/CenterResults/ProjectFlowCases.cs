@@ -71,6 +71,15 @@ internal static class ProjectFlowCases
             ResultSHA256=WorkspaceBundle.Hash(resultBytes),FileCount=8,Changes=WorkspaceBundle.Compare(input,resultBytes),OriginalProjectModified=false,ProjectCodeExecuted=true,
             HostPrivacy=privacy,OwnerSealedBeforeCode=true,FormalAdmissionIssued=false,NetworkOpened=false,UACAutoConfirmed=false});
         var response=new BackendResult(0,Reply(),"");var accepted=session.AcceptResult(run,response);checks++;
+        Require(session.DescribePrivacy(response).Contains("66") && !session.DescribePrivacy(response).Contains("缺失"),"all-present success describes actual denial count");
+        var presentPrivacy=privacy;
+        var absentRoot=Cases();var absentTool=Cases();
+        absentRoot[7]=HostPrivacyContract.FileObservation(7,true,2);absentTool[7]=HostPrivacyContract.FileObservation(7,true,5);
+        privacy=privacy with {RootCases=absentRoot,ToolCases=absentTool};
+        var resetResponse=new BackendResult(0,Reply(),"");_=session.AcceptResult(run,resetResponse);checks++;
+        var resetText=session.DescribePrivacy(resetResponse);
+        Require(resetText.Contains("64") && resetText.Contains("2 项") && resetText.Contains("缺失不代表权限拒绝"),"reset absence is visible separately from actual denials");
+        privacy=presentPrivacy;
         var compilerFailure=new ProjectTaskFailure("Compile",new[]{new ProjectCompilerDiagnostic("CS0103",0,7,9)});
         JsonObject Failure()=>JsonSerializer.SerializeToNode(new{Status="CALLER_CSHARP_PROJECT_NOT_CONFIRMED",SessionId=id,BaseSHA256=session.InputSHA256,
             FailureStage="processing",FailureKind="ProjectTaskFailed",FailureCode=3,CreationEvidence=(object?)null,StopEvidence=(object?)null,

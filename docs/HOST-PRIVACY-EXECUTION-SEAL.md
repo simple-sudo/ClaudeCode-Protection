@@ -87,3 +87,11 @@ boot07:39:57.5Z、AV/BFE、FlClash25816/20828、UU6812前后一致，厂商覆�
 这是新内存封存逻辑的普通资格，不是新两阶段原生Job放行通过或任意项目执行资格。
 GUI934E和此核心仍待后续完整候选合并交付。下一候选须加入并核对实际60EC9056前置迁移pin，
 不能直接安装此尚未准备迁移/Bootstrap/清单的核心字节或复用已消耗授权。
+
+## 2026-11-03 Claude重置后的目标适用性
+
+V4隐私策略（BA68956D3CDD9354D6A09DE9467D45C50B43B8A03400726C446DFB02666E37C6）只允许固定slot7 private-claude-settings的原owner观察缺失；其余32目标仍须两个actor最小权限打开均为ACCESS_DENIED/5。HostPrivacyProbe计划schema2增加MissingParentDepth：存在时为0并绑定原文件ID，缺失时只允许1/2级普通祖先的元数据ID。只有原Capture判断缺失，原进程内ExecutionGate按该计划选定模式，子报告无权改变。
+
+原封存root/tool、代码放行及Job后结果检查重新比较缺失/祖先身份；新出现、消失、深度/ID漂移、拒读metadata/共享/未知错误保持失败，不重建目录/设置。受限actor仍做同一最小打开；仅在owner缺失模式下的错误2/3/5映射为OWNER_OBSERVED_ABSENT（5可以是父目录访问被拒绝，不表示目标存在），不是ACCESS_DENIED证明。OPENED/共享32/其他错误不能放行。计划/hash/原Job-token身份、一次编译器/执行信号及owner内存副本保持。
+
+存在配置模式继续要求原真实拒绝；不存在模式只证明这些原owner检查时刻的缺失，不承诺持续不存在、所有配置或所有宿主API隔离。GUI显示实际拒绝条数并单列缺失，成功不再把64+2写成66拒绝。普通82自身metadata/221封存与正常DataReport回归、实际7535固定项目的32×2拒绝/两缺失及三测试十一文件恢复，分别见验收账本。

@@ -80,6 +80,30 @@ internal static class HostPrivacyExecutionGateCases
         Refuse(()=>HostPrivacyContract.ControlFileAccess(33),"undefined control file rights");
         var processOnly=Observation(111) with {Cases=Observation(111).Cases.Take(23).ToArray()};
         Refuse(()=>Gate().SealRoot(processOnly,111),"previous process-only inventory omits control file checks");
+        foreach(var error in new[]{2,3,5})
+        {
+            var resetRoot=Observation(111);var resetTool=Observation(222);
+            resetRoot.Cases[7]=HostPrivacyContract.FileObservation(7,true,error);resetTool.Cases[7]=HostPrivacyContract.FileObservation(7,true,error);
+            Refuse(()=>Gate().SealRoot(resetRoot,111),"child cannot select optional absence");
+            var reset=new HostPrivacyExecutionGate(session,hash,true);reset.SealRoot(resetRoot,111);reset.AuthorizeToolCreation();reset.SealTool(resetTool,222);reset.ReleaseExecution();
+            var summary=reset.Snapshot(111,222);
+            Require(HostPrivacyContract.Satisfied(summary) && summary.RootCases.Concat(summary.ToolCases).Count(c=>c.Status=="ACCESS_DENIED")==64,
+                "owner-bound missing settings is distinct from 64 actual denial records");
+            var mixed=new HostPrivacyExecutionGate(session,hash,true);mixed.SealRoot(resetRoot,111);mixed.AuthorizeToolCreation();
+            Refuse(()=>mixed.SealTool(Observation(222),222),"tool cannot replace owner-selected absence with denial");
+        }
+        Refuse(()=>new HostPrivacyExecutionGate(session,hash,true).SealRoot(Observation(111),111),"owner absence requires matching typed evidence");
+        foreach(var i in Enumerable.Range(0,HostPrivacyContract.Roles.Length).Where(i=>i!=7))
+        {
+            var unsupported=Observation(111);unsupported.Cases[i]=unsupported.Cases[i] with {Status=HostPrivacyContract.OwnerObservedAbsent,Error=2};
+            Refuse(()=>new HostPrivacyExecutionGate(session,hash,true).SealRoot(unsupported,111),"no other target can become optional "+i);
+        }
+        foreach(var error in new[]{0,32,6})
+        {
+            var notClosed=Observation(111);notClosed.Cases[7]=HostPrivacyContract.FileObservation(7,true,error);
+            Refuse(()=>new HostPrivacyExecutionGate(session,hash,true).SealRoot(notClosed,111),"opened/sharing/query error is not absence qualification");
+        }
+        Refuse(()=>HostPrivacyContract.FileObservation(0,true,2),"nonreset file cannot select absence");
         Console.WriteLine($"PASS {checks} original-owner pre-code gate checks: phase ordering, single compiler/release, exact actors/context, all{HostPrivacyContract.Roles.Length} failed slots, legacy inventory refusal, minimal owner masks, immutable snapshots; pure synthetic reports, NOT LPAC/native host privacy or live Job qualification");
     }
 }

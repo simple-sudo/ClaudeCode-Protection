@@ -5,6 +5,10 @@
 历史页的“当前/待执行/暂停/DELIVERABLE”按段落日期及限定范围解释，不是今天的状态或操作许可。
 不在本页复制当前安装和授权摘要。
 
+## 2026-11-03 重置兼容的原保护链实测
+
+V4/schema2在原HostPrivacyProbe/ExecutionGate中区分slot7缺失与拒绝，其余32资源保持。七目标BUILD/普通转换和正常编译通过，持续安装授权/本人UAC安装75352f3b INACTIVE、15公开资产/8回执/独立ACL匹配。本人另一次授权/UAC后固定DataReport在同LPAC根/编译器获得64拒绝5、2缺失3，原owner封存true，完成修改/编译/三测试/十一文件恢复，原输入未变。证据work/reset-settings-compat-20261103-01/protected-run/observed-result.json SHA256 52A197709EBCD802A7A2000A3B5E3476608CD4FF73049E215D0B6E030ED244DE。缺失不算拒绝，其他API/网络/GPU/真实Claude不因此通过；许可已消耗，无自动重试或额外私有读取。
+
 ## 2026-11-03 当前任务编辑入口
 
 51948e9源码接续后完成145普通检查、实际普通编译失败→编辑修正→两测试/十文件恢复及离屏查看；持续同类安装授权/本人UAC更新8932aff8 INACTIVE，15公开资产/8回执字节/独立ACL匹配。原失败保留，GUI点击/新版LPAC未执行。证据work/project-task-edit-20261102-01/owner-update/observed-installation.json SHA256 0516B27A3EA5ED586344EFA434DB776ADCFD04C6E8CEED65E8829FBB14C0C652。

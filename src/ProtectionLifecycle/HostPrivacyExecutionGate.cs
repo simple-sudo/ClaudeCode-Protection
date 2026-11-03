@@ -7,29 +7,30 @@ namespace ProtectionLifecycle;
 internal sealed class HostPrivacyExecutionGate
 {
     private readonly string session, planHash;
+    private readonly bool resetSettingsAbsent;
     private HostPrivacyObservation? root, tool;
     private int phase; // 0 root pending, 1 root sealed, 2 tool creation, 3 tool sealed, 4 code released
     internal bool ExecutionReleased => phase == 4;
     internal bool ToolCreationAuthorized => phase >= 2;
-    internal HostPrivacyExecutionGate(string session, string planHash)
+    internal HostPrivacyExecutionGate(string session, string planHash,bool resetSettingsAbsent=false)
     {
         if(session.Length != 32 || session.Any(c => c is not (>= '0' and <= '9' or >= 'a' and <= 'f')) || !WorkspaceBundle.IsHash(planHash))
             throw new InvalidDataException("Host privacy gate context differs");
-        this.session = session; this.planHash = planHash;
+        this.session = session; this.planHash = planHash;this.resetSettingsAbsent=resetSettingsAbsent;
     }
-    private HostPrivacyObservation CopyDenied(HostPrivacyObservation value, int expectedPid)
+    private HostPrivacyObservation CopyChecked(HostPrivacyObservation value, int expectedPid)
     {
         if(expectedPid <= 0 || value.SchemaVersion != 1 || value.SessionId != session || value.PlanSHA256 != planHash || value.Pid != expectedPid)
             throw new InvalidDataException("Host privacy gate actor differs");
         HostPrivacyContract.ValidateCases(value.Cases);
-        if(value.Cases.Any(c => c.Status != "ACCESS_DENIED" || c.Error != 5))
-            throw new InvalidDataException("Host privacy gate needs actual denials");
+        if(!HostPrivacyContract.CasesSatisfied(value.Cases,resetSettingsAbsent))
+            throw new InvalidDataException("Host privacy gate needs plan-bound checks");
         return value with { Cases = value.Cases.ToArray() };
     }
     internal void SealRoot(HostPrivacyObservation value, int expectedPid)
     {
         if(phase != 0) throw new InvalidDataException("Host privacy root already sealed");
-        root = CopyDenied(value, expectedPid); phase = 1;
+        root = CopyChecked(value, expectedPid); phase = 1;
     }
     internal void AuthorizeToolCreation()
     {
@@ -40,7 +41,7 @@ internal sealed class HostPrivacyExecutionGate
     {
         if(phase != 2 || root is null || expectedPid == root.Pid)
             throw new InvalidDataException("Host privacy tool sealing order differs");
-        tool = CopyDenied(value, expectedPid); phase = 3;
+        tool = CopyChecked(value, expectedPid); phase = 3;
     }
     internal void ReleaseExecution()
     {

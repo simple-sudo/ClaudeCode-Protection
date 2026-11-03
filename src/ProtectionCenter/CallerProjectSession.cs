@@ -131,6 +131,19 @@ internal sealed class CallerProjectSession
         if(!reported.SequenceEqual(WorkspaceBundle.Compare(input,bytes)))throw new InvalidDataException("Project reported changes differ");
         return WorkspaceResultSession.FromSnapshots(input,bytes);
     }
+    internal string DescribePrivacy(BackendResult result)
+    {
+        if(result.ExitCode!=0 || result.Error.Length!=0 || result.Output.Length is <1 or >65536)
+            throw new InvalidDataException("Project completion not confirmed");
+        using var json=JsonDocument.Parse(result.Output,new JsonDocumentOptions{MaxDepth=5});var r=json.RootElement;
+        if(r.GetProperty("BaseSHA256").GetString()!=InputSHA256 || !r.GetProperty("OwnerSealedBeforeCode").GetBoolean())
+            throw new InvalidDataException("Project privacy context differs");
+        var privacy=HostPrivacyContract.Parse(r.GetProperty("HostPrivacy"),r.GetProperty("SessionId").GetString()??"",true);
+        var cases=privacy.RootCases.Concat(privacy.ToolCases).ToArray();
+        var denied=cases.Count(c=>c.Status=="ACCESS_DENIED");var absent=cases.Count(c=>c.Status==HostPrivacyContract.OwnerObservedAbsent);
+        return absent==0?$"两名执行者共 {denied} 次最小权限打开被拒绝。":
+            $"两名执行者共 {denied} 次最小权限打开被拒绝；另有 {absent} 项原所有者观察的旧 Claude 配置缺失记录，缺失不代表权限拒绝。";
+    }
     internal static string FailureMessage(BackendResult result)
     {
         var error=result.Error.TrimEnd('\r','\n');

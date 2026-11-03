@@ -14,6 +14,8 @@ internal sealed record HostPrivacySummary(string PolicySHA256,string PlanSHA256,
 internal static class HostPrivacyContract
 {
     internal const int HostResourceCount=14;
+    internal const int ResetSettingsIndex=7;
+    internal const string OwnerObservedAbsent="OWNER_OBSERVED_ABSENT";
     internal const int OwnerProcessEnd=23,ControlFileStart=23;
     internal static readonly string[] Roles={"flclash-config-json","flclash-config-yaml","flclash-preferences",
         "uu-user-settings","uu-user-configures","uu-system-user","uu-system-assist",
@@ -40,7 +42,7 @@ internal static class HostPrivacyContract
         23=>"file-read-data-open",24 or 27 or 30=>"file-write-data-open",25 or 28 or 31=>"file-write-dacl-open",26 or 29 or 32=>"file-write-owner-open",
         _=>throw new InvalidDataException("Unknown host privacy case")};
     internal static string PolicySHA256=>Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(
-        "CPC-HOST-PRIVACY-OWNER-AND-CONTROL-FILE-OPEN-ONLY-V3\nFILE_READ_DATA=1;FILE_WRITE_DATA=2;WRITE_DAC=262144;WRITE_OWNER=524288;OVERLAPPED;SHARE=7;REG_QUERY_VALUE=1;VIEW64;PROCESS_VM_READ=16;NO_CONTENT_READ;NO_FILE_OR_PROCESS_OPERATION\n"+
+        "CPC-HOST-PRIVACY-OWNER-AND-CONTROL-FILE-OPEN-ONLY-V4\nOPTIONAL_RESET_SETTINGS=7;OWNER_METADATA_ABSENCE_BOUND_TO_PLAN;RECHECK_BEFORE_CODE_AND_AFTER_JOB;ABSENCE_IS_NOT_DENIAL\nFILE_READ_DATA=1;FILE_WRITE_DATA=2;WRITE_DAC=262144;WRITE_OWNER=524288;OVERLAPPED;SHARE=7;REG_QUERY_VALUE=1;VIEW64;PROCESS_VM_READ=16;NO_CONTENT_READ;NO_FILE_OR_PROCESS_OPERATION\n"+
         string.Join(";",Enumerable.Range(HostResourceCount,OwnerProcessEnd-HostResourceCount).Select(i=>Roles[i]+"="+OwnerAccess(i)))+"\n"+
         string.Join(";",Enumerable.Range(ControlFileStart,Roles.Length-ControlFileStart).Select(i=>Roles[i]+"="+ControlFileAccess(i)))+"\n"+
         string.Join("\n",Roles.Select((role,i)=>role+"|"+Kind(i))))));
@@ -51,13 +53,33 @@ internal static class HostPrivacyContract
         {
             var c=cases[i];
             if(c is null || c.Role!=Roles[i] || c.Kind!=Kind(i) || c.Error is <0 or >65535 ||
-                (c.Status switch {"ACCESS_DENIED"=>c.Error!=5,"OPENED"=>c.Error!=0,"UNKNOWN"=>c.Error is 0 or 5,_=>true}))
+                (c.Status switch {"ACCESS_DENIED"=>c.Error!=5,"OPENED"=>c.Error!=0,"UNKNOWN"=>c.Error is 0 or 5,OwnerObservedAbsent=>i!=ResetSettingsIndex || c.Error is not (2 or 3 or 5),_=>true}))
                 throw new InvalidDataException("Host privacy observation differs");
         }
     }
+    // Only the original owner can select the optional missing target in its
+    // private plan/gate. A child report alone cannot make it optional.
+    internal static bool CasesSatisfied(HostPrivacyCase[] cases,bool resetSettingsAbsent)
+    {
+        ValidateCases(cases);
+        return cases.Select((c,i)=>i==ResetSettingsIndex && resetSettingsAbsent
+            ? c.Status==OwnerObservedAbsent && c.Error is 2 or 3 or 5
+            : c.Status=="ACCESS_DENIED" && c.Error==5).All(value=>value);
+    }
+    internal static HostPrivacyCase FileObservation(int index,bool ownerObservedAbsent,int error)
+    {
+        if(index is <0 or >8 || ownerObservedAbsent && index!=ResetSettingsIndex)
+            throw new InvalidDataException("Optional reset target differs");
+        var status=ownerObservedAbsent && error is 2 or 3 or 5?OwnerObservedAbsent:
+            error==5?"ACCESS_DENIED":error==0?"OPENED":"UNKNOWN";
+        return new(Roles[index],Kind(index),status,error);
+    }
     internal static bool Satisfied(HostPrivacySummary summary)
-        =>summary.ToolPid is >0 && summary.RootCases.Length==Roles.Length && summary.ToolCases.Length==Roles.Length &&
-            summary.RootCases.Concat(summary.ToolCases).All(c=>c.Status=="ACCESS_DENIED" && c.Error==5);
+    {
+        if(summary.ToolPid is not >0 || summary.RootCases.Length!=Roles.Length || summary.ToolCases.Length!=Roles.Length)return false;
+        var absent=summary.RootCases[ResetSettingsIndex].Status==OwnerObservedAbsent;
+        return CasesSatisfied(summary.RootCases,absent) && CasesSatisfied(summary.ToolCases,absent);
+    }
     internal static void Validate(HostPrivacySummary summary,string session,bool requireSatisfied)
     {
         if(summary.RootCases is null || summary.ToolCases is null)throw new InvalidDataException("Host privacy cases missing");
@@ -65,7 +87,7 @@ internal static class HostPrivacyContract
             summary.RootPid<=0 || summary.ToolPid is <=0 || summary.ToolPid==summary.RootPid ||
             (summary.ToolPid is null)!=(summary.ToolCases.Length==0))throw new InvalidDataException("Host privacy session binding differs");
         ValidateCases(summary.RootCases);ValidateCases(summary.ToolCases,true);
-        if(requireSatisfied && !Satisfied(summary))throw new InvalidDataException("Named host resource denials required");
+        if(requireSatisfied && !Satisfied(summary))throw new InvalidDataException("Named resource checks and owner-bound applicability required");
     }
     internal static HostPrivacySummary Parse(JsonElement value,string session,bool requireSatisfied)
     {
