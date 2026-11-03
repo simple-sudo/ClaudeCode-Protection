@@ -96,6 +96,16 @@ ecbcd4e0两载荷变化为续编GUI及精确8a22前置pin；本次9dd26020两载
 - 准备证据 `work/session-gateway-qualification-20261103-01/public-timezone-resource/observed-preparation.json` SHA256 `1719451DDBA41353CA9A5D78DEA1888A564B072D22BF5914328D5F44C1C1E1D3`。未执行的[系统审查单](../work/session-gateway-qualification-20261103-01/public-timezone-resource/system-operation-review.md)已写明两键临时ACL影响、原Job闭合后恢复和失败停止；**没有新的系统决定，不可作为可重跑许可**。
 - 用户本次明确要求“这一阶段提交后这个会话就可以暂停了”：本地提交后暂停，不请求或发起新的UAC/安装/联网/权限变更。接续先核对本checkout、实际安装与未闭合资源，再审查新具体决定；历史一次许可不复活。完整产品仍PRODUCT_DELIVERY_NOT_ACCEPTED。
 
+## 2026-11-03 GitHub 文档补全：可信自评与画像评估（未实现）
+
+在已上传的e78cb92安全需求基线上，新增[可信自评与画像评估合同](ASSURANCE-AND-EXPOSURE-PROFILING.md)，
+并关联正式P0-ASSURANCE需求、宿主隐私工作包与[验收账本](PROJECT-ACCEPTANCE.md)。
+它将自我安全评估、无AI指纹画像重建、可信owner准入、证据保护/分级、P0一票阻断、
+合法开发能力及经授权修复闭环写成正式设计；**仅REQUIREMENT_ONLY / DESIGN，NOT_RUN**。
+本轮是远端GitHub文档操作；未读取宿主原始秘密、未改代码/系统/安装/代理/UU、未运行真实Claude或签发许可。
+本页此前的最新安装与失败观察、当前高影响操作授权及真实Claude延期均不因本次文档提交改变。
+后续Codex接续时应先拉取远端并重新核对实际HEAD/工作区及现场状态，不把文档更新当系统操作许可。
+
 ## 当前授权及下一阶段
 
 - 2026-11-03本次仅获准整理最新安全理念、隐私威胁模型与后续计划。正式要求见

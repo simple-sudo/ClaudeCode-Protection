@@ -5,6 +5,27 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-03 可信自评与画像重建验收登记（仅DESIGN）
+
+来源：[可信自评与画像评估合同](ASSURANCE-AND-EXPOSURE-PROFILING.md)和
+[现行P0-ASSURANCE需求](SECURITY-REQUIREMENTS.md#p0-assurance可信自评与指纹画像重建)。
+本轮只进行GitHub文档修改；没有新源码、构建、安装、LPAC实验、真实Claude启动或系统授权，
+所有下列新增检查均为**REQUIREMENT_ONLY / DESIGN；NOT_RUN**。
+
+| 待验收项 | 可复现的最低证据 | 当前状态 |
+| --- | --- | --- |
+| AS-01 可信自评身份/来源 | 原owner绑定安装、token、Job、actor、输入、规则版本及执行前封存；模拟子报告伪造不得变PASS | NOT_RUN |
+| AS-02 资源访问三方对照 | 可信宿主可达正控制、实际受保护身份最小越权负控制、同身份合法编程正控制；对象缺失、超时和未知单列 | NOT_RUN |
+| AS-03 多路径与网络隔离 | 物理网络/DNS/IPv6、9090管理端点、UU关联、设备/持久指纹、保护源码/IPC，区分信息读取和未授权网络连接 | NOT_RUN |
+| AS-04 画像确定性规则 | 合成非秘密输入复现直接事实/有依据推断/UNKNOWN，同源去重、美国代理出口、中国关联第三方中继、P0单项阻断 | NOT_RUN |
+| AS-05 P0策略与报告自保护 | P0已证实泄露阻断；必需资格UNKNOWN不放行；Claude/子进程不能读评估规则、原证据、报告或管理接口 | NOT_RUN |
+| AS-06 故障/修复闭环 | 策略漂移/组件退出仍由OS强制边界fail-closed；有界修复需适用授权，复测重新绑定版本/身份，失败可追溯 | NOT_RUN |
+| AS-07 实际开发与产品验收 | 同会话Claude CLI与全派生链的授权文件、构建、测试、Git/网络/GPU可用，隐私/控制面不可越权；整机资格全部满足 | NOT_RUN |
+
+历史固定资源打开拒绝、普通GUI、INACTIVE安装、合成规则或单一IP观察可作为背景，
+不能直接填写上述新检查的VERIFIED。禁止因公开报告不含真实值就声称保护完成；
+完整产品仍非PRODUCT_DELIVERY_ACCEPTED。必要系统操作与正式Claude仍按CURRENT-STATE单独决策。
+
 ## 2026-11-03 新增隐私目标登记（仅需求/计划，非验收通过）
 
 来源为用户本次安全理念要求；验收规则见[正式需求](SECURITY-REQUIREMENTS.md#每类风险的验收记录)，

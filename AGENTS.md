@@ -10,6 +10,8 @@
 2. 阅读[现行安全需求](docs/SECURITY-REQUIREMENTS.md)：完整产品范围、P0/P1/P2与交付术语。
 3. 按任务阅读专题；需要证据再查[开发记录索引](docs/STATUS.md)和
    [验收账本](docs/PROJECT-ACCEPTANCE.md)。专题不能以“本文件优先”永久覆盖后续用户要求。
+4. 自评/画像评估的新目标及验收合同见[可信自评与画像专题](docs/ASSURANCE-AND-EXPOSURE-PROFILING.md)；
+   目前仅 REQUIREMENT_ONLY / DESIGN，不应从文档或合成测试推导新启动许可。
 
 用户2026-11-02已恢复产品功能开发；文档语义和文件系统轻量化治理阶段已结束。
 优先推进GUI、授权工作区、工具及原保护执行链，并在原架构中落实P0自我保护。
