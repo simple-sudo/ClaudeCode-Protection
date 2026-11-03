@@ -5,6 +5,18 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-03 新增隐私目标登记（仅需求/计划，非验收通过）
+
+来源为用户本次安全理念要求；验收规则见[正式需求](SECURITY-REQUIREMENTS.md#每类风险的验收记录)，
+待办映射见[后续工作包](HOST-PRIVACY-AUDIT-DIRECTION-20261102.md#2026-11-03安全理念补充与后续工作包)。
+HW-IDENTITY、HOST-NETWORK、LOCAL-STATE、CONTROLLED-VIEW、CROSS-SOURCE均为REQUIREMENT_ONLY / DESIGN，
+本次新增实测NOT_RUN。后续每类风险记录信息目标、来源接口、Windows强制边界、合法功能、未覆盖项、
+实际受保护身份结果及故障fail-closed；硬件计算/出口可用、身份保密及跨来源保护分别取证。
+GameViewerServer.exe与中国电信相关TCP线索仅为用户报告，未复查地址；管理员PowerShell观察不替代LPAC结果，
+不据此认定家庭公网IP、手机/平板运营商或受保护身份缺口。原限定拒绝/GPU/网络证据不扩张，
+不存在、超时、崩溃、空/缺输出、UNKNOWN不计成功拒绝。历史FAIL/取消/延期和原始哈希保留。
+本次未实现或验证新能力，不记CAPABILITY_DELIVERED或PRODUCT_DELIVERY_ACCEPTED。
+
 ## 2026-11-03 原网关宿主目的地拒绝
 
 GatewayDestinationGuard接入原SessionProxy：只在可信网关内保留有界接口单播地址，原字面IP隧道在socket前/CONNECT前/200后强制重核并拒绝宿主同地址，健康/转发每秒重核，漂移/失败永久撤销。无新网络权限/端点/进程执行器；初次采集失败清理构造资源。NET3策略77348BD30C3F8006CCE90C582087D19B5B181181917F21B09B3D8C09C98D430C令旧意图/规则不满足新正式会话；原全局SystemTestingBlocked及正式Claude延期保持，不自动迁移策略。
