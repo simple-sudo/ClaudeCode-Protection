@@ -1,7 +1,7 @@
 {
   "SchemaVersion": 1,
   "Scope": "UNACTIVATED_PRODUCT",
-  "Release": "d51b3807cea14b06a8d545f1de5f44ca",
+  "Release": "8932aff8206b44eb81ecdb81003f5741",
   "Files": [
     {
       "Asset": "daily-exe",
@@ -35,8 +35,8 @@
     },
     {
       "Asset": "center-dll",
-      "Length": 161792,
-      "SHA256": "953910FA5EDA3751944C8D2E6C5F7506B94F63834A5B198FD5F09233C97CD392"
+      "Length": 164864,
+      "SHA256": "6551244D7164E7A3741EE7BD3AEF21EDB44529C7EB5EEC5F52E0409B67CABE1E"
     },
     {
       "Asset": "center-deps",
@@ -71,7 +71,7 @@
     {
       "Asset": "broker-lifecycle",
       "Length": 1218560,
-      "SHA256": "E3852BF785D33907837BD7676E5924432BD1E9EC7993F047E3BE0B943B8B5852"
+      "SHA256": "4DE4B50202996F4E3538B4EB33F8751A2A80710E8DB11BBE49712CDECB44AA41"
     }
   ]
 }

@@ -128,6 +128,7 @@ public static class BootstrapInstaller
             "D21A7D9F39A93E82087062EAD14F49329E7DBDD2743B2DC12DE98CAB6DC691F1"
         }; // Exact reviewed packages expose no launch/admission command.
         private static readonly string[] OneShotAdmissionManifests={
+            "4EAB9E8E35D4CD1D58344EB3EC824769308D48005156BBC33349BE55361C362E", // d51b3807 shared maintenance gate; all closure checks remain.
             "732A198283CD62847079A75847891ECAE549D3C96363180FE33A7C8B74D31FCF", // 225b7214 inactive GUI cancel package; all closure checks remain.
             "F68329165AAAD7BF5C8CBB4B44111B715439395B850F9653C80D687843A006FA",
             "9A3AFFC424CCB1D05691891A0F5EA99BFFECE30EDA801594825076C2DBB9E32F",
