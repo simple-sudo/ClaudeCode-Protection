@@ -179,6 +179,8 @@ public static partial class InstalledBroker
     public static (int ExitCode,string Report) RecoverSessionResources()=>WithCurrentInstallation((_,state,_)=>SessionProfileRecovery.RecoverClosed(state));
     public static (int ExitCode,string Report) InspectResourceRecovery()=>WithCurrentInstallation((_,state,_)=>SessionProfileRecovery.InspectRecovery(state));
     public static (int ExitCode,string Report) RecoverUnstartedSessionResources()=>WithCurrentInstallation((_,state,_)=>SessionProfileRecovery.RecoverNeverStarted(state));
+    public static (int ExitCode,string Report) InspectTimeZoneReadAccess()=>WithCurrentInstallation((_,state,_)=>SessionTimeZoneReadAccess.Inspect(state),forManifestAccessRecovery:true);
+    public static (int ExitCode,string Report) RecoverTimeZoneReadAccess()=>WithCurrentInstallation((_,state,_)=>SessionTimeZoneReadAccess.Recover(state),forManifestAccessRecovery:true);
     public static (int ExitCode,string Report) InspectManifestReadAccess()=>WithCurrentInstallation((_,state,_)=>SessionManifestReadAccess.Inspect(state),forManifestAccessRecovery:true);
     public static (int ExitCode,string Report) RecoverManifestReadAccess()=>WithCurrentInstallation((_,state,_)=>SessionManifestReadAccess.Recover(state),forManifestAccessRecovery:true);
     public static (int ExitCode,string Report) InspectEtwProviderAccess()=>WithCurrentInstallation((_,state,_)=>SessionEtwProviderAccess.Inspect(state),forManifestAccessRecovery:true);

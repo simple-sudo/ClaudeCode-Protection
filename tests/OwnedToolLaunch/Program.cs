@@ -8,13 +8,14 @@ using System.Text.Json;
 using System.Runtime.InteropServices;
 using Microsoft.Win32.SafeHandles;
 
-if(args.Length!=1 || args[0] is not ("gateway-feedback" or "gateway-qualification-boundary" or "policy" or "messages" or "handle-transfer" or "fault-mode" or "fault-mode-read" or "partial-output" or "hosted-policy" or "etw-policy" or "tls-transport-policy" or "etw-token-access" or "inactive-transition" or "project-policy" or "project-build" or "privacy-native" or "caller-project-build" or "caller-project-policy" or "self-control-open" or "caller-data-build" or "caller-compile-failure" or "caller-run-failure" or "caller-test-failure" or "caller-failure-owner" or "control-file-gate" or "caller-multi-edit-build" or "workspace-caller-lifetime" or "workspace-caller-lifetime-child" or "maintenance-identity" or "reset-settings-file"))return 125;
+if(args.Length!=1 || args[0] is not ("timezone-policy" or "timezone-metadata" or "gateway-feedback" or "gateway-qualification-boundary" or "policy" or "messages" or "handle-transfer" or "fault-mode" or "fault-mode-read" or "partial-output" or "hosted-policy" or "etw-policy" or "tls-transport-policy" or "etw-token-access" or "inactive-transition" or "project-policy" or "project-build" or "privacy-native" or "caller-project-build" or "caller-project-policy" or "self-control-open" or "caller-data-build" or "caller-compile-failure" or "caller-run-failure" or "caller-test-failure" or "caller-failure-owner" or "control-file-gate" or "caller-multi-edit-build" or "workspace-caller-lifetime" or "workspace-caller-lifetime-child" or "maintenance-identity" or "reset-settings-file"))return 125;
 try
 {
 using var identity=WindowsIdentity.GetCurrent();
 if(new WindowsPrincipal(identity).IsInRole(WindowsBuiltInRole.Administrator))throw new InvalidOperationException("Ordinary qualification only");
 if(args[0]=="workspace-caller-lifetime-child"){Console.WriteLine("READY");Console.ReadLine();return 259;}
 var library=Assembly.LoadFrom(Path.Combine(AppContext.BaseDirectory,"ProtectionLifecycle.dll"));
+if(args[0] is "timezone-policy" or "timezone-metadata"){TimeZoneReadCases.Run(library,args[0]=="timezone-metadata");return 0;}
 if(args[0]=="gateway-feedback"){GatewayFeedbackCases.Run(library);return 0;}
 if(args[0]=="gateway-qualification-boundary"){GatewayQualificationBoundaryCases.Run(library);return 0;}
 if(args[0]=="reset-settings-file"){ResetSettingsFileCases.Run(library);return 0;}
@@ -204,8 +205,8 @@ if(args[0]=="inactive-transition")
 {
     var lease=library.GetType("ProtectionLifecycle.BootstrapInstaller",true)!
         .GetNestedType("PinnedInactiveUpdateLease",BindingFlags.NonPublic)!;
-    const string actualRelease="8ddc7e5fe592403d92f6dce6f7da5d53";
-    const string actualManifest="7710162354EE832B530059D4BCAD36AC650BE6511742E3432E9DB272519BE965";
+    const string actualRelease="a9dec53256c642de85c6bbec44d7d97a";
+    const string actualManifest="1A7AD8E8C6935CD75EEC54D7ADC2143224ECE3052B6FCEE51DA98B52525F9719";
     // The replacement is a fixture selection, not an approved package or
     // installed transition. This executes only the real pure selection guard.
     var replacementRelease=new string('a',32);var replacementManifest=new string('A',64);

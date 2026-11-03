@@ -128,6 +128,7 @@ public static class BootstrapInstaller
             "D21A7D9F39A93E82087062EAD14F49329E7DBDD2743B2DC12DE98CAB6DC691F1"
         }; // Exact reviewed packages expose no launch/admission command.
         private static readonly string[] OneShotAdmissionManifests={
+            "1A7AD8E8C6935CD75EEC54D7ADC2143224ECE3052B6FCEE51DA98B52525F9719", // a9de TLS policy refusal; original durable closed-Job/quarantine guards remain.
             "7710162354EE832B530059D4BCAD36AC650BE6511742E3432E9DB272519BE965", // 8ddc HTTPS initialization failure with bound feedback; original closure guards remain.
             "0E3FC10A86DB6D61F6CB774AE4D74CBF4D9CEE9E147393F020F59A55ACF97C5B", // 40d7 fixed gateway root resumed/125, original closed admission/quarantine/zero guards remain.
             "ADC8BEE33E205CF4F0411492D1F3A54A5A63FEF7F7E27DC95FE11C05C3D233A2", // 92e3 fixed gateway creation failed; original closed-Job guards remain.

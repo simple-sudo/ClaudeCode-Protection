@@ -46,6 +46,7 @@ internal sealed class ProtectedSession
     private Admission? admission;
     private Preparation? preparation;
     private GatewayChildReport? gatewayChildFeedback;
+    private SessionTimeZoneReadAccess? timeZoneAccess;
     private ProtectionRuntimeLease? runtime;
     private SessionResources? resources;
     private ProtectedSession(FixedLayout layout,ProtectedState state,VerifiedVersion version,bool gatewayQualification=false)
@@ -433,6 +434,7 @@ internal sealed class ProtectedSession
             state.Read("current.json",4096).SHA256!=pointerSHA256 || job is null || gateway is null || sid is null ||
             gateway.SessionId!=id || fences.Count==0 || fences.Any(f=>!f.IsSessionChannel || quarantine && !f.Observe().FullQuarantineObserved))
             throw WfpNative.Contract("FixedGatewayQualificationExpiredOrBindingDrift");
+        if(preparation?.RootPid is not null)(timeZoneAccess??throw WfpNative.Contract("TimeZoneResourceNotPrepared")).AssertHeld();
         gateway.AssertHealthy();
     }
     private bool PreparationEnvironmentEligible()=>expectations is not null && environment.Where(e=>e.Id is "host-timezone" or "host-locale")
@@ -583,7 +585,7 @@ internal sealed class ProtectedSession
             owner.state.InstallationId,owner.version.Package.Release,owner.version.Package.ManifestHash,owner.pointerSHA256,
             SessionId=owner.id,JobId=owner.job!.JobId,AppContainerSid=owner.sid,NetworkPolicySHA256=SessionProxy.PolicySHA256,
             RootPid=owner.preparation?.RootPid,RootCreatedFileTime=owner.preparation?.RootCreatedFileTime,
-            Resources=ResourceScope,FixedGatewayQualification=owner.gatewayQualification,EnvironmentIntentSHA256=owner.expectationsSHA256,FenceIntents=owner.fences.Select(f=>f.IntentSHA256).ToArray(),
+            Resources=ResourceScope,FixedGatewayQualification=owner.gatewayQualification,TimeZoneReadIntentSHA256=owner.timeZoneAccess?.IntentSHA256,EnvironmentIntentSHA256=owner.expectationsSHA256,FenceIntents=owner.fences.Select(f=>f.IntentSHA256).ToArray(),
             RequiredEnvironmentIds=StrictEnvironmentRequirements.Required.Select(def=>def.Id).ToArray()
         })));
     }
@@ -631,6 +633,11 @@ internal sealed class ProtectedSession
             }
             child=AtomicChild.CreateSession(layout,state,version,job,profile,preparation,feedbackPipe?.ClientSafePipeHandle.DangerousGetHandle()??IntPtr.Zero);
             feedbackPipe?.DisposeLocalCopyOfClientHandle();
+            if(gatewayQualification)
+            {
+                timeZoneAccess=SessionTimeZoneReadAccess.Prepare(state,version,job,id);
+                timeZoneAccess.Apply();
+            }
             runtime=new ProtectionRuntimeLease(state,version,job,fences,upstream,gateway,preparation:preparation);
             runtime.AssertHealthy();RefreshEnvironment(true);
             if(!CurrentWorkloadEvidenceEligible())throw WfpNative.Contract("FullSessionAdmissionRefusedAfterSuspendedPreparation");
@@ -674,6 +681,7 @@ internal sealed class ProtectedSession
                 foreach(var fence in fences)try{_=fence.ReinstateQuarantine();}catch(Exception ex){errors.Add(ex);}
                 if(job is not null)try{zero=job.AtomicAdmissionReserved?job.CloseAtomicAdmissionAndStop():job.StopAndVerifyZero();}catch(Exception ex){errors.Add(ex);}
             }
+            if(timeZoneAccess is not null && zero is not null)try{timeZoneAccess.RestoreAfterClosedJob(zero);}catch(Exception ex){errors.Add(ex);}
             if(profile?.ProcessCreationAttempted==true && zero is not null)try{profile.AfterOwnedJobZero(zero);}catch(Exception ex){errors.Add(ex);}
             if(exited is not null)
                 try{childExitCode=exited.WaitAsync(TimeSpan.FromSeconds(3)).GetAwaiter().GetResult();}catch(Exception ex){errors.Add(ex);}
@@ -681,7 +689,7 @@ internal sealed class ProtectedSession
             try{ReadFixedFeedback();}catch(Exception ex){errors.Add(ex);}
             // Stop/zero precedes profile and exact loopback removal. A failure
             // in one cleanup must not suppress the other owners' attempts.
-            foreach(var resource in new IDisposable?[]{child,gateway,loopback,profile,job,feedbackReader,feedbackPipe})
+            foreach(var resource in new IDisposable?[]{timeZoneAccess,child,gateway,loopback,profile,job,feedbackReader,feedbackPipe})
                 try{resource?.Dispose();}catch(Exception ex){errors.Add(ex);}
             foreach(var fence in fences)try{fence.Dispose();}catch(Exception ex){errors.Add(ex);}
             try{upstream?.Dispose();}catch(Exception ex){errors.Add(ex);}
@@ -738,6 +746,7 @@ internal sealed class ProtectedSession
         ProcessResumed=resumed,ChildExitCode=childExitCode,FinalJob=final,Failures=failures,StopObservation=stopObservation,LaunchAuthorized=false,ClaudeLaunched=false,
         FixedGatewayQualification=gatewayQualification,FormalAdmissionIssued=false,
         GatewayChildFeedback=gatewayChildFeedback,GatewayFailure=gateway?.FailureFeedback,GatewayChildFeedbackUsedForAdmission=false,
+        PublicTimeZoneReadResource=timeZoneAccess is null?null:new{timeZoneAccess.KeyCount,timeZoneAccess.Restored,CapabilityAdded=false,InheritedAce=false,RegistryValuesWritten=false},
         ProductionSessionQualified=false,HostInformationConfidentialityQualified=false
     });
     [DllImport("kernel32.dll",CharSet=CharSet.Unicode,ExactSpelling=true,SetLastError=true)] private static extern int GetUserDefaultLocaleName(StringBuilder name,int capacity);

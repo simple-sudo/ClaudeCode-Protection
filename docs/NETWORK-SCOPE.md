@@ -58,3 +58,10 @@ SOURCE/BUILD/INTEGRATED；36固定非秘密地址检查及精确前置选择通�
 
 
 固定HEAD客户端通过原HttpClient.ConnectCallback只连接字面IPv4 127.0.0.1:17891，明确发送当前会话的固定Basic CONNECT并要求原网关精确200回执；共享原Target/Port/有界ReadHeader。内置代理层关闭不代表允许直连：回调校验固定HTTPS目标，原WFP和网关内核peer检查继续限制真实出口。TLS仍用原Offline策略/禁下载/完整校验，不增加registryRead或宽松回退。固定根的Invariant当前/默认线程文化仅作用本进程，隔离宿主语言初始化依赖；不改Windows/GUI/owner设置。现有错误是否由特定本地化分支触发仍UNKNOWN；语言处理及新回调的native资格分别判断。
+
+
+## 公共时区定义的专项资源租约
+
+固定TLS策略构造依赖本地时间；时区/夏令时定义作为明确公开OS依赖，由原安装Broker现场选择当前Time Zones单键及可选Dynamic DST子键。专项SessionTimeZoneReadAccess复用原注册表资源对象原语：真句柄/对象名核对、可信owner/无不可信写者、意图先行、精确本SID一条非继承KEY_READ、原runtime持续核对、原Job durable closed/zero后逐键精确恢复。没有父hive/通用路径/registryRead capability/写值授权，也不修改Windows时区或语言。未知ACL漂移不擦除/合并，未闭合资源进入现有生命周期门禁，只能通过固定自身恢复入口处理，不自动恢复或重试。此依赖会暴露必要公共时区定义，不构成完整P1隔离证明。
+
+当前实现及普通策略/真实只读元数据通过，真实授权/恢复与HTTPS仍NOT_RUN；最新工件及用户提交后暂停状态见CURRENT-STATE。系统审查草案不是人类操作许可。

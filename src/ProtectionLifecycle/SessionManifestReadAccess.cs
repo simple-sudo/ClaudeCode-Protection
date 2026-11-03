@@ -188,11 +188,13 @@ internal sealed class SessionManifestReadAccess : IDisposable
             intent.SessionId,intent.JobId,IntentSHA256=hash,Status="EXACT_ORIGINAL_DACL_OBSERVED_AFTER_CLOSED_JOB"}));
     }
 
-    private static SafeRegistryHandle OpenFixed()
+    private static SafeRegistryHandle OpenFixed()=>OpenReviewedKey(KeyPath,true);
+    // Shared object primitive for fixed registry resource owners; no Broker path input.
+    internal static SafeRegistryHandle OpenReviewedKey(string keyPath,bool writeSecurity)
     {
         // Open the fixed 64-bit key object itself, not a registry symbolic-link
         // target. A link, deleted key, unsupported DACL or drift always refuses.
-        var status=RegOpenKeyEx((IntPtr)unchecked((int)0x80000002),KeyPath,8,ReadKey|0x40000|0x100,out var handle);
+        var status=RegOpenKeyEx((IntPtr)unchecked((int)0x80000002),keyPath,8,ReadKey|(writeSecurity?0x40000:0)|0x100,out var handle);
         if(status!=0){handle?.Dispose();throw new Win32Exception(status);}
         try
         {
@@ -202,7 +204,7 @@ internal sealed class SessionManifestReadAccess : IDisposable
         }
         catch{handle.Dispose();throw;}
     }
-    private static string ReadSecurity(SafeRegistryHandle handle)
+    internal static string ReadSecurity(SafeRegistryHandle handle)
     {
         // Read the registry OBJECT security, including its actual protection
         // control bits. The preserved RegGetKeySecurity observation on this
@@ -221,10 +223,11 @@ internal sealed class SessionManifestReadAccess : IDisposable
         }
         finally{if(descriptor!=IntPtr.Zero)LocalFree(descriptor);}
     }
-    private static void WriteSecurity(SafeRegistryHandle handle,string value)
+    internal static void WriteSecurity(SafeRegistryHandle handle,string value,bool protect=true)
     {
+        ProtectedState.RequireAdministrator();
         var descriptor=ParseSecurity(value);var bytes=new byte[descriptor.BinaryLength];descriptor.GetBinaryForm(bytes,0);
-        var status=RegSetKeySecurity(handle,0x80000004,bytes);if(status!=0)throw new Win32Exception(status);
+        var status=RegSetKeySecurity(handle,protect?0x80000004u:4u,bytes);if(status!=0)throw new Win32Exception(status);
     }
     [DllImport("advapi32.dll",EntryPoint="RegOpenKeyExW",CharSet=CharSet.Unicode)] private static extern int RegOpenKeyEx(IntPtr root,string path,uint options,int access,out SafeRegistryHandle key);
     [DllImport("advapi32.dll",EntryPoint="RegQueryValueExW",CharSet=CharSet.Unicode)] private static extern int RegQueryValueEx(SafeRegistryHandle key,string name,IntPtr reserved,out uint type,IntPtr data,ref uint size);

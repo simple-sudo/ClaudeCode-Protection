@@ -55,7 +55,7 @@ internal static class Program
             }
             catch(Exception ex){Console.Error.WriteLine("Environment intent not confirmed: "+ex.GetType().Name+"; code="+ex.HResult);return 125;}
         }
-        if (args.Length != 1 || args[0] is not ("qualify-session-gateway" or "gateway-qualification-child" or "inspect-etw-provider-access" or "recover-etw-provider-access" or "inspect-manifest-read-access" or "recover-manifest-read-access" or "qualify-toolchain" or "recover-session-resources" or "inspect-resource-recovery" or "recover-unstarted-session-resources" or "qualify-resource-recovery" or "qualify-resources" or "migrate-session-network" or "inspect-session-environment" or "launch" or "session-synthetic" or "quarantine" or "inspect-runtime" or "inspect-wfp" or "qualify-wfp-objects" or "inspect-installed-fence" or "qualify-admission" or "qualify-network" or "qualify-gpu" or "qualify-watchdog" or "admission-child"))
+        if (args.Length != 1 || args[0] is not ("inspect-timezone-read-access" or "recover-timezone-read-access" or "qualify-session-gateway" or "gateway-qualification-child" or "inspect-etw-provider-access" or "recover-etw-provider-access" or "inspect-manifest-read-access" or "recover-manifest-read-access" or "qualify-toolchain" or "recover-session-resources" or "inspect-resource-recovery" or "recover-unstarted-session-resources" or "qualify-resource-recovery" or "qualify-resources" or "migrate-session-network" or "inspect-session-environment" or "launch" or "session-synthetic" or "quarantine" or "inspect-runtime" or "inspect-wfp" or "qualify-wfp-objects" or "inspect-installed-fence" or "qualify-admission" or "qualify-network" or "qualify-gpu" or "qualify-watchdog" or "admission-child"))
         {
             Console.Error.WriteLine("ProtectionBroker inspect-runtime | inspect-wfp; inspect-installed-fence (installed read-only); quarantine | qualify-admission | qualify-network | qualify-gpu | qualify-watchdog (installed); qualify-wfp-objects (protected qualification host). Management requires existing elevation.");
             Console.Error.WriteLine("Installed intent management: inspect-session-environment | configure-session-environment EXPECTED_SHA_OR_none WINDOWS_TIMEZONE USER_LOCALE SYSTEM_LOCALE. This never changes Windows settings or grants launch.");
@@ -81,6 +81,8 @@ internal static class Program
             if(args[0]=="gateway-qualification-child")return ProtectionLifecycle.InstalledBroker.RunGatewayQualificationCanary();
             if(args[0]=="admission-child")return ProtectionLifecycle.InstalledBroker.RunAdmissionCanary();
             var result = args[0] switch {
+                "inspect-timezone-read-access" => ProtectionLifecycle.InstalledBroker.InspectTimeZoneReadAccess(),
+                "recover-timezone-read-access" => ProtectionLifecycle.InstalledBroker.RecoverTimeZoneReadAccess(),
                 "qualify-session-gateway" => ProtectionLifecycle.InstalledBroker.QualifySessionGateway(),
                 "qualify-toolchain" => ProtectionLifecycle.InstalledBroker.QualifyToolchain(),
                 "recover-session-resources" => ProtectionLifecycle.InstalledBroker.RecoverSessionResources(),
