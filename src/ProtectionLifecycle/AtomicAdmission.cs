@@ -242,9 +242,10 @@ internal sealed class AtomicChild : IDisposable
         try{permit.BindCreated(child);return child;}catch{child.Dispose();throw;}
     }
     internal static AtomicChild CreateSession(FixedLayout layout,ProtectedState state,VerifiedVersion version,OwnedKernelJob job,InstallationProfileLease profile,
-        ProtectedSession.Preparation preparation)
+        ProtectedSession.Preparation preparation,IntPtr report=default)
     {
-        var child=CreateCore(layout,state,version,job,profile,null,default,null,preparation,null);
+        if(preparation.IsGatewayQualification!=(report!=IntPtr.Zero))throw WfpNative.Contract("FixedGatewayReportHandleRequiredExactly");
+        var child=CreateCore(layout,state,version,job,profile,null,report,null,preparation,null);
         try{preparation.BindCreated(child);return child;}catch{child.Dispose();throw;}
     }
     private static AtomicChild CreateCore(FixedLayout layout,ProtectedState state,VerifiedVersion version,OwnedKernelJob job,InstallationProfileLease profile,
@@ -261,7 +262,7 @@ internal sealed class AtomicChild : IDisposable
             throw new PlatformNotSupportedException("Suspended session security attributes require the declared x64 layout");
         var image=WindowsPathSeal.Child(layout.Version(version.Package.Release),"bin/admin/ProtectionBroker.exe");
         network?.Validate();gpu?.Validate();if(network is not null && gpu is not null)throw WfpNative.Contract("OneFixedQualificationWorkloadRequired");
-        var report=network is not null || gpu is not null || resources is not null;if(report!=(output!=IntPtr.Zero))throw WfpNative.Contract("ReportHandleRequiredExactlyForQualificationWorkload");
+        var report=network is not null || gpu is not null || resources is not null || preparation?.IsGatewayQualification==true;if(report!=(output!=IntPtr.Zero))throw WfpNative.Contract("ReportHandleRequiredExactlyForQualificationWorkload");
         using var package=network?.Kind==NetworkProbeKind.Control?InstallationPackageSid.ForNetworkControl(state):new InstallationPackageSid(state);
         profile.AssertPackage(package);
         var jobHandle=job.ReserveAtomicAdmission(version);
@@ -431,12 +432,39 @@ internal sealed class AtomicChild : IDisposable
     }
     internal static int RunGatewayQualificationCanary()
     {
-        // This dispatcher cannot enable the retired admission-child entry or
-        // select any of its resource, network-plan or GPU workloads. The actual
-        // LPAC token is checked before the sole compiled HTTPS request.
-        if(Environment.GetEnvironmentVariable("CPC_SESSION_ID") is null || Environment.GetEnvironmentVariable("CPC_SESSION_SECRET") is null ||
-            new[]{"CPC_RESOURCE_PLAN","CPC_NETWORK_PLAN","CPC_GPU_PLAN"}.Any(name=>Environment.GetEnvironmentVariable(name) is not null))return 125;
-        return RunCanary();
+        var phase="ENVIRONMENT";var id=Environment.GetEnvironmentVariable("CPC_SESSION_ID")??"";GatewayChildReport result;
+        try
+        {
+            var secret=Environment.GetEnvironmentVariable("CPC_SESSION_SECRET");
+            if(id.Length==0 || secret is null || new[]{"CPC_RESOURCE_PLAN","CPC_NETWORK_PLAN","CPC_GPU_PLAN"}.Any(name=>Environment.GetEnvironmentVariable(name) is not null))
+                throw new InvalidDataException("FixedGatewayEnvironmentRefused");
+            _=Identifiers.Hex32(id);_=Identifiers.Hash(secret);
+            // As in the verified resource worker, query basic self identity
+            // without token duplication. The original Broker checks the exact
+            // held LPAC before resume and on every admitted member inspection.
+            phase="IDENTITY";using var current=new SafeProcessHandle((IntPtr)(-1),false);var token=ReadToken(current,false);
+            if(!token.IsAppContainer || token.PackageSid is null || token.CapabilityCount!=0 || token.IntegritySid!="S-1-16-4096")
+                result=GatewayChildReport.Result(id,phase,125);
+            else
+            {
+                phase="HTTPS";var status=RunFixedSessionHead(id,secret);
+                result=GatewayChildReport.Result(id,status is >=200 and <400?"COMPLETE":phase,status is >=200 and <400?42:126,status);
+            }
+        }
+        catch(Exception ex){result=GatewayChildReport.Result(id,phase,125,failure:ex);}
+        Console.WriteLine(JsonSerializer.Serialize(result));return result.ExitCode;
+    }
+    private static int RunFixedSessionHead(string sessionId,string sessionSecret)
+    {
+        using var handler=new SocketsHttpHandler {UseProxy=true,Proxy=new System.Net.WebProxy("http://127.0.0.1:"+SessionProxy.Port) {
+            BypassProxyOnLocal=false,Credentials=new System.Net.NetworkCredential(sessionId,sessionSecret)},
+            AllowAutoRedirect=false,UseCookies=false,SslOptions=SessionProxy.OfflineTls()};
+        using var client=new HttpClient(handler){Timeout=TimeSpan.FromSeconds(10)};
+        // Headers only; an unread GET body would abort its own TLS tunnel.
+        using var request=new HttpRequestMessage(HttpMethod.Head,"https://"+SessionProxy.Target+"/") {
+            Version=System.Net.HttpVersion.Version11,VersionPolicy=HttpVersionPolicy.RequestVersionExact};
+        using var response=client.SendAsync(request,HttpCompletionOption.ResponseHeadersRead).GetAwaiter().GetResult();
+        return (int)response.StatusCode;
     }
     internal static int RunCanary()
     {
@@ -451,16 +479,7 @@ internal sealed class AtomicChild : IDisposable
             if(!token.LpacAccessCheckObserved)return 125;
             if(plan is not null || gpuPlan is not null || sessionId is null || sessionSecret is null)return 125;
             _=Identifiers.Hex32(sessionId);_=Identifiers.Hash(sessionSecret);
-            using var handler=new SocketsHttpHandler {UseProxy=true,Proxy=new System.Net.WebProxy("http://127.0.0.1:"+SessionProxy.Port) {
-                BypassProxyOnLocal=false,Credentials=new System.Net.NetworkCredential(sessionId,sessionSecret)},
-                AllowAutoRedirect=false,UseCookies=false,SslOptions=SessionProxy.OfflineTls()};
-            using var client=new HttpClient(handler){Timeout=TimeSpan.FromSeconds(10)};
-            // A transport canary needs headers only. GET + disposing an unread
-            // body can abort its own tunnel and look like a gateway failure.
-            using var request=new HttpRequestMessage(HttpMethod.Head,"https://"+SessionProxy.Target+"/") {
-                Version=System.Net.HttpVersion.Version11,VersionPolicy=HttpVersionPolicy.RequestVersionExact};
-            using var response=client.SendAsync(request,HttpCompletionOption.ResponseHeadersRead).GetAwaiter().GetResult();
-            return (int)response.StatusCode is >=200 and <400?42:126;
+            return RunFixedSessionHead(sessionId,sessionSecret) is >=200 and <400?42:126;
         }
         if(gpuPlan is not null)
         {

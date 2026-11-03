@@ -45,6 +45,7 @@ internal sealed class ProtectedSession
     private string? sid;
     private Admission? admission;
     private Preparation? preparation;
+    private GatewayChildReport? gatewayChildFeedback;
     private ProtectionRuntimeLease? runtime;
     private SessionResources? resources;
     private ProtectedSession(FixedLayout layout,ProtectedState state,VerifiedVersion version,bool gatewayQualification=false)
@@ -591,6 +592,13 @@ internal sealed class ProtectedSession
         InstallationProfileLease? profile=null;InstallationLoopbackLease? loopback=null;ProxyChannelLease? upstream=null;
         AtomicChild? child=null;JobSnapshot? zero=null;
         Task<uint>? exited=null;uint? childExitCode=null;
+        System.IO.Pipes.AnonymousPipeServerStream? feedbackPipe=null;StreamReader? feedbackReader=null;Task<string>? feedbackText=null;bool feedbackReadAttempted=false;
+        void ReadFixedFeedback()
+        {
+            if(!gatewayQualification || feedbackReadAttempted || child is null || childExitCode is null || feedbackText is null)return;
+            feedbackReadAttempted=true;
+            gatewayChildFeedback=GatewayChildReport.Parse(feedbackText.WaitAsync(TimeSpan.FromSeconds(1)).GetAwaiter().GetResult(),id,child.Pid,childExitCode.Value);
+        }
         RuntimeStop? stopObservation=null;
         var errors=new List<Exception>();bool resumed=false,completed=false;
         try
@@ -615,7 +623,14 @@ internal sealed class ProtectedSession
             upstream=ProxyChannelLease.Open(state);gateway=new SessionProxy(job,upstream,sid,id);
             loopback=InstallationLoopbackLease.Enable(state,false);
             preparation=new Preparation(this);
-            child=AtomicChild.CreateSession(layout,state,version,job,profile,preparation);
+            if(gatewayQualification)
+            {
+                feedbackPipe=new(System.IO.Pipes.PipeDirection.In,HandleInheritability.Inheritable);
+                feedbackReader=new StreamReader(feedbackPipe,new UTF8Encoding(false,true),false,1024,true);
+                feedbackText=GatewayChildReport.ReadBounded(feedbackReader);
+            }
+            child=AtomicChild.CreateSession(layout,state,version,job,profile,preparation,feedbackPipe?.ClientSafePipeHandle.DangerousGetHandle()??IntPtr.Zero);
+            feedbackPipe?.DisposeLocalCopyOfClientHandle();
             runtime=new ProtectionRuntimeLease(state,version,job,fences,upstream,gateway,preparation:preparation);
             runtime.AssertHealthy();RefreshEnvironment(true);
             if(!CurrentWorkloadEvidenceEligible())throw WfpNative.Contract("FullSessionAdmissionRefusedAfterSuspendedPreparation");
@@ -634,6 +649,7 @@ internal sealed class ProtectedSession
             while(!exited.Wait(100))runtime.AssertHealthy();
             runtime.AssertHealthy();
             childExitCode=exited.GetAwaiter().GetResult();
+            ReadFixedFeedback();
             if(childExitCode!=42)throw WfpNative.Contract("SessionSyntheticWorkloadFailed");
             completed=true;
         }
@@ -661,12 +677,16 @@ internal sealed class ProtectedSession
             if(profile?.ProcessCreationAttempted==true && zero is not null)try{profile.AfterOwnedJobZero(zero);}catch(Exception ex){errors.Add(ex);}
             if(exited is not null)
                 try{childExitCode=exited.WaitAsync(TimeSpan.FromSeconds(3)).GetAwaiter().GetResult();}catch(Exception ex){errors.Add(ex);}
+            try{feedbackPipe?.DisposeLocalCopyOfClientHandle();}catch(Exception ex){errors.Add(ex);}
+            try{ReadFixedFeedback();}catch(Exception ex){errors.Add(ex);}
             // Stop/zero precedes profile and exact loopback removal. A failure
             // in one cleanup must not suppress the other owners' attempts.
-            foreach(var resource in new IDisposable?[]{child,gateway,loopback,profile,job})
+            foreach(var resource in new IDisposable?[]{child,gateway,loopback,profile,job,feedbackReader,feedbackPipe})
                 try{resource?.Dispose();}catch(Exception ex){errors.Add(ex);}
             foreach(var fence in fences)try{fence.Dispose();}catch(Exception ex){errors.Add(ex);}
             try{upstream?.Dispose();}catch(Exception ex){errors.Add(ex);}
+            if(feedbackText is not null)try{_=feedbackText.WaitAsync(TimeSpan.FromSeconds(3)).GetAwaiter().GetResult();}
+                catch(Exception ex){if(resumed && !feedbackReadAttempted)errors.Add(ex);}
         }
         var success=completed && zero?.ObservedZero==true && errors.Count==0;
         var report=Report(success?(gatewayQualification?"FIXED_GATEWAY_QUALIFICATION_CLOSED":"FIXED_SYNTHETIC_SESSION_CLOSED"):"PROTECTED_SESSION_NOT_CONFIRMED",resumed,zero,
@@ -717,6 +737,7 @@ internal sealed class ProtectedSession
         ResumeAttempted=resumeAttempted,ResumeOutcomeUnknown=resumeAttempted && !resumed,
         ProcessResumed=resumed,ChildExitCode=childExitCode,FinalJob=final,Failures=failures,StopObservation=stopObservation,LaunchAuthorized=false,ClaudeLaunched=false,
         FixedGatewayQualification=gatewayQualification,FormalAdmissionIssued=false,
+        GatewayChildFeedback=gatewayChildFeedback,GatewayFailure=gateway?.FailureFeedback,GatewayChildFeedbackUsedForAdmission=false,
         ProductionSessionQualified=false,HostInformationConfidentialityQualified=false
     });
     [DllImport("kernel32.dll",CharSet=CharSet.Unicode,ExactSpelling=true,SetLastError=true)] private static extern int GetUserDefaultLocaleName(StringBuilder name,int capacity);

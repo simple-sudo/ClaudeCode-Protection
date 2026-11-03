@@ -8,7 +8,7 @@
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="Program.cs;GatewayQualificationBoundaryCases.cs;ProjectFailureExecutionCases.cs;ControlFileGateCases.cs;WorkspaceCallerLifetimeCases.cs;MaintenanceIdentityCases.cs;ResetSettingsFileCases.cs" />
+    <Compile Include="Program.cs;GatewayFeedbackCases.cs;GatewayQualificationBoundaryCases.cs;ProjectFailureExecutionCases.cs;ControlFileGateCases.cs;WorkspaceCallerLifetimeCases.cs;MaintenanceIdentityCases.cs;ResetSettingsFileCases.cs" />
     <EmbeddedResource Include="../../samples/CallerDataReport/cpc-project.json" LogicalName="DataFixture.cpc-project.json" />
     <EmbeddedResource Include="../../samples/CallerDataReport/src/Entry.cs" LogicalName="DataFixture.src/Entry.cs" />
     <EmbeddedResource Include="../../samples/CallerDataReport/tests/Checks.cs" LogicalName="DataFixture.tests/Checks.cs" />

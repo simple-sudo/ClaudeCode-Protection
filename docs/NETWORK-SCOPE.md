@@ -52,3 +52,6 @@ SOURCE/BUILD/INTEGRATED；36固定非秘密地址检查及精确前置选择通�
 
 
 挂起创建的运行目录由原profile/workspace所有者提供。网关路径以原profile.WorkspaceRoot()设置TEMP/TMP/LOCALAPPDATA/USERPROFILE，避免遗漏创建所需变量，也不继承宿主用户目录。原资源路径继续把同四项设为原授权workspace。纯映射不是路径/ACL/工具授权，任何实际修正效果仍须指定新工件的native验证。
+
+
+固定网关根与原成功资源程序相同，只查询自身基本身份；真正LPAC由原Broker在持有进程、放行前及原runtime成员检查时核对，受限根不需要为重复该管理观察取得TOKEN_DUPLICATE。固定资格报告复用原HANDLE_LIST中的唯一匿名管道写端。owner按4096字符/严格UTF-8、单JSON、会话/PID/真实退出码和结果形状绑定，只公开固定阶段、HTTP状态、最多四层错误类别/数值；不公开异常Message/Stack/Data或原始输出。网关首个内存故障与固定阶段原子绑定，公开同样最小化代码，停止行为保持。两种反馈都不授予准入/路径权限/自动重试，不读取旧私有错误文件。

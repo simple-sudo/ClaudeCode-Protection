@@ -27,7 +27,12 @@ internal sealed class SessionProxy : IDisposable
     private readonly string packageSid, sessionId;
     private readonly byte[] authorization;
     private readonly Task accept;
-    private Exception? failure;
+    private sealed record GatewayFailure(Exception Cause,string Phase);
+    private GatewayFailure? failure;
+    internal GatewayFailureFeedback? FailureFeedback
+    {
+        get{var f=Volatile.Read(ref failure);return f is null?null:new(f.Phase,GatewayChildReport.Describe(f.Cause));}
+    }
     private ProtectedSession.Admission? admission;
     private int sequence;
     private long transferred;
@@ -91,9 +96,9 @@ internal sealed class SessionProxy : IDisposable
         catch (Exception ex) when (ex is SocketException or OperationCanceledException or ObjectDisposedException)
         { if (!stop.IsCancellationRequested) Fail(ex); }
     }
-    private void Fail(Exception error)
+    private void Fail(Exception error,string phase="LISTENER")
     {
-        Interlocked.CompareExchange(ref failure, error, null);
+        Interlocked.CompareExchange(ref failure,new GatewayFailure(error,phase),null);
         stop.Cancel(); listener.Stop();
         foreach (var entry in clients.Values) entry.Client.Dispose();
     }
@@ -103,7 +108,7 @@ internal sealed class SessionProxy : IDisposable
         using (var deadline = CancellationTokenSource.CreateLinkedTokenSource(stop.Token))
         {
             deadline.CancelAfter(TimeSpan.FromSeconds(20));
-            var authenticated = false;
+            var authenticated = false;var phase="REQUEST";
             try
             {
                 var stream = client.GetStream();
@@ -115,6 +120,7 @@ internal sealed class SessionProxy : IDisposable
                 }
                 authenticated = true;
                 if (request.Host != Target) throw new InvalidDataException("SessionDestinationNotAuthorized");
+                phase="PEER";
                 if (client.Client.RemoteEndPoint is not IPEndPoint peer || !peer.Address.Equals(IPAddress.Loopback))
                     throw new InvalidDataException("SessionLoopbackPeerRequired");
                 using var process = AtomicChild.HoldSessionPeer(job, packageSid, peer.Port);
@@ -122,8 +128,10 @@ internal sealed class SessionProxy : IDisposable
                 AtomicChild.AssertSessionPeer(job, process, packageSid, peer.Port);
                 AssertForwardingCurrent();
                 await stream.WriteAsync(Encoding.ASCII.GetBytes("HTTP/1.1 200 Connection Established\r\n\r\n"), deadline.Token);
+                phase="CLIENT_TLS";
                 using var tlsClient=await SessionTunnel.RequireTlsClientHelloAsync(stream,request.Host,AssertForwardingCurrent,deadline.Token);
                 AssertHealthy();AtomicChild.AssertSessionPeer(job,process,packageSid,peer.Port);AssertForwardingCurrent();
+                phase="RESOLVER";
                 var addresses=await Resolve(request.Host,deadline.Token);var chosen=addresses[0];
                 if(!ProxyDestinationPolicy.AuthorizePinnedHttps(request.Host,443,addresses,chosen).Allowed)
                     throw new InvalidDataException("SessionResolvedDestinationRefused");
@@ -131,15 +139,17 @@ internal sealed class SessionProxy : IDisposable
                 // client's bounded handshake has passed. No invalid ClientHello
                 // starts even a resolver tunnel on behalf of that connection.
                 AssertForwardingCurrent();
+                phase="UPSTREAM";
                 using var remote=await OpenTunnel(chosen,deadline.Token);
                 AssertHealthy();AtomicChild.AssertSessionPeer(job,process,packageSid,peer.Port);AssertForwardingCurrent();
+                phase="FORWARDING";
                 await SessionTunnel.CopyAsync(tlsClient,remote,
                     ()=>client.Client.Shutdown(SocketShutdown.Send),()=>remote.Socket.Shutdown(SocketShutdown.Send),
                     count=>{if(Interlocked.Add(ref transferred,count)>64*1024*1024)throw new InvalidDataException("SessionTunnelByteBudgetExceeded");},
                     8*1024*1024,AssertForwardingCurrent,deadline.Token);
             }
             catch (Exception ex)
-            { if (authenticated && !stop.IsCancellationRequested) Fail(ex); }
+            { if (authenticated && !stop.IsCancellationRequested) Fail(ex,phase); }
         }
     }
     private async Task<IPAddress[]> Resolve(string host, CancellationToken token)

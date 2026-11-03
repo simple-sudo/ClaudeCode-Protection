@@ -128,6 +128,7 @@ public static class BootstrapInstaller
             "D21A7D9F39A93E82087062EAD14F49329E7DBDD2743B2DC12DE98CAB6DC691F1"
         }; // Exact reviewed packages expose no launch/admission command.
         private static readonly string[] OneShotAdmissionManifests={
+            "0E3FC10A86DB6D61F6CB774AE4D74CBF4D9CEE9E147393F020F59A55ACF97C5B", // 40d7 fixed gateway root resumed/125, original closed admission/quarantine/zero guards remain.
             "ADC8BEE33E205CF4F0411492D1F3A54A5A63FEF7F7E27DC95FE11C05C3D233A2", // 92e3 fixed gateway creation failed; original closed-Job guards remain.
             "8E09CB551E27BFD89C5F31F375DDC0D1D13E5F3DCB5E0547FE9E5344D6C3B86D", // 401e inactive gateway guard baseline; no activation grant.
             "3209392BE51C01C3D84254D1177182A414813BBB3FF9B7AA0F8C9D21177F42F4", // 7535 reset-compatible fixed task; original inactive guards remain.
