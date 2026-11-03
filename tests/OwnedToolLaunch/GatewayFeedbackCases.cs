@@ -49,6 +49,34 @@ internal static class GatewayFeedbackCases
         Check(Read(Encoding.UTF8.GetBytes(good.PadRight(4096)))==good.PadRight(4096));Accept(good.PadRight(4096),42);
         var oversized=false;try{Read(Encoding.UTF8.GetBytes(new string('x',4097)));}catch(InvalidDataException){oversized=true;}Check(oversized);
         var invalidUtf8=false;try{Read(new byte[]{255});}catch(DecoderFallbackException){invalidUtf8=true;}Check(invalidUtf8);
+        foreach(var phase in new[]{"HTTPS_SETTINGS","HTTPS_TLS_POLICY","HTTPS_CLIENT","HTTPS_SEND","HTTPS_CONNECT","HTTPS_CONNECT_REPLY"})Accept(Result(phase,125,error:new System.Security.SecurityException("private-fixture")),125);
+        var registry=Result("HTTPS_SETTINGS",125,error:new TypeInitializationException("Microsoft.Win32.Registry",new System.Security.SecurityException("private-fixture")));
+        Accept(registry,125);Check(JsonNode.Parse(registry)!["Errors"]![0]!["Kind"]!.GetValue<string>()=="REGISTRY_INITIALIZATION" && !registry.Contains("Microsoft.Win32",StringComparison.Ordinal));
+        var unknown=Result("HTTPS_SETTINGS",125,error:new TypeInitializationException("private-type-token",new System.Security.SecurityException("private-fixture")));
+        Check(!unknown.Contains("private-type-token",StringComparison.Ordinal) && JsonNode.Parse(unknown)!["Errors"]![0]!["Kind"]!.GetValue<string>()=="INITIALIZATION");
+        var proxy=library.GetType("ProtectionLifecycle.SessionProxy",true)!;
+        object? ProxyCall(string method,params object?[] values)
+        {
+            try{return proxy.GetMethod(method,BindingFlags.Static|BindingFlags.NonPublic)!.Invoke(null,values);}
+            catch(TargetInvocationException ex)when(ex.InnerException is not null){ExceptionDispatchInfo.Capture(ex.InnerException).Throw();throw;}
+        }
+        var secret=new string('B',64);var header=(byte[])ProxyCall("FixedClientConnectHeader",id,secret)!;var headerText=Encoding.ASCII.GetString(header);
+        Check(headerText=="CONNECT www.microsoft.com:443 HTTP/1.1\r\nHost: www.microsoft.com:443\r\nProxy-Authorization: Basic "+Convert.ToBase64String(Encoding.ASCII.GetBytes(id+":"+secret))+"\r\n\r\n");
+        foreach(var pair in new[]{("bad",secret),(id,"bad"),(id,"B\r\nInjected: x"),(new string('a',33),secret)})
+        {var refused=false;try{ProxyCall("FixedClientConnectHeader",pair.Item1,pair.Item2);}catch(InvalidDataException){refused=true;}Check(refused);}
+        ProxyCall("RequireFixedClientConnectReply","HTTP/1.1 200 Connection Established\r\n\r\n");Check(true);
+        foreach(var reply in new[]{"HTTP/1.1 407 Proxy Authentication Required\r\n\r\n","HTTP/1.1 2000 Connection Established\r\n\r\n","HTTP/1.0 200 Connection Established\r\n\r\n","HTTP/1.1 200 Connection Established\r\nExtra: data\r\n\r\n"})
+        {var refused=false;try{ProxyCall("RequireFixedClientConnectReply",reply);}catch(InvalidDataException){refused=true;}Check(refused);}
+        var culture=System.Globalization.CultureInfo.CurrentCulture;var ui=System.Globalization.CultureInfo.CurrentUICulture;
+        var defaultCulture=System.Globalization.CultureInfo.DefaultThreadCurrentCulture;var defaultUi=System.Globalization.CultureInfo.DefaultThreadCurrentUICulture;
+        try
+        {
+            library.GetType("ProtectionLifecycle.AtomicChild",true)!.GetMethod("ConfigureFixedChildCulture",BindingFlags.Static|BindingFlags.NonPublic)!.Invoke(null,null);
+            Check(System.Globalization.CultureInfo.CurrentCulture.Name=="" && System.Globalization.CultureInfo.CurrentUICulture.Name=="" && System.Globalization.CultureInfo.DefaultThreadCurrentCulture?.Name=="" && System.Globalization.CultureInfo.DefaultThreadCurrentUICulture?.Name=="");
+            var tls=(System.Net.Security.SslClientAuthenticationOptions)ProxyCall("OfflineTls")!;
+            Check(tls.CertificateRevocationCheckMode==System.Security.Cryptography.X509Certificates.X509RevocationMode.Offline && tls.CertificateChainPolicy is {DisableCertificateDownloads:true,RevocationMode:System.Security.Cryptography.X509Certificates.X509RevocationMode.Offline,VerificationFlags:System.Security.Cryptography.X509Certificates.X509VerificationFlags.NoFlag});
+        }
+        finally{System.Globalization.CultureInfo.DefaultThreadCurrentCulture=defaultCulture;System.Globalization.CultureInfo.DefaultThreadCurrentUICulture=defaultUi;System.Globalization.CultureInfo.CurrentCulture=culture;System.Globalization.CultureInfo.CurrentUICulture=ui;}
         Console.WriteLine($"PASS {count} fixed gateway feedback contract and bounded-memory reader checks; no exception messages, paths, tokens or raw output; diagnostic only. No UAC, network, child process, protected state, Job or WFP operation.");
     }
 }

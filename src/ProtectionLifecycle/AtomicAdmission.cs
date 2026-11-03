@@ -430,11 +430,22 @@ internal sealed class AtomicChild : IDisposable
             throw new InvalidDataException("OwnedRuntimeDirectoryRequired");
         foreach(var name in new[]{"TEMP","TMP","LOCALAPPDATA","USERPROFILE"})environment[name]=ownedDirectory;
     }
+    internal static void ConfigureFixedChildCulture()
+    {
+        // Only this fixed worker opts in. Do not alter the owner, GUI, Windows
+        // locale/time zone or grant registry access for framework localization.
+        var invariant=System.Globalization.CultureInfo.InvariantCulture;
+        System.Globalization.CultureInfo.DefaultThreadCurrentCulture=invariant;
+        System.Globalization.CultureInfo.DefaultThreadCurrentUICulture=invariant;
+        System.Globalization.CultureInfo.CurrentCulture=invariant;
+        System.Globalization.CultureInfo.CurrentUICulture=invariant;
+    }
     internal static int RunGatewayQualificationCanary()
     {
         var phase="ENVIRONMENT";var id=Environment.GetEnvironmentVariable("CPC_SESSION_ID")??"";GatewayChildReport result;
         try
         {
+            ConfigureFixedChildCulture();
             var secret=Environment.GetEnvironmentVariable("CPC_SESSION_SECRET");
             if(id.Length==0 || secret is null || new[]{"CPC_RESOURCE_PLAN","CPC_NETWORK_PLAN","CPC_GPU_PLAN"}.Any(name=>Environment.GetEnvironmentVariable(name) is not null))
                 throw new InvalidDataException("FixedGatewayEnvironmentRefused");
@@ -447,22 +458,29 @@ internal sealed class AtomicChild : IDisposable
                 result=GatewayChildReport.Result(id,phase,125);
             else
             {
-                phase="HTTPS";var status=RunFixedSessionHead(id,secret);
-                result=GatewayChildReport.Result(id,status is >=200 and <400?"COMPLETE":phase,status is >=200 and <400?42:126,status);
+                phase="HTTPS_SETTINGS";var status=RunFixedSessionHead(id,secret,p=>phase=p);
+                result=GatewayChildReport.Result(id,status is >=200 and <400?"COMPLETE":"HTTPS",status is >=200 and <400?42:126,status);
             }
         }
         catch(Exception ex){result=GatewayChildReport.Result(id,phase,125,failure:ex);}
         Console.WriteLine(JsonSerializer.Serialize(result));return result.ExitCode;
     }
-    private static int RunFixedSessionHead(string sessionId,string sessionSecret)
+    private static int RunFixedSessionHead(string sessionId,string sessionSecret,Action<string>? phase=null)
     {
-        using var handler=new SocketsHttpHandler {UseProxy=true,Proxy=new System.Net.WebProxy("http://127.0.0.1:"+SessionProxy.Port) {
-            BypassProxyOnLocal=false,Credentials=new System.Net.NetworkCredential(sessionId,sessionSecret)},
-            AllowAutoRedirect=false,UseCookies=false,SslOptions=SessionProxy.OfflineTls()};
+        phase?.Invoke("HTTPS_SETTINGS");
+        using var handler=new SocketsHttpHandler {UseProxy=false,AllowAutoRedirect=false,UseCookies=false,
+            ConnectCallback=(context,cancel)=>
+            {
+                if(context.DnsEndPoint.Host!=SessionProxy.Target || context.DnsEndPoint.Port!=443)throw WfpNative.Contract("FixedSessionHttpTargetRefused");
+                return SessionProxy.OpenFixedClientTunnel(sessionId,sessionSecret,cancel,phase);
+            }};
+        phase?.Invoke("HTTPS_TLS_POLICY");handler.SslOptions=SessionProxy.OfflineTls();
+        phase?.Invoke("HTTPS_CLIENT");
         using var client=new HttpClient(handler){Timeout=TimeSpan.FromSeconds(10)};
         // Headers only; an unread GET body would abort its own TLS tunnel.
         using var request=new HttpRequestMessage(HttpMethod.Head,"https://"+SessionProxy.Target+"/") {
             Version=System.Net.HttpVersion.Version11,VersionPolicy=HttpVersionPolicy.RequestVersionExact};
+        phase?.Invoke("HTTPS_SEND");
         using var response=client.SendAsync(request,HttpCompletionOption.ResponseHeadersRead).GetAwaiter().GetResult();
         return (int)response.StatusCode;
     }

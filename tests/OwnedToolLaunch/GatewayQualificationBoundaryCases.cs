@@ -11,14 +11,15 @@ internal static class GatewayQualificationBoundaryCases
         void Check(bool value){if(!value)throw new InvalidOperationException("Gateway qualification boundary refused");count++;}
         object? Call(string method)
         {
-            var output=Console.Out;
+            var output=Console.Out;var culture=System.Globalization.CultureInfo.CurrentCulture;var ui=System.Globalization.CultureInfo.CurrentUICulture;
+            var defaultCulture=System.Globalization.CultureInfo.DefaultThreadCurrentCulture;var defaultUi=System.Globalization.CultureInfo.DefaultThreadCurrentUICulture;
             try
             {
                 if(method=="RunGatewayQualificationCanary")Console.SetOut(new StringWriter());
                 return broker.GetMethod(method,BindingFlags.Public|BindingFlags.Static)!.Invoke(null,null);
             }
             catch(TargetInvocationException ex)when(ex.InnerException is not null){ExceptionDispatchInfo.Capture(ex.InnerException).Throw();throw;}
-            finally{Console.SetOut(output);}
+            finally{Console.SetOut(output);System.Globalization.CultureInfo.DefaultThreadCurrentCulture=defaultCulture;System.Globalization.CultureInfo.DefaultThreadCurrentUICulture=defaultUi;System.Globalization.CultureInfo.CurrentCulture=culture;System.Globalization.CultureInfo.CurrentUICulture=ui;}
         }
         Check((bool)session.GetProperty("SystemTestingBlocked",BindingFlags.Static|BindingFlags.NonPublic)!.GetValue(null)!);
         Check(broker.GetMethod("QualifySessionGateway")!.GetParameters().Length==0);

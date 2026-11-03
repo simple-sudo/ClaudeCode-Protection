@@ -55,3 +55,6 @@ SOURCE/BUILD/INTEGRATED；36固定非秘密地址检查及精确前置选择通�
 
 
 固定网关根与原成功资源程序相同，只查询自身基本身份；真正LPAC由原Broker在持有进程、放行前及原runtime成员检查时核对，受限根不需要为重复该管理观察取得TOKEN_DUPLICATE。固定资格报告复用原HANDLE_LIST中的唯一匿名管道写端。owner按4096字符/严格UTF-8、单JSON、会话/PID/真实退出码和结果形状绑定，只公开固定阶段、HTTP状态、最多四层错误类别/数值；不公开异常Message/Stack/Data或原始输出。网关首个内存故障与固定阶段原子绑定，公开同样最小化代码，停止行为保持。两种反馈都不授予准入/路径权限/自动重试，不读取旧私有错误文件。
+
+
+固定HEAD客户端通过原HttpClient.ConnectCallback只连接字面IPv4 127.0.0.1:17891，明确发送当前会话的固定Basic CONNECT并要求原网关精确200回执；共享原Target/Port/有界ReadHeader。内置代理层关闭不代表允许直连：回调校验固定HTTPS目标，原WFP和网关内核peer检查继续限制真实出口。TLS仍用原Offline策略/禁下载/完整校验，不增加registryRead或宽松回退。固定根的Invariant当前/默认线程文化仅作用本进程，隔离宿主语言初始化依赖；不改Windows/GUI/owner设置。现有错误是否由特定本地化分支触发仍UNKNOWN；语言处理及新回调的native资格分别判断。

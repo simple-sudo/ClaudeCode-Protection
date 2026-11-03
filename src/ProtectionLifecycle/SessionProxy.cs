@@ -212,6 +212,33 @@ internal sealed class SessionProxy : IDisposable
         }
         throw new InvalidDataException("ConnectHeaderCapacity");
     }
+    // Fixed caller-side CONNECT; shares this gateway's target and bounded
+    // header reader. No OS proxy discovery, credential negotiation or DNS.
+    internal static byte[] FixedClientConnectHeader(string sessionId,string secret)
+    {
+        _=Identifiers.Hex32(sessionId);_=Identifiers.Hash(secret);
+        var identity=Encoding.ASCII.GetBytes(sessionId+":"+secret);string encoded;
+        try{encoded=Convert.ToBase64String(identity);}finally{CryptographicOperations.ZeroMemory(identity);}
+        return Encoding.ASCII.GetBytes("CONNECT "+Target+":443 HTTP/1.1\r\nHost: "+Target+":443\r\nProxy-Authorization: Basic "+encoded+"\r\n\r\n");
+    }
+    internal static void RequireFixedClientConnectReply(string reply)
+    {
+        if(reply!="HTTP/1.1 200 Connection Established\r\n\r\n")throw WfpNative.Contract("FixedSessionGatewayConnectRefused");
+    }
+    internal static async ValueTask<Stream> OpenFixedClientTunnel(string sessionId,string secret,CancellationToken cancel,Action<string>? phase)
+    {
+        var header=FixedClientConnectHeader(sessionId,secret);
+        Socket? socket=null;
+        try
+        {
+            phase?.Invoke("HTTPS_CONNECT");socket=new Socket(AddressFamily.InterNetwork,SocketType.Stream,ProtocolType.Tcp);await socket.ConnectAsync(new IPEndPoint(IPAddress.Loopback,Port),cancel);
+            var stream=new NetworkStream(socket,ownsSocket:true);
+            try{await stream.WriteAsync(header,cancel);}finally{CryptographicOperations.ZeroMemory(header);}
+            phase?.Invoke("HTTPS_CONNECT_REPLY");RequireFixedClientConnectReply(await ReadHeader(stream,cancel));return stream;
+        }
+        catch{socket?.Dispose();throw;}
+        finally{CryptographicOperations.ZeroMemory(header);}
+    }
     // Do not let chain-building or revocation silently start host DNS/HTTP.
     // Missing intermediates/revocation data therefore fail; this is not NoCheck.
     internal static SslClientAuthenticationOptions OfflineTls()=>new() {
