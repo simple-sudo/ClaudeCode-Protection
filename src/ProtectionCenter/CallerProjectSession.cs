@@ -64,6 +64,7 @@ internal sealed class CallerProjectSession
         return previous.CreateRevision(WorkspaceFiles.ReadBundle(resultPath));
     }
     internal CallerProjectRevision CreateRevision(byte[] result)=>new(task,result);
+    internal CallerProjectRevision EditTask()=>new(task);
     internal static CallerProjectSession FromRevision(WorkspaceFile[] files,CSharpProjectDefinition definition)
     {
         WorkspaceFiles.RequireOrdinaryUser();
@@ -171,7 +172,10 @@ internal sealed class CallerProjectRevision
 {
     private readonly WorkspaceFile[] files;
     private readonly CSharpProjectDefinition definition;
-    internal string PreviousResultSHA256 {get;}
+    internal string? PreviousResultSHA256 {get;}
+    internal string SourceTaskSHA256 {get;}
+    internal bool EditsExistingTask {get;}
+    internal CSharpProjectEdit[] InitialEdits=>EditsExistingTask?definition.Edits.ToArray():Array.Empty<CSharpProjectEdit>();
     internal string[] Sources=>definition.Sources.ToArray();
     internal string[] DataFiles=>(definition.DataFiles??Array.Empty<string>()).ToArray();
     internal CSharpProjectOutput[] GeneratedFiles=>(definition.GeneratedFiles??Array.Empty<CSharpProjectOutput>()).ToArray();
@@ -180,6 +184,7 @@ internal sealed class CallerProjectRevision
     internal int ExpectedTests=>definition.ExpectedTests;
     internal CallerProjectRevision(CSharpProjectTask previous,byte[] result)
     {
+        SourceTaskSHA256=previous.BaselineSHA256;
         var snapshot=result.ToArray();previous.VerifyResult(snapshot);
         PreviousResultSHA256=WorkspaceBundle.Hash(snapshot);
         // Parse our own immutable manifest so no caller-owned arrays are retained.
@@ -188,11 +193,28 @@ internal sealed class CallerProjectRevision
         var names=definition.Sources.Concat(definition.DataFiles??Array.Empty<string>()).ToHashSet(StringComparer.Ordinal);
         files=WorkspaceBundle.Parse(snapshot).Files.Where(f=>names.Contains(f.Path)).ToArray();
     }
+    // Editing an imported/prepared/failed task needs no successful result.
+    // Snapshot only the already selected baseline, retaining its original
+    // literal-edit plan. Never accept failed output or infer execution success.
+    internal CallerProjectRevision(CSharpProjectTask previous)
+    {
+        SourceTaskSHA256=previous.BaselineSHA256;EditsExistingTask=true;
+        var snapshot=WorkspaceBundle.Parse(previous.Baseline.Serialize());
+        definition=JsonSerializer.Deserialize<CSharpProjectDefinition>(snapshot.Files.Single(f=>f.Path==CSharpProjectTask.Manifest).Content)
+            ??throw new InvalidDataException("Project definition missing");
+        // V1 may include reviewed non-source companion files. Preserve the
+        // entire original baseline rather than silently dropping them.
+        files=snapshot.Files.Where(f=>f.Path!=CSharpProjectTask.Manifest).ToArray();
+    }
     internal string ReadSource(string path)
     {
         if(!definition.Sources.Contains(path,StringComparer.Ordinal))throw new InvalidDataException("Only declared source can be previewed");
         return new UTF8Encoding(false,true).GetString(files.Single(f=>f.Path==path).Content);
     }
-    internal CallerProjectSession Prepare(CSharpProjectEdit[] edits,int? expectedTests=null)
-        =>CallerProjectSession.FromRevision(files,definition with {Edits=edits,ExpectedTests=expectedTests??definition.ExpectedTests});
+    internal CallerProjectSession Prepare(CSharpProjectEdit[] edits,int? expectedTests=null,string? entryType=null,string? testType=null)
+    {
+        if(!EditsExistingTask && (entryType is not null || testType is not null))throw new InvalidDataException("Result continuation retains its entry types");
+        return CallerProjectSession.FromRevision(files,definition with {Edits=edits,ExpectedTests=expectedTests??definition.ExpectedTests,
+            EntryType=entryType??definition.EntryType,TestType=testType??definition.TestType});
+    }
 }

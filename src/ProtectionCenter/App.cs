@@ -14,9 +14,9 @@ internal static class App
     {
         ClaudeCodeProtection.Workspaces.WorkspaceFiles.RequireOrdinaryUser();
         var application = new Application();
-        Window window = args.Length==2 && args[0]=="--render-task-preview"
+        Window window = args.Length==2 && args[0]=="--render-edit-task-preview" ? EditPreview() : args.Length==2 && args[0]=="--render-task-preview"
             ? new ProjectTaskWindow(@"C:\ExampleProject",new[]{"src/Entry.cs","tests/Checks.cs"}) : new CenterWindow();
-        if (args.Length == 2 && args[0] is "--render-preview" or "--render-task-preview")
+        if (args.Length == 2 && args[0] is "--render-preview" or "--render-task-preview" or "--render-edit-task-preview")
         {
             var content = window.Content as UIElement ?? throw new InvalidOperationException();
             window.Content = null;
@@ -29,6 +29,19 @@ internal static class App
             application.Shutdown(); return;
         }
         application.Run(window);
+    }
+    private static ProjectTaskWindow EditPreview()
+    {
+        // Fixed nonsecret data for the existing offscreen preview path only.
+        // No input path, project execution, installed owner or admission.
+        var definition=new ClaudeCodeProtection.Workspaces.CSharpProjectDefinition(2,ClaudeCodeProtection.Workspaces.CSharpProjectTask.DataKind,
+            new[]{"src/Entry.cs","tests/Checks.cs"},new[]{new ClaudeCodeProtection.Workspaces.CSharpProjectEdit("src/Entry.cs","return -1;","return 0;")},"Demo.Entry","Demo.Checks",2,
+            new[]{"data/value.txt"},new[]{new ClaudeCodeProtection.Workspaces.CSharpProjectOutput("cpc-results/report.json",128)});
+        var draft=CallerProjectSession.FromRevision(new[]{
+            new ClaudeCodeProtection.Workspaces.WorkspaceFile("src/Entry.cs",System.Text.Encoding.UTF8.GetBytes("namespace Demo; public static class Entry { public static int Run(){ return -1; } }"),""),
+            new ClaudeCodeProtection.Workspaces.WorkspaceFile("tests/Checks.cs",System.Text.Encoding.UTF8.GetBytes("namespace Demo; public static class Checks { public static int Run(){ return 2; } }"),""),
+            new ClaudeCodeProtection.Workspaces.WorkspaceFile("data/value.txt",new byte[]{55},"")},definition).EditTask();
+        return new ProjectTaskWindow("",draft.Sources,draft);
     }
 }
 
@@ -48,6 +61,7 @@ internal sealed class CenterWindow : Window
     private CallerProjectSession? preparedProject;
     private Button? startProject;
     private Button? saveProject;
+    private Button? editProject;
     private readonly Button cancelProject=new(){Content="取消本次项目",Padding=new Thickness(14,9,14,9),Margin=new Thickness(0,0,10,6),IsEnabled=false};
     private CancellationTokenSource? projectCancellation;
     internal CenterWindow()
@@ -86,6 +100,7 @@ internal sealed class CenterWindow : Window
         AddAction(buttons, "选择 C# 项目", () => PrepareProject(false));
         AddAction(buttons, "创建项目任务", CreateProject);
         saveProject=AddAction(buttons, "保存项目任务包", SaveProject);saveProject.IsEnabled=false;
+        editProject=AddAction(buttons, "编辑当前任务", EditProject);editProject.IsEnabled=false;
         AddAction(buttons, "导入项目任务包", () => PrepareProject(true));
         startProject=AddAction(buttons, "开始项目开发", RunProject);startProject.IsEnabled=false;
         cancelProject.Click+=(_,_)=>{if(projectCancellation is null || projectCancellation.IsCancellationRequested)return;projectCancellation.Cancel();cancelProject.IsEnabled=false;activity.Text="已请求取消，正在等待本次操作结束；保护侧关闭与清理状态尚未确认。";};
@@ -108,7 +123,7 @@ internal sealed class CenterWindow : Window
     private static TextBlock Label(string text) => new() { Text = text, Foreground = Muted, FontSize = 13 };
     private static Border Card(UIElement content) => new() { Child = content, Background = Brushes.White, BorderBrush = new SolidColorBrush(Color.FromRgb(222, 228, 236)), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(10), Padding = new Thickness(18) };
     private void RefreshActions()
-    {foreach(var action in actions)action.IsEnabled=!busy;if(startProject is not null)startProject.IsEnabled=!busy && preparedProject is not null;if(saveProject is not null)saveProject.IsEnabled=!busy && preparedProject is not null;cancelProject.IsEnabled=busy && projectCancellation is not null && !projectCancellation.IsCancellationRequested;}
+    {foreach(var action in actions)action.IsEnabled=!busy;if(startProject is not null)startProject.IsEnabled=!busy && preparedProject is not null;if(saveProject is not null)saveProject.IsEnabled=!busy && preparedProject is not null;if(editProject is not null)editProject.IsEnabled=!busy && preparedProject is not null;cancelProject.IsEnabled=busy && projectCancellation is not null && !projectCancellation.IsCancellationRequested;}
     private Button AddAction(Panel panel, string label, Func<Task> work)
     {
         var button = new Button { Content = label, Padding = new Thickness(14, 9, 14, 9), Margin = new Thickness(0, 0, 10, 6), Background = Brushes.White, Foreground = Ink, BorderBrush = new SolidColorBrush(Color.FromRgb(200, 211, 224)), Cursor = System.Windows.Input.Cursors.Hand };
@@ -139,6 +154,20 @@ internal sealed class CenterWindow : Window
             activity.Text="任务已准备，请审阅；可保存任务包，或通过已安装的保护链开始开发。";
         }
         else activity.Text="已取消准备；已有任务保留。";
+        return Task.CompletedTask;
+    }
+    private Task EditProject()
+    {
+        var current=preparedProject??throw new InvalidOperationException("请先准备或导入项目任务。");
+        var draft=current.EditTask();
+        var editor=new ProjectTaskWindow("",draft.Sources,draft){Owner=this};
+        if(editor.ShowDialog()==true && editor.Prepared is { } next)
+        {
+            environmentOutput=null;preparedProject=next;
+            details.Text=next.ReviewText+"\r\n编辑前任务指纹："+draft.SourceTaskSHA256;
+            activity.Text="任务修改已准备，请重新审阅并保存或开始开发。原输入和已有运行记录保留；本次编辑没有运行代码。";
+        }
+        else activity.Text="已取消编辑；原任务和运行记录保留。";
         return Task.CompletedTask;
     }
     private async Task ContinueProject()

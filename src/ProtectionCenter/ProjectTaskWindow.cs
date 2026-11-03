@@ -20,10 +20,10 @@ internal sealed class ProjectTaskWindow : Window
     internal ProjectTaskWindow(string directory,string[] sources,CallerProjectRevision? revision=null)
     {
         this.directory=directory;this.sources=sources;
-        Title="准备 C# 项目任务";Width=700;Height=820;MinWidth=580;MinHeight=540;WindowStartupLocation=WindowStartupLocation.CenterOwner;
+        Title=revision?.EditsExistingTask==true?"编辑当前 C# 项目任务":"准备 C# 项目任务";Width=700;Height=820;MinWidth=580;MinHeight=540;WindowStartupLocation=WindowStartupLocation.CenterOwner;
         Background=System.Windows.Media.Brushes.White;FontFamily=new System.Windows.Media.FontFamily("Microsoft YaHei UI");FontSize=14;
         var panel=new StackPanel{Margin=new Thickness(22)};
-        panel.Children.Add(new TextBlock{Text=revision is null?"仅复制所选源码；原项目保持原样。可同时修改实现与测试；将每项文字修改加入列表，再填写运行、测试入口。":"继续修改已校验的结果源码。沿用原数据、运行/测试入口及结果限制；将新的文字修改加入列表，可同时修改实现与测试。",TextWrapping=TextWrapping.Wrap});
+        panel.Children.Add(new TextBlock{Text=revision?.EditsExistingTask==true?"编辑已准备的任务快照。原修改列表已载入，可直接修正文字或运行/测试类型；原源码、数据和已有运行记录保留。本次不读取失败结果，也不运行代码。":revision is null?"仅复制所选源码；原项目保持原样。可同时修改实现与测试；将每项文字修改加入列表，再填写运行、测试入口。":"继续修改已校验的结果源码。沿用原数据、运行/测试入口及结果限制；将新的文字修改加入列表，可同时修改实现与测试。",TextWrapping=TextWrapping.Wrap});
         var files=new TextBox{Text=string.Join(Environment.NewLine,sources),IsReadOnly=true,MaxHeight=90,VerticalScrollBarVisibility=ScrollBarVisibility.Auto,Margin=new Thickness(0,8,0,0)};
         panel.Children.Add(files);
         var dataList=new TextBox{IsReadOnly=true,MaxHeight=70,VerticalScrollBarVisibility=ScrollBarVisibility.Auto,Text="尚未选择数据文件"};
@@ -46,7 +46,8 @@ internal sealed class ProjectTaskWindow : Window
             dataList.Text=dataFiles.Length==0?"原任务未选择数据文件":string.Join(Environment.NewLine,dataFiles);
             entry.Text=revision.EntryType;tests.Text=revision.TestType;count.Text=revision.ExpectedTests.ToString(System.Globalization.CultureInfo.InvariantCulture);
             results.Text=string.Join(Environment.NewLine,revision.GeneratedFiles.Select(f=>f.Path+"（最多 "+f.MaxBytes+" 字节）"));
-            foreach(var field in new[]{entry,tests,results})field.IsReadOnly=true;
+            foreach(var field in new[]{entry,tests})field.IsReadOnly=!revision.EditsExistingTask;
+            results.IsReadOnly=true;
         }
         panel.Children.Add(selectData);panel.Children.Add(dataList);
         foreach(var source in sources)editSource.Items.Add(source);editSource.SelectedIndex=0;
@@ -100,7 +101,7 @@ internal sealed class ProjectTaskWindow : Window
                 VerticalScrollBarVisibility=ScrollBarVisibility.Auto,HorizontalScrollBarVisibility=ScrollBarVisibility.Auto,
                 FontFamily=new System.Windows.Media.FontFamily("Consolas")};
             editSource.SelectionChanged+=(_,_)=>preview.Text=revision.ReadSource((string)editSource.SelectedItem);
-            Field("上轮结果中的原始源码（修改按列表顺序执行，可复制原文字）",preview);
+            Field(revision.EditsExistingTask?"原任务快照中的源码（修改按列表顺序执行，可复制原文字）":"上轮结果中的原始源码（修改按列表顺序执行，可复制原文字）",preview);
         }
         Field("原文字（必须恰好匹配一次）",before);Field("替换后的文字（可留空）",after);
         Field("运行类型（公开 static int Run()，例如 Demo.Entry）",entry);
@@ -124,7 +125,7 @@ internal sealed class ProjectTaskWindow : Window
             busy=true;prepare.IsEnabled=false;cancel.IsEnabled=false;panel.IsEnabled=false;status.Text="正在保存所选源码的内存快照并校验任务……";
             try
             {
-                Prepared=await Task.Run(()=>revision is not null?revision.Prepare(edits,expected):CallerProjectSession.Create(directory,sources,edits,entryType,testType,expected,
+                Prepared=await Task.Run(()=>revision is not null?revision.Prepare(edits,expected,revision.EditsExistingTask?entryType:null,revision.EditsExistingTask?testType:null):CallerProjectSession.Create(directory,sources,edits,entryType,testType,expected,
                     data.Length==0 && outputs.Length==0?null:data,data.Length==0 && outputs.Length==0?null:outputs));
                 DialogResult=true;
             }
@@ -133,6 +134,7 @@ internal sealed class ProjectTaskWindow : Window
             finally{busy=false;panel.IsEnabled=true;prepare.IsEnabled=true;cancel.IsEnabled=true;}
         };
         Closing+=(_,e)=>{if(busy && Prepared is null)e.Cancel=true;};
+        if(revision?.EditsExistingTask==true){foreach(var edit in revision.InitialEdits)queue.Add(edit);RefreshEdits(queue.Count-1);}
         buttons.Children.Add(prepare);buttons.Children.Add(cancel);
         var footer=new StackPanel{Margin=new Thickness(22,0,22,18)};footer.Children.Add(buttons);footer.Children.Add(status);
         var layout=new DockPanel();DockPanel.SetDock(footer,Dock.Bottom);layout.Children.Add(footer);
