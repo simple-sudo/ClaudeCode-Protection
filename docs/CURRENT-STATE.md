@@ -85,6 +85,9 @@ ecbcd4e0两载荷变化为续编GUI及精确8a22前置pin；本次9dd26020两载
 
 ## 本轮真实功能结果与下一步
 
+- 恢复后已准备e249调用者失联的单次实测材料，未执行：两份非秘密源码、原双actor66项门，放行后仅结束本次自有普通daily；提升观察器限读本次新会话三份原记录/输入hash/信号元数据并输出有界停止摘要，不读取额外私有错误或独立raw Job/Stop。需要两次本人UAC及本次具体决定，不沿用安装/旧任务许可。固定审查work/workspace-caller-lifetime-20261102-01/protected-loss/system-operation-review.md，审查SHA256 279320E15E395F1E87B0B2968678C67963F877A31D037A6B48246AC516E19CFD；普通构建0/0、15公开资产/输入持有/原task parser及观察器语法通过，真实失联停止NOT_RUN。
+  最新普通观察BootUtc=2026-11-03T02:20:15.500Z；current.json普通读取EPERM保留、无重试/ACL变化，当前选择未由本轮读取证明，不因此否定或追认原安装观察。获具体授权后由原Broker重新核验现场资格，拒绝即停。
+
 - 在原工作区pipe所有者接入日常调用者生存监督：原鉴权/PID/当前image/普通token/同用户检查保留，句柄仅加SYNCHRONIZE并保持至结果发送；原会话创建/恢复前、健康与执行放行及导出前检查，失联走原关闭准入/隔离/精确Job停止与清理，清理本身不依赖调用者存活。没有新外部停止/通用管理接口。
   三目标/Bootstrap BUILD0/0；18项普通自有进程验证（含实际退出259、无等待权拒绝、未知等待与空监督拒绝）及新库正常四测试/十文件恢复、精确9dd迁移/六拒绝通过。Native仅增加System32 WaitForSingleObject至164，源码接入及普通组件VERIFIED；真实受保护失联Job停止/异常恢复NOT_RUN。
   证据work/workspace-caller-lifetime-20261102-01/observed-result.json SHA256 58A3F0A91A563084C5BE36DD25AB6A8DB80752540AE36922A2A71893E0E29BC9。随后e249c895固定20文件单载荷更新按持续安装授权/本人一次UAC完成，15公开资产/8固定回执hash/owner/保护DACL/无不可信写者独立匹配。已安装监督组件限定普通证据成立，实际LPAC失联停止不因安装变成通过；新项目/故障实验仍须具体授权。
