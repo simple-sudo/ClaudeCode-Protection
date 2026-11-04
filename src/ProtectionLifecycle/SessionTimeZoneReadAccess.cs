@@ -15,7 +15,7 @@ internal sealed class SessionTimeZoneReadAccess : IDisposable
 {
     internal const string Hive=@"SOFTWARE\Microsoft\Windows NT\CurrentVersion\Time Zones";
     private const string Prefix="timezone-access-intent-",ClosedPrefix="timezone-access-closed-";
-    private const int ReadKey=0x20019;
+    private const int ReadKey=0x20019,MaxSecurityCharacters=4096,MaxIntentBytes=16384;
     private static readonly string Installer=((SecurityIdentifier)new NTAccount("NT SERVICE","TrustedInstaller").Translate(typeof(SecurityIdentifier))).Value;
     private readonly ProtectedState state;
     private readonly TimeZoneReadIntent intent;
@@ -36,7 +36,7 @@ internal sealed class SessionTimeZoneReadAccess : IDisposable
     private static string Canonical(RawSecurityDescriptor sd)=>sd.GetSddlForm(AccessControlSections.Owner|AccessControlSections.Access);
     internal static string AddReadAce(string original,string packageSid)
     {
-        if(original.Length is <1 or >4096)throw WfpNative.Contract("TimeZoneSecurityBounds");
+        if(original.Length is <1 or >MaxSecurityCharacters)throw WfpNative.Contract("TimeZoneSecurityBounds");
         var sid=new SecurityIdentifier(packageSid);
         if(!sid.Value.StartsWith("S-1-15-2-",StringComparison.Ordinal) || sid.Value is "S-1-15-2-1" or "S-1-15-2-2")
             throw WfpNative.Contract("TimeZoneExactPackageRequired");
@@ -112,11 +112,18 @@ internal sealed class SessionTimeZoneReadAccess : IDisposable
                 SafeRegistryHandle key;
                 try{key=Open(zone,role,true);}catch(Win32Exception ex)when(role=="DYNAMIC_DST" && ex.NativeErrorCode==2){continue;}
                 handles.Add(key);var original=SessionManifestReadAccess.ReadSecurity(key);
-                targets.Add(new(role,original,AddReadAce(original,package.Value)));
+                var granted=AddReadAce(original,package.Value);
+                if(granted.Length>MaxSecurityCharacters ||
+                    new RawSecurityDescriptor(granted).BinaryLength>SessionManifestReadAccess.MaxSecurityDescriptorBytes)
+                    throw WfpNative.Contract("TimeZoneGrantedSecurityBounds");
+                targets.Add(new(role,original,granted));
             }
             var record=new TimeZoneReadIntent(1,state.InstallationId,Identifiers.Hex32(sessionId),job.JobId,version.Package.Release,
                 version.Package.ManifestHash,package.Value,zone,targets.ToArray());
-            var hash=state.WriteNew(Prefix+sessionId+".json",JsonSerializer.SerializeToUtf8Bytes(record));
+            var bytes=JsonSerializer.SerializeToUtf8Bytes(record);
+            // Never persist an intent that the health and recovery paths cannot read.
+            if(bytes.Length>MaxIntentBytes)throw WfpNative.Contract("TimeZoneIntentBounds");
+            var hash=state.WriteNew(Prefix+sessionId+".json",bytes);
             return new(state,record,handles.ToArray(),hash);
         }
         catch{foreach(var key in handles)key.Dispose();throw;}
@@ -130,6 +137,9 @@ internal sealed class SessionTimeZoneReadAccess : IDisposable
         // only after the original Job has a durable closed/zero receipt.
         for(var i=0;i<keys.Length;i++)
         {
+            // A prior key write can take time. Recheck this key immediately
+            // before its own write so detected drift is never overwritten.
+            if(Read(i)!=intent.Targets[i].OriginalSecurity)throw WfpNative.Contract("TimeZoneSecurityChangedBeforeGrant");
             Write(keys[i],intent.Targets[i].GrantedSecurity);
             if(Read(i)!=intent.Targets[i].GrantedSecurity)throw WfpNative.Contract("TimeZoneGrantNotObserved");
         }
@@ -141,7 +151,7 @@ internal sealed class SessionTimeZoneReadAccess : IDisposable
     internal void AssertHeld()
     {
         state.AssertHeld();
-        if(disposed || restored || !applied || state.Read(Prefix+intent.SessionId+".json",16384).SHA256!=IntentSHA256)throw WfpNative.Contract("TimeZoneLeaseNotCurrent");
+        if(disposed || restored || !applied || state.Read(Prefix+intent.SessionId+".json",MaxIntentBytes).SHA256!=IntentSHA256)throw WfpNative.Contract("TimeZoneLeaseNotCurrent");
         for(var i=0;i<keys.Length;i++)if(Read(i)!=intent.Targets[i].GrantedSecurity)throw WfpNative.Contract("TimeZoneLeaseSecurityDrift");
     }
     internal void RestoreAfterClosedJob(JobSnapshot snapshot)
@@ -155,17 +165,22 @@ internal sealed class SessionTimeZoneReadAccess : IDisposable
         var job=OwnedJobIntent.ReadAll(state).SingleOrDefault(j=>j.JobId==r.JobId)??throw WfpNative.Contract("TimeZoneOriginalJobMissing");
         if(job.Release!=r.Release || job.ManifestSHA256!=r.ManifestSHA256 || AtomicJobCompletion.ReadClosed(state,job) is null)
             throw WfpNative.Contract("TimeZoneRestoreRequiresDurableClosedJob");
-        for(var i=0;i<keys.Length;i++)
+        string ReadTarget(int i)
         {
             AssertName(keys[i],PathFor(r.TimeZoneId,r.Targets[i].Role));
-            _=SessionManifestReadAccess.RestoreDecision(SessionManifestReadAccess.ReadSecurity(keys[i]),r.Targets[i].OriginalSecurity,r.Targets[i].GrantedSecurity);
+            return SessionManifestReadAccess.ReadSecurity(keys[i]);
         }
         for(var i=0;i<keys.Length;i++)
+            _=SessionManifestReadAccess.RestoreDecision(ReadTarget(i),r.Targets[i].OriginalSecurity,r.Targets[i].GrantedSecurity);
+        for(var i=0;i<keys.Length;i++)
         {
-            var t=r.Targets[i];var observed=SessionManifestReadAccess.ReadSecurity(keys[i]);
-            if(SessionManifestReadAccess.RestoreDecision(observed,t.OriginalSecurity,t.GrantedSecurity)=="REMOVE_EXACT_OWN_READ_GRANT")Write(keys[i],t.OriginalSecurity);
-            if(SessionManifestReadAccess.ReadSecurity(keys[i])!=t.OriginalSecurity)throw WfpNative.Contract("TimeZoneOriginalSecurityNotRestored");
+            var t=r.Targets[i];
+            if(SessionManifestReadAccess.RestoreDecision(ReadTarget(i),t.OriginalSecurity,t.GrantedSecurity)=="REMOVE_EXACT_OWN_READ_GRANT")
+                Write(keys[i],t.OriginalSecurity);
         }
+        // Read back every key after the last write before sealing the receipt.
+        for(var i=0;i<keys.Length;i++)
+            if(ReadTarget(i)!=r.Targets[i].OriginalSecurity)throw WfpNative.Contract("TimeZoneOriginalSecurityNotRestored");
         state.WriteNew(ClosedPrefix+r.SessionId+".json",JsonSerializer.SerializeToUtf8Bytes(new{SchemaVersion=1,state.InstallationId,r.SessionId,r.JobId,
             IntentSHA256=hash,Status="EXACT_ORIGINAL_TIMEZONE_DACLS_AFTER_CLOSED_JOB"}));
     }
@@ -175,7 +190,7 @@ internal sealed class SessionTimeZoneReadAccess : IDisposable
         foreach(var leaf in state.ListLeaves(Prefix))
         {
             if(leaf.Length!=Prefix.Length+37 || !leaf.EndsWith(".json",StringComparison.Ordinal))throw WfpNative.Contract("TimeZoneIntentLeafRefused");
-            var raw=state.Read(leaf,16384);using var doc=JsonDocument.Parse(raw.Bytes,new JsonDocumentOptions{MaxDepth=5});
+            var raw=state.Read(leaf,MaxIntentBytes);using var doc=JsonDocument.Parse(raw.Bytes,new JsonDocumentOptions{MaxDepth=5});
             StrictJson.Fields(doc.RootElement,"SchemaVersion","InstallationId","SessionId","JobId","Release","ManifestSHA256","PackageSid","TimeZoneId","Targets");
             foreach(var t in doc.RootElement.GetProperty("Targets").EnumerateArray())StrictJson.Fields(t,"Role","OriginalSecurity","GrantedSecurity");
             var r=JsonSerializer.Deserialize<TimeZoneReadIntent>(raw.Bytes)??throw WfpNative.Contract("TimeZoneIntentMissing");

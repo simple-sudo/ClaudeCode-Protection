@@ -217,12 +217,13 @@ internal sealed class SessionManifestReadAccess : IDisposable
         {
             if(descriptor==IntPtr.Zero || dacl==IntPtr.Zero)throw WfpNative.Contract("ManifestKeySecurityMissing");
             var size=GetSecurityDescriptorLength(descriptor);
-            if(size is <20 or >4096)throw WfpNative.Contract("ManifestKeySecuritySizeRefused");
+            if(size is <20 or >MaxSecurityDescriptorBytes)throw WfpNative.Contract("ManifestKeySecuritySizeRefused");
             var bytes=new byte[checked((int)size)];Marshal.Copy(descriptor,bytes,0,bytes.Length);
             return Canonical(new RawSecurityDescriptor(bytes,0));
         }
         finally{if(descriptor!=IntPtr.Zero)LocalFree(descriptor);}
     }
+    internal const int MaxSecurityDescriptorBytes=4096;
     internal static void WriteSecurity(SafeRegistryHandle handle,string value,bool protect=true)
     {
         ProtectedState.RequireAdministrator();

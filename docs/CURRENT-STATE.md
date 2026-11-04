@@ -7,6 +7,10 @@
 
 - 工作区：`F:\ClaudeCode-Protection`，非旧C盘路径；分支
   `codex/integrate-privacy-admission-20261027`。
+- 本次接续以 `fa8f2ea` 为文档基线。原时区租约已收紧逐键写前核对和恢复回读，
+  并在持久化前拒绝超限意图。此更新为 SOURCE / INTEGRATED；新工件 BUILD、安装、
+  时区授权和恢复、固定 HTTPS 均为 NOT_RUN。此前冻结的 `4607e502` 与审查单原样保留，
+  不作为包含本次修正的候选。下一步固定修正版工件，再按适用决定验证原网关。
 - 本轮产品开发起点HEAD：`ff725d9ecd2ee6c3a7a16a3ffa7fec4710e720db`，工作区干净。
   本轮没有fetch或联网核验GitHub；origin保持原配置。
 - 本轮实现普通GUI任务创建/保存、默认输入目录排除、日常维护的受保护身份拒绝，
