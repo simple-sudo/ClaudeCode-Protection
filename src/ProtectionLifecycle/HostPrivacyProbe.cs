@@ -155,8 +155,8 @@ internal sealed partial class HostPrivacyProbe : IDisposable
     internal void AuthorizeToolCreation(string workspace)
     {
         AssertHeld();
-        if(!execution.ProbeSealed || probeProcess is null || probeProcess.IsClosed || WaitForSingleObject(probeProcess,0)!=0 ||
-            !GetExitCodeProcess(probeProcess,out var exit) || exit!=0)throw WfpNative.Contract("HostPrivacyProbeExitZeroRequired");
+        if(!execution.ProbeSealed)throw WfpNative.Contract("HostPrivacyProbeExitZeroRequired");
+        RequireExitedProbe(probeProcess);
         WithdrawPlan(workspace);
         AssertTargetsCurrent();execution.AuthorizeToolCreation();
     }
@@ -171,11 +171,20 @@ internal sealed partial class HostPrivacyProbe : IDisposable
     private void WithdrawPlan(string workspace)
     {
         var file=published??throw WfpNative.Contract("HostPrivacyPlanLeaseLost");
+        WithdrawPlanFile(file,workspace);published=null;withdrawn=true;
+    }
+    internal static void RequireExitedProbe(SafeProcessHandle? process)
+    {
+        if(process is null || process.IsInvalid || process.IsClosed || WaitForSingleObject(process,0)!=0 ||
+            !GetExitCodeProcess(process,out var exit) || exit!=0)throw WfpNative.Contract("HostPrivacyProbeExitZeroRequired");
+    }
+    internal static void WithdrawPlanFile(FileStream file,string workspace)
+    {
+        if(file.SafeFileHandle.IsClosed || file.SafeFileHandle.IsInvalid)throw WfpNative.Contract("HostPrivacyPlanLeaseLost");
         var path=PlanPath(workspace);
         WindowsPathSeal.VerifyObject(file.SafeFileHandle,path,false);
         WindowsPathSeal.MarkDelete(file.SafeFileHandle);
-        file.Dispose();published=null;
-        AssertPlanAbsent(workspace);withdrawn=true;
+        file.Dispose();AssertPlanAbsent(workspace);
     }
     internal static void AssertPlanAbsent(string workspace)
     {
