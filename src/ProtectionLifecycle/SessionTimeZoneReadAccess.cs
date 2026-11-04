@@ -14,7 +14,8 @@ internal sealed record TimeZoneReadIntent(int SchemaVersion,string InstallationI
 internal sealed class SessionTimeZoneReadAccess : IDisposable
 {
     internal const string Hive=@"SOFTWARE\Microsoft\Windows NT\CurrentVersion\Time Zones";
-    private const string Prefix="timezone-access-intent-",ClosedPrefix="timezone-access-closed-";
+    internal const string IntentPrefix="timezone-access-intent-";
+    private const string ClosedPrefix="timezone-access-closed-";
     private const int ReadKey=0x20019,MaxSecurityCharacters=4096,MaxIntentBytes=16384;
     private static readonly string Installer=((SecurityIdentifier)new NTAccount("NT SERVICE","TrustedInstaller").Translate(typeof(SecurityIdentifier))).Value;
     private readonly ProtectedState state;
@@ -123,7 +124,7 @@ internal sealed class SessionTimeZoneReadAccess : IDisposable
             var bytes=JsonSerializer.SerializeToUtf8Bytes(record);
             // Never persist an intent that the health and recovery paths cannot read.
             if(bytes.Length>MaxIntentBytes)throw WfpNative.Contract("TimeZoneIntentBounds");
-            var hash=state.WriteNew(Prefix+sessionId+".json",bytes);
+            var hash=state.WriteNew(IntentPrefix+sessionId+".json",bytes);
             return new(state,record,handles.ToArray(),hash);
         }
         catch{foreach(var key in handles)key.Dispose();throw;}
@@ -151,7 +152,7 @@ internal sealed class SessionTimeZoneReadAccess : IDisposable
     internal void AssertHeld()
     {
         state.AssertHeld();
-        if(disposed || restored || !applied || state.Read(Prefix+intent.SessionId+".json",MaxIntentBytes).SHA256!=IntentSHA256)throw WfpNative.Contract("TimeZoneLeaseNotCurrent");
+        if(disposed || restored || !applied || state.Read(IntentPrefix+intent.SessionId+".json",MaxIntentBytes).SHA256!=IntentSHA256)throw WfpNative.Contract("TimeZoneLeaseNotCurrent");
         for(var i=0;i<keys.Length;i++)if(Read(i)!=intent.Targets[i].GrantedSecurity)throw WfpNative.Contract("TimeZoneLeaseSecurityDrift");
     }
     internal void RestoreAfterClosedJob(JobSnapshot snapshot)
@@ -187,14 +188,14 @@ internal sealed class SessionTimeZoneReadAccess : IDisposable
     private static IReadOnlyList<(TimeZoneReadIntent Record,string Hash)> Pending(ProtectedState state)
     {
         state.AssertHeld();using var package=new InstallationPackageSid(state);var pending=new List<(TimeZoneReadIntent,string)>();
-        foreach(var leaf in state.ListLeaves(Prefix))
+        foreach(var leaf in state.ListLeaves(IntentPrefix))
         {
-            if(leaf.Length!=Prefix.Length+37 || !leaf.EndsWith(".json",StringComparison.Ordinal))throw WfpNative.Contract("TimeZoneIntentLeafRefused");
+            if(leaf.Length!=IntentPrefix.Length+37 || !leaf.EndsWith(".json",StringComparison.Ordinal))throw WfpNative.Contract("TimeZoneIntentLeafRefused");
             var raw=state.Read(leaf,MaxIntentBytes);using var doc=JsonDocument.Parse(raw.Bytes,new JsonDocumentOptions{MaxDepth=5});
             StrictJson.Fields(doc.RootElement,"SchemaVersion","InstallationId","SessionId","JobId","Release","ManifestSHA256","PackageSid","TimeZoneId","Targets");
             foreach(var t in doc.RootElement.GetProperty("Targets").EnumerateArray())StrictJson.Fields(t,"Role","OriginalSecurity","GrantedSecurity");
             var r=JsonSerializer.Deserialize<TimeZoneReadIntent>(raw.Bytes)??throw WfpNative.Contract("TimeZoneIntentMissing");
-            if(r.SchemaVersion!=1 || r.InstallationId!=state.InstallationId || r.PackageSid!=package.Value || leaf!=Prefix+Identifiers.Hex32(r.SessionId)+".json" ||
+            if(r.SchemaVersion!=1 || r.InstallationId!=state.InstallationId || r.PackageSid!=package.Value || leaf!=IntentPrefix+Identifiers.Hex32(r.SessionId)+".json" ||
                 r.Targets is null || r.Targets.Length is <1 or >2 || r.Targets[0].Role!="ZONE_DEFINITION" || r.Targets.Length==2 && r.Targets[1].Role!="DYNAMIC_DST")
                 throw WfpNative.Contract("TimeZoneIntentScopeMismatch");
             _=Identifiers.Hex32(r.JobId);_=Identifiers.Hex32(r.Release);_=Identifiers.Hash(r.ManifestSHA256);

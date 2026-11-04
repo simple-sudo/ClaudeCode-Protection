@@ -15,6 +15,18 @@ internal static class TimeZoneReadCases
         }
         if(metadata){Console.WriteLine((string)Call("InspectCurrentMetadata")!);return;}
         var count=0;void Check(bool ok){if(!ok)throw new InvalidOperationException("Timezone policy fixture mismatch");count++;}
+        var state=library.GetType("ProtectionLifecycle.ProtectedState",true)!;
+        var requirePrefix=state.GetMethod("RequireFixedInventoryPrefix",BindingFlags.Static|BindingFlags.NonPublic)!;
+        var intentPrefix=(string)type.GetField("IntentPrefix",BindingFlags.Static|BindingFlags.NonPublic)!.GetRawConstantValue()!;
+        Check(intentPrefix=="timezone-access-intent-");
+        requirePrefix.Invoke(null,new object[]{intentPrefix});
+        foreach(var other in new[]{"timezone-access-","timezone-access-closed-",intentPrefix+"extra"})
+        {
+            var rejected=false;
+            try{requirePrefix.Invoke(null,new object[]{other});}
+            catch(TargetInvocationException ex)when(ex.InnerException is InvalidOperationException){rejected=true;}
+            Check(rejected);
+        }
         void Refuse(Action action){var refused=false;try{action();}catch(Exception ex)when(ex is InvalidDataException or ArgumentException){refused=true;}Check(refused);}
         string Canonical(string value)=>new RawSecurityDescriptor(value).GetSddlForm(AccessControlSections.Owner|AccessControlSections.Access);
         const string sid="S-1-15-2-1-2-3-4-5-6-7";

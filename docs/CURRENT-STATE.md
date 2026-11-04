@@ -1,9 +1,10 @@
 # 当前状态与授权摘要
 
 更新：2026-11-03（America/New_York）。本页是**唯一的最新状态摘要**；历史事实仍由原始证据
-支持。新候选 `a50691f1` 已构建并通过固定输入预检。本人授权及一次 UAC 后，INACTIVE 更新以
-125 失败，回读仍为 `a9dec532` / INACTIVE。网关、HTTPS 和时区权限操作均未执行；更新具体失败点
-UNKNOWN，未重试或恢复。最近一次实际网关运行仍是 a9dec532 的 TLS 策略构造失败。
+支持。本人确认 UAC 后，带诊断的 `ff113193` INACTIVE 更新在 `LIFECYCLE_BEGIN` 以 125 失败，
+回读仍为 `a9dec532` / INACTIVE，网关、HTTPS 和时区权限操作均未执行。源码查明时区租约
+查询使用的固定前缀未加入受保护状态白名单，已补齐。修正版实机仍 NOT_RUN。最近一次实际
+网关运行仍是 a9dec532 的 TLS 策略构造失败。
 
 ## 开发基线
 
@@ -21,6 +22,13 @@ UNKNOWN，未重试或恢复。最近一次实际网关运行仍是 a9dec532 的
   工作区/HEAD会随开发变化，接续时应重新检查，不把此快照当永久事实。
 
 ## 最近一次有证据的安装观察
+
+- 2026-11-04 01:13Z（当地 11 月 3 日），`ff113193` 公开回执为
+  `LIFECYCLE_BEGIN / InvalidOperationException / -2146233079`，回读仍为 a9dec532 / INACTIVE。
+  原调用顺序先查时区租约，`ProtectedState.RequireFixedInventoryPrefix` 对该前缀在枚举前无条件拒绝，
+  与该阶段及类型吻合。修复仅接入共享的精确意图前缀，保留后续解析、闭合、恢复和准入判断。
+  公开观察 `work/inactive-update-feedback-649f5e2/observed-system-result.json` SHA256
+  `4334FCE65E7D8D65ACC05641E668FB259F4FD4AA4C0DBCB4BB59458B97DC9FE1`。
 
 - 2026-11-04 01:03Z（当地 11 月 3 日），`a50691f1e6eb4f1fb7522a8fa79a761f` 的单次
   INACTIVE 更新返回 `InvalidOperationException/-2146233079`，Bootstrap 与控制器均为 125。
