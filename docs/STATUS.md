@@ -5,6 +5,28 @@
 历史页的“当前/待执行/暂停/DELIVERABLE”按段落日期及限定范围解释，不是今天的状态或操作许可。
 不在本页复制当前安装和授权摘要。
 
+## 2026-11-04 公共时区候选已固定，控制器预检被工具策略拒绝
+
+9af569c 固定已闭合8389前置，101输入离线构建Lifecycle/Broker/OwnedToolLaunch0/0、三库一致；
+快照13/反馈75/前置一正六拒绝普通检查通过。新候选7aa8dafe及原Bootstrap、固定控制器
+构建完成，内嵌清单及同库核对通过。新帮助程序将旧两键租约成功合同替换为原owner公共投影、
+固定CoreLib、零主机时区ACL/capability扩大、根HTTPS及原停止闭合；合成一正八拒绝通过。
+这只验证合同格式，不证明真实网络或安全。构建记录摘要
+`E54C473659EFB9080A7F8A9E7B90EB901D3380A3388394CE638BA36FACBCAB44`，普通记录
+`F7EBD92A9B398F35F7DBDC37C7C59B7FB50E5F72EB5F21C9237DFF16BEEC366B`，夹具记录
+`3A0031C161E08F555A9A311C43993E9314A424518B02AF9C76C94F00DECBA883`。
+
+请求创建执行控制器 --preflight 的普通命令进程时，工具自动审批审查在进程创建前拒绝，
+原文原因仅 `blocked by policy`；无更具体理由。预检、UAC、安装和网关均 NOT_RUN，
+无新claim或受保护暂存目录。未更换入口或重试，亦未将持续授权当工具策略放行。
+拒绝记录 `work/public-timezone-qualification-9af569c/preflight-policy-block.json` SHA256
+`B0495D20531D4C16103C335D3CC122B3A7455C23203DB3B33678FBAD207562F0`。
+后续只读核对20 stage与3控制器文件的元数据/摘要，不加载或执行产品，未持有目录句柄封存，
+故不能作为控制器预检替代。记录摘要
+`AE850E3C135A85A4FD24379BFFB162F4B2EE0922856A20A3A62B2232152BF5D0`。
+具体审查准备稿摘要 `F86B51EFDCD13DC3D82A44C44D272D0337B39F707AC53C4CD174099D2E6C150D`。
+工件及原材料全部保留，新兼容路径未安装或实机验证；最后安装观察仍为8389 INACTIVE。
+
 ## 2026-11-03 LPAC 注册表能力约束查证，原 owner 公共时区兼容路径普通验证
 
 [微软 LPAC 启动文档](https://learn.microsoft.com/en-us/windows/win32/secauthz/implementing-an-appcontainer)

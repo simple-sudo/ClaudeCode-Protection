@@ -1,6 +1,6 @@
 # 当前状态与授权摘要
 
-更新：2026-11-03（America/New_York）。本页是**唯一的最新状态摘要**；历史事实仍由原始证据
+更新：2026-11-04（America/New_York）。本页是**唯一的最新状态摘要**；历史事实仍由原始证据
 支持。最新已保存的原安装回读为 `83892d76` / INACTIVE；按持续授权及本人 UAC 更新成功。
 本次固定网关的两键时区授权及原 owner 恢复已实测，独立权限摘要均与原值一致。
 子进程实际恢复执行，在显式 `TIMEZONE_DEFINITION` 返回 TZ_DEFINITION / 125。
@@ -18,6 +18,27 @@
 
 ## 开发基线
 
+- `9af569c` 固定已闭合 8389 前置版本。Lifecycle/Broker/OwnedToolLaunch 离线 BUILD 0/0，
+  101 输入、同库一致；普通快照13、反馈75及前置一正六拒绝通过。候选 7aa8dafe /
+  manifest `208A02B4EFFC63A45BC30587969A0CF6B933E7DA466CD818DCF59F23FBE6BCDA`，
+  库 `E164812D36587AA4A2F02AF9F281E210BB6C99E3D83932AE8A5DA50C1592FA0E`。
+  原 Bootstrap/控制器构建 0/0，内嵌清单/同库核对通过；新帮助程序明确验证公共投影、
+  不存在旧租约报告、原根 HTTPS 结果及原停止闭合，合成一正八拒绝通过。
+  `work/public-timezone-qualification-9af569c/build-result.json` SHA256
+  `E54C473659EFB9080A7F8A9E7B90EB901D3380A3388394CE638BA36FACBCAB44`；普通记录
+  `F7EBD92A9B398F35F7DBDC37C7C59B7FB50E5F72EB5F21C9237DFF16BEEC366B`；合同夹具
+  `3A0031C161E08F555A9A311C43993E9314A424518B02AF9C76C94F00DECBA883`。
+  **本次控制器 --preflight 命令在创建进程前被工具自动审批审查拒绝**，只返回
+  `blocked by policy`，未给具体原因。没有控制器预检、UAC、安装、网关、新 claim 或受保护暂存。
+  没有改入口重试；不能将用户持续授权或普通测试用于绕过此拒绝。
+  拒绝记录 `preflight-policy-block.json` SHA256
+  `B0495D20531D4C16103C335D3CC122B3A7455C23203DB3B33678FBAD207562F0`。
+  仅另做不加载/执行产品的文件元数据核对：20 stage 文件及3控制器文件摘要一致；未持有
+  目录安全句柄，不是原控制器预检或执行资格。记录 `read-only-integrity.json` SHA256
+  `AE850E3C135A85A4FD24379BFFB162F4B2EE0922856A20A3A62B2232152BF5D0`。
+  `system-review.json` 是具体准备稿，非预检通过/许可，摘要
+  `F86B51EFDCD13DC3D82A44C44D272D0337B39F707AC53C4CD174099D2E6C150D`。
+  上述记录均在同任务目录；7aa未安装，最近安装观察仍为8389，新路径LPAC/HTTPS NOT_RUN。
 - `6752c0d` 已在原 Preparation→固定 worker 源码接入公共时区快照：owner 传递真实 ID、
   偏移及规则，去掉不必要的本地化显示名；快照绑定会话、摘要和原 admission binding。
   固定 worker 只初始化本进程托管时区缓存，再验证本地视图和原生当前时间往返一致性，
@@ -338,6 +359,10 @@ ecbcd4e0两载荷变化为续编GUI及精确8a22前置pin；本次9dd26020两载
 后续Codex接续时应先拉取远端并重新核对实际HEAD/工作区及现场状态，不把文档更新当系统操作许可。
 
 ## 当前授权及下一阶段
+
+- 新候选控制器预检受工具策略拒绝，原因仅为 `blocked by policy`。该运行不能通过新入口、
+  改 wrapper 或手动转交命令规避；只读审查/普通源码工作可继续。没有新的系统执行结果，
+  本次候选未发 UAC、未消费新 claim；用户持续授权不等于工具审查已放行。
 
 - 最新用户 goal 已明确以 `fa8f2ea` 为文档基线继续产品开发，替代较早的文档整理范围和
   “提交后暂停”。用户又明确同类工作持续授权、直接发起本人 UAC、不重复询问；适用范围内
