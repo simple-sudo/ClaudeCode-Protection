@@ -41,6 +41,12 @@ internal static class ProjectFlowCases
         var pf=Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
         foreach(var reserved in new[]{Path.Combine(pf,"ClaudeCodeProtection"),Path.Combine(pf,"ClaudeCodeProtection-State"),Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"ClaudeCodeProtection")})
             RefuseSelf(()=>WorkspaceFiles.RequireExternalProjectPath(Path.Combine(reserved,"absent.cs")));
+        var identifier=new string('a',32);
+        foreach(var directory in new[]{"ClaudeCodeProtection-Bootstrap","ClaudeCodeProtection-Update-"+identifier,
+            "claudecodeprotection-task-"+identifier.ToUpperInvariant()})
+            RefuseSelf(()=>WorkspaceFiles.RequireExternalProjectPath(Path.Combine(pf,directory,"absent.cs")));
+        WorkspaceFiles.RequireExternalProjectPath(Path.Combine(pf,"ClaudeCodeProtection-Update-not-a-release","Entry.cs"));
+        WorkspaceFiles.RequireExternalProjectPath(Path.Combine(pf,"ClaudeCodeProtection-Task-"+identifier+"-example","Entry.cs"));
         Require(!WorkspaceFiles.IsWithin(Path.Combine(pf,"ClaudeCodeProtection-Independent","Entry.cs"),Path.Combine(pf,"ClaudeCodeProtection")),"prefix sibling is not protection root");
         Require(session.ReviewText.Contains("Entry.cs") && session.ReviewText.Contains("return -1;") && session.ExpectedTests==1,"GUI displays declared project edits/tests");
         var run=session.PlanRun(fixture);Require(!Directory.Exists(run.Directory),"planning does not create output");session.WriteInput(run);

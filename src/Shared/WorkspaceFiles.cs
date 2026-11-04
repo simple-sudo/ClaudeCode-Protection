@@ -62,8 +62,16 @@ internal static class WorkspaceFiles
         var local=Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
         if(string.IsNullOrWhiteSpace(programFiles) || string.IsNullOrWhiteSpace(local))
             throw new InvalidDataException("Protection resource locations unavailable");
-        foreach(var root in new[]{Path.Combine(programFiles,"ClaudeCodeProtection"),Path.Combine(programFiles,"ClaudeCodeProtection-State"),Path.Combine(local,"ClaudeCodeProtection")})
+        foreach(var root in new[]{Path.Combine(programFiles,"ClaudeCodeProtection"),Path.Combine(programFiles,"ClaudeCodeProtection-State"),
+            Path.Combine(programFiles,"ClaudeCodeProtection-Bootstrap"),Path.Combine(local,"ClaudeCodeProtection")})
             if(IsWithin(path,root))throw new InvalidDataException("保护系统目录不能作为日常开发输入。请选择独立项目。");
+        if(IsWithin(path,programFiles))
+        {
+            var child=Path.GetRelativePath(programFiles,path).Split('\\',2)[0];
+            if(IsGeneratedProtectionDirectory(child,"ClaudeCodeProtection-Update-") ||
+                IsGeneratedProtectionDirectory(child,"ClaudeCodeProtection-Task-"))
+                throw new InvalidDataException("保护系统目录不能作为日常开发输入。请选择独立项目。");
+        }
         // Identify a development checkout by its existing product structure;
         // no fixed drive, source bytes, Git invocation or recursive enumeration.
         for(var parent=path;parent is not null;parent=Path.GetDirectoryName(parent))
@@ -71,6 +79,9 @@ internal static class WorkspaceFiles
                 File.Exists(Path.Combine(parent,"src","ProtectionBootstrap","ApprovedPackage.json")))
                 throw new InvalidDataException("保护系统源码及工作目录不能作为日常开发输入。请选择独立项目。");
     }
+    private static bool IsGeneratedProtectionDirectory(string name,string prefix)=>
+        name.Length==prefix.Length+32 && name.StartsWith(prefix,StringComparison.OrdinalIgnoreCase) &&
+        name[prefix.Length..].All(char.IsAsciiHexDigit);
     internal static bool IsWithin(string path,string root)=>path.Equals(root,StringComparison.OrdinalIgnoreCase) ||
         path.StartsWith(root.TrimEnd('\\')+"\\",StringComparison.OrdinalIgnoreCase);
     internal static byte[] ReadBundle(string path)

@@ -71,7 +71,11 @@ internal sealed class CallerProjectSession
         return new(WorkspaceBundle.Create(files.Select(f=>(f.Path,f.Content)).Append(
             (CSharpProjectTask.Manifest,JsonSerializer.SerializeToUtf8Bytes(definition)))).Serialize());
     }
-    internal void SaveBundle(string path)=>WorkspaceFiles.WriteBundleNew(path,input);
+    internal void SaveBundle(string path)
+    {
+        WorkspaceFiles.RequireExternalProjectPath(path);
+        WorkspaceFiles.WriteBundleNew(path,input);
+    }
     internal static CallerProjectSession OpenFolder(string directory)
     {
         WorkspaceFiles.RequireOrdinaryUser();
