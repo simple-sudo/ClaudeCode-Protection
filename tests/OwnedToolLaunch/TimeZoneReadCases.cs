@@ -67,7 +67,7 @@ internal static class TimeZoneReadCases
             Refuse(()=>Call("PathFor",bad,"ZONE_DEFINITION"));
         foreach(var role in new[]{"PARENT_HIVE","CURRENT_USER","ZONE_DEFINITION\\Secrets"})Refuse(()=>Call("PathFor","UTC",role));
         var denied=false;
-        try{Call("Prepare",null,null,null,new string('a',32));}catch(UnauthorizedAccessException){denied=true;}Check(denied);
+        try{Call("Prepare",null,null,null,new string('a',32),"UTC");}catch(UnauthorizedAccessException){denied=true;}Check(denied);
         Console.WriteLine($"PASS {count} public timezone descriptor and role checks; exact non-inherited KEY_READ, original ACL order/protection preserved, unsupported/foreign/writer/path refusal, ordinary administrator gate. No registry access or mutation, UAC, protected state, process, network, Job or WFP.");
     }
     private static byte[] Bytes(GenericAce ace){var b=new byte[ace.BinaryLength];ace.GetBinaryForm(b,0);return b;}
