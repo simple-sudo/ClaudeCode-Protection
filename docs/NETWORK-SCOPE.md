@@ -105,3 +105,14 @@ ASSIGN_PRIMARY/IMPERSONATE/ADJUST；对内仅提供QUERY权限的AccessCheck副�
 在原Job内同时证明合法开发/网络可用和敏感对象的最小访问拒绝，保持原监督与停止所有权。
 未知资源、缺身份或合成PASS不能替代这些条件。不扩展成通用Broker执行器，也不以放宽
 宿主隐私、关闭GPU或默认拒绝可信维护作为兼容方案。目前未修改原准入、capability或ACL。
+
+后续固定普通用户对照中，ARP单独和ARP+安装专属NT group均被CreateRestrictedToken拒绝87。
+这进一步否定了在当前候选中直接复用ARP系统资源ACE的做法；它不是对所有Windows版本或
+所有令牌组合的定论。唯一NT SID的16项内存验证仍只说明普通访问限制行为，不能跳过公开
+运行库、命名对象及实际LPAC组合的可用性与隐私检查。
+
+微软[MXC原生拒绝捕获契约](https://github.com/microsoft/mxc/blob/bf0dbe519f7c729cf90560240cd6d880e56e410d/docs/logging-access-denied.md)
+依赖PSEC及Learning Mode生命周期；其[实际FFI](https://github.com/microsoft/mxc/blob/bf0dbe519f7c729cf90560240cd6d880e56e410d/src/mxc-sdk/src/core/learning_mode_windows/ffi.rs)
+指定processmodel.dll。读取本机该固定文件PE导出表未找到所需8个导出，故当前不能使用这份
+契约的原生诊断路径。没有执行其创建/追踪接口、增加learning/permissive能力、修改ACL或
+引入MXC执行器。此元数据不是其他诊断接口、其他模块或更新后系统的支持结论。

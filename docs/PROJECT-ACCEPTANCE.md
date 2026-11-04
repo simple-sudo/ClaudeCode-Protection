@@ -5,6 +5,21 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-04 固定离线数据项目的三actor封存与结果交付
+
+范围：已安装6800070c、固定五文件CallerDataReport、原daily→Broker→ProtectedSession→LPAC/Job
+开发链。原owner在项目代码前封存三actor观察，根/探针各32拒绝5+1项owner确认缺失，
+编译器28拒绝5；92拒绝与2缺失分列，缺失不是拒绝通过。实际声明修改、编译、运行、
+3测试、11文件导出及普通新目录还原成功；独立逐文件摘要/源码修改及Count=3/Total=12匹配。
+原成功导出门验证关闭/清理条件，没有额外私有状态或raw Job/Stop读取。
+
+CAPABILITY_DELIVERED(6800固定离线C#数据项目的三actor交接与结果交付)。不是任意恶意项目、
+完整隐私、自评/画像、GPU、网络、GUI点击/取消、异常恢复或真实Claude验收。
+PRODUCT_DELIVERY_NOT_ACCEPTED。失败草稿/受限环境提取失败保留，不由后续成功改写。
+证据根 `work/offline-development-6800-395b8cb/`，原始观察SHA256
+`7345B3105D8E2BC17A240B92944997F626FD580D6C26AE449AAF4A21EB5C52A9`，独立复核SHA256
+`EE1CB13522FFEC730CE862D1D765E130DEE0D14263E56E3EC07856738CBA34A9`；详情见STATUS。
+
 ## 2026-11-03 可信自评与画像重建验收登记（仅DESIGN）
 
 来源：[可信自评与画像评估合同](ASSURANCE-AND-EXPOSURE-PROFILING.md)和

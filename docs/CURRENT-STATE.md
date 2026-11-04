@@ -28,6 +28,29 @@ group SID作唯一restricting SID；不增加enabled group/capability，不模�
 结果直接授予registryRead。没有新安装、ACL/服务/网络改动或真实Claude启动；现有零能力链不变。
 真实会话网络资格和完整产品交付仍未成立，自评/画像仍DESIGN。
 
+本轮已通过正式工具人工审批及本人UAC，使用现有6800日常入口→原Broker完成一次固定离线
+CallerDataReport任务：五文件输入、声明的源码修改、实际编译/运行/3测试、11文件导出与
+普通新目录还原成功。原owner在代码前封存三actor隐私观察；根/独立探针各33项中32拒绝5、
+1项为owner确认的重置设置目标缺失（不计拒绝），编译器28项均拒绝5，共92次最小权限拒绝。
+三个PID不同，公开回执OwnerSealedBeforeCode=true；原成功导出门通过，无额外私有状态或
+raw Job/Stop读取。独立核对精确修改、未改输入、11文件/摘要、生成Count=3/Total=12及3测试。
+CAPABILITY_DELIVERED(6800固定离线C#数据项目的三actor封存、开发与结果交付)；不推广至任意
+恶意代码、全部宿主API、实际GUI点击/取消、GPU或网络。结果留在
+`work/offline-development-6800-395b8cb/result-files/`；原始观察摘要
+`7345B3105D8E2BC17A240B92944997F626FD580D6C26AE449AAF4A21EB5C52A9`，独立复核摘要
+`EE1CB13522FFEC730CE862D1D765E130DEE0D14263E56E3EC07856738CBA34A9`。
+本次是原有离线开发能力的具体授权；未安装新版本，未应用NT限制原语，未开放网络或正式Claude。
+
+附加限制兼容性审查另确认ARP单独、ARP+安装专属NT group两个固定普通令牌输入均返回87；
+不能把前次16项NT原语通过扩张为可复用系统库权限的运行方案。微软MXC固定源码指定的
+processmodel.dll原生PSEC/learning trace所需8个导出，在本机只读PE元数据中均缺失；未加载该模块
+或调用这些接口，不采用其原生诊断路线、不切换执行框架或更新系统。记录根
+`work/public-restriction-compatibility-395b8cb/`，普通令牌回执摘要
+`98307CD7A76314091646CB84EBA23457CDE3E6771C7C38F0929B0AEBF32DDED0`，正确模块元数据摘要
+`E3F12553D2BDBF0F1D6D2BE3CC4A04DCC2EA8CC072D3A785DAFC9553DE1E65DD`。
+下一步仍处理原Winsock最小依赖和P0隔离，不能直接接入未具备实际资源方案的NT原语或增加
+registryRead；本轮离线开发成功不解除真实网络、GPU新版本资格或完整产品缺口。
+
 前次 `979ca94a` / INACTIVE 于2026-11-04 09:38Z 按具体工具审批请求
 及本人 UAC，原 Bootstrap 更新退出0；15个公开安装资产独立长度和摘要匹配清单
 `3CE38FBC1D5ECB5FB8292B1107992C4E3BC4DE487AB7BF45AE4B37DCA64489D1`。
@@ -294,7 +317,7 @@ CAPABILITY_DELIVERED(本次固定LPAC工作进程的公共日历兼容初始化)
   记录位于 `work/probe-closure-components-2bd3490/build-e309b21/`，构建摘要
   `1A47E4DB0A9CC0DC47727CC24DC989E66E2A2651EABA7735F9659536C4FBC5D5`，普通组件摘要
   `F85493CAB3761BE6C1DD1771125510570B29309FE500F211192ACF11989E6DEC`。
-  受保护 LPAC/Job 上的探针与编译器完整交接仍 NOT_RUN。
+  当时受保护 LPAC/Job 上的探针与编译器完整交接NOT_RUN；本轮6800固定任务的限定实际交接见页首。
 
 - `16f1f13` 在原工作区开发链分离固定隐私探针与实际项目编译器。旧实现撤回磁盘计划后，编译器堆里
   仍可能保留此前解析的真实宿主路径；新源码要求原 owner 封存独立探针、持有并观察其退出0、
@@ -663,9 +686,10 @@ ecbcd4e0两载荷变化为续编GUI及精确8a22前置pin；本次9dd26020两载
 
 ## 当前授权及下一阶段
 
-- 新候选控制器预检受工具策略拒绝，原因仅为 `blocked by policy`。该运行不能通过新入口、
-  改 wrapper 或手动转交命令规避；只读审查/普通源码工作可继续。没有新的系统执行结果，
-  本次候选未发 UAC、未消费新 claim；用户持续授权不等于工具审查已放行。
+- 较早控制器预检的 `blocked by policy` 原记录保留，不通过改入口或wrapper规避。
+  用户已切换“请求批准”，后续原预检/安装及本轮固定离线开发均通过正式工具请求提交并实际执行；
+  历史自动审批拒绝不再是当前阻塞。后续仍固定具体范围后提交工具审批，UAC由本人确认；
+  不因人工审批改变原路径/哈希/资格门禁，也不自动重试失败系统操作。
 
 - 最新用户 goal 已明确以 `fa8f2ea` 为文档基线继续产品开发，替代较早的文档整理范围和
   “提交后暂停”。用户又明确同类工作持续授权、直接发起本人 UAC、不重复询问；适用范围内
