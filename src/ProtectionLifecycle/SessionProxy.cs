@@ -36,6 +36,7 @@ internal sealed class SessionProxy : IDisposable
         get{var f=Volatile.Read(ref failure);return f is null?null:new(f.Phase,GatewayChildReport.Describe(f.Cause));}
     }
     private ProtectedSession.Admission? admission;
+    private int fixedRootTunnelConsumed;
     private int sequence;
     private long transferred;
     private volatile bool disposed;
@@ -142,6 +143,7 @@ internal sealed class SessionProxy : IDisposable
                 {
                     var identity=AtomicChild.SessionPeerIdentity(process);
                     permit.AssertFixedGatewayRoot(identity);
+                    ConsumeFixedTunnelAttempt(ref fixedRootTunnelConsumed);
                     fixedPeer=identity;
                 }
                 AssertForwardingCurrent();
@@ -188,6 +190,7 @@ internal sealed class SessionProxy : IDisposable
     }
     private async Task<(ProxyDestinationPolicy.Resolution Resolution,TimeSpan ResponseAge)> Resolve(string host, CancellationToken token)
     {
+        var resolverTunnelConsumed=0;
         using var handler = new SocketsHttpHandler {
             UseProxy = false, AllowAutoRedirect = false, UseCookies = false, Credentials = null,
             MaxConnectionsPerServer = 1, MaxResponseHeadersLength = 8,
@@ -195,6 +198,7 @@ internal sealed class SessionProxy : IDisposable
             ConnectCallback = async (context, cancel) => {
                 if (context.DnsEndPoint.Host != "cloudflare-dns.com" || context.DnsEndPoint.Port != 443)
                     throw new InvalidDataException("UnapprovedResolverTransport");
+                ConsumeFixedTunnelAttempt(ref resolverTunnelConsumed);
                 return await OpenTunnel(IPAddress.Parse("1.1.1.1"), cancel);
             }
         };
@@ -215,6 +219,10 @@ internal sealed class SessionProxy : IDisposable
             responseAge=TimeSpan.FromSeconds(seconds);
         }
         return (ProxyDestinationPolicy.ParseResolution(host,await response.Content.ReadAsByteArrayAsync(token)),responseAge);
+    }
+    internal static void ConsumeFixedTunnelAttempt(ref int consumed)
+    {
+        if(Interlocked.Exchange(ref consumed,1)!=0)throw WfpNative.Contract("FixedGatewayTunnelAttemptAlreadyConsumed");
     }
     private async Task<NetworkStream> OpenTunnel(IPAddress ip,CancellationToken token,Action? assertFreshResolution=null)
     {
@@ -287,6 +295,7 @@ internal sealed class SessionProxy : IDisposable
     // Do not let chain-building or revocation silently start host DNS/HTTP.
     // Missing intermediates/revocation data therefore fail; this is not NoCheck.
     internal static SslClientAuthenticationOptions OfflineTls()=>new() {
+        AllowTlsResume=false,AllowRenegotiation=false,
         CertificateRevocationCheckMode=X509RevocationMode.Offline,
         CertificateChainPolicy=new X509ChainPolicy { DisableCertificateDownloads=true,
             RevocationMode=X509RevocationMode.Offline,VerificationFlags=X509VerificationFlags.NoFlag }

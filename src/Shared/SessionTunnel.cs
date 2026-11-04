@@ -13,10 +13,11 @@ internal static class SessionTunnel
         for(var record=0;record<8;record++)
         {
             assertAuthorized();var header=new byte[5];await client.ReadExactlyAsync(header,token);
-            assertAuthorized();var size=(header[3]<<8)|header[4];
+            token.ThrowIfCancellationRequested();assertAuthorized();var size=(header[3]<<8)|header[4];
             if(header[0]!=22 || header[1]!=3 || header[2] is <1 or >3 || size is <1 or >16384 || wire.Length+5+size>32768)
                 throw new InvalidDataException("InitialTlsRecordRefused");
-            var payload=new byte[size];await client.ReadExactlyAsync(payload,token);assertAuthorized();
+            var payload=new byte[size];await client.ReadExactlyAsync(payload,token);
+            token.ThrowIfCancellationRequested();assertAuthorized();
             wire.Write(header);wire.Write(payload);handshake.Write(payload);
             var bytes=handshake.GetBuffer();
             if(handshake.Length>=4 && expected<0)
@@ -27,7 +28,8 @@ internal static class SessionTunnel
             if(expected>=0 && handshake.Length>=expected)
             {
                 if(handshake.Length!=expected)throw new InvalidDataException("ExtraInitialTlsHandshakeBytes");
-                ProxyDestinationPolicy.ValidateTlsClientHello(host,bytes.AsSpan(0,expected));assertAuthorized();
+                ProxyDestinationPolicy.ValidateTlsClientHello(host,bytes.AsSpan(0,expected));
+                token.ThrowIfCancellationRequested();assertAuthorized();
                 return new PrefixDuplexStream(client,wire.ToArray());
             }
         }

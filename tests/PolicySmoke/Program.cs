@@ -10,6 +10,7 @@ static StrictPreflightCheck Find(StrictPreflightReport report,string name)=>
     report.Checks.Single(c=>c.Id==name);
 if(args.Length==1 && args[0]=="gateway-destination-guard"){GatewayDestinationGuardCases.Run();return;}
 if(args.Length==1 && args[0]=="session-tunnel"){await SessionTunnelCases.RunAsync();Console.WriteLine("PASS session tunnel fixtures");return;}
+if(args.Length==1 && args[0]=="tls-client-hello"){await TlsClientHelloCases.RunAsync();Console.WriteLine("PASS TLS ClientHello fixtures");return;}
 if(args.Length==1 && args[0]=="resolver-policy"){RunResolverPolicy();Console.WriteLine("PASS resolver answer and freshness checks");return;}
 var now=DateTimeOffset.UtcNow;
 if(args.Length==1 && args[0]=="directory-name-pages")

@@ -68,6 +68,15 @@ internal static class TlsClientHelloCases
         await RefuseWire(Record(hello)[..^1]);await RefuseWire(Record(Join(hello,new byte[]{1,0,0,0})));
         await RefuseWire(Join(new byte[]{22,3,1,0x40,1},new byte[16385]));
         await RefuseWire(Enumerable.Range(0,8).SelectMany(i=>Record(hello[i..(i+1)])).ToArray());
+        using(var cancel=new CancellationTokenSource(TimeSpan.FromSeconds(2)))
+        {
+            var reads=0;
+            using var input=new SessionTunnelCases.Endpoint(Record(hello),true){AfterRead=()=>{if(++reads==2)cancel.Cancel();}};
+            var refused=false;
+            try{using var view=await SessionTunnel.RequireTlsClientHelloAsync(input,Host,()=>{},cancel.Token);}
+            catch(OperationCanceledException){refused=true;}
+            Check(refused && reads==2,"deadline at completed payload read prevents replay");
+        }
         // Permission disappears while the record is being read; no validated
         // replay view can escape with the old permission.
         using(var input=new SessionTunnelCases.Endpoint(Record(hello),false))

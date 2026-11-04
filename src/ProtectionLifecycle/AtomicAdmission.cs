@@ -501,10 +501,12 @@ internal sealed class AtomicChild : IDisposable
     private static int RunFixedSessionHead(string sessionId,string sessionSecret,Action<string>? phase=null)
     {
         phase?.Invoke("HTTPS_SETTINGS");
+        var tunnelConsumed=0;
         using var handler=new SocketsHttpHandler {UseProxy=false,AllowAutoRedirect=false,UseCookies=false,
             ConnectCallback=(context,cancel)=>
             {
                 if(context.DnsEndPoint.Host!=SessionProxy.Target || context.DnsEndPoint.Port!=443)throw WfpNative.Contract("FixedSessionHttpTargetRefused");
+                SessionProxy.ConsumeFixedTunnelAttempt(ref tunnelConsumed);
                 return SessionProxy.OpenFixedClientTunnel(sessionId,sessionSecret,cancel,phase);
             }};
         phase?.Invoke("HTTPS_TLS_POLICY");handler.SslOptions=SessionProxy.OfflineTls();

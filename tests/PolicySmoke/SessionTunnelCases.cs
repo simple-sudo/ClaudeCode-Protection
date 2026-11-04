@@ -127,6 +127,7 @@ internal static class SessionTunnelCases
         private int position,active;
         internal bool FailWrites {get;init;}
         internal Func<Task>? BeforeWrite {get;init;}
+        internal Action? AfterRead {get;init;}
         internal int MaximumRead {get;init;}=int.MaxValue;
         internal Exception? ReadFailure {get;init;}
         internal bool Canceled {get;private set;}
@@ -143,7 +144,8 @@ internal static class SessionTunnelCases
             {
                 await ready.Task.WaitAsync(token);token.ThrowIfCancellationRequested();
                 if(ReadFailure is not null)throw ReadFailure;
-                var count=Math.Min(MaximumRead,Math.Min(buffer.Length,input.Length-position));input.AsMemory(position,count).CopyTo(buffer);position+=count;return count;
+                var count=Math.Min(MaximumRead,Math.Min(buffer.Length,input.Length-position));input.AsMemory(position,count).CopyTo(buffer);position+=count;
+                AfterRead?.Invoke();return count;
             }
             catch(OperationCanceledException){Canceled=true;throw;}
             finally{Interlocked.Decrement(ref active);}

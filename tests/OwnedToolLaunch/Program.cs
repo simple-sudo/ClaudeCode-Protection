@@ -259,7 +259,8 @@ if(args[0]=="tls-transport-policy")
     Require(options.CertificateRevocationCheckMode==System.Security.Cryptography.X509Certificates.X509RevocationMode.Offline &&
         options.CertificateChainPolicy is {DisableCertificateDownloads:true,RevocationMode:System.Security.Cryptography.X509Certificates.X509RevocationMode.Offline,
             VerificationFlags:System.Security.Cryptography.X509Certificates.X509VerificationFlags.NoFlag},"chain policy must prevent online revocation and AIA BEFORE validation callback");
-    Require(options.RemoteCertificateValidationCallback is null,"default uses platform certificate/name validation without a permissive override");
+    Require(options.RemoteCertificateValidationCallback is null && !options.AllowTlsResume && !options.AllowRenegotiation,
+        "platform certificate/name validation on a fresh handshake without renegotiation");
     options.CertificateChainPolicy!.RevocationMode=System.Security.Cryptography.X509Certificates.X509RevocationMode.NoCheck;
     using var second=Handler();
     Require(!ReferenceEquals(first.SslOptions,second.SslOptions) && !ReferenceEquals(first.SslOptions.CertificateChainPolicy,second.SslOptions.CertificateChainPolicy) &&

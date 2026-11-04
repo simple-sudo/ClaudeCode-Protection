@@ -3,6 +3,7 @@ using System.Runtime.ExceptionServices;
 
 internal static class GatewayQualificationBoundaryCases
 {
+    private delegate void ConsumeAttempt(ref int consumed);
     internal static void Run(Assembly library)
     {
         var broker=library.GetType("ProtectionLifecycle.InstalledBroker",true)!;
@@ -32,6 +33,15 @@ internal static class GatewayQualificationBoundaryCases
         Check(!Matches((111,201),111,200));
         Check(!Matches((0,200),0,200));
         Check(!Matches((111,0),111,0));
+        var consume=library.GetType("ProtectionLifecycle.SessionProxy",true)!
+            .GetMethod("ConsumeFixedTunnelAttempt",BindingFlags.NonPublic|BindingFlags.Static)!.CreateDelegate<ConsumeAttempt>();
+        var slot=0;var accepted=0;var rejected=0;
+        Parallel.For(0,8,_=>
+        {
+            try{consume(ref slot);Interlocked.Increment(ref accepted);}
+            catch(InvalidDataException){Interlocked.Increment(ref rejected);}
+        });
+        Check(accepted==1 && rejected==7);
         // Ordinary callers must be rejected by the common administrator gate,
         // before opening protected state or creating native runtime objects.
         var denied=false;try{Call("QualifySessionGateway");}catch(UnauthorizedAccessException){denied=true;}Check(denied);
