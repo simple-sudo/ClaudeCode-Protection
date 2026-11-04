@@ -12,6 +12,13 @@
 不读取新的宿主数据类型。六产品项目非生成语义分析 0/0，SOURCE / INTEGRATED；
 BUILD、真实 LPAC 编译及对象漂移场景 NOT_RUN。
 
+后续普通离线构建固定 `0ceb6b2` 的 Lifecycle、Broker 与 OwnedToolLaunch。首次输入检查
+按 90 计数，发现测试工程另含 10 份非秘密内嵌样例，在编译前停止；核对项目图后固定
+100 输入完成构建，两次均 0 错误 0 警告。三个 Lifecycle 副本一致，PE 元数据 166 项
+原生导入与前版一致。构建结果 `work/owner-precode-build-0ceb6b2/build-result.json`
+SHA256 `DD0CAE0B859A7762BFFE66BB10B0B42E292C1285CF5F9FC55254C1CF15272C04`。
+仅 BUILD 和 PE 元数据核对，未加载或运行项目程序集。
+
 ## 2026-11-03 收缩宿主隐私探针计划字段
 
 原可信 owner 保留完整正控制和复核数据，受限计划以严格 schema 3 单独序列化。文件及父目录

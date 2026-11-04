@@ -41,6 +41,11 @@
 - 放行前原 owner 绑定同一编译器 PID 与创建时间，并在探针计划撤回后重新核对所列宿主目标、
   原会话和普通调用者生存状态。源码语义检查 0/0，实际身份变化、目标漂移和正常项目实测
   NOT_RUN。该检查是放行前观察，文件系统与注册表没有跨对象原子快照。
+- `0ceb6b2` 已完成 Lifecycle、Broker、OwnedToolLaunch 的普通离线构建。100 项固定输入，
+  两次构建零错误零警告，三个库副本一致，166 项原生导入与前版一致。证据
+  `work/owner-precode-build-0ceb6b2/build-result.json` SHA256
+  `DD0CAE0B859A7762BFFE66BB10B0B42E292C1285CF5F9FC55254C1CF15272C04`。
+  未运行产物、回归、打包、安装或网关；GUI 和 daily 尚未构建。
 
 ## 最近一次有证据的安装观察
 
