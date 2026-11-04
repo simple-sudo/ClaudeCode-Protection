@@ -97,7 +97,7 @@ internal sealed record GatewayChildReport(int SchemaVersion,string SessionId,int
             throw new InvalidDataException("GatewayFeedbackOwnerOrErrorBinding");
         var success=r.ExitCode==42 && r.Phase=="COMPLETE" && r.HttpStatus is >=200 and <400 && r.Errors.Length==0;
         var rejectedStatus=r.ExitCode==126 && r.Phase=="HTTPS" && r.HttpStatus is >=100 and <=599 && !(r.HttpStatus is >=200 and <400) && r.Errors.Length==0;
-        var failed=r.ExitCode==125 && (r.Phase is "ENVIRONMENT" or "IDENTITY" or "TIMEZONE_DEFINITION" or "TIMEZONE_PUBLIC_CACHE" or "TIMEZONE_LOCAL_BINDING" or "HTTPS" or "HTTPS_SETTINGS" or "HTTPS_TLS_POLICY" or "HTTPS_CLIENT" or "HTTPS_SEND" or "HTTPS_SOCKET_CREATE" or "HTTPS_CONNECT" or "HTTPS_CONNECT_WRITE" or "HTTPS_CONNECT_REPLY") && r.HttpStatus is null && r.Errors.Length is >0 and <=4;
+        var failed=r.ExitCode==125 && (r.Phase is "ENVIRONMENT" or "IDENTITY" or "TIMEZONE_DEFINITION" or "TIMEZONE_PUBLIC_CACHE" or "TIMEZONE_LOCAL_BINDING" or "HTTPS" or "HTTPS_SETTINGS" or "HTTPS_TLS_POLICY" or "HTTPS_CLIENT" or "HTTPS_SEND" or "HTTPS_SOCKET_INITIALIZATION" or "HTTPS_SOCKET_CREATE" or "HTTPS_CONNECT" or "HTTPS_CONNECT_WRITE" or "HTTPS_CONNECT_REPLY") && r.HttpStatus is null && r.Errors.Length is >0 and <=4;
         if(!success && !rejectedStatus && !failed)throw new InvalidDataException("GatewayFeedbackOutcomeShape");
         return r;
     }

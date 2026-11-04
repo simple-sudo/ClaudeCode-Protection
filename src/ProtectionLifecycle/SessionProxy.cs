@@ -278,12 +278,29 @@ internal sealed class SessionProxy : IDisposable
     {
         if(reply!="HTTP/1.1 200 Connection Established\r\n\r\n")throw WfpNative.Contract("FixedSessionGatewayConnectRefused");
     }
+    internal static void InitializeFixedClientSockets()
+    {
+        // Run the same lazy initializer used by SocketPal.CreateSocket, once,
+        // before the creation phase. Do not alter its cache or native counters.
+        var assembly=typeof(Socket).Assembly;
+        if(!Environment.Is64BitProcess || assembly.ManifestModule.ModuleVersionId!=Guid.Parse("8e3d46e4-f844-481c-ae6d-d2130aa6965d"))
+            throw new PlatformNotSupportedException("FixedSocketRuntimeNotQualified");
+        var type=assembly.GetType("Interop+Winsock",false);
+        var method=type?.GetMethod("EnsureInitialized",System.Reflection.BindingFlags.Static|System.Reflection.BindingFlags.NonPublic,
+            null,Type.EmptyTypes,null);
+        if(method is null || method.DeclaringType!=type || method.ReturnType!=typeof(void) || method.ContainsGenericParameters)
+            throw WfpNative.Contract("FixedSocketInitializerLayoutDiffers");
+        try{method.Invoke(null,null);}
+        catch(System.Reflection.TargetInvocationException error)when(error.InnerException is not null)
+        {System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(error.InnerException).Throw();throw;}
+    }
     internal static async ValueTask<Stream> OpenFixedClientTunnel(string sessionId,string secret,CancellationToken cancel,Action<string>? phase)
     {
         var header=FixedClientConnectHeader(sessionId,secret);
         Socket? socket=null;
         try
         {
+            phase?.Invoke("HTTPS_SOCKET_INITIALIZATION");InitializeFixedClientSockets();
             phase?.Invoke("HTTPS_SOCKET_CREATE");socket=new Socket(AddressFamily.InterNetwork,SocketType.Stream,ProtocolType.Tcp);
             phase?.Invoke("HTTPS_CONNECT");await socket.ConnectAsync(new IPEndPoint(IPAddress.Loopback,Port),cancel);
             var stream=new NetworkStream(socket,ownsSocket:true);

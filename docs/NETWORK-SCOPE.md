@@ -74,4 +74,8 @@ V2 用严格且有界的 JSON 整数字段传递偏移、日期和夏令时转�
 
 原固定CONNECT路径进一步区分 HTTPS_SOCKET_CREATE、HTTPS_CONNECT、HTTPS_CONNECT_WRITE 和既有回复阶段。979c实际停于套接字创建，原根未进入网关连接/请求写入；这不说明全机没有其他网络活动，也不定位底层API失败。新分类只接受System.Net.Sockets程序集内固定Winsock初始化帧作为SOCKET_STARTUP，消息或10107代码本身不算依据，不能观察时仍为SOCKET。分类信息继续走原有界失败管道，不增加原始栈或私有状态读取，不用于运行准入。
 
-979c内的首版分类器错误地使用SocketException所属的System.Net.Primitives作为程序集门，可能将真实启动帧退回SOCKET；其原始报告保留，不能用该类别排除启动失败。源码已改为实际Socket所属程序集，并以本机.NET8真实初始化方法元数据验证；此更正尚未安装。下一原生定位须区分初始化与创建，不重复代理/HTTPS检查，不据该通用错误增加registryRead、放宽TLS或重置日常环境。
+979c内的首版分类器错误地使用SocketException所属的System.Net.Primitives作为程序集门，可能将真实启动帧退回SOCKET；其原始报告保留，不能用该类别排除启动失败。当时源码已改为实际Socket所属程序集，并以本机.NET8真实初始化方法元数据验证，更正尚未安装；后续6800安装及定位见下。不据该通用错误增加registryRead、放宽TLS或重置日常环境。
+
+6800已包含分类修正，并在原固定worker中将同一惰性初始化入口移到独立HTTPS_SOCKET_INITIALIZATION阶段。固定System.Net.Sockets模块MVID和无参void入口，原构造器后续复用该初始化状态；不写内部标记、改计数或新增任意调用接口，未知运行时拒绝。90项普通检查包含该入口的实际普通进程初始化/复用；本次真实LPAC在初始化阶段报告SOCKET_STARTUP10107，未执行Socket创建或连接。因此后续不再重复TLS/代理验证，先审查Winsock依赖。原生失败内部具体对象仍UNKNOWN。
+
+微软[AppContainer说明](https://learn.microsoft.com/en-us/windows/win32/secauthz/implementing-an-appcontainer)将LPAC注册表访问与registryRead能力关联。Chromium的[固定版本网络沙箱配置](https://chromium.googlesource.com/chromium/src/+/c203127527d34c24ac12973ba0c91006c7933b0d/sandbox/policy/win/sandbox_win.cc#384)使用registryRead及其他网络能力，范围并非本产品的零能力合同。这些来源支持重新审查平台依赖，不能证明本机具体失败原因，也不能授予本产品放宽权限、回退普通AppContainer或复制其配置的许可。修复须同时满足授权网络可用和P0宿主信息隔离，继续走原Broker/ProtectedSession/可信owner；尚无此修复或新准入资格。

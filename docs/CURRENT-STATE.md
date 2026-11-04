@@ -1,7 +1,23 @@
 # 当前状态与授权摘要
 
 更新：2026-11-04（America/New_York）。本页是**唯一的最新状态摘要**；历史事实仍由原始证据
-支持。最新已保存的原安装回读为 `979ca94a` / INACTIVE。2026-11-04 09:38Z 按具体工具审批请求
+支持。最新已保存的原安装回读为 `6800070c` / INACTIVE。2026-11-04 09:56Z 按具体工具审批请求
+及本人UAC，原Bootstrap更新退出0；15个公开安装资产独立长度/摘要匹配清单
+`FE4B5F9E2F9186AF2693DB1CBBC85296C5049BC927F395F65E31920E03C7293B`。
+原固定LPAC根在 `HTTPS_SOCKET_INITIALIZATION` 返回125 /
+HTTP -2147467259 / SOCKET_STARTUP10107。固定.NET8运行时的EnsureInitialized入口抛出该错误，
+其源码对应WSAStartup失败；本次未进入套接字创建、网关连接或CONNECT写入。
+原网关无公开故障，双向写入见证false，尚无HTTP结果。此失败已定位到Winsock初始化，
+内部系统调用、注册表对象或提供程序原因仍UNKNOWN，不能归因到AV/代理或某个键。
+原owner确认准入关闭、先隔离后停止、同Job零成员和停止错误为空。本次具体授权已消耗，
+无自动重试、额外私有错误/raw Job/Stop读取、系统重置、registryRead或真实Claude启动。
+观察 `work/socket-initialization-810277d/observed-system-result.json` SHA256
+`532E7DA76E0BE0F8170351655CF357F7BA8EA90ACB2029810441D6518DFABB5F`；
+预检记录摘要 `E51D35DABBF0653C261526B5AEAAFD7E5F1D3D18E18425C494786EB6A8598F72`。
+下一步审查此身份的Winsock资源依赖及P0影响，不再重复TLS/代理定位，也不凭其他产品使用
+capability就直接放宽本产品。真实会话网络资格和完整产品交付仍未成立。
+
+前次 `979ca94a` / INACTIVE 于2026-11-04 09:38Z 按具体工具审批请求
 及本人 UAC，原 Bootstrap 更新退出0；15个公开安装资产独立长度和摘要匹配清单
 `3CE38FBC1D5ECB5FB8292B1107992C4E3BC4DE487AB7BF45AE4B37DCA64489D1`。
 原固定LPAC根通过公共时区初始化，随后在新增 `HTTPS_SOCKET_CREATE` 返回125 /
@@ -9,7 +25,8 @@ HTTP -2147467259 / SOCKET10107。源码在构造成功后才设置HTTPS_CONNECT�
 尚未进入连接和CONNECT请求写入；原网关无公开故障，双向写入见证false。
 本次报告不能区分WSAStartup与原生套接字创建。安装后的源码复核发现启动帧分类器错误地
 绑定到SocketException所在的System.Net.Primitives，而实际实现位于System.Net.Sockets，
-故普通SOCKET类别不能排除启动失败。已修复源码并新增真实运行时方法元数据回归，尚未安装。
+故普通SOCKET类别不能排除启动失败。当时已修复源码并新增真实运行时方法元数据回归，未安装；
+后续6800已包含该修正及独立初始化阶段，当前实际结果见页首。
 该分类缺陷不影响本次故障阶段与退出码的观察，不改写原失败回执。
 原owner确认准入关闭、先隔离后停止、同Job零成员、停止错误为空；原根未发起连接。
 本次具体授权已消耗，无自动重跑、额外私有错误/raw Job/Stop读取、系统重置或真实Claude启动。
@@ -63,6 +80,22 @@ CAPABILITY_DELIVERED(本次固定LPAC工作进程的公共日历兼容初始化)
 固定新源码、新工件和新审查，未重跑被中断动作。不修改 AV、不加排除项、不改名重包装。
 
 ## 开发基线
+
+- 基于 `810277d` 在原固定CONNECT worker中先调用同一运行时的惰性Winsock初始化入口，
+  成功后原Socket构造器复用其已初始化标记，不手动改缓存/计数、不增加capability或原生PInvoke。
+  新阶段HTTPS_SOCKET_INITIALIZATION与创建/连接/写入分开。System.Net.Sockets的模块MVID
+  固定为 `8e3d46e4-f844-481c-ae6d-d2130aa6965d`，固定无参void方法，不符即拒绝；
+  原异常解包后由既有有界管道报告，不输出原始栈。新增精确979c更新前置，原现场维护门保持。
+  108输入四工程构建0/0，90反馈检查包含真实普通进程的固定运行时初始化和复用，
+  精确前置选择一正六反通过。GUI/日常叶输入核对后复用原字节；Bootstrap/控制器构建0/0，
+  同库/内嵌清单/20输入及固定运行时文件预检通过。成功谓词仅替换版本/清单常量，原逻辑保持。
+  普通初始化正控制与本次LPAC失败分开记录，不能把差异直接归因到单个权限或提供程序。
+  6800安装及有界LPAC失败见页首；没有绕过初始化、重跑旧任务或据此放行实际Claude。
+  `work/socket-initialization-810277d/build-candidate/` 下构建记录摘要
+  `1E1817F8BA60DFABF974A49717F79FA2F486ECC73222604B1B109395705D7D30`；普通记录
+  `510407F9B3E91A355A637217C68956B94EACD91B75BE7FC7395DF4D459C6DE2E`；Bootstrap记录
+  `CF56BD8034EA102B8D8C2E8551ABB508C6E987F1C31D0876DA38793E69A7C716`。
+  同任务固定审查摘要 `49C5368807BAC3072FF6D802F4AE869A3BB70E5FC6191A9231337AE826D6AA30`。
 
 - 基于 `868426a` 将原固定worker阶段拆为套接字创建、网关连接和CONNECT写入，原有
   管道、会话/PID/实际退出码绑定、4096字符/四层错误限额及拒绝边界保持。仅新增固定

@@ -49,7 +49,7 @@ internal static class GatewayFeedbackCases
         Check(Read(Encoding.UTF8.GetBytes(good.PadRight(4096)))==good.PadRight(4096));Accept(good.PadRight(4096),42);
         var oversized=false;try{Read(Encoding.UTF8.GetBytes(new string('x',4097)));}catch(InvalidDataException){oversized=true;}Check(oversized);
         var invalidUtf8=false;try{Read(new byte[]{255});}catch(DecoderFallbackException){invalidUtf8=true;}Check(invalidUtf8);
-        foreach(var phase in new[]{"TIMEZONE_DEFINITION","TIMEZONE_PUBLIC_CACHE","TIMEZONE_LOCAL_BINDING","HTTPS_SETTINGS","HTTPS_TLS_POLICY","HTTPS_CLIENT","HTTPS_SEND","HTTPS_SOCKET_CREATE","HTTPS_CONNECT","HTTPS_CONNECT_WRITE","HTTPS_CONNECT_REPLY"})Accept(Result(phase,125,error:new System.Security.SecurityException("private-fixture")),125);
+        foreach(var phase in new[]{"TIMEZONE_DEFINITION","TIMEZONE_PUBLIC_CACHE","TIMEZONE_LOCAL_BINDING","HTTPS_SETTINGS","HTTPS_TLS_POLICY","HTTPS_CLIENT","HTTPS_SEND","HTTPS_SOCKET_INITIALIZATION","HTTPS_SOCKET_CREATE","HTTPS_CONNECT","HTTPS_CONNECT_WRITE","HTTPS_CONNECT_REPLY"})Accept(Result(phase,125,error:new System.Security.SecurityException("private-fixture")),125);
         var startupCode=Result("HTTPS_SOCKET_CREATE",125,error:new SocketException(10107));
         Accept(startupCode,125);
         Check(JsonNode.Parse(startupCode)!["Errors"]![0]!["Kind"]!.GetValue<string>()=="SOCKET"); // Code alone is not startup evidence.
@@ -104,6 +104,9 @@ internal static class GatewayFeedbackCases
             Check(tls.CertificateRevocationCheckMode==System.Security.Cryptography.X509Certificates.X509RevocationMode.Offline && tls.CertificateChainPolicy is {DisableCertificateDownloads:true,RevocationMode:System.Security.Cryptography.X509Certificates.X509RevocationMode.Offline,VerificationFlags:System.Security.Cryptography.X509Certificates.X509VerificationFlags.NoFlag});
         }
         finally{System.Globalization.CultureInfo.DefaultThreadCurrentCulture=defaultCulture;System.Globalization.CultureInfo.DefaultThreadCurrentUICulture=defaultUi;System.Globalization.CultureInfo.CurrentCulture=culture;System.Globalization.CultureInfo.CurrentUICulture=ui;}
-        Console.WriteLine($"PASS {count} fixed gateway feedback contract and bounded-memory reader checks; no exception messages, paths, tokens or raw output; diagnostic only. No UAC, network, child process, protected state, Job or WFP operation.");
+        var initialized=winsock.GetField("s_initialized",BindingFlags.NonPublic|BindingFlags.Static)!;
+        ProxyCall("InitializeFixedClientSockets");Check(initialized.GetValue(null) is 1);
+        ProxyCall("InitializeFixedClientSockets");Check(initialized.GetValue(null) is 1);
+        Console.WriteLine($"PASS {count} fixed gateway feedback checks and actual pinned-runtime process-local Winsock initialization/reuse; no exception messages, paths, tokens or raw output; diagnostic only. No socket creation/connections, UAC, child process, protected state, Job or WFP operation.");
     }
 }
