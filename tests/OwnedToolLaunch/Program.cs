@@ -42,13 +42,12 @@ if(args[0]=="self-control-open")
     var probe=library.GetType("ProtectionLifecycle.HostPrivacyProbe",true)!;
     for(var index=14;index<23;index++)
     {
-        Call(probe,"RequireOwnerTarget","",Environment.ProcessId,null,Environment.ProcessId,index);
+        Call(probe,"RequireOwnerTarget","",Environment.ProcessId,Environment.ProcessId,index);
         Require((int)Call(probe,"OwnerAccessOpen",Environment.ProcessId,index)! ==0,"ordinary self maintenance minimal-right positive control "+index);
     }
-    Refuse(()=>Call(probe,"RequireOwnerTarget","",Environment.ProcessId+1,null,Environment.ProcessId,15),"ProtectionOwnerTargetBindingDiffers");
-    Refuse(()=>Call(probe,"RequireOwnerTarget","supplied-host-path",Environment.ProcessId,null,Environment.ProcessId,15),"ProtectionOwnerTargetBindingDiffers");
-    Refuse(()=>Call(probe,"RequireOwnerTarget","",Environment.ProcessId,"supplied-identity",Environment.ProcessId,15),"ProtectionOwnerTargetBindingDiffers");
-    Refuse(()=>Call(probe,"RequireOwnerTarget","",0,null,0,15),"ProtectionOwnerTargetBindingDiffers");
+    Refuse(()=>Call(probe,"RequireOwnerTarget","",Environment.ProcessId+1,Environment.ProcessId,15),"ProtectionOwnerTargetBindingDiffers");
+    Refuse(()=>Call(probe,"RequireOwnerTarget","supplied-host-path",Environment.ProcessId,Environment.ProcessId,15),"ProtectionOwnerTargetBindingDiffers");
+    Refuse(()=>Call(probe,"RequireOwnerTarget","",0,0,15),"ProtectionOwnerTargetBindingDiffers");
     Refuse(()=>Call(probe,"OwnerAccessOpen",0,15),"ProtectionOwnerProcessRequired");
     var unknownOwnerRight=false;try{Call(probe,"OwnerAccessOpen",Environment.ProcessId,23);}catch(InvalidDataException){unknownOwnerRight=true;}
     Require(unknownOwnerRight,"undefined right rejected before native open");

@@ -18,9 +18,9 @@ internal sealed partial class HostPrivacyProbe
             >=27 and <=29=>"ClaudeCodeProtection-State/current.json",
             _=>"ClaudeCodeProtection/versions/"+release+"/bin/admin/ProtectionLifecycle.dll"});
     }
-    private static void RequireControlFileTarget(string path,int pid,string? identity,string programFiles,string release,int index)
+    private static void RequireControlFileTarget(string path,int pid,string programFiles,string release,int index)
     {
-        if(pid!=0 || identity is not {Length:24} || identity.Any(c=>!(c is >= '0' and <= '9' or >= 'A' and <= 'F')) ||
+        if(pid!=0 ||
             !string.Equals(path,ControlFilePath(programFiles,release,index),StringComparison.OrdinalIgnoreCase))
             throw WfpNative.Contract("ProtectionControlFileTargetBindingDiffers");
     }

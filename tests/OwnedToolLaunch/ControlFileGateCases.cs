@@ -12,16 +12,16 @@ internal static class ControlFileGateCases
         {try{return type.GetMethod(name,flags)!.Invoke(null,args);}catch(TargetInvocationException e)when(e.InnerException is not null){ExceptionDispatchInfo.Capture(e.InnerException).Throw();throw;}}
         void Require(bool value){if(!value)throw new InvalidDataException("Control file fixture differs");checks++;}
         void Refuse(Action action){try{action();}catch(InvalidDataException){checks++;return;}throw new InvalidDataException("Foreign control target accepted");}
-        var programFiles=Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);var release=new string('a',32);var id=new string('F',24);
+        var programFiles=Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);var release=new string('a',32);
         for(var i=23;i<33;i++)
         {
             var path=(string)Call("ControlFilePath",programFiles,release,i)!;
             var leaf=i<27?"ClaudeCodeProtection-State/installation.json":i<30?"ClaudeCodeProtection-State/current.json":"ClaudeCodeProtection/versions/"+release+"/bin/admin/ProtectionLifecycle.dll";
             Require(path==Path.Combine(programFiles,leaf.Replace('/','\\')));
-            Call("RequireControlFileTarget",path,0,id,programFiles,release,i);checks++;
-            Refuse(()=>Call("RequireControlFileTarget",path+".foreign",0,id,programFiles,release,i));
-            Refuse(()=>Call("RequireControlFileTarget",path,1,id,programFiles,release,i));
-            Refuse(()=>Call("RequireControlFileTarget",path,0,null,programFiles,release,i));
+            Call("RequireControlFileTarget",path,0,programFiles,release,i);checks++;
+            Refuse(()=>Call("RequireControlFileTarget",path+".foreign",0,programFiles,release,i));
+            Refuse(()=>Call("RequireControlFileTarget",path,1,programFiles,release,i));
+            Refuse(()=>Call("RequireControlFileTarget",null,0,programFiles,release,i));
         }
         Refuse(()=>Call("ControlFilePath",programFiles,release,22));Refuse(()=>Call("ControlFilePath",programFiles,release,33));
         Refuse(()=>Call("ControlFilePath",programFiles,"../foreign",23));
