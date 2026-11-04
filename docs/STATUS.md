@@ -27,6 +27,14 @@
 子键变化即拒绝。复用原持久闭合和恢复回执，操作后复核安装指针未变；无安装、准入或联网路径。
 六产品项目非生成语义检查 0/0，SOURCE / INTEGRATED；固定恢复工件及实机恢复 NOT_RUN。
 
+随后 `9142b8c` 的 Broker、Lifecycle、OwnedToolLaunch、Bootstrap 及固定控制器离线构建均
+0/0，42 项普通策略检查通过，20 输入持有与内嵌清单核对通过。按持续授权及本人 UAC 一次
+执行恢复工件 `74e2345e`，原 owner 返回 0，恢复单个会话租约并封存原闭合回执。
+独立权限回读父键、Dynamic DST 摘要均匹配原值，安装选择保持 d423b8c5 / INACTIVE。
+证据 `work/timezone-recovery-9142b8c/observed-recovery-result.json` SHA256
+`39640BDA0E1E9ECA9F19BC27B979918C8A39297A8C2B1F8A61CF32D721CD6EDF`。
+VERIFIED(固定旧会话的精确恢复)；未安装新版本、重试网关或启动 Claude。
+
 ## 2026-11-03 编译器实例与宿主目标的放行前复核
 
 原 owner 将两次持有 Job 成员检查中的编译器 PID 与创建时间配对。封存探针并撤回计划后，
