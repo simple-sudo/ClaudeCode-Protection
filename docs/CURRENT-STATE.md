@@ -5,7 +5,9 @@
 本次固定网关的两键时区授权及原 owner 恢复已实测，独立权限摘要均与原值一致。
 子进程实际恢复执行，在显式 `TIMEZONE_DEFINITION` 返回 TZ_DEFINITION / 125。
 原 owner 选定的定义本身读取失败，后续本地 ID 核对和 HTTPS 均未开始；不能仅归因于本地
-自动选择不同。原生错误码、实际原生对象解析及有效访问原因仍 UNKNOWN，没有扩大权限的依据。
+自动选择不同。原生错误码和实际原生对象解析仍 UNKNOWN；新查证的微软 LPAC 文档明确注册表
+打开还要求 registryRead capability，当前零 capability 与此失败一致，不能再以仅改两键 DACL
+作为后续修复方案。没有因此增加该能力或扩大权限。
 原 owner 关闭准入、停止前隔离，最终 Job 零成员、停止失败为空；HTTPS 尚未成功。
 
 卡巴斯基本轮新告警：用户报告 Codex 被终止，截图显示系统监控对 `codex.exe` 报
@@ -16,6 +18,25 @@
 
 ## 开发基线
 
+- `6752c0d` 已在原 Preparation→固定 worker 源码接入公共时区快照：owner 传递真实 ID、
+  偏移及规则，去掉不必要的本地化显示名；快照绑定会话、摘要和原 admission binding。
+  固定 worker 只初始化本进程托管时区缓存，再验证本地视图和原生当前时间往返一致性，
+  原严格离线 TLS 策略不变。没有新的管理执行器、registryRead 或普通 AppContainer 回退。
+  **这是使用 .NET8.0.28 私有字段的版本限定兼容适配，不是微软稳定公共 API，也不是
+  Windows 隐私边界。** 固定 CoreLib MVID `3e106481-9524-4ebf-a276-c71cb5b3f877`，
+  不匹配、格式/来源不符、已有缓存冲突或时钟不一致即拒绝，无静默回退。
+  新源码停止创建自动时区 ACL 租约，旧日志检查/显式恢复代码保留；原安装 8389 未改变。
+  六产品及 OwnedToolLaunch 非生成语义 0/0，Lifecycle/Broker/OwnedToolLaunch 普通离线
+  BUILD 0/0，101 项固定输入、三库一致；13 项快照/会话/摘要/真实规则往返/时钟/TLS 克隆
+  及 75 项反馈检查通过。证据 `work/public-timezone-snapshot-b93f7f4/build-6752c0d/`：
+  构建结果 SHA256 `98F5B3082E29E4B5191DC4F05EA9C071F01AE2368F7924C14D6F4FFACF590C6F`；
+  普通结果 SHA256 `E4F6B532D3B0B567752793930679B152D5B29C6C4AC6E380CCF648BB44050C2D`。
+  SOURCE / BUILD / INTEGRATED + VERIFIED(普通兼容组件)，LPAC/真实网络/安装 NOT_RUN。
+  尚未推广至所有工具；完整十四项准入和自评/画像交付不变。
+  后续固定系统审查和帮助程序须改为验证 `PublicTimeZoneProjection`、零主机时区 ACL 改动，
+  **不能重跑旧两键租约帮助程序、旧 claim 或把普通测试当新启动许可**。
+  来源、布局限制及范围记录 `work/public-timezone-snapshot-b93f7f4/provenance-and-scope.json`
+  SHA256 `0F81AA24691D9AFC3970223B29977C53610D2080BAA1AAC2A44DEAD8F65C5AC3`。
 - 公共时区绑定在 `d55be4c` 完成离线 BUILD 0/0，但普通时区 fixture 仍以旧四参数调用
   Prepare，返回 ParameterCountMismatch / 3；当时未暂存或提升。失败独立保留，记录
   `work/timezone-binding-d55be4c/ordinary-fixture-failure.json` SHA256
@@ -289,7 +310,7 @@ ecbcd4e0两载荷变化为续编GUI及精确8a22前置pin；本次9dd26020两载
 | 开发失败反馈 | 原compiler→root→owner→IPC→daily→GUI链接入；普通Compile/Run/Tests自有失败通过；00ac固定LPAC编译失败返回CS0103/source0/物理9行52列，原46拒绝/封存/关闭回执满足，结果0字节 | 实际运行/测试失败反馈、其他工具及崩溃恢复未实测；公开关闭观察不证明profile/私有目录清理 |
 | V2项目数据/结果 | 26新合同/40旧caller/原122合成门禁和67普通GUI数据通过；77a1真实DataReport编译/读取JSON/生成报告/3测试/十一文件恢复及双actor46拒绝通过 | 仅该固定项目/所列对象与权限；导出上限不是磁盘配额，不推广至其他工具或完整产品 |
 | 控制文件执行门 | 原8a22真实LPAC根/编译器各33项拒绝5保留；7535同32项各拒绝5，另slot7各为缺失3（不计拒绝），含20次控制文件最小权限打开；原owner封存后正常DataReport修改/编译/3测试/十一文件恢复通过 | 仅所列三对象/十权限及该固定项目；不证明实际破坏、保护源码/IPC/全部权限或其他工具 |
-| 网络/身份/工具 | 8389显式 owner 指定定义读取在 TIMEZONE_DEFINITION 失败，尚未核对本地 ID 或进入 HTTPS；两键恢复/原owner隔离/Job零；有限版本矩阵、受限进程和原生GPU历史实测分别保留 | 实际受限读的原生对象/错误/访问原因、依赖准备成功及HTTPS、当前版本的完整强制网络、十四项可信准入、PowerShell及代表性工具/GPU兼容、长时稳定性 |
+| 网络/身份/工具 | 8389显式定义读取失败、两键恢复/原owner隔离/Job零；源码转为 owner 公共数据传递及固定运行时兼容，普通组件13+75通过，尚未安装；有限版本矩阵、受限进程和原生GPU历史实测保留 | 新兼容路径的 LPAC/HTTPS 实测、私有布局更新资格、其他工具集成、当前版本完整强制网络与十四项准入、GPU兼容及长时稳定性 |
 | 生命周期 | 固定安装及部分已关闭/从未启动资源恢复保留；e249c895原pipe调用者监督18组件检查、实际固定LPAC调用者被结束后原owner关闭准入/隔离/Job零/0停止失败通过 | profile/私有目录清理未由本次观察证明；owner/控制器异常、崩溃重启、更新/回滚/卸载与故障恢复完整验收仍缺；历史蓝屏根因UNKNOWN |
 | 自我保护 | d51共用管理身份门拒绝非主令牌/容器/未提升/受限SID/非管理员，19普通检查与可信UAC原安装路径通过；实际LPAC管理调用未执行。原选择排除/日常身份拒绝保留；原执行门新增九项owner最小权限打开检查，两个受保护actor的18次owner打开均拒绝5，可信owner自我维护打开正控制通过；SOURCE/BUILD/INTEGRATED及该项目限定VERIFIED | 未实际破坏owner；源码读/文件写/服务/IPC/其他工具/异常恢复完整矩阵及日常入口真实受保护身份验证仍缺。P1/P2未验收；命名/离线部署未实施 |
 

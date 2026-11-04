@@ -5,6 +5,33 @@
 历史页的“当前/待执行/暂停/DELIVERABLE”按段落日期及限定范围解释，不是今天的状态或操作许可。
 不在本页复制当前安装和授权摘要。
 
+## 2026-11-03 LPAC 注册表能力约束查证，原 owner 公共时区兼容路径普通验证
+
+[微软 LPAC 启动文档](https://learn.microsoft.com/en-us/windows/win32/secauthz/implementing-an-appcontainer)
+明确指出 registryRead 是 LPAC 打开注册表键的前提；与此前零 capability 的显式定义读取
+失败一致。此前逐键 DACL 授权/恢复有实测，但不能以此声称开启注册表读取，也不再继续
+作为修复方向；该文档不补出历史失败缺失的原生 DWORD。未增加 capability、重试系统操作
+或改 AV，也未重新调查用户已确认的误报。
+
+6752c0d 沿原 Preparation/固定 worker 接入真实公共时区快照，绑定会话、摘要和 admission
+数据，裁掉本地化显示名。停止新路径的自动主机时区 ACL 租约；历史检查及显式恢复保留。
+worker 用原 owner 数据初始化**本进程托管缓存**，检查当前时间往返，随后进入原严格离线
+TLS 路径。它不是隐私强制机制，也没有新提权/执行框架或普通容器回退。
+适配依赖 [CoreLib v8.0.28 私有缓存布局](https://github.com/dotnet/runtime/blob/v8.0.28/src/libraries/System.Private.CoreLib/src/System/TimeZoneInfo.cs)，
+blob `b76ed8f165ff52ea3936308f61d500525ba5c921`；固定 MVID
+`3e106481-9524-4ebf-a276-c71cb5b3f877`，布局/输入/时钟不符即拒绝。该私有接口不是稳定公共
+契约；更新运行时必须重新审查和限定验证，不能把 MVID 当身份授权或安全证明。
+
+七项目非生成语义0/0；101项固定输入离线构建Lifecycle/Broker/OwnedToolLaunch0/0，三库一致。
+普通独立进程通过13项快照完整性/会话身份/真实规则往返/已有缓存冲突/时钟及离线TLS构造克隆
+检查，以及75项有界反馈检查。`work/public-timezone-snapshot-b93f7f4/build-6752c0d/` 构建结果
+SHA256 `98F5B3082E29E4B5191DC4F05EA9C071F01AE2368F7924C14D6F4FFACF590C6F`，普通结果
+SHA256 `E4F6B532D3B0B567752793930679B152D5B29C6C4AC6E380CCF648BB44050C2D`。
+SOURCE / BUILD / INTEGRATED + VERIFIED(普通兼容组件)，没有LPAC、网络、UAC或安装。
+未完成所有工具集成、自评/画像或完整网络资格。新报告使用PublicTimeZoneProjection且旧租约字段
+为空，旧两键帮助程序不适用；新工件仍须新固定合同/审查及原 owner 资格门，不能重跑旧claim。
+原已安装8389及其失败/恢复结果不被本次源码或普通测试追认修复。
+
 ## 2026-11-03 指定公共时区依赖构建与安装，实际首次读取仍拒绝
 
 d55be4c 的生产/测试 BUILD 0/0，反馈74通过；时区 fixture 因漏改 Prepare 第五参数而
