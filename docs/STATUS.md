@@ -5,6 +5,28 @@
 历史页的“当前/待执行/暂停/DELIVERABLE”按段落日期及限定范围解释，不是今天的状态或操作许可。
 不在本页复制当前安装和授权摘要。
 
+## 2026-11-03 本人重新授权一次 UAC，原安装成功，固定分类定位至时区注册表
+
+用户明确“你可以重新弹一次，刚刚我没看到”。原 1223 失败及其 claim 原样保留；新控制器
+仅把记录目录改为 `uac-retry-01`，原包、20 输入、帮助程序、目标和一次网关范围不变。
+控制器离线构建 0/0、普通输入持有预检通过，本人 UAC 后原 Bootstrap 返回 0；安装回读
+da7d7fb19ef4491aad91eaeee2f14471 / 3BF2F145C1C4C763D8F071C70A537CFB04952C1AC66D4DCA28B366928BB65789 /
+INACTIVE。固定 owner 返回 3，实际根恢复执行，HTTPS_TLS_POLICY / 125 /
+TIMEZONE_REGISTRY / -2146233078，CONNECT 尚未到达，HTTPS 未成功。
+
+会话 8a32e8f4d7d34201b89e3739731cb0dd，原 Job 1ceb3aa3c16348c0a1a0f9710d231088；
+原 owner 准入关闭、停止前隔离，Job 前后零成员/空 PID/限额8192、停止失败空。
+两键租约已恢复，独立权限元数据摘要均匹配原值。公开证据
+`work/gateway-security-runtime-2b19757/uac-retry-01/observed-system-result.json` SHA256
+`E124BA5A7E6B0ACE0CB81602BF181521822DF594EDA1BB40C70143F50BCCF5E1`。
+本次许可已消耗，没有自动重试、额外恢复、额外私有错误/raw Job/Stop读取、AV更改或真实Claude。
+VERIFIED(本次固定错误类别、两键恢复及原停止链)；确切失败键/原生原因 UNKNOWN，网络仍未合格。
+
+仅从 [CoreLib RegistryKey v8.0.28](https://github.com/dotnet/runtime/blob/v8.0.28/src/libraries/System.Private.CoreLib/src/Internal/Win32/RegistryKey.cs)
+核对运行时把部分原生打开错误映射为 SecurityException 的行为，原 blob
+`780599488c5fd2e8efab697e38113364d5dc9054` 留在本地来源记录。类别不带方法、路径或原生码，
+故该来源分析不能确定实际哪次打开失败，不据此扩大父键或 capability 授权。
+
 ## 2026-11-03 固定 SECURITY 分类构建通过，UAC 1223，安装未执行
 
 `e48325d` 的有界诊断及 `2b19757` 精确 d550 前置选择按 100 项固定源码/资源、SDK8.0.422、
