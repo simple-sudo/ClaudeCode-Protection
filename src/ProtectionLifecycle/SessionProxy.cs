@@ -27,6 +27,7 @@ internal sealed class SessionProxy : IDisposable
     private readonly string packageSid, sessionId;
     private readonly byte[] authorization;
     private readonly Task accept;
+    private readonly TaskCompletionSource<(uint Pid,long CreatedFileTime)> fixedExchange=new(TaskCreationOptions.RunContinuationsAsynchronously);
     private sealed record GatewayFailure(Exception Cause,string Phase);
     private GatewayFailure? failure;
     internal GatewayFailureFeedback? FailureFeedback
@@ -64,6 +65,13 @@ internal sealed class SessionProxy : IDisposable
     {
         AssertHealthy();
         (Volatile.Read(ref admission)??throw WfpNative.Contract("GatewayAdmissionMissing")).AssertGatewayOpening();
+    }
+    internal void RequireFixedExchange(uint pid,long createdFileTime)
+    {
+        // The child can receive the final write before the gateway continuation
+        // records it. Wait briefly for that observation without another request.
+        var peer=fixedExchange.Task.WaitAsync(TimeSpan.FromMilliseconds(500)).GetAwaiter().GetResult();
+        if(peer!=(pid,createdFileTime))throw WfpNative.Contract("FixedGatewayExchangeRootIdentityDiffers");
     }
     private void AssertForwardingCurrent()
     {
@@ -142,11 +150,22 @@ internal sealed class SessionProxy : IDisposable
                 phase="UPSTREAM";
                 using var remote=await OpenTunnel(chosen,deadline.Token);
                 AssertHealthy();AtomicChild.AssertSessionPeer(job,process,packageSid,peer.Port);AssertForwardingCurrent();
+                Action<bool>? observeWrite=null;
+                if(Volatile.Read(ref admission)?.IsFixedGatewayQualification==true)
+                {
+                    var identity=AtomicChild.SessionPeerIdentity(process);
+                    var completedDirections=0;
+                    observeWrite=towardUpstream=>
+                    {
+                        var bit=towardUpstream?1:2;
+                        if((Interlocked.Or(ref completedDirections,bit)|bit)==3)fixedExchange.TrySetResult(identity);
+                    };
+                }
                 phase="FORWARDING";
                 await SessionTunnel.CopyAsync(tlsClient,remote,
                     ()=>client.Client.Shutdown(SocketShutdown.Send),()=>remote.Socket.Shutdown(SocketShutdown.Send),
                     count=>{if(Interlocked.Add(ref transferred,count)>64*1024*1024)throw new InvalidDataException("SessionTunnelByteBudgetExceeded");},
-                    8*1024*1024,AssertForwardingCurrent,deadline.Token);
+                    8*1024*1024,AssertForwardingCurrent,deadline.Token,observeWrite);
             }
             catch (Exception ex)
             { if (authenticated && !stop.IsCancellationRequested) Fail(ex,phase); }

@@ -553,6 +553,7 @@ internal sealed class ProtectedSession
         private int phase; // 0 issued, 2 resume consumed, 3 revoked; creation uses Preparation
         internal string SessionId=>owner.id;
         internal SessionProxy Gateway=>owner.gateway??throw WfpNative.Contract("SessionGatewayMissing");
+        internal bool IsFixedGatewayQualification=>owner.gatewayQualification;
         internal Admission(ProtectedSession owner)
         {this.owner=owner;owner.AssertCurrent();bindingSHA256=ComputeBinding();forwarding=new(()=>owner.clock.ElapsedMilliseconds);}
         internal void AssertGatewayOpening()
@@ -630,7 +631,7 @@ internal sealed class ProtectedSession
             gatewayChildFeedback=GatewayChildReport.Parse(feedbackText.WaitAsync(TimeSpan.FromSeconds(1)).GetAwaiter().GetResult(),id,child.Pid,childExitCode.Value);
         }
         RuntimeStop? stopObservation=null;
-        var errors=new List<Exception>();bool resumed=false,completed=false;
+        var errors=new List<Exception>();bool resumed=false,completed=false;var fixedExchangeObserved=false;
         try
         {
             AssertPreparation();
@@ -684,6 +685,12 @@ internal sealed class ProtectedSession
             childExitCode=exited.GetAwaiter().GetResult();
             ReadFixedFeedback();
             if(childExitCode!=42)throw WfpNative.Contract("SessionSyntheticWorkloadFailed");
+            if(gatewayQualification)
+            {
+                if(gatewayChildFeedback is not {Phase:"COMPLETE",HttpStatus:>=200 and <400})throw WfpNative.Contract("FixedGatewayTerminalFeedbackMissing");
+                gateway.RequireFixedExchange(child.Pid,child.ExpectedCreatedFileTime);
+                runtime.AssertHealthy();fixedExchangeObserved=true;
+            }
             completed=true;
         }
         catch(Exception ex){errors.Add(ex);}
@@ -723,7 +730,7 @@ internal sealed class ProtectedSession
         }
         var success=completed && zero?.ObservedZero==true && errors.Count==0;
         var report=Report(success?(gatewayQualification?"FIXED_GATEWAY_QUALIFICATION_CLOSED":"FIXED_SYNTHETIC_SESSION_CLOSED"):"PROTECTED_SESSION_NOT_CONFIRMED",resumed,zero,
-            errors.SelectMany(WfpNative.Describe).ToArray(),stopObservation,profile?.ProcessCreationAttempted==true,child is not null,childExitCode,child?.ResumeAttempted==true);
+            errors.SelectMany(WfpNative.Describe).ToArray(),stopObservation,profile?.ProcessCreationAttempted==true,child is not null,childExitCode,child?.ResumeAttempted==true,fixedExchangeObserved);
         state.WriteNew("protected-session-result-"+id+".json",Encoding.UTF8.GetBytes(report));
         return(success?0:3,report);
     }
@@ -755,7 +762,7 @@ internal sealed class ProtectedSession
             if(AtomicJobCompletion.ReadClosed(state,intent) is null)throw WfpNative.Contract("SessionPriorAdmissionNotClosed");
     }
     private string Report(string status,bool resumed,JobSnapshot? final,WfpErrorEvidence[] failures,RuntimeStop? stopObservation=null,
-        bool creationAttempted=false,bool created=false,uint? childExitCode=null,bool resumeAttempted=false)=>JsonSerializer.Serialize(new {
+        bool creationAttempted=false,bool created=false,uint? childExitCode=null,bool resumeAttempted=false,bool fixedExchangeObserved=false)=>JsonSerializer.Serialize(new {
         SchemaVersion=1,Scope=gatewayQualification?"INSTALLED_FIXED_GATEWAY_QUALIFICATION":"INSTALLED_BROKER_PROTECTED_SESSION",state.InstallationId,version.Package.Release,
         version.Package.ManifestHash,SessionId=id,NetworkPolicySHA256=SessionProxy.PolicySHA256,
         EnvironmentIntentSHA256=expectationsSHA256,EnvironmentIntentStatus=expectationsReason,Resources=ResourceScope,Status=status,
@@ -771,6 +778,7 @@ internal sealed class ProtectedSession
         ProcessResumed=resumed,ChildExitCode=childExitCode,FinalJob=final,Failures=failures,StopObservation=stopObservation,LaunchAuthorized=false,ClaudeLaunched=false,
         FixedGatewayQualification=gatewayQualification,FormalAdmissionIssued=false,
         GatewayChildFeedback=gatewayChildFeedback,GatewayFailure=gateway?.FailureFeedback,GatewayChildFeedbackUsedForAdmission=false,
+        FixedGatewayRootBidirectionalWriteObserved=fixedExchangeObserved,
         PublicTimeZoneReadResource=(object?)null,
         PublicTimeZoneProjection=preparation?.PublicTimeZone is not PublicTimeZoneSnapshot zone?null:new {
             Source="ORIGINAL_OWNER_PUBLIC_CALENDAR",SnapshotSHA256=zone.SHA256,CoreLibModule=PublicTimeZoneSnapshot.CoreLibModule,

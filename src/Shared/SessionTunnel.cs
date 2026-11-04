@@ -60,11 +60,12 @@ internal static class SessionTunnel
         // The caller owns the endpoint; this view cannot close it prematurely.
     }
     internal static async Task CopyAsync(Stream client,Stream upstream,Action clientFinishSending,Action upstreamFinishSending,
-        Action<int> accountBytes,long directionLimit,Action assertAuthorized,CancellationToken token)
+        Action<int> accountBytes,long directionLimit,Action assertAuthorized,CancellationToken token,
+        Action<bool>? observeCompletedWrite=null)
     {
         if(directionLimit is <1 or >8*1024*1024)throw new ArgumentOutOfRangeException(nameof(directionLimit));
         using var canceled=CancellationTokenSource.CreateLinkedTokenSource(token);
-        async Task Pump(Stream input,Stream output,Action finishSending)
+        async Task Pump(Stream input,Stream output,Action finishSending,bool towardUpstream)
         {
             var buffer=new byte[16384];long total=0;
             while(true)
@@ -83,10 +84,11 @@ internal static class SessionTunnel
                 accountBytes(count); // Reserve the session budget BEFORE forwarding.
                 assertAuthorized(); // A blocked read must not outlive permission.
                 await output.WriteAsync(buffer.AsMemory(0,count),canceled.Token);
+                observeCompletedWrite?.Invoke(towardUpstream);
             }
         }
-        var upload=Pump(client,upstream,upstreamFinishSending);
-        var download=Pump(upstream,client,clientFinishSending);
+        var upload=Pump(client,upstream,upstreamFinishSending,true);
+        var download=Pump(upstream,client,clientFinishSending,false);
         var all=Task.WhenAll(upload,download);
         try
         {

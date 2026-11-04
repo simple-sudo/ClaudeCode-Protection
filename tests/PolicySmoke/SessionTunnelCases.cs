@@ -13,15 +13,17 @@ internal static class SessionTunnelCases
         {
             using var first=new Endpoint(reverse?response:request,!reverse);
             using var second=new Endpoint(reverse?request:response,reverse);
-            using var deadline=new CancellationTokenSource(TimeSpan.FromSeconds(2));long accounted=0;
+            using var deadline=new CancellationTokenSource(TimeSpan.FromSeconds(2));long accounted=0;var writtenDirections=0;
             await SessionTunnel.CopyAsync(first,second,
                 ()=>{first.FinishSending();if(reverse)first.OpenRead();},
                 ()=>{second.FinishSending();if(!reverse)second.OpenRead();},
-                count=>Interlocked.Add(ref accounted,count),65536,()=>{},deadline.Token);
+                count=>Interlocked.Add(ref accounted,count),65536,()=>{},deadline.Token,
+                towardUpstream=>Interlocked.Or(ref writtenDirections,towardUpstream?1:2));
             Check(first.Written.SequenceEqual(reverse?request:response) && second.Written.SequenceEqual(reverse?response:request),
                 "normal EOF must drain the delayed opposite direction completely");
             Check(first.Finishes==1 && second.Finishes==1 && accounted==request.Length+response.Length,"half-close and byte accounting");
             Check(first.ActiveReads==0 && second.ActiveReads==0,"normal completion drains both readers");
+            Check(writtenDirections==3,"completed writes observed in both directions after the delayed tail");
         }
         // A fault AFTER the first normal EOF must not be swallowed as cleanup.
         using(var first=new Endpoint(request,true))
@@ -38,12 +40,14 @@ internal static class SessionTunnelCases
             using var first=new Endpoint(request,true);
             using var second=new Endpoint(Array.Empty<byte>(),false){FailWrites=!quota};
             using var deadline=new CancellationTokenSource(TimeSpan.FromSeconds(2));
-            if(quota)
-                await Reject<InvalidDataException>(()=>SessionTunnel.CopyAsync(first,second,first.FinishSending,second.FinishSending,_=>{},1,()=>{},deadline.Token));
-            else
-                await Reject<IOException>(()=>SessionTunnel.CopyAsync(first,second,first.FinishSending,second.FinishSending,_=>{},65536,()=>{},deadline.Token));
+            var completedWrites=0;
+            Task Copy(long limit)=>SessionTunnel.CopyAsync(first,second,first.FinishSending,second.FinishSending,
+                _=>{},limit,()=>{},deadline.Token,_=>Interlocked.Increment(ref completedWrites));
+            if(quota)await Reject<InvalidDataException>(()=>Copy(1));
+            else await Reject<IOException>(()=>Copy(65536));
             Check(second.Canceled && first.ActiveReads==0 && second.ActiveReads==0,"failure cancels and drains companion reader");
             Check(second.Written.Length==0,"rejected bytes never forwarded");
+            Check(completedWrites==0,"quota rejection and failed writes produce no completion observation");
         }
         using(var first=new Endpoint(request,true))
         using(var second=new Endpoint(Array.Empty<byte>(),false))

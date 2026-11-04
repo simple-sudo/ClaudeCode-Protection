@@ -199,6 +199,12 @@ internal sealed class AtomicChild : IDisposable
         if(!token.IsAppContainer || !token.LpacAccessCheckObserved || token.PackageSid!=sid || token.CapabilityCount!=0 || token.IntegritySid!="S-1-16-4096")
             throw WfpNative.Contract("SessionGatewayPeerTokenMismatch");
     }
+    internal static (uint Pid,long CreatedFileTime) SessionPeerIdentity(SafeProcessHandle process)
+    {
+        var pid=GetProcessId(process);
+        if(pid==0 || !GetProcessTimes(process,out var created,out _,out _,out _))throw Error("SessionGatewayPeerIdentity");
+        return(pid,created);
+    }
     internal static void InspectMembers(OwnedKernelJob job,JobSnapshot snapshot,Action<OwnedMemberInspection[]> whileHeld)
     {
         if(snapshot.JobId!=job.JobId || snapshot.ProcessIds.Length>64)throw WfpNative.Contract("BoundedExactJobInspectionRequired");
