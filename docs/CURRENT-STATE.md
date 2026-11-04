@@ -1,11 +1,11 @@
 # 当前状态与授权摘要
 
 更新：2026-11-03（America/New_York）。本页是**唯一的最新状态摘要**；历史事实仍由原始证据
-支持。最新已保存的原安装回读为 `1c095801` / INACTIVE；按持续授权及本人 UAC 更新成功。
+支持。最新已保存的原安装回读为 `83892d76` / INACTIVE；按持续授权及本人 UAC 更新成功。
 本次固定网关的两键时区授权及原 owner 恢复已实测，独立权限摘要均与原值一致。
-子进程实际恢复执行，在 `HTTPS_TLS_POLICY` 返回 TZ_DEFINITION / 125，尚未调用 CONNECT。
-新类别只确认抛错时的直接时区定义读取分支；实参、原生原因、此前查找历史及与 owner 选择
-是否一致仍 UNKNOWN，不能推断目录回退从未发生，也没有扩大父键权限的依据。
+子进程实际恢复执行，在显式 `TIMEZONE_DEFINITION` 返回 TZ_DEFINITION / 125。
+原 owner 选定的定义本身读取失败，后续本地 ID 核对和 HTTPS 均未开始；不能仅归因于本地
+自动选择不同。原生错误码、实际原生对象解析及有效访问原因仍 UNKNOWN，没有扩大权限的依据。
 原 owner 关闭准入、停止前隔离，最终 Job 零成员、停止失败为空；HTTPS 尚未成功。
 
 卡巴斯基本轮新告警：用户报告 Codex 被终止，截图显示系统监控对 `codex.exe` 报
@@ -16,6 +16,18 @@
 
 ## 开发基线
 
+- 公共时区绑定在 `d55be4c` 完成离线 BUILD 0/0，但普通时区 fixture 仍以旧四参数调用
+  Prepare，返回 ParameterCountMismatch / 3；当时未暂存或提升。失败独立保留，记录
+  `work/timezone-binding-d55be4c/ordinary-fixture-failure.json` SHA256
+  `94ADFE83F534307B37CC3A6EC92DF0955D9DCFC4DBE5BC9E915DBF7B50E95A5D`。
+  `5e0b677` 修正 fixture 第五参数，生产逻辑未因测试改弱。独立子记录
+  `work/timezone-binding-d55be4c/corrected-fixture-5e0b677/` 固定 100 输入，Lifecycle、Broker、
+  OwnedToolLaunch 构建 0/0、三库一致；74 反馈、43 时区合同及前置一正六拒绝通过。
+  构建记录摘要 `C4019E72174C7D978E7E4728DF729ACE6B1905EF08A2F735FB20A98B69F25875`；
+  普通记录摘要 `9FD7072D9AE89B7A3D0AAE08A62FF00B4263CDB194F4C06FAAE8F6B95337EC82`。
+  Bootstrap 构建/内嵌清单/同库、控制器构建/20 输入持有预检通过。安装候选为 83892d76 /
+  manifest `2FD84A6DF06A8ADA40E0A67032D111E73FEE7A7EFB3AC7537E54ECDA75B45608`，
+  库 `A25F0CF1534D7F6FC13FD0A3DDA92ABD041C42E4CF2D4B7AA8168E0FDC990550`；实测见下。
 - `fc73026` 将时区注册表错误细分为六种固定运行时操作，保留旧格式及一般类别回退。
   Lifecycle、Broker、OwnedToolLaunch 离线构建 0/0，100 项固定输入、三份库一致；72 项
   普通反馈检查及精确 da7 前置选择的一正六拒绝通过。构建记录
@@ -34,8 +46,9 @@
   六产品及 OwnedToolLaunch 非生成语义 0/0，114 项输入前后摘要一致。证据
   `work/timezone-operation-fc73026/definition-preparation-source/semantic-result-02.json` SHA256
   `C1758F4472F3CE2E041C866ABAAB7311022C6609FB095BDCD183AD47E13F3E14`。
-  此后续部分仅 SOURCE / INTEGRATED，新用例运行、BUILD、安装与受限实测 NOT_RUN；
-  `ApprovedPackage.json` 仍固定前项已安装 1c 构建，不包含后续依赖准备源码。
+  上述记录仅对应当时 SOURCE；后续 5e 已 BUILD/普通检查/安装。受限实测在指定定义读取
+  即失败，本地 ID 核对与 HTTPS NOT_RUN，不把接入或安装记为依赖准备成功。
+  `ApprovedPackage.json` 现固定最新已安装 8389 工件。
 - 工作区：`F:\ClaudeCode-Protection`，非旧C盘路径；分支
   `codex/integrate-privacy-admission-20261027`。
 - 本次接续以 `fa8f2ea` 为文档基线。原时区租约在 `8df1ad9` 收紧逐键写前核对、恢复回读
@@ -89,6 +102,21 @@
   固定网关结果见该版观察；该记录的 da7 工件不包含后续细分操作或依赖准备源码。
 
 ## 最近一次有证据的安装观察
+
+- 2026-11-04 04:21Z（当地 11 月 3 日），83892d76 按持续授权及本人一次 UAC，原 Bootstrap
+  返回 0 并确认 INACTIVE。原固定网关 owner 返回 3，根创建/恢复执行；明确读取 owner
+  选定定义时 TIMEZONE_DEFINITION / 125 / TZ_DEFINITION / -2146233078，随后本地绑定、
+  HTTPS 和 CONNECT 均未开始。两键恢复，独立描述符摘要匹配原值；准入关闭、停止前隔离，
+  原 Job 前后零/空 PID/限额8192、停止失败空，总失败仅 SessionSyntheticWorkloadFailed。
+  证据 `work/timezone-binding-d55be4c/corrected-fixture-5e0b677/observed-system-result.json`
+  SHA256 `7E4AF4B24B07A6F89CE7E8FD90AA1AEBC51DCB2865C98FF8B5EBD9C69C0FEC4E`。
+  VERIFIED(本次显式定义读取失败及原停止/恢复)，不是 HTTPS 或完整网络通过。
+  后续仅只读核对原两键权限元数据，均 12 条允许 ACE、无读取拒绝 ACE；强制标签和实际
+  token 有效访问仍 NOT_OBSERVED，不能从 DACL 推导访问应当成功。记录
+  `public-descriptor-review.json` SHA256 `CEA1E323B667F89759A7253177B667428EEBF79EB9799D3153072A0CDC32D790`。
+  后续只读检查没有更改权限；整次没有新增权限对象、capability、额外恢复、自动重试、
+  私有错误/raw Job/Stop补读、AV改动或真实 Claude。完整厂商告警覆盖 UNKNOWN。
+  本次许可已消耗，下一阻断是实际受限读的原生原因。
 
 - 2026-11-04 04:02Z（当地 11 月 3 日），新固定操作分类候选 1c095801 按持续授权和本人
   一次 UAC，原 Bootstrap 返回 0 并确认 INACTIVE。固定网关返回 3，根创建/恢复执行，
@@ -261,7 +289,7 @@ ecbcd4e0两载荷变化为续编GUI及精确8a22前置pin；本次9dd26020两载
 | 开发失败反馈 | 原compiler→root→owner→IPC→daily→GUI链接入；普通Compile/Run/Tests自有失败通过；00ac固定LPAC编译失败返回CS0103/source0/物理9行52列，原46拒绝/封存/关闭回执满足，结果0字节 | 实际运行/测试失败反馈、其他工具及崩溃恢复未实测；公开关闭观察不证明profile/私有目录清理 |
 | V2项目数据/结果 | 26新合同/40旧caller/原122合成门禁和67普通GUI数据通过；77a1真实DataReport编译/读取JSON/生成报告/3测试/十一文件恢复及双actor46拒绝通过 | 仅该固定项目/所列对象与权限；导出上限不是磁盘配额，不推广至其他工具或完整产品 |
 | 控制文件执行门 | 原8a22真实LPAC根/编译器各33项拒绝5保留；7535同32项各拒绝5，另slot7各为缺失3（不计拒绝），含20次控制文件最小权限打开；原owner封存后正常DataReport修改/编译/3测试/十一文件恢复通过 | 仅所列三对象/十权限及该固定项目；不证明实际破坏、保护源码/IPC/全部权限或其他工具 |
-| 网络/身份/工具 | 1c两键时区授权/恢复及固定TZ_DEFINITION分类实测通过；实际TLS策略构造仍失败，原owner隔离/Job零；指定定义与本地视图的显式绑定仅接入后续源码；有限版本矩阵、受限进程和原生GPU历史实测分别保留 | 确切时区注册表故障对象/原因、后续依赖准备实测及HTTPS成功、当前版本的完整强制网络、十四项可信准入、PowerShell及代表性工具/GPU兼容、长时稳定性 |
+| 网络/身份/工具 | 8389显式 owner 指定定义读取在 TIMEZONE_DEFINITION 失败，尚未核对本地 ID 或进入 HTTPS；两键恢复/原owner隔离/Job零；有限版本矩阵、受限进程和原生GPU历史实测分别保留 | 实际受限读的原生对象/错误/访问原因、依赖准备成功及HTTPS、当前版本的完整强制网络、十四项可信准入、PowerShell及代表性工具/GPU兼容、长时稳定性 |
 | 生命周期 | 固定安装及部分已关闭/从未启动资源恢复保留；e249c895原pipe调用者监督18组件检查、实际固定LPAC调用者被结束后原owner关闭准入/隔离/Job零/0停止失败通过 | profile/私有目录清理未由本次观察证明；owner/控制器异常、崩溃重启、更新/回滚/卸载与故障恢复完整验收仍缺；历史蓝屏根因UNKNOWN |
 | 自我保护 | d51共用管理身份门拒绝非主令牌/容器/未提升/受限SID/非管理员，19普通检查与可信UAC原安装路径通过；实际LPAC管理调用未执行。原选择排除/日常身份拒绝保留；原执行门新增九项owner最小权限打开检查，两个受保护actor的18次owner打开均拒绝5，可信owner自我维护打开正控制通过；SOURCE/BUILD/INTEGRATED及该项目限定VERIFIED | 未实际破坏owner；源码读/文件写/服务/IPC/其他工具/异常恢复完整矩阵及日常入口真实受保护身份验证仍缺。P1/P2未验收；命名/离线部署未实施 |
 

@@ -5,6 +5,34 @@
 历史页的“当前/待执行/暂停/DELIVERABLE”按段落日期及限定范围解释，不是今天的状态或操作许可。
 不在本页复制当前安装和授权摘要。
 
+## 2026-11-03 指定公共时区依赖构建与安装，实际首次读取仍拒绝
+
+d55be4c 的生产/测试 BUILD 0/0，反馈74通过；时区 fixture 因漏改 Prepare 第五参数而
+ParameterCountMismatch / 3，后续阶段未运行。原失败、原构建和日志不改。记录
+`work/timezone-binding-d55be4c/ordinary-fixture-failure.json` SHA256
+`94ADFE83F534307B37CC3A6EC92DF0955D9DCFC4DBE5BC9E915DBF7B50E95A5D`。
+5e0b677 只补 fixture 参数，新子记录独立固定100输入，三目标构建0/0、同库一致；
+反馈74、时区43及精确1c前置一正六拒绝通过。新构建摘要
+`C4019E72174C7D978E7E4728DF729ACE6B1905EF08A2F735FB20A98B69F25875`，普通记录摘要
+`9FD7072D9AE89B7A3D0AAE08A62FF00B4263CDB194F4C06FAAE8F6B95337EC82`。
+
+Bootstrap与控制器0/0，内嵌清单/同库及20输入持有预检通过。本人UAC后，原Bootstrap于
+04:20Z返回0，83892d76f72640ab99eb94f5fac9d228 /
+2FD84A6DF06A8ADA40E0A67032D111E73FEE7A7EFB3AC7537E54ECDA75B45608 安装 INACTIVE。
+04:21Z固定网关 owner3，根实际恢复执行，在 TIMEZONE_DEFINITION / 125 /
+TZ_DEFINITION / -2146233078 失败；本地ID绑定、HTTPS与CONNECT均未开始。这证明明确
+指定定义的读取本身失败，不是只靠选择其他时区即可解释；尚未取得原生错误或原生对象身份。
+
+会话 dad60a9de3574bccbcd666307b658475，原Job03530519b99540e8a223453fd1be8232；
+原owner准入关闭/停止前隔离，Job前后零/空PID/限额8192、停止失败空。两键恢复，独立
+权限摘要匹配原值。证据 `work/timezone-binding-d55be4c/corrected-fixture-5e0b677/observed-system-result.json`
+SHA256 `7E4AF4B24B07A6F89CE7E8FD90AA1AEBC51DCB2865C98FF8B5EBD9C69C0FEC4E`。
+随后仅只读复核同两键的离散权限元数据，每键12条允许ACE、无读取拒绝ACE；强制标签及
+实际token有效访问未观察，不把这些元数据当有效访问证明。记录摘要
+`CEA1E323B667F89759A7253177B667428EEBF79EB9799D3153072A0CDC32D790`。
+实际读取失败及原停止/恢复限定VERIFIED；完整网络未合格。本次许可消耗，无额外恢复、
+自动重试、私有错误/raw Job/Stop补读、权限/capability扩大、AV改动或真实Claude。
+
 ## 2026-11-03 时区操作分类实际定位直接定义读取，后续接入明确依赖绑定
 
 fc73026 的 Lifecycle、Broker、OwnedToolLaunch 离线构建 0/0，100 输入固定、同库匹配。
