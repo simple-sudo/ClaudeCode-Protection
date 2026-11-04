@@ -24,6 +24,14 @@ internal static class GatewayQualificationBoundaryCases
         Check((bool)session.GetProperty("SystemTestingBlocked",BindingFlags.Static|BindingFlags.NonPublic)!.GetValue(null)!);
         Check(broker.GetMethod("QualifySessionGateway")!.GetParameters().Length==0);
         Check(broker.GetMethod("RunGatewayQualificationCanary")!.GetParameters().Length==0);
+        var matchRoot=session.GetNestedType("Admission",BindingFlags.NonPublic)!
+            .GetMethod("MatchesFixedGatewayRoot",BindingFlags.NonPublic|BindingFlags.Static)!;
+        bool Matches((uint,long) peer,uint pid,long time)=>(bool)matchRoot.Invoke(null,new object[]{peer,pid,time})!;
+        Check(Matches((111,200),111,200));
+        Check(!Matches((222,200),111,200));
+        Check(!Matches((111,201),111,200));
+        Check(!Matches((0,200),0,200));
+        Check(!Matches((111,0),111,0));
         // Ordinary callers must be rejected by the common administrator gate,
         // before opening protected state or creating native runtime objects.
         var denied=false;try{Call("QualifySessionGateway");}catch(UnauthorizedAccessException){denied=true;}Check(denied);

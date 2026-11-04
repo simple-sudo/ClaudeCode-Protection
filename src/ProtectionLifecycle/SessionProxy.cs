@@ -134,6 +134,14 @@ internal sealed class SessionProxy : IDisposable
                 using var process = AtomicChild.HoldSessionPeer(job, packageSid, peer.Port);
                 AssertHealthy();AssertForwardingCurrent();
                 AtomicChild.AssertSessionPeer(job, process, packageSid, peer.Port);
+                var permit=Volatile.Read(ref admission)??throw WfpNative.Contract("GatewayAdmissionMissing");
+                (uint Pid,long CreatedFileTime)? fixedPeer=null;
+                if(permit.IsFixedGatewayQualification)
+                {
+                    var identity=AtomicChild.SessionPeerIdentity(process);
+                    permit.AssertFixedGatewayRoot(identity);
+                    fixedPeer=identity;
+                }
                 AssertForwardingCurrent();
                 await stream.WriteAsync(Encoding.ASCII.GetBytes("HTTP/1.1 200 Connection Established\r\n\r\n"), deadline.Token);
                 phase="CLIENT_TLS";
@@ -151,14 +159,13 @@ internal sealed class SessionProxy : IDisposable
                 using var remote=await OpenTunnel(chosen,deadline.Token);
                 AssertHealthy();AtomicChild.AssertSessionPeer(job,process,packageSid,peer.Port);AssertForwardingCurrent();
                 Action<bool>? observeWrite=null;
-                if(Volatile.Read(ref admission)?.IsFixedGatewayQualification==true)
+                if(fixedPeer is { } identityForReceipt)
                 {
-                    var identity=AtomicChild.SessionPeerIdentity(process);
                     var completedDirections=0;
                     observeWrite=towardUpstream=>
                     {
                         var bit=towardUpstream?1:2;
-                        if((Interlocked.Or(ref completedDirections,bit)|bit)==3)fixedExchange.TrySetResult(identity);
+                        if((Interlocked.Or(ref completedDirections,bit)|bit)==3)fixedExchange.TrySetResult(identityForReceipt);
                     };
                 }
                 phase="FORWARDING";

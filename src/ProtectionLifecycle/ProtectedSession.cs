@@ -554,6 +554,14 @@ internal sealed class ProtectedSession
         internal string SessionId=>owner.id;
         internal SessionProxy Gateway=>owner.gateway??throw WfpNative.Contract("SessionGatewayMissing");
         internal bool IsFixedGatewayQualification=>owner.gatewayQualification;
+        internal void AssertFixedGatewayRoot((uint Pid,long CreatedFileTime) peer)
+        {
+            var root=primary;
+            if(!IsFixedGatewayQualification || root is null || !MatchesFixedGatewayRoot(peer,root.Pid,root.ExpectedCreatedFileTime))
+                throw WfpNative.Contract("FixedGatewayPeerIsNotPreparedRoot");
+        }
+        internal static bool MatchesFixedGatewayRoot((uint Pid,long CreatedFileTime) peer,uint rootPid,long rootCreatedFileTime)
+            =>rootPid!=0 && rootCreatedFileTime>0 && peer==(rootPid,rootCreatedFileTime);
         internal Admission(ProtectedSession owner)
         {this.owner=owner;owner.AssertCurrent();bindingSHA256=ComputeBinding();forwarding=new(()=>owner.clock.ElapsedMilliseconds);}
         internal void AssertGatewayOpening()
@@ -673,7 +681,7 @@ internal sealed class ProtectedSession
             state.WriteNew("protected-session-intent-"+id+".json",JsonSerializer.SerializeToUtf8Bytes(new {
                 SchemaVersion=1,SessionId=id,state.InstallationId,version.Package.Release,version.Package.ManifestHash,
                 job.JobId,AppContainerSid=sid,admission.BindingSHA256,NetworkPolicySHA256=SessionProxy.PolicySHA256,
-                Resources=ResourceScope,Reusable=false,FormalAdmissionIssued=!gatewayQualification,
+                Resources=ResourceScope,Reusable=false,FixedWorkloadPermitIssued=true,FormalAdmissionIssued=false,
                 Scope=gatewayQualification?"FIXED_GATEWAY_QUALIFICATION_NO_FORMAL_LAUNCH":"FIXED_OWNED_SYNTHETIC_USING_PRODUCTION_SESSION_OWNER"
             }));
             foreach(var fence in fences)_=fence.OpenSessionGateway(gateway);
