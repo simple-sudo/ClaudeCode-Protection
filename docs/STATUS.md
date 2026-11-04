@@ -19,6 +19,12 @@ BUILD、真实 LPAC 编译及对象漂移场景 NOT_RUN。
 SHA256 `DD0CAE0B859A7762BFFE66BB10B0B42E292C1285CF5F9FC55254C1CF15272C04`。
 仅 BUILD 和 PE 元数据核对，未加载或运行项目程序集。
 
+后续普通权限通过同一构建的固定 `timezone-policy`（39 项，含精确意图前缀和三种拒绝）
+及 `gateway-feedback`（54 项，含有界错误、固定 CONNECT 格式和离线 TLS 策略）。
+证据 `work/owner-precode-build-0ceb6b2/ordinary-contract-result.json` SHA256
+`E545C938B3B1AB9DA1FB1FD80A327FD0F1EA32A63F482537D16B5C96C285C139`。
+仅 VERIFIED(普通合同)，未操作注册表、真实网络、Job、WFP 或安装；完整厂商告警覆盖 UNKNOWN。
+
 ## 2026-11-03 收缩宿主隐私探针计划字段
 
 原可信 owner 保留完整正控制和复核数据，受限计划以严格 schema 3 单独序列化。文件及父目录

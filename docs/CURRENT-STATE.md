@@ -45,7 +45,10 @@
   两次构建零错误零警告，三个库副本一致，166 项原生导入与前版一致。证据
   `work/owner-precode-build-0ceb6b2/build-result.json` SHA256
   `DD0CAE0B859A7762BFFE66BB10B0B42E292C1285CF5F9FC55254C1CF15272C04`。
-  未运行产物、回归、打包、安装或网关；GUI 和 daily 尚未构建。
+  同一构建字节的普通权限检查已通过：39 项时区描述符、角色和记录前缀检查，以及
+  54 项固定网关反馈和 TLS 策略检查。证据 `work/owner-precode-build-0ceb6b2/ordinary-contract-result.json`
+  SHA256 `E545C938B3B1AB9DA1FB1FD80A327FD0F1EA32A63F482537D16B5C96C285C139`。
+  未打包、安装或运行实际网关；GUI 和 daily 尚未构建。
 
 ## 最近一次有证据的安装观察
 
