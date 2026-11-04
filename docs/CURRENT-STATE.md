@@ -6,6 +6,10 @@
 查询使用的固定前缀未加入受保护状态白名单，已补齐。修正版实机仍 NOT_RUN。最近一次实际
 网关运行仍是 a9dec532 的 TLS 策略构造失败。
 
+卡巴斯基本轮新告警：用户报告 Codex 被终止，截图显示系统监控对 `codex.exe` 报
+`PDM:Trojan.Win32.Generic`。按用户确认登记为误报观察；截图中的路径截断，触发动作和厂商结论
+仍 UNKNOWN。按新告警边界停止本轮相关运行与打包验证，保留已生成产物与既有回执。
+
 ## 开发基线
 
 - 工作区：`F:\ClaudeCode-Protection`，非旧C盘路径；分支
@@ -29,6 +33,11 @@
   与该阶段及类型吻合。修复仅接入共享的精确意图前缀，保留后续解析、闭合、恢复和准入判断。
   公开观察 `work/inactive-update-feedback-649f5e2/observed-system-result.json` SHA256
   `4334FCE65E7D8D65ACC05641E668FB259F4FD4AA4C0DBCB4BB59458B97DC9FE1`。
+  `0c565e7` 的 Lifecycle 和 Broker 离线构建通过，零错误零警告。构建记录
+  `work/timezone-inventory-0c565e7/build-result.json` SHA256
+  `8F956B16AD9836C58B3552733BD167F6C6B8DB8243B33EECE34636AEE32D2903`。
+  新告警后只读核对未发现回归结果、候选清单、安装暂存目录或 UAC claim，相关回归结果未确认，
+  新候选打包、UAC、安装和网关均 NOT_RUN。
 
 - 2026-11-04 01:03Z（当地 11 月 3 日），`a50691f1e6eb4f1fb7522a8fa79a761f` 的单次
   INACTIVE 更新返回 `InvalidOperationException/-2146233079`，Bootstrap 与控制器均为 125。

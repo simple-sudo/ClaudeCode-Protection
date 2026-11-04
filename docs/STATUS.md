@@ -31,6 +31,11 @@ SHA256 `E186A464CD2E4D221165687BA5877DF2741E9B92D565F3D492E3FBCEB73AFEEF`。
 失败证据 `work/inactive-update-feedback-649f5e2/observed-system-result.json` SHA256
 `4334FCE65E7D8D65ACC05641E668FB259F4FD4AA4C0DBCB4BB59458B97DC9FE1`。
 
+`0c565e7` 的 Lifecycle/Broker 离线构建为 0 错误 0 警告。随后用户报告卡巴斯基终止 Codex，
+截图显示 `codex.exe` 的 `PDM:Trojan.Win32.Generic`。按用户确认登记误报观察，确切触发动作
+及厂商结论 UNKNOWN。停止相关验证；只读复核确认构建记录仍在，未发现前缀回归结果或新候选
+清单、暂存、UAC claim。未登记回归通过、安装或网关实测，未改 AV、添加排除项或处置隔离对象。
+
 ## 2026-11-03 安全理念与隐私威胁模型文档整合
 
 依据本次用户消息，将功能可用、宿主保密、跨来源关联共同目标，以及硬件能力/个体身份区分、
