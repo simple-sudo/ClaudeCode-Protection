@@ -224,10 +224,13 @@ internal sealed class SessionManifestReadAccess : IDisposable
         finally{if(descriptor!=IntPtr.Zero)LocalFree(descriptor);}
     }
     internal const int MaxSecurityDescriptorBytes=4096;
-    internal static void WriteSecurity(SafeRegistryHandle handle,string value,bool protect=true)
+    internal static void WriteSecurity(SafeRegistryHandle handle,string value,bool protect=true,bool requestAutoInheritance=false)
     {
         ProtectedState.RequireAdministrator();
-        var descriptor=ParseSecurity(value);var bytes=new byte[descriptor.BinaryLength];descriptor.GetBinaryForm(bytes,0);
+        var descriptor=ParseSecurity(value);
+        if(requestAutoInheritance)
+            descriptor.SetFlags(descriptor.ControlFlags|ControlFlags.DiscretionaryAclAutoInheritRequired);
+        var bytes=new byte[descriptor.BinaryLength];descriptor.GetBinaryForm(bytes,0);
         var status=RegSetKeySecurity(handle,protect?0x80000004u:4u,bytes);if(status!=0)throw new Win32Exception(status);
     }
     [DllImport("advapi32.dll",EntryPoint="RegOpenKeyExW",CharSet=CharSet.Unicode)] private static extern int RegOpenKeyEx(IntPtr root,string path,uint options,int access,out SafeRegistryHandle key);

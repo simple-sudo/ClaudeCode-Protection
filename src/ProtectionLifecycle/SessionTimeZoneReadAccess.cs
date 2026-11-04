@@ -148,7 +148,26 @@ internal sealed class SessionTimeZoneReadAccess : IDisposable
     }
     private string Read(int i){AssertName(keys[i],PathFor(intent.TimeZoneId,intent.Targets[i].Role));return SessionManifestReadAccess.ReadSecurity(keys[i]);}
     private static void Write(SafeRegistryHandle key,string value)
-    {SessionManifestReadAccess.WriteSecurity(key,value,(new RawSecurityDescriptor(value).ControlFlags&ControlFlags.DiscretionaryAclProtected)!=0);}
+    {
+        var flags=new RawSecurityDescriptor(value).ControlFlags;
+        var protect=(flags&ControlFlags.DiscretionaryAclProtected)!=0;
+        SessionManifestReadAccess.WriteSecurity(key,value,protect,
+            requestAutoInheritance:!protect && (flags&ControlFlags.DiscretionaryAclAutoInherited)!=0);
+    }
+    internal static string RestoreDecision(string observed,string original,string granted,bool allowDroppedAutoInherited)
+    {
+        if(allowDroppedAutoInherited && observed!=original && observed!=granted)
+        {
+            var expected=new RawSecurityDescriptor(granted);
+            const ControlFlags inheritance=ControlFlags.DiscretionaryAclProtected|ControlFlags.DiscretionaryAclAutoInherited;
+            if((expected.ControlFlags&inheritance)==ControlFlags.DiscretionaryAclAutoInherited)
+            {
+                expected.SetFlags(expected.ControlFlags&~ControlFlags.DiscretionaryAclAutoInherited);
+                if(Canonical(expected)==observed)return "REMOVE_EXACT_OWN_READ_GRANT";
+            }
+        }
+        return SessionManifestReadAccess.RestoreDecision(observed,original,granted);
+    }
     internal void AssertHeld()
     {
         state.AssertHeld();
@@ -160,7 +179,7 @@ internal sealed class SessionTimeZoneReadAccess : IDisposable
         if(disposed || restored || snapshot.JobId!=intent.JobId || !snapshot.ExpectedLimits || !snapshot.ObservedZero)throw WfpNative.Contract("TimeZoneRestoreRequiresOriginalJobZero");
         Restore(state,intent,IntentSHA256,keys);restored=true;
     }
-    private static void Restore(ProtectedState state,TimeZoneReadIntent r,string hash,SafeRegistryHandle[] keys)
+    private static void Restore(ProtectedState state,TimeZoneReadIntent r,string hash,SafeRegistryHandle[] keys,bool allowDroppedAutoInherited=false)
     {
         ProtectedState.RequireAdministrator();state.AssertHeld();
         var job=OwnedJobIntent.ReadAll(state).SingleOrDefault(j=>j.JobId==r.JobId)??throw WfpNative.Contract("TimeZoneOriginalJobMissing");
@@ -172,11 +191,13 @@ internal sealed class SessionTimeZoneReadAccess : IDisposable
             return SessionManifestReadAccess.ReadSecurity(keys[i]);
         }
         for(var i=0;i<keys.Length;i++)
-            _=SessionManifestReadAccess.RestoreDecision(ReadTarget(i),r.Targets[i].OriginalSecurity,r.Targets[i].GrantedSecurity);
+            _=RestoreDecision(ReadTarget(i),r.Targets[i].OriginalSecurity,r.Targets[i].GrantedSecurity,
+                allowDroppedAutoInherited && r.Targets[i].Role=="ZONE_DEFINITION");
         for(var i=0;i<keys.Length;i++)
         {
             var t=r.Targets[i];
-            if(SessionManifestReadAccess.RestoreDecision(ReadTarget(i),t.OriginalSecurity,t.GrantedSecurity)=="REMOVE_EXACT_OWN_READ_GRANT")
+            if(RestoreDecision(ReadTarget(i),t.OriginalSecurity,t.GrantedSecurity,
+                allowDroppedAutoInherited && t.Role=="ZONE_DEFINITION")=="REMOVE_EXACT_OWN_READ_GRANT")
                 Write(keys[i],t.OriginalSecurity);
         }
         // Read back every key after the last write before sealing the receipt.
@@ -231,7 +252,18 @@ internal sealed class SessionTimeZoneReadAccess : IDisposable
         foreach(var item in pending)
         {
             var opened=new List<SafeRegistryHandle>();
-            try{foreach(var t in item.Record.Targets)opened.Add(Open(item.Record.TimeZoneId,t.Role,true));Restore(state,item.Record,item.Hash,opened.ToArray());}
+            try
+            {
+                foreach(var t in item.Record.Targets)opened.Add(Open(item.Record.TimeZoneId,t.Role,true));
+                // Only the original explicit recovery route can consume the
+                // documented normalization of this exact closed-job incident.
+                var knownNormalization=item.Record.Release=="d423b8c51a434e32a91909d6a11ba4db" &&
+                    item.Record.ManifestSHA256=="4E5ECAB1FC1D7455B7DF6EFE5678039E7C11EB92C71FC585F4A634CF277B0D4C" &&
+                    item.Record.SessionId=="452784baf43c4567b915a75427b7af86" &&
+                    item.Record.TimeZoneId=="Eastern Standard Time" && item.Record.Targets.Length==2 &&
+                    item.Record.Targets.All(t=>Digest(t.OriginalSecurity)=="5416B756AEB95301523B3694430FD7E985CA73EDE30A3194D4EE12CF459BEA29");
+                Restore(state,item.Record,item.Hash,opened.ToArray(),knownNormalization);
+            }
             finally{foreach(var key in opened)key.Dispose();}
         }
         AssertNoPending(state);

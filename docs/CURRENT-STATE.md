@@ -62,6 +62,12 @@
   与未改的子键一致；父键缺少 `DiscretionaryAclAutoInherited`。未授权自动恢复或重试。
   公开证据 `work/owner-precode-build-0ceb6b2/observed-system-result.json` SHA256
   `42333FE50F678973585DFB595767CE0E0D8CDCCBEBDCCE5EBF62C0488A3ECA74`。
+  普通 HKCU 自有父子键复现相同标记丢失；在原 `RegSetKeySecurity` 写回参数增加
+  `SE_DACL_AUTO_INHERIT_REQ` 后，合成父键精确恢复且子键不变。证据
+  `work/owner-precode-build-0ceb6b2/synthetic-inheritance-rehearsal.json` SHA256
+  `CA7DF870C73861CAE8E5DD60465C5DA8D725DF04E116CA55AE9878EB1CC15FBF`。
+  源码已接入该写入请求，并在原显式恢复路径仅接受上述精确会话父键的已证实单标记差异。
+  新代码未构建或部署；本机仍需能从已安装版本调用新逻辑的固定恢复入口。真实恢复 NOT_RUN。
 
 - 2026-11-04 01:13Z（当地 11 月 3 日），`ff113193` 公开回执为
   `LIFECYCLE_BEGIN / InvalidOperationException / -2146233079`，回读仍为 a9dec532 / INACTIVE。

@@ -43,6 +43,15 @@ internal static class TimeZoneReadCases
             var kept=after.DiscretionaryAcl.Cast<GenericAce>().Where(a=>a is not CommonAce c || c.SecurityIdentifier.Value!=sid).Select(a=>Convert.ToHexString(Bytes(a))).ToArray();
             Check(old.SequenceEqual(kept));Check((string)Decision(original,original,granted)! =="ALREADY_ORIGINAL");
             Check((string)Decision(granted,original,granted)! =="REMOVE_EXACT_OWN_READ_GRANT");
+            if((after.ControlFlags&ControlFlags.DiscretionaryAclAutoInherited)!=0)
+            {
+                after.SetFlags(after.ControlFlags&~ControlFlags.DiscretionaryAclAutoInherited);
+                var normalized=after.GetSddlForm(AccessControlSections.Owner|AccessControlSections.Access);
+                Check((string)Call("RestoreDecision",normalized,original,granted,true)! =="REMOVE_EXACT_OWN_READ_GRANT");
+                Refuse(()=>Call("RestoreDecision",normalized,original,granted,false));
+                after.DiscretionaryAcl.RemoveAce(0);
+                Refuse(()=>Call("RestoreDecision",after.GetSddlForm(AccessControlSections.Owner|AccessControlSections.Access),original,granted,true));
+            }
             Refuse(()=>Call("AddReadAce",granted,sid));
         }
         var valid=Canonical("O:SYD:P(A;;KA;;;SY)(A;;KR;;;BU)");

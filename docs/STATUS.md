@@ -15,6 +15,13 @@
 公开证据 `work/owner-precode-build-0ceb6b2/observed-system-result.json` SHA256
 `42333FE50F678973585DFB595767CE0E0D8CDCCBEBDCCE5EBF62C0488A3ECA74`。
 
+后续普通 HKCU 合成测试：首份夹具写入拒绝 5 且清理完成。第二份使用显式 WRITE_DAC 持有句柄，
+复现 `RegSetKeySecurity` 写入丢失自动继承标记，加入请求标记后原父键精确恢复、子键不变，
+两键清理通过。真实时区键未触碰。源码沿原恢复 owner 处理精确旧会话、两个原描述符摘要及
+父键唯一的标记差异；普通终止恢复仍要求精确授权态，最终恢复回执仍要求两键逐字相符。
+六产品和 OwnedToolLaunch 非生成语义 0/0，新代码 BUILD 与真实恢复 NOT_RUN。
+合成证据 SHA256 `CA7DF870C73861CAE8E5DD60465C5DA8D725DF04E116CA55AE9878EB1CC15FBF`。
+
 ## 2026-11-03 编译器实例与宿主目标的放行前复核
 
 原 owner 将两次持有 Job 成员检查中的编译器 PID 与创建时间配对。封存探针并撤回计划后，
