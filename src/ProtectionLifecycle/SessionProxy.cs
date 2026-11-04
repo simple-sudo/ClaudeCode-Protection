@@ -284,8 +284,10 @@ internal sealed class SessionProxy : IDisposable
         Socket? socket=null;
         try
         {
-            phase?.Invoke("HTTPS_CONNECT");socket=new Socket(AddressFamily.InterNetwork,SocketType.Stream,ProtocolType.Tcp);await socket.ConnectAsync(new IPEndPoint(IPAddress.Loopback,Port),cancel);
+            phase?.Invoke("HTTPS_SOCKET_CREATE");socket=new Socket(AddressFamily.InterNetwork,SocketType.Stream,ProtocolType.Tcp);
+            phase?.Invoke("HTTPS_CONNECT");await socket.ConnectAsync(new IPEndPoint(IPAddress.Loopback,Port),cancel);
             var stream=new NetworkStream(socket,ownsSocket:true);
+            phase?.Invoke("HTTPS_CONNECT_WRITE");
             try{await stream.WriteAsync(header,cancel);}finally{CryptographicOperations.ZeroMemory(header);}
             phase?.Invoke("HTTPS_CONNECT_REPLY");RequireFixedClientConnectReply(await ReadHeader(stream,cancel));return stream;
         }

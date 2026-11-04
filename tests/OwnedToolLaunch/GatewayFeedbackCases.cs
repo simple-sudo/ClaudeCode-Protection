@@ -49,7 +49,23 @@ internal static class GatewayFeedbackCases
         Check(Read(Encoding.UTF8.GetBytes(good.PadRight(4096)))==good.PadRight(4096));Accept(good.PadRight(4096),42);
         var oversized=false;try{Read(Encoding.UTF8.GetBytes(new string('x',4097)));}catch(InvalidDataException){oversized=true;}Check(oversized);
         var invalidUtf8=false;try{Read(new byte[]{255});}catch(DecoderFallbackException){invalidUtf8=true;}Check(invalidUtf8);
-        foreach(var phase in new[]{"TIMEZONE_DEFINITION","TIMEZONE_PUBLIC_CACHE","TIMEZONE_LOCAL_BINDING","HTTPS_SETTINGS","HTTPS_TLS_POLICY","HTTPS_CLIENT","HTTPS_SEND","HTTPS_CONNECT","HTTPS_CONNECT_REPLY"})Accept(Result(phase,125,error:new System.Security.SecurityException("private-fixture")),125);
+        foreach(var phase in new[]{"TIMEZONE_DEFINITION","TIMEZONE_PUBLIC_CACHE","TIMEZONE_LOCAL_BINDING","HTTPS_SETTINGS","HTTPS_TLS_POLICY","HTTPS_CLIENT","HTTPS_SEND","HTTPS_SOCKET_CREATE","HTTPS_CONNECT","HTTPS_CONNECT_WRITE","HTTPS_CONNECT_REPLY"})Accept(Result(phase,125,error:new System.Security.SecurityException("private-fixture")),125);
+        var startupCode=Result("HTTPS_SOCKET_CREATE",125,error:new SocketException(10107));
+        Accept(startupCode,125);
+        Check(JsonNode.Parse(startupCode)!["Errors"]![0]!["Kind"]!.GetValue<string>()=="SOCKET"); // Code alone is not startup evidence.
+        // Real pinned-runtime metadata, no invocation or Winsock startup. The
+        // exception and the actual Winsock implementation live in different DLLs.
+        var winsock=typeof(Socket).Assembly.GetType("Interop+Winsock",true)!;
+        var runtimeMethods=winsock.GetMethods(BindingFlags.NonPublic|BindingFlags.Public|BindingFlags.Static);
+        Check(typeof(SocketException).Assembly!=winsock.Assembly);
+        Check(Call("SocketStartupFrame",runtimeMethods.Single(m=>m.Name=="EnsureInitialized")) is true);
+        Check(Call("SocketStartupFrame",runtimeMethods.Single(m=>m.Name.StartsWith("<EnsureInitialized>g__Initialize|",StringComparison.Ordinal))) is true);
+        Check(Call("SocketStartupFrame",typeof(SocketException).GetConstructors().First()) is false);
+        Check(Call("SocketStartupFrame",new object?[]{null}) is false);
+        var startupFrame=JsonNode.Parse(startupCode)!;startupFrame["Errors"]![0]!["Kind"]="SOCKET_STARTUP";
+        Accept(startupFrame.ToJsonString(),125);
+        startupFrame["Errors"]![0]!["Kind"]="SOCKET_STARTUP_PRIVATE_PATH";Refuse(startupFrame.ToJsonString(),125);
+        startupFrame=JsonNode.Parse(startupCode)!;startupFrame["Phase"]="HTTPS_SOCKET_CREATE_PRIVATE_PATH";Refuse(startupFrame.ToJsonString(),125);
         var registry=Result("HTTPS_SETTINGS",125,error:new TypeInitializationException("Microsoft.Win32.Registry",new System.Security.SecurityException("private-fixture")));
         Accept(registry,125);Check(JsonNode.Parse(registry)!["Errors"]![0]!["Kind"]!.GetValue<string>()=="REGISTRY_INITIALIZATION" && !registry.Contains("Microsoft.Win32",StringComparison.Ordinal));
         var unknown=Result("HTTPS_SETTINGS",125,error:new TypeInitializationException("private-type-token",new System.Security.SecurityException("private-fixture")));

@@ -1,7 +1,26 @@
 # 当前状态与授权摘要
 
 更新：2026-11-04（America/New_York）。本页是**唯一的最新状态摘要**；历史事实仍由原始证据
-支持。最新已保存的原安装回读为 `8aee9af0` / INACTIVE。2026-11-04 09:21Z 按具体工具审批请求
+支持。最新已保存的原安装回读为 `979ca94a` / INACTIVE。2026-11-04 09:38Z 按具体工具审批请求
+及本人 UAC，原 Bootstrap 更新退出0；15个公开安装资产独立长度和摘要匹配清单
+`3CE38FBC1D5ECB5FB8292B1107992C4E3BC4DE487AB7BF45AE4B37DCA64489D1`。
+原固定LPAC根通过公共时区初始化，随后在新增 `HTTPS_SOCKET_CREATE` 返回125 /
+HTTP -2147467259 / SOCKET10107。源码在构造成功后才设置HTTPS_CONNECT，因此本次工作进程
+尚未进入连接和CONNECT请求写入；原网关无公开故障，双向写入见证false。
+本次报告不能区分WSAStartup与原生套接字创建。安装后的源码复核发现启动帧分类器错误地
+绑定到SocketException所在的System.Net.Primitives，而实际实现位于System.Net.Sockets，
+故普通SOCKET类别不能排除启动失败。已修复源码并新增真实运行时方法元数据回归，尚未安装。
+该分类缺陷不影响本次故障阶段与退出码的观察，不改写原失败回执。
+原owner确认准入关闭、先隔离后停止、同Job零成员、停止错误为空；原根未发起连接。
+本次具体授权已消耗，无自动重跑、额外私有错误/raw Job/Stop读取、系统重置或真实Claude启动。
+观察 `work/socket-phase-868426a/observed-system-result.json` SHA256
+`CD0D44D23678965EF5F8588464B73EC512F1E69D41BF5DE1D3810E1215C82003`；分类器复核记录
+`diagnostic-classifier-review.json` SHA256
+`4DC12A8A07F23D34B6372BF9A448B27B1F5074872FE7994D08EB05D932579711`。
+预检记录摘要 `DF40C283388A52543EA88478CD0A374C20F6C736A4FF01F655D124BDF46C0E2C`。
+当前缺口是受保护身份的套接字创建/初始化，尚不能归因到AV、代理或某个注册表键；完整网络未验收。
+
+前次 `8aee9af0` / INACTIVE 于2026-11-04 09:21Z 按具体工具审批请求
 及本人 UAC，原 Bootstrap 更新退出0；15个安装公开资产独立摘要和长度匹配清单
 `BC53B2C0BA82C668A9D3C2CC4B234EA90FF8E1A51E2DD9BEE6EC6373D0FB5093`。
 本次原固定 LPAC 根通过 V2 公共时区初始化、本地绑定和 HTTPS 策略构造，随后在
@@ -44,6 +63,25 @@ CAPABILITY_DELIVERED(本次固定LPAC工作进程的公共日历兼容初始化)
 固定新源码、新工件和新审查，未重跑被中断动作。不修改 AV、不加排除项、不改名重包装。
 
 ## 开发基线
+
+- 基于 `868426a` 将原固定worker阶段拆为套接字创建、网关连接和CONNECT写入，原有
+  管道、会话/PID/实际退出码绑定、4096字符/四层错误限额及拒绝边界保持。仅新增固定
+  SOCKET_STARTUP诊断类别，不输出原始帧、路径或异常消息，不用于准入。
+  原运行时源码及本机System.Net.Sockets.dll方法元数据说明构造包含初始化和WSASocketW；
+  10107本身不能定位到其中之一。新增精确8aee更新前置，原维护现场门保持。
+  108输入四工程构建0/0，82反馈及原前置选择一正六反通过；GUI/日常叶输入与旧129输入
+  构建逐项一致后复用9资产。Bootstrap/控制器构建0/0、同库/内嵌清单/20输入预检通过，
+  成功谓词仅替换版本/清单常量，与旧一正八反的逻辑一致；979c安装和本次LPAC失败见页首。
+  分类器程序集错误修正后另作独立四工程构建0/0，87反馈检查含实际.NET8启动方法元数据、
+  SocketException不同程序集、非启动方法及空帧拒绝通过；仅普通元数据/合同验证，修正后未安装。
+  `work/socket-phase-868426a/` 下运行时来源记录摘要
+  `C4D7ABDB13F55ACC1028D7B0627C5209CDDFA2879B9C5FA8326BF02BA79E69C0`；
+  `build-candidate/build-result.json` 摘要
+  `3AADCD1BC9EB16546365C5D8EC286D9CDE7900B088384F41CB00C079709BCDC5`，普通记录
+  `F6E1D34BC0943CE0B904356858B338EB8919EEAF1F1198C7990DEC8CDC56D284`；
+  `build-classifier-corrected/build-result.json` 摘要
+  `CFC5F98E0AECFDAF8FA91163171D260D2CC93FEDF9BB619624C8011EE2F44B4E`，普通记录
+  `F7EA62B940D7A898B57EA7CB030B216494A48C5A109C6632239D090141A3DC30`。
 
 - 基于 `21bd40b` 的安装候选已完成并安装为8aee。新增精确7aa更新前置清单，原运行闭合与
   维护门仍逐项现场核对；六工程129输入离线构建0错误、0警告，包含当前GUI/日常入口/Broker。

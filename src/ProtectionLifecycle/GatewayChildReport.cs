@@ -30,9 +30,28 @@ internal sealed record GatewayChildReport(int SchemaVersion,string SessionId,int
     private static string Kind(Exception ex)=>ex switch {
         TypeInitializationException init when init.TypeName is "Microsoft.Win32.Registry" or "Internal.Win32.Registry"=>"REGISTRY_INITIALIZATION",
         TypeInitializationException=>"INITIALIZATION",System.Security.SecurityException security=>SecurityKind(security),
-        SocketException=>"SOCKET",Win32Exception=>"NATIVE",AuthenticationException=>"TLS",
+        SocketException socket=>SocketKind(socket),Win32Exception=>"NATIVE",AuthenticationException=>"TLS",
         HttpRequestException=>"HTTP",OperationCanceledException=>"TIMEOUT",UnauthorizedAccessException=>"ACCESS",
         InvalidDataException=>"CONTRACT",_=>"OTHER"};
+    private static string SocketKind(SocketException error)
+    {
+        // A fixed runtime startup frame can identify a failed WSAStartup path.
+        // The numeric code and message alone cannot. Never export raw frames.
+        try
+        {
+            var trace=new System.Diagnostics.StackTrace(error,false);
+            if(trace.FrameCount is <1 or >64)return "SOCKET";
+            for(var i=0;i<trace.FrameCount;i++)
+            {
+                if(SocketStartupFrame(trace.GetFrame(i)?.GetMethod()))return "SOCKET_STARTUP";
+            }
+        }
+        catch{ /* A restricted stack inspection must not hide the failure. */ }
+        return "SOCKET";
+    }
+    private static bool SocketStartupFrame(System.Reflection.MethodBase? method)=>
+        method?.DeclaringType is Type type && type.Assembly==typeof(Socket).Assembly && type.FullName=="Interop+Winsock" &&
+        (method.Name=="EnsureInitialized" || method.Name.StartsWith("<EnsureInitialized>g__Initialize|",StringComparison.Ordinal));
     private static string SecurityKind(System.Security.SecurityException error)
     {
         // Only report fixed runtime call-site categories. Never export frame
@@ -74,11 +93,11 @@ internal sealed record GatewayChildReport(int SchemaVersion,string SessionId,int
         foreach(var e in errors.EnumerateArray())StrictJson.Fields(e,"Kind","Code");
         var r=JsonSerializer.Deserialize<GatewayChildReport>(raw)??throw new InvalidDataException("GatewayFeedbackMissing");
         if(r.SchemaVersion!=1 || r.SessionId!=Identifiers.Hex32(expectedSessionId) || expectedPid==0 || r.Pid<=0 || (uint)r.Pid!=expectedPid ||
-            (uint)r.ExitCode!=actualExitCode || r.Errors is null || r.Errors.Any(e=>e is null || e.Kind is not ("REFUSED" or "SOCKET" or "NATIVE" or "TLS" or "HTTP" or "TIMEOUT" or "ACCESS" or "CONTRACT" or "OTHER" or "INITIALIZATION" or "REGISTRY_INITIALIZATION" or "SECURITY" or "TIMEZONE_REGISTRY" or "REGISTRY_ACCESS" or "TZ_CATALOG_SEARCH" or "TZ_CATALOG_ENUMERATION" or "TZ_DEFINITION" or "TZ_DYNAMIC_RULES" or "TZ_ENUMERATED_DEFINITION" or "TZ_UTC_DEFINITION")))
+            (uint)r.ExitCode!=actualExitCode || r.Errors is null || r.Errors.Any(e=>e is null || e.Kind is not ("REFUSED" or "SOCKET" or "SOCKET_STARTUP" or "NATIVE" or "TLS" or "HTTP" or "TIMEOUT" or "ACCESS" or "CONTRACT" or "OTHER" or "INITIALIZATION" or "REGISTRY_INITIALIZATION" or "SECURITY" or "TIMEZONE_REGISTRY" or "REGISTRY_ACCESS" or "TZ_CATALOG_SEARCH" or "TZ_CATALOG_ENUMERATION" or "TZ_DEFINITION" or "TZ_DYNAMIC_RULES" or "TZ_ENUMERATED_DEFINITION" or "TZ_UTC_DEFINITION")))
             throw new InvalidDataException("GatewayFeedbackOwnerOrErrorBinding");
         var success=r.ExitCode==42 && r.Phase=="COMPLETE" && r.HttpStatus is >=200 and <400 && r.Errors.Length==0;
         var rejectedStatus=r.ExitCode==126 && r.Phase=="HTTPS" && r.HttpStatus is >=100 and <=599 && !(r.HttpStatus is >=200 and <400) && r.Errors.Length==0;
-        var failed=r.ExitCode==125 && (r.Phase is "ENVIRONMENT" or "IDENTITY" or "TIMEZONE_DEFINITION" or "TIMEZONE_PUBLIC_CACHE" or "TIMEZONE_LOCAL_BINDING" or "HTTPS" or "HTTPS_SETTINGS" or "HTTPS_TLS_POLICY" or "HTTPS_CLIENT" or "HTTPS_SEND" or "HTTPS_CONNECT" or "HTTPS_CONNECT_REPLY") && r.HttpStatus is null && r.Errors.Length is >0 and <=4;
+        var failed=r.ExitCode==125 && (r.Phase is "ENVIRONMENT" or "IDENTITY" or "TIMEZONE_DEFINITION" or "TIMEZONE_PUBLIC_CACHE" or "TIMEZONE_LOCAL_BINDING" or "HTTPS" or "HTTPS_SETTINGS" or "HTTPS_TLS_POLICY" or "HTTPS_CLIENT" or "HTTPS_SEND" or "HTTPS_SOCKET_CREATE" or "HTTPS_CONNECT" or "HTTPS_CONNECT_WRITE" or "HTTPS_CONNECT_REPLY") && r.HttpStatus is null && r.Errors.Length is >0 and <=4;
         if(!success && !rejectedStatus && !failed)throw new InvalidDataException("GatewayFeedbackOutcomeShape");
         return r;
     }

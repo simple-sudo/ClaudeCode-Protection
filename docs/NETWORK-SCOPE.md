@@ -69,3 +69,9 @@ V2 用严格且有界的 JSON 整数字段传递偏移、日期和夏令时转�
 历史 SessionTimeZoneReadAccess 的两键 KEY_READ 租约及原恢复记录继续保留。LPAC 打开注册表另需 capability，单改两键 DACL 已证明不足，不再作为新修复方案。历史租约仅按原严格归属、原 Job durable closed/zero和逐键恢复门处理；未知 ACL 漂移不擦除、不合并，不自动恢复或重试。
 
 最新安装、失败、授权及验证范围只见 CURRENT-STATE。7aa的原单次测试停于 TIMEZONE_PUBLIC_CACHE；后续8aee已安装，固定LPAC根越过V2时区初始化及本地绑定，在HTTPS_CONNECT返回SOCKET10107，尚无HTTP成功或双向写入见证。该错误根因未知，不能直接推断为权限、代理或AV问题。原失败不重写，不自动重跑。系统审查草案及普通回归不是人类操作许可。
+
+## 固定套接字故障阶段
+
+原固定CONNECT路径进一步区分 HTTPS_SOCKET_CREATE、HTTPS_CONNECT、HTTPS_CONNECT_WRITE 和既有回复阶段。979c实际停于套接字创建，原根未进入网关连接/请求写入；这不说明全机没有其他网络活动，也不定位底层API失败。新分类只接受System.Net.Sockets程序集内固定Winsock初始化帧作为SOCKET_STARTUP，消息或10107代码本身不算依据，不能观察时仍为SOCKET。分类信息继续走原有界失败管道，不增加原始栈或私有状态读取，不用于运行准入。
+
+979c内的首版分类器错误地使用SocketException所属的System.Net.Primitives作为程序集门，可能将真实启动帧退回SOCKET；其原始报告保留，不能用该类别排除启动失败。源码已改为实际Socket所属程序集，并以本机.NET8真实初始化方法元数据验证；此更正尚未安装。下一原生定位须区分初始化与创建，不重复代理/HTTPS检查，不据该通用错误增加registryRead、放宽TLS或重置日常环境。
