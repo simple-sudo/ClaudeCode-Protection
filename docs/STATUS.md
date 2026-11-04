@@ -20,6 +20,11 @@ Bootstrap 在 INACTIVE 更新返回 125，公开失败为 `InvalidOperationExcep
 保留公开回执，未自动重试或恢复。观察证据 `work/timezone-lease-offline-build-8df1ad9/observed-system-result.json`，
 SHA256 `E186A464CD2E4D221165687BA5877DF2741E9B92D565F3D492E3FBCEB73AFEEF`。
 
+后续原 Bootstrap 的 INACTIVE 更新失败新增固定阶段，保留 125 与原异常类型/数值，区分
+维护身份、包和安装验证、准入绑定、回环历史、Job 闭合、WFP 隔离以及各生命周期阶段。
+阶段由原可信调用链标记，公开反馈只增加固定阶段字符串，不导出异常消息、宿主路径或状态。
+六项目非生成语义检查 0 错误 0 警告，SOURCE / INTEGRATED；新工件 BUILD 和实机反馈 NOT_RUN。
+
 ## 2026-11-03 安全理念与隐私威胁模型文档整合
 
 依据本次用户消息，将功能可用、宿主保密、跨来源关联共同目标，以及硬件能力/个体身份区分、

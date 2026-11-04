@@ -13,12 +13,13 @@ if(args[0]=="install-inactive")
 }
 try
 {
-    var result=ProtectionLifecycle.BootstrapInstaller.UpdatePinnedInactive();
-    Console.WriteLine(result.Report);return result.ExitCode;
+    var result=ProtectionLifecycle.BootstrapInstaller.UpdatePinnedInactiveWithFeedback();
+    (result.ExitCode==0?Console.Out:Console.Error).WriteLine(result.Report);
+    return result.ExitCode;
 }
 catch(Exception ex)
 {
     // Private paths, state bytes and command arguments do not belong in UI.
-    Console.Error.WriteLine("Inactive update not confirmed: "+ex.GetType().Name+"; code="+ex.HResult);
+    Console.Error.WriteLine("Inactive update not confirmed: "+ex.GetType().Name+"; code="+ex.HResult+"; stage=START");
     return 125;
 }

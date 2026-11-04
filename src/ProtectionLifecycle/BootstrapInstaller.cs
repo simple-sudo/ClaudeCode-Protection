@@ -94,21 +94,41 @@ public static class BootstrapInstaller
 {
     // Migration from pinned reviewed packages with no admission or completed
     // one-shot admissions. This is not a generic empty-job/runtime lease.
-    public static (int ExitCode,string Report) UpdatePinnedInactive()
+    public static (int ExitCode,string Report) UpdatePinnedInactive()=>UpdatePinnedInactive(null);
+
+    public static (int ExitCode,string Report) UpdatePinnedInactiveWithFeedback()
+    {
+        // Only fixed owner stages and the existing type/code reach stderr.
+        var stage="START";
+        try{return UpdatePinnedInactive(value=>stage=value);}
+        catch(Exception ex)
+        {
+            return(125,"Inactive update not confirmed: "+ex.GetType().Name+"; code="+ex.HResult+"; stage="+stage);
+        }
+    }
+
+    private static (int ExitCode,string Report) UpdatePinnedInactive(Action<string>? observeStage)
     {
         // Inactive maintenance has its own narrower qualification boundary.
         // It does not execute a child, activate forwarding or clear the still
         // unqualified system/session entries. The exact bootstrap is reviewed
         // and pinned independently after compilation, before human UAC.
+        observeStage?.Invoke("MAINTENANCE_IDENTITY");
         ProtectedState.RequireAdministrator();
+        observeStage?.Invoke("PACKAGE_APPROVAL");
         using var approval=BootstrapApproval.Open(true);
         var package=ReviewedPackage.FromBootstrap(approval);
         var layout=FixedLayout.FromWindows();
+        observeStage?.Invoke("INSTALLATION_STATE");
         using var state=ProtectedState.OpenExisting(layout);
         var current=CurrentPointer.Parse(state.Read("current.json",4096),state.InstallationId);
+        observeStage?.Invoke("CURRENT_VERSION");
         using var prior=VerifiedVersion.Open(layout,state,current.Release);
-        using var runtime=new PinnedInactiveUpdateLease(state,approval,prior,package);
-        var operation=VersionLifecycle.InstallOrUpdate(layout,state,package,approval.PayloadDirectory,"update",runtime);
+        observeStage?.Invoke("PINNED_TRANSITION");
+        using var runtime=new PinnedInactiveUpdateLease(state,approval,prior,package,observeStage);
+        observeStage?.Invoke("UPDATE_PRECHECK");
+        var operation=VersionLifecycle.InstallOrUpdate(layout,state,package,approval.PayloadDirectory,"update",runtime,observeStage);
+        observeStage?.Invoke("INACTIVE_READBACK");
         using var verified=VerifiedVersion.Open(layout,state,package.Release);
         var after=CurrentPointer.Parse(state.Read("current.json",4096),state.InstallationId);
         if(after.Release!=package.Release || after.ManifestSHA256!=package.ManifestHash || after.OperationId!=operation)
@@ -269,10 +289,11 @@ public static class BootstrapInstaller
         private readonly BootstrapApproval approval;
         private readonly VerifiedVersion prior;
         private readonly ReviewedPackage next;
+        private readonly Action<string>? reportFailureStage;
         private bool disposed;
-        internal PinnedInactiveUpdateLease(ProtectedState state,BootstrapApproval approval,VerifiedVersion prior,ReviewedPackage next)
+        internal PinnedInactiveUpdateLease(ProtectedState state,BootstrapApproval approval,VerifiedVersion prior,ReviewedPackage next,Action<string>? reportFailureStage)
         {
-            this.state=state;this.approval=approval;this.prior=prior;this.next=next;
+            this.state=state;this.approval=approval;this.prior=prior;this.next=next;this.reportFailureStage=reportFailureStage;
             var current=CurrentPointer.Parse(state.Read("current.json",4096),state.InstallationId);
             RequirePinnedTransition(current.Release,current.ManifestSHA256,prior.Package.Release,prior.Package.ManifestHash,next.Release,next.ManifestHash);
             AssertNoOwnedProcesses();
@@ -302,21 +323,29 @@ public static class BootstrapInstaller
         }
         public void AssertNoOwnedProcesses()
         {
-            AssertLaunchAdmissionClosed();
-            InstallationLoopbackLease.AssertClosedHistory(state);
-            var jobs=OwnedJobIntent.ReadAll(state);
-            if(NoAdmissionManifests.Contains(prior.Package.ManifestHash,StringComparer.Ordinal) && jobs.Count!=0)
-                throw new InvalidOperationException("Job history is outside the pinned no-admission package");
-            foreach(var job in jobs)if(AtomicJobCompletion.ReadClosed(state,job) is null)
-                throw new InvalidOperationException("Every one-shot Job needs a closed admission and zero-members proof");
-            // A failed intent is not absence. Every exact plan must be absent
-            // or fully quarantined; no resource is removed during this update.
-            foreach(var plan in FencePlan.ReadAll(state))
+            var stage="ADMISSION_BINDING";
+            try
             {
-                using var fence=PersistentFence.OpenExisting(state,plan.Data.FenceId);
-                var observed=fence.Observe();
-                if(!observed.AllAbsent && !observed.FullQuarantineObserved)throw new InvalidOperationException("Partial or changed fence resources require the full runtime maintenance owner");
+                AssertLaunchAdmissionClosed();
+                stage="LOOPBACK_HISTORY";
+                InstallationLoopbackLease.AssertClosedHistory(state);
+                stage="JOB_CLOSURE";
+                var jobs=OwnedJobIntent.ReadAll(state);
+                if(NoAdmissionManifests.Contains(prior.Package.ManifestHash,StringComparer.Ordinal) && jobs.Count!=0)
+                    throw new InvalidOperationException("Job history is outside the pinned no-admission package");
+                foreach(var job in jobs)if(AtomicJobCompletion.ReadClosed(state,job) is null)
+                    throw new InvalidOperationException("Every one-shot Job needs a closed admission and zero-members proof");
+                // A failed intent is not absence. Every exact plan must be absent
+                // or fully quarantined; no resource is removed during this update.
+                stage="FENCE_QUARANTINE";
+                foreach(var plan in FencePlan.ReadAll(state))
+                {
+                    using var fence=PersistentFence.OpenExisting(state,plan.Data.FenceId);
+                    var observed=fence.Observe();
+                    if(!observed.AllAbsent && !observed.FullQuarantineObserved)throw new InvalidOperationException("Partial or changed fence resources require the full runtime maintenance owner");
+                }
             }
+            catch{reportFailureStage?.Invoke(stage);throw;}
         }
         public void StopAndVerifyOwnedProcesses()=>AssertNoOwnedProcesses();
         public void RemoveAndVerifyExactOwnedResources(string installationId)=>throw new InvalidOperationException("Inactive migration cannot remove resources");

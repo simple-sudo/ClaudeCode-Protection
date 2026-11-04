@@ -192,17 +192,22 @@ internal static class VersionSelector
 internal static class VersionLifecycle
 {
     internal static string InstallOrUpdate(FixedLayout layout,ProtectedState state,ReviewedPackage package,string sourceDirectory,
-        string operation,ILifecycleRuntimeLease runtime)
+        string operation,ILifecycleRuntimeLease runtime,Action<string>? observeStage=null)
     {
         if(operation is not ("install" or "update"))throw new InvalidDataException("Invalid staging operation");
         state.AssertHeld();runtime.AssertLaunchAdmissionClosed();runtime.AssertNoOwnedProcesses();
         using var prior=operation=="update"?OpenCurrent(layout,state):null;
+        observeStage?.Invoke("LIFECYCLE_BEGIN");
         var tx=new LifecycleTransaction(state,operation,package.Release,runtime);
+        observeStage?.Invoke("STAGE_PAYLOAD");
         VersionStager.Stage(layout,state,package,sourceDirectory,runtime,tx);
         tx.ObserveAndAdvance("stage",package.ManifestHash);
+        observeStage?.Invoke("VERIFY_PAYLOAD");
         using var version=VerifiedVersion.Open(layout,state,package.Release);
         tx.ObserveAndAdvance("verify",version.Package.ManifestHash);
+        observeStage?.Invoke("SWITCH_INACTIVE");
         var hash=VersionSelector.SwitchInactive(state,version,tx,runtime);tx.ObserveAndAdvance("switch",hash);
+        observeStage?.Invoke("FINISH_UPDATE");
         Finish(state,version,tx,runtime,hash);return tx.Id;
     }
     internal static string Rollback(FixedLayout layout,ProtectedState state,string release,ILifecycleRuntimeLease runtime)

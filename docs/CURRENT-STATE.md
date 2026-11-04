@@ -28,6 +28,9 @@ UNKNOWN，未重试或恢复。最近一次实际网关运行仍是 a9dec532 的
   `work/timezone-lease-offline-build-8df1ad9/observed-system-result.json` SHA256
   `E186A464CD2E4D221165687BA5877DF2741E9B92D565F3D492E3FBCEB73AFEEF`。
   现有公开诊断无法定位具体门禁；保留失败工件与原回执，单次授权已消耗。
+  后续源码已在原 Bootstrap 更新路径接入固定失败阶段，区分输入与前置版本、回环历史、
+  Job 闭合、WFP 隔离以及载荷暂存和选择。六项目非生成语义检查通过，SOURCE / INTEGRATED；
+  新诊断工件的构建和实机更新仍 NOT_RUN，无法追溯确定 a50691f1 的具体失败点。
 
 上一次成功安装及实际网关尝试：
 
