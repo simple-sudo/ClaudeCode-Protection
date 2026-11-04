@@ -1,10 +1,10 @@
 # 当前状态与授权摘要
 
 更新：2026-11-03（America/New_York）。本页是**唯一的最新状态摘要**；历史事实仍由原始证据
-支持。本人确认 UAC 后，带诊断的 `ff113193` INACTIVE 更新在 `LIFECYCLE_BEGIN` 以 125 失败，
-回读仍为 `a9dec532` / INACTIVE，网关、HTTPS 和时区权限操作均未执行。源码查明时区租约
-查询使用的固定前缀未加入受保护状态白名单，已补齐。修正版实机仍 NOT_RUN。最近一次实际
-网关运行仍是 a9dec532 的 TLS 策略构造失败。
+支持。本人确认 UAC 后，`d423b8c5` 已更新为 INACTIVE，证明前缀修复通过原生命周期门。
+固定网关在时区权限回读失败后拒绝放行；子进程保持未恢复执行，最终 Job 零成员。
+父键残留一条应用容器显式只读 ACE，且自动继承标记变化；原 owner 未确认恢复。
+本机相关后续系统操作须先解决该待恢复资源。固定 HTTPS 仍未发生。
 
 卡巴斯基本轮新告警：用户报告 Codex 被终止，截图显示系统监控对 `codex.exe` 报
 `PDM:Trojan.Win32.Generic`。按用户确认登记为误报观察；截图中的路径截断，触发动作和厂商结论
@@ -51,6 +51,17 @@
   未打包、安装或运行实际网关；GUI 和 daily 尚未构建。
 
 ## 最近一次有证据的安装观察
+
+- 2026-11-04 03:09Z（当地 11 月 3 日），`d423b8c51a434e32a91909d6a11ba4db` /
+  `4E5ECAB1FC1D7455B7DF6EFE5678039E7C11EB92C71FC585F4A634CF277B0D4C` 已确认 INACTIVE。
+  安装器 0，网关 owner 3。会话 `452784baf43c4567b915a75427b7af86` 已创建子进程且未尝试恢复执行；
+  最终 Job 前后零成员、PID 列表空、限额 8192，运行期 StopObservation 为空。
+  失败阶段为 `TimeZoneGrantNotObserved`、`ManifestSecurityDriftRequiresHumanResolution`、
+  `TimeZoneAccessRequiresExplicitRecovery`。两键中的父键未恢复；Dynamic DST 权限摘要与前置
+  一致。只读比较在内存去掉父键唯一的同形显式包只读 ACE 后，剩余 ACE 顺序、字节及 owner
+  与未改的子键一致；父键缺少 `DiscretionaryAclAutoInherited`。未授权自动恢复或重试。
+  公开证据 `work/owner-precode-build-0ceb6b2/observed-system-result.json` SHA256
+  `42333FE50F678973585DFB595767CE0E0D8CDCCBEBDCCE5EBF62C0488A3ECA74`。
 
 - 2026-11-04 01:13Z（当地 11 月 3 日），`ff113193` 公开回执为
   `LIFECYCLE_BEGIN / InvalidOperationException / -2146233079`，回读仍为 a9dec532 / INACTIVE。

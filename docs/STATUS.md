@@ -5,6 +5,16 @@
 历史页的“当前/待执行/暂停/DELIVERABLE”按段落日期及限定范围解释，不是今天的状态或操作许可。
 不在本页复制当前安装和授权摘要。
 
+## 2026-11-03 时区前缀修复安装通过，注册表权限恢复待处理
+
+`d423b8c5` 原 Bootstrap INACTIVE 更新返回 0，20 项输入预检、15 项已安装公开资产回读通过。
+固定网关 3，原 owner 在 `TimeZoneGrantNotObserved` 阻断放行；子进程已创建但未尝试恢复执行，
+最终 Job 零且没有运行期 Stop 回执。精确恢复拒绝描述符差异，保留未闭合资源状态。
+只读独立检查发现父键新增一条显式应用容器 KEY_READ，移除该 ACE 后的剩余 ACE 顺序和字节
+与未改 Dynamic DST 一致，父键缺少自动继承标记。没有实际移除 ACE、恢复或重试。
+公开证据 `work/owner-precode-build-0ceb6b2/observed-system-result.json` SHA256
+`42333FE50F678973585DFB595767CE0E0D8CDCCBEBDCCE5EBF62C0488A3ECA74`。
+
 ## 2026-11-03 编译器实例与宿主目标的放行前复核
 
 原 owner 将两次持有 Job 成员检查中的编译器 PID 与创建时间配对。封存探针并撤回计划后，
