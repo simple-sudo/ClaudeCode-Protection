@@ -31,6 +31,18 @@ internal static class ProjectClientCancellationCases
             var result=await BackendClient.WaitProjectClient(complete,originalHost,CancellationToken.None);
             Require(result.ExitCode==259 && result.Output.Trim()=="OWN_CLIENT_COMPLETE" && result.Error.Length==0,"natural exit259 and output preserved without cancellation");
         }
+        using(var excessive=Start("overflow"))
+        {
+            try
+            {
+                using var limit=new CancellationTokenSource(TimeSpan.FromSeconds(10));
+                var rejected=false;
+                try{await BackendClient.WaitProjectClient(excessive,originalHost,limit.Token);}
+                catch(IOException error)when(error.Message=="项目调用输出超出上限"){rejected=true;}
+                Require(rejected && excessive.HasExited,"overflow stops the held own client before its exit deadline");
+            }
+            finally{if(!excessive.HasExited){excessive.StandardInput.Close();if(!excessive.WaitForExit(5000))throw new IOException("Own child not terminal; retained for exact observation");}}
+        }
         using(var owned=Start("wait"))
         {
             try

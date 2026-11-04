@@ -82,7 +82,18 @@ internal static class BackendClient
             }
             var output=ReadBounded(process.StandardOutput,65536);var error=ReadBounded(process.StandardError,16384);
             using var deadline=CancellationTokenSource.CreateLinkedTokenSource(cancellation);deadline.CancelAfter(TimeSpan.FromSeconds(180));
-            await process.WaitForExitAsync(deadline.Token);
+            var exited=process.WaitForExitAsync(deadline.Token);
+            // Stop on a failed drain while the client is still running. Once a
+            // pipe exceeds its bound, further writes can block that client.
+            var first=await Task.WhenAny(exited,output,error);
+            await first;
+            if(first!=exited)
+            {
+                var remaining=first==output?error:output;
+                var second=await Task.WhenAny(exited,remaining);
+                await second;
+            }
+            await exited;
             cancellation.ThrowIfCancellationRequested();
             var stdout=await output.WaitAsync(TimeSpan.FromSeconds(1));var stderr=await error.WaitAsync(TimeSpan.FromSeconds(1));
             return new(process.ExitCode,stdout,stderr);

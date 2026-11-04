@@ -11,6 +11,7 @@ if(args.Length==2 && args[0]=="--own-project-client")
 {
     if(args[1]=="complete"){Console.WriteLine("OWN_CLIENT_COMPLETE");return 259;}
     if(args[1]=="wait"){Console.WriteLine("OWN_CLIENT_READY");Console.ReadLine();return 0;}
+    if(args[1]=="overflow"){Console.WriteLine(new string('x',65537));Console.ReadLine();return 0;}
     return 125;
 }
 if(args.Length==1 && args[0]=="--edit-task-build"){Console.WriteLine(JsonSerializer.Serialize(ProjectTaskEditCases.RunOrdinaryCompiler()));return 0;}
