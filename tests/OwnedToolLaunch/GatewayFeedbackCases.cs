@@ -54,6 +54,16 @@ internal static class GatewayFeedbackCases
         Accept(registry,125);Check(JsonNode.Parse(registry)!["Errors"]![0]!["Kind"]!.GetValue<string>()=="REGISTRY_INITIALIZATION" && !registry.Contains("Microsoft.Win32",StringComparison.Ordinal));
         var unknown=Result("HTTPS_SETTINGS",125,error:new TypeInitializationException("private-type-token",new System.Security.SecurityException("private-fixture")));
         Check(!unknown.Contains("private-type-token",StringComparison.Ordinal) && JsonNode.Parse(unknown)!["Errors"]![0]!["Kind"]!.GetValue<string>()=="INITIALIZATION");
+        var namedSecurity=Result("HTTPS_TLS_POLICY",125,error:new System.Security.SecurityException("System.TimeZoneInfo Internal.Win32.RegistryKey PRIVATE_PATH"));
+        Accept(namedSecurity,125);
+        Check(JsonNode.Parse(namedSecurity)!["Errors"]![0]!["Kind"]!.GetValue<string>()=="SECURITY" &&
+            !namedSecurity.Contains("PRIVATE_PATH",StringComparison.Ordinal));
+        foreach(var kind in new[]{"TIMEZONE_REGISTRY","REGISTRY_ACCESS"})
+        {
+            var categorized=JsonNode.Parse(namedSecurity)!;categorized["Errors"]![0]!["Kind"]=kind;
+            Accept(categorized.ToJsonString(),125);
+            categorized["Errors"]![0]!["Kind"]=kind+"_PRIVATE_PATH";Refuse(categorized.ToJsonString(),125);
+        }
         var proxy=library.GetType("ProtectionLifecycle.SessionProxy",true)!;
         object? ProxyCall(string method,params object?[] values)
         {

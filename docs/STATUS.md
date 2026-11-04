@@ -5,6 +5,31 @@
 历史页的“当前/待执行/暂停/DELIVERABLE”按段落日期及限定范围解释，不是今天的状态或操作许可。
 不在本页复制当前安装和授权摘要。
 
+## 2026-11-03 两键时区租约实测闭合及误报中断接续
+
+`3fd876d` 候选 `d550e200` 经本人 UAC，原 Bootstrap 更新返回 0；固定网关返回 3。
+两键授权及原 owner 恢复成功，独立权限摘要均匹配原值。子进程恢复执行后仍在
+`HTTPS_TLS_POLICY` 返回 SECURITY / 125，CONNECT 回调未到达。原 owner 关闭准入、
+停止前隔离，最终 Job 零成员、停止失败为空；HTTPS 未成功。
+原证据 `work/timezone-gateway-3fd876d/observed-system-result.json` SHA256
+`53DD87C90CCB79007B5EB2D896B7B59E865C84B0EE5FCB7B0B8F82D8E58CA21B`。
+
+用户截图显示卡巴斯基对 `codex.exe` 报 `PDM:Trojan.Win32.Generic`，并明确按误报处理。
+沿用用户确认的误报观察；触发动作和厂商结论 UNKNOWN。接续仅只读核对现有改动、
+公开回执及摘要，并补齐状态记录，没有运行构建、打包、安装、网关或恢复。
+保留新增固定错误分类源码和用例；不把未确认的检查结果写成 PASS。不改 AV、排除项或
+程序名称，不自动重试被中断动作，也没有清理证据或代用户选择清除/重启。
+
+后续接续改进原 `GatewayChildReport` 的固定 SECURITY 分类。只依据可信 CoreLib 的调用位置，
+不依赖异常消息或字符串堆栈，也不输出原始帧、路径或消息；分类自身受限/失败时保留一般
+SECURITY 与原错误码。原 owner 仅把它用作诊断，准入及失败停止流程不变。用例增加消息
+伪装、两类允许值和附加私有文字的拒绝检查。六产品与 OwnedToolLaunch 非生成语义 0/0，
+114 项源码/项目/检查输入前后摘要一致。证据
+`work/gateway-security-category-3fd876d/semantic-result.json` SHA256
+`0D66815C8518209B74806DA836AEDE33270E5A219C95E070D67E0F10B3BAEE5E`。
+SOURCE / INTEGRATED；未执行新增用例、构建程序、安装或 LPAC 运行，不推导实际故障来源。
+Bootstrap 清单同步已安装 d550 的固定字节，不能代表后续诊断源码已构建/安装。
+
 ## 2026-11-03 时区前缀修复安装通过，注册表权限恢复待处理
 
 `d423b8c5` 原 Bootstrap INACTIVE 更新返回 0，20 项输入预检、15 项已安装公开资产回读通过。

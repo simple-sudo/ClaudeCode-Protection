@@ -29,10 +29,32 @@ internal sealed record GatewayChildReport(int SchemaVersion,string SessionId,int
     }
     private static string Kind(Exception ex)=>ex switch {
         TypeInitializationException init when init.TypeName is "Microsoft.Win32.Registry" or "Internal.Win32.Registry"=>"REGISTRY_INITIALIZATION",
-        TypeInitializationException=>"INITIALIZATION",System.Security.SecurityException=>"SECURITY",
+        TypeInitializationException=>"INITIALIZATION",System.Security.SecurityException security=>SecurityKind(security),
         SocketException=>"SOCKET",Win32Exception=>"NATIVE",AuthenticationException=>"TLS",
         HttpRequestException=>"HTTP",OperationCanceledException=>"TIMEOUT",UnauthorizedAccessException=>"ACCESS",
         InvalidDataException=>"CONTRACT",_=>"OTHER"};
+    private static string SecurityKind(System.Security.SecurityException error)
+    {
+        // Only report fixed runtime call-site categories. Never export frame
+        // names, file names, exception messages, registry paths or raw stacks.
+        // Failure to inspect a restricted runtime must not replace the original
+        // failure or prevent its bounded report from reaching the original owner.
+        try
+        {
+            var trace=new System.Diagnostics.StackTrace(error,false);
+            if(trace.FrameCount is <1 or >64)return "SECURITY";
+            var localTime=false;var registry=false;
+            for(var i=0;i<trace.FrameCount;i++)
+            {
+                var type=trace.GetFrame(i)?.GetMethod()?.DeclaringType;
+                if(type is null || type.Assembly!=typeof(DateTime).Assembly)continue;
+                if(type.FullName=="System.TimeZoneInfo" || type.DeclaringType?.FullName=="System.TimeZoneInfo")localTime=true;
+                if(type.FullName is "Internal.Win32.RegistryKey" or "Microsoft.Win32.RegistryKey")registry=true;
+            }
+            return localTime && registry?"TIMEZONE_REGISTRY":registry?"REGISTRY_ACCESS":"SECURITY";
+        }
+        catch{return "SECURITY";}
+    }
     internal static GatewayChildReport Parse(string raw,string expectedSessionId,uint expectedPid,uint actualExitCode)
     {
         if(raw.Length is <2 or >MaxCharacters)throw new InvalidDataException("GatewayFeedbackBounds");
@@ -43,7 +65,7 @@ internal sealed record GatewayChildReport(int SchemaVersion,string SessionId,int
         foreach(var e in errors.EnumerateArray())StrictJson.Fields(e,"Kind","Code");
         var r=JsonSerializer.Deserialize<GatewayChildReport>(raw)??throw new InvalidDataException("GatewayFeedbackMissing");
         if(r.SchemaVersion!=1 || r.SessionId!=Identifiers.Hex32(expectedSessionId) || expectedPid==0 || r.Pid<=0 || (uint)r.Pid!=expectedPid ||
-            (uint)r.ExitCode!=actualExitCode || r.Errors is null || r.Errors.Any(e=>e is null || e.Kind is not ("REFUSED" or "SOCKET" or "NATIVE" or "TLS" or "HTTP" or "TIMEOUT" or "ACCESS" or "CONTRACT" or "OTHER" or "INITIALIZATION" or "REGISTRY_INITIALIZATION" or "SECURITY")))
+            (uint)r.ExitCode!=actualExitCode || r.Errors is null || r.Errors.Any(e=>e is null || e.Kind is not ("REFUSED" or "SOCKET" or "NATIVE" or "TLS" or "HTTP" or "TIMEOUT" or "ACCESS" or "CONTRACT" or "OTHER" or "INITIALIZATION" or "REGISTRY_INITIALIZATION" or "SECURITY" or "TIMEZONE_REGISTRY" or "REGISTRY_ACCESS")))
             throw new InvalidDataException("GatewayFeedbackOwnerOrErrorBinding");
         var success=r.ExitCode==42 && r.Phase=="COMPLETE" && r.HttpStatus is >=200 and <400 && r.Errors.Length==0;
         var rejectedStatus=r.ExitCode==126 && r.Phase=="HTTPS" && r.HttpStatus is >=100 and <=599 && !(r.HttpStatus is >=200 and <400) && r.Errors.Length==0;
