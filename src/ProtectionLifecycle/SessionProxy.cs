@@ -86,6 +86,7 @@ internal sealed class SessionProxy : IDisposable
             while (!stop.IsCancellationRequested)
             {
                 var client = await listener.AcceptTcpClientAsync(stop.Token);
+                if(stop.IsCancellationRequested){client.Dispose();return;}
                 foreach (var entry in clients.Where(entry => entry.Value.Work.IsCompleted).ToArray())
                 {
                     if (entry.Value.Work.IsFaulted) { Fail(entry.Value.Work.Exception!); client.Dispose(); return; }
@@ -157,6 +158,9 @@ internal sealed class SessionProxy : IDisposable
                 AssertForwardingCurrent();
                 phase="UPSTREAM";
                 using var remote=await OpenTunnel(chosen,deadline.Token);
+                // Close the literal upstream socket on revoke/deadline as
+                // well as passing the token to pending stream I/O.
+                using var closeUpstream=deadline.Token.UnsafeRegister(static stream=>((NetworkStream)stream!).Dispose(),remote);
                 AssertHealthy();AtomicChild.AssertSessionPeer(job,process,packageSid,peer.Port);AssertForwardingCurrent();
                 Action<bool>? observeWrite=null;
                 if(fixedPeer is { } identityForReceipt)

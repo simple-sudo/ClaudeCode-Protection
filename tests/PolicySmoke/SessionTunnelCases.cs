@@ -79,6 +79,24 @@ internal static class SessionTunnelCases
                 "revocation/expiry during a blocked read prevents forwarding and drains both readers");
             Refuse(()=>permission.Renew(10000)); // No resurrection by a late heartbeat.
         }
+        foreach(var cancel in new[]{false,true})
+        {
+            var entered=new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var finish=new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var permission=new SessionForwardingLease(()=>0);permission.Renew(10000);
+            using var first=new Endpoint(request,true);
+            using var second=new Endpoint(Array.Empty<byte>(),false){BeforeWrite=()=>{entered.TrySetResult();return finish.Task;}};
+            using var deadline=new CancellationTokenSource(TimeSpan.FromSeconds(2));var completedWrites=0;
+            var copy=SessionTunnel.CopyAsync(first,second,first.FinishSending,second.FinishSending,
+                _=>{},65536,permission.AssertCurrent,deadline.Token,_=>Interlocked.Increment(ref completedWrites));
+            await entered.Task.WaitAsync(TimeSpan.FromSeconds(2));
+            if(cancel)deadline.Cancel();else permission.Revoke();
+            finish.TrySetResult();
+            if(cancel)await Reject<OperationCanceledException>(()=>copy);
+            else await Reject<InvalidOperationException>(()=>copy);
+            Check(second.Written.SequenceEqual(request) && completedWrites==0 && first.ActiveReads==0 && second.ActiveReads==0,
+                "late write completion produces no qualification observation and both readers drain");
+        }
         long now=0;var health=new SessionForwardingLease(()=>now);
         Refuse(health.AssertCurrent);health.Renew(10000);
         now=1000;health.Renew(9000);now=2999;health.AssertCurrent();now=3000;Refuse(health.AssertCurrent);Refuse(()=>health.Renew(7000));
@@ -108,6 +126,7 @@ internal static class SessionTunnelCases
         private readonly MemoryStream written=new();
         private int position,active;
         internal bool FailWrites {get;init;}
+        internal Func<Task>? BeforeWrite {get;init;}
         internal int MaximumRead {get;init;}=int.MaxValue;
         internal Exception? ReadFailure {get;init;}
         internal bool Canceled {get;private set;}
@@ -129,8 +148,13 @@ internal static class SessionTunnelCases
             catch(OperationCanceledException){Canceled=true;throw;}
             finally{Interlocked.Decrement(ref active);}
         }
-        public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer,CancellationToken token=default)
-        {token.ThrowIfCancellationRequested();if(FailWrites)throw new IOException("owned write failure");written.Write(buffer.Span);return ValueTask.CompletedTask;}
+        public override async ValueTask WriteAsync(ReadOnlyMemory<byte> buffer,CancellationToken token=default)
+        {
+            token.ThrowIfCancellationRequested();
+            if(FailWrites)throw new IOException("owned write failure");
+            if(BeforeWrite is not null)await BeforeWrite();
+            written.Write(buffer.Span);
+        }
         public override bool CanRead=>true;
         public override bool CanWrite=>true;
         public override bool CanSeek=>false;

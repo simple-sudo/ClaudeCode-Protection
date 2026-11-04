@@ -73,9 +73,10 @@ internal static class SessionTunnel
                 canceled.Token.ThrowIfCancellationRequested();
                 assertAuthorized();
                 var count=await input.ReadAsync(buffer,canceled.Token);
+                // A read can complete concurrently with cancellation.
+                canceled.Token.ThrowIfCancellationRequested();
                 if(count==0)
                 {
-                    canceled.Token.ThrowIfCancellationRequested();
                     assertAuthorized();
                     finishSending();return;
                 }
@@ -84,7 +85,14 @@ internal static class SessionTunnel
                 accountBytes(count); // Reserve the session budget BEFORE forwarding.
                 assertAuthorized(); // A blocked read must not outlive permission.
                 await output.WriteAsync(buffer.AsMemory(0,count),canceled.Token);
-                observeCompletedWrite?.Invoke(towardUpstream);
+                if(observeCompletedWrite is not null)
+                {
+                    // An in-flight write may finish after cancellation or loss
+                    // of permission. It cannot qualify the fixed exchange.
+                    canceled.Token.ThrowIfCancellationRequested();
+                    assertAuthorized();
+                    observeCompletedWrite(towardUpstream);
+                }
             }
         }
         var upload=Pump(client,upstream,upstreamFinishSending,true);
