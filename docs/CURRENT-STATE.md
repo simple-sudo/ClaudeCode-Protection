@@ -29,6 +29,25 @@
 
 ## 开发基线
 
+- 基于 `6cd6a0b` 的公共时区修复已完成源码接入及普通验证，尚未安装。原 V1 字符串读取在
+  缓存绑定之前调用 `TimeZoneInfo.FromSerializedString`，转换规则中只有时间的字段经日期解析
+  触发 `DateTime.Now`。本机固定 CoreLib 的 IL 调用链和旧实现冷缓存回归证实读取会提前
+  初始化 Local 与当前年份缓存，与7aa的 LPAC `TZ_DEFINITION` 失败一致；本次没有新 LPAC 归因实验。
+  V2 改传有界整数日历字段，以公共构造 API 恢复真实规则，不经过日期字符串解析；严格字段、
+  会话/摘要/ID、16KiB、128条规则、转换规范及原 CoreLib MVID 门保持，无法无损表达的规则拒绝。
+  原 owner、原进程缓存绑定、实际当前时间往返和 TLS 校验链保持；没有增加 capability 或改宿主权限。
+  新冷缓存读取不触发两缓存初始化，原日历完整往返、绑定、拒绝项及离线 TLS 克隆共19项通过。
+  固定108项输入的四工程离线构建0错误、0警告。SOURCE/BUILD/INTEGRATED + VERIFIED(普通组件)，
+  新LPAC及HTTPS仍NOT_RUN，最新安装仍为页首7aa失败版本。原失败、首个普通测试调用传参错误均保留。
+  `work/timezone-cache-6cd6a0b/` 下 `runtime-call-evidence.json` SHA256
+  `88B17B9294F1534BED1E4AEF675783E6E366AC0AA3012585754C44708946EFC3`；
+  `build-regression/build-result.json` 摘要
+  `B1F2744967ED271A07AB0FB8DB39430EF598CEAE68FFEE9C122CF7C421AB8B6A`；
+  `build-structured-snapshot/build-result.json` 摘要
+  `3067765F53B94098EF0D25CC5088F298A7C82BDC0311BC4BBD74484A1C5664BD`，
+  同目录 `cold-reader-components.json` 摘要
+  `3FCAAFB5AD995E08597988AE865AC7AE6E70303990F2C7CDA66C02D4EE260889`。
+
 - 基于 `4544399` 的工作区改动使原编译器记录控制台输出超限，即使项目代码捕获写入异常并
   返回零，也会通过已有失败通道返回固定 `Output` 阶段。界面说明 stdout/stderr 各4096字符
   的限额，原 owner 读取结果前还检查 UTF-8 文件字节限额。120项固定输入离线构建五工程

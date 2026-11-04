@@ -60,8 +60,12 @@ SOURCE/BUILD/INTEGRATED；36固定非秘密地址检查及精确前置选择通�
 固定HEAD客户端通过原HttpClient.ConnectCallback只连接字面IPv4 127.0.0.1:17891，明确发送当前会话的固定Basic CONNECT并要求原网关精确200回执；共享原Target/Port/有界ReadHeader。内置代理层关闭不代表允许直连：回调校验固定HTTPS目标，原WFP和网关内核peer检查继续限制真实出口。TLS仍用原Offline策略/禁下载/完整校验，不增加registryRead或宽松回退。固定根的Invariant当前/默认线程文化仅作用本进程，隔离宿主语言初始化依赖；不改Windows/GUI/owner设置。现有错误是否由特定本地化分支触发仍UNKNOWN；语言处理及新回调的native资格分别判断。
 
 
-## 公共时区定义的专项资源租约
+## 公共时区兼容与历史资源租约
 
-固定TLS策略构造依赖本地时间；时区/夏令时定义作为明确公开OS依赖，由原安装Broker现场选择当前Time Zones单键及可选Dynamic DST子键。专项SessionTimeZoneReadAccess复用原注册表资源对象原语：真句柄/对象名核对、可信owner/无不可信写者、意图先行、精确本SID一条非继承KEY_READ、原runtime持续核对、原Job durable closed/zero后逐键精确恢复。没有父hive/通用路径/registryRead capability/写值授权，也不修改Windows时区或语言。未知ACL漂移不擦除/合并，未闭合资源进入现有生命周期门禁，只能通过固定自身恢复入口处理，不自动恢复或重试。此依赖会暴露必要公共时区定义，不构成完整P1隔离证明。
+固定TLS策略构造依赖本地时间。当前源码由原 Preparation 的可信 owner 提供真实公开日历，原固定 worker 在同一进程内绑定到固定 CoreLib 的托管缓存；这是功能兼容，不是 OS 隐私边界或运行准入。没有新注册表租约、registryRead capability、宿主权限或系统时区更改，原环境资格及漂移门保持。
 
-当前实现及普通策略/真实只读元数据通过，真实授权/恢复与HTTPS仍NOT_RUN；最新工件及用户提交后暂停状态见CURRENT-STATE。系统审查草案不是人类操作许可。
+V2 用严格且有界的 JSON 整数字段传递偏移、日期和夏令时转换规则，以公开构造 API 恢复；保留真实 ID、规则、摘要和本次会话绑定。16KiB 与128条规则上限、不支持或非规范规则拒绝、固定运行时布局检查仍生效。不使用 `TimeZoneInfo.FromSerializedString`：其[转换时间读取](https://github.com/dotnet/runtime/blob/v8.0.28/src/libraries/System.Private.CoreLib/src/System/TimeZoneInfo.StringSerializer.cs)经日期解析可在绑定之前触发本地时间和注册表初始化。本机固定 CoreLib IL 与冷缓存回归支持这一源码缺陷，新版普通读取确认两缓存未提前初始化。该证据不替代真实 LPAC/HTTPS 测试。
+
+历史 SessionTimeZoneReadAccess 的两键 KEY_READ 租约及原恢复记录继续保留。LPAC 打开注册表另需 capability，单改两键 DACL 已证明不足，不再作为新修复方案。历史租约仅按原严格归属、原 Job durable closed/zero和逐键恢复门处理；未知 ACL 漂移不擦除、不合并，不自动恢复或重试。
+
+最新安装、失败、授权及验证范围只见 CURRENT-STATE。7aa的原单次测试停于 TIMEZONE_PUBLIC_CACHE；V2尚未安装。系统审查草案及普通回归不是人类操作许可。

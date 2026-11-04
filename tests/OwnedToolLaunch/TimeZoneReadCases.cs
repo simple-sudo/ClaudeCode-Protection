@@ -20,7 +20,7 @@ internal static class TimeZoneReadCases
             var refused=false;try{action();}catch(Exception ex)when(ex is InvalidDataException or ArgumentException or JsonException){refused=true;}Check(refused);
         }
         string Hash(string text)=>Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(
-            System.Text.Encoding.UTF8.GetBytes("CPC_PUBLIC_TIMEZONE_V1\n"+text)));
+            System.Text.Encoding.UTF8.GetBytes("CPC_PUBLIC_TIMEZONE_V2\n"+text)));
         var culture=System.Globalization.CultureInfo.CurrentUICulture;
         try
         {
@@ -34,8 +34,9 @@ internal static class TimeZoneReadCases
             Check(id==original.Id && Hash(payload)==digest && payload.Length<=16384);
             using(var json=JsonDocument.Parse(payload))
             {
-                var parsed=TimeZoneInfo.FromSerializedString(json.RootElement.GetProperty("Definition").GetString()!);
-                Check(parsed.HasSameRules(original) && parsed.DisplayName==id && parsed.StandardName==id);
+                var parsed=(TimeZoneInfo)Call("Read",payload,digest,session,id)!;
+                Check(json.RootElement.GetProperty("SchemaVersion").GetInt32()==2 &&
+                    parsed.HasSameRules(original) && parsed.DisplayName==id && parsed.StandardName==id);
             }
             void Apply(string text,string hash,string actor,string zone)=>Call("ApplyForFixedWorker",text,hash,actor,zone);
             Refuse(()=>Apply(payload,digest==new string('A',64)?new string('B',64):new string('A',64),session,id));
@@ -44,10 +45,22 @@ internal static class TimeZoneReadCases
             Refuse(()=>Apply(new string('x',16385),new string('A',64),session,id));
             var extra=System.Text.Json.Nodes.JsonNode.Parse(payload)!.AsObject();extra["Extra"]="private-fixture";
             var invalid=extra.ToJsonString();Refuse(()=>Apply(invalid,Hash(invalid),session,id));
+            foreach(var mutate in new Action<System.Text.Json.Nodes.JsonObject>[] {
+                j=>j["SchemaVersion"]=1,j=>j["Definition"]!["Extra"]=0,j=>j["Definition"]!["OffsetTicks"]=long.MaxValue,
+                j=>j["Definition"]!["Rules"]=null,j=>j["Definition"]!["Id"]="FixtureMismatch"})
+            {
+                var broken=System.Text.Json.Nodes.JsonNode.Parse(payload)!.AsObject();mutate(broken);var text=broken.ToJsonString();
+                Refuse(()=>Apply(text,Hash(text),session,id));
+            }
             TimeZoneInfo.ClearCachedData();
             var cacheField=typeof(TimeZoneInfo).GetField("s_cachedData",flags)!;var cache=cacheField.GetValue(null)!;
             var localField=cache.GetType().GetField("_localTimeZone",BindingFlags.NonPublic|BindingFlags.Instance)!;
             Check(localField.GetValue(cache) is null);
+            var yearField=cache.GetType().GetField("_oneYearLocalFromUtc",BindingFlags.NonPublic|BindingFlags.Instance)!;
+            var coldRead=(TimeZoneInfo)Call("Read",payload,digest,session,id)!;
+            var localUntouched=localField.GetValue(cache) is null;var yearUntouched=yearField.GetValue(cache) is null;
+            Console.WriteLine($"Public calendar read with cold caches: local untouched={localUntouched}; current-year untouched={yearUntouched}");
+            Check(localUntouched && yearUntouched && coldRead.HasSameRules(original));
             Apply(payload,digest,session,id);
             var bound=TimeZoneInfo.Local;Check(bound.Id==id && bound.HasSameRules(original));
             Apply(payload,digest,session,id);Check(ReferenceEquals(bound,TimeZoneInfo.Local));
@@ -62,7 +75,7 @@ internal static class TimeZoneReadCases
             Refuse(()=>Apply(payload,digest,session,id));
         }
         finally{TimeZoneInfo.ClearCachedData();System.Globalization.CultureInfo.CurrentUICulture=culture;}
-        Console.WriteLine($"PASS {count} public-timezone snapshot integrity, identity, real-rule roundtrip, pinned process-local cache, native clock and strict offline TLS clone checks. Ordinary process only; no UAC, ACL/registry/clock setting changes, network, protected state, Job, WFP or LPAC qualification.");
+        Console.WriteLine($"PASS {count} public-timezone structured snapshot integrity, cold-reader cache independence, identity, real-rule roundtrip, pinned process-local cache, native clock and strict offline TLS clone checks. Ordinary process only; no UAC, ACL/registry/clock setting changes, network, protected state, Job, WFP or LPAC qualification.");
     }
     internal static void Run(Assembly library,bool metadata)
     {
