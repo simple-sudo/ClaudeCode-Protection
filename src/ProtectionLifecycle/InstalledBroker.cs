@@ -15,6 +15,7 @@ public static partial class InstalledBroker
 {
     public static int RunRestrictedPowerShell(string[] arguments)=>RestrictedPowerShellHost.Run(arguments);
     public static int RunRestrictedProject(string[] arguments)=>BundledProjectDevelopment.Run(arguments);
+    public static int RunRestrictedProjectProbe(string[] arguments)=>BundledProjectDevelopment.RunProbe(arguments);
     public static (int ExitCode,string Report) DevelopBundledProject()=>WithCurrentInstallation(ProtectedSession.DevelopBundledProject);
     public static (int ExitCode,string Report) ProcessWorkspaceData(string expectedSHA256)
         =>WithCurrentInstallation((layout,state,version)=>

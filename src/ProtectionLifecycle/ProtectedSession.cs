@@ -167,7 +167,7 @@ internal sealed class ProtectedSession
         var toolLaunch=new OwnedToolLaunch();
         var failures=new List<Exception>();
         string? workspaceResultSHA256=null;
-        (int Pid,long CreatedFileTime)? projectActor=null;HostPrivacySummary? hostPrivacy=null;
+        (int Pid,long CreatedFileTime)? projectActor=null,probeActor=null;bool probeObserved=false;HostPrivacySummary? hostPrivacy=null;
         try
         {
             assertCaller?.Invoke();
@@ -203,9 +203,11 @@ internal sealed class ProtectedSession
                 // planned exit is supervised by the runtime and exact Job
                 // drain, not mistaken for a foreign process appearing.
                 var executionPhase=developProject && toolObserved;
-                if(executionPhase && (resources.ProjectExecutionReleased || !resources.ProjectPrivacyReady()))continue;
+                var probePhase=developProject && gitObserved && !resources.ProjectProbeSealed;
+                if(probePhase && (probeObserved?!resources.ProjectProbePrivacyReady():!resources.ProjectProbeReady()))continue;
+                if(!probePhase && executionPhase && (resources.ProjectExecutionReleased || !resources.ProjectPrivacyReady()))continue;
                 var gitPhase=developProject?!gitObserved:!powerShellRequired || toolObserved;
-                if(!executionPhase && (gitPhase?!includeGit || gitObserved || !resources.GitReady():!resources.ToolReady()))continue;
+                if(!probePhase && !executionPhase && (gitPhase?!includeGit || gitObserved || !resources.GitReady():!resources.ToolReady()))continue;
                 var expectedTool=gitPhase?SessionGitToolchain.ToolPath:resources.Plan.PowerShellLaunchImage;
                 var before=job.Observe();
                 if(before.ActiveBefore==0 && before.ActiveAfter==0)continue;
@@ -240,7 +242,12 @@ internal sealed class ProtectedSession
                             if(developProject && !gitPhase)
                             {
                                 var actor=(checked((int)member.Pid),member.CreatedFileTime.Value);
-                                if(executionPhase)
+                                if(probePhase)
+                                {
+                                    if(probeObserved && probeActor!=actor)throw WfpNative.Contract("SealedPrivacyProbeIdentityChanged");
+                                    probeActor=actor;
+                                }
+                                else if(executionPhase)
                                 {
                                     if(projectActor!=actor)throw WfpNative.Contract("SealedProjectToolIdentityChanged");
                                 }
@@ -250,7 +257,12 @@ internal sealed class ProtectedSession
                     }
                     if(fixedTools!=1)throw WfpNative.Contract("ReadyResourceToolNotUniqueInHeldJobSnapshot");
                     runtime.AssertHealthy();
-                    if(executionPhase)resources.ReleaseProjectExecution(projectActor?.Pid??throw WfpNative.Contract("ProjectToolPidMissing"),runtime.AssertHealthy);
+                    if(probePhase)
+                    {
+                        if(probeObserved)resources.SealProjectProbeBeforeExit(probeActor?.Pid??throw WfpNative.Contract("PrivacyProbePidMissing"));
+                        else{resources.ReleaseInspectedProbe();probeObserved=true;}
+                    }
+                    else if(executionPhase)resources.ReleaseProjectExecution(projectActor?.Pid??throw WfpNative.Contract("ProjectToolPidMissing"),runtime.AssertHealthy);
                     else if(gitPhase){if(developProject)resources.SealRootHostPrivacyBeforeGit(checked((int)child.Pid));resources.ReleaseInspectedGit();gitObserved=true;}
                     else{resources.ReleaseInspectedTool();toolObserved=true;}
                 });

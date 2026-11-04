@@ -45,6 +45,8 @@ internal sealed class OwnedToolLaunch
         if(!requests.TryDequeue(out var request))return;
         if(request.SchemaVersion!=1 || request.Scope!="OWNED_TOOL_START_REQUEST" || request.Nonce!=resources.Plan.Nonce ||
             request.RootPid!=root.Pid || request.Sequence!=next || next>64)throw WfpNative.Contract("OwnedToolRequestBindingRefused");
+        if(request.Kind is "project" or "project-probe" && (request.Arguments.Length!=3 ||
+            request.Arguments[2]!=root.Pid.ToString(System.Globalization.CultureInfo.InvariantCulture)))throw WfpNative.Contract("OwnedProjectRootBindingRefused");
         var start=ValidateStart(resources.Plan,resources.Workspace,request.Kind,request.Arguments,request.StartSHA256);next++;
         resources.AssertHeld();permit.AuthorizeToolCreation(root,job);resources.BeforeOwnedToolCreation(request.Kind);
         ToolLaunchReply reply;
@@ -75,9 +77,11 @@ internal sealed class OwnedToolLaunch
             start=SessionResources.PowerShellStart(plan,workspace);
             if(!start.ArgumentList.SequenceEqual(arguments))throw WfpNative.Contract("OwnedPowerShellCompiledProgramRequired");
         }
-        else if(kind=="project")
+        else if(kind is "project" or "project-probe")
         {
-            start=BundledProjectDevelopment.Start(plan,workspace);
+            if(arguments.Length!=3 || !int.TryParse(arguments[2],System.Globalization.NumberStyles.None,System.Globalization.CultureInfo.InvariantCulture,out var rootPid))
+                throw WfpNative.Contract("OwnedProjectCompiledProgramRequired");
+            start=BundledProjectDevelopment.StartFixed(plan,workspace,rootPid,kind=="project-probe");
             if(!start.ArgumentList.SequenceEqual(arguments))throw WfpNative.Contract("OwnedProjectCompiledProgramRequired");
         }
         else if(kind=="git" && plan.GitAssetSetSHA256==SessionGitToolchain.AssetSetSHA256)
@@ -107,7 +111,7 @@ internal sealed class OwnedToolLaunch
         var plan=ResourceProbePlan.Parse(raw);
         var workspace=plan.Workspace(packageSid);
         if(start.WorkingDirectory!=workspace)throw WfpNative.Contract("OwnedToolWorkspaceRefused");
-        var kind=start.FileName==plan.PowerShellLaunchImage?(start.ArgumentList.FirstOrDefault()=="resource-project"?"project":"powershell"):start.FileName==WindowsPathSeal.Child(plan.GitDirectory,"git.exe")?"git":throw WfpNative.Contract("OwnedToolFixedImageRequired");
+        var kind=start.FileName==plan.PowerShellLaunchImage?(start.ArgumentList.FirstOrDefault() switch {"resource-project"=>"project","resource-project-probe"=>"project-probe",_=>"powershell"}):start.FileName==WindowsPathSeal.Child(plan.GitDirectory,"git.exe")?"git":throw WfpNative.Contract("OwnedToolFixedImageRequired");
         var sequence=Interlocked.Increment(ref workerSequence);var path=ReplyPath(workspace,sequence);
         var request=new ToolLaunchRequest(1,"OWNED_TOOL_START_REQUEST",plan.Nonce,Environment.ProcessId,sequence,kind,start.ArgumentList.ToArray(),StartHash(start));
         // Validate locally too, but only the trusted owner grants creation.

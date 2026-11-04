@@ -8,7 +8,9 @@ internal static class Program
     {
         if(args.Length>1 && args[0]=="resource-powershell")
             return ProtectionLifecycle.InstalledBroker.RunRestrictedPowerShell(args.Skip(1).ToArray());
-        if(args.Length==2 && args[0]=="resource-project")
+        if(args.Length==3 && args[0]=="resource-project-probe")
+            return ProtectionLifecycle.InstalledBroker.RunRestrictedProjectProbe(args.Skip(1).ToArray());
+        if(args.Length==3 && args[0]=="resource-project")
             return ProtectionLifecycle.InstalledBroker.RunRestrictedProject(args.Skip(1).ToArray());
         if(args.Length==1 && args[0]=="develop-bundled-project")
         {

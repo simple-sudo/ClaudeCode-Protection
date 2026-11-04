@@ -8,10 +8,11 @@ internal sealed class HostPrivacyExecutionGate
 {
     private readonly string session, planHash;
     private readonly bool resetSettingsAbsent;
-    private HostPrivacyObservation? root, tool;
-    private int phase; // 0 root pending, 1 root sealed, 2 tool creation, 3 tool sealed, 4 code released
-    internal bool ExecutionReleased => phase == 4;
+    private HostPrivacyObservation? root, probe, tool;
+    private int phase; // root sealed1, probe creation2/sealed3, compiler creation4/sealed5, code6
+    internal bool ExecutionReleased => phase == 6;
     internal bool ToolCreationAuthorized => phase >= 2;
+    internal bool ProbeSealed => phase >= 3;
     internal HostPrivacyExecutionGate(string session, string planHash,bool resetSettingsAbsent=false)
     {
         if(session.Length != 32 || session.Any(c => c is not (>= '0' and <= '9' or >= 'a' and <= 'f')) || !WorkspaceBundle.IsHash(planHash))
@@ -32,28 +33,43 @@ internal sealed class HostPrivacyExecutionGate
         if(phase != 0) throw new InvalidDataException("Host privacy root already sealed");
         root = CopyChecked(value, expectedPid); phase = 1;
     }
-    internal void AuthorizeToolCreation()
+    internal void AuthorizeProbeCreation()
     {
         if(phase != 1) throw new InvalidDataException("Host privacy single tool creation order differs");
         phase = 2;
     }
-    internal void SealTool(HostPrivacyObservation value, int expectedPid)
+    internal void SealProbe(HostPrivacyObservation value, int expectedPid)
     {
         if(phase != 2 || root is null || expectedPid == root.Pid)
             throw new InvalidDataException("Host privacy tool sealing order differs");
-        tool = CopyChecked(value, expectedPid); phase = 3;
+        probe = CopyChecked(value, expectedPid); phase = 3;
+    }
+    // Only the owner calls this after held probe exit0 and plan withdrawal.
+    internal void AuthorizeToolCreation()
+    {
+        if(phase!=3)throw new InvalidDataException("Host privacy probe must finish before compiler creation");
+        phase=4;
+    }
+    internal void SealTool(HostPrivacyObservation value,int expectedPid)
+    {
+        if(phase!=4 || root is null || probe is null || expectedPid<=0 || expectedPid==root.Pid || expectedPid==probe.Pid ||
+            value.SchemaVersion!=1 || value.SessionId!=session || value.PlanSHA256!=planHash || value.Pid!=expectedPid)
+            throw new InvalidDataException("Host privacy compiler binding differs");
+        HostPrivacyContract.ValidateCompilerCases(value.Cases);
+        if(value.Cases.Any(c=>c.Status!="ACCESS_DENIED" || c.Error!=5))throw new InvalidDataException("Compiler control checks not denied");
+        tool=value with {Cases=value.Cases.ToArray()};phase=5;
     }
     internal void ReleaseExecution()
     {
-        if(phase != 3) throw new InvalidDataException("Host privacy paired sealed observations required before code");
-        phase = 4;
+        if(phase != 5) throw new InvalidDataException("Host privacy three sealed actors required before code");
+        phase = 6;
     }
     internal HostPrivacySummary Snapshot(int rootPid, int toolPid)
     {
-        if(phase < 3 || root is null || tool is null || root.Pid != rootPid || tool.Pid != toolPid)
+        if(phase < 5 || root is null || probe is null || tool is null || root.Pid != rootPid || tool.Pid != toolPid)
             throw new InvalidDataException("Host privacy sealed actor binding differs");
         var result = new HostPrivacySummary(HostPrivacyContract.PolicySHA256, planHash, session, root.Pid, tool.Pid,
-            root.Cases.ToArray(), tool.Cases.ToArray());
+            root.Cases.ToArray(), tool.Cases.ToArray()){ProbePid=probe.Pid,ProbeCases=probe.Cases.ToArray()};
         HostPrivacyContract.Validate(result, session, true); return result;
     }
 }

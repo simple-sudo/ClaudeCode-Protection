@@ -18,6 +18,15 @@
 
 ## 开发基线
 
+- 本轮在原工作区开发链分离固定隐私探针与实际项目编译器。旧实现撤回磁盘计划后，编译器堆里
+  仍可能保留此前解析的真实宿主路径；新源码要求原 owner 封存独立探针、持有并观察其退出0、
+  撤回原计划并确认精确不存在后，才能创建编译器。编译器不解析私有计划，实际执行19项
+  owner/控制文件及9项固定根进程最小权限检查，再由原 owner 封存释放代码。
+  V5报告分别绑定root33/probe33/compiler28，GUI明确范围；不是把探针冒充编译器，也不是
+  完整自评/画像系统。六产品及三个普通组件非生成语义检查0/0；目前SOURCE/INTEGRATED，
+  尚未建立新BUILD或LPAC实测。机制见 HOST-PRIVACY-EXECUTION-SEAL；记录在
+  `work/privacy-probe-separation-176be2a/semantic-all-01.json`。当前安装及候选未因此改变。
+
 - `9af569c` 固定已闭合 8389 前置版本。Lifecycle/Broker/OwnedToolLaunch 离线 BUILD 0/0，
   101 输入、同库一致；普通快照13、反馈75及前置一正六拒绝通过。候选 7aa8dafe /
   manifest `208A02B4EFFC63A45BC30587969A0CF6B933E7DA466CD818DCF59F23FBE6BCDA`，

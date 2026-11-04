@@ -203,12 +203,14 @@ internal sealed class SessionResources : IDisposable
     internal HostPrivacySummary ReadClosedHostPrivacy(int rootPid,int? toolPid)
         =>(privacy??throw WfpNative.Contract("HostPrivacyOwnerMissing")).ReadClosed(Workspace,rootPid,toolPid);
     internal bool ProjectExecutionReleased=>privacy?.ExecutionReleased==true;
+    internal bool ProjectProbeSealed=>privacy?.ProbeSealed==true;
     internal void SealRootHostPrivacyBeforeGit(int rootPid)
         =>(privacy??throw WfpNative.Contract("HostPrivacyOwnerMissing")).SealRootBeforeGit(Workspace,rootPid);
     internal void BeforeOwnedToolCreation(string kind)
     {
         if(!Plan.DevelopProject)return;
-        if(kind=="project")(privacy??throw WfpNative.Contract("HostPrivacyOwnerMissing")).AuthorizeToolCreation();
+        if(kind=="project-probe")(privacy??throw WfpNative.Contract("HostPrivacyOwnerMissing")).AuthorizeProbeCreation();
+        else if(kind=="project")(privacy??throw WfpNative.Contract("HostPrivacyOwnerMissing")).AuthorizeToolCreation(Workspace);
         else if(kind=="git")(privacy??throw WfpNative.Contract("HostPrivacyOwnerMissing")).AssertGitCreationAllowed();
         else throw WfpNative.Contract("ExplicitProjectToolKindRequired");
     }
@@ -218,6 +220,11 @@ internal sealed class SessionResources : IDisposable
         owner.SealToolBeforeExecution(Workspace,toolPid);
         owner.ReleaseExecution(Workspace,assertCurrentOwner);
         Release("project-execution-go");
+    }
+    internal void SealProjectProbeBeforeExit(int pid)
+    {
+        AssertHeld();(privacy??throw WfpNative.Contract("HostPrivacyOwnerMissing")).SealProbeBeforeExit(Workspace,pid);
+        Release("probe-exit-go");
     }
     internal void PreserveGitFailure()
     {
@@ -254,6 +261,9 @@ internal sealed class SessionResources : IDisposable
     }
     internal bool ToolReady()=>Plan.RequiresCompilerTool && Ready("tool-ready");
     internal bool ProjectPrivacyReady()=>Plan.DevelopProject && Ready("project-privacy-ready");
+    internal bool ProjectProbeReady()=>Plan.DevelopProject && Ready("probe-ready");
+    internal bool ProjectProbePrivacyReady()=>Plan.DevelopProject && Ready("probe-privacy-ready");
+    internal void ReleaseInspectedProbe()=>Release("probe-go");
     internal bool GitReady()=>git is not null && Ready("git-ready");
     private bool Ready(string stem)
     {
@@ -347,6 +357,16 @@ internal sealed class SessionResources : IDisposable
                 stage="DENY_NAMED_HOST_RESOURCES";HostPrivacyProbe.RunRestricted(plan,workspace,"root");
                 stage="PROJECT_GIT_BASELINE";gitReport=SessionGitToolchain.RunChild(plan,workspace);
                 if(!SessionGitToolchain.Qualified(gitReport))throw WfpNative.Contract("FixedGitToolchainNotQualified");
+                stage="START_FIXED_PRIVACY_PROBE";
+                using(var probe=AtomicChild.StartInheritedTool(BundledProjectDevelopment.ProbeStart(plan,workspace)))
+                {
+                    probe.StandardInput.Close();var probeOut=new ToolOutputCapture(probe.StandardOutput);var probeError=new ToolOutputCapture(probe.StandardError);
+                    stage="WAIT_FIXED_PRIVACY_PROBE";
+                    if(!probe.WaitForExit(10000))throw new TimeoutException("Fixed privacy probe deadline");
+                    if(probe.ExitCode!=0 || probeOut.Completion.WaitAsync(TimeSpan.FromSeconds(1)).GetAwaiter().GetResult().Length!=0 ||
+                        probeError.Completion.WaitAsync(TimeSpan.FromSeconds(1)).GetAwaiter().GetResult().Length!=0)
+                        throw WfpNative.Contract("FixedPrivacyProbeNotConfirmed");
+                }
                 stage="START_PROJECT_COMPILER";
                 using var project=AtomicChild.StartInheritedTool(BundledProjectDevelopment.Start(plan,workspace));creationEvidence=project.CreationEvidence;project.StandardInput.Close();
                 var output=new ToolOutputCapture(project.StandardOutput);var errors=new ToolOutputCapture(project.StandardError);

@@ -23,7 +23,7 @@ internal static class ProjectFailureCases
         Refuse(()=>ProjectFailureContract.Validate(new("Compile",Enumerable.Repeat(failure.Diagnostics[0],9).ToArray())),"error count bound");
         Refuse(()=>ProjectFailureContract.Validate(new("Compile",new[]{new ProjectCompilerDiagnostic("CS0103",null,7,9)})),"global diagnostic cannot carry phantom location");
         var id=new string('a',32);HostPrivacyCase[] Cases()=>HostPrivacyContract.Roles.Select((r,i)=>new HostPrivacyCase(r,HostPrivacyContract.Kind(i),"ACCESS_DENIED",5)).ToArray();
-        var privacy=new HostPrivacySummary(HostPrivacyContract.PolicySHA256,new string('F',64),id,111,222,Cases(),Cases());
+        var privacy=new HostPrivacySummary(HostPrivacyContract.PolicySHA256,new string('F',64),id,111,222,Cases(),Enumerable.Range(0,HostPrivacyContract.CompilerCaseCount).Select(i=>{var c=HostPrivacyContract.CompilerCase(i);return new HostPrivacyCase(c.Role,c.Kind,"ACCESS_DENIED",5);}).ToArray()){ProbePid=333,ProbeCases=Cases()};
         JsonObject Reply()=>JsonSerializer.SerializeToNode(new{SchemaVersion=6,Scope=WorkspacePipe.CallerProjectScope,ExitCode=3,SessionId=id,BaseSHA256=new string('B',64),
             ResultSHA256=(string?)null,Status="CALLER_CSHARP_PROJECT_NOT_CONFIRMED",FailureStage="processing",FailureKind="ProjectTaskFailed",FailureCode=3,
             CreationEvidence=(object?)null,StopEvidence=(object?)null,HostPrivacy=privacy,OwnerSealedBeforeCode=true,ProjectFailure=failure})!.AsObject();

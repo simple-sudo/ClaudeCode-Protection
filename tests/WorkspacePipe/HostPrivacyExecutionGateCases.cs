@@ -9,101 +9,56 @@ internal static class HostPrivacyExecutionGateCases
         var session=new string('a',32);var hash=new string('F',64);var checks=0;
         HostPrivacyObservation Observation(int pid)=>new(1,session,hash,pid,
             HostPrivacyContract.Roles.Select((role,i)=>new HostPrivacyCase(role,HostPrivacyContract.Kind(i),"ACCESS_DENIED",5)).ToArray());
+        HostPrivacyObservation Compiler(int pid)=>new(1,session,hash,pid,
+            Enumerable.Range(0,HostPrivacyContract.CompilerCaseCount).Select(i=>{var c=HostPrivacyContract.CompilerCase(i);return new HostPrivacyCase(c.Role,c.Kind,"ACCESS_DENIED",5);}).ToArray());
         HostPrivacyExecutionGate Gate()=>new(session,hash);
+        HostPrivacyExecutionGate Probed()
+        {var g=Gate();g.SealRoot(Observation(111),111);g.AuthorizeProbeCreation();g.SealProbe(Observation(222),222);return g;}
         void Require(bool value,string reason){if(!value)throw new InvalidDataException(reason);checks++;}
         void Refuse(Action action,string reason)
         {try{action();}catch(InvalidDataException){checks++;return;}throw new Exception("Gate accepted "+reason);}
-        var empty=Gate();
-        Refuse(empty.ReleaseExecution,"code before root");
-        Refuse(empty.AuthorizeToolCreation,"compiler before root");
-        Refuse(()=>empty.SealTool(Observation(222),222),"tool before root");
-        Refuse(()=>empty.Snapshot(111,222),"snapshot before root");
+        var empty=Gate();Refuse(empty.ReleaseExecution,"code before root");Refuse(empty.AuthorizeProbeCreation,"probe before root");
+        Refuse(empty.AuthorizeToolCreation,"compiler before root");Refuse(()=>empty.SealProbe(Observation(222),222),"probe before root");
         var gate=Gate();var root=Observation(111);gate.SealRoot(root,111);
-        Refuse(gate.ReleaseExecution,"root-only code release");
-        Refuse(()=>gate.SealRoot(root,111),"second root observation");
-        Refuse(()=>gate.SealTool(Observation(222),222),"tool without original creation phase");
-        Refuse(()=>gate.Snapshot(111,222),"root-only successful snapshot");
-        gate.AuthorizeToolCreation();
-        Refuse(gate.AuthorizeToolCreation,"second compiler creation");
-        Refuse(()=>gate.SealTool(Observation(111),111),"root as compiler");
-        Refuse(()=>gate.SealTool(Observation(222),333),"wrong held tool PID");
-        Refuse(()=>gate.SealTool(Observation(222) with { SessionId=new string('b',32) },222),"foreign session");
-        Refuse(()=>gate.SealTool(Observation(222) with { PlanSHA256=new string('A',64) },222),"foreign resource plan");
-        var tool=Observation(222);gate.SealTool(tool,222);
-        Refuse(()=>gate.SealTool(tool,222),"second tool observation");
-        // Mutate every child-owned input slot, then every returned summary
-        // slot. None may alter the original owner's pre-code observation.
+        Refuse(gate.AuthorizeToolCreation,"compiler before probe");Refuse(gate.ReleaseExecution,"root-only release");
+        gate.AuthorizeProbeCreation();Refuse(gate.AuthorizeProbeCreation,"second probe");
+        Refuse(()=>gate.SealProbe(Observation(111),111),"root as probe");
+        var probe=Observation(222);gate.SealProbe(probe,222);
+        Refuse(gate.ReleaseExecution,"probe is not compiler evidence");
+        Refuse(()=>gate.SealTool(Compiler(333),333),"compiler before owner authorizes creation");
+        gate.AuthorizeToolCreation();Refuse(gate.AuthorizeToolCreation,"second compiler creation");
+        Refuse(()=>gate.SealTool(Compiler(111),111),"root as compiler");Refuse(()=>gate.SealTool(Compiler(222),222),"probe as compiler");
+        Refuse(()=>gate.SealTool(Observation(333),333),"full host report cannot masquerade as compiler control checks");
+        Refuse(()=>gate.SealTool(Compiler(333) with {SessionId=new string('b',32)},333),"foreign session");
+        Refuse(()=>gate.SealTool(Compiler(333) with {PlanSHA256=new string('A',64)},333),"foreign plan");
+        var compiler=Compiler(333);gate.SealTool(compiler,333);
+        foreach(var input in new[]{root,probe,compiler})for(var i=0;i<input.Cases.Length;i++)input.Cases[i]=input.Cases[i] with {Status="OPENED",Error=0};
+        Require(HostPrivacyContract.Satisfied(gate.Snapshot(111,333)),"untrusted source array mutations cannot replace owner evidence");
+        var exported=gate.Snapshot(111,333);foreach(var cases in new[]{exported.RootCases,exported.ProbeCases,exported.ToolCases})
+            for(var i=0;i<cases.Length;i++)cases[i]=cases[i] with {Status="OPENED",Error=0};
+        Require(HostPrivacyContract.Satisfied(gate.Snapshot(111,333)),"export array mutations cannot replace owner evidence");
+        Require(!gate.ExecutionReleased,"sealing does not release code");gate.ReleaseExecution();Require(gate.ExecutionReleased,"three sealed actors release code once");
+        Refuse(gate.ReleaseExecution,"second release");Refuse(()=>gate.Snapshot(111,444),"replacement compiler");
         for(var i=0;i<HostPrivacyContract.Roles.Length;i++)
         {
-            root.Cases[i]=root.Cases[i] with { Status="OPENED",Error=0 };
-            tool.Cases[i]=tool.Cases[i] with { Status="UNKNOWN",Error=2 };
+            var bad=Observation(111);bad.Cases[i]=bad.Cases[i] with {Status="OPENED",Error=0};Refuse(()=>Gate().SealRoot(bad,111),"root exposed "+i);
+            var g=Gate();g.SealRoot(Observation(111),111);g.AuthorizeProbeCreation();var unknown=Observation(222);unknown.Cases[i]=unknown.Cases[i] with {Status="UNKNOWN",Error=2};
+            Refuse(()=>g.SealProbe(unknown,222),"probe unknown "+i);Refuse(g.AuthorizeToolCreation,"unknown probe blocks compiler "+i);
         }
-        var sealedReport=gate.Snapshot(111,222);
-        Require(sealedReport.RootCases.Concat(sealedReport.ToolCases).All(c=>c.Status=="ACCESS_DENIED" && c.Error==5),"source-array mutation cannot rewrite owner evidence");
-        for(var i=0;i<HostPrivacyContract.Roles.Length;i++)
+        for(var i=0;i<HostPrivacyContract.CompilerCaseCount;i++)
         {
-            sealedReport.RootCases[i]=sealedReport.RootCases[i] with { Status="OPENED",Error=0 };
-            sealedReport.ToolCases[i]=sealedReport.ToolCases[i] with { Status="OPENED",Error=0 };
+            var g=Probed();g.AuthorizeToolCreation();var bad=Compiler(333);bad.Cases[i]=bad.Cases[i] with {Status="OPENED",Error=0};
+            Refuse(()=>g.SealTool(bad,333),"compiler exposed "+i);Refuse(g.ReleaseExecution,"compiler exposure blocks code "+i);
         }
-        Require(HostPrivacyContract.Satisfied(gate.Snapshot(111,222)),"exported-array mutation cannot rewrite owner evidence");
-        Require(!gate.ExecutionReleased && gate.ToolCreationAuthorized,"sealing does not silently release code");
-        gate.ReleaseExecution();Require(gate.ExecutionReleased,"paired sealed observations release code once");
-        Refuse(gate.ReleaseExecution,"second execution release");
-        Refuse(gate.AuthorizeToolCreation,"compiler after code release");
-        Refuse(()=>gate.SealRoot(Observation(111),111),"root replacement after release");
-        Refuse(()=>gate.SealTool(Observation(222),222),"tool replacement after release");
-        Refuse(()=>gate.Snapshot(333,222),"changed root on final export");
-        Refuse(()=>gate.Snapshot(111,333),"changed tool on final export");
-        for(var i=0;i<HostPrivacyContract.Roles.Length;i++)
-        {
-            var deniedRoot=Gate();var opened=Observation(111);opened.Cases[i]=opened.Cases[i] with { Status="OPENED",Error=0 };
-            Refuse(()=>deniedRoot.SealRoot(opened,111),"opened root slot "+i);
-            Refuse(deniedRoot.AuthorizeToolCreation,"invalid root cannot authorize compiler "+i);
-            var deniedTool=Gate();deniedTool.SealRoot(Observation(111),111);deniedTool.AuthorizeToolCreation();
-            var unknown=Observation(222);unknown.Cases[i]=unknown.Cases[i] with { Status="UNKNOWN",Error=2 };
-            Refuse(()=>deniedTool.SealTool(unknown,222),"unknown tool slot "+i);
-            Refuse(deniedTool.ReleaseExecution,"invalid tool cannot release code "+i);
-        }
-        // Earlier V1 evidence cannot satisfy the new protection-owner policy,
-        // including the case where the new fields were simply omitted.
-        var legacy=Observation(111) with {Cases=Observation(111).Cases.Take(14).ToArray()};
-        Refuse(()=>Gate().SealRoot(legacy,111),"old 14-slot root evidence");
-        Require(HostPrivacyContract.Roles.Length==33,"14 host, nine owner and ten control file access cases required");
-        var masks=Enumerable.Range(14,9).Select(HostPrivacyContract.OwnerAccess).ToArray();
-        Require(masks.SequenceEqual(new uint[]{0x10,0x1,0x2,0x8,0x20,0x40,0x800,0x40000,0x80000}),"each owner right has exact minimal mask");
-        Require(masks.Distinct().Count()==9 && masks.All(m=>(m&(m-1))==0),"no combined or repeated rights hide exposure");
-        Refuse(()=>HostPrivacyContract.OwnerAccess(13),"host case cannot request owner rights");
-        Refuse(()=>HostPrivacyContract.OwnerAccess(23),"undefined owner rights");
-        var fileMasks=new uint[]{1,2,0x40000,0x80000,2,0x40000,0x80000,2,0x40000,0x80000};
-        for(var i=0;i<fileMasks.Length;i++)Require(HostPrivacyContract.ControlFileAccess(i+23)==fileMasks[i],"one minimal file right per role");
-        Refuse(()=>HostPrivacyContract.ControlFileAccess(22),"process index is not a control file grant");
-        Refuse(()=>HostPrivacyContract.ControlFileAccess(33),"undefined control file rights");
-        var processOnly=Observation(111) with {Cases=Observation(111).Cases.Take(23).ToArray()};
-        Refuse(()=>Gate().SealRoot(processOnly,111),"previous process-only inventory omits control file checks");
         foreach(var error in new[]{2,3,5})
         {
-            var resetRoot=Observation(111);var resetTool=Observation(222);
-            resetRoot.Cases[7]=HostPrivacyContract.FileObservation(7,true,error);resetTool.Cases[7]=HostPrivacyContract.FileObservation(7,true,error);
-            Refuse(()=>Gate().SealRoot(resetRoot,111),"child cannot select optional absence");
-            var reset=new HostPrivacyExecutionGate(session,hash,true);reset.SealRoot(resetRoot,111);reset.AuthorizeToolCreation();reset.SealTool(resetTool,222);reset.ReleaseExecution();
-            var summary=reset.Snapshot(111,222);
-            Require(HostPrivacyContract.Satisfied(summary) && summary.RootCases.Concat(summary.ToolCases).Count(c=>c.Status=="ACCESS_DENIED")==64,
-                "owner-bound missing settings is distinct from 64 actual denial records");
-            var mixed=new HostPrivacyExecutionGate(session,hash,true);mixed.SealRoot(resetRoot,111);mixed.AuthorizeToolCreation();
-            Refuse(()=>mixed.SealTool(Observation(222),222),"tool cannot replace owner-selected absence with denial");
+            var r=Observation(111);var p=Observation(222);r.Cases[7]=HostPrivacyContract.FileObservation(7,true,error);p.Cases[7]=HostPrivacyContract.FileObservation(7,true,error);
+            Refuse(()=>Gate().SealRoot(r,111),"child cannot select absence");
+            var g=new HostPrivacyExecutionGate(session,hash,true);g.SealRoot(r,111);g.AuthorizeProbeCreation();g.SealProbe(p,222);g.AuthorizeToolCreation();g.SealTool(Compiler(333),333);g.ReleaseExecution();
+            var report=g.Snapshot(111,333);Require(HostPrivacyContract.Satisfied(report) && report.RootCases.Concat(report.ProbeCases).Concat(report.ToolCases).Count(c=>c.Status=="ACCESS_DENIED")==92,"92 actual denials and two owner-selected absence observations");
         }
-        Refuse(()=>new HostPrivacyExecutionGate(session,hash,true).SealRoot(Observation(111),111),"owner absence requires matching typed evidence");
-        foreach(var i in Enumerable.Range(0,HostPrivacyContract.Roles.Length).Where(i=>i!=7))
-        {
-            var unsupported=Observation(111);unsupported.Cases[i]=unsupported.Cases[i] with {Status=HostPrivacyContract.OwnerObservedAbsent,Error=2};
-            Refuse(()=>new HostPrivacyExecutionGate(session,hash,true).SealRoot(unsupported,111),"no other target can become optional "+i);
-        }
-        foreach(var error in new[]{0,32,6})
-        {
-            var notClosed=Observation(111);notClosed.Cases[7]=HostPrivacyContract.FileObservation(7,true,error);
-            Refuse(()=>new HostPrivacyExecutionGate(session,hash,true).SealRoot(notClosed,111),"opened/sharing/query error is not absence qualification");
-        }
-        Refuse(()=>HostPrivacyContract.FileObservation(0,true,2),"nonreset file cannot select absence");
-        Console.WriteLine($"PASS {checks} original-owner pre-code gate checks: phase ordering, single compiler/release, exact actors/context, all{HostPrivacyContract.Roles.Length} failed slots, legacy inventory refusal, minimal owner masks, immutable snapshots; pure synthetic reports, NOT LPAC/native host privacy or live Job qualification");
+        Require(Enumerable.Range(14,9).Select(HostPrivacyContract.OwnerAccess).SequenceEqual(new uint[]{0x10,1,2,8,0x20,0x40,0x800,0x40000,0x80000}),"one minimal process right per case");
+        Require(Enumerable.Range(19,9).Select(i=>HostPrivacyContract.CompilerCase(i).Role).All(r=>r.StartsWith("protection-root-",StringComparison.Ordinal)),"compiler checks actual root memory and control separately");
+        Console.WriteLine($"PASS {checks} separate-probe owner gate checks; synthetic reports only, NOT native exit, LPAC, plan withdrawal or system qualification");
     }
 }

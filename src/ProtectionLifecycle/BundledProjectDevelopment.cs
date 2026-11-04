@@ -43,8 +43,13 @@ internal static class BundledProjectDevelopment
         if(!pe.HasMetadata)throw WfpNative.Contract("DevelopmentAssemblyMetadataMissing");
     }
     internal static ProcessStartInfo Start(ResourceProbePlan plan,string workspace)
+        =>StartFixed(plan,workspace,Environment.ProcessId,false);
+    internal static ProcessStartInfo ProbeStart(ResourceProbePlan plan,string workspace)
+        =>StartFixed(plan,workspace,Environment.ProcessId,true);
+    internal static ProcessStartInfo StartFixed(ResourceProbePlan plan,string workspace,int rootPid,bool probe)
     {
         plan.Validate();if(!plan.DevelopProject)throw WfpNative.Contract("ExplicitProjectDevelopmentRequired");
+        if(rootPid<=0 || rootPid==plan.BrokerPid)throw WfpNative.Contract("ProjectFixedRootRequired");
         var start=new ProcessStartInfo(plan.ExpectedChildImage){UseShellExecute=false,CreateNoWindow=true,WorkingDirectory=workspace,RedirectStandardInput=true,RedirectStandardOutput=true,RedirectStandardError=true};
         start.Environment.Clear();
         foreach(var name in new[]{"SystemRoot","windir","SystemDrive","PROCESSOR_ARCHITECTURE"})
@@ -53,28 +58,50 @@ internal static class BundledProjectDevelopment
         start.Environment["PATH"]=Environment.SystemDirectory;
         start.Environment["DOTNET_ROOT"]=WindowsPathSeal.Child(plan.ProgramFilesRoot,"dotnet");
         start.Environment["CPC_RESOURCE_PLAN"]=JsonSerializer.Serialize(plan);
-        start.ArgumentList.Add("resource-project");start.ArgumentList.Add(plan.Nonce);return start;
+        start.ArgumentList.Add(probe?"resource-project-probe":"resource-project");start.ArgumentList.Add(plan.Nonce);
+        start.ArgumentList.Add(rootPid.ToString(System.Globalization.CultureInfo.InvariantCulture));return start;
+    }
+    private static (ResourceProbePlan Plan,string Workspace,int RootPid) ReadContext(string[] arguments)
+    {
+        var actual=AtomicChild.AssertRestrictedToolSelf();
+        var plan=ResourceProbePlan.Parse(Environment.GetEnvironmentVariable("CPC_RESOURCE_PLAN")??throw WfpNative.Contract("ProjectPlanMissing"));
+        using var package=InstallationPackageSid.FromInstallationId(plan.InstallationId);
+        if(!plan.DevelopProject || actual!=package.Value || arguments.Length!=2 || arguments[0]!=plan.Nonce ||
+            !int.TryParse(arguments[1],System.Globalization.NumberStyles.None,System.Globalization.CultureInfo.InvariantCulture,out var rootPid) ||
+            rootPid<=0 || rootPid==Environment.ProcessId || rootPid==plan.BrokerPid || arguments[1]!=rootPid.ToString(System.Globalization.CultureInfo.InvariantCulture) ||
+            !string.Equals(Environment.ProcessPath,plan.ExpectedChildImage,StringComparison.OrdinalIgnoreCase))throw WfpNative.Contract("ProjectOriginalOwnerBindingMissing");
+        var workspace=plan.Workspace(package.Value);
+        if(!string.Equals(Path.GetFullPath(Environment.CurrentDirectory),workspace,StringComparison.OrdinalIgnoreCase))throw WfpNative.Contract("ProjectWorkingDirectoryDiffers");
+        return(plan,workspace,rootPid);
+    }
+    private static void WaitForOwner(ResourceProbePlan plan,string workspace,string ready,string release)
+    {
+        File.WriteAllText(Path.Combine(workspace,ready+".txt"),plan.Nonce,Encoding.ASCII);
+        File.WriteAllText(Path.Combine(workspace,ready+".signal"),"");var clock=Stopwatch.StartNew();
+        while(!File.Exists(Path.Combine(workspace,release+".signal"))){if(clock.ElapsedMilliseconds>=8000)throw new TimeoutException("Original project owner gate");Thread.Sleep(20);}
+        if(File.ReadAllText(Path.Combine(workspace,release+".txt"))!=plan.Nonce)throw WfpNative.Contract("ProjectOwnerGateBindingDiffers");
+    }
+    internal static int RunProbe(string[] arguments)
+    {
+        try
+        {
+            var (plan,workspace,_)=ReadContext(arguments);
+            WaitForOwner(plan,workspace,"probe-ready","probe-go");
+            HostPrivacyProbe.RunRestricted(plan,workspace,"probe");
+            WaitForOwner(plan,workspace,"probe-privacy-ready","probe-exit-go");
+            return 0;
+        }
+        catch(Exception error){Console.Error.WriteLine("Fixed privacy probe not confirmed: "+error.GetType().Name+"; code="+error.HResult);return 125;}
     }
     internal static int Run(string[] arguments)
     {
         try
         {
-            var actual=AtomicChild.AssertRestrictedToolSelf();
-            var plan=ResourceProbePlan.Parse(Environment.GetEnvironmentVariable("CPC_RESOURCE_PLAN")??throw WfpNative.Contract("ProjectPlanMissing"));
-            using var package=InstallationPackageSid.FromInstallationId(plan.InstallationId);
-            if(!plan.DevelopProject || actual!=package.Value || !arguments.SequenceEqual(new[]{plan.Nonce}) ||
-                !string.Equals(Environment.ProcessPath,plan.ExpectedChildImage,StringComparison.OrdinalIgnoreCase))throw WfpNative.Contract("ProjectOriginalOwnerBindingMissing");
-            var workspace=plan.Workspace(package.Value);
-            if(!string.Equals(Path.GetFullPath(Environment.CurrentDirectory),workspace,StringComparison.OrdinalIgnoreCase))throw WfpNative.Contract("ProjectWorkingDirectoryDiffers");
-            File.WriteAllText(Path.Combine(workspace,"tool-ready.txt"),plan.Nonce,Encoding.ASCII);
-            File.WriteAllText(Path.Combine(workspace,"tool-ready.signal"),"");var clock=Stopwatch.StartNew();
-            while(!File.Exists(Path.Combine(workspace,"tool-go.signal"))){if(clock.ElapsedMilliseconds>=8000)throw new TimeoutException("Original project owner gate");Thread.Sleep(20);}
-            if(File.ReadAllText(Path.Combine(workspace,"tool-go.txt"))!=plan.Nonce)throw WfpNative.Contract("ProjectOwnerGateBindingDiffers");
-            HostPrivacyProbe.RunRestricted(plan,workspace,"project");
-            File.WriteAllText(Path.Combine(workspace,"project-privacy-ready.txt"),plan.Nonce,Encoding.ASCII);
-            File.WriteAllText(Path.Combine(workspace,"project-privacy-ready.signal"),"");clock.Restart();
-            while(!File.Exists(Path.Combine(workspace,"project-execution-go.signal"))){if(clock.ElapsedMilliseconds>=8000)throw new TimeoutException("Original owner privacy sealing gate");Thread.Sleep(20);}
-            if(File.ReadAllText(Path.Combine(workspace,"project-execution-go.txt"))!=plan.Nonce)throw WfpNative.Contract("ProjectExecutionGateBindingDiffers");
+            var (plan,workspace,rootPid)=ReadContext(arguments);
+            WaitForOwner(plan,workspace,"tool-ready","tool-go");
+            HostPrivacyProbe.RunCompilerControl(plan,workspace,rootPid);
+            WaitForOwner(plan,workspace,"project-privacy-ready","project-execution-go");
+            HostPrivacyProbe.AssertPlanAbsent(workspace);
             if(plan.CallerProjectKind is not null)
             {
                 var input=plan.ProjectBundle;

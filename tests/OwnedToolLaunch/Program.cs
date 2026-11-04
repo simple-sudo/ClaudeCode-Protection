@@ -91,14 +91,14 @@ if(args[0] is "caller-project-build" or "caller-project-policy" or "caller-data-
     callerPlanType.GetProperty("CallerProjectKind")!.SetValue(callerPlan,selectedCallerKind);
     var project=library.GetType("ProtectionLifecycle.BundledProjectDevelopment",true)!;
     var callerWorkspace=Path.Combine(callerProgramFiles,"ClaudeCodeProtection-Task-"+callerNonce);
-    var start=(ProcessStartInfo)Call(project,"Start",callerPlan,callerWorkspace)!;
+    var start=(ProcessStartInfo)Call(project,"StartFixed",callerPlan,callerWorkspace,111,false)!;
     _=Call(launch,"ValidateStart",callerPlan,callerWorkspace,"project",start.ArgumentList.ToArray(),Call(launch,"StartHash",start)!);
     _=Call(callerPlanType,"Parse",JsonSerializer.Serialize(callerPlan,callerPlanType));
     callerPlanType.GetProperty("CallerProjectKind")!.SetValue(callerPlan,"OTHER_EXECUTOR");
-    Refuse(()=>Call(project,"Start",callerPlan,callerWorkspace),"ResourceQualificationPlanRefused");
+    Refuse(()=>Call(project,"StartFixed",callerPlan,callerWorkspace,111,false),"ResourceQualificationPlanRefused");
     callerPlanType.GetProperty("CallerProjectKind")!.SetValue(callerPlan,selectedCallerKind);
     callerPlanType.GetProperty("SchemaVersion")!.SetValue(callerPlan,5);
-    Refuse(()=>Call(project,"Start",callerPlan,callerWorkspace),"ResourceQualificationPlanRefused");
+    Refuse(()=>Call(project,"StartFixed",callerPlan,callerWorkspace,111,false),"ResourceQualificationPlanRefused");
     if(args[0]=="caller-project-policy"){Console.WriteLine("PASS explicit caller v6 kind, input/privacy digest and original fixed tool start; wrong kind and v5 mixing refused; no product/Job/code execution");return 0;}
     var fixture=Path.Combine(AppContext.BaseDirectory,"ordinary-caller-project-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(fixture);
     Call(files,"MaterializeNew",fixture,"project",baseline);
@@ -171,16 +171,22 @@ if(args[0] is "project-policy" or "project-build")
     }
     var development=Plan(5,true,hash);var data=Plan(3,false,hash);
     var projectWorkspace=Path.Combine(projectProgramFiles,"ClaudeCodeProtection-Task-"+projectNonce);
-    var start=(ProcessStartInfo)Call(project,"Start",development,projectWorkspace)!;
+    var start=(ProcessStartInfo)Call(project,"StartFixed",development,projectWorkspace,111,false)!;
     var digest=(string)Call(launch,"StartHash",start)!;
     _=Call(launch,"ValidateStart",development,projectWorkspace,"project",start.ArgumentList.ToArray(),digest);
-    Refuse(()=>Call(project,"Start",data,projectWorkspace),"ExplicitProjectDevelopmentRequired");
+    var probeStart=(ProcessStartInfo)Call(project,"StartFixed",development,projectWorkspace,111,true)!;
+    _=Call(launch,"ValidateStart",development,projectWorkspace,"project-probe",probeStart.ArgumentList.ToArray(),Call(launch,"StartHash",probeStart)!);
+    Refuse(()=>Call(launch,"ValidateStart",development,projectWorkspace,"project",probeStart.ArgumentList.ToArray(),Call(launch,"StartHash",probeStart)!),"OwnedProjectCompiledProgramRequired");
+    Refuse(()=>Call(launch,"ValidateStart",development,projectWorkspace,"project-probe",start.ArgumentList.ToArray(),digest),"OwnedProjectCompiledProgramRequired");
+    Refuse(()=>Call(project,"StartFixed",development,projectWorkspace,0,true),"ProjectFixedRootRequired");
+    Refuse(()=>Call(project,"StartFixed",development,projectWorkspace,Environment.ProcessId,true),"ProjectFixedRootRequired");
+    Refuse(()=>Call(project,"StartFixed",data,projectWorkspace,111,false),"ExplicitProjectDevelopmentRequired");
     Refuse(()=>Call(launch,"ValidateStart",data,projectWorkspace,"project",start.ArgumentList.ToArray(),digest),"ExplicitProjectDevelopmentRequired");
-    Refuse(()=>Call(project,"Start",Plan(3,true,hash),projectWorkspace),"ResourceQualificationPlanRefused");
-    Refuse(()=>Call(project,"Start",Plan(4,true,hash),projectWorkspace),"ResourceQualificationPlanRefused");
-    Refuse(()=>Call(project,"Start",Plan(5,true,new string('D',64)),projectWorkspace),"FixedDevelopmentProjectPlanRequired");
+    Refuse(()=>Call(project,"StartFixed",Plan(3,true,hash),projectWorkspace,111,false),"ResourceQualificationPlanRefused");
+    Refuse(()=>Call(project,"StartFixed",Plan(4,true,hash),projectWorkspace,111,false),"ResourceQualificationPlanRefused");
+    Refuse(()=>Call(project,"StartFixed",Plan(5,true,new string('D',64)),projectWorkspace,111,false),"FixedDevelopmentProjectPlanRequired");
     var missingPrivacy=Plan(5,true,hash);projectPlanType.GetProperty("HostPrivacySHA256")!.SetValue(missingPrivacy,null);
-    Refuse(()=>Call(project,"Start",missingPrivacy,projectWorkspace),"ResourceQualificationPlanRefused");
+    Refuse(()=>Call(project,"StartFixed",missingPrivacy,projectWorkspace,111,false),"ResourceQualificationPlanRefused");
     Refuse(()=>Call(roots,"PowerShellStart",development,projectWorkspace),"WorkspaceDataCannotRequestPowerShell");
     var changed=start.ArgumentList.ToArray();changed[1]=new string('f',32);
     Refuse(()=>Call(launch,"ValidateStart",development,projectWorkspace,"project",changed,digest),"OwnedProjectCompiledProgramRequired");

@@ -21,7 +21,7 @@ static async Task Refuse(Func<Task> operation,string reason)
 static HostPrivacySummary Privacy()
 {
     HostPrivacyCase[] Cases()=>HostPrivacyContract.Roles.Select((role,i)=>new HostPrivacyCase(role,HostPrivacyContract.Kind(i),"ACCESS_DENIED",5)).ToArray();
-    return new(HostPrivacyContract.PolicySHA256,new string('F',64),new string('a',32),111,222,Cases(),Cases());
+    return new(HostPrivacyContract.PolicySHA256,new string('F',64),new string('a',32),111,222,Cases(),Enumerable.Range(0,HostPrivacyContract.CompilerCaseCount).Select(i=>{var c=HostPrivacyContract.CompilerCase(i);return new HostPrivacyCase(c.Role,c.Kind,"ACCESS_DENIED",5);}).ToArray()){ProbePid=333,ProbeCases=Cases()};
 }
 if(args[0]=="privacy-contract")
 {
@@ -41,24 +41,32 @@ if(args[0]=="privacy-contract")
     {
         for(var i=14;i<HostPrivacyContract.Roles.Length;i++)
         {
-            var exposed=Privacy();(tool?exposed.ToolCases:exposed.RootCases)[i]=new(HostPrivacyContract.Roles[i],HostPrivacyContract.Kind(i),"OPENED",0);
+            var exposed=Privacy();(tool?exposed.ProbeCases:exposed.RootCases)[i]=new(HostPrivacyContract.Roles[i],HostPrivacyContract.Kind(i),"OPENED",0);
             Reject(exposed,"each individual owner-control exposure refuses authenticated result");
         }
         foreach(var replacement in new[]{new HostPrivacyCase(HostPrivacyContract.Roles[0],HostPrivacyContract.Kind(0),"OPENED",0),
             new HostPrivacyCase(HostPrivacyContract.Roles[0],HostPrivacyContract.Kind(0),"UNKNOWN",2),
             new HostPrivacyCase(HostPrivacyContract.Roles[0],HostPrivacyContract.Kind(0),"UNKNOWN",32)})
         {
-            var value=Privacy();(tool?value.ToolCases:value.RootCases)[0]=replacement;
+            var value=Privacy();(tool?value.ProbeCases:value.RootCases)[0]=replacement;
             HostPrivacyContract.Validate(value,session,false);Require(!HostPrivacyContract.Satisfied(value),"exposure/absence/sharing refusal remains failure evidence");
             Reject(value,"exposure or unobserved denial cannot release project");
         }
-        var wrong=Privacy();(tool?wrong.ToolCases:wrong.RootCases)[0]=new("C:\\private","file-read-data-open","ACCESS_DENIED",5);Reject(wrong,"no host paths or unknown roles in summary",false);
-        wrong=Privacy();(tool?wrong.ToolCases:wrong.RootCases)[0]=new(HostPrivacyContract.Roles[0],HostPrivacyContract.Kind(0),"ACCESS_DENIED",2);Reject(wrong,"file absence cannot be renamed denial",false);
+        var wrong=Privacy();(tool?wrong.ProbeCases:wrong.RootCases)[0]=new("C:\\private","file-read-data-open","ACCESS_DENIED",5);Reject(wrong,"no host paths or unknown roles in summary",false);
+        wrong=Privacy();(tool?wrong.ProbeCases:wrong.RootCases)[0]=new(HostPrivacyContract.Roles[0],HostPrivacyContract.Kind(0),"ACCESS_DENIED",2);Reject(wrong,"file absence cannot be renamed denial",false);
     }
     var fields=JsonSerializer.Serialize(good).Replace("\"RootPid\":111","\"RootPid\":111,\"RootPid\":111",StringComparison.Ordinal);
+    Reject(good with {ProbePid=null,ProbeCases=Array.Empty<HostPrivacyCase>()},"missing independent probe");
+    Reject(good with {ProbePid=good.ToolPid},"probe cannot masquerade as compiler");
+    Reject(good with {ToolCases=good.ProbeCases},"old full-host tool inventory is not compiler control evidence");
+    for(var i=0;i<HostPrivacyContract.CompilerCaseCount;i++)
+    {
+        var value=Privacy();value.ToolCases[i]=value.ToolCases[i] with {Status="OPENED",Error=0};
+        Reject(value,"compiler exposure cannot succeed");
+    }
     var duplicateRejected=false;try{using var json=JsonDocument.Parse(fields);HostPrivacyContract.Parse(json.RootElement,session,true);}catch(InvalidDataException){duplicateRejected=true;}
     Require(duplicateRejected,"duplicate summary fields refused");
-    Console.WriteLine("PASS paired named-resource contract: two actors, exact catalogue/policy/session/plan, absent tool and exposed/absent/sharing cases cannot succeed, failure observations preserved, no host paths or duplicate fields; synthetic only, no native query/UAC/Job or real host privacy proof");return 0;
+    Console.WriteLine("PASS three-actor named-resource contract: separate fixed probe and actual compiler scopes, exact catalogue/policy/session/plan, absent actors and exposed/absent/sharing cases cannot succeed; synthetic only, no native query/UAC/Job or real host privacy proof");return 0;
 }
 if(args[0]=="project-contract")
 {

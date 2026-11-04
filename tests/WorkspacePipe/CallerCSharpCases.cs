@@ -50,7 +50,7 @@ internal static class CallerCSharpCases
         Refuse(()=>task.VerifyResult(WorkspaceBundle.Create(resultFiles.Select(f=>(f.Item1,f.Item1=="cpc-output/test-result.txt"?"6"u8.ToArray():f.Item2)),task.BaselineSHA256).Serialize()),"wrong test count");
         Refuse(()=>task.VerifyResult(WorkspaceBundle.Create(resultFiles.Select(f=>(f.Item1,f.Item1=="cpc-output/CpcProject.dll"?new byte[512]:f.Item2)),task.BaselineSHA256).Serialize()),"non-managed artifact");
         var session=new string('a',32);HostPrivacyCase[] Cases()=>HostPrivacyContract.Roles.Select((r,i)=>new HostPrivacyCase(r,HostPrivacyContract.Kind(i),"ACCESS_DENIED",5)).ToArray();
-        var privacy=new HostPrivacySummary(HostPrivacyContract.PolicySHA256,new string('F',64),session,111,222,Cases(),Cases());
+        var privacy=new HostPrivacySummary(HostPrivacyContract.PolicySHA256,new string('F',64),session,111,222,Cases(),Enumerable.Range(0,HostPrivacyContract.CompilerCaseCount).Select(i=>{var c=HostPrivacyContract.CompilerCase(i);return new HostPrivacyCase(c.Role,c.Kind,"ACCESS_DENIED",5);}).ToArray()){ProbePid=333,ProbeCases=Cases()};
         Dictionary<string,object?> Success()=>new(){["SchemaVersion"]=6,["Scope"]=WorkspacePipe.CallerProjectScope,["OwnerSealedBeforeCode"]=true,["HostPrivacy"]=privacy,
             ["ExitCode"]=0,["SessionId"]=session,["BaseSHA256"]=task.BaselineSHA256,["ResultSHA256"]=WorkspaceBundle.Hash(result),["Status"]="CALLER_CSHARP_PROJECT_BUILT_AND_CLEANED",
             ["FailureStage"]=null,["FailureKind"]=null,["FailureCode"]=null,["CreationEvidence"]=null,["StopEvidence"]=null};
