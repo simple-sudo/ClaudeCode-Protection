@@ -188,6 +188,7 @@ public static class BootstrapInstaller
             "D21A7D9F39A93E82087062EAD14F49329E7DBDD2743B2DC12DE98CAB6DC691F1"
         }; // Exact reviewed packages expose no launch/admission command.
         private static readonly string[] OneShotAdmissionManifests={
+            "3BF2F145C1C4C763D8F071C70A537CFB04952C1AC66D4DCA28B366928BB65789", // da7 fixed timezone-registry refusal; original Job closure and exact two-key restoration observed; live gates remain.
             "5A7B7704B74782A065F3A9F7641E65897E8E7D93B735F4FCA0758E12B851BBC0", // d550 TLS policy refusal; original Job closure and two-key timezone restoration observed; all live gates remain.
             "4E5ECAB1FC1D7455B7DF6EFE5678039E7C11EB92C71FC585F4A634CF277B0D4C", // d423 suspended gateway attempt; exact timezone recovery observed, all live closure/resource gates remain.
             "1A7AD8E8C6935CD75EEC54D7ADC2143224ECE3052B6FCEE51DA98B52525F9719", // a9de TLS policy refusal; original durable closed-Job/quarantine guards remain.

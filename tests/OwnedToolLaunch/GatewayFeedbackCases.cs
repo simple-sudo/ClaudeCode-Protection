@@ -58,7 +58,8 @@ internal static class GatewayFeedbackCases
         Accept(namedSecurity,125);
         Check(JsonNode.Parse(namedSecurity)!["Errors"]![0]!["Kind"]!.GetValue<string>()=="SECURITY" &&
             !namedSecurity.Contains("PRIVATE_PATH",StringComparison.Ordinal));
-        foreach(var kind in new[]{"TIMEZONE_REGISTRY","REGISTRY_ACCESS"})
+        foreach(var kind in new[]{"TIMEZONE_REGISTRY","REGISTRY_ACCESS","TZ_CATALOG_SEARCH","TZ_CATALOG_ENUMERATION",
+            "TZ_DEFINITION","TZ_DYNAMIC_RULES","TZ_ENUMERATED_DEFINITION","TZ_UTC_DEFINITION"})
         {
             var categorized=JsonNode.Parse(namedSecurity)!;categorized["Errors"]![0]!["Kind"]=kind;
             Accept(categorized.ToJsonString(),125);

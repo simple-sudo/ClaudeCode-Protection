@@ -43,15 +43,24 @@ internal sealed record GatewayChildReport(int SchemaVersion,string SessionId,int
         {
             var trace=new System.Diagnostics.StackTrace(error,false);
             if(trace.FrameCount is <1 or >64)return "SECURITY";
-            var localTime=false;var registry=false;
+            var localTime=false;var registry=false;string? operation=null;
             for(var i=0;i<trace.FrameCount;i++)
             {
-                var type=trace.GetFrame(i)?.GetMethod()?.DeclaringType;
+                var method=trace.GetFrame(i)?.GetMethod();var type=method?.DeclaringType;
                 if(type is null || type.Assembly!=typeof(DateTime).Assembly)continue;
                 if(type.FullName=="System.TimeZoneInfo" || type.DeclaringType?.FullName=="System.TimeZoneInfo")localTime=true;
                 if(type.FullName is "Internal.Win32.RegistryKey" or "Microsoft.Win32.RegistryKey")registry=true;
+                // The nearest known runtime operation wins, so a dynamic-rule
+                // failure is not mislabeled by its outer definition lookup.
+                if(operation is null && type.FullName=="System.TimeZoneInfo")operation=method!.Name switch {
+                    "FindIdFromTimeZoneInformation"=>"TZ_CATALOG_SEARCH",
+                    "PopulateAllSystemTimeZones"=>"TZ_CATALOG_ENUMERATION",
+                    "TryGetTimeZoneFromLocalMachine"=>"TZ_DEFINITION",
+                    "TryCreateAdjustmentRules"=>"TZ_DYNAMIC_RULES",
+                    "TryCompareTimeZoneInformationToRegistry"=>"TZ_ENUMERATED_DEFINITION",
+                    "GetUtcStandardDisplayName"=>"TZ_UTC_DEFINITION",_=>null};
             }
-            return localTime && registry?"TIMEZONE_REGISTRY":registry?"REGISTRY_ACCESS":"SECURITY";
+            return localTime && registry?operation??"TIMEZONE_REGISTRY":registry?"REGISTRY_ACCESS":"SECURITY";
         }
         catch{return "SECURITY";}
     }
@@ -65,7 +74,7 @@ internal sealed record GatewayChildReport(int SchemaVersion,string SessionId,int
         foreach(var e in errors.EnumerateArray())StrictJson.Fields(e,"Kind","Code");
         var r=JsonSerializer.Deserialize<GatewayChildReport>(raw)??throw new InvalidDataException("GatewayFeedbackMissing");
         if(r.SchemaVersion!=1 || r.SessionId!=Identifiers.Hex32(expectedSessionId) || expectedPid==0 || r.Pid<=0 || (uint)r.Pid!=expectedPid ||
-            (uint)r.ExitCode!=actualExitCode || r.Errors is null || r.Errors.Any(e=>e is null || e.Kind is not ("REFUSED" or "SOCKET" or "NATIVE" or "TLS" or "HTTP" or "TIMEOUT" or "ACCESS" or "CONTRACT" or "OTHER" or "INITIALIZATION" or "REGISTRY_INITIALIZATION" or "SECURITY" or "TIMEZONE_REGISTRY" or "REGISTRY_ACCESS")))
+            (uint)r.ExitCode!=actualExitCode || r.Errors is null || r.Errors.Any(e=>e is null || e.Kind is not ("REFUSED" or "SOCKET" or "NATIVE" or "TLS" or "HTTP" or "TIMEOUT" or "ACCESS" or "CONTRACT" or "OTHER" or "INITIALIZATION" or "REGISTRY_INITIALIZATION" or "SECURITY" or "TIMEZONE_REGISTRY" or "REGISTRY_ACCESS" or "TZ_CATALOG_SEARCH" or "TZ_CATALOG_ENUMERATION" or "TZ_DEFINITION" or "TZ_DYNAMIC_RULES" or "TZ_ENUMERATED_DEFINITION" or "TZ_UTC_DEFINITION")))
             throw new InvalidDataException("GatewayFeedbackOwnerOrErrorBinding");
         var success=r.ExitCode==42 && r.Phase=="COMPLETE" && r.HttpStatus is >=200 and <400 && r.Errors.Length==0;
         var rejectedStatus=r.ExitCode==126 && r.Phase=="HTTPS" && r.HttpStatus is >=100 and <=599 && !(r.HttpStatus is >=200 and <400) && r.Errors.Length==0;
