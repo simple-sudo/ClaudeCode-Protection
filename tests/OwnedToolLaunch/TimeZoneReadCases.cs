@@ -15,6 +15,8 @@ internal static class TimeZoneReadCases
         }
         if(metadata){Console.WriteLine((string)Call("InspectCurrentMetadata")!);return;}
         var count=0;void Check(bool ok){if(!ok)throw new InvalidOperationException("Timezone policy fixture mismatch");count++;}
+        var contract=library.GetType("ProtectionLifecycle.PublicTimeZoneDefinition",true)!;
+        Check(contract.TypeInitializer is null && contract.GetFields(BindingFlags.NonPublic|BindingFlags.Static).All(field=>field.IsLiteral));
         var state=library.GetType("ProtectionLifecycle.ProtectedState",true)!;
         var requirePrefix=state.GetMethod("RequireFixedInventoryPrefix",BindingFlags.Static|BindingFlags.NonPublic)!;
         var intentPrefix=(string)type.GetField("IntentPrefix",BindingFlags.Static|BindingFlags.NonPublic)!.GetRawConstantValue()!;

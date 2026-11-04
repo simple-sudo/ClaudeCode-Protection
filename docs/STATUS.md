@@ -5,6 +5,36 @@
 历史页的“当前/待执行/暂停/DELIVERABLE”按段落日期及限定范围解释，不是今天的状态或操作许可。
 不在本页复制当前安装和授权摘要。
 
+## 2026-11-03 时区操作分类实际定位直接定义读取，后续接入明确依赖绑定
+
+fc73026 的 Lifecycle、Broker、OwnedToolLaunch 离线构建 0/0，100 输入固定、同库匹配。
+72 项普通反馈检查和纯前置选择一正六拒绝通过。构建记录
+`work/timezone-operation-fc73026/build-result.json` SHA256
+`E97CA045B91DE772EA118D5C56ED2AB9CA43575DEAE7FC5E93C8375FA89C0979`，普通记录
+`CA946F8C6502038FBC53E08F70C4FC0B1A370D88C8EAC3CEC2EC0032E3314676`。
+Bootstrap 构建/内嵌清单/同库、控制器构建/20 输入预检通过。持续授权及本人一次 UAC 后，
+1c095801 / 18C038EBC7125FA705EE50443044C087100627956CF323D9BB3473014D3B86E6 安装 INACTIVE。
+实际固定网关在 HTTPS_TLS_POLICY / 125 / TZ_DEFINITION / -2146233078 失败，CONNECT 未到达。
+此类别仅识别抛错时的操作，不恢复之前的完整查找历史，也不披露实参或原生码。
+
+会话 f2c5568d308b4a66bb098e0b439636be，原 Job 5f07528a99a6490eaf9bdb00fcff4a33。
+原 owner 关闭准入/停止前隔离，最终 Job 前后零/空 PID/限额8192/停止失败空；两键恢复，
+独立权限元数据摘要均匹配原值。证据 `work/timezone-operation-fc73026/observed-system-result.json`
+SHA256 `FA9C380DC984BC307B02B685F6079CD46C1151D311F018066630EDD7D27EEB54`。
+实际失败类别及停止/恢复限定 VERIFIED；HTTPS 未成功。本次许可消耗，无自动重试、额外恢复、
+额外私有错误/raw Job/Stop、AV 改动或真实 Claude，完整厂商告警覆盖 UNKNOWN。
+
+后续在原 Preparation 绑定一次公共时区选择，复用于子进程最小环境与原两键租约；授权前
+再比较 owner 的 `TimeZoneInfo.Local.Id`，不将缓存 ID 比较当原生漂移监测。
+固定子进程先解析指定定义并核对其本地 ID，成功才进入原 HTTPS 路径。
+本机夏令时设置保留，不用定义的默认规则覆盖它；ID 核对不替代完整时区准入资格。
+字符串合同单独保留为无静态维护初始化的纯类型，受限侧不调用管理租约类型来检查字符串。
+两种新增失败阶段进入原有界反馈，仍不参与准入，没有新增权限、管理入口或任意路径执行器。
+六产品与 OwnedToolLaunch 非生成语义 0/0，114 输入前后摘要一致，证据
+`work/timezone-operation-fc73026/definition-preparation-source/semantic-result-02.json` SHA256
+`C1758F4472F3CE2E041C866ABAAB7311022C6609FB095BDCD183AD47E13F3E14`。
+仅 SOURCE / INTEGRATED；新用例运行/BUILD/安装/LPAC 未执行，不从指定读取推导 TLS 已修复。
+
 ## 2026-11-03 本人重新授权一次 UAC，原安装成功，固定分类定位至时区注册表
 
 用户明确“你可以重新弹一次，刚刚我没看到”。原 1223 失败及其 claim 原样保留；新控制器

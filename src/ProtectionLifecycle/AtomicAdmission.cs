@@ -315,6 +315,13 @@ internal sealed class AtomicChild : IDisposable
                 // owned profile, never the host user profile or inherited temp.
                 SetPrivateRuntimeDirectories(env,profile.WorkspaceRoot());
                 env["CPC_SESSION_ID"]=preparation.SessionId;env["CPC_SESSION_SECRET"]=preparation.Gateway.Secret;
+                if(preparation.IsGatewayQualification)
+                {
+                    // The fixed qualifier may resolve only the public definition
+                    // selected by its original owner, not enumerate other zones.
+                    var zone=preparation.PublicTimeZoneId??throw WfpNative.Contract("FixedPublicTimeZoneSelectionMissing");
+                    env["CPC_PUBLIC_TIMEZONE_ID"]=zone;
+                }
                 var endpoint="http://"+preparation.SessionId+":"+preparation.Gateway.Secret+"@127.0.0.1:"+SessionProxy.Port;
                 foreach(var name in new[]{"HTTP_PROXY","HTTPS_PROXY","ALL_PROXY"})env[name]=endpoint;
                 env["NO_PROXY"]="";
@@ -447,6 +454,8 @@ internal sealed class AtomicChild : IDisposable
         {
             ConfigureFixedChildCulture();
             var secret=Environment.GetEnvironmentVariable("CPC_SESSION_SECRET");
+            var publicTimeZone=Environment.GetEnvironmentVariable("CPC_PUBLIC_TIMEZONE_ID")??throw new InvalidDataException("FixedPublicTimeZoneMissing");
+            _=PublicTimeZoneDefinition.PathFor(publicTimeZone,"ZONE_DEFINITION");
             if(id.Length==0 || secret is null || new[]{"CPC_RESOURCE_PLAN","CPC_NETWORK_PLAN","CPC_GPU_PLAN"}.Any(name=>Environment.GetEnvironmentVariable(name) is not null))
                 throw new InvalidDataException("FixedGatewayEnvironmentRefused");
             _=Identifiers.Hex32(id);_=Identifiers.Hash(secret);
@@ -458,6 +467,15 @@ internal sealed class AtomicChild : IDisposable
                 result=GatewayChildReport.Result(id,phase,125);
             else
             {
+                // Resolve the exact already-authorized definition first. This
+                // neither grants access nor substitutes the local timezone.
+                // Binding the runtime's local view must succeed before HTTPS.
+                phase="TIMEZONE_DEFINITION";var expectedZone=TimeZoneInfo.FindSystemTimeZoneById(publicTimeZone);
+                phase="TIMEZONE_LOCAL_BINDING";var localZone=TimeZoneInfo.Local;
+                // Keep the OS's current daylight-saving setting. A public
+                // definition's default rules do not override local settings.
+                if(localZone.Id!=expectedZone.Id)
+                    throw new InvalidDataException("FixedGatewayLocalTimeZoneDefinitionDiffers");
                 phase="HTTPS_SETTINGS";var status=RunFixedSessionHead(id,secret,p=>phase=p);
                 result=GatewayChildReport.Result(id,status is >=200 and <400?"COMPLETE":"HTTPS",status is >=200 and <400?42:126,status);
             }

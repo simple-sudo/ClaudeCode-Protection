@@ -9,11 +9,25 @@ internal sealed record TimeZoneReadTarget(string Role,string OriginalSecurity,st
 internal sealed record TimeZoneReadIntent(int SchemaVersion,string InstallationId,string SessionId,string JobId,string Release,
     string ManifestSHA256,string PackageSid,string TimeZoneId,TimeZoneReadTarget[] Targets);
 
+// Shared string contract only. The restricted child must not initialize the
+// lease owner's NTAccount lookup, state or registry resource machinery.
+internal static class PublicTimeZoneDefinition
+{
+    internal const string Hive=@"SOFTWARE\Microsoft\Windows NT\CurrentVersion\Time Zones";
+    internal static string PathFor(string zone,string role)
+    {
+        if(zone.Length is <1 or >96 || zone.Trim()!=zone || zone.Contains("..") ||
+            zone.Any(c=>!char.IsAsciiLetterOrDigit(c) && !" .-_()+".Contains(c)))throw WfpNative.Contract("TimeZoneDefinitionNameRefused");
+        return Hive+"\\"+zone+(role switch {"ZONE_DEFINITION"=>"","DYNAMIC_DST"=>@"\Dynamic DST",
+            _=>throw WfpNative.Contract("TimeZoneDefinitionRoleRefused")});
+    }
+}
+
 // Specialized owner in the existing registry-resource lease chain. No caller
 // path, value writer, capability, parent-hive grant or inheritable ACE.
 internal sealed class SessionTimeZoneReadAccess : IDisposable
 {
-    internal const string Hive=@"SOFTWARE\Microsoft\Windows NT\CurrentVersion\Time Zones";
+    internal const string Hive=PublicTimeZoneDefinition.Hive;
     internal const string IntentPrefix="timezone-access-intent-";
     internal const string ReviewedRecoveryRelease="d423b8c51a434e32a91909d6a11ba4db";
     internal const string ReviewedRecoveryManifest="4E5ECAB1FC1D7455B7DF6EFE5678039E7C11EB92C71FC585F4A634CF277B0D4C";
@@ -29,13 +43,7 @@ internal sealed class SessionTimeZoneReadAccess : IDisposable
     {this.state=state;this.intent=intent;this.keys=keys;IntentSHA256=hash;}
     internal int KeyCount=>keys.Length;
     internal bool Restored=>restored;
-    internal static string PathFor(string zone,string role)
-    {
-        if(zone.Length is <1 or >96 || zone.Trim()!=zone || zone.Contains("..") ||
-            zone.Any(c=>!char.IsAsciiLetterOrDigit(c) && !" .-_()+".Contains(c)))throw WfpNative.Contract("TimeZoneDefinitionNameRefused");
-        return Hive+"\\"+zone+(role switch {"ZONE_DEFINITION"=>"","DYNAMIC_DST"=>@"\Dynamic DST",
-            _=>throw WfpNative.Contract("TimeZoneDefinitionRoleRefused")});
-    }
+    internal static string PathFor(string zone,string role)=>PublicTimeZoneDefinition.PathFor(zone,role);
     private static string Canonical(RawSecurityDescriptor sd)=>sd.GetSddlForm(AccessControlSections.Owner|AccessControlSections.Access);
     internal static string AddReadAce(string original,string packageSid)
     {
@@ -102,11 +110,13 @@ internal sealed class SessionTimeZoneReadAccess : IDisposable
         return JsonSerializer.Serialize(new{Scope="PUBLIC_CURRENT_TIMEZONE_KEY_METADATA_ONLY",TimeZoneId=zone,Keys=rows,
             RegistryModified=false,StateRead=false,StateModified=false});
     }
-    internal static SessionTimeZoneReadAccess Prepare(ProtectedState state,VerifiedVersion version,OwnedKernelJob job,string sessionId)
+    internal static SessionTimeZoneReadAccess Prepare(ProtectedState state,VerifiedVersion version,OwnedKernelJob job,string sessionId,string zone)
     {
         ProtectedState.RequireAdministrator();state.AssertHeld();version.AssertHeld(state);AssertNoPending(state);
         if(!job.AtomicAdmissionReserved)throw WfpNative.Contract("TimeZoneGrantRequiresOriginalAtomicJob");
-        using var package=new InstallationPackageSid(state);var zone=TimeZoneInfo.Local.Id;
+        _=PublicTimeZoneDefinition.PathFor(zone,"ZONE_DEFINITION");
+        if(zone!=TimeZoneInfo.Local.Id)throw WfpNative.Contract("TimeZoneOwnerSelectionChangedBeforeGrant");
+        using var package=new InstallationPackageSid(state);
         var handles=new List<SafeRegistryHandle>();var targets=new List<TimeZoneReadTarget>();
         try
         {

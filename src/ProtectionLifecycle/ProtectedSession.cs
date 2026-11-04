@@ -484,10 +484,19 @@ internal sealed class ProtectedSession
         private int phase;
         internal string SessionId=>owner.id;
         internal bool IsGatewayQualification=>owner.gatewayQualification;
+        internal string? PublicTimeZoneId {get;}
         internal SessionProxy Gateway=>owner.gateway??throw WfpNative.Contract("SessionGatewayMissing");
         internal uint? RootPid=>child?.Pid;
         internal long? RootCreatedFileTime=>child?.ExpectedCreatedFileTime;
-        internal Preparation(ProtectedSession owner){this.owner=owner;owner.AssertPreparedCurrent(true);}
+        internal Preparation(ProtectedSession owner)
+        {
+            this.owner=owner;owner.AssertPreparedCurrent(true);
+            if(owner.gatewayQualification)
+            {
+                PublicTimeZoneId=TimeZoneInfo.Local.Id;
+                _=PublicTimeZoneDefinition.PathFor(PublicTimeZoneId,"ZONE_DEFINITION");
+            }
+        }
         internal void BeforeCreate(OwnedKernelJob exactJob,VerifiedVersion exactVersion)
         {
             owner.AssertPreparedCurrent(true);
@@ -639,7 +648,8 @@ internal sealed class ProtectedSession
             feedbackPipe?.DisposeLocalCopyOfClientHandle();
             if(gatewayQualification)
             {
-                timeZoneAccess=SessionTimeZoneReadAccess.Prepare(state,version,job,id);
+                timeZoneAccess=SessionTimeZoneReadAccess.Prepare(state,version,job,id,
+                    preparation.PublicTimeZoneId??throw WfpNative.Contract("FixedPublicTimeZoneSelectionMissing"));
                 timeZoneAccess.Apply();
             }
             runtime=new ProtectionRuntimeLease(state,version,job,fences,upstream,gateway,preparation:preparation);
