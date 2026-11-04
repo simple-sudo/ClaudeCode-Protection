@@ -25,8 +25,9 @@
 
 源码提交16f1f13的非生成语义检查覆盖六产品及三个普通组件工程，均0错误/0警告；固定119输入
 离线构建五工程0/0、三库一致，普通185项阶段检查、三actor合同/IPC/GUI结果接收及自有非敏感
-CallerDataReport编译/运行/3测试通过。真实探针退出、计划撤回及编译器LPAC拒绝仍NOT_RUN；
-普通阶段模拟不能证明原生对象行为。记录位于 `work/privacy-probe-separation-176be2a/build-16f1f13/`，
+CallerDataReport编译/运行/3测试通过。`e309b21` 补充33项 Windows 普通组件实测，使用真实自有
+子进程句柄和非敏感文件验证退出0与精确撤回条件。原 LPAC/Job 中的完整交接与编译器权限拒绝
+仍 NOT_RUN。初始记录位于 `work/privacy-probe-separation-176be2a/build-16f1f13/`，
 摘要及最新状态见CURRENT-STATE。没有新增系统操作许可，
 没有重试被工具策略拒绝的时区候选预检，真实 Claude 仍延期。
 
