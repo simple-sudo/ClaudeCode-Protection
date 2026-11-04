@@ -1,7 +1,23 @@
 # 当前状态与授权摘要
 
 更新：2026-11-04（America/New_York）。本页是**唯一的最新状态摘要**；历史事实仍由原始证据
-支持。最新已保存的原安装回读为 `7aa8dafe` / INACTIVE。2026-11-04 08:51Z 用户明确要求
+支持。最新已保存的原安装回读为 `8aee9af0` / INACTIVE。2026-11-04 09:21Z 按具体工具审批请求
+及本人 UAC，原 Bootstrap 更新退出0；15个安装公开资产独立摘要和长度匹配清单
+`BC53B2C0BA82C668A9D3C2CC4B234EA90FF8E1A51E2DD9BEE6EC6373D0FB5093`。
+本次原固定 LPAC 根通过 V2 公共时区初始化、本地绑定和 HTTPS 策略构造，随后在
+`HTTPS_CONNECT` 返回125，错误为 HTTP -2147467259 / SOCKET 10107，尚无 HTTP 状态。
+原网关无公开故障报告，根双向写入见证为false；10107的实际触发点与根因仍UNKNOWN，
+不能据此归因到 FlClash、AV或某个注册表键，也未重置或更改这些环境。
+原 owner 确认准入关闭、停止前隔离、同 Job 零成员及停止错误为空。该次授权已消耗，
+无自动重试、额外私有错误/raw Job/Stop读取或真实Claude启动。固定预检和本次安装已实际执行，
+历史自动审批拒绝不再作为当前阻塞。用户截图选择“请求批准”，两项具体执行均通过正式请求提交。
+观察 `work/structured-timezone-candidate-21bd40b/observed-system-result.json` SHA256
+`3E3957AAE728462FF95852ABCB3BAAEE24AB64E9340DE0C146E9552923F6FA53`；预检记录
+`preflight-result.json` SHA256
+`104BEE2561BEBB8C30E802103C8ADB8B10F7AB8747C44DBB7C288534361C4679`。
+CAPABILITY_DELIVERED(本次固定LPAC工作进程的公共日历兼容初始化)；完整网络及产品交付仍未验收。
+
+前次安装为 `7aa8dafe` / INACTIVE。2026-11-04 08:51Z 用户明确要求
 再试后，原固定控制器预检实际通过；08:52Z 本人 UAC 后原 Bootstrap 更新退出0，15个已安装
 公开资产独立摘要及长度一致。随后单次固定网关失败，根进程实际恢复执行，返回
 `TIMEZONE_PUBLIC_CACHE` / TZ_DEFINITION /125 / SecurityException -2146233078；HTTPS 未开始。
@@ -29,7 +45,21 @@
 
 ## 开发基线
 
-- 基于 `6cd6a0b` 的公共时区修复已完成源码接入及普通验证，尚未安装。原 V1 字符串读取在
+- 基于 `21bd40b` 的安装候选已完成并安装为8aee。新增精确7aa更新前置清单，原运行闭合与
+  维护门仍逐项现场核对；六工程129输入离线构建0错误、0警告，包含当前GUI/日常入口/Broker。
+  19项时区检查及精确7aa更新选择一正六反通过。原 Bootstrap 单独构建0/0，不重编引用库，
+  同库摘要和内嵌清单一致；固定普通控制器构建0/0，20文件/源和控制目录句柄预检通过。
+  新帮助程序成功谓词增加原根双向写入见证要求，合成一正八反通过。原CRLF清单草案字节保留，
+  实际执行只绑定 `stage-reviewed/`。本次未运行工作区或GPU资格，也未声称自评/画像已实现。
+  记录根 `work/structured-timezone-candidate-21bd40b/`；审查摘要
+  `03CF81CCE9F12144B9C785541B52B69F16C705A731E01AEF6DB46747D6468FB1`。
+  `build-payload/build-result.json` SHA256
+  `3B3D5CA967680B36A5147B1CEF8C28FC995E96B9BC47CF2D5458382E397552E6`；普通记录
+  `51750DC3BCD0AAD386D469276C6880D52E686E9A5EB25135487215E6C5063852`；
+  Bootstrap记录 `026E4DEE1211697B565182C0A0C0DAB5ABD72C2FA16BA8A0828F38B7CE43F799`；
+  固定终态谓词记录 `C94886816C54FDB3A8B1FD2107EE182AC98A197A63DCAB214CBCD1AC6067246A`。
+
+- 基于 `6cd6a0b` 的公共时区修复已完成源码接入及普通验证，当时尚未安装。原 V1 字符串读取在
   缓存绑定之前调用 `TimeZoneInfo.FromSerializedString`，转换规则中只有时间的字段经日期解析
   触发 `DateTime.Now`。本机固定 CoreLib 的 IL 调用链和旧实现冷缓存回归证实读取会提前
   初始化 Local 与当前年份缓存，与7aa的 LPAC `TZ_DEFINITION` 失败一致；本次没有新 LPAC 归因实验。
@@ -38,7 +68,8 @@
   原 owner、原进程缓存绑定、实际当前时间往返和 TLS 校验链保持；没有增加 capability 或改宿主权限。
   新冷缓存读取不触发两缓存初始化，原日历完整往返、绑定、拒绝项及离线 TLS 克隆共19项通过。
   固定108项输入的四工程离线构建0错误、0警告。SOURCE/BUILD/INTEGRATED + VERIFIED(普通组件)，
-  新LPAC及HTTPS仍NOT_RUN，最新安装仍为页首7aa失败版本。原失败、首个普通测试调用传参错误均保留。
+  此条记录时新LPAC及HTTPS仍NOT_RUN；后续8aee固定LPAC时区初始化及连接失败见页首。
+  原失败、首个普通测试调用传参错误均保留。
   `work/timezone-cache-6cd6a0b/` 下 `runtime-call-evidence.json` SHA256
   `88B17B9294F1534BED1E4AEF675783E6E366AC0AA3012585754C44708946EFC3`；
   `build-regression/build-result.json` 摘要

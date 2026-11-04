@@ -68,4 +68,4 @@ V2 用严格且有界的 JSON 整数字段传递偏移、日期和夏令时转�
 
 历史 SessionTimeZoneReadAccess 的两键 KEY_READ 租约及原恢复记录继续保留。LPAC 打开注册表另需 capability，单改两键 DACL 已证明不足，不再作为新修复方案。历史租约仅按原严格归属、原 Job durable closed/zero和逐键恢复门处理；未知 ACL 漂移不擦除、不合并，不自动恢复或重试。
 
-最新安装、失败、授权及验证范围只见 CURRENT-STATE。7aa的原单次测试停于 TIMEZONE_PUBLIC_CACHE；V2尚未安装。系统审查草案及普通回归不是人类操作许可。
+最新安装、失败、授权及验证范围只见 CURRENT-STATE。7aa的原单次测试停于 TIMEZONE_PUBLIC_CACHE；后续8aee已安装，固定LPAC根越过V2时区初始化及本地绑定，在HTTPS_CONNECT返回SOCKET10107，尚无HTTP成功或双向写入见证。该错误根因未知，不能直接推断为权限、代理或AV问题。原失败不重写，不自动重跑。系统审查草案及普通回归不是人类操作许可。
