@@ -53,6 +53,7 @@ public static partial class InstalledBroker
                 r.GetProperty("ClosedWorkspaceResultSHA256").GetString()!=expected || r.GetProperty("Failures").GetArrayLength()!=0 ||
                 r.GetProperty("FormalAdmissionIssued").GetBoolean() || r.GetProperty("NetworkOpened").GetBoolean() || r.GetProperty("ClaudeLaunched").GetBoolean())
                 throw new InvalidDataException("Workspace success/cleanup receipt required");
+            AssertWorkspaceExportClosure(state,r,id);
             var baseline=state.ReadWorkspaceData(id,false);var data=state.ReadWorkspaceData(id,true);
             if(data.SHA256!=expected || baseline.SHA256!=r.GetProperty("WorkspaceBaselineSHA256").GetString())throw new InvalidDataException("Workspace export digest differs");
             _=ClaudeCodeProtection.Workspaces.WorkspaceBundle.Compare(baseline.Bytes,data.Bytes);
@@ -72,6 +73,29 @@ public static partial class InstalledBroker
             result=data.Bytes;return(0,"WORKSPACE_DATA_EXPORT_READY");
         });
         return result??throw new InvalidDataException("Workspace export missing");
+    }
+    private static void AssertWorkspaceExportClosure(ProtectedState state,JsonElement terminal,string id)
+    {
+        // Reopen only this result's recorded owner evidence. A current upgrade
+        // must not replace the historical release/manifest in its bindings.
+        using var open=JsonDocument.Parse(state.Read("session-open-"+id+".json",8192).Bytes);
+        var original=open.RootElement;
+        var release=Identifiers.Hex32(StrictJson.Text(terminal,"Release"));
+        var manifest=Identifiers.Hash(StrictJson.Text(terminal,"ManifestHash"));
+        if(original.GetProperty("SchemaVersion").GetInt32()!=1 || StrictJson.Text(original,"InstallationId")!=state.InstallationId ||
+            StrictJson.Text(original,"SessionId")!=id || StrictJson.Text(original,"Release")!=release || StrictJson.Text(original,"ManifestHash")!=manifest ||
+            StrictJson.Text(original,"Scope")!="FIXED_OFFLINE_RESOURCES_NO_FORWARDING_NO_FORMAL_PERMIT" ||
+            original.GetProperty("FormalSessionResumeAuthorized").GetBoolean() || original.GetProperty("AdmissionReusable").GetBoolean())
+            throw WfpNative.Contract("WorkspaceExportOriginalSessionMismatch");
+        var jobId=Identifiers.Hex32(StrictJson.Text(original,"JobId"));
+        var intent=OwnedJobIntent.Read(state,jobId);
+        if(intent.Release!=release || intent.ManifestSHA256!=manifest)throw WfpNative.Contract("WorkspaceExportJobReleaseMismatch");
+        var completion=AtomicJobCompletion.ReadClosed(state,intent)??throw WfpNative.Contract("WorkspaceExportDurableJobClosureMissing");
+        var persisted=JsonSerializer.Deserialize<RuntimeStop>(state.Read("session-stopped-"+id+".json",8192).Bytes);
+        var reported=terminal.GetProperty("Stop").Deserialize<RuntimeStop>();
+        var final=terminal.GetProperty("FinalJob").Deserialize<JobSnapshot>();
+        if(persisted is null || reported is null || final is null || !persisted.MatchesResourceExport(reported,final,completion.Snapshot,id,jobId))
+            throw WfpNative.Contract("WorkspaceExportClosureRecordsDiffer");
     }
     public static (int ExitCode,string Report) MigrateSessionNetwork()
     {

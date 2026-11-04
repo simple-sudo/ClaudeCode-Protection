@@ -148,7 +148,7 @@ internal sealed class AtomicChild : IDisposable
     internal uint Pid {get;}
     internal string ExpectedPackageSid=>packageSid;
     internal string ExpectedImagePath=>image;
-    internal bool RequiresLpac=>sessionPreparation is not null || resourceQualification is not null;
+    internal bool RequiresLpac=>sessionPreparation is not null || resourceQualification is not null || gpuWorkload;
     internal long ExpectedCreatedFileTime
     {
         get
@@ -264,7 +264,8 @@ internal sealed class AtomicChild : IDisposable
         if(preparation is not null && (network is not null || gpu is not null))throw WfpNative.Contract("SuspendedSessionCannotBorrowQualificationPlan");
         if(!Environment.Is64BitProcess || Marshal.SizeOf<StartupInfo>()!=104 || Marshal.SizeOf<StartupInfoEx>()!=112 || Marshal.SizeOf<SecurityCapabilities>()!=24)
             throw new PlatformNotSupportedException("Atomic admission requires the declared x64 layout");
-        if((preparation is not null || resources is not null) && Marshal.SizeOf<KernelJobSeal.SecurityAttributes>()!=24)
+        var requireLpac=preparation is not null || resources is not null || gpu is not null;
+        if(requireLpac && Marshal.SizeOf<KernelJobSeal.SecurityAttributes>()!=24)
             throw new PlatformNotSupportedException("Suspended session security attributes require the declared x64 layout");
         var image=WindowsPathSeal.Child(layout.Version(version.Package.Release),"bin/admin/ProtectionBroker.exe");
         network?.Validate();gpu?.Validate();if(network is not null && gpu is not null)throw WfpNative.Contract("OneFixedQualificationWorkloadRequired");
@@ -272,7 +273,6 @@ internal sealed class AtomicChild : IDisposable
         using var package=network?.Kind==NetworkProbeKind.Control?InstallationPackageSid.ForNetworkControl(state):new InstallationPackageSid(state);
         profile.AssertPackage(package);
         var jobHandle=job.ReserveAtomicAdmission(version);
-        var requireLpac=preparation is not null || resources is not null;
         IntPtr attributes=IntPtr.Zero,capabilities=IntPtr.Zero,jobList=IntPtr.Zero,environment=IntPtr.Zero,handles=IntPtr.Zero,packagesPolicy=IntPtr.Zero;
         bool initialized=false,handleHeld=false;
         try
@@ -302,14 +302,18 @@ internal sealed class AtomicChild : IDisposable
                 if(!UpdateProcThreadAttribute(attributes,0,(IntPtr)0x20002,handles,(nuint)IntPtr.Size,IntPtr.Zero,IntPtr.Zero))throw Error("AtomicSetOnlyReportHandleInheritance");
             }
             var env=new SortedDictionary<string,string>(StringComparer.OrdinalIgnoreCase);
-            var inherited=preparation is null && resources is null?new[]{"SystemRoot","windir","SystemDrive","ProgramFiles","ProgramFiles(x86)","ProgramW6432","PROCESSOR_ARCHITECTURE","LOCALAPPDATA","USERPROFILE","TEMP","TMP"}:
+            var inherited=!requireLpac?new[]{"SystemRoot","windir","SystemDrive","ProgramFiles","ProgramFiles(x86)","ProgramW6432","PROCESSOR_ARCHITECTURE","LOCALAPPDATA","USERPROFILE","TEMP","TMP"}:
                 new[]{"SystemRoot","windir","SystemDrive","ProgramFiles","ProgramFiles(x86)","ProgramW6432","PROCESSOR_ARCHITECTURE"};
             foreach(var name in inherited)
             {var value=Environment.GetEnvironmentVariable(name);if(value is not null)env[name]=value;}
             env["PATH"]="C:\\Program Files\\dotnet;C:\\Windows\\System32;C:\\Windows";
             env["DOTNET_ROOT"]="C:\\Program Files\\dotnet";env["DOTNET_ROLL_FORWARD"]="LatestPatch";
             if(network is not null)env["CPC_NETWORK_PLAN"]=JsonSerializer.Serialize(network);
-            if(gpu is not null){env["CPC_GPU_PLAN"]=JsonSerializer.Serialize(gpu);env["CUDA_CACHE_DISABLE"]="1";}
+            if(gpu is not null)
+            {
+                SetPrivateRuntimeDirectories(env,profile.WorkspaceRoot());
+                env["CPC_GPU_PLAN"]=JsonSerializer.Serialize(gpu);env["CUDA_CACHE_DISABLE"]="1";
+            }
             if(resources is not null)
             {
                 env["CPC_RESOURCE_PLAN"]=JsonSerializer.Serialize(resources.Plan);
@@ -346,7 +350,7 @@ internal sealed class AtomicChild : IDisposable
             // may be inherited; no breakaway permission is enabled.
             profile.BeforeProcessCreation(job.JobId);
             ProcessInfo info;
-            if(preparation is not null || resources is not null)
+            if(requireLpac)
             {
                 using var descriptor=new KernelJobSeal.SessionObjectDescriptor();
                 var processAttributes=descriptor.Attributes;var threadAttributes=descriptor.Attributes;
@@ -358,7 +362,7 @@ internal sealed class AtomicChild : IDisposable
             var child=new AtomicChild(state,version,job,info,image,package.Value,network,gpu is not null,preparation,resources);
             try
             {
-                if(preparation is not null || resources is not null){KernelJobSeal.SessionObjectDescriptor.AssertSeal(child.process);KernelJobSeal.SessionObjectDescriptor.AssertSeal(child.thread);}
+                if(requireLpac){KernelJobSeal.SessionObjectDescriptor.AssertSeal(child.process);KernelJobSeal.SessionObjectDescriptor.AssertSeal(child.thread);}
                 return child;
             }
             catch{child.Dispose();throw;}
@@ -392,6 +396,12 @@ internal sealed class AtomicChild : IDisposable
             AssertSuspendedResourceIdentity(resourceQualification);
             KernelJobSeal.SessionObjectDescriptor.AssertSeal(process);KernelJobSeal.SessionObjectDescriptor.AssertSeal(thread);
             resourceQualification.AssertCurrent();
+        }
+        if(gpuWorkload)
+        {
+            if(proxy is not null)throw WfpNative.Contract("GpuQualificationRequiresOfflineQuarantine");
+            KernelJobSeal.SessionObjectDescriptor.AssertSeal(process);
+            KernelJobSeal.SessionObjectDescriptor.AssertSeal(thread);
         }
         state.AssertHeld();version.AssertHeld(state);
         sessionAdmission?.AssertCurrent();
@@ -434,9 +444,25 @@ internal sealed class AtomicChild : IDisposable
     }
     internal uint WaitForCanaryExit()
     {
+        return ObserveCanaryExit(network?.Kind==NetworkProbeKind.ProxySession?90000u:network is not null || gpuWorkload?30000u:15000u)
+            ??throw new TimeoutException("Finite atomic canary did not exit");
+    }
+    internal void AssertGpuRuntimeOwner(ProtectedState exactState,VerifiedVersion exactVersion,OwnedKernelJob exactJob)
+    {
+        if(!gpuWorkload || disposed || resumed || !IsRunning || !ReferenceEquals(state,exactState) ||
+            !ReferenceEquals(version,exactVersion) || !ReferenceEquals(job,exactJob) || !job.ContainsProcess(process))
+            throw WfpNative.Contract("GpuRuntimeRequiresExactSuspendedChild");
+    }
+    internal uint? ObserveFixedGpuExit()
+    {
+        if(!gpuWorkload)throw WfpNative.Contract("FixedGpuWorkloadRequired");
+        return ObserveCanaryExit(100);
+    }
+    private uint? ObserveCanaryExit(uint milliseconds)
+    {
         if(!resumed || disposed)throw new InvalidOperationException("Canary has not resumed");
-        var status=WaitForSingleObject(process,network?.Kind==NetworkProbeKind.ProxySession?90000u:network is not null || gpuWorkload?30000u:15000u);
-        if(status==0x102)throw new TimeoutException("Finite atomic canary did not exit");
+        var status=WaitForSingleObject(process,milliseconds);
+        if(status==0x102)return null;
         if(status!=0)throw Error("AtomicCanaryWait");
         if(!GetExitCodeProcess(process,out var code))throw Error("AtomicCanaryExitCode");return code;
     }
@@ -536,9 +562,10 @@ internal sealed class AtomicChild : IDisposable
         }
         if(gpuPlan is not null)
         {
-            if(gpuPlan.Length>256)throw WfpNative.Contract("GpuPlanSizeRefused");
+            if(gpuPlan.Length>256 || !token.LpacAccessCheckObserved || token.ApplicationPackageAccessMask!=2)
+                throw WfpNative.Contract("GpuPlanOrLpacIdentityRefused");
             var gpu=JsonSerializer.Deserialize<GpuProbePlan>(gpuPlan)??throw WfpNative.Contract("GpuPlanMissing");gpu.Validate();
-            var computed=GpuQualification.Compute(gpu,"APPCONTAINER_LOW_ZERO_CAPABILITIES");Console.WriteLine(JsonSerializer.Serialize(computed));return GpuQualification.Qualified(computed)?0:3;
+            var computed=GpuQualification.Compute(gpu,GpuQualification.LpacScope);Console.WriteLine(JsonSerializer.Serialize(computed));return GpuQualification.Qualified(computed)?0:3;
         }
         if(plan is not null)
         {

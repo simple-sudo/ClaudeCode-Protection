@@ -17,7 +17,7 @@ internal static class ProjectFailureContract
     private const string Prefix="CPC_PROJECT_FAILURE_V1:";
     internal static void Validate(ProjectTaskFailure value,int sourceCount=32)
     {
-        if(sourceCount is <1 or >32 || value.Stage is not ("Compile" or "Entry" or "Run" or "Tests") ||
+        if(sourceCount is <1 or >32 || value.Stage is not ("Compile" or "Entry" or "Run" or "Tests" or "Output") ||
             value.Diagnostics is null || value.Diagnostics.Length>8 || value.Stage!="Compile" && value.Diagnostics.Length!=0)
             throw new InvalidDataException("Project failure scope differs");
         foreach(var diagnostic in value.Diagnostics)

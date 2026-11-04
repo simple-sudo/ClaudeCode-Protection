@@ -20,6 +20,7 @@ internal static class BundledProjectDevelopment
         "if (Counter.CountWords(\"a\\u2003b\\t c\") != 3) throw new Exception(\"unicode whitespace\");\npassed += 3;";
     internal static byte[] Baseline()=>TextSummarySource.Baseline();
     internal static string BaselineHash=>TextSummarySource.BaselineHash;
+    internal static readonly string[] OutputPaths={"TextSummary.dll","run-result.json","test-result.txt"};
     private static byte[] Modified(WorkspaceFile file)
     {
         var marker=file.Path switch {"TextSummary.cs"=>"// CPC_WORD_COUNT_EXTENSION","ProjectTests.cs"=>"// CPC_WORD_COUNT_CHECKS",_=>null};
@@ -32,7 +33,7 @@ internal static class BundledProjectDevelopment
     {
         var baseline=Baseline();_=WorkspaceBundle.Compare(baseline,bytes);var result=WorkspaceBundle.Parse(bytes);
         var originals=WorkspaceBundle.Parse(baseline).Files;
-        if(result.Files.Length!=originals.Length+3)throw WfpNative.Contract("DevelopmentResultInventoryDiffers");
+        if(result.Files.Length!=originals.Length+OutputPaths.Length)throw WfpNative.Contract("DevelopmentResultInventoryDiffers");
         foreach(var file in originals)
             if(!result.Files.Single(f=>f.Path==file.Path).Content.AsSpan().SequenceEqual(Modified(file)))throw WfpNative.Contract("DevelopmentSourceEditDiffers");
         if(!result.Files.Single(f=>f.Path=="run-result.json").Content.AsSpan().SequenceEqual("{\"Lines\":2,\"Words\":5}"u8) ||

@@ -8,7 +8,7 @@ using System.Text.Json;
 using System.Runtime.InteropServices;
 using Microsoft.Win32.SafeHandles;
 
-if(args.Length!=1 || args[0] is not ("privacy-probe-closure" or "privacy-probe-exit-child" or "timezone-snapshot" or "timezone-policy" or "timezone-metadata" or "gateway-feedback" or "gateway-qualification-boundary" or "policy" or "messages" or "handle-transfer" or "fault-mode" or "fault-mode-read" or "partial-output" or "hosted-policy" or "etw-policy" or "tls-transport-policy" or "etw-token-access" or "inactive-transition" or "project-policy" or "project-build" or "privacy-native" or "caller-project-build" or "caller-project-policy" or "self-control-open" or "caller-data-build" or "caller-compile-failure" or "caller-run-failure" or "caller-test-failure" or "caller-failure-owner" or "control-file-gate" or "caller-multi-edit-build" or "workspace-caller-lifetime" or "workspace-caller-lifetime-child" or "maintenance-identity" or "reset-settings-file"))return 125;
+if(args.Length!=1 || args[0] is not ("gpu-report-policy" or "privacy-probe-closure" or "privacy-probe-exit-child" or "timezone-snapshot" or "timezone-policy" or "timezone-metadata" or "gateway-feedback" or "gateway-qualification-boundary" or "policy" or "messages" or "handle-transfer" or "fault-mode" or "fault-mode-read" or "partial-output" or "hosted-policy" or "etw-policy" or "tls-transport-policy" or "etw-token-access" or "inactive-transition" or "project-policy" or "project-build" or "privacy-native" or "caller-project-build" or "caller-project-policy" or "self-control-open" or "caller-data-build" or "caller-compile-failure" or "caller-run-failure" or "caller-test-failure" or "caller-output-failure" or "caller-failure-owner" or "control-file-gate" or "caller-multi-edit-build" or "workspace-caller-lifetime" or "workspace-caller-lifetime-child" or "maintenance-identity" or "reset-settings-file"))return 125;
 try
 {
 using var identity=WindowsIdentity.GetCurrent();
@@ -25,7 +25,7 @@ if(args[0]=="reset-settings-file"){ResetSettingsFileCases.Run(library);return 0;
 if(args[0]=="maintenance-identity"){MaintenanceIdentityCases.Run(library);return 0;}
 if(args[0]=="workspace-caller-lifetime"){WorkspaceCallerLifetimeCases.Run(library,(access,pid)=>OpenProcess(access,false,pid));return 0;}
 if(args[0]=="control-file-gate"){ControlFileGateCases.Run(library);return 0;}
-if(args[0] is "caller-compile-failure" or "caller-run-failure" or "caller-test-failure" or "caller-failure-owner")
+if(args[0] is "caller-compile-failure" or "caller-run-failure" or "caller-test-failure" or "caller-output-failure" or "caller-failure-owner")
 {ProjectFailureExecutionCases.Run(library,args[0]);return 0;}
 const BindingFlags flags=BindingFlags.Static|BindingFlags.NonPublic;
 object? Call(Type type,string method,params object?[] values)
@@ -40,6 +40,31 @@ void Refuse(Action action,string reason)
     throw new InvalidOperationException("Expected refusal: "+reason);
 }
 var launch=library.GetType("ProtectionLifecycle.OwnedToolLaunch",true)!;
+if(args[0]=="gpu-report-policy")
+{
+    var qualification=library.GetType("ProtectionLifecycle.GpuQualification",true)!;
+    var reportType=library.GetType("ProtectionLifecycle.GpuChildReport",true)!;
+    var hash=(string)qualification.GetProperty("ExpectedHash",flags)!.GetValue(null)!;var gpuNonce=new string('a',32);
+    var steps=new[]{"cuInit","cuDriverGetVersion","cuDeviceGetCount","cuDeviceGet","cuDeviceGetName","cuCtxCreate_v2",
+        "cuMemAlloc_v2","cuMemcpyHtoD_v2","cuModuleLoadData","cuModuleGetFunction","cuLaunchKernel","cuCtxSynchronize","cuMemcpyDtoH_v2",
+        "cuModuleUnload","cuMemFree_v2","cuCtxDestroy_v2"}.Select(stage=>new{Stage=stage,Result=0}).ToArray();
+    object Receipt(string scope,int pid,int? driver=12080,string? model="Synthetic GPU model")=>JsonSerializer.Deserialize(JsonSerializer.Serialize(new
+    {
+        SchemaVersion=1,Pid=pid,Nonce=gpuNonce,Scope=scope,DriverVersion=driver,Device=model,AllocatedBytes=1024,Elements=256,
+        ResultSHA256=hash,ComputeMatched=true,ResourceCleanupSucceeded=true,Steps=steps,FailureType=(string?)null
+    }),reportType)!;
+    const string lpac="LPAC_LOW_ZERO_CAPABILITIES";
+    var host=Receipt("HOST_CONTROL",111);
+    bool Qualifies(object receipt,uint pid=222,uint exit=0,string? expectedNonce=null)=>
+        Call(qualification,"QualifiedChild",receipt,expectedNonce??gpuNonce,pid,exit,host) is true;
+    Require(Qualifies(Receipt(lpac,222)),"bound LPAC report accepted");
+    Require(!Qualifies(Receipt("APPCONTAINER_LOW_ZERO_CAPABILITIES",222)),"old ordinary AppContainer evidence cannot qualify LPAC");
+    Require(!Qualifies(Receipt(lpac,333)) && !Qualifies(Receipt(lpac,222),exit:3) &&
+        !Qualifies(Receipt(lpac,222),expectedNonce:new string('b',32)),"wrong process, exit and nonce refused");
+    Require(!Qualifies(Receipt(lpac,222,12090)) && !Qualifies(Receipt(lpac,222,null)) && !Qualifies(Receipt(lpac,222,12080,"")) &&
+        !Qualifies(Receipt(lpac,222,12080,"invalid\nmodel")),"mismatched driver and missing or invalid metadata refused");
+    Console.WriteLine("PASS fixed GPU report binding: LPAC scope, child PID/nonce/exit, matching driver and bounded model; synthetic only, no CUDA or LPAC execution");return 0;
+}
 if(args[0]=="self-control-open")
 {
     var probe=library.GetType("ProtectionLifecycle.HostPrivacyProbe",true)!;

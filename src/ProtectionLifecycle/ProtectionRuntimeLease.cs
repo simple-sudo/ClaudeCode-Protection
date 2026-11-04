@@ -6,7 +6,33 @@ using System.Text.Json;
 namespace ProtectionLifecycle;
 
 internal sealed record RuntimeStop(string SessionId,string Reason,bool AdmissionClosed,bool QuarantineObservedBeforeStop,
-    long QuarantineAtMs,long JobStopAtMs,JobSnapshot? FinalJob,WfpErrorEvidence[] Failures);
+    long QuarantineAtMs,long JobStopAtMs,JobSnapshot? FinalJob,WfpErrorEvidence[] Failures)
+{
+    internal const string ResourceTerminalReason="OFFLINE_RESOURCE_QUALIFICATION_TERMINAL";
+    internal const string GpuTerminalReason="FIXED_GPU_QUALIFICATION_TERMINAL";
+
+    internal bool ConfirmsClosedResources(string sessionId,string jobId) =>
+        Reason==ResourceTerminalReason && ConfirmsClosedJob(sessionId,jobId);
+
+    internal bool ConfirmsClosedGpu(string sessionId,string jobId) =>
+        Reason==GpuTerminalReason && ConfirmsClosedJob(sessionId,jobId);
+
+    private bool ConfirmsClosedJob(string sessionId,string jobId) =>
+        SessionId==sessionId && AdmissionClosed && QuarantineObservedBeforeStop &&
+        QuarantineAtMs>=0 && JobStopAtMs>=QuarantineAtMs && Failures is {Length:0} &&
+        FinalJob is {ExpectedLimits:true,ObservedZero:true} final && final.JobId==jobId;
+
+    internal bool MatchesResourceExport(RuntimeStop reported,JobSnapshot terminal,JobSnapshot completion,string sessionId,string jobId)
+    {
+        if(!ConfirmsClosedResources(sessionId,jobId) || !reported.ConfirmsClosedResources(sessionId,jobId) ||
+            QuarantineAtMs!=reported.QuarantineAtMs || JobStopAtMs!=reported.JobStopAtMs)return false;
+        var at=FinalJob!.AtUtc;
+        return !string.IsNullOrEmpty(at) && reported.FinalJob!.AtUtc==at &&
+            MatchesZero(terminal) && MatchesZero(completion);
+
+        bool MatchesZero(JobSnapshot value)=>value.JobId==jobId && value.ExpectedLimits && value.ObservedZero && value.AtUtc==at;
+    }
+}
 
 // Owns the active one-shot Job's health/deadline and stop ordering. This is not
 // the whole-installation update/uninstall authority or a generic launch API.
@@ -19,6 +45,7 @@ internal sealed class ProtectionRuntimeLease
     private readonly ProxyChannelLease? proxy;
     private readonly ProtectedSession.ResourceQualification? resources;
     private readonly SessionProxy? gateway;
+    private readonly bool fixedGpu;
     private ProtectedSession.Admission? admission;
     private readonly ProtectedSession.Preparation? preparation;
     private bool startupObserved;
@@ -29,11 +56,23 @@ internal sealed class ProtectionRuntimeLease
     private long deadlineMs=25000;
     private bool activated,closed;
     private RuntimeStop? stopped;
+    internal static ProtectionRuntimeLease ForFixedGpu(ProtectedState state,VerifiedVersion version,OwnedKernelJob job,
+        IReadOnlyList<PersistentFence> fences,AtomicChild child,string sessionId)
+    {
+        child.AssertGpuRuntimeOwner(state,version,job);
+        return new(state,version,job,fences,null,null,null,null,null,Identifiers.Hex32(sessionId));
+    }
     internal ProtectionRuntimeLease(ProtectedState state,VerifiedVersion version,OwnedKernelJob job,IReadOnlyList<PersistentFence> fences,ProxyChannelLease? proxy,
         SessionProxy? gateway=null,ProtectedSession.Preparation? preparation=null,ProtectedSession.ResourceQualification? resources=null,Action? assertCaller=null)
+        :this(state,version,job,fences,proxy,gateway,preparation,resources,assertCaller,null){}
+
+    private ProtectionRuntimeLease(ProtectedState state,VerifiedVersion version,OwnedKernelJob job,IReadOnlyList<PersistentFence> fences,ProxyChannelLease? proxy,
+        SessionProxy? gateway,ProtectedSession.Preparation? preparation,ProtectedSession.ResourceQualification? resources,Action? assertCaller,string? gpuSessionId)
     {
         this.state=state;this.version=version;this.job=job;this.fences=fences;this.proxy=proxy;
-        if(resources is null && proxy is null || resources is not null && (proxy is not null || gateway is not null || preparation is not null))
+        fixedGpu=gpuSessionId is not null;
+        var offline=resources is not null || fixedGpu;
+        if(offline?(proxy is not null || gateway is not null || preparation is not null):proxy is null)
             throw WfpNative.Contract("RuntimeScopeRequiresEitherOfflineResourcesOrLiveProxy");
         if(assertCaller is not null && resources is null)throw WfpNative.Contract("WorkspaceCallerGuardRequiresOfflineResources");
         this.assertCaller=assertCaller;
@@ -44,12 +83,13 @@ internal sealed class ProtectionRuntimeLease
         this.gateway=gateway;this.preparation=preparation;
         if(gateway is not null)id=gateway.SessionId;
         if(resources is not null)id=resources.SessionId;
+        if(gpuSessionId is not null)id=gpuSessionId;
         pointerSHA256=state.Read("current.json",4096).SHA256;
         if(fences.Count==0 || !job.AtomicAdmissionReserved)throw WfpNative.Contract("RuntimeRequiresAtomicAdmissionAndFence");
         AssertHealthy();
         state.WriteNew("session-open-"+id+".json",JsonSerializer.SerializeToUtf8Bytes(new {SchemaVersion=1,state.InstallationId,SessionId=id,job.JobId,
             version.Package.Release,version.Package.ManifestHash,CurrentPointerSHA256=pointerSHA256,StartupDeadlineMs=deadlineMs,
-            Scope=resources is not null?"FIXED_OFFLINE_RESOURCES_NO_FORWARDING_NO_FORMAL_PERMIT":gateway is null?"SINGLE_ATOMIC_JOB_COMPILED_PROXY":"QUARANTINED_SUSPENDED_SESSION_STARTUP",
+            Scope=fixedGpu?"FIXED_OFFLINE_GPU_NO_FORWARDING_NO_FORMAL_PERMIT":resources is not null?"FIXED_OFFLINE_RESOURCES_NO_FORWARDING_NO_FORMAL_PERMIT":gateway is null?"SINGLE_ATOMIC_JOB_COMPILED_PROXY":"QUARANTINED_SUSPENDED_SESSION_STARTUP",
             FormalSessionResumeAuthorized=false,AdmissionReusable=false,
             SessionBindingSHA256=(string?)null,AtUtc=DateTime.UtcNow.ToString("o")}));
     }
@@ -66,7 +106,7 @@ internal sealed class ProtectionRuntimeLease
         foreach(var fence in fences)
         {
             var observed=fence.Observe();
-            if(resources is not null || preparation is not null && admission is null?!observed.FullQuarantineObserved:!observed.IPv4ProxyOnlyObserved)
+            if(fixedGpu || resources is not null || preparation is not null && admission is null?!observed.FullQuarantineObserved:!observed.IPv4ProxyOnlyObserved)
                 throw WfpNative.Contract("RuntimeFenceDrift");
         }
         if(gateway is not null && fences.Any(f=>!f.IsSessionChannel))throw WfpNative.Contract("SessionRawProxyPolicyDrift");

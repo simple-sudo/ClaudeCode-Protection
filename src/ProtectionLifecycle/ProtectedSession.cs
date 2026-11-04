@@ -283,32 +283,42 @@ internal sealed class ProtectedSession
             if(exit!=0 || observed.Pid!=child.Pid || observed.Nonce!=id || !SessionResources.Qualified(observed,compilerRequired) || compilerRequired && !toolObserved ||
                 includeGit && (!gitObserved || observed.Git is null) || !includeGit && observed.Git is not null || developProject && !resources.ProjectExecutionReleased)
                 throw WfpNative.Contract("OfflineResourceOrInheritedToolBoundaryNotQualified");
-            resources.AssertOutput(observed);
         }
         catch(Exception ex){failures.Add(ex);}
         finally
         {
             permit?.Revoke();
+            var closedResources=false;
             if(runtime is not null)
             {
-                try{stopped=runtime.Stop("OFFLINE_RESOURCE_QUALIFICATION_TERMINAL");zero=stopped.FinalJob;
-                    if(!stopped.QuarantineObservedBeforeStop || stopped.Failures.Length!=0 || zero?.ObservedZero!=true)throw WfpNative.Contract("ResourceQualificationStopUnconfirmed");}
+                try
+                {
+                    stopped=runtime.Stop(RuntimeStop.ResourceTerminalReason);zero=stopped.FinalJob;
+                    if(job is null || !stopped.ConfirmsClosedResources(id,job.JobId))throw WfpNative.Contract("ResourceQualificationStopUnconfirmed");
+                    closedResources=true;
+                }
                 catch(Exception ex){failures.Add(ex);}
             }
             else if(job is not null)try{zero=job.AtomicAdmissionReserved?job.CloseAtomicAdmissionAndStop():job.StopAndVerifyZero();}catch(Exception ex){failures.Add(ex);}
             if(profile?.ProcessCreationAttempted==true && zero is not null)try{profile.AfterOwnedJobZero(zero);}catch(Exception ex){failures.Add(ex);}
-            if(developProject && resources is not null && child is not null && zero?.ObservedZero==true)
+            if(developProject && resources is not null && child is not null && closedResources)
                 try
                 {
                     hostPrivacy=resources.ReadClosedHostPrivacy(checked((int)child.Pid),projectActor?.Pid);
                     HostPrivacyContract.Validate(hostPrivacy,id,true);
                 }
                 catch(Exception ex){failures.Add(ex);}
-            if(includeGit && failures.Count==0 && zero?.ObservedZero==true && observed is not null && SessionResources.Qualified(observed,compilerRequired))
-                try{workspaceResultSHA256=resources?.PreserveClosedWorkspaceResult(zero);}catch(Exception ex){failures.Add(ex);}
+            if(closedResources && failures.Count==0 && zero is not null && observed is not null && resources is not null)
+                try
+                {
+                    assertCaller?.Invoke();
+                    resources.AssertOutput(observed);
+                    if(includeGit)workspaceResultSHA256=resources.PreserveClosedWorkspaceResult(zero,assertCaller);
+                }
+                catch(Exception ex){failures.Add(ex);}
             if(exited is not null)try{exit=exited.WaitAsync(TimeSpan.FromSeconds(2)).GetAwaiter().GetResult();}catch(Exception ex){failures.Add(ex);}
             if(pipe is not null)try{pipe.DisposeLocalCopyOfClientHandle();}catch(Exception ex){failures.Add(ex);}
-            if(failures.Count!=0)try{resources?.PreserveGitFailure();}catch(Exception ex){failures.Add(ex);}
+            if(closedResources && failures.Count!=0)try{resources?.PreserveGitFailure();}catch(Exception ex){failures.Add(ex);}
             foreach(var owned in new IDisposable?[]{child,reader,pipe,resources})try{owned?.Dispose();}catch(Exception ex){failures.Add(ex);}
             try
             {
@@ -322,6 +332,10 @@ internal sealed class ProtectedSession
             foreach(var fence in fences)try{if(!fence.Observe().FullQuarantineObserved)throw WfpNative.Contract("ResourceFinalQuarantineMissing");}catch(Exception ex){failures.Add(ex);}
             foreach(var fence in fences)try{fence.Dispose();}catch(Exception ex){failures.Add(ex);}
         }
+        // Cleanup is independent of the caller. A result written before a
+        // late disconnect stays private and must not get a success receipt.
+        if(workspaceResultSHA256 is not null && failures.Count==0)
+            try{assertCaller?.Invoke();}catch(Exception ex){failures.Add(ex);}
         var success=observed is not null && SessionResources.Qualified(observed,compilerRequired) && (!compilerRequired || toolObserved) && (!includeGit || gitObserved && observed.Git is not null && workspaceResultSHA256 is not null) && zero?.ObservedZero==true && failures.Count==0;
         var report=JsonSerializer.Serialize(new {SchemaVersion=1,state.InstallationId,SessionId=id,version.Package.Release,version.Package.ManifestHash,
             Status=success?(callerProject?"CALLER_CSHARP_PROJECT_BUILT_AND_CLEANED":developProject?"BUNDLED_PROJECT_DEVELOPED_AND_CLEANED":workspaceInput is not null?"WORKSPACE_DATA_PROCESSED_AND_CLEANED":cleanupDeferred?"OFFLINE_RESOURCE_CLOSED_JOB_CLEANUP_DEFERRED":includeGit?"FIXED_OFFLINE_GIT_TOOLCHAIN_AND_DENIAL_OBSERVED":"FIXED_OFFLINE_WORKSPACE_TOOL_AND_DENIAL_OBSERVED"):"OFFLINE_RESOURCE_SESSION_NOT_CONFIRMED",

@@ -261,7 +261,31 @@ if(args[0]=="snapshot")
         Require(refused,"snapshot concurrent writer refused with sharing violation");
     }
     WorkspaceFiles.WriteBundleNew(Path.Combine(task,"result.bundle.json"),result);
-    Console.WriteLine("PASS owned names-only snapshot: multiple pages, nested/binary/empty directories, add/modify/delete, Git exclusion, concurrent writer refusal; no Broker or cleanup");return 0;
+    var selectedBaseline=WorkspaceBundle.Create(new[]{("source.txt",new byte[]{1,2})}).Serialize();
+    WorkspaceFiles.MaterializeNew(task,"selected",selectedBaseline);
+    var selected=Path.Combine(task,"selected");
+    var allowed=new Dictionary<string,int>(StringComparer.Ordinal){["source.txt"]=2,["report.txt"]=3};
+    void RejectSelected(string reason)
+    {
+        var refused=false;
+        try{_=WorkspaceFiles.SnapshotSelectedResult(task,"selected",selectedBaseline,allowed);}
+        catch(InvalidDataException ex)when(ex.Message==reason){refused=true;}
+        Require(refused,reason);
+    }
+    RejectSelected("Selected workspace result file missing");
+    File.WriteAllBytes(Path.Combine(selected,"report.txt"),new byte[]{3,4,5,6});
+    RejectSelected("Workspace result content bounds");
+    File.WriteAllBytes(Path.Combine(selected,"report.txt"),new byte[]{3,4,5});
+    using(var extra=new FileStream(Path.Combine(selected,"unselected.txt"),FileMode.CreateNew,FileAccess.Write,FileShare.None))
+    {
+        extra.WriteByte(42);extra.Flush(true);
+        RejectSelected("Unselected workspace result file"); // Opening this file for data would fail sharing.
+    }
+    File.Move(Path.Combine(selected,"unselected.txt"),Path.Combine(task,"retained-unselected.txt"));
+    var allowedResult=WorkspaceBundle.Parse(WorkspaceFiles.SnapshotSelectedResult(task,"selected",selectedBaseline,allowed));
+    Require(allowedResult.Files.Length==2 && allowedResult.Files.Single(f=>f.Path=="report.txt").Content.SequenceEqual(new byte[]{3,4,5}),
+        "exact authorized result and output at its byte limit");
+    Console.WriteLine("PASS owned snapshot: multipage and Git exclusion, concurrent writer refusal, selected inventory before content opens and exact per-output limit; no Broker or cleanup");return 0;
 }
 var root=Path.Combine(AppContext.BaseDirectory,"output-fixture-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(root);
 var path=Path.Combine(root,"result.bundle.json");var bytes=WorkspaceBundle.Create(new[]{("answer.txt",new byte[]{1,2,255})}).Serialize();

@@ -75,7 +75,7 @@ public static partial class InstalledBroker
                 if(r.TryGetProperty("Stop",out var stop) && stop.ValueKind==JsonValueKind.Object)
                 {
                     var observed=JsonSerializer.Deserialize<RuntimeStop>(stop.GetRawText())??throw new InvalidDataException("Stop observation missing");
-                    if(observed.SessionId!=session || observed.Reason!="OFFLINE_RESOURCE_QUALIFICATION_TERMINAL" || observed.Failures is null || observed.Failures.Length>1024)
+                    if(observed.SessionId!=session || observed.Reason!=RuntimeStop.ResourceTerminalReason || observed.Failures is null || observed.Failures.Length>1024)
                         throw new InvalidDataException("Stop observation binding differs");
                     stopEvidence=new(observed.AdmissionClosed,observed.QuarantineObservedBeforeStop,
                         observed.FinalJob is null?null:observed.FinalJob.ExpectedLimits && observed.FinalJob.ObservedZero,observed.Failures.Length);
@@ -136,7 +136,11 @@ public static partial class InstalledBroker
         if(callerLifetime.IsBound)callerLifetime.AssertAlive();
         WorkspacePipe.AssertPeer(channel,callerPid,false);
         WorkspacePipe.Write(channel,response,16384,completion.Token).GetAwaiter().GetResult();
-        if(exit==0)WorkspacePipe.Write(channel,output??throw new InvalidDataException("Closed output missing"),WorkspaceBundle.MaxBundleBytes,completion.Token).GetAwaiter().GetResult();
+        if(exit==0)
+        {
+            callerLifetime.AssertAlive();WorkspacePipe.AssertPeer(channel,callerPid,false);
+            WorkspacePipe.Write(channel,output??throw new InvalidDataException("Closed output missing"),WorkspaceBundle.MaxBundleBytes,completion.Token).GetAwaiter().GetResult();
+        }
         return exit;
     }
     // RunChild appends the original Contract's fixed Stage to its wait phase.

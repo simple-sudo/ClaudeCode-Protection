@@ -143,12 +143,24 @@ internal static class WorkspaceFiles
     // Called by the existing session owner only after exact Job-zero and
     // quarantine. File lists come from this owned task tree, never host paths.
     internal static byte[] SnapshotResult(string taskRoot,string directory,byte[] baselineBytes)
+        =>SnapshotResultCore(taskRoot,directory,baselineBytes,null);
+
+    internal static byte[] SnapshotSelectedResult(string taskRoot,string directory,byte[] baselineBytes,IReadOnlyDictionary<string,int> allowed)
+    {
+        ArgumentNullException.ThrowIfNull(allowed);
+        var limits=allowed.ToDictionary(entry=>WorkspaceBundle.Relative(entry.Key),entry=>entry.Value,StringComparer.Ordinal);
+        if(limits.Count>WorkspaceBundle.MaxFiles || limits.Values.Any(limit=>limit<0 || limit>WorkspaceBundle.MaxFileBytes))
+            throw new InvalidDataException("Workspace result selection bounds");
+        return SnapshotResultCore(taskRoot,directory,baselineBytes,limits);
+    }
+
+    private static byte[] SnapshotResultCore(string taskRoot,string directory,byte[] baselineBytes,IReadOnlyDictionary<string,int>? limits)
     {
         var baseline=WorkspaceBundle.Parse(baselineBytes);
         if(baseline.BaseSHA256 is not null || WorkspaceBundle.Relative(directory).Contains('/'))throw new InvalidDataException("Workspace baseline required");
         var root=Child(taskRoot,directory);using var held=new HeldPaths();held.DirectoryChain(root);
-        var pending=new Stack<string>();pending.Push(root);int directoryCount=0;long total=0;
-        var files=new List<(string Path,FileStream Stream)>();
+        var pending=new Stack<string>();pending.Push(root);int directoryCount=0;
+        var names=new Dictionary<string,string>(StringComparer.Ordinal);
         while(pending.Count>0)
         {
             var parent=pending.Pop();
@@ -168,15 +180,23 @@ internal static class WorkspaceFiles
                 }
                 else
                 {
-                    if(files.Count>=WorkspaceBundle.MaxFiles)throw new InvalidDataException("Workspace result inventory bounds");
-                    var file=held.ReadFile(path);
-                    if(file.Length>WorkspaceBundle.MaxFileBytes || (total+=file.Length)>WorkspaceBundle.MaxTotalBytes)throw new InvalidDataException("Workspace result content bounds");
-                    files.Add((relative,file));
+                    if(names.Count>=WorkspaceBundle.MaxFiles || !names.TryAdd(relative,path))throw new InvalidDataException("Workspace result inventory bounds");
+                    if(limits is not null && !limits.ContainsKey(relative))throw new InvalidDataException("Unselected workspace result file");
                 }
             }
         }
+        if(limits is not null && limits.Count!=names.Count)throw new InvalidDataException("Selected workspace result file missing");
+        long total=0;
+        var files=new List<(string Path,FileStream Stream,int Length)>(names.Count);
+        foreach(var (relative,path) in names)
+        {
+            var file=held.ReadFile(path);var length=file.Length;
+            if(length>(limits is null?WorkspaceBundle.MaxFileBytes:limits[relative]) || (total+=length)>WorkspaceBundle.MaxTotalBytes)
+                throw new InvalidDataException("Workspace result content bounds");
+            files.Add((relative,file,checked((int)length)));
+        }
         var result=WorkspaceBundle.Create(files.Select(f=>
-        {var content=new byte[checked((int)f.Stream.Length)];f.Stream.ReadExactly(content);return(f.Path,content);}),WorkspaceBundle.Hash(baselineBytes)).Serialize();
+        {var content=new byte[f.Length];f.Stream.ReadExactly(content);return(f.Path,content);}),WorkspaceBundle.Hash(baselineBytes)).Serialize();
         _=WorkspaceBundle.Compare(baselineBytes,result);return result;
     }
     // No adoption, overwrite, ACL expansion, recursion, host path or deletion.

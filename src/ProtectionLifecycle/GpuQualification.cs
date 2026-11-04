@@ -19,6 +19,7 @@ internal sealed record GpuChildReport(int SchemaVersion,int Pid,string Nonce,str
 // this installed driver API workload; PyTorch/toolchain compatibility is separate.
 internal static class GpuQualification
 {
+    internal const string LpacScope="LPAC_LOW_ZERO_CAPABILITIES";
     private const int Count=256,Bytes=Count*4;
     private const string Kernel="""
         .version 7.0
@@ -81,9 +82,13 @@ internal static class GpuQualification
         {try{var code=call();steps.Add(new(stage,code));if(code!=0)clean=false;}catch(Exception ex){clean=false;failure??=ex.GetType().Name;}}
     }
     internal static bool Qualified(GpuChildReport report)=>report.ComputeMatched && report.ResourceCleanupSucceeded && report.FailureType is null &&
-        report.AllocatedBytes==Bytes && report.Elements==Count && report.ResultSHA256==ExpectedHash && report.Steps.Length==16 && report.Steps.All(s=>s.Result==0) &&
+        report.DriverVersion is >0 && report.Device is {Length:>0 and <=127} && !report.Device.Any(char.IsControl) &&
+        report.AllocatedBytes==Bytes && report.Elements==Count && report.ResultSHA256==ExpectedHash && report.Steps is {Length:16} && report.Steps.All(s=>s is {Result:0}) &&
         report.Steps.Select(s=>s.Stage).SequenceEqual(new[]{"cuInit","cuDriverGetVersion","cuDeviceGetCount","cuDeviceGet","cuDeviceGetName","cuCtxCreate_v2",
             "cuMemAlloc_v2","cuMemcpyHtoD_v2","cuModuleLoadData","cuModuleGetFunction","cuLaunchKernel","cuCtxSynchronize","cuMemcpyDtoH_v2","cuModuleUnload","cuMemFree_v2","cuCtxDestroy_v2"});
+    internal static bool QualifiedChild(GpuChildReport report,string nonce,uint pid,uint exit,GpuChildReport baseline)=>
+        pid!=0 && report.SchemaVersion==1 && report.Pid>0 && (uint)report.Pid==pid && report.Nonce==nonce &&
+        report.Scope==LpacScope && exit==0 && Qualified(report) && report.DriverVersion==baseline.DriverVersion;
     private static string ExpectedHash
     {
         get{var bytes=new byte[Bytes];Buffer.BlockCopy(Enumerable.Range(0,Count).Select(i=>i*3+7).ToArray(),0,bytes,0,Bytes);return Convert.ToHexString(SHA256.HashData(bytes));}
@@ -92,39 +97,76 @@ internal static class GpuQualification
     {
         state.AssertHeld();version.AssertHeld(state);LifecycleRecovery.AssertNoPending(state);InstallationLoopbackLease.AssertClosedHistory(state);
         foreach(var intent in OwnedJobIntent.ReadAll(state))if(AtomicJobCompletion.ReadClosed(state,intent) is null)throw WfpNative.Contract("GpuRequiresPriorAdmissionsClosed");
-        var fences=FencePlan.ReadAll(state);if(fences.Count==0)throw WfpNative.Contract("GpuRequiresQuarantine");AssertQuarantine();
-        var id=Guid.NewGuid().ToString("N");var plan=new GpuProbePlan(id);var baseline=Compute(plan,"HOST_CONTROL");
-        state.WriteNew("gpu-host-"+id+".json",JsonSerializer.SerializeToUtf8Bytes(baseline));
-        GpuChildReport? observed=null;Exception? failure=null;JobSnapshot? zero=null;uint? exit=null;string? jobId=null;
+        var plans=FencePlan.ReadAll(state);if(plans.Count==0)throw WfpNative.Contract("GpuRequiresQuarantine");
+        var fences=new List<PersistentFence>();var failures=new List<Exception>();
+        var id=Guid.NewGuid().ToString("N");var plan=new GpuProbePlan(id);
+        GpuChildReport? baseline=null,observed=null;RuntimeStop? stopped=null;uint? exit=null;string? jobId=null;
         try
         {
+            foreach(var fence in plans)fences.Add(PersistentFence.OpenExisting(state,fence.Data.FenceId));
+            AssertQuarantine();baseline=Compute(plan,"HOST_CONTROL");
+            state.WriteNew("gpu-host-"+id+".json",JsonSerializer.SerializeToUtf8Bytes(baseline));
             if(!Qualified(baseline))throw WfpNative.Contract("GpuHostControlNotQualified");
             using var profile=InstallationProfileLease.Create(state);using var job=OwnedKernelJob.CreateEmpty(state,version);jobId=job.JobId;
             using var pipe=new AnonymousPipeServerStream(PipeDirection.In,HandleInheritability.Inheritable);using var reader=new StreamReader(pipe,Encoding.UTF8,false,4096,true);
             var text=ReadBounded(reader);
+            AtomicChild? child=null;ProtectionRuntimeLease? runtime=null;
             try
             {
-                using var child=AtomicChild.CreateCanary(layout,state,version,job,profile,output:pipe.ClientSafePipeHandle.DangerousGetHandle(),gpu:plan);
-                pipe.DisposeLocalCopyOfClientHandle();AssertQuarantine();_=child.ResumeQuarantined();exit=child.WaitForCanaryExit();
+                child=AtomicChild.CreateCanary(layout,state,version,job,profile,output:pipe.ClientSafePipeHandle.DangerousGetHandle(),gpu:plan);
+                pipe.DisposeLocalCopyOfClientHandle();
+                runtime=ProtectionRuntimeLease.ForFixedGpu(state,version,job,fences,child,id);
+                runtime.Activate(30000);_=child.ResumeQuarantined();
+                do{runtime.AssertHealthy();exit=child.ObserveFixedGpuExit();}while(exit is null);
+                runtime.AssertHealthy();
                 observed=JsonSerializer.Deserialize<GpuChildReport>(text.WaitAsync(TimeSpan.FromSeconds(3)).GetAwaiter().GetResult())??throw WfpNative.Contract("GpuReportMissing");
-                if(observed.SchemaVersion!=1 || observed.Pid!=child.Pid || observed.Nonce!=id || observed.Scope!="APPCONTAINER_LOW_ZERO_CAPABILITIES" || exit!=0 || !Qualified(observed))
+                if(!QualifiedChild(observed,id,child.Pid,exit.Value,baseline))
                     throw WfpNative.Contract("GpuIsolatedComputationNotQualified");
             }
+            catch(Exception ex){failures.Add(ex);}
             finally
             {
-                try{zero=job.CloseAtomicAdmissionAndStop();profile.AfterOwnedJobZero(zero);}
-                finally{pipe.DisposeLocalCopyOfClientHandle();}
+                try
+                {
+                    if(runtime is not null)
+                    {
+                        stopped=runtime.Stop(RuntimeStop.GpuTerminalReason);
+                        if(stopped.FinalJob is not null)profile.AfterOwnedJobZero(stopped.FinalJob);
+                        if(!stopped.ConfirmsClosedGpu(id,job.JobId))throw WfpNative.Contract("GpuQualificationStopUnconfirmed");
+                    }
+                    else if(job.AtomicAdmissionReserved)
+                    {
+                        // A startup failure must still close its reserved Job.
+                        // The fallback has no successful runtime stop receipt.
+                        foreach(var fence in fences)
+                            try{if(!fence.Observe().FullQuarantineObserved)_=fence.ReinstateQuarantine();}
+                            catch(Exception ex){failures.Add(ex);}
+                        try{AssertQuarantine();}catch(Exception ex){failures.Add(ex);}
+                        profile.AfterOwnedJobZero(job.CloseAtomicAdmissionAndStop());
+                    }
+                }
+                catch(Exception ex){failures.Add(ex);}
+                try{child?.Dispose();}catch(Exception ex){failures.Add(ex);}
+                try{pipe.DisposeLocalCopyOfClientHandle();}catch(Exception ex){failures.Add(ex);}
             }
         }
-        catch(Exception ex){failure=ex;}
-        try{AssertQuarantine();}catch(Exception ex){failure=failure is null?ex:new AggregateException(failure,ex);}
-        var complete=failure is null && observed is not null && zero?.ObservedZero==true;
+        catch(Exception ex){failures.Add(ex);}
+        finally
+        {
+            try{AssertQuarantine();}catch(Exception ex){failures.Add(ex);}
+            foreach(var fence in fences)try{fence.Dispose();}catch(Exception ex){failures.Add(ex);}
+        }
+        var closed=jobId is not null && stopped?.ConfirmsClosedGpu(id,jobId)==true;
+        var complete=failures.Count==0 && observed is not null && closed;
         var report=JsonSerializer.Serialize(new {SchemaVersion=1,state.InstallationId,RequestId=id,version.Package.Release,JobId=jobId,
-            Status=complete?"BOUNDED_CUDA_KERNEL_IN_ISOLATION_OBSERVED":"ISOLATED_GPU_NOT_CONFIRMED",Host=baseline,Child=observed,ChildExit=exit,
-            OneShotAdmissionClosedAndMembersZero=zero?.ObservedZero??false,Failures=failure is null?Array.Empty<WfpErrorEvidence>():WfpNative.Describe(failure),
+            Status=complete?"BOUNDED_CUDA_KERNEL_IN_LPAC_OBSERVED":"ISOLATED_GPU_NOT_CONFIRMED",Host=baseline,Child=observed,ChildExit=exit,
+            OneShotAdmissionClosedAndMembersZero=closed,StopObservation=stopped,Failures=failures.SelectMany(WfpNative.Describe).ToArray(),
             NetworkOpened=false,PyTorchQualified=false,OtherProcessGpuMemoryIsolationQualified=false,HostResourceIsolationQualified=false,ClaudeLaunched=false});
         state.WriteNew("gpu-after-"+id+".json",Encoding.UTF8.GetBytes(report));return(complete?0:3,report);
-        void AssertQuarantine(){foreach(var fence in fences){using var owner=PersistentFence.OpenExisting(state,fence.Data.FenceId);if(!owner.Observe().FullQuarantineObserved)throw WfpNative.Contract("GpuFullQuarantineRequired");}}
+        void AssertQuarantine()
+        {
+            if(fences.Count!=plans.Count || fences.Any(f=>!f.Observe().FullQuarantineObserved))throw WfpNative.Contract("GpuFullQuarantineRequired");
+        }
     }
     private static async Task<string> ReadBounded(StreamReader reader)
     {

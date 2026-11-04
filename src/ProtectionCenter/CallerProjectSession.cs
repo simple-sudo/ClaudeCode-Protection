@@ -184,6 +184,7 @@ internal sealed class CallerProjectSession
                 "Compile"=>"项目编译失败。请按错误码和源码位置检查代码。",
                 "Entry"=>"项目运行或测试入口不符合要求，请检查公开 static int Run() 声明。",
                 "Run"=>"项目运行失败或未返回0，请检查入口代码。",
+                "Output"=>$"项目控制台输出超限。请将标准输出和标准错误各自限制在 {CSharpProjectTask.MaxConsoleCharacters} 个字符以内。",
                 _=>"项目测试失败或通过项数不符合声明，请检查测试代码。"});
             foreach(var diagnostic in failure.Diagnostics)
                 text.AppendLine().Append(diagnostic.Code).Append(diagnostic.SourceIndex is int index?

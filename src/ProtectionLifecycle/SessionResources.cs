@@ -245,18 +245,30 @@ internal sealed class SessionResources : IDisposable
         }
         catch(ExactPathAbsentException ex)when(string.Equals(ex.FailedPath,path,StringComparison.OrdinalIgnoreCase)){}
     }
-    internal string? PreserveClosedWorkspaceResult(JobSnapshot zero)
+    internal string? PreserveClosedWorkspaceResult(JobSnapshot zero,Action? assertCaller)
     {
         AssertHeld();if(git is null)return null;
         if(!zero.ObservedZero)throw WfpNative.Contract("WorkspaceExportRequiresClosedJobZero");
         var baseline=Plan.WorkspaceInputSHA256 is null?state.Read("workspace-input-"+Plan.Nonce+".json"):state.ReadWorkspaceData(Plan.Nonce,false);
         if(!baseline.Bytes.AsSpan().SequenceEqual(Plan.ProjectBundle))throw WfpNative.Contract("WorkspaceExportBaselineChanged");
-        var bytes=WorkspaceFiles.SnapshotResult(Workspace,"git-project",baseline.Bytes);
-        if(Plan.CallerProjectKind is not null)CSharpProjectTask.Parse(baseline.Bytes).VerifyResult(bytes);
+        var callerProject=Plan.CallerProjectKind is null?null:CSharpProjectTask.Parse(baseline.Bytes);
+        var original=callerProject?.Baseline??WorkspaceBundle.Parse(baseline.Bytes);
+        var limits=original.Files.ToDictionary(f=>f.Path,_=>WorkspaceBundle.MaxFileBytes,StringComparer.Ordinal);
+        if(callerProject is not null)
+        {
+            foreach(var path in CSharpProjectTask.Outputs.Take(3))limits.Add(path,WorkspaceBundle.MaxFileBytes);
+            foreach(var path in CSharpProjectTask.Outputs.Skip(3))limits.Add(path,CSharpProjectTask.MaxConsoleBytes);
+            foreach(var output in callerProject.GeneratedFiles)limits.Add(output.Path,output.MaxBytes);
+        }
+        else if(Plan.DevelopProject)
+            foreach(var path in BundledProjectDevelopment.OutputPaths)limits.Add(path,WorkspaceBundle.MaxFileBytes);
+        var bytes=WorkspaceFiles.SnapshotSelectedResult(Workspace,"git-project",baseline.Bytes,limits);
+        if(callerProject is not null)callerProject.VerifyResult(bytes);
         else if(Plan.DevelopProject)BundledProjectDevelopment.VerifyResult(bytes);
         else if(WorkspaceBundle.Compare(baseline.Bytes,bytes).Length!=0)throw WfpNative.Contract("FixedGitWorkspaceUnexpectedChanges");
         // Current fixed sample fits the existing private journal size. Future
         // large project output needs owned data storage, not a widened ledger.
+        assertCaller?.Invoke();
         return Plan.WorkspaceInputSHA256 is null?state.WriteNew("workspace-result-"+Plan.Nonce+".json",bytes):state.StoreWorkspaceData(Plan.Nonce,true,bytes);
     }
     internal bool ToolReady()=>Plan.RequiresCompilerTool && Ready("tool-ready");

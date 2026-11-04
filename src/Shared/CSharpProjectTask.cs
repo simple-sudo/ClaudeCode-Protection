@@ -19,6 +19,7 @@ internal sealed class CSharpProjectTask
     internal const string DataKind="CSHARP_LITERAL_EDIT_DATA_BUILD_RUN_TEST_V2",ResultDirectory="cpc-results";
     internal static bool IsKind(string? kind)=>kind is Kind or DataKind;
     internal const string OutputDirectory="cpc-output";
+    internal const int MaxConsoleCharacters=4096,MaxConsoleBytes=16384;
     internal static readonly string[] Outputs={"cpc-output/CpcProject.dll","cpc-output/run-result.json",
         "cpc-output/test-result.txt","cpc-output/stdout.txt","cpc-output/stderr.txt"};
     private static readonly UTF8Encoding Utf8=new(false,true);
@@ -123,7 +124,7 @@ internal sealed class CSharpProjectTask
         }
         if(!File(Outputs[2]).AsSpan().SequenceEqual(Encoding.ASCII.GetBytes(Definition.ExpectedTests.ToString(System.Globalization.CultureInfo.InvariantCulture))))
             throw new InvalidDataException("Caller project test count differs");
-        foreach(var path in Outputs.Skip(3)){var output=File(path);if(output.Length>16384)throw new InvalidDataException("Caller project text output bounds");_=Utf8.GetString(output);}
+        foreach(var path in Outputs.Skip(3)){var output=File(path);if(output.Length>MaxConsoleBytes)throw new InvalidDataException("Caller project text output bounds");_=Utf8.GetString(output);}
         foreach(var output in GeneratedFiles)
             if(File(output.Path).Length>output.MaxBytes)throw new InvalidDataException("Caller generated file exceeds reviewed size limit");
     }
