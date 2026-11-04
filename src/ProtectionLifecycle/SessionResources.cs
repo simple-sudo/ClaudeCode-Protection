@@ -212,10 +212,12 @@ internal sealed class SessionResources : IDisposable
         else if(kind=="git")(privacy??throw WfpNative.Contract("HostPrivacyOwnerMissing")).AssertGitCreationAllowed();
         else throw WfpNative.Contract("ExplicitProjectToolKindRequired");
     }
-    internal void ReleaseProjectExecution(int toolPid)
+    internal void ReleaseProjectExecution(int toolPid,Action assertCurrentOwner)
     {
         AssertHeld();var owner=privacy??throw WfpNative.Contract("HostPrivacyOwnerMissing");
-        owner.SealToolBeforeExecution(Workspace,toolPid);owner.ReleaseExecution(Workspace);Release("project-execution-go");
+        owner.SealToolBeforeExecution(Workspace,toolPid);
+        owner.ReleaseExecution(Workspace,assertCurrentOwner);
+        Release("project-execution-go");
     }
     internal void PreserveGitFailure()
     {

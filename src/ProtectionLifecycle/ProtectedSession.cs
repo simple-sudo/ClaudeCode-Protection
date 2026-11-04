@@ -168,7 +168,7 @@ internal sealed class ProtectedSession
         var toolLaunch=new OwnedToolLaunch();
         var failures=new List<Exception>();
         string? workspaceResultSHA256=null;
-        int? projectPid=null;HostPrivacySummary? hostPrivacy=null;
+        (int Pid,long CreatedFileTime)? projectActor=null;HostPrivacySummary? hostPrivacy=null;
         try
         {
             assertCaller?.Invoke();
@@ -240,14 +240,18 @@ internal sealed class ProtectedSession
                             fixedTools++;
                             if(developProject && !gitPhase)
                             {
-                                if(executionPhase && projectPid!=checked((int)member.Pid))throw WfpNative.Contract("SealedProjectToolIdentityChanged");
-                                projectPid=checked((int)member.Pid);
+                                var actor=(checked((int)member.Pid),member.CreatedFileTime.Value);
+                                if(executionPhase)
+                                {
+                                    if(projectActor!=actor)throw WfpNative.Contract("SealedProjectToolIdentityChanged");
+                                }
+                                else projectActor=actor;
                             }
                         }
                     }
                     if(fixedTools!=1)throw WfpNative.Contract("ReadyResourceToolNotUniqueInHeldJobSnapshot");
                     runtime.AssertHealthy();
-                    if(executionPhase)resources.ReleaseProjectExecution(projectPid??throw WfpNative.Contract("ProjectToolPidMissing"));
+                    if(executionPhase)resources.ReleaseProjectExecution(projectActor?.Pid??throw WfpNative.Contract("ProjectToolPidMissing"),runtime.AssertHealthy);
                     else if(gitPhase){if(developProject)resources.SealRootHostPrivacyBeforeGit(checked((int)child.Pid));resources.ReleaseInspectedGit();gitObserved=true;}
                     else{resources.ReleaseInspectedTool();toolObserved=true;}
                 });
@@ -285,7 +289,7 @@ internal sealed class ProtectedSession
             if(developProject && resources is not null && child is not null && zero?.ObservedZero==true)
                 try
                 {
-                    hostPrivacy=resources.ReadClosedHostPrivacy(checked((int)child.Pid),projectPid);
+                    hostPrivacy=resources.ReadClosedHostPrivacy(checked((int)child.Pid),projectActor?.Pid);
                     HostPrivacyContract.Validate(hostPrivacy,id,true);
                 }
                 catch(Exception ex){failures.Add(ex);}

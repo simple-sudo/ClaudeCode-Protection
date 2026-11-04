@@ -141,9 +141,9 @@ internal sealed partial class HostPrivacyProbe : IDisposable
     internal void AuthorizeToolCreation()=>execution.AuthorizeToolCreation();
     internal void SealToolBeforeExecution(string workspace,int toolPid)
     {AssertResetTargetCurrent();execution.SealTool(ReadObservation(workspace,"project",toolPid),toolPid);}
-    internal void ReleaseExecution(string workspace)
+    internal void ReleaseExecution(string workspace,Action assertCurrentOwner)
     {
-        AssertHeld();AssertResetTargetCurrent();
+        AssertHeld();
         var file=published??throw WfpNative.Contract("HostPrivacyPlanLeaseLost");
         var path=PlanPath(workspace);
         WindowsPathSeal.VerifyObject(file.SafeFileHandle,path,false);
@@ -156,6 +156,10 @@ internal sealed partial class HostPrivacyProbe : IDisposable
         }
         catch(ExactPathAbsentException ex)when(ex.NativeErrorCode==2 && string.Equals(ex.FailedPath,path,StringComparison.OrdinalIgnoreCase))
         {withdrawn=true;}
+        // Recheck the complete positive-control set before project code can
+        // run. Checking only at collection and after exit misses this gate.
+        AssertTargetsCurrent();
+        assertCurrentOwner();
         execution.ReleaseExecution();
     }
     private void AssertResetTargetCurrent()=>AssertFileStateCurrent(plan.Targets[HostPrivacyContract.ResetSettingsIndex],HostPrivacyContract.ResetSettingsIndex);
