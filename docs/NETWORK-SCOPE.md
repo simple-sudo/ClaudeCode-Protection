@@ -79,3 +79,29 @@ V2 用严格且有界的 JSON 整数字段传递偏移、日期和夏令时转�
 6800已包含分类修正，并在原固定worker中将同一惰性初始化入口移到独立HTTPS_SOCKET_INITIALIZATION阶段。固定System.Net.Sockets模块MVID和无参void入口，原构造器后续复用该初始化状态；不写内部标记、改计数或新增任意调用接口，未知运行时拒绝。90项普通检查包含该入口的实际普通进程初始化/复用；本次真实LPAC在初始化阶段报告SOCKET_STARTUP10107，未执行Socket创建或连接。因此后续不再重复TLS/代理验证，先审查Winsock依赖。原生失败内部具体对象仍UNKNOWN。
 
 微软[AppContainer说明](https://learn.microsoft.com/en-us/windows/win32/secauthz/implementing-an-appcontainer)将LPAC注册表访问与registryRead能力关联。Chromium的[固定版本网络沙箱配置](https://chromium.googlesource.com/chromium/src/+/c203127527d34c24ac12973ba0c91006c7933b0d/sandbox/policy/win/sandbox_win.cc#384)使用registryRead及其他网络能力，范围并非本产品的零能力合同。这些来源支持重新审查平台依赖，不能证明本机具体失败原因，也不能授予本产品放宽权限、回退普通AppContainer或复制其配置的许可。修复须同时满足授权网络可用和P0宿主信息隔离，继续走原Broker/ProtectedSession/可信owner；尚无此修复或新准入资格。
+
+## 附加资源限制原语（未接入运行链）
+
+registryRead在公开Winsock目录与P0机器身份目标上均存在允许查询的ACE，不能仅凭其名称认定
+范围足够小。元数据匹配不是有效访问证明；本轮没有读取键值、枚举子键或增加该能力。
+
+Windows [restricted token访问契约](https://learn.microsoft.com/en-us/windows/win32/secauthz/restricted-tokens)
+要求普通enabled SID检查和restricting SID检查同时允许。内部RestrictingSidToken仅缩减自身
+宿主进程令牌，拒绝AppContainer及已有restricting SID来源，避免
+[CreateRestrictedToken的交集语义](https://learn.microsoft.com/en-us/windows/win32/api/securitybaseapi/nf-securitybaseapi-createrestrictedtoken)
+改变预期范围。初版ARP+package组合返回87，未采用；不是自动回退或对全部AppAuthority SID
+兼容性的定论。当前显式候选使用
+[DeriveCapabilitySidsFromName](https://learn.microsoft.com/en-us/windows/win32/api/securitybaseapi/nf-securitybaseapi-derivecapabilitysidsfromname)
+的NT Authority **group输出**，名称由固定产品域及规范安装ID组成，不使用其AppAuthority capability输出。
+派生只生成本进程内SID数据，不创建账户、修改原令牌或授予capability。
+
+创建后检查唯一restricting SID、管理员组deny-only及仅允许SeChangeNotify启用；使用
+DISABLE_MAX_PRIVILEGE，不使用WRITE_RESTRICTED或SANDBOX_INERT。令牌句柄不请求
+ASSIGN_PRIMARY/IMPERSONATE/ADJUST；对内仅提供QUERY权限的AccessCheck副本。没有进程启动、
+模拟身份、RPC入口或资源读取接口。普通原生验证只对内存权限表做正负对照，不是LPAC证据。
+
+该候选不借ARP自动获得公开系统文件读取权。真正接入前必须由原可信owner固定必要依赖、
+明确资源的最小权限、持有期及恢复边界，验证实际LPAC组合保留精确restricting/capability SID集合；
+在原Job内同时证明合法开发/网络可用和敏感对象的最小访问拒绝，保持原监督与停止所有权。
+未知资源、缺身份或合成PASS不能替代这些条件。不扩展成通用Broker执行器，也不以放宽
+宿主隐私、关闭GPU或默认拒绝可信维护作为兼容方案。目前未修改原准入、capability或ACL。

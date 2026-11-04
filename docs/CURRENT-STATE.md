@@ -14,8 +14,19 @@ HTTP -2147467259 / SOCKET_STARTUP10107。固定.NET8运行时的EnsureInitialize
 观察 `work/socket-initialization-810277d/observed-system-result.json` SHA256
 `532E7DA76E0BE0F8170351655CF357F7BA8EA90ACB2029810441D6518DFABB5F`；
 预检记录摘要 `E51D35DABBF0653C261526B5AEAAFD7E5F1D3D18E18425C494786EB6A8598F72`。
-下一步审查此身份的Winsock资源依赖及P0影响，不再重复TLS/代理定位，也不凭其他产品使用
-capability就直接放宽本产品。真实会话网络资格和完整产品交付仍未成立。
+只读权限元数据审查已发现registryRead对应的查询允许ACE同时存在于三个Winsock目录键和
+现有机器身份目标键；这不是实际LPAC访问证明，但不能把该能力当作只授权Winsock。
+新增内部RestrictingSidToken原语，仅从自身宿主进程令牌创建缩减副本，以安装专属NT Authority
+group SID作唯一restricting SID；不增加enabled group/capability，不模拟身份或创建进程。
+原ARP+package候选在普通用户下返回CreateRestrictedToken错误87，具体参数原因UNKNOWN，
+原源码及两次失败保留；修订候选16项真实普通令牌/内存权限表检查通过，110输入四工程构建0/0、
+三库一致，六产品工程非生成语义0/0。SOURCE / BUILD / VERIFIED(普通令牌与合成描述符)，
+未接入AtomicAdmission/ProtectedSession；真实LPAC组合、资源可用性及实际敏感键拒绝均NOT_RUN。
+记录根 `work/winsock-capability-scope-158b5bd/`；汇总摘要
+`F1B3ED5E6B404C4E29A93C906B7F517EB7F0B6C6DE74CC3642D6F971B8315F98`。
+下一步在原owner内固定专属SID的必要资源授权和LPAC组合核验，再判断新候选；不能从合成
+结果直接授予registryRead。没有新安装、ACL/服务/网络改动或真实Claude启动；现有零能力链不变。
+真实会话网络资格和完整产品交付仍未成立，自评/画像仍DESIGN。
 
 前次 `979ca94a` / INACTIVE 于2026-11-04 09:38Z 按具体工具审批请求
 及本人 UAC，原 Bootstrap 更新退出0；15个公开安装资产独立长度和摘要匹配清单

@@ -16,6 +16,7 @@
     <Compile Include="WorkspaceDataChannel.cs;WorkspaceCallerLifetime.cs;../Shared/WorkspacePipe.cs" />
     <Compile Include="../Shared/WindowsDirectoryNames.cs" />
     <Compile Include="AtomicAdmission.cs" />
+    <Compile Include="RestrictingSidToken.cs" />
     <Compile Include="ProxyChannel.cs;NetworkQualification.cs" />
     <Compile Include="GpuQualification.cs" />
     <Compile Include="ProcessLocalRevocation.cs" />

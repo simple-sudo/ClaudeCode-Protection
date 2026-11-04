@@ -8,7 +8,7 @@ using System.Text.Json;
 using System.Runtime.InteropServices;
 using Microsoft.Win32.SafeHandles;
 
-if(args.Length!=1 || args[0] is not ("gpu-report-policy" or "privacy-probe-closure" or "privacy-probe-exit-child" or "timezone-snapshot" or "timezone-policy" or "timezone-metadata" or "gateway-feedback" or "gateway-qualification-boundary" or "policy" or "messages" or "handle-transfer" or "fault-mode" or "fault-mode-read" or "partial-output" or "hosted-policy" or "etw-policy" or "tls-transport-policy" or "etw-token-access" or "inactive-transition" or "project-policy" or "project-build" or "privacy-native" or "caller-project-build" or "caller-project-policy" or "self-control-open" or "caller-data-build" or "caller-compile-failure" or "caller-run-failure" or "caller-test-failure" or "caller-output-failure" or "caller-failure-owner" or "control-file-gate" or "caller-multi-edit-build" or "workspace-caller-lifetime" or "workspace-caller-lifetime-child" or "maintenance-identity" or "reset-settings-file"))return 125;
+if(args.Length!=1 || args[0] is not ("restricting-sid-boundary" or "gpu-report-policy" or "privacy-probe-closure" or "privacy-probe-exit-child" or "timezone-snapshot" or "timezone-policy" or "timezone-metadata" or "gateway-feedback" or "gateway-qualification-boundary" or "policy" or "messages" or "handle-transfer" or "fault-mode" or "fault-mode-read" or "partial-output" or "hosted-policy" or "etw-policy" or "tls-transport-policy" or "etw-token-access" or "inactive-transition" or "project-policy" or "project-build" or "privacy-native" or "caller-project-build" or "caller-project-policy" or "self-control-open" or "caller-data-build" or "caller-compile-failure" or "caller-run-failure" or "caller-test-failure" or "caller-output-failure" or "caller-failure-owner" or "control-file-gate" or "caller-multi-edit-build" or "workspace-caller-lifetime" or "workspace-caller-lifetime-child" or "maintenance-identity" or "reset-settings-file"))return 125;
 try
 {
 using var identity=WindowsIdentity.GetCurrent();
@@ -19,6 +19,7 @@ var library=Assembly.LoadFrom(Path.Combine(AppContext.BaseDirectory,"ProtectionL
 if(args[0]=="privacy-probe-closure"){PrivacyProbeClosureCases.Run(library,(access,pid)=>OpenProcess(access,false,pid));return 0;}
 if(args[0] is "timezone-policy" or "timezone-metadata"){TimeZoneReadCases.Run(library,args[0]=="timezone-metadata");return 0;}
 if(args[0]=="timezone-snapshot"){TimeZoneReadCases.RunSnapshot(library);return 0;}
+if(args[0]=="restricting-sid-boundary"){RestrictingSidCases.Run(library);return 0;}
 if(args[0]=="gateway-feedback"){GatewayFeedbackCases.Run(library);return 0;}
 if(args[0]=="gateway-qualification-boundary"){GatewayQualificationBoundaryCases.Run(library);return 0;}
 if(args[0]=="reset-settings-file"){ResetSettingsFileCases.Run(library);return 0;}

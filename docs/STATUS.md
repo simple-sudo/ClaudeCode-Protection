@@ -5,6 +5,39 @@
 历史页的“当前/待执行/暂停/DELIVERABLE”按段落日期及限定范围解释，不是今天的状态或操作许可。
 不在本页复制当前安装和授权摘要。
 
+## 2026-11-04 Winsock依赖元数据与附加令牌限制可行性（基于158b5bd）
+
+五个固定注册表键仅READ_CONTROL观察，不读键值/枚举子键。公开registryRead SID在三个
+Winsock目录键和既有P0机器身份目标均匹配查询允许ACE，后者不是“仅Winsock”授权；当前用户
+代理键不匹配该ACE。六个固定Windows/.NET运行库只读DACL元数据，均匹配ARP读执行允许ACE。
+两项均不是实际token有效访问证明，也未确定WSAStartup失败的具体资源。原始元数据摘要分别
+`794B354CCDE1C7E325945955D084DE01C32636AA2E2713D7BD19AFD9E34894C9`、
+`EAAF4ACDF06219FC9D6D24C68982726493A5113023561D79D20FE9F034632697`。
+
+首个附加限制候选使用ARP+固定package SID；110输入四工程构建0/0。执行环境已有restricting
+SID时按设计拒绝；另经具体人工工具审批的普通用户执行在CreateRestrictedToken返回87，
+具体被拒参数仍UNKNOWN。没有模拟身份、子进程启动或系统写入。失败原日志、构建与五个输入
+字节快照保留在 `work/winsock-capability-scope-158b5bd/`，不是后续结果的通过部分。
+普通原生失败stderr摘要 `35CAA2D7A0A44E4703A0A3C3C89EDEEDDFEE3C7E2348993AA5177A258EFAE2DA`。
+
+修订原语显式使用安装ID派生的NT Authority group作为唯一restricting SID，不加capability，
+不自动回退。110输入四工程构建0错误0警告，三份Lifecycle库相同；经具体人工工具审批的普通
+用户运行16项原生自身令牌/合成内存描述符检查通过：稳定且区分安装的SID、敏感资源模型拒绝、
+明确授权允许、ARP/外来SID拒绝、两个access pass均须允许、显式deny及权限不匹配拒绝、
+关闭后拒绝。六产品工程非生成语义0/0。无真实注册表访问、ACL改变、LPAC组合、网络、安装、
+产品启动或Claude执行；SOURCE / BUILD / VERIFIED(普通令牌与合成描述符)，不登记运行链
+INTEGRATED或产品CAPABILITY_DELIVERED。机制与后续接入条件见NETWORK-SCOPE。
+
+同根 `build-boundary-02/build-result.json` SHA256
+`D6BB4B383FFDD859069ADF4EEBCCEDAA59FF851197A43A8F767C7CE55F1AC148`；
+`build-boundary-02/manual-ordinary-components.json` 摘要
+`2D7D40EC348F4DA6C3D1E838B3553125985CBCB3EDA9D9707119AAE835B5A4AE`；
+`source-types.json` 摘要 `625C265A39BC809202A73267D37BF4BD0171B3F67F25E0F54A2C75AC8DA1F618`；
+`restriction-feasibility-review.json` 摘要
+`F1B3ED5E6B404C4E29A93C906B7F517EB7F0B6C6DE74CC3642D6F971B8315F98`。
+新原语未接入原AtomicAdmission/ProtectedSession；真实资源可用性、隐私拒绝及故障闭合仍须原owner
+绑定实际LPAC/Job验证。自评/画像系统仍DESIGN，不能从本组件检查推导真实Claude启动许可。
+
 ## 2026-11-04 固定宿主探针与实际编译器分离（16f1f13）
 
 修复同一编译器进程先解析宿主探针计划、再加载项目代码的内存暴露路径。原owner/Job链新增
