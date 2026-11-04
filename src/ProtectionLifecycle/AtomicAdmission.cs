@@ -321,12 +321,17 @@ internal sealed class AtomicChild : IDisposable
                     // selected by its original owner, not enumerate other zones.
                     var zone=preparation.PublicTimeZoneId??throw WfpNative.Contract("FixedPublicTimeZoneSelectionMissing");
                     env["CPC_PUBLIC_TIMEZONE_ID"]=zone;
+                    var snapshot=preparation.PublicTimeZone??throw WfpNative.Contract("FixedPublicTimeZoneSnapshotMissing");
+                    env["CPC_PUBLIC_TIMEZONE_SNAPSHOT"]=snapshot.Payload;
+                    env["CPC_PUBLIC_TIMEZONE_SHA256"]=snapshot.SHA256;
                 }
                 var endpoint="http://"+preparation.SessionId+":"+preparation.Gateway.Secret+"@127.0.0.1:"+SessionProxy.Port;
                 foreach(var name in new[]{"HTTP_PROXY","HTTPS_PROXY","ALL_PROXY"})env[name]=endpoint;
                 env["NO_PROXY"]="";
             }
-            environment=Marshal.StringToHGlobalUni(string.Join('\0',env.Select(p=>p.Key+"="+p.Value))+"\0\0");
+            var environmentBlock=string.Join('\0',env.Select(p=>p.Key+"="+p.Value))+"\0\0";
+            if(preparation?.IsGatewayQualification==true && environmentBlock.Length>32760)throw WfpNative.Contract("FixedGatewayEnvironmentBounds");
+            environment=Marshal.StringToHGlobalUni(environmentBlock);
             var startup=new StartupInfoEx{Basic=new(){Size=Marshal.SizeOf<StartupInfoEx>()},Attributes=attributes};
             if(report){startup.Basic.Flags=0x100;startup.Basic.Output=output;startup.Basic.Error=output;}
             var command=new StringBuilder("\""+image+"\" "+(preparation?.IsGatewayQualification==true?"gateway-qualification-child":"admission-child"));
@@ -467,14 +472,18 @@ internal sealed class AtomicChild : IDisposable
                 result=GatewayChildReport.Result(id,phase,125);
             else
             {
-                // Resolve the exact already-authorized definition first. This
-                // neither grants access nor substitutes the local timezone.
-                // Binding the runtime's local view must succeed before HTTPS.
-                phase="TIMEZONE_DEFINITION";var expectedZone=TimeZoneInfo.FindSystemTimeZoneById(publicTimeZone);
+                // LPAC registry opens require registryRead, regardless of this
+                // resource's DACL. Use only the original owner's public calendar
+                // with a pinned managed compatibility adapter; never add that
+                // broad capability or treat the adapter as a privacy boundary.
+                phase="TIMEZONE_PUBLIC_CACHE";
+                PublicTimeZoneSnapshot.ApplyForFixedWorker(
+                    Environment.GetEnvironmentVariable("CPC_PUBLIC_TIMEZONE_SNAPSHOT")??throw new InvalidDataException("FixedPublicTimeZoneSnapshotMissing"),
+                    Environment.GetEnvironmentVariable("CPC_PUBLIC_TIMEZONE_SHA256")??throw new InvalidDataException("FixedPublicTimeZoneDigestMissing"),id,publicTimeZone);
                 phase="TIMEZONE_LOCAL_BINDING";var localZone=TimeZoneInfo.Local;
                 // Keep the OS's current daylight-saving setting. A public
                 // definition's default rules do not override local settings.
-                if(localZone.Id!=expectedZone.Id)
+                if(localZone.Id!=publicTimeZone)
                     throw new InvalidDataException("FixedGatewayLocalTimeZoneDefinitionDiffers");
                 phase="HTTPS_SETTINGS";var status=RunFixedSessionHead(id,secret,p=>phase=p);
                 result=GatewayChildReport.Result(id,status is >=200 and <400?"COMPLETE":"HTTPS",status is >=200 and <400?42:126,status);

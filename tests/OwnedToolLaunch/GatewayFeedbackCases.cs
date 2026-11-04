@@ -49,7 +49,7 @@ internal static class GatewayFeedbackCases
         Check(Read(Encoding.UTF8.GetBytes(good.PadRight(4096)))==good.PadRight(4096));Accept(good.PadRight(4096),42);
         var oversized=false;try{Read(Encoding.UTF8.GetBytes(new string('x',4097)));}catch(InvalidDataException){oversized=true;}Check(oversized);
         var invalidUtf8=false;try{Read(new byte[]{255});}catch(DecoderFallbackException){invalidUtf8=true;}Check(invalidUtf8);
-        foreach(var phase in new[]{"TIMEZONE_DEFINITION","TIMEZONE_LOCAL_BINDING","HTTPS_SETTINGS","HTTPS_TLS_POLICY","HTTPS_CLIENT","HTTPS_SEND","HTTPS_CONNECT","HTTPS_CONNECT_REPLY"})Accept(Result(phase,125,error:new System.Security.SecurityException("private-fixture")),125);
+        foreach(var phase in new[]{"TIMEZONE_DEFINITION","TIMEZONE_PUBLIC_CACHE","TIMEZONE_LOCAL_BINDING","HTTPS_SETTINGS","HTTPS_TLS_POLICY","HTTPS_CLIENT","HTTPS_SEND","HTTPS_CONNECT","HTTPS_CONNECT_REPLY"})Accept(Result(phase,125,error:new System.Security.SecurityException("private-fixture")),125);
         var registry=Result("HTTPS_SETTINGS",125,error:new TypeInitializationException("Microsoft.Win32.Registry",new System.Security.SecurityException("private-fixture")));
         Accept(registry,125);Check(JsonNode.Parse(registry)!["Errors"]![0]!["Kind"]!.GetValue<string>()=="REGISTRY_INITIALIZATION" && !registry.Contains("Microsoft.Win32",StringComparison.Ordinal));
         var unknown=Result("HTTPS_SETTINGS",125,error:new TypeInitializationException("private-type-token",new System.Security.SecurityException("private-fixture")));

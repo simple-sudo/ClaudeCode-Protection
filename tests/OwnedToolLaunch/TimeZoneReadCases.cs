@@ -5,6 +5,65 @@ using System.Security.Principal;
 using System.Text.Json;
 internal static class TimeZoneReadCases
 {
+    internal static void RunSnapshot(Assembly library)
+    {
+        var type=library.GetType("ProtectionLifecycle.PublicTimeZoneSnapshot",true)!;
+        const BindingFlags flags=BindingFlags.NonPublic|BindingFlags.Static;
+        var count=0;void Check(bool value){if(!value)throw new InvalidOperationException("Public timezone snapshot fixture mismatch");count++;}
+        object? Call(string method,params object?[] values)
+        {
+            try{return type.GetMethod(method,flags)!.Invoke(null,values);}
+            catch(TargetInvocationException ex)when(ex.InnerException is not null){ExceptionDispatchInfo.Capture(ex.InnerException).Throw();throw;}
+        }
+        void Refuse(Action action)
+        {
+            var refused=false;try{action();}catch(Exception ex)when(ex is InvalidDataException or ArgumentException or JsonException){refused=true;}Check(refused);
+        }
+        string Hash(string text)=>Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(
+            System.Text.Encoding.UTF8.GetBytes("CPC_PUBLIC_TIMEZONE_V1\n"+text)));
+        var culture=System.Globalization.CultureInfo.CurrentUICulture;
+        try
+        {
+            System.Globalization.CultureInfo.CurrentUICulture=System.Globalization.CultureInfo.InvariantCulture;
+            var original=TimeZoneInfo.Local;var session=new string('a',32);
+            var snapshot=Call("Capture",session)!;
+            var properties=BindingFlags.NonPublic|BindingFlags.Instance;
+            var payload=(string)type.GetProperty("Payload",properties)!.GetValue(snapshot)!;
+            var digest=(string)type.GetProperty("SHA256",properties)!.GetValue(snapshot)!;
+            var id=(string)type.GetProperty("TimeZoneId",properties)!.GetValue(snapshot)!;
+            Check(id==original.Id && Hash(payload)==digest && payload.Length<=16384);
+            using(var json=JsonDocument.Parse(payload))
+            {
+                var parsed=TimeZoneInfo.FromSerializedString(json.RootElement.GetProperty("Definition").GetString()!);
+                Check(parsed.HasSameRules(original) && parsed.DisplayName==id && parsed.StandardName==id);
+            }
+            void Apply(string text,string hash,string actor,string zone)=>Call("ApplyForFixedWorker",text,hash,actor,zone);
+            Refuse(()=>Apply(payload,digest==new string('A',64)?new string('B',64):new string('A',64),session,id));
+            Refuse(()=>Apply(payload,digest,new string('b',32),id));
+            Refuse(()=>Apply(payload,digest,session,id=="UTC"?"Sample Standard Time":"UTC"));
+            Refuse(()=>Apply(new string('x',16385),new string('A',64),session,id));
+            var extra=System.Text.Json.Nodes.JsonNode.Parse(payload)!.AsObject();extra["Extra"]="private-fixture";
+            var invalid=extra.ToJsonString();Refuse(()=>Apply(invalid,Hash(invalid),session,id));
+            TimeZoneInfo.ClearCachedData();
+            var cacheField=typeof(TimeZoneInfo).GetField("s_cachedData",flags)!;var cache=cacheField.GetValue(null)!;
+            var localField=cache.GetType().GetField("_localTimeZone",BindingFlags.NonPublic|BindingFlags.Instance)!;
+            Check(localField.GetValue(cache) is null);
+            Apply(payload,digest,session,id);
+            var bound=TimeZoneInfo.Local;Check(bound.Id==id && bound.HasSameRules(original));
+            Apply(payload,digest,session,id);Check(ReferenceEquals(bound,TimeZoneInfo.Local));
+            type.GetMethod("AssertCurrent",properties)!.Invoke(snapshot,null);Check(true);
+            var proxy=library.GetType("ProtectionLifecycle.SessionProxy",true)!;
+            var tls=(System.Net.Security.SslClientAuthenticationOptions)proxy.GetMethod("OfflineTls",flags)!.Invoke(null,null)!;
+            var clone=tls.CertificateChainPolicy!.Clone();
+            Check(clone.DisableCertificateDownloads && clone.RevocationMode==System.Security.Cryptography.X509Certificates.X509RevocationMode.Offline &&
+                clone.VerificationFlags==System.Security.Cryptography.X509Certificates.X509VerificationFlags.NoFlag);
+            TimeZoneInfo.ClearCachedData();cache=cacheField.GetValue(null)!;
+            localField.SetValue(cache,TimeZoneInfo.CreateCustomTimeZone("FixtureMismatch",TimeSpan.Zero,"fixture","fixture"));
+            Refuse(()=>Apply(payload,digest,session,id));
+        }
+        finally{TimeZoneInfo.ClearCachedData();System.Globalization.CultureInfo.CurrentUICulture=culture;}
+        Console.WriteLine($"PASS {count} public-timezone snapshot integrity, identity, real-rule roundtrip, pinned process-local cache, native clock and strict offline TLS clone checks. Ordinary process only; no UAC, ACL/registry/clock setting changes, network, protected state, Job, WFP or LPAC qualification.");
+    }
     internal static void Run(Assembly library,bool metadata)
     {
         var type=library.GetType("ProtectionLifecycle.SessionTimeZoneReadAccess",true)!;
