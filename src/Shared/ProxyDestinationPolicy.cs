@@ -180,7 +180,16 @@ internal static class ProxyDestinationPolicy
             throw new InvalidDataException("ConnectAuthorityOrHeadersRefused");
         return new(host, fields.GetValueOrDefault("Proxy-Authorization", ""));
     }
-    internal static IPAddress[] ParseResolution(string host, byte[] bytes)
+    internal sealed record Resolution(IPAddress[] Addresses,int MinimumTtlSeconds)
+    {
+        internal void RequireFresh(TimeSpan responseAge,TimeSpan elapsed)
+        {
+            var lifetime=TimeSpan.FromSeconds(MinimumTtlSeconds);
+            if(responseAge<TimeSpan.Zero || elapsed<TimeSpan.Zero || responseAge>=lifetime || elapsed>=lifetime-responseAge)
+                throw new InvalidDataException("ResolverAnswerExpiredBeforeTunnel");
+        }
+    }
+    internal static Resolution ParseResolution(string host, byte[] bytes)
     {
         if (bytes.Length is < 1 or > 65536) throw new InvalidDataException("ResolverResponseCapacity");
         using var document = JsonDocument.Parse(bytes, new JsonDocumentOptions { MaxDepth = 8 });
@@ -196,16 +205,18 @@ internal static class ProxyDestinationPolicy
         if (answers.Length is < 1 or > 24) throw new InvalidDataException("ResolverAnswerCapacity");
         var aliases = new Dictionary<string, string>(StringComparer.Ordinal);
         var addresses = new List<(string Name, IPAddress Address)>();
+        var minimumTtl=int.MaxValue;
         foreach (var answer in answers)
         {
             Unique(answer);
             var name = DnsName(answer.GetProperty("name").GetString());
-            if (answer.GetProperty("TTL").GetInt64() < 1) throw new InvalidDataException("ResolverExpiredAnswer");
+            if(!answer.GetProperty("TTL").TryGetInt32(out var ttl) || ttl<1)throw new InvalidDataException("ResolverTtlRefused");
+            minimumTtl=Math.Min(minimumTtl,ttl);
             var type = answer.GetProperty("type").GetInt32();
             var data = answer.GetProperty("data").GetString();
             if (type == 5) { if (!aliases.TryAdd(name, DnsName(data))) throw new InvalidDataException("DuplicateAlias"); }
             else if (type == 1 && IPAddress.TryParse(data, out var ip) && ip.AddressFamily == AddressFamily.InterNetwork &&
-                ProxyDestinationPolicy.IsPublicAddressCandidate(ip)) addresses.Add((name, ip));
+                data==ip.ToString() && IsPublicAddressCandidate(ip)) addresses.Add((name, ip));
             else throw new InvalidDataException("PrivateSpecialOrUnsupportedResolverAnswer");
         }
         var terminal = host; var visited = new HashSet<string>(StringComparer.Ordinal);
@@ -213,7 +224,7 @@ internal static class ProxyDestinationPolicy
         { if (!visited.Add(terminal) || visited.Count > 8) throw new InvalidDataException("ResolverAliasLoop"); terminal = next; }
         if (aliases.Keys.Any(name => !visited.Contains(name)) || addresses.Count is < 1 or > 16 || addresses.Any(item => item.Name != terminal))
             throw new InvalidDataException("UnrelatedResolverAnswer");
-        return addresses.Select(item => item.Address).Distinct().ToArray();
+        return new(addresses.Select(item => item.Address).Distinct().ToArray(),minimumTtl);
     }
     private static string DnsName(string? input)
     {

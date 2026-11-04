@@ -10,6 +10,7 @@ static StrictPreflightCheck Find(StrictPreflightReport report,string name)=>
     report.Checks.Single(c=>c.Id==name);
 if(args.Length==1 && args[0]=="gateway-destination-guard"){GatewayDestinationGuardCases.Run();return;}
 if(args.Length==1 && args[0]=="session-tunnel"){await SessionTunnelCases.RunAsync();Console.WriteLine("PASS session tunnel fixtures");return;}
+if(args.Length==1 && args[0]=="resolver-policy"){RunResolverPolicy();Console.WriteLine("PASS resolver answer and freshness checks");return;}
 var now=DateTimeOffset.UtcNow;
 if(args.Length==1 && args[0]=="directory-name-pages")
 {
@@ -154,18 +155,32 @@ foreach(var malformed in new[]{connect.Replace("CONNECT ","GET "),connect.Replac
     connect.Replace("\r\n","\n"),connect.Replace("HTTP/1.1","HTTP/2"),connect.Replace("Host:"," Host:"),connect[..^2]})
     Refuse(()=>ProxyDestinationPolicy.ParseConnect(malformed),"ambiguous or unauthorized CONNECT syntax refused");
 static byte[] DnsBytes(string json)=>System.Text.Encoding.UTF8.GetBytes(json);
-var doh="{\"Status\":0,\"TC\":false,\"Question\":[{\"name\":\"www.microsoft.com.\",\"type\":1}],\"Answer\":[{\"name\":\"www.microsoft.com.\",\"type\":1,\"TTL\":30,\"data\":\"1.1.1.1\"}]}";
-Require(ProxyDestinationPolicy.ParseResolution("www.microsoft.com",DnsBytes(doh)).Single().Equals(IP("1.1.1.1")),"bounded matching public A answer");
-foreach(var invalidDns in new[]{doh.Replace("\"Status\":0","\"Status\":3"),doh.Replace("\"TC\":false","\"TC\":true"),
-    doh.Replace("\"TTL\":30","\"TTL\":0"),doh.Replace("\"1.1.1.1\"","\"127.0.0.1\""),
-    doh.Replace("\"1.1.1.1\"","\"192.168.1.1\""),doh.Replace("\"1.1.1.1\"","\"::ffff:1.1.1.1\""),
-    doh.Replace("\"Status\":0","\"Status\":0,\"Status\":0"),doh.Replace("\"name\":\"www.microsoft.com.\",\"type\":1,\"TTL\"","\"name\":\"unrelated.com.\",\"type\":1,\"TTL\""),
-    doh.Replace("\"Question\":[","\"Question\":[{\"name\":\"extra.com.\",\"type\":1},")})
-    Refuse(()=>ProxyDestinationPolicy.ParseResolution("www.microsoft.com",DnsBytes(invalidDns)),"unsafe or unrelated DoH answer refused");
-var cname=doh.Replace("\"Answer\":[","\"Answer\":[{\"name\":\"www.microsoft.com.\",\"type\":5,\"TTL\":30,\"data\":\"cdn.microsoft.com.\"},")
-    .Replace("\"name\":\"www.microsoft.com.\",\"type\":1,\"TTL\"","\"name\":\"cdn.microsoft.com.\",\"type\":1,\"TTL\"");
-Require(ProxyDestinationPolicy.ParseResolution("www.microsoft.com",DnsBytes(cname)).Length==1,"CNAME chain bound to the matching question");
-Refuse(()=>ProxyDestinationPolicy.ParseResolution("www.microsoft.com",DnsBytes(cname.Replace("cdn.microsoft.com.","router.local."))),"private CNAME refused");
+RunResolverPolicy();
+static void RunResolverPolicy()
+{
+    var doh="{\"Status\":0,\"TC\":false,\"Question\":[{\"name\":\"www.microsoft.com.\",\"type\":1}],\"Answer\":[{\"name\":\"www.microsoft.com.\",\"type\":1,\"TTL\":30,\"data\":\"1.1.1.1\"}]}";
+    Require(ProxyDestinationPolicy.ParseResolution("www.microsoft.com",DnsBytes(doh)).Addresses.Single().Equals(IPAddress.Parse("1.1.1.1")),"bounded matching public A answer");
+    foreach(var invalidDns in new[]{doh.Replace("\"Status\":0","\"Status\":3"),doh.Replace("\"TC\":false","\"TC\":true"),
+        doh.Replace("\"TTL\":30","\"TTL\":0"),doh.Replace("\"1.1.1.1\"","\"127.0.0.1\""),
+        doh.Replace("\"1.1.1.1\"","\"192.168.1.1\""),doh.Replace("\"1.1.1.1\"","\"::ffff:1.1.1.1\""),
+        doh.Replace("\"Status\":0","\"Status\":0,\"Status\":0"),doh.Replace("\"name\":\"www.microsoft.com.\",\"type\":1,\"TTL\"","\"name\":\"unrelated.com.\",\"type\":1,\"TTL\""),
+        doh.Replace("\"Question\":[","\"Question\":[{\"name\":\"extra.com.\",\"type\":1},")})
+        Refuse(()=>ProxyDestinationPolicy.ParseResolution("www.microsoft.com",DnsBytes(invalidDns)),"unsafe or unrelated DoH answer refused");
+    var cname=doh.Replace("\"Answer\":[","\"Answer\":[{\"name\":\"www.microsoft.com.\",\"type\":5,\"TTL\":30,\"data\":\"cdn.microsoft.com.\"},")
+        .Replace("\"name\":\"www.microsoft.com.\",\"type\":1,\"TTL\"","\"name\":\"cdn.microsoft.com.\",\"type\":1,\"TTL\"");
+    Require(ProxyDestinationPolicy.ParseResolution("www.microsoft.com",DnsBytes(cname)).Addresses.Length==1,"CNAME chain bound to the matching question");
+    Refuse(()=>ProxyDestinationPolicy.ParseResolution("www.microsoft.com",DnsBytes(cname.Replace("cdn.microsoft.com.","router.local."))),"private CNAME refused");
+    var shortAlias=cname.Replace("\"type\":5,\"TTL\":30","\"type\":5,\"TTL\":2",StringComparison.Ordinal);
+    var parsed=ProxyDestinationPolicy.ParseResolution("www.microsoft.com",DnsBytes(shortAlias));
+    Require(parsed.MinimumTtlSeconds==2,"CNAME TTL bounds the entire resolution");
+    parsed.RequireFresh(TimeSpan.FromSeconds(1),TimeSpan.FromMilliseconds(999));
+    Refuse(()=>parsed.RequireFresh(TimeSpan.FromSeconds(1),TimeSpan.FromSeconds(1)),"Age plus elapsed expires at TTL");
+    Refuse(()=>parsed.RequireFresh(TimeSpan.FromSeconds(3),TimeSpan.Zero),"stale HTTP resolver response refused immediately");
+    Refuse(()=>parsed.RequireFresh(TimeSpan.Zero,TimeSpan.FromSeconds(2)),"elapsed lookup and tunnel preparation expire answer");
+    foreach(var literal in new[]{"1.1.257","001.1.1.1","0x01010101"})
+        Refuse(()=>ProxyDestinationPolicy.ParseResolution("www.microsoft.com",DnsBytes(doh.Replace("1.1.1.1",literal))),"noncanonical IPv4 answer refused");
+    Refuse(()=>ProxyDestinationPolicy.ParseResolution("www.microsoft.com",DnsBytes(doh.Replace("\"TTL\":30","\"TTL\":2147483648"))),"overrange TTL refused");
+}
 
 // Only configuration intent is parsed here. It must never accept observations,
 // status values, a different installation/policy or an implicit machine default.

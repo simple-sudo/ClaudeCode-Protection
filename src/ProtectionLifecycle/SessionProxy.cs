@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Net;
 using System.Net.Security;
 using System.Net.Sockets;
@@ -149,7 +150,10 @@ internal sealed class SessionProxy : IDisposable
                 using var tlsClient=await SessionTunnel.RequireTlsClientHelloAsync(stream,request.Host,AssertForwardingCurrent,deadline.Token);
                 AssertHealthy();AtomicChild.AssertSessionPeer(job,process,packageSid,peer.Port);AssertForwardingCurrent();
                 phase="RESOLVER";
-                var addresses=await Resolve(request.Host,deadline.Token);var chosen=addresses[0];
+                var resolutionStarted=Stopwatch.GetTimestamp();
+                var (resolution,responseAge)=await Resolve(request.Host,deadline.Token);
+                void AssertFreshResolution()=>resolution.RequireFresh(responseAge,Stopwatch.GetElapsedTime(resolutionStarted));
+                var addresses=resolution.Addresses;var chosen=addresses[0];
                 if(!ProxyDestinationPolicy.AuthorizePinnedHttps(request.Host,443,addresses,chosen).Allowed)
                     throw new InvalidDataException("SessionResolvedDestinationRefused");
                 // Resolve immediately before the literal CONNECT, after the
@@ -157,7 +161,7 @@ internal sealed class SessionProxy : IDisposable
                 // starts even a resolver tunnel on behalf of that connection.
                 AssertForwardingCurrent();
                 phase="UPSTREAM";
-                using var remote=await OpenTunnel(chosen,deadline.Token);
+                using var remote=await OpenTunnel(chosen,deadline.Token,AssertFreshResolution);
                 // Close the literal upstream socket on revoke/deadline as
                 // well as passing the token to pending stream I/O.
                 using var closeUpstream=deadline.Token.UnsafeRegister(static stream=>((NetworkStream)stream!).Dispose(),remote);
@@ -182,7 +186,7 @@ internal sealed class SessionProxy : IDisposable
             { if (authenticated && !stop.IsCancellationRequested) Fail(ex,phase); }
         }
     }
-    private async Task<IPAddress[]> Resolve(string host, CancellationToken token)
+    private async Task<(ProxyDestinationPolicy.Resolution Resolution,TimeSpan ResponseAge)> Resolve(string host, CancellationToken token)
     {
         using var handler = new SocketsHttpHandler {
             UseProxy = false, AllowAutoRedirect = false, UseCookies = false, Credentials = null,
@@ -199,16 +203,25 @@ internal sealed class SessionProxy : IDisposable
             Version=HttpVersion.Version11,VersionPolicy=HttpVersionPolicy.RequestVersionExact
         };
         message.Headers.Accept.ParseAdd("application/dns-json");
+        message.Headers.CacheControl=new System.Net.Http.Headers.CacheControlHeaderValue{NoCache=true};
         using var response = await client.SendAsync(message, token);
         if (response.StatusCode != HttpStatusCode.OK || response.Content.Headers.ContentType?.MediaType != "application/dns-json")
             throw new InvalidDataException("TrustedResolverResponseRefused");
-        return ProxyDestinationPolicy.ParseResolution(host, await response.Content.ReadAsByteArrayAsync(token));
+        var responseAge=TimeSpan.Zero;
+        if(response.Headers.NonValidated.TryGetValues("Age",out var ages))
+        {
+            if(ages.Count!=1 || !int.TryParse(ages.First(),System.Globalization.NumberStyles.None,
+                System.Globalization.CultureInfo.InvariantCulture,out var seconds))throw new InvalidDataException("ResolverResponseAgeRefused");
+            responseAge=TimeSpan.FromSeconds(seconds);
+        }
+        return (ProxyDestinationPolicy.ParseResolution(host,await response.Content.ReadAsByteArrayAsync(token)),responseAge);
     }
-    private async Task<NetworkStream> OpenTunnel(IPAddress ip, CancellationToken token)
+    private async Task<NetworkStream> OpenTunnel(IPAddress ip,CancellationToken token,Action? assertFreshResolution=null)
     {
         if (ip.AddressFamily != AddressFamily.InterNetwork || !ProxyDestinationPolicy.IsPublicAddressCandidate(ip))
             throw new InvalidDataException("PublicIPv4TunnelRequired");
         AssertForwardingCurrent();upstream.AssertHealthy();destinations.RequireRemotePublicAddress(ip);
+        assertFreshResolution?.Invoke();
         var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
         try
         {
@@ -217,12 +230,14 @@ internal sealed class SessionProxy : IDisposable
             var stream = new NetworkStream(socket, ownsSocket: true);
             destinations.RequireRemotePublicAddress(ip);
             var authority = ip + ":443";
+            assertFreshResolution?.Invoke();
             await stream.WriteAsync(Encoding.ASCII.GetBytes("CONNECT " + authority + " HTTP/1.1\r\nHost: " + authority + "\r\n\r\n"), token);
             var reply = await ReadHeader(stream, token);
             var status = reply.Split("\r\n", StringSplitOptions.None)[0].Split(' ');
             if (status.Length < 2 || status[0] is not ("HTTP/1.1" or "HTTP/1.0") || status[1] != "200")
                 throw new InvalidDataException("UpstreamLiteralConnectRefused");
-            upstream.AssertConnectedPeer(socket);AssertForwardingCurrent();destinations.RequireRemotePublicAddress(ip);return stream;
+            upstream.AssertConnectedPeer(socket);AssertForwardingCurrent();destinations.RequireRemotePublicAddress(ip);
+            assertFreshResolution?.Invoke();return stream;
         }
         catch { socket.Dispose(); throw; }
     }
