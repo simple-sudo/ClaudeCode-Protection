@@ -9,8 +9,8 @@
 卡巴斯基本轮新告警：用户报告 Codex 被终止，截图显示系统监控对 `codex.exe` 报
 `PDM:Trojan.Win32.Generic`。按用户确认登记为误报观察；截图中的路径截断，触发动作和厂商结论
 仍 UNKNOWN。用户再次明确要求按误报处理，沿用同一用户观察，不重复旧 AV 归因调查，
-也不登记为厂商已确认。按新告警边界停止本轮相关运行与打包验证，保留源码改动、
-已生成产物与既有回执；不修改 AV、不加排除项、不改名重包装，也不自动重试被中断动作。
+也不登记为厂商已确认。告警发生时停止相关运行与打包验证并保留现场；后续接续按持续授权
+固定新源码、新工件和新审查，未重跑被中断动作。不修改 AV、不加排除项、不改名重包装。
 
 ## 开发基线
 
@@ -51,8 +51,30 @@
   54 项固定网关反馈和 TLS 策略检查。证据 `work/owner-precode-build-0ceb6b2/ordinary-contract-result.json`
   SHA256 `E545C938B3B1AB9DA1FB1FD80A327FD0F1EA32A63F482537D16B5C96C285C139`。
   未打包、安装或运行实际网关；GUI 和 daily 尚未构建。
+- `e48325d` 的固定 SECURITY 分类及 `2b19757` 的精确 d550 前置选择已完成 Lifecycle、
+  Broker、OwnedToolLaunch 离线构建，100 项固定输入，零错误零警告，三份库副本一致。
+  60 项普通反馈检查及前置选择的一正六拒绝通过；未验证实际 LPAC 异常来源。
+  `work/gateway-security-runtime-2b19757/build-result.json` SHA256
+  `EBCF3E165FED95F4344248554D1A5843B8A345E0605431CEF9F06845625BEA3E`；普通检查原记录
+  `6F45F3E439CF9B54201CF1CB05AACC2E279608C0E441CB3860F8040882A85113` 保留 stdout 与记录混排，
+  未重跑检查；派生规范视图 `ordinary-component-summary.json` SHA256
+  `651EE972BDB624F104EF712BA8E3ACAC07A8DD218E2C0B953E5B32738A8B6E33` 只整理两条记录。
+  新候选 `da7d7fb1` / manifest `3BF2F145C1C4C763D8F071C70A537CFB04952C1AC66D4DCA28B366928BB65789`，
+  库 `28F8708CE05B0054A45D77EBFCF4E8094C9FE2A621A9A62C93D3B3863785B736`。
+  原 Bootstrap 与固定控制器构建均 0/0，内嵌清单、同库及 20 输入持有预检通过。
+  Bootstrap 结果摘要 `125AC67AD40DCE18F98BBDD98A18DD9502402CD2536F77773B49CE66C607DC91`。
+  新候选安装与网关未运行，取消观察见下；`ApprovedPackage.json` 现固定该未安装候选。
 
 ## 最近一次有证据的安装观察
+
+- 2026-11-04 03:46Z（当地 11 月 3 日），按用户持续授权将新审查应用于 `da7d7fb1` 后，
+  原固定控制器在请求本人 UAC 时收到 Windows 1223；控制器终止，未取得提升帮助进程句柄，
+  无该进程记录或受保护暂存目录。安装、固定网关及新 LPAC 分类均 NOT_RUN。
+  是本人取消还是提示期限到达仍 UNKNOWN；不推断整项持续开发授权被撤销。
+  一次性 claim 保留且已消耗，不自动重弹或重试。没有额外恢复、AV 更改或真实 Claude。
+  最后保存的安装回读仍是下段 d550；本次未重新打开私有选择指针。
+  证据 `work/gateway-security-runtime-2b19757/observed-elevation-cancellation.json` SHA256
+  `92AD85A69F868CE364C4CD85F863733C16CEEB39D4DC8C4EB36E0DCB6B3A7CA0`。
 
 - 2026-11-04 03:29Z（当地 11 月 3 日），`d550e200493f4af4a75c2238c3dc4542` /
   `5A7B7704B74782A065F3A9F7641E65897E8E7D93B735F4FCA0758E12B851BBC0` 已确认 INACTIVE。
@@ -69,8 +91,8 @@
   SECURITY。六产品与 OwnedToolLaunch 非生成语义检查 0/0，114 项输入前后摘要一致。
   证据 `work/gateway-security-category-3fd876d/semantic-result.json` SHA256
   `0D66815C8518209B74806DA836AEDE33270E5A219C95E070D67E0F10B3BAEE5E`。
-  仅 SOURCE / INTEGRATED；新增用例运行、新 BUILD/安装/LPAC 分类均 NOT_RUN。
-  `ApprovedPackage.json` 固定的是已安装 d550 的旧构建，不包含后续分类源码。
+  该次检查仅 SOURCE / INTEGRATED；后续 BUILD 和普通用例见开发基线，安装/LPAC 分类仍 NOT_RUN。
+  d550 的安装回读不包含后续分类源码，不能继承新版分类实测。
   没有重试、额外恢复或真实 Claude 启动；上段回执不是本次新执行的系统测试。
 
 - 2026-11-04 03:21Z（当地 11 月 3 日），`9142b8c` 固定恢复工件 `74e2345e` 按用户持续授权
