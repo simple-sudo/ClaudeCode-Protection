@@ -67,7 +67,9 @@
   `work/owner-precode-build-0ceb6b2/synthetic-inheritance-rehearsal.json` SHA256
   `CA7DF870C73861CAE8E5DD60465C5DA8D725DF04E116CA55AE9878EB1CC15FBF`。
   源码已接入该写入请求，并在原显式恢复路径仅接受上述精确会话父键的已证实单标记差异。
-  新代码未构建或部署；本机仍需能从已安装版本调用新逻辑的固定恢复入口。真实恢复 NOT_RUN。
+  原 Bootstrap 源码已接入该固定恢复入口，要求精确当前 INACTIVE 安装、唯一会话和 Job、
+  两项原始摘要、原 Job 持久闭合及 WFP 全隔离。恢复只写父键，子键必须全程匹配原描述符。
+  新入口源码检查通过，固定恢复工件 BUILD、提权和真实恢复 NOT_RUN。
 
 - 2026-11-04 01:13Z（当地 11 月 3 日），`ff113193` 公开回执为
   `LIFECYCLE_BEGIN / InvalidOperationException / -2146233079`，回读仍为 a9dec532 / INACTIVE。

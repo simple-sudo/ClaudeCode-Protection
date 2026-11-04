@@ -92,6 +92,46 @@ internal sealed class BootstrapApproval : IDisposable
 
 public static class BootstrapInstaller
 {
+    // The currently installed bytes cannot restore the one observed Windows
+    // normalization, and the pending lease correctly blocks normal update.
+    // The same approved Bootstrap host can run this single recovery operation.
+    public static (int ExitCode,string Report) RecoverReviewedTimeZoneReadAccess()
+    {
+        var stage="PACKAGE_APPROVAL";
+        try
+        {
+            ProtectedState.RequireAdministrator();
+            using var approval=BootstrapApproval.Open(true);
+            stage="REVIEWED_INACTIVE_INSTALLATION";
+            var layout=FixedLayout.FromWindows();
+            using var state=ProtectedState.OpenExisting(layout);
+            var raw=state.Read("current.json",4096);
+            var current=CurrentPointer.Parse(raw,state.InstallationId);
+            if(current.Release!=SessionTimeZoneReadAccess.ReviewedRecoveryRelease ||
+                current.ManifestSHA256!=SessionTimeZoneReadAccess.ReviewedRecoveryManifest)
+                throw WfpNative.Contract("ReviewedTimeZoneRecoveryVersionRefused");
+            using var version=VerifiedVersion.Open(layout,state,current.Release);
+            if(version.Package.ManifestHash!=current.ManifestSHA256)
+                throw WfpNative.Contract("InstalledPointerManifestMismatch");
+            stage="RECOVERY_PRECONDITIONS";
+            LifecycleRecovery.AssertNoPending(state,forManifestAccessRecovery:true);
+            SessionManifestReadAccess.AssertNoPending(state);
+            SessionEtwProviderAccess.AssertNoPending(state);
+            approval.AssertHeld();version.AssertHeld(state);
+            stage="REVIEWED_TIMEZONE_RECOVERY";
+            var result=SessionTimeZoneReadAccess.Recover(state,reviewedIncidentOnly:true);
+            stage="RECOVERY_READBACK";
+            if(state.Read("current.json",4096).SHA256!=raw.SHA256)
+                throw WfpNative.Contract("ReviewedTimeZoneRecoverySelectionDrift");
+            version.AssertHeld(state);approval.AssertHeld();
+            return result;
+        }
+        catch(Exception ex)
+        {
+            return(125,"Timezone recovery not confirmed: "+ex.GetType().Name+"; code="+ex.HResult+"; stage="+stage);
+        }
+    }
+
     // Migration from pinned reviewed packages with no admission or completed
     // one-shot admissions. This is not a generic empty-job/runtime lease.
     public static (int ExitCode,string Report) UpdatePinnedInactive()=>UpdatePinnedInactive(null);

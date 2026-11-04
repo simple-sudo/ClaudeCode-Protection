@@ -1,6 +1,6 @@
-if(args.Length!=1 || args[0] is not ("install-inactive" or "update-inactive"))
+if(args.Length!=1 || args[0] is not ("install-inactive" or "update-inactive" or "recover-reviewed-timezone-read-access"))
 {
-    Console.Error.WriteLine("Usage: ProtectionBootstrap update-inactive (reviewed protected bootstrap only); install-inactive remains unqualified");return 64;
+    Console.Error.WriteLine("Usage: ProtectionBootstrap update-inactive | recover-reviewed-timezone-read-access (reviewed protected bootstrap only)");return 64;
 }
 // Human authorization has reopened bounded qualification. Only the existing
 // inactive-update owner is reviewed here: fixed protected host, embedded exact
@@ -13,13 +13,16 @@ if(args[0]=="install-inactive")
 }
 try
 {
-    var result=ProtectionLifecycle.BootstrapInstaller.UpdatePinnedInactiveWithFeedback();
+    var result=args[0]=="recover-reviewed-timezone-read-access"?
+        ProtectionLifecycle.BootstrapInstaller.RecoverReviewedTimeZoneReadAccess():
+        ProtectionLifecycle.BootstrapInstaller.UpdatePinnedInactiveWithFeedback();
     (result.ExitCode==0?Console.Out:Console.Error).WriteLine(result.Report);
     return result.ExitCode;
 }
 catch(Exception ex)
 {
     // Private paths, state bytes and command arguments do not belong in UI.
-    Console.Error.WriteLine("Inactive update not confirmed: "+ex.GetType().Name+"; code="+ex.HResult+"; stage=START");
+    var operation=args[0]=="recover-reviewed-timezone-read-access"?"Timezone recovery":"Inactive update";
+    Console.Error.WriteLine(operation+" not confirmed: "+ex.GetType().Name+"; code="+ex.HResult+"; stage=START");
     return 125;
 }
