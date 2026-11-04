@@ -166,9 +166,18 @@ internal sealed class CallerProjectSession
             HostPrivacyContract.Fields(r,"Status","SessionId","BaseSHA256","FailureStage","FailureKind","FailureCode","CreationEvidence","StopEvidence",
                 "HostPrivacy","OwnerSealedBeforeCode","ProjectFailure","ResultReleased","AutomaticRetry");
             if(r.GetProperty("Status").GetString()!="CALLER_CSHARP_PROJECT_NOT_CONFIRMED" || r.GetProperty("BaseSHA256").GetString()!=InputSHA256 ||
-                r.GetProperty("FailureStage").GetString()!="processing" || r.GetProperty("FailureKind").GetString()!="ProjectTaskFailed" ||
-                !r.GetProperty("OwnerSealedBeforeCode").GetBoolean() || r.GetProperty("ResultReleased").GetBoolean() || r.GetProperty("AutomaticRetry").GetBoolean())return fallback;
+                r.GetProperty("FailureStage").GetString()!="processing" || r.GetProperty("ResultReleased").GetBoolean() || r.GetProperty("AutomaticRetry").GetBoolean())return fallback;
             var session=r.GetProperty("SessionId").GetString()??"";
+            if(session.Length!=32 || session.Any(c=>!char.IsAsciiHexDigitLower(c)))return fallback;
+            var kind=r.GetProperty("FailureKind").GetString();
+            var sealedBeforeCode=r.GetProperty("OwnerSealedBeforeCode").GetBoolean();
+            if(kind=="ResourceSessionFailed" && !sealedBeforeCode && r.GetProperty("ProjectFailure").ValueKind==JsonValueKind.Null &&
+                r.GetProperty("HostPrivacy").ValueKind==JsonValueKind.Object)
+            {
+                var privacy=HostPrivacyContract.Parse(r.GetProperty("HostPrivacy"),session,false);
+                return DescribePrivacyBlock(privacy)??fallback;
+            }
+            if(kind!="ProjectTaskFailed" || !sealedBeforeCode)return fallback;
             _=HostPrivacyContract.Parse(r.GetProperty("HostPrivacy"),session,true);
             var failure=ProjectFailureContract.Parse(r.GetProperty("ProjectFailure"),task.Definition.Sources.Length);
             var text=new StringBuilder(failure.Stage switch {
@@ -182,6 +191,18 @@ internal sealed class CallerProjectSession
             return text.AppendLine().Append("本次结果未导出；请保留运行目录，不会自动重试。").ToString();
         }
         catch(Exception error)when(error is JsonException or InvalidDataException or InvalidOperationException or KeyNotFoundException or FormatException){return fallback;}
+    }
+    private static string? DescribePrivacyBlock(HostPrivacySummary privacy)
+    {
+        var findings=new[]{(Actor:"固定根进程",Cases:privacy.RootCases),(Actor:"独立探针",Cases:privacy.ProbeCases),
+            (Actor:"编译器",Cases:privacy.ToolCases)}.SelectMany(actor=>actor.Cases.Where(c=>c.Status is "OPENED" or "UNKNOWN")
+                .Select(c=>(actor.Actor,Case:c))).ToArray();
+        if(findings.Length==0)return null;
+        var opened=findings.Count(f=>f.Case.Status=="OPENED");
+        var text=new StringBuilder($"宿主隐私检查阻断了项目任务。{opened} 项可打开，{findings.Length-opened} 项无法确认。项目代码未获放行，结果未导出。");
+        foreach(var (actor,c) in findings.OrderBy(f=>f.Case.Status!="OPENED").Take(4))
+            text.AppendLine().Append(actor).Append(' ').Append(c.Role).Append(c.Status=="OPENED"?" 可打开":" 无法确认").Append($"（Windows {c.Error}）");
+        return text.ToString();
     }
 }
 

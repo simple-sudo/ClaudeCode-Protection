@@ -97,6 +97,21 @@ internal static class ProjectFlowCases
             j=>j["ProjectFailure"]!["Diagnostics"]![0]!["SourcePath"]="C:\\PRIVATE",j=>j["PrivateMessage"]="SECRET"})
         {var json=Failure();mutate(json);Require(!session.DescribeFailure(new(3,json.ToJsonString(),"")).Contains("CS0103"),"unbound or unbounded diagnostic stays generic");}
         Refuse(()=>session.AcceptResult(run,new(3,Failure().ToJsonString(),"")),"failure feedback cannot enter result recovery");
+        var probeFailure=Cases();probeFailure[0]=probeFailure[0] with {Status="OPENED",Error=0};
+        var compilerFailureCases=privacy.ToolCases.ToArray();compilerFailureCases[19]=compilerFailureCases[19] with {Status="UNKNOWN",Error=6};
+        var privacyBlock=Failure();privacyBlock["FailureKind"]="ResourceSessionFailed";privacyBlock["OwnerSealedBeforeCode"]=false;
+        privacyBlock["ProjectFailure"]=null;
+        privacyBlock["HostPrivacy"]=JsonSerializer.SerializeToNode(privacy with {ProbeCases=probeFailure,ToolPid=null,ToolCases=Array.Empty<HostPrivacyCase>()});
+        var blockReply=new BackendResult(3,privacyBlock.ToJsonString(),"");
+        var blockText=session.DescribeFailure(blockReply);
+        Require(blockText.Contains("1 项可打开，0 项无法确认") && blockText.Contains("独立探针 flclash-config-json") &&
+            blockText.Contains("项目代码未获放行"),"probe exposure is attributed to the probe without implying execution");
+        Refuse(()=>session.AcceptResult(run,blockReply),"privacy block cannot release output");
+        privacyBlock["HostPrivacy"]!["ProbeCases"]![0]!["Role"]="C:\\PRIVATE";
+        Require(!session.DescribeFailure(new(3,privacyBlock.ToJsonString(),"")).Contains("PRIVATE"),"unrecognized private resource label cannot cross GUI");
+        privacyBlock["HostPrivacy"]=JsonSerializer.SerializeToNode(privacy with {ToolCases=compilerFailureCases});
+        var compilerBlock=session.DescribeFailure(new(3,privacyBlock.ToJsonString(),""));
+        Require(compilerBlock.Contains("0 项可打开，1 项无法确认") && compilerBlock.Contains("编译器 protection-root-memory"),"unknown compiler result stays distinct from exposure");
         foreach(var mutate in new Action<JsonObject>[] {j=>j["OwnerSealedBeforeCode"]=false,j=>j["OwnerSealedBeforeCode"]=1,j=>j["OwnerSealedBeforeCode"]="true",
             j=>j["FormalAdmissionIssued"]=true,j=>j["OriginalProjectModified"]=true,j=>j["NetworkOpened"]=true,j=>j["UACAutoConfirmed"]=true,
             j=>j["BaseSHA256"]=new string('A',64),j=>j["ResultSHA256"]=new string('A',64),j=>j["FileCount"]=7,

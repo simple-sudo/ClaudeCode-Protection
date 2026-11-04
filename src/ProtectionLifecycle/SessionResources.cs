@@ -354,7 +354,8 @@ internal sealed class SessionResources : IDisposable
                 if(Convert.ToHexString(SHA256.HashData(tool))!=plan.ToolSHA256)throw WfpNative.Contract("FixedToolBytesChanged");
             if(plan.DevelopProject)
             {
-                stage="DENY_NAMED_HOST_RESOURCES";HostPrivacyProbe.RunRestricted(plan,workspace,"root");
+                stage="DENY_NAMED_HOST_RESOURCES";
+                if(!HostPrivacyProbe.RunRestricted(plan,workspace,"root"))throw WfpNative.Contract("NamedHostResourceReadOpenNotDenied");
                 stage="PROJECT_GIT_BASELINE";gitReport=SessionGitToolchain.RunChild(plan,workspace);
                 if(!SessionGitToolchain.Qualified(gitReport))throw WfpNative.Contract("FixedGitToolchainNotQualified");
                 stage="START_FIXED_PRIVACY_PROBE";

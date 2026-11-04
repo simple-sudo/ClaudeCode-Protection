@@ -87,8 +87,9 @@ internal static class BundledProjectDevelopment
         {
             var (plan,workspace,_)=ReadContext(arguments);
             WaitForOwner(plan,workspace,"probe-ready","probe-go");
-            HostPrivacyProbe.RunRestricted(plan,workspace,"probe");
+            var denied=HostPrivacyProbe.RunRestricted(plan,workspace,"probe");
             WaitForOwner(plan,workspace,"probe-privacy-ready","probe-exit-go");
+            if(!denied)throw WfpNative.Contract("NamedHostResourceReadOpenNotDenied");
             return 0;
         }
         catch(Exception error){Console.Error.WriteLine("Fixed privacy probe not confirmed: "+error.GetType().Name+"; code="+error.HResult);return 125;}
@@ -99,8 +100,9 @@ internal static class BundledProjectDevelopment
         {
             var (plan,workspace,rootPid)=ReadContext(arguments);
             WaitForOwner(plan,workspace,"tool-ready","tool-go");
-            HostPrivacyProbe.RunCompilerControl(plan,workspace,rootPid);
+            var controlDenied=HostPrivacyProbe.RunCompilerControl(plan,workspace,rootPid);
             WaitForOwner(plan,workspace,"project-privacy-ready","project-execution-go");
+            if(!controlDenied)throw WfpNative.Contract("CompilerControlOpenNotDenied");
             HostPrivacyProbe.AssertPlanAbsent(workspace);
             if(plan.CallerProjectKind is not null)
             {

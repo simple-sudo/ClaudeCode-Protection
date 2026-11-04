@@ -22,7 +22,7 @@ internal sealed partial class HostPrivacyProbe : IDisposable
     private readonly HostPrivacyExecutionGate execution;
     private FileStream? published;
     private SafeProcessHandle? probeProcess;
-    private int? probePid;
+    private HostPrivacyObservation? probeObservation,compilerObservation;
     private bool withdrawn;
     private readonly List<SafeFileHandle> controlFiles=new();
     private readonly byte[] bytes;
@@ -149,7 +149,13 @@ internal sealed partial class HostPrivacyProbe : IDisposable
         if(probeProcess is not null)throw WfpNative.Contract("HostPrivacyProbeAlreadyHeld");
         var handle=OpenProcess(0x101000,false,checked((uint)pid));
         if(handle.IsInvalid || !ProcessAlive(handle)){handle.Dispose();throw WfpNative.Contract("HostPrivacyProbeNotLive");}
-        try{execution.SealProbe(ReadObservation(workspace,"probe",pid),pid);probeProcess=handle;probePid=pid;}
+        try
+        {
+            // Capture the complete observation while this exact actor is held.
+            // A negative observation is diagnostic only. The gate still refuses it.
+            probeObservation=ReadObservation(workspace,"probe",pid);
+            execution.SealProbe(probeObservation,pid);probeProcess=handle;
+        }
         catch{handle.Dispose();throw;}
     }
     internal void AuthorizeToolCreation(string workspace)
@@ -161,7 +167,11 @@ internal sealed partial class HostPrivacyProbe : IDisposable
         AssertTargetsCurrent();execution.AuthorizeToolCreation();
     }
     internal void SealToolBeforeExecution(string workspace,int toolPid)
-    {AssertResetTargetCurrent();execution.SealTool(ReadObservation(workspace,"project",toolPid),toolPid);}
+    {
+        AssertResetTargetCurrent();
+        compilerObservation=ReadObservation(workspace,"project",toolPid);
+        execution.SealTool(compilerObservation,toolPid);
+    }
     internal void ReleaseExecution(string workspace,Action assertCurrentOwner)
     {
         AssertHeld();
@@ -207,13 +217,14 @@ internal sealed partial class HostPrivacyProbe : IDisposable
         // A failed pre-code task may still expose its honest bounded diagnosis.
         if(execution.ExecutionReleased)
             return execution.Snapshot(rootPid,toolPid??throw WfpNative.Contract("SealedProjectToolPidMissing"));
-        var root=ReadObservation(workspace,"root",rootPid);var tool=toolPid is int pid?ReadObservation(workspace,"project",pid):null;
-        var probe=probePid is int p?ReadObservation(workspace,"probe",p):null;
+        var root=ReadObservation(workspace,"root",rootPid);var tool=compilerObservation;
+        if(tool is not null && tool.Pid!=toolPid)throw WfpNative.Contract("HostPrivacyActorBindingDiffers");
+        var probe=probeObservation;
         var summary=new HostPrivacySummary(HostPrivacyContract.PolicySHA256,SHA256,plan.SessionId,rootPid,tool?.Pid,root.Cases,tool?.Cases??Array.Empty<HostPrivacyCase>())
             {ProbePid=probe?.Pid,ProbeCases=probe?.Cases??Array.Empty<HostPrivacyCase>()};
         HostPrivacyContract.Validate(summary,plan.SessionId,false);return summary;
     }
-    internal static void RunRestricted(ResourceProbePlan resource,string workspace,string actor)
+    internal static bool RunRestricted(ResourceProbePlan resource,string workspace,string actor)
     {
         if(actor is not ("root" or "probe") || !resource.DevelopProject || resource.HostPrivacySHA256 is null)throw WfpNative.Contract("ExplicitHostPrivacyTaskRequired");
         var actual=AtomicChild.AssertRestrictedToolSelf();using var package=InstallationPackageSid.FromInstallationId(resource.InstallationId);
@@ -248,12 +259,12 @@ internal sealed partial class HostPrivacyProbe : IDisposable
         var report=new HostPrivacyObservation(1,resource.Nonce,resource.HostPrivacySHA256,Environment.ProcessId,observations);
         var data=JsonSerializer.SerializeToUtf8Bytes(report);
         using(var output=new FileStream(ReportPath(workspace,actor),FileMode.CreateNew,FileAccess.Write,FileShare.None)){output.Write(data);output.Flush(true);}
-        if(!HostPrivacyContract.CasesSatisfied(observations,plan.Targets[HostPrivacyContract.ResetSettingsIndex].OwnerObservedAbsent))throw WfpNative.Contract("NamedHostResourceReadOpenNotDenied");
+        return HostPrivacyContract.CasesSatisfied(observations,plan.Targets[HostPrivacyContract.ResetSettingsIndex].OwnerObservedAbsent);
     }
     private static string PlanPath(string workspace)=>WindowsPathSeal.Child(workspace,"host-privacy-plan.json");
     // The compiler never opens/deserializes the private target plan. These
     // are fixed public installation paths and held owner/root process IDs.
-    internal static void RunCompilerControl(ResourceProbePlan resource,string workspace,int rootPid)
+    internal static bool RunCompilerControl(ResourceProbePlan resource,string workspace,int rootPid)
     {
         resource.Validate();
         if(!resource.DevelopProject || resource.HostPrivacySHA256 is null || rootPid<=0 || rootPid==Environment.ProcessId || rootPid==resource.BrokerPid)
@@ -270,7 +281,7 @@ internal sealed partial class HostPrivacyProbe : IDisposable
         var report=new HostPrivacyObservation(1,resource.Nonce,resource.HostPrivacySHA256,Environment.ProcessId,observations);
         using(var output=new FileStream(ReportPath(workspace,"project"),FileMode.CreateNew,FileAccess.Write,FileShare.None))
         {JsonSerializer.Serialize(output,report);output.Flush(true);}
-        if(observations.Any(c=>c.Status!="ACCESS_DENIED" || c.Error!=5))throw WfpNative.Contract("CompilerControlOpenNotDenied");
+        return observations.All(c=>c.Status=="ACCESS_DENIED" && c.Error==5);
     }
     private static string ReportPath(string workspace,string actor)=>WindowsPathSeal.Child(workspace,"host-privacy-"+actor+".json");
     // Request only FILE_READ_DATA, asynchronously: no denial caused solely by
