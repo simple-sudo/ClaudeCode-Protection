@@ -5,6 +5,26 @@
 历史页的“当前/待执行/暂停/DELIVERABLE”按段落日期及限定范围解释，不是今天的状态或操作许可。
 不在本页复制当前安装和授权摘要。
 
+## 2026-11-04 固定宿主探针与实际编译器分离（16f1f13）
+
+修复同一编译器进程先解析宿主探针计划、再加载项目代码的内存暴露路径。原owner/Job链新增
+封闭的固定探针模式；原owner封存其33项观察、持有query/wait句柄并观察正常退出0、撤回
+原计划后才允许创建编译器。编译器不解析私有计划，实际检查19项owner/控制文件及9项
+固定根进程权限；原owner绑定其真实身份和报告后才释放代码。V5摘要明确root/probe/compiler
+分别33/33/28，GUI说明范围；旧双actor结果不能满足新合同。机制见HOST-PRIVACY-EXECUTION-SEAL。
+
+九工程非生成语义0/0，119固定输入离线构建五工程0/0、三库一致。185普通阶段检查、三actor
+报告/IPC拒绝合同、GUI接收129项及自有客户端12项通过。自有非敏感CallerDataReport实际
+Roslyn编译/运行/3测试及十一文件导出核对通过；这些不是LPAC/系统探测或安装证据。
+原始记录根 `work/privacy-probe-separation-176be2a/`：语义
+`E82B8DF0D83423DAB215E73C8781FFDE63821B6FC65F0BDD4535C9AA2E6FD072`；
+`build-16f1f13/build-result.json` SHA256
+`DE02750607214E6227B4309456D332A5CCF048D104257C99B601C7C30EA17845`；
+`build-16f1f13/ordinary-components.json` SHA256
+`35A4C4344313979470A211FEB875A09B89758C66787C7D5317E2E69C109CF4A1`。
+未新增安装候选、预检或UAC，没有重试工具策略拒绝的旧操作。真实LPAC链NOT_RUN，
+完整自评/画像仍DESIGN，真实Claude延期。没有将新源码等同于宿主隐私验收完成。
+
 ## 2026-11-04 公共时区候选已固定，控制器预检被工具策略拒绝
 
 9af569c 固定已闭合8389前置，101输入离线构建Lifecycle/Broker/OwnedToolLaunch0/0、三库一致；

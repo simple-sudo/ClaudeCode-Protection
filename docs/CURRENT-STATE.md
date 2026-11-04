@@ -18,14 +18,25 @@
 
 ## 开发基线
 
-- 本轮在原工作区开发链分离固定隐私探针与实际项目编译器。旧实现撤回磁盘计划后，编译器堆里
+- `16f1f13` 在原工作区开发链分离固定隐私探针与实际项目编译器。旧实现撤回磁盘计划后，编译器堆里
   仍可能保留此前解析的真实宿主路径；新源码要求原 owner 封存独立探针、持有并观察其退出0、
   撤回原计划并确认精确不存在后，才能创建编译器。编译器不解析私有计划，实际执行19项
   owner/控制文件及9项固定根进程最小权限检查，再由原 owner 封存释放代码。
   V5报告分别绑定root33/probe33/compiler28，GUI明确范围；不是把探针冒充编译器，也不是
-  完整自评/画像系统。六产品及三个普通组件非生成语义检查0/0；目前SOURCE/INTEGRATED，
-  尚未建立新BUILD或LPAC实测。机制见 HOST-PRIVACY-EXECUTION-SEAL；记录在
-  `work/privacy-probe-separation-176be2a/semantic-all-01.json`。当前安装及候选未因此改变。
+  完整自评/画像系统。六产品及三个普通组件非生成语义检查0/0；固定119输入的离线
+  Lifecycle/Broker/OwnedToolLaunch/WorkspacePipe/CenterResults构建0/0，三库同SHA256
+  `8507F15EC422D0302F271F49A58FBCE63B83BE89EFA7A5F771306A4F13C7D588`。
+  普通组件通过185项阶段检查、三actor合同/IPC、界面结果接收129项及12项自有客户端检查；
+  自有非敏感CallerDataReport实际Roslyn编译、运行及3测试、十一文件结果恢复通过。
+  SOURCE/BUILD/INTEGRATED + VERIFIED(限定普通组件)，**探针退出/计划撤回/新编译器拒绝的
+  真实LPAC链仍NOT_RUN**，没有新安装工件资格或自评/画像交付。
+  记录根 `work/privacy-probe-separation-176be2a/`：九工程语义摘要
+  `E82B8DF0D83423DAB215E73C8781FFDE63821B6FC65F0BDD4535C9AA2E6FD072`；
+  `build-16f1f13/build-result.json` SHA256
+  `DE02750607214E6227B4309456D332A5CCF048D104257C99B601C7C30EA17845`；普通记录
+  `35A4C4344313979470A211FEB875A09B89758C66787C7D5317E2E69C109CF4A1`。
+  机制见 HOST-PRIVACY-EXECUTION-SEAL。未重新暂存/安装此源码；已固定7aa候选、8389安装观察、
+  工具预检阻塞和真实Claude延期均不变。用户再次安装批准已收到，无需重复请求；它不覆盖工具策略。
 
 - `9af569c` 固定已闭合 8389 前置版本。Lifecycle/Broker/OwnedToolLaunch 离线 BUILD 0/0，
   101 输入、同库一致；普通快照13、反馈75及前置一正六拒绝通过。候选 7aa8dafe /
@@ -99,7 +110,7 @@
   `C1758F4472F3CE2E041C866ABAAB7311022C6609FB095BDCD183AD47E13F3E14`。
   上述记录仅对应当时 SOURCE；后续 5e 已 BUILD/普通检查/安装。受限实测在指定定义读取
   即失败，本地 ID 核对与 HTTPS NOT_RUN，不把接入或安装记为依赖准备成功。
-  `ApprovedPackage.json` 现固定最新已安装 8389 工件。
+  当时 `ApprovedPackage.json` 固定8389工件；现已固定但未安装的7aa候选见本节首个候选条目。
 - 工作区：`F:\ClaudeCode-Protection`，非旧C盘路径；分支
   `codex/integrate-privacy-admission-20261027`。
 - 本次接续以 `fa8f2ea` 为文档基线。原时区租约在 `8df1ad9` 收紧逐键写前核对、恢复回读
