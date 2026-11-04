@@ -86,6 +86,15 @@ internal static class WindowsPathSeal
         try{VerifyObject(handle,path,directory);AssertAcl(handle,true);return handle;}
         catch{handle.Dispose();throw;}
     }
+    // Created only in an already held task tree. Keep DELETE on the original
+    // handle, with readers allowed but no foreign write or delete sharing.
+    internal static SafeFileHandle CreateWithdrawableProbeFile(string path)
+    {
+        var handle=CreateFile(Canonical(path),0xc0010000u,1,IntPtr.Zero,1,OpenReparse,IntPtr.Zero);
+        if(handle.IsInvalid){var error=Error("CreateWithdrawableProbeFile");handle.Dispose();throw error;}
+        try{VerifyObject(handle,path,false);return handle;}
+        catch{handle.Dispose();throw;}
+    }
     // Windows servicing legitimately hardlinks this fixed OS executable into
     // WinSxS. Product/source payloads keep their single-link requirement. The
     // exception has no path parameter, write access or ACL-repair behavior.

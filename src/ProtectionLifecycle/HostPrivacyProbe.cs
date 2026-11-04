@@ -19,6 +19,7 @@ internal sealed partial class HostPrivacyProbe : IDisposable
     private readonly List<SafeProcessHandle> processes;
     private readonly HostPrivacyExecutionGate execution;
     private FileStream? published;
+    private bool withdrawn;
     private readonly List<SafeFileHandle> controlFiles=new();
     internal byte[] Bytes {get;}
     internal string SHA256=>WorkspaceBundle.Hash(Bytes);
@@ -89,14 +90,15 @@ internal sealed partial class HostPrivacyProbe : IDisposable
     internal void Publish(string workspace)
     {
         var path=PlanPath(workspace);
-        using(var file=new FileStream(path,FileMode.CreateNew,FileAccess.Write,FileShare.None)){file.Write(Bytes);file.Flush(true);}
-        published=new FileStream(WindowsPathSeal.Open(path,false,true),FileAccess.Read);
+        if(published is not null || withdrawn)throw WfpNative.Contract("HostPrivacyPlanAlreadyPublished");
+        published=new FileStream(WindowsPathSeal.CreateWithdrawableProbeFile(path),FileAccess.ReadWrite);
+        published.Write(Bytes);published.Flush(true);
         if(WorkspaceBundle.Hash(publishedBytes())!=SHA256)throw WfpNative.Contract("HostPrivacyPublishedPlanDiffers");
     }
     private byte[] publishedBytes(){published!.Position=0;var bytes=new byte[checked((int)published.Length)];published.ReadExactly(bytes);published.Position=0;return bytes;}
     internal void AssertHeld()
     {
-        if(published?.SafeFileHandle.IsClosed!=false)throw WfpNative.Contract("HostPrivacyPlanLeaseLost");
+        if(!withdrawn && published?.SafeFileHandle.IsClosed!=false)throw WfpNative.Contract("HostPrivacyPlanLeaseLost");
         foreach(var handle in processes)
             if(handle.IsClosed || !ProcessAlive(handle))throw WfpNative.Contract("HostPrivacyTargetProcessExited");
         foreach(var handle in controlFiles)if(handle.IsClosed || handle.IsInvalid)throw WfpNative.Contract("ProtectionControlFileLeaseLost");
@@ -128,7 +130,23 @@ internal sealed partial class HostPrivacyProbe : IDisposable
     internal void AuthorizeToolCreation()=>execution.AuthorizeToolCreation();
     internal void SealToolBeforeExecution(string workspace,int toolPid)
     {AssertResetTargetCurrent();execution.SealTool(ReadObservation(workspace,"project",toolPid),toolPid);}
-    internal void ReleaseExecution(){AssertResetTargetCurrent();execution.ReleaseExecution();}
+    internal void ReleaseExecution(string workspace)
+    {
+        AssertHeld();AssertResetTargetCurrent();
+        var file=published??throw WfpNative.Contract("HostPrivacyPlanLeaseLost");
+        var path=PlanPath(workspace);
+        WindowsPathSeal.VerifyObject(file.SafeFileHandle,path,false);
+        WindowsPathSeal.MarkDelete(file.SafeFileHandle);
+        file.Dispose();published=null;
+        try
+        {
+            using var remaining=WindowsPathSeal.Open(path,false,false);
+            throw WfpNative.Contract("HostPrivacyPlanStillPresent");
+        }
+        catch(ExactPathAbsentException ex)when(ex.NativeErrorCode==2 && string.Equals(ex.FailedPath,path,StringComparison.OrdinalIgnoreCase))
+        {withdrawn=true;}
+        execution.ReleaseExecution();
+    }
     private void AssertResetTargetCurrent()=>AssertFileStateCurrent(plan.Targets[HostPrivacyContract.ResetSettingsIndex],HostPrivacyContract.ResetSettingsIndex);
     internal void AssertGitCreationAllowed()
     {if(execution.ToolCreationAuthorized)throw WfpNative.Contract("ProjectGitCreationPhaseAlreadyClosed");}
@@ -149,7 +167,10 @@ internal sealed partial class HostPrivacyProbe : IDisposable
         var actual=AtomicChild.AssertRestrictedToolSelf();using var package=InstallationPackageSid.FromInstallationId(resource.InstallationId);
         if(actual!=package.Value || !string.Equals(Environment.ProcessPath,resource.ExpectedChildImage,StringComparison.OrdinalIgnoreCase) ||
             !string.Equals(Path.GetFullPath(Environment.CurrentDirectory),workspace,StringComparison.OrdinalIgnoreCase))throw WfpNative.Contract("HostPrivacyRestrictedActorRequired");
-        using var file=File.OpenRead(PlanPath(workspace));if(file.Length is <1 or >16384)throw WfpNative.Contract("HostPrivacyPlanBounds");
+        // Share the original owner's existing read/write/delete handle; the
+        // probe itself opens for read only and closes before signalling ready.
+        using var file=new FileStream(PlanPath(workspace),FileMode.Open,FileAccess.Read,FileShare.ReadWrite|FileShare.Delete);
+        if(file.Length is <1 or >16384)throw WfpNative.Contract("HostPrivacyPlanBounds");
         var bytes=new byte[(int)file.Length];file.ReadExactly(bytes);
         if(WorkspaceBundle.Hash(bytes)!=resource.HostPrivacySHA256)throw WfpNative.Contract("HostPrivacyPlanDigestDiffers");
         using var doc=JsonDocument.Parse(bytes,new JsonDocumentOptions{MaxDepth=4});var root=doc.RootElement;

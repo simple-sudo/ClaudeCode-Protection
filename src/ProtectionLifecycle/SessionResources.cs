@@ -215,7 +215,7 @@ internal sealed class SessionResources : IDisposable
     internal void ReleaseProjectExecution(int toolPid)
     {
         AssertHeld();var owner=privacy??throw WfpNative.Contract("HostPrivacyOwnerMissing");
-        owner.SealToolBeforeExecution(Workspace,toolPid);owner.ReleaseExecution();Release("project-execution-go");
+        owner.SealToolBeforeExecution(Workspace,toolPid);owner.ReleaseExecution(Workspace);Release("project-execution-go");
     }
     internal void PreserveGitFailure()
     {
