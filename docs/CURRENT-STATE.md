@@ -18,6 +18,15 @@
 
 ## 开发基线
 
+- `e74e8ff` 将固定 HTTPS 会话根身份核对提前到网关 CONNECT 成功响应之前。原 owner 使用
+  已持有的同 Job、LPAC 连接进程句柄核对 PID 与创建时间，只有本次准备的固定根能取得
+  隧道并触发上游解析。诊断意图单独记录 `FixedWorkloadPermitIssued`，正式准入字段为 false。
+  102项固定输入离线构建 Lifecycle、Broker、OwnedToolLaunch，0错误、0警告、三库一致。
+  26项普通边界检查通过，新增覆盖其他 PID、相同 PID 不同创建时间及无效身份。构建摘要
+  `7BE623A52825A55225D35829757FEFBA5DAC99FFA7A221A77116F62A3882953B`，组件摘要
+  `209C1522C57D24AD5408B5BCE903CD97EB4464F568AC2B7DC8C16475F8437C04`，记录位于
+  `work/gateway-fixed-root-bcdaab8/build-e74e8ff/`。真实 LPAC/Job/WFP 路径仍 NOT_RUN。
+
 - `dc8cfdd` 收紧固定 HTTPS 资格成功条件。除原继承管道报告和实际退出42外，原网关必须观察
   同一条连接两方向都完成写入，且该连接持有的进程 PID 与创建时间和原会话根一致。
   原 owner 复核健康后才记录 `FixedGatewayRootBidirectionalWriteObserved`。回执仅有布尔值，
