@@ -1,5 +1,28 @@
 # 当前状态与授权摘要
 
+2026-11-05 AFD-only资格已完成真实闭合：本人批准578D580A…/3DCC7FF6…，原owner会话
+ff3940c6120a49c19891d8a869bc02b0终态0，11文件/声明修改/原输入独立核验一致。真实
+LPAC显式打开Device目录遍历、AFD根READ_CONTROL|SYNCHRONIZE及endpoint三组访问掩码
+均C0000022；前后Token身份/权限/DACL完全一致，没有CUDA、Token/ACL/capability修改或
+连接。核验BD4B99FF…在work/lifecycle-92ad80b-20261105/afd-only。本次许可已消耗。
+AFD-only能完整返回，但不能把它作为上一组合任务失败由CUDA唯一导致的证明；也不能把
+显式DIRECTORY_TRAVERSE打开拒绝直接当作路径解析的实际拒绝层或添加权限的依据。
+普通工具1003只读取得NT根及Device目录owner/DACL，均为WD/RC查询+遍历+READ_CONTROL、
+SY/BA目录全权四ACE模板，无当前package ACE；没有枚举目录或写ACL。仅是来源事实。
+旧私有reader的普通非敏感函数样本通过，未复现提升失败，原因仍UNKNOWN，不重跑。
+
+独立新增ProtectedLifecycleCoordinator有限协调源码，编入保护库。限定Prepare/Check/
+Launch/Stop/RestoreIpv6、flow/revision防重放、opaque原owner准入引用、前后持有身份检查、
+启动/停止/恢复的必需观测、故障只关闭一次及不自动恢复IPv6；恢复必须显式请求且重新
+核验用户已关代理、原对象归属、连接/未知actor及永久Claude屏障。故障/释放/重启未知
+不能给出恢复许可。原生生产适配器、可信IPC与GUI调用点均未接入，报告无启动权。
+最新88源/资源输入保护库及专用测试BUILD0错误0警告；六个src项目非生成语义0/0；
+103项L1协调断言通过。首次99项结果保留，后续增加owner持有身份丢失场景并重建；
+全部是普通fixture，不是实际WFP/IPv6/正式Claude操作。源码层SOURCE/BUILD，不标
+INTEGRATED(原owner启停)或CAPABILITY_DELIVERED(生命周期)。现装仍此前核验3e2/INACTIVE，
+Socket/HTTPS FAIL，完整GPU/L3/正式Claude/产品验收未完成。下一重点是AFD实际拒绝层与
+原生生命周期适配器；不调整设备或目录ACL、不扩大capability来替代未完成的资格。
+
 2026-11-05第二次定点只读资格未确认：本人批准B77B275D…/74DBF278…后，原owner会话
 66887384c3784bab94729884331cabf0封存身份后失败，原daily34808终态3。公开停止证据确认
 准入关闭、先隔离再停止、Job归零、零停止错误；ResultReleased=false，存在的结果文件

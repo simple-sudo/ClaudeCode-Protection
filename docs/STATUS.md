@@ -5,6 +5,43 @@
 历史页的“当前/待执行/暂停/DELIVERABLE”按段落日期及限定范围解释，不是今天的状态或操作许可。
 不在本页复制当前安装和授权摘要。
 
+## 2026-11-05 AFD-only真实访问结果及生命周期协调源码
+
+本人批准578D580AE93EE063827B51D6C662CD61F54D51190B5EC81DEA721273DC165909控制器与
+3DCC7FF69A31723A4E9151963CBF8DD8A0230487A90BD97788EA9228A212382A输入，原owner
+ff3940c6120a49c19891d8a869bc02b0闭合导出11文件，结果
+E65FF419E70275515154695EEADD6C78D5CEBAC3CEB65302005D573D17FA0380。输入/全部文件及
+唯一声明修改独立一致，verified-result.json SHA256
+BD4B99FFF151B4D19EBCD2D751844711537A139485133635332316960BB719A2。
+LPAC/package/low/cap0及权限和默认DACL前后一致。Device目录DIRECTORY_TRAVERSE、
+AFD根READ_CONTROL|SYNCHRONIZE、endpoint desiredAccess0/C0100000/C0140000各一次均
+C0000022，所有owned handle已闭合；没有CUDA、IOCTL、连接或权限变化。本次许可消耗。
+相同NativeBoundary源码的本人普通参考仍是前次4成功/零权限endpoint拒绝；未重复相同
+普通调用。AFD-only成功不定位上次组合失败，也不把显式目录句柄权限拒绝当路径遍历跟踪。
+
+普通1003只读查询NT根和Device目录OWNER|DACL成功，均为四项WD/RC 0x20003、SY/BA
+0xF000F，无package条目；数据在同任务object-directory-security.json。仅获取安全描述符，
+无目录枚举/ACL更改。语义参考[微软NtOpenDirectoryObject](https://learn.microsoft.com/en-us/windows/win32/devnotes/ntopendirectoryobject)
+和[遍历权限](https://learn.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/bypass-traverse-checking)。
+不能据静态SD或公开资料唯一归因AFD拒绝，不能直接扩大capability或设备权限。
+
+原失败reader没有重跑。只抽取Trust/ReadExact函数在普通PS5的公开Program Files和新建
+非敏感文件上检查，摘要新增字段赋值也通过；没有执行原reader或读私有状态。第一版
+ordinary检查脚本在构造generic List数组时自身报Argument types do not match，保留原脚本
+与fixture；r2改用ToArray后输出三项通过。该参考不解释本人提升reader失败。
+
+新增ProtectedLifecycleCoordinator.cs有限请求/协调模块，只有可信owner适配接口，没有
+选择任何生产适配器或新CLI/GUI入口。状态转移先记录意图，再请求有限原生步骤；只接受
+同flow/revision、拒绝重复/乱序、准入引用不序列化且由原owner复核/消费，报告不提供
+启动权。Stop必需准入关闭/先隔离/Jobs归零/连接排空/无未知actor/永久Claude屏障和拥有的
+IPv6门。Fault保持锁闭，失败Stop不自动重试；故障、Dispose、时间过期/倒退、重启未知
+不触发IPv6恢复。Restore显式请求并需重新核验实际手动关闭代理、原拥有对象与永久屏障。
+
+专用普通L1测试103项断言通过；包含新owner身份丢失后View不得保留Ready。首99项及
+首次构建保留，新verification-r2为最后字节。最新88项保护库输入持有BUILD0/0，测试
+BUILD0/0，六src项目非生成语义0/0。未安装、无真实全机IPv6/生命周期/正式Claude实测，
+不标源接入原owner或新系统能力交付。主证据work/lifecycle-92ad80b-20261105/。
+
 ## 2026-11-05 定点设备资格失败及有界工作进程反馈源码
 
 本人具体批准B77B275DE41F85E35519AF52055BF5B616DFA4270BD0E6BDEF866263BA769643及

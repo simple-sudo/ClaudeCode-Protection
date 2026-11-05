@@ -5,6 +5,14 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-05 AFD-only拒绝与生命周期协调源码
+
+VERIFIED(现装3e2原owner真实LPAC的5项固定访问均拒绝、原Token不变、11文件闭合导出)。
+这不是路径解析跟踪、GPU组合失败原因或Socket成功；普通目录SD参考不授予修改许可。
+新增有限生命周期协调模块为SOURCE/BUILD、103项L1断言通过；没有生产原生适配器、IPC/
+GUI调用点或真实IPv6操作，不能当作P0-1/P0-2完整交付。现装未更新，正式Claude未启动，
+PRODUCT_DELIVERY_NOT_ACCEPTED。见[证据](STATUS.md#2026-11-05-afd-only真实访问结果及生命周期协调源码)。
+
 ## 2026-11-05 设备矩阵/CUDA资格未确认及失败反馈源码
 
 原owner会话66887384…身份封存后失败，公开停止闭合证据成立，结果未释放且未读取。

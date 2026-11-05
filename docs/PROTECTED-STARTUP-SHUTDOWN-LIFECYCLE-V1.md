@@ -17,6 +17,20 @@
 
 ## 1. 三个独立控制面
 
+### 2026-11-05 协调源码切片（不是原生交付）
+
+新增`ProtectedLifecycleCoordinator`编入保护库，限定五类用户请求、flow/revision顺序、
+原owner准入引用及必需停止/恢复条件。`IProtectedLifecycleOwner`是未来可信原生适配器
+合同，没有生产实现或运行调用点；fixture的布尔观测不能成为产品真实证据。原生适配器
+必须复用原ProtectedState/VerifiedVersion/ProtectedSession/Job/WFP及可信IPC：Prepare
+真实阻断并回读，Check/Start真实复核P0与人类许可，Stop精确关闭并排空且识别未知actor，
+Restore重新核验用户主动关闭代理且只撤销拥有的临时规则、永久Claude屏障仍有效。
+
+协调层不接受路径/PID/脚本/ACL或代理开关参数；报告的LaunchAuthority恒为false。过期
+和重放请求不能启动；故障及组件释放只触发原owner有界关闭，不自动恢复IPv6，失败Stop
+不重试。重启有未核对拥有门或UNKNOWN直接锁闭，不能以报告恢复或认领资源。源码由
+普通L1场景检查，真实原生门、外部Claude屏障、GUI交互/崩溃/恢复仍NOT_RUN。
+
 | 控制面 | 目标、拥有者与不可交换的边界 |
 | --- | --- |
 | **Claude 永久防直连（P0-CLAUDE-FENCE）** | 原可信 owner/WFP/受限身份/Job 在任何代理与 IPv6 状态下阻止官方 Claude Code 和所有纳管派生工具、MCP/Hooks、后台组件通过宿主 Wi-Fi/IPv4/IPv6/DNS/UDP 非授权路径直连。恢复普通 Windows IPv6 绝不解除此屏障；外部启动/脱离 Job 的 Claude 必须另外受控制与验收，不能仅按进程名称猜测已纳管。 |
