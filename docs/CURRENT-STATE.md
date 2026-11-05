@@ -1,5 +1,245 @@
 # 当前状态与授权摘要
 
+2026-11-05用户补充要求本阶段完成本地提交后再暂停。本轮收尾提交范围限当前源码、
+已安装3e2批准清单、相关测试与状态/专题记录；work中的固定工件、运行回执、原始数据、
+生成程序均留本机，不纳入提交，不push或改变remote。84项保护库输入与既有成功构建
+快照逐项一致，候选规则源码及批准清单原字节一致，复用22项普通验证，不重复受限实测。
+完成本地提交及工作区检查后继续暂停；后续实际资格仍须恢复目标及新的具体运行决定。
+
+2026-11-05用户明确要求本阶段结束后暂停。已完成当前候选材料的普通检查并暂停开发；
+没有发起新UAC、安装、受保护运行或token修改。后续恢复须由用户明确恢复目标。
+新候选目录work/owned-default-dacl-8878bf2/self-token-endpoint-l3-once：8文件输入
+8523C4F0D30E01181C69FD67DEDC326458415921AB9D8F6B625C525D6992BCC2，7源语义0诊断，
+现装3e2 workspace-check-csharp解析通过（CodeExecuted=false）；预计20文件闭合导出。
+候选仅拟修改本次LPAC编译器自身默认DACL、精确回读后创建一个未连接endpoint，分别
+采集前后真实网卡/IPv4v6连接表并精确恢复原token模板。该方案尚未运行、未获新具体许可，
+没有执行控制器；普通宿主真实网络基线、原始缓冲解码/对照及实际L3分析仍待完成。
+第一次源码检查因候选拷贝未带产品隐式using失败，添加显式System/IO后新r2检查通过；
+原失败结果保留，不把解析/语义成功当作构建、受限运行、恢复或隐私通过。
+pause-candidate.json固定当前输入及待办；现装仍3e2/INACTIVE，网络FAIL，Claude延期。
+
+2026-11-05本人批准72E6FC5E…/CAB6EFC3…后，原owner会话1e43720ea9e940bfa122b26cec651b05
+闭合导出，真实LPAC两项自身token读取均成功。SeChangeNotifyPrivilege LUID23:0属性3，已
+存在且启用；默认DACL128字节：BA/SY GA、当前登录SID GXGR、package GA，没有本人User GA。
+9文件/原输入/声明修改独立核验通过，证据token-raw-facts-once/verified-result.json摘要
+DFF48162C6626B9313632394698DE9E237766B90F4BC4A5CCCDF59DEB9679518。本次不调整token/
+设备/网络，未创建endpoint，许可消耗。默认对象普通用户写权限是新的候选原因，尚未证明
+它就是旧socket拒绝原因；不补遍历权限，不凭此改设备DACL或capability。
+
+新增OwnedObjectDefaultDaclPolicy精确模板规则，以及AtomicChild内部自有、尚未恢复执行的
+gateway子token默认DACL候选原语；没有调用点、未安装或执行setter。仅增加真实用户一条
+ACE、保留原四项，不改旧宿主对象ACL/privilege/capability；原Job/token/进程线程seal门保持。
+22项普通组件检查通过；84输入当前保护库BUILD0/0，库EF9F1549…，普通调用在管理员门拒绝。
+候选源码证据3FF78D7F2D67ABFC2B46C8D188E32B000F22C0B07096E4F665676ECA73D72ABE。
+SOURCE/BUILD+VERIFIED(普通组件/拒绝)，不标INTEGRATED或native成功。下一步固定原链的
+进程内实际资格与L3真实网卡/地址/DNS/TCP对抗，具体高影响运行仍待新决定；当前安装仍
+3e2/INACTIVE，网络FAIL，完整产品未验收，真实Claude延期。见默认对象DACL候选专题。
+
+2026-11-05本人批准0A82B8F0…/87BF4F0A…令牌检查后，Codex直接发起、本人UAC，原句柄终态0，
+owner闭合导出9文件并独立核验；会话040f1deb0b7243c19a2bf86f7a6cf885。真实LPAC/package/
+low/cap0门通过，但LookupPrivilegeValueW(SeChangeNotifyPrivilege)返回错误6，随后实际权限列表
+和默认DACL未读取；默认零值不证明权限不存在。核验摘要67437E6B0920281BB6D6D1A11E49264479D9570C69E8B262D84BE1A92AF591EE。
+本次许可消耗，不重跑。新token-raw-facts-once移除受限侧名称解析，改为原始LUID/属性与
+默认DACL独立查询/独立UNKNOWN记录；可信普通侧已实际校准SeChangeNotifyPrivilege=23:0，
+普通6项原始权限及DACL读取通过，三源无语义诊断。新实际LPAC运行NOT_RUN，待固定及本人
+决定；没有token调整、设备打开、socket、网络或安全修改，真实Claude继续延期。
+
+2026-11-05普通1001固定只读查询\Device\Afd成功：NtOpenFile/对象名/FileFsDeviceInformation
+均0，8字节，DeviceType17，Characteristics0x20000；SecureOpen=false、AppContainerTraversal=true，
+句柄关闭，无endpoint/socket/IOCTL/安全改动。核验work/afd-device-semantics-8878bf2/
+verified-device-semantics.json摘要3AE04D7CA2318D0FC230688C5A23028E7F64BFA4BB4CF2556439396684DEF17D。
+设备DACL不会通过FILE_DEVICE_SECURE_OPEN自动约束其命名空间，但AppContainer遍历检查及
+驱动内部检查仍须区分，不能直接推导DACL无关或应该改DACL。尚未实施设备权限租约。
+本机afd.sys F93639BB…与微软公开afd.pdb 8FC962E7…已按同GUID、InfoAge3>=imageAge1、
+DbiAge1==imageAge1离线匹配；仅446464字节符号数据。静态AfdCreate及相关分支仍不足以
+定位本次确切拒绝层，未运行/加载/修改驱动。下一步用原owner读取实际LPAC自身的遍历权限
+与默认DACL，区分命名空间遍历/新对象默认权限前提；token-facts-once三源无诊断、本人普通
+只读正控制通过（遍历权限存在且启用、默认DACL92字节），普通身份仍拒绝为LPAC。
+新的受限只读任务NOT_RUN，待固定输入和本人决定；不创建endpoint、不改令牌/设备/capability。
+
+2026-11-05本人具体批准r3并确认UAC，Codex直接发起后原句柄终态0、原owner闭合导出9文件。
+会话14576c72f763441c96a3484ada9e0288，root32820/tool2772；真实AppContainer、AccessCheck
+mask2、capability0、身份门通过。同本人普通正控制的EA168D8752…、相同原生参数对
+\Device\Afd\Endpoint的NtCreateFile确实返回C0000022，owned handle关闭，无连接/IOCTL/
+权限变化。失败调用的IoStatus不作成功依据。输入BCD52853…、结果C6D3F7A2…、9文件和唯一
+声明修改独立匹配。核验diagnostic-r3/verified-result.json摘要728FC8ECB0586EF0D3A094229DBB9F839EA732400F2EFF08D6781810280FDB4C。
+VERIFIED(现装3e2原离线LPAC固定endpoint实际访问拒绝及原owner闭合导出)，并非旧WSASocket
+内部调用的直接跟踪，不证明应改哪一层DACL或新授权安全。网络仍FAIL，许可已消耗，不重跑。
+原SessionProxy依赖正常工具自身创建socket和实际LPAC端口owner；单个Broker预连句柄不能
+覆盖Git/Node/Python正常代理连接或直接继承原peer资格。后续在原owner审查package专属AFD
+最小授权与L3网络/设备内容对抗，不能把C0140000原生desiredAccess直接作为设备ACE（含
+WRITE_DAC），不能先加capability/设备权限再以网络成功追认隐私。没有实施设备租约/新安装。
+
+2026-11-05本人批准diagnostic-r2后，Codex已通过正式直接工具发起原daily，由本人UAC；
+原句柄终态0，原owner闭合导出9文件，输入7E849175…、结果C7B7BA7E…与所有文件hash及
+声明的唯一文字修改独立匹配。真实AppContainer诊断在QueryLpac收到GetTokenInformation
+class46错误87，NativeCreateAttempted=false；实际endpoint仍未测，不把工程成功或错误87
+算网络通过或AFD拒绝。原身份/隐私封存有效；该次许可已消耗，不重跑。固定核验
+diagnostic-r2/verified-result.json摘要3513207C059B15CBC6683CC9BD30BF47A641BC1793B770804A8A23EECA79D1E6。
+原AtomicAdmission早有class46失败并以AccessCheck验证真实LPAC的实现，新诊断误用class46；
+diagnostic-r3已复用相同内存描述符/QUERY-only duplicate/AccessCheck判定，严格要求AC及mask2
+和零cap才创建同一endpoint，未知拒绝。没有实际impersonation/assign/adjust或新增资源授权。
+三源语义无诊断，本人普通正控制mask3及普通非AC拒绝均实际通过，无endpoint/UAC；r3受限
+运行NOT_RUN，待固定工件与本人具体决定。当前安装仍3e2/INACTIVE，网络仍FAIL，Claude延期。
+
+2026-11-05固定endpoint离线项目已由本人执行：普通1001参考NtCreateFile/IoStatus/名称
+查询均0、句柄关闭；原daily9668终态3，会话d819fa43c9e44cd6ab60854c8e9df214已封存
+后在Run阶段失败，公开诊断无细项，ResultReleased=false；存在的结果不读取或恢复。
+公开停止回执确认准入关闭、先隔离后停止、同Job归零、零停止错误。实际LPAC endpoint
+是否调用及其结果仍UNKNOWN，不能把Run失败归因AFD拒绝。固定证据见STATUS；本次许可
+已消耗，不重跑。新diagnostic-r2只补充固定阶段/数值错误记录，身份门失败仍不调用native，
+原owner闭合后才允许导出诊断；三源语义0诊断、普通实际token拒绝能完整导出且未调用
+endpoint。新LPAC运行NOT_RUN，待固定输入及具体决定，不增加设备/注册表/capability授权。
+直接命令通道现已实际确认本人1001、非管理员、AVP21.26/BFE Running，可由Codex通过
+正式工具审批发起固定普通入口，由本人确认UAC；不再默认要求本人手输命令。未改AV/策略。
+
+2026-11-05普通身份1003对固定\Device\Afd\Endpoint的两组预声明EA（flag0/01000000）
+NtCreateFile均0，名称查询返回\Device\Afd，句柄不可继承且已关闭；无bind/connect/IOCTL/
+ACL改动。静态输入来自同字节mswsock创建分支；不是对旧WSASocket调用的注入跟踪。
+已准备通过现装3e2原离线caller C#链执行同EA168D8752…的实际LPAC参考，4文件代码包
+EF502E0B5E0BB18D7375FC3C71E17F7D980E0A0B068A11E2E8EE32336E0E45C1；原日常入口
+workspace-check-csharp实际验证通过（不执行代码），三源非生成语义无诊断。首次普通
+校验误传正斜线路径被原本地路径门拒绝，改用反斜线后通过，包字节不变，失败保留。
+新任务不安装、不加设备/registry权限、不开放转发，先同本人普通参考再原owner封存
+身份/隐私后的真实LPAC编译运行并闭合导出。它输出原生允许/拒绝观察，不把项目成功
+算成网络通过；实际LPAC及具体UAC运行仍待固定工件/本人决定，真实Claude继续延期。
+
+2026-11-05普通工具身份1003完成一次固定\Device\Afd只读READ_CONTROL原生参考，
+NtOpenFile/NtQueryObject/NtQuerySecurityObject均0，原生对象名称精确匹配且句柄关闭。
+OWNER|DACL为 `O:BAD:(A;;0x1201bf;;;WD)(A;;FA;;;SY)(A;;FA;;;BA)(A;;0x1200a9;;;RC)`，
+没有当前package显式ACE。未IOCTL、socket/连接、ACL/策略写入或UAC。这是普通真实
+对象/描述符基线，不是受限LPAC尝试，也不证明本次WSASocket的失败调用已定位；不能
+从设备DACL直接推导应添加capability或全设备权限。下一原owner实验须核实实际访问
+对象/状态，并覆盖任何必要授权可能开放的真实网络信息/IOCTL暴露面，不以联网代替L3。
+
+2026-11-05本人执行3e2原owner31资格，helper终态125、原owner终态3、根125；失败仍在
+HTTPS_SOCKET_CREATE，但SOCKET_CREATE从10022变为10013，线程NT上下文C0000022。
+没有网关连接/CONNECT/双向交换成功，网络仍FAIL，具体失败对象尚未动态证实。
+原owner确认31对象Restored、准入关闭、先隔离再停止（308ms）、同Job归零、零停止错误。
+Codex已独立回读31对象原生SD和内容，与运行前字节完全相同，摘要C7F02B5E…；本次
+结果verified-provider31-gateway-result.json摘要2E627FA22AA85FB9EC0D0193E5359A7BC708BA322668BE451199D6138722364D。
+CAPABILITY_DELIVERED(3e2安装版原owner31对象v3租约、v1/v2兼容与closed-zero后精确恢复)。
+此局部能力不等于网络/隐私/产品验收。本次资格与事后只读许可已消耗，不重跑或读额外
+私有error/rawJob/Stop，不自动恢复。实际安装3e2/INACTIVE，真实Claude未启动。
+下一步定位原生socket10013的实际访问对象，并审查任何必要授权的L3暴露面，不能由
+线程状态直接认定AFD或以网络成功替代隐私验收。PRODUCT_DELIVERY_NOT_ACCEPTED。
+
+2026-11-05新3e2安装后的31对象原生只读前基线已由Codex取得，摘要仍C7F02B5E…，
+与原31候选逐项一致。准备gateway-provider31-once原owner单次资格：参数为空的
+qualify-winsock-provider-session-gateway，相同LPAC/Job/WFP和31对象v3最小读租约，
+只增加通用Provider map三键，无capability/设备/全局网络扩权；原owner撤销、隔离、
+同Job归零后恢复。安装成功不推导该资格通过；新系统运行仍待固定工件和具体本人决定。
+
+2026-11-05本人canonical-05入口完成3e2e1cc777e54ac6b4123edfce65773e/INACTIVE更新，
+提升helper35768终态0，原Bootstrap返回0。独立15公开资产/8指定回执核验通过，记录
+desktop-install-canonical-05/verified-installed.json摘要9EFB436872B00C7EAD345C4449999AD82F77B849520D199034B71049FFDD441C。
+当前实际清单849A2BFC…、保护库4C378CEF…；旧0f1和失败staging保留。独立核验首版
+路径仍指子目录清单而拒绝，在读回执前修正为原固定清单后通过，首失败保留。
+没有执行受保护会话/31对象租约或Claude，实际网络结论仍此前0f1 FAIL；新31资格待
+固定范围和具体决定。安装许可已消耗，不自动重跑。下一步原owner31对象固定资格。
+
+2026-11-05本人04入口已通过原生模块/策略预检与UAC，提升helper26508终态125；原
+Bootstrap8264确实运行，PACKAGE_APPROVAL拒绝125。指定7份回执（无completed）确认
+仍选择0f1/INACTIVE，AV/BFE前后Running，无新保护会话。拒绝源于helper把Bootstrap
+放在-release-desktop-04目录，而原BootstrapApproval只允许-release准确宿主；不得改门
+放行。此次入口准备错误已确认，冻结记录保留，未读额外私有error/Job/Stop或恢复。
+准确无后缀Bootstrap宿主及新3e2版本目录均观察不存在。新canonical-05入口将复用
+原20字节、仅改到准确未用宿主，并在UAC前按清单release核对路径，另需具体单次决定。
+
+2026-11-05本人报告已恢复卡巴斯基保护；Codex已独立普通只读核验AVP21.26与BFE均
+Running、四类产品进程为空。没有自行修改或启动AV。准备desktop-install-native-04新
+固定单次入口，复用同一849A2BFC…候选，原生模块/进程RemoteSigned修复保持；03失败
+原字节与记录保留，不重跑。启动本人身份及实际UAC仍须本人操作，工具身份1003不能
+冒充1001；普通检查/核验由Codex执行。新04安装尚未运行，3e2安装仍未确认。
+
+2026-11-05用户实际运行desktop-install-native-03后，普通controller在第40行安全预检
+退出1，尚未进入原生启动参考/UAC/安装（本次native-startup-reference及attempt未生成；
+执行分支在其前明确拒绝）。独立普通只读观察：BFE=Running，AVP21.26=Stopped，
+四类产品进程为空。接受此前运行器误报判断，但本次服务停止是新的现场状态，未归因
+谁操作或具体AV事件；不删门、不自行改AV/启服务，不自动重试失败更新。等待本人经AV
+产品恢复保护后再核验。新03冻结输入按原字节保留，本次文档追加使其源码快照过期，
+后续新入口须重新固定并取得适用决定。3e2仍未确认安装，实际网络结论仍0f1 FAIL。
+用户要求能由Codex执行的命令自行执行，仅实际无法完成的本人桌面/UAC步骤再交回。
+
+2026-11-05本人普通诊断已返回明确模块加载失败：PS5发现Get-ExecutionPolicy所属
+Microsoft.PowerShell.Security，但无法自动加载；未进入空脚本步骤。不能再用工具身份
+Restricted结果直接断言本人安装失败就是策略。新固定入口desktop-install-native-03
+在PS5启动前限制其模块目录到原系统PS5目录、显式导入原Security模块、捕获本人策略。
+只有无组策略且持久scope为Undefined/RemoteSigned的确切条件才允许随后UAC；本次提升
+进程拟显式RemoteSigned，不写CurrentUser/LocalMachine、不用Bypass。提升helper再核对。
+工具普通身份原生模块加载与单次RemoteSigned空脚本参考均成功，原失败与冻结输入保留。
+新入口尚未执行/获得具体许可，待固定字节及本人决定；现有3e2安装仍未确认。
+
+2026-11-05本人桌面固定入口已运行并确认UAC，控制器持有的提升helper PID13676终态1。
+本次8份指定安装回执均未取得；只记安装失败/未确认，不由空输出推导系统闭合。入口
+没有捕获提升Shell在脚本入口前的stderr，尚不能精确归因。原helper通过PS5语法只读解析；
+普通工具身份1003上PS5有效策略Restricted，新的无副作用空脚本在-File入口被禁止并返回1，
+实际打印语句未执行。此为适用性有限的参考，不替代本人1001的策略/提升进程证据。
+已准备 `desktop-startup-diagnostic/Read-Startup-Diagnosis.cmd`，仅本人普通身份读取PS5
+策略并运行固定空脚本保存输出，不UAC、不安装、不改策略；等待本人执行以区分启动层原因。
+此前安装尝试及回执保留，无自动重试/恢复，目标已由用户恢复active。
+
+2026-11-05用户已具体批准一次3e2未激活更新。替代普通通道控制器在RunAs发起处返回
+0xC0000142，原普通控制器进程已终态1；没有取得提升helper/原安装器运行或终态回执。
+指定新保护staging和新版本目录均不存在，旧0f1公开清单仍6CDC07DC…；没有额外读取
+私有选择/错误/Job/Stop或调用恢复，不能把更新记为成功。本次单次许可已消耗，不自动重试。
+普通构建、静态验证和31对象只读仍为已取得的限定成果；系统安装待新固定入口/人类决定。
+
+2026-11-05已固定31对象Provider候选3e2e1cc777e54ac6b4123edfce65773e/INACTIVE，20文件及
+内嵌清单核验通过。清单849A2BFC1D9F08D1B581BD5C79EDBF1575048F5D20B3145D6297B10E1CF80C8F，
+Broker/Bootstrap同库4C378CEFB23F092A5261BBFC0BE0CC3EBD87B08166A5F845D2A5C9748519DD8E。
+86输入Bootstrap叶构建0/0，原0f1→3e2确切迁移内存门7项通过。源码未提交状态保留，
+新打包helper逐项持有/核对完整109输入快照、准确HEAD/分支与已审核改动清单；没有覆盖
+源码或改写Git。候选尚未安装，当前实际仍0f1；下一步按固定安装工件具体审查一次原
+Bootstrap未激活更新，再分别准备原owner的31对象资格。没有新系统租约/网络或Claude运行。
+
+2026-11-05替代普通开发通道已完成实际交付进展：用户明确要求更换执行方式后，独立
+Node REPL调用既有PowerShell7.6.5（SandboxOffline/1003、非管理员），未调用/更名/重包装
+被拦截的命令运行器，未改AV、全局Git信任配置或产品原执行架构。原checkout/分支与
+HEAD8878bf2核对，既有三份证据文档改动保留。本次八份源码修改及证据仍在工作区，未提交/推送。
+
+已新增参数为空的 `qualify-winsock-provider-session-gateway`，沿原Broker/ProtectedSession/
+租约/Job/WFP/恢复链增加31对象v3范围；仅在原28对象后新增Setup Migration\Providers
+空父键、Tcpip6/Tcpip两GUID叶键KEY_READ。严格核对值/子名/通用GUID，漂移拒绝，无其他
+provider叶/父服务树/设备或capability授权。旧25对象v1和28对象v2入口/日志验证保持。
+
+109输入三工程离线BUILD0/0，同库4C378CEF…；40项新Provider策略、原27/33项兼容与27项
+网关入口边界检查通过。六产品非生成语义0/0；31对象实际原生只读/内容检查通过，前28
+逐项与上次恢复基线一致，三个新对象均AI，元数据摘要C7F02B5E…。首次缺PATHEXT和随后
+缺构建profile路径的环境失败均保留；修正后工具profile仅写本任务目录。没有新系统租约
+或受保护socket运行。SOURCE/INTEGRATED/BUILD及VERIFIED(上述普通检查/只读)，不能据此
+宣称31对象原地恢复或网络通过。实际安装仍0f1/INACTIVE、网络10022 FAIL；新候选尚未固定
+安装包。下一步按新字节固定工件与系统资格，具体安装/UAC许可不继承，真实Claude仍延期。
+[证据](STATUS.md#2026-11-05-替代开发通道与provider31候选)。PRODUCT_DELIVERY_NOT_ACCEPTED。
+
+2026-11-05用户已明确确认上述命令运行器告警为误报，并要求更换执行方式继续开发，
+不把工具阻断当作项目停止。接受此现行用户判断，不重复AV归因调查。独立Node REPL
+调用既有Windows PowerShell已实际确认普通权限（SandboxOffline/1003、非管理员）；
+该替代开发通道不重启/改名/重包装被拦截文件，不改AV，也不改变产品原执行架构。
+普通源码/构建继续；既有具体系统操作许可不复活，安装/UAC/新受限实测仍分别审查。
+
+2026-11-05用户报告并提供卡巴斯基截图：系统监控告警 `PDM:Trojan.Win32.Generic`，
+位置 `C:\codex-command-runner-0.166.0-alpha.6.exe`，用户报告进程被终止。随后/邻近
+命令工具返回 `Failed to create unified exec process: wait for runner spawn_ready`。
+截图指向命令运行器路径，未指向产品Broker；未核验该文件来源/哈希，不能仅凭路径判定
+误报或证明完整因果。相关运行验证立即停止，不重启/改名/重包装运行器，不改AV、清除、
+排除/放行或自动重启电脑。新三键额外原生安全描述符读取没有成功工具回执，保留未确认。
+
+告警前，0f1ec8b2bf474e9b9df34daf15a6fd30已由原Bootstrap完成INACTIVE更新，安装器退出0；
+15公开资产/8指定回执独立核验通过（F20FAF28…）。经分别具体审批与本人UAC，修正后的
+固定资格已实际运行：WSASocketW返回10022，紧接线程NT上下文C0000022；没有网关连接或
+CONNECT成功，网络仍FAIL。原owner终态3、子125，准入关闭、先隔离再停止、同Job归零、
+零停止错误、28对象Restored；独立前后28项原生权限及内容摘要均43A5C6D9…完全相同。
+这些是告警前限定证据，不代表新告警下工具/系统仍健康，PRODUCT_DELIVERY_NOT_ACCEPTED。
+
+本机mswsock静态转换器将C0000022映射10013，而实际为10022，故线程值不能直接证明AFD
+访问失败。进一步静态链发现 `Winsock\Setup Migration\Providers` 及Tcpip6/Tcpip两叶的
+Provider ID读取依赖；普通真实内容仅为空父键和两个通用协议GUID，当前28对象租约未覆盖。
+这是下一候选的具体研究依据，尚未新增授权/接入或动态归因。首次helper误留旧Broker哈希
+在owner启动前拒绝，失败保留；修正helper为新固定输入并重新具体审批，非自动重试。
+当前Git8878bf2加本次未提交证据记录；无push。安装/资格许可均消耗，真实Claude仍延期。
+[证据](STATUS.md#2026-11-05-0f1原生上下文结果与命令运行器告警)。
+
 2026-11-05单次socket上下文源码已保存cabaac8；新固定0f1ec8b2bf474e9b9df34daf15a6fd30
 INACTIVE候选20文件及内嵌清单核验通过。清单6CDC07DC3CEDEC82D6CCA5B2F705471DC79C9EE99CCB519BB89FBFEDCCF04053，
 Broker/Bootstrap同库917EBC6538F9F7FE6083374D295F6215CCF28817A5515F6250548430B1EF29F5。

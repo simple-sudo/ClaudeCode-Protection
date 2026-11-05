@@ -74,6 +74,33 @@ internal static class WinsockRegistryScope
     {
         if(!targets.SequenceEqual(TransportTargets(controlSet)))throw WfpNative.Contract("WinsockTransportTargetsDiffer");
     }
+    // The stock helper lookup also opens this separate migration map before
+    // loading Tcpip6/Tcpip. Only its empty parent and these two GUID leaves are
+    // included; other provider leaves and service configuration remain excluded.
+    internal static Target[] ProviderTargets(int controlSet)
+    {
+        var existing=TransportTargets(controlSet);
+        var providers=@"SYSTEM\ControlSet"+controlSet.ToString("D3",CultureInfo.InvariantCulture)+
+            @"\Services\Winsock\Setup Migration\Providers";
+        return existing.Concat(new[]{new Target(providers,CatalogAccess),
+            new Target(providers+@"\Tcpip6",CatalogAccess),new Target(providers+@"\Tcpip",CatalogAccess)}).ToArray();
+    }
+    internal static void RequireExactProviderTargets(int controlSet,IReadOnlyList<Target> targets)
+    {
+        if(!targets.SequenceEqual(ProviderTargets(controlSet)))throw WfpNative.Contract("WinsockProviderTargetsDiffer");
+    }
+    internal static void RequireProviderSelection(string[] names)
+    {
+        var expected=new[]{"afunix","Psched","RFCOMM","Tcpip","Tcpip6","vmbus"}.Order(StringComparer.Ordinal);
+        if(!names.Order(StringComparer.Ordinal).SequenceEqual(expected,StringComparer.Ordinal))
+            throw WfpNative.Contract("WinsockProviderSelectionChanged");
+    }
+    internal static void RequireProviderId(byte[] bytes,int family)
+    {
+        if(family is not (2 or 23) || !bytes.SequenceEqual(Guid.Parse(family==23?
+            "f9eab0c0-26d4-11d0-bbbf-00aa006c34e4":"e70f1aa0-ab8b-11cf-8ca3-00805f48a192").ToByteArray()))
+            throw WfpNative.Contract("WinsockProviderIdChanged");
+    }
     internal static void RequireTransportSelection(string[] names)
     {
         if(!names.SequenceEqual(new[]{"Tcpip6","Tcpip","vmbus","Psched","afunix","RFCOMM"},StringComparer.Ordinal))

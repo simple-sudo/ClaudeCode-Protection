@@ -5,6 +5,470 @@
 历史页的“当前/待执行/暂停/DELIVERABLE”按段落日期及限定范围解释，不是今天的状态或操作许可。
 不在本页复制当前安装和授权摘要。
 
+## 2026-11-05 默认对象ACL资格材料阶段结束并按用户要求暂停
+
+用户明确要求当前阶段结束后先暂停。完成普通材料检查后停止工作，不申请/发起新系统运行。
+固定候选目录work/owned-default-dacl-8878bf2/self-token-endpoint-l3-once，输入
+8523C4F0D30E01181C69FD67DEDC326458415921AB9D8F6B625C525D6992BCC2。8文件，7份源码，
+声明1次文字编辑、7个有界数据结果，预计20文件。6份原始网卡/TCP4/TCP6前后缓冲数据
+各上限524288，单次原生读取缓冲上限262144；只本机内容API，不请求外部连接/解析。
+新编译器候选拟仅调整自己的TokenDefaultDacl，精确模板/身份回读后单次未连接endpoint，
+独立读取前后真实本机内容，finally仅在观察为原/精确候选模板时恢复；漂移拒绝写入。
+原owner封存、Job/WFP及闭合导出链保持。该计划未执行，未获具体修改许可，不继承旧许可。
+
+首次非生成语义检查发现从产品复制的纯规则依赖implicit using，保留project-source-result.json
+失败；候选副本显式加入System/IO（产品规则逻辑未改），并在native setter返回处即时保存
+Win32Error，避免释放缓冲影响诊断。新project-source-result-r2.json七源/163引用无诊断，
+AssemblyEmitted=false。现装daily的workspace-check-csharp对上述准确输入返回
+CALLER_CSHARP_TASK_VALIDATED_NOT_EXECUTED，CodeExecuted/AdmissionIssued均false。
+
+pause-candidate.json记录输入hash及未完成项：普通真实宿主网络基线、有界原始缓冲解码与
+真实内容/来源对照、固定执行控制器/输出审查、新具体本人决定、实际endpoint/L3分析及
+精确恢复闭合核验。未采集新网络内容、未调整token/设备权限、未建立endpoint、未安装或
+启动Claude。不是可执行交接授权；恢复目标后先核对当前现场。完整产品仍未验收。
+
+## 2026-11-05 LPAC原始token事实与自有默认DACL候选源码
+
+本人具体批准控制器72E6FC5E…、输入CAB6EFC3…，Codex正式工具直接发起，本人UAC。
+原句柄终态0，会话1e43720ea9e940bfa122b26cec651b05，root18880/tool35064；原owner封存及
+闭合导出9文件。结果03145D8FDE4E20E9EBB68D998141702A1082D80B78F73AAE12776D1C263CEDDA，
+输入与唯一声明修改、全部文件hash独立匹配。
+
+实际AC/LPAC2/package/low/cap0确认，权限和默认DACL两项SUCCESS：原始LUID23:0属性3，
+33:0属性0；可信普通侧已解析23:0为SeChangeNotifyPrivilege，因此遍历特权存在且启用。
+默认DACL128字节，精确四条为BA GA、SY GA、当前登录SID GXGR、实际package GA，没有
+实际User SID的GA。不是推测的“遍历权限缺失”。无token修改、设备打开、endpoint/socket。
+核验token-raw-facts-once/verified-result.json摘要
+DFF48162C6626B9313632394698DE9E237766B90F4BC4A5CCCDF59DEB9679518。许可消耗，不重跑。
+
+新增 `OwnedObjectDefaultDaclPolicy.cs` 及当前保护库编译项，精确限定四ACE形态并仅增加
+当前真实用户的无继承GA，保留原ACE字节、顺序及package权限。AtomicChild新增零外部参数
+候选原语，先管理员/state/version/唯一自有原Job/尚未resume/原seal/token/同用户门，只改
+同一持有子token的class6默认DACL并精确回读，不调整其他token属性/privilege/capability或
+现有对象ACL。只有定义没有运行调用点，未安装/执行；具体新资格仍需固定及本人决定。
+
+新普通组件测试22项通过；真实普通token的内存模型中，原模板映射后的用户读写检查拒绝，
+增加当前用户ACE后允许。原条目保留与广泛/异包/漂移/deny/继承/重复模板拒绝均检查。
+初次测试未从.NET Groups取得登录SID，以及直接用generic模板ACE作AccessCheck的两个
+模型失败已单列保留，后者按[ACCESS_MASK规范](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-dtyp/7a53f60e-e730-4dfe-bbe9-b21b62eb790b)
+及[MapGenericMask](https://learn.microsoft.com/en-us/windows/win32/api/securitybaseapi/nf-securitybaseapi-mapgenericmask)
+先映射对象类型权限后修正。该测试只覆盖普通用户侧，不是实际LPAC/endpoint证明。
+
+最新84源/资源输入持有的ProtectionLifecycle BUILD0错误0警告，库
+EF9F1549940790ACB38ADDFB1120CFA7ACF66644717B7FF2A16C4EC0DB0A676C；普通零参数调用在
+首个管理员门拒绝，未触及未初始化owner字段、创建进程或执行setter。证据
+work/owned-default-dacl-8878bf2/verified-candidate-source.json摘要
+3FF78D7F2D67ABFC2B46C8D188E32B000F22C0B07096E4F665676ECA73D72ABE。
+SDK首个普通构建profile产生开发证书提示，未运行trust命令；后续构建均显式禁止SDK生成
+开发证书。未据构建输出推导本人信任库变化。没有push/安装或新真实Claude启动。
+
+机制及后续真实资格边界见[自有默认对象DACL候选](OWNED-OBJECT-DEFAULT-DACL-CANDIDATE-20261105.md)。
+SOURCE/BUILD+VERIFIED(上述普通组件与拒绝)，不标运行接入或网络成功，不改变L3完整性要求。
+
+## 2026-11-05 自身令牌名称查询失败与独立原值读取修正
+
+本人批准控制器0A82B8F0…、输入87BF4F0A…，Codex正式工具直接发起，本人确认UAC。
+原句柄终态0，会话040f1deb0b7243c19a2bf86f7a6cf885，root8276/tool6672；原owner封存、
+闭合导出9文件，结果4EBBC4E1951EBD9D9A18B090D84CA1910AF70B4F194FD0E57DE4BD4A4B2778F7。
+独立9文件hash与唯一声明修改完全匹配。实际AC/AccessCheck2/package/low/cap0门通过，
+在LookupTraverseLuid阶段LookupPrivilegeValueW返回错误6；该项调用原因未证实。
+之后的TokenPrivileges和TokenDefaultDacl没有执行，不能将PrivilegeCount0、标志false或
+DACL null的默认值当作实际不存在。工程Exit0/1项检查仅是有界诊断导出，不是读取成功。
+`work/afd-device-semantics-8878bf2/token-facts-once/verified-result.json` SHA256
+67437E6B0920281BB6D6D1A11E49264479D9570C69E8B262D84BE1A92AF591EE，许可消耗，未重跑。
+
+新token-raw-facts-once移除该不必要的受限侧名称解析，直接GetTokenInformation取原始LUID与
+属性；权限列表和默认DACL分别try/query/status，单项失败不跳过另一项。身份失败仍停止；
+无token调整/实际impersonation/设备打开/endpoint/socket/ACL写入。默认DACL有界原文保留。
+名称到LUID在可信普通侧校准，实际SeChangeNotifyPrivilege=23:0；普通1001实际6条原始权限
+中该项属性3、DACL92字节，普通身份仍不被当作LPAC。三源SDK8.0.422/net8.0.28非生成语义
+无诊断；实际新LPAC任务NOT_RUN，不由普通值推导受限值，不将其当作新增L3宿主内容验收。
+
+## 2026-11-05 AFD设备特征与匹配公开符号只读研究
+
+固定目录 `work/afd-device-semantics-8878bf2/`，普通1001非管理员，源DB584EEB…、helper
+0CF9F05A…及ntdll B8F3A6AA…持有核验。仅NtOpenFile(\Device\Afd,READ_CONTROL|
+FILE_READ_ATTRIBUTES|SYNCHRONIZE,share3,FILE_SYNCHRONOUS_IO_NONALERT)，精确NtQueryObject
+名称后NtQueryVolumeInformationFile(FileFsDeviceInformation4,8bytes)。所有直接返回0，
+结果DeviceType17、Characteristics0x20000、SecureOpen=false、AppContainerTraversal=true，
+owned handle关闭。无endpoint/socket/IOCTL/ACL或策略写入/UAC。核验摘要
+3AE04D7CA2318D0FC230688C5A23028E7F64BFA4BB4CF2556439396684DEF17D。
+
+[NtQueryVolumeInformationFile](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-ntqueryvolumeinformationfile)
+规定直接设备打开可查FileFsDeviceInformation；[命名空间安全](https://learn.microsoft.com/en-us/windows-hardware/drivers/kernel/controlling-device-namespace-access)
+区分device-root与relative file以及secure-open自动DACL检查。0x20000允许已有遍历特权的
+AppContainer跳过强制遍历检查；实际LPAC是否具有该特权仍须实测。此处没有从flag缺失
+推导设备DACL绝不参与驱动或遍历检查，也没有据访问拒绝直接扩大设备授权。
+
+本机驱动afd.sys 742896字节，SHA256
+F93639BB027E19DF5460C6D2BC69DB08139AF5D716743AC88BA15E581934DD76，CodeView
+GUID D322570D-8DDB-5163-2D50-5B3ADD68702E、age1。经微软公开符号服务器取得同键afd.pdb，
+446464字节，SHA2568FC962E770E170A0FFEFE2F9A06B14F7FF607632058D85410117B0E2DFFE25AF。
+默认受限网络首次读取HEAD被拒绝，按正式工具审批在本人普通通道完成HEAD/固定大小下载，
+不修改代理/AV/系统网络。符号是数据，未加载/运行驱动或使用内核调试器。
+
+PDB InfoAge3与imageAge1不同，未仅凭GUID或符号服务器路径认可。独立解析MSF的Info/DBI
+流，GUID原字节相同、DbiAge1==imageAge1且InfoAge3>=imageAge1，符合微软
+[OpenValidate4实现](https://github.com/microsoft/microsoft-pdb/blob/master/PDB/dbi/pdb.cpp)
+的验证规则。`verified-symbol-binding.json`、完整公开符号/section映射及六函数离线反汇编保留。
+AfdCreate RVA15480、AfdAllocateEndpoint2C0E0、AfdPerformSecurityCheck4E03C、
+AfdCreateSecurityDescriptor4F120、AfdGetSecurity12BE0、AfdSetSecurity53BC8；静态分析不是
+实际失败调用跟踪，不据符号名把内部admin描述符或设备DACL认定为首个拒绝原因。
+
+新 `token-facts-once` 只查询当前进程token：沿原AccessCheck mask2/package/low/cap0门，
+读取SeChangeNotifyPrivilege存在/启用属性和实际TokenDefaultDacl（有界原文），不调整token，
+不实际impersonation、不打开设备/创建endpoint/socket。SDK8.0.422/net8.0.28三源语义无诊断，
+本人普通正控制完整读到遍历属性3及默认DACL92字节，普通身份不被当作LPAC。
+实际LPAC任务NOT_RUN；普通结果不替代受限身份事实或L3宿主内容验收。
+
+## 2026-11-05 原owner真实LPAC的固定endpoint创建拒绝
+
+本人具体批准控制器EF1A3601…、输入
+BCD528530C90C8D274EE6FD0E125DA4FBDDDEFA2B51F2F934600BF006D7D80FD，Codex正式直接工具
+在本人普通账户发起，UAC由本人确认。原持有daily句柄终态0，会话
+14576c72f763441c96a3484ada9e0288，root32820/tool2772；原owner封存后代码执行，闭合后
+导出9文件。结果C6D3F7A2318C7898B0C8F6ADCE9B68977C89B9CD8EAF122F7FD59A0B8B288217，
+独立核对全部文件hash、输入绑定及唯一声明文字修改，未改原输入。
+
+实际自查AppContainer=true、ApplicationPackageAccessMask=2、LpacAccessCheckObserved=true、
+CapabilityCount=0、IdentityVerified=true。同EA
+168D875225F3E73471175E16936E16A4511B1C86AADF33E8B5D4C5075109CC7A，原生对象
+\Device\Afd\Endpoint，desiredC0140000/share3/disposition3/options0/OBJ40，确实调用一次
+NtCreateFile并返回C0000022；NativeCreateAttempted/ObservationComplete/NativeHandleClosed均true。
+无bind/connect/IOCTL/安全修改。此前本人普通相同输入NtCreateFile0，形成当前真实对照。
+原生失败的IO_STATUS_BLOCK零值不证明成功，结论只用直接返回的NTSTATUS。
+
+工程Exit0/诊断完整性测试1通过不代表endpoint或网络通过。原网关内部的旧WSASocket
+调用仍未注入跟踪；此证据定位固定原生路径的实际拒绝，不证明设备DACL是唯一原因，
+也不授权自动加设备/capability权限。固定核验
+`work/afd-endpoint-3e2e1cc7/diagnostic-r3/verified-result.json` SHA256
+728FC8ECB0586EF0D3A094229DBB9F839EA732400F2EFF08D6781810280FDB4C。
+本次许可消耗，不重跑、强停、恢复或额外读取私有error/rawJob/Stop，真实Claude未启动。
+
+源码审查：原SessionProxy.OpenFixedClientTunnel/SessionProxy.Serve要求工具自己创建socket、
+实际LPAC同Job端口owner和准入/健康复核；给一个由Broker预连的句柄不能直接继承这些资格，
+也未覆盖真实Git/Node/Python的普通HTTP代理连接。保留原架构，后续审查包专属AFD权限
+及同身份L3设备/网卡/IPv4v6连接/代理与UU关联内容路径。C0140000含WRITE_DAC，不能直接
+作为新设备ACE。已有普通设备DACL的WD0x1201bf只作为候选上限研究，不宣称足够或安全。
+目前没有设备权限租约/写SD/新候选安装；不得把本次L2原生拒绝扩大成完整L3或网络验收。
+
+## 2026-11-05 endpoint诊断r2精确定位令牌查询错误
+
+新控制器73391FF7…、输入7E849175…已由本人具体批准，Codex正式执行工具在本人1001
+普通账户直接发起，随后本人UAC。原daily句柄终态0，会话1e4a16c37cd84f3588c17332e2fa07b9，
+root20420/tool33272，OwnerSealedBeforeCode=true，原owner闭合后导出9文件。结果包
+C7B7BA7ECC808E1ED795D57BE85DAAF49719FE35878153FA35432626FB804549，独立逐文件hash、
+输入绑定和唯一声明Entry Revision1→2修改完全匹配，未改原输入。
+
+实际观察IsAppContainer=true、Stage=QueryLpac、Win32Error=87、IdentityVerified=false、
+NativeCreateAttempted=false、NtStatus=null。因此只定位诊断自身查询失败，未执行endpoint，
+也未动态定位旧网关socket10013的对象。工程Exit0/1项检查仅表示有界诊断完整性，不是
+LPAC标志查询、endpoint或网络PASS。未读取r1未释放结果，未额外读取私有error/rawJob/Stop。
+固定核验 `work/afd-endpoint-3e2e1cc7/diagnostic-r2/verified-result.json` 摘要
+3513207C059B15CBC6683CC9BD30BF47A641BC1793B770804A8A23EECA79D1E6；本次许可消耗。
+
+审查发现原AtomicAdmission.ReadToken/ProbeApplicationPackageAccess早已记录class46查询87，
+使用AppContainer+内存描述符的真实AccessCheck mask2区分LPAC。新诊断未复用该经验，不能
+通过移除身份门推进。独立diagnostic-r3改为相同描述符
+`O:SYG:SYD:P(A;;0x3;;;WD)(A;;0x1;;;S-1-15-2-1)(A;;0x2;;;S-1-15-2-2)`、
+DuplicateTokenEx(QUERY8,Identification1,TokenImpersonation2)及MAXIMUM_ALLOWED检查，
+own token只开QUERY|DUPLICATE，派生handle仅QUERY、不可继承，using关闭；无实际impersonation、
+assign-primary或adjust权限，不创建/修改任何宿主资源ACL。仍要求AppContainer、mask2、cap0
+才原参数创建endpoint；结果保留阶段/数值，未知不算通过。
+
+参照[AccessCheck](https://learn.microsoft.com/en-us/windows/win32/api/securitybaseapi/nf-securitybaseapi-accesscheck)
+及[DuplicateTokenEx](https://learn.microsoft.com/en-us/windows/win32/api/securitybaseapi/nf-securitybaseapi-duplicatetokenex)
+的查询型token与输出语义；组合判定沿原产品在本机的已有实测，不把文档单独当成新身份实测。
+SDK8.0.422/net8.0.28三源非生成语义0诊断；本人普通1001正控制mask3、普通非AC拒绝并导出
+诊断实际通过，NativeEndpointAttempted=false。r3实际LPAC尚NOT_RUN，需要新固定包及具体决定，
+复用已成功的本人endpoint参考，不重跑原r1/r2、不扩设备或capability权限。
+
+## 2026-11-05 endpoint离线项目运行失败与有界诊断修正
+
+本人执行原固定入口，输入EF502E0B…保持。普通1001正控制同EA168D8752…创建成功、
+名称为\Device\Afd、不可继承且关闭，未连接/IOCTL/改安全。原daily9668终态3，会话
+d819fa43c9e44cd6ab60854c8e9df214；OwnerSealedBeforeCode=true，原项目公开失败Run、
+Diagnostics为空，未释放结果。公开StopEvidence确认AdmissionClosed、先隔离后停止、
+FinalJobZero、StopFailureCount=0。未读取存在但未释放的结果或额外私有error/rawJob/Stop。
+实际LPAC endpoint调用及状态UNKNOWN，不将工程Run异常解释为AFD权限拒绝。
+
+证据 `work/afd-endpoint-3e2e1cc7/verified-first-attempt.json` 固定六份本次回执hash；
+daily公开输出3CB141885FFF8400E33C68C0D4D7B115BFCE3167873B9FB782FDBE658D96FA73，
+本人普通参考DC6C6B1E98B33555008ADF90A78D2B76878ADC2F471104A51395A181F91F3846。
+许可消耗，旧控制器/代码/结果保留，不重试或恢复。
+
+新 `diagnostic-r2` 只修正该固定诊断的可观测性：在令牌打开、AppContainer/LPAC/cap查询、
+EA准备、NtCreateFile及名称查询前记固定阶段；仅导出固定错误类别、HRESULT/即时Win32码，
+不导出异常消息。身份与零cap门完整保持，失败不进入endpoint；原owner封存/Job/WFP/
+停止/结果闭合机制不变。检查项验证诊断完整性，UNKNOWN不算身份、endpoint或网络通过。
+SDK8.0.422/net8.0.28三源非生成语义无诊断；另一次内存编译、普通1003实际token校验在
+QueryAppContainer拒绝，能形成有界输出且NativeCreateAttempted=false，1项诊断完整性检查
+通过。该普通证据不是LPAC实测。新的受限执行尚未进行，需新固定包/具体决定。
+
+直接正式命令通道本轮只读whoami及token查询实际得到1001/非管理员，AVP21.26/BFE
+Running；可通过正式执行审批发起固定普通controller后由本人确认原产品UAC。不再依赖
+此前仅1003的Node开发通道来判断发起能力；未改AV/系统策略或借用其他进程令牌。
+
+## 2026-11-05 固定原生endpoint普通正控制与离线LPAC候选
+
+新任务目录 `work/afd-endpoint-3e2e1cc7/`。固定本机mswsock AFC5E4EE…创建分支48A0、
+调用4E31：对象字符串\Device\Afd\Endpoint，AfdOpenPacketXX，EA57字节，值偏移24/长度30，
+IPv4/TCP 2/1/6，group0，空transport，desired C0140000/share3/disposition3/options0/OBJ40。
+639C函数查询TokenIsAppContainer29影响EA01000000位；两组预声明普通参考覆盖位0/位1，
+只创建未绑定endpoint，不bind/connect/IOCTL/SetSecurity，不添加capability或改设备ACL。
+
+普通工具身份1003两组NtCreateFile/IoStatus/名称查询均0，实际对象名称\Device\Afd，
+不可继承且句柄已关闭；EA摘要分别571952070F99D918E0605FE49E706B8BC0782B0C5888C24515C5947E17E17BF5、
+168D875225F3E73471175E16936E16A4511B1C86AADF33E8B5D4C5075109CC7A。
+两组结果均保留，并非失败自动重试；不宣称静态输入与旧WSASocket内部动态字节完全相同。
+
+现有离线caller C#编译器可在原封存LPAC根运行声明的C#，无需新增产品入口/安装或系统
+registry/device权限。准备4文件输入（3源+manifest）EF502E0B5E0BB18D7375FC3C71E17F7D980E0A0B068A11E2E8EE32336E0E45C1，
+只有一次声明literal edit，固定Entry/Checks/1项身份-输入-句柄闭合检查，预计9文件导出。
+受限代码自查AppContainer/LPAC token及capability0，再用相同EA01000000一次原生调用，
+只导出数字状态、对象名及闭合。Native允许或拒绝均作为诊断输出；工程执行成功不代表
+endpoint/网络成功。LPAC查询语义参考[Microsoft令牌类枚举](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ne-ntifs-_token_information_class)，
+原owner独立身份/隐私门保持，单一class查询不替代原门。
+
+三源经SDK8.0.422/net8.0.28共163参考非生成语义检查，无诊断；原安装版daily的
+workspace-check-csharp验证该准确包通过，不执行代码。首次普通验证传F:/路径被
+WorkspaceFiles.Local原门拒绝，改为同字节包的反斜线准确路径后通过；失败不覆盖。
+实际LPAC项目尚NOT_RUN；拟先本人普通正控制，再原daily/Broker human UAC、原owner
+隐私封存、编译运行/闭合导出。无新网络/设备授权；具体输入/输出/时限待固定与本人决定。
+
+## 2026-11-05 AFD实际对象只读权限参考
+
+为socket10013后续定位，在原设备所有者普通真实对象研发授权内，固定新C#参考
+AfdReadOnlyReference.cs，仅一次NtOpenFile(\Device\Afd,READ_CONTROL0x20000,share3,options0)，
+随后两阶段有界NtQueryObject名称与OWNER|DACL安全查询，全部缓冲上限4096。要求普通
+非管理员，ntdll字节B8F3A6AA…与源字节持有核验，原AV/BFE安全检查及CreateNew单次claim。
+没有SetSecurity/IOCTL/CreateSocket/连接或UAC，没有读取产品私有error/Job/Stop。
+
+普通工具身份1003实际三项native状态均0，名称精确\Device\Afd，OWNER|DACL：
+`O:BAD:(A;;0x1201bf;;;WD)(A;;FA;;;SY)(A;;FA;;;BA)(A;;0x1200a9;;;RC)`，句柄已关闭。
+没有当前package显式ACE；这只是普通对象实际基线，不是实际受限LPAC访问尝试，不能
+直接归因WSASocket内部NtCreateFile返回或忽略设备通用权限映射/驱动检查。源摘要
+A37CC3F4FD13BF905296E14160D1E87AD3BECFF6BFEA7456E8DBE0EF08CA7509，plan/result/channel
+保留于 `work/provider-migration-8878bf2/afd-readonly-*`。新增权限未实现/未应用，后续必须
+与原owner受限身份实证及真实网络信息/IOCTL暴露评估配对，不直接给网络capability。
+
+## 2026-11-05 3e2原owner31租约与socket10013
+
+本人具体批准固定helper EF35DD31…、清单849A2BFC…并执行gateway-provider31-once入口，
+本人UAC后原owner完成31对象v3租约。helper终态125，owner终态3，根34868退出125；
+Session7f54287d82494880af845db5863b9835、Job31b610983b2b444487086391142f986d。
+失败在HTTPS_SOCKET_CREATE，HTTP/-2147467259、SOCKET_CREATE/10013、线程NT上下文
+-1073741790（C0000022）。原10022已不是本次返回码，但线程值不直接证明具体失败对象。
+无CONNECT或网关双向交换，网络FAIL；未改变capability/设备权限、全机IPv6、代理、AV，
+未启动真实Claude。不得用错误变化或L2租约结果替代完整L3/网络资格。
+
+原owner报告31对象Restored，intent3AF1903AF9D1A789026B50198A97EAA971C8DC5550410AD6B3B2F8D532D73031，
+准入关闭、先隔离再停止（均308ms）、同Job归零、零停止错误。Codex通过固定事后只读
+wrapper核验31对象原生SD/内容，与前基线逐字节一致C7F02B5E668C7D3DE94C5C33E576967DFAB6CFBA31969F4AA6090F3C6B9BA5CF。
+完整限定结果 `work/provider-migration-8878bf2/verified-provider31-gateway-result.json`
+2E627FA22AA85FB9EC0D0193E5359A7BC708BA322668BE451199D6138722364D；
+owner-gateway.stdout摘要1F2E7D307CED8E5257CC0B1D5D093DFAFA51516A8FC74A545E4CDB594FA2655A，
+owner-completed B2DBA150EF86E346B4B36E5647402429761F159EEB78D4565930D2D1AFF74DC2，
+owner-terminal D2896736A80EF332EC99584056EC913399C78DFEBFFF752D7AE9BF6B94EA9811。
+无额外私有错误/rawJob/Stop读取或恢复。本次具体许可消耗，原输入、失败、终态及安装
+回执保留。CAPABILITY_DELIVERED(3e2安装版原owner31对象v3租约与精确恢复)，不等于网络、
+完整L3/GPU/GUI/IPv6或产品交付。
+
+## 2026-11-05 Provider31原owner资格准备
+
+新3e2安装后，Codex通过替代普通通道固定Read-Provider31-before取得31对象实际原生SD/
+内容只读基线，摘要仍C7F02B5E668C7D3DE94C5C33E576967DFAB6CFBA31969F4AA6090F3C6B9BA5CF。
+固定gateway-provider31-once仅调用已安装Broker参数为空的新provider入口，原owner/LPAC/
+Job/WFP和31对象日志/持有/closed-zero后恢复不变。六已安装公开输入从本次候选清单生成
+并在普通控制器逐项持有/核验；保留新系统前后固定只读脚本。本人原生Shell预检、系统
+PS5模块及单进程RemoteSigned启动复用本次成功修复，无持久策略改动。系统资格NOT_RUN，
+只能在新工件/具体范围获准后执行一次；不启动Claude，不允许额外私有error/rawJob/Stop。
+
+## 2026-11-05 3e2准确宿主未激活更新成功
+
+本人执行新固定canonical-05入口并确认UAC，提升helper35768原控制器持有终态0；原
+Bootstrap沿准确无后缀宿主完成update-inactive，返回0。8指定回执与15公开安装资产
+的长度/摘要/非重解析路径独立核验通过：desktop-install-canonical-05/verified-installed.json
+9EFB436872B00C7EAD345C4449999AD82F77B849520D199034B71049FFDD441C。
+实际选择3e2e1cc777e54ac6b4123edfce65773e/INACTIVE，清单849A2BFC…，同库4C378CEF…。
+独立核验首脚本错误在子目录查verified-stage而在读回执前拒绝，r2准确指向原冻结清单
+后通过；两次核验回执保留。无额外私有错误/Job/Stop读取或恢复，无新网络租约/Claude运行。
+前后AV/BFE保持，旧版本及失败staging保留；安装许可消耗。新31资格尚NOT_RUN。
+
+## 2026-11-05 04原安装器宿主拒绝与准确路径修正
+
+本人运行04：原生模块/策略预检实际成功，身份1001，CurrentUser=RemoteSigned、
+其他持久/组scope Undefined；提升进程Process=RemoteSigned，无持久写入。原helper26508
+终态125，Bootstrap8264返回125/stage PACKAGE_APPROVAL/InvalidOperationException。
+指定7份回执原样复制到desktop-install-native-04/install-*，没有completed；current-readback
+仍0f1/INACTIVE、6CDC07DC…，前后AV/BFE Running、原FlClash/core PID相同。未做新受限
+网络或Claude运行，没有额外私有错误/Job/Stop或恢复读取。
+
+固定构建输入BootstrapInstaller.cs及实际helperProcessStart路径对照明确：BootstrapApproval
+按ProgramFiles+ClaudeCodeProtection-Update-清单Release生成唯一允许宿主；helper却放在
+...release-desktop-04，触发原Fixed protected bootstrap host required门。这是入口准备错误，
+原门禁保留，不通过源码放宽路径。准确无后缀宿主及新版本目录均不存在，仅作路径观察。
+原输入/失败及verified-refusal.json保留。新canonical-05复用同一20文件/嵌入清单，改到
+准确未用宿主，并在普通预检用清单release检查宿主相等；新输入需新具体许可，无自动重试。
+
+## 2026-11-05 AV恢复只读核验与新04入口
+
+本人恢复保护后，独立只读核验AVP21.26=Running、BFE=Running、四类产品进程为空。
+记录保存本任务restored-safety-reference的具体JSON；不自动修改AV或复活03失败许可。
+新04固定入口复用原20文件/候选清单，保留PS5系统模块路径及显式模块导入、本人原生
+策略预检/组策略拒绝、单进程RemoteSigned而无持久设置改动。本人执行前仍按新准确
+工件及范围取得单次决定；工具身份1003无法代替本人1001门，不能通过删门来自动启动。
+
+## 2026-11-05 修订入口安全预检与AV服务停止
+
+本人实际运行desktop-install-native-03/Start-Fixed-Inactive-Update.cmd，controller第40行
+Ordinary safety check failed退出1。尚未发起原生启动参考/UAC/安装；native-startup-reference
+与inactive-install-attempt均未生成，且冻结分支于其前拒绝。保留此次用户控制台原文，
+无自动重试、强停、恢复或额外私有文件读取。
+
+Codex随后通过已授权替代普通通道读取确切门禁的服务和四类进程：AVP21.26=Stopped、
+BFE=Running、ProtectionBroker/ProtectionBootstrap/ProtectionCenter/ClaudeProtection为空。
+该状态不归因用户、AV行为或旧误报，亦不证明其他系统条件。只读回执保留
+`work/provider-migration-8878bf2/safety-preflight-reference-*.json` 的本次确切文件。
+未更改AV/自动启动服务、不删除现有安全门；需本人恢复保护后重核。新系统操作仍须
+固定准确输入与新适用决定，03旧冻结字节不改。用户同时明确要求普通可执行工作由
+Codex自行完成，仅不能完成的本人桌面/UAC步骤才交回，不把工具限制扩张成项目取消。
+
+## 2026-11-05 本人诊断模块失败与原生启动修订
+
+本人运行Read-Startup-Diagnosis后，human-policy.json记录PS5退出1，stderr为
+CouldNotAutoloadMatchingModule：Get-ExecutionPolicy所属Microsoft.PowerShell.Security
+无法加载。未尝试空脚本，未UAC/安装/变更策略。该新直接证据限定在原生模块启动问题，
+此前工具1003身份Restricted复现保留，但不冒充本人1001原安装失败的完整归因。
+
+新desktop-install-native-03保留原20文件/清单和原Bootstrap，固定新03输出，修正PS7→PS5
+模块环境：PS5子进程启动前即设置原PS5系统模块路径并显式导入原系统Security manifest。
+本人普通预检记录策略/身份/终态与stdout-stderr，核对五scope唯一且组策略Undefined、
+持久scope仅Undefined/RemoteSigned、process Undefined；不满足则在UAC/安装之前拒绝。
+随后拟使用一次提升进程的-ExecutionPolicy RemoteSigned，helper重复核验，不调用
+Set-ExecutionPolicy、不写持久设置、不使用Bypass。正常模块环境在控制器启动后立即还原。
+这属于新输入/新单次系统决定，不继承失败入口许可。
+
+工具普通身份已实测相同固定PS5 query成功；相同无副作用空脚本在单进程RemoteSigned
+下打印常量退出0，无stderr。证据sandbox-native-module-reference.json及
+sandbox-remotesigned-noop.json保留于desktop-install-native-03。它们不证明本人UAC或
+安装器成功；本人预检、修订提升helper与实际更新仍NOT_RUN。过程策略语义来源同下文
+Microsoft执行策略说明，不改变机器或用户的持久策略。
+
+## 2026-11-05 本人桌面入口终态1与启动参考
+
+用户从普通桌面运行固定Start-Fixed-Inactive-Update.cmd并本人确认UAC，返回helper1。
+本次controller的attempt/running/terminal确认持有提升helper PID13676，于2026-11-05
+02:46:31 America/New_York终态1；指定before/staging-intent/update stdout-stderr/result/
+after/current-readback/completed八份安装回执均未取得，没有读取额外私有failure/error/Job/Stop。
+该事实不能证明安装成功，也不以文件缺失代替闭合证据。不重跑本次固定入口。
+
+原helper经本机PS5解析无语法错误；工具普通身份1003读取有效ExecutionPolicy=Restricted，
+各scope均Undefined。新固定NoOp-PolicyReference.ps1仅打印常量并exit0，但PS5 -File
+在脚本执行前拒绝（running scripts is disabled），退出1。原失败helper1001身份的策略及
+原始stderr未取得，因此仅记录明确候选启动原因，不将参考复现冒充原失败动态归因。
+参考保留 `work/provider-migration-8878bf2/legacy-parser-policy-reference.json` 及
+`sandbox-noop-file-reference.json`，不改变执行策略、AV或产品状态。
+
+已准备同目录 `desktop-startup-diagnostic/Read-Startup-Diagnosis.cmd`，调用普通本人PS7
+固定诊断，仅读取PS5策略及执行同一空脚本，捕获两份最多16KiB输出，15秒观察/不强停，
+CreateNew单次claim。诊断不提权、不启动安装器、不变更任何策略；本人1001证据待执行。
+策略语义参照[Microsoft PowerShell执行策略说明](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_execution_policies?view=powershell-7.5)。
+
+## 2026-11-05 3e2更新发起失败
+
+20文件和固定安装helper预检通过后，用户明确批准本次替代通道的0f1→3e2未激活更新，
+决定及工件摘要保留于 `work/provider-migration-8878bf2/inactive-user-decision.json`。
+普通控制器实际PID34392在RunAs Process.Start处返回0xC0000142，原进程已终态1。
+没有取得提升helper/安装器运行、终态或完成回执，不将该错误归因AV或登记安装成功。
+指定新staging/版本目录均观察不存在；旧0f1公开清单摘要仍6CDC07DC…，没有额外读取
+私有选择/错误/Job/Stop、强停或恢复。见 `inactive-channel-terminal.json`、
+`inactive-launch-failure-review.json`；本次具体单次许可消耗，无自动重试。
+
+## 2026-11-05 Provider31安装候选固定
+
+当前checkout保持8878bf2及已审核未提交源码/证据。新 `Stage-Payload.ps1` 按准确HEAD/分支、
+确切改动路径/哈希及全部109构建输入持有核对，不要求覆写/抹去既有成果；原GUI/日常
+程序源码也与旧固定构建逐项一致。109输入记录摘要81A7A56E802F839392F1219D871FE7053DC7818DFDC2430F96B9263A36197864。
+
+新3e2e1cc777e54ac6b4123edfce65773e/UNACTIVATED_PRODUCT清单
+849A2BFC1D9F08D1B581BD5C79EDBF1575048F5D20B3145D6297B10E1CF80C8F，
+20文件/内嵌清单核验记录 `work/provider-migration-8878bf2/verified-stage.json`
+1A8C54803A11DC37D91C1A97E516F3A7C1CE2CC82EB14817FFBC4FD8BED9C755。
+Bootstrap86输入离线叶构建0/0，复制相同4C378CEF…保护库和3CBACABA…ref，不重新编译
+保护库；`build-bootstrap/build-result.json` DA69636FF8F431D1ACDE9006C24C9DF86A0E0574A511B1B03B62E7D4F580DBAF。
+确切0f1→3e2迁移内存门7项通过，没有读取私有保护状态或执行安装/系统租约。
+SOURCE/BUILD；新候选尚未获安装/受保护联网实测，原0f1网络仍FAIL。
+
+## 2026-11-05 替代开发通道与Provider31候选
+
+用户确认命令运行器告警为误报并明确要求替代执行继续开发。独立Node REPL启动原有
+Windows PowerShell5/PowerShell7，实际验证SandboxOffline/1003、非管理员、原F盘cwd，
+HEAD8878bf2/原分支及三份既有证据改动；不重启/重包装/改名告警运行器、不改AV。Git仅
+进程环境/命令级信任已知准确根，并禁用fsmonitor，不写全局配置。源码读取/编辑、Git
+只读、SDK构建与有限专项检查已实际运行；没有产品通用/特权执行器或并行保护架构。
+
+新固定 `qualify-winsock-provider-session-gateway` 参数为空，先原维护门，再原owner固定
+资格。原28对象后仅增加物理ControlSet下Winsock\Setup Migration\Providers父键及Tcpip6、
+Tcpip两叶，均KEY_READ、不继承，不授其他四provider叶、Setup Migration父、服务配置树、
+设备或capability。父必须无值/只有六已知子名，两叶仅一个16字节通用Provider ID、无子键；
+内容/权限/物理对象持续核对。Prepare只在新增provider固定资格选择v3/31，v1/25、v2/28
+targets与入口不改；三版恢复Validate分别要求完整准确范围，closed/zero后精确恢复沿原链。
+正式Claude hold保持。Bootstrap仅新增已闭合0f1清单6CDC07DC…为确切迁移前置，现场门不变。
+
+主证据目录 `work/provider-migration-8878bf2/`。首次普通通道环境未带PATHEXT，Git查找在
+构建开始前拒绝；补齐后离线restore又因profile路径缺失返回path1 null，未编译。两份终态
+及初始build目录保留。后续明确定义本任务build-profile目录的USERPROFILE/LOCALAPPDATA/
+APPDATA，固定新build-payload-r2输出，不写宿主用户目录，不访问网络或更改工具链。
+
+- `build-payload-r2/build-result.json` 1BF55E1ADD4EB96AAD7090ACF59894481BF2B131EDDF9C51D5CE3D70A3109FDD；109固定输入，保护库/Broker/专项检查BUILD0错误0警告，三库4C378CEFB23F092A5261BBFC0BE0CC3EBD87B08166A5F845D2A5C9748519DD8E一致。
+- 新40项Provider范围/GUID/漂移/v1-v2-v3拒绝交叉/普通入口拒绝检查通过；原transport27、legacy lease33、gateway boundary27通过。仅普通内存/自身身份，不改系统。
+- 31对象实际原生只读元数据摘要C7F02B5E668C7D3DE94C5C33E576967DFAB6CFBA31969F4AA6090F3C6B9BA5CF；前28对象逐项与此前恢复基线相同。新增三键均AI，无P；安全摘要BA6049A2…一致。实际内容类型/通用GUID已由固定读取验证，没有额外键写入。
+- 六产品非生成语义0错误0警告；具体记录/回执摘要见本机 `source-integration-result.json`。
+
+SOURCE/INTEGRATED/BUILD及VERIFIED(上述普通策略、入口/身份及31对象真实只读)。新31系统
+租约、原地添加/恢复、保护联网均NOT_RUN；未固定新安装包或安装，原0f1网络仍FAIL，没有
+新L3类别/GPU/GUI/IPv6整体验收或真实Claude启动。源码/证据保持未提交，未push。
+
+## 2026-11-05 0f1原生上下文结果与命令运行器告警
+
+基线8878bf2。具体工具批准及本人UAC后，原Bootstrap完成0f1/INACTIVE更新，退出0；
+15公开文件和8指定回执独立核验，`work/socket-context-8a2094f/verified-installed.json`
+F20FAF28F3FDB306D4629EEFAFDFEDD4833483350C8821EEF8123AD03FF20B2B。
+首次资格helper在公开输入校验阶段因误留旧Broker EXE/DLL哈希拒绝，终态125；固定源码
+在输出目录创建/原owner启动前返回，没有进入系统租约。失败输入及控制器回执保留于
+`gateway-once/`。随后从实际清单生成全部六项校验，普通控制器先持有/验证每项，修正
+helper0E740D93…、控制器1DE8BD5A…以新输入、新02输出及另一份具体工具批准/本人UAC运行。
+
+原owner实际终态3，子125，在HTTPS_SOCKET_CREATE返回HTTP/-2147467259、SOCKET_CREATE/10022、
+SOCKET_NT_CONTEXT/-1073741790（C0000022）。原owner报告准入关闭、先隔离再停止（307ms）、
+同Job零成员、零停止错误及28对象精确恢复。独立前后原生只读/内容摘要均
+43A5C6D99CEC5E6F3F21A4CD2E23D1EA3F57B61552116DE8A8957A517E280065。
+`verified-gateway-result.json` A0C39AA48EAEB6DF6071EFE13CB85EE5B8DC0C57661B801E5CBDD7CD06625302。
+无CONNECT/双向网关交换，网络FAIL；没有真实Claude启动或新L3类别通过。
+
+本机固定mswsock BCA0转换函数：C0000022索引32、selector6、表项C014、目标BE9D，实际
+立即数返回10013。因此不能把线程上下文当成该函数对NtCreateFile的直接返回，更不能
+直接归因AFD权限并扩权。静态表解码首个预期10022被数据否定，按实际10013更正；
+`access-denied-static-conversion.json` 016CC24C60D5375C81FC7ECFF1CA048196CA8F8FF4DED3C5CE70DDA1B664C18A。
+随后静态55B0链的59CF调用6A4C，精确读取
+`SYSTEM\CurrentControlSet\Services\Winsock\Setup Migration\Providers`、传输名称子键及
+`WinSock 2.0 Provider ID`；该失败跳5F16后跳过helper并可能最终10022。真实普通只读
+`migration-provider-reference.json` 已取得：父无值、六已知传输子名；Tcpip6/Tcpip各只有
+16字节通用Provider GUID，与现有映射值一致，无子键。未增加这三对象的租约或产品入口，
+静态机制与真实内容仍不能单独证明本次动态失败对象。
+
+在进一步读取这三键原生SD的工具请求附近，命令工具两次未能创建进程（runner spawn_ready）；
+没有成功回执，不记原生SD验证通过。用户随后报告卡巴斯基终止进程，并给出截图：
+`PDM:Trojan.Win32.Generic`，位置 `C:\codex-command-runner-0.166.0-alpha.6.exe`。
+截图未指向产品Broker；来源/哈希及具体检测行为尚未知，不判误报或确切因果。
+**相关运行验证停止**，不重启运行器/自动重试、改AV、加排除、清除或重启电脑。
+告警不抹去先前限定回执，但也不证明当前执行工具/宿主仍健康。独立记录见本机
+`work/socket-context-8a2094f/AV-INCIDENT.md`，截图原文件保留，不提交原始图像/私有回执。
+
+CAPABILITY_DELIVERED(0f1原owner单次socket数字上下文回执及本次28对象恢复)。全网、完整
+L3、GPU、GUI/IPv6生命周期和真实Claude未验收，PRODUCT_DELIVERY_NOT_ACCEPTED。
+
 ## 2026-11-05 socket上下文候选固定
 
 源码cabaac8。新0f1ec8b2bf474e9b9df34daf15a6fd30/UNACTIVATED_PRODUCT清单

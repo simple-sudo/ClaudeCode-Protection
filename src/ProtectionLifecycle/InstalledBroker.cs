@@ -194,6 +194,7 @@ public static partial class InstalledBroker
     public static (int ExitCode,string Report) QualifySessionGateway()=>WithCurrentInstallation(ProtectedSession.QualifySessionGateway);
     public static (int ExitCode,string Report) QualifyWinsockSessionGateway()=>WithCurrentInstallation(ProtectedSession.QualifyWinsockSessionGateway);
     public static (int ExitCode,string Report) QualifyWinsockTransportSessionGateway()=>WithCurrentInstallation(ProtectedSession.QualifyWinsockTransportSessionGateway);
+    public static (int ExitCode,string Report) QualifyWinsockProviderSessionGateway()=>WithCurrentInstallation(ProtectedSession.QualifyWinsockProviderSessionGateway);
     public static (int ExitCode,string Report) InspectWinsockReadAccess()=>WithCurrentInstallation((_,state,_)=>SessionWinsockReadAccess.Inspect(state),forManifestAccessRecovery:true);
     public static (int ExitCode,string Report) RecoverWinsockReadAccess()=>WithCurrentInstallation((_,state,_)=>SessionWinsockReadAccess.Recover(state),forManifestAccessRecovery:true);
     public static int RunGatewayQualificationCanary()=>AtomicChild.RunGatewayQualificationCanary();

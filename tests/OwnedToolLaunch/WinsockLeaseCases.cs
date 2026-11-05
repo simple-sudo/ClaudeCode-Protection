@@ -6,6 +6,66 @@ using System.Text.Json.Nodes;
 
 internal static class WinsockLeaseCases
 {
+    internal static void RunProviders(Assembly library,bool metadata)
+    {
+        var lease=library.GetType("ProtectionLifecycle.SessionWinsockReadAccess",true)!;
+        var scope=library.GetType("ProtectionLifecycle.WinsockRegistryScope",true)!;
+        object? Call(Type type,string method,params object?[] arguments)
+        {
+            try{return type.GetMethod(method,BindingFlags.Static|BindingFlags.NonPublic)!.Invoke(null,arguments);}
+            catch(TargetInvocationException ex)when(ex.InnerException is not null){ExceptionDispatchInfo.Capture(ex.InnerException).Throw();throw;}
+        }
+        if(metadata){Console.WriteLine(Call(lease,"InspectProviderMetadata"));return;}
+        var count=0;
+        void Check(bool ok){if(!ok)throw new InvalidOperationException("Winsock provider contract differs");count++;}
+        void Refuse(Action action){var no=false;try{action();}catch(Exception ex)when(ex is InvalidDataException or ArgumentException){no=true;}Check(no);}
+        var targets=(Array)Call(scope,"ProviderTargets",1)!;
+        var transport=(Array)Call(scope,"TransportTargets",1)!;
+        var legacy=(Array)Call(scope,"Targets",1)!;
+        string PathOf(object item)=>(string)item.GetType().GetProperty("Path")!.GetValue(item)!;
+        int AccessOf(object item)=>(int)item.GetType().GetProperty("Access")!.GetValue(item)!;
+        var prefix=@"SYSTEM\ControlSet001\Services\Winsock\Setup Migration\Providers";
+        Check(targets.Length==31 && targets.Cast<object>().Take(28).SequenceEqual(transport.Cast<object>()));
+        Check(targets.Cast<object>().Skip(28).Select(PathOf).SequenceEqual(new[]{prefix,prefix+@"\Tcpip6",prefix+@"\Tcpip"}));
+        Check(targets.Cast<object>().Skip(28).All(t=>AccessOf(t)==0x20019));
+        Call(scope,"RequireExactProviderTargets",1,targets);Check(true);
+        Refuse(()=>Call(scope,"RequireExactProviderTargets",1,transport));Refuse(()=>Call(scope,"RequireExactProviderTargets",1,legacy));
+        Refuse(()=>Call(scope,"RequireExactTransportTargets",1,targets));Refuse(()=>Call(scope,"ProviderTargets",0));
+        var names=new[]{"afunix","Psched","RFCOMM","Tcpip","Tcpip6","vmbus"};
+        Call(scope,"RequireProviderSelection",new object?[]{names});Check(true);
+        Call(scope,"RequireProviderSelection",new object?[]{names.Reverse().ToArray()});Check(true);
+        Refuse(()=>Call(scope,"RequireProviderSelection",new object?[]{names.Skip(1).ToArray()}));
+        Refuse(()=>Call(scope,"RequireProviderSelection",new object?[]{names.Append("UnknownProvider").ToArray()}));
+        Refuse(()=>Call(scope,"RequireProviderSelection",new object?[]{names.Append("Tcpip").ToArray()}));
+        foreach(var family in new[]{2,23})
+        {
+            var id=Guid.Parse(family==23?"f9eab0c0-26d4-11d0-bbbf-00aa006c34e4":"e70f1aa0-ab8b-11cf-8ca3-00805f48a192").ToByteArray();
+            Call(scope,"RequireProviderId",id,family);Check(true);
+            Refuse(()=>Call(scope,"RequireProviderId",id,family==2?23:2));
+            Refuse(()=>Call(scope,"RequireProviderId",id[..^1],family));
+            var changed=(byte[])id.Clone();changed[0]^=1;Refuse(()=>Call(scope,"RequireProviderId",changed,family));
+            Refuse(()=>Call(scope,"RequireProviderId",id,0));
+        }
+        const string package="S-1-15-2-1-2-3-4-5-6-7",original="O:SYD:P(A;;KA;;;SY)(A;;KR;;;BU)";
+        var intent=library.GetType("ProtectionLifecycle.WinsockReadIntent",true)!;
+        void Validate(string text)=>Call(lease,"Validate",JsonSerializer.Deserialize(text,intent)!,new string('d',32),package);
+        string Make(int schema,Array list)=>JsonSerializer.Serialize(new{SchemaVersion=schema,InstallationId=new string('d',32),SessionId=new string('a',32),JobId=new string('b',32),Release=new string('c',32),ManifestSHA256=new string('A',64),PackageSid=package,ControlSet=1,
+            Targets=list.Cast<object>().Select(t=>new{Path=PathOf(t),Access=AccessOf(t),ContentSHA256=PathOf(t).Length==0?null:new string('A',64),OriginalSecurity=original,GrantedSecurity=(string)Call(scope,"AddReadAce",original,package,AccessOf(t))!}).ToArray()});
+        var json=Make(3,targets);Validate(json);Check(true);Validate(Make(2,transport));Check(true);Validate(Make(1,legacy));Check(true);
+        Refuse(()=>Validate(Make(3,transport)));Refuse(()=>Validate(Make(2,targets)));Refuse(()=>Validate(Make(1,targets)));
+        foreach(var mutation in new Action<JsonObject>[] {
+            j=>j["SchemaVersion"]=4,j=>j["ControlSet"]=2,j=>j["Targets"]!.AsArray().RemoveAt(30),
+            j=>j["Targets"]![28]!["Path"]=@"SYSTEM\ControlSet001\Services\Winsock\Setup Migration",
+            j=>j["Targets"]![29]!["Path"]=prefix+@"\afunix",j=>j["Targets"]![30]!["Access"]=0xf003f,
+            j=>j["Targets"]![29]!["ContentSHA256"]=null,
+            j=>j["Targets"]![29]!["OriginalSecurity"]="O:SYD:P(A;;KA;;;SY)",
+            j=>j["Targets"]!.AsArray().Add(j["Targets"]![30]!.DeepClone())})
+        {var changed=JsonNode.Parse(json)!.AsObject();mutation(changed);Refuse(()=>Validate(changed.ToJsonString()));}
+        var entry=library.GetType("ProtectionLifecycle.InstalledBroker",true)!.GetMethod("QualifyWinsockProviderSessionGateway")!;
+        Check(entry.GetParameters().Length==0);
+        var rejected=false;try{entry.Invoke(null,null);}catch(TargetInvocationException ex)when(ex.InnerException is UnauthorizedAccessException){rejected=true;}Check(rejected);
+        Console.WriteLine($"PASS {count} provider-map scope, generic GUID, selection drift, v1/v2/v3 recovery separation and ordinary-entry refusal checks. No registry/state write, protected process or network operation.");
+    }
     internal static void RunTransport(Assembly library,bool metadata)
     {
         var lease=library.GetType("ProtectionLifecycle.SessionWinsockReadAccess",true)!;

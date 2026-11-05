@@ -95,6 +95,19 @@ internal sealed class SessionWinsockReadAccess : IDisposable
             if(!names.Order(StringComparer.Ordinal).SequenceEqual(allowed.Order(StringComparer.Ordinal),StringComparer.Ordinal))
                 throw WfpNative.Contract("WinsockTransportValueSetChanged");
         }
+        else if(path.EndsWith(@"\Winsock\Setup Migration\Providers",StringComparison.Ordinal))
+        {
+            allowed=Array.Empty<string>();expectedChildren=new[]{"afunix","Psched","RFCOMM","Tcpip","Tcpip6","vmbus"};
+            WinsockRegistryScope.RequireProviderSelection(children);
+        }
+        else if(path.EndsWith(@"\Winsock\Setup Migration\Providers\Tcpip6",StringComparison.Ordinal) ||
+            path.EndsWith(@"\Winsock\Setup Migration\Providers\Tcpip",StringComparison.Ordinal))
+        {
+            allowed=new[]{"WinSock 2.0 Provider ID"};expectedChildren=Array.Empty<string>();
+            if(view.GetValueKind(allowed[0])!=RegistryValueKind.Binary || view.GetValue(allowed[0]) is not byte[] provider)
+                throw WfpNative.Contract("WinsockProviderIdMissing");
+            WinsockRegistryScope.RequireProviderId(provider,path.EndsWith(@"\Tcpip6",StringComparison.Ordinal)?23:2);
+        }
         else if(path.EndsWith(@"\Parameters",StringComparison.Ordinal))
         {
             allowed=new[]{"AutodialDLL","NameSpace_Callout","WinSock_Registry_Version","Current_NameSpace_Catalog","Current_Protocol_Catalog"};
@@ -142,10 +155,13 @@ internal sealed class SessionWinsockReadAccess : IDisposable
         =>InspectMetadata(false);
     internal static string InspectTransportMetadata()
         =>InspectMetadata(true);
-    private static string InspectMetadata(bool transports)
+    internal static string InspectProviderMetadata()
+        =>InspectMetadata(true,true);
+    private static string InspectMetadata(bool transports,bool providers=false)
     {
         var controlSet=CurrentControlSet();var rows=new List<object>();
-        foreach(var target in transports?WinsockRegistryScope.TransportTargets(controlSet):WinsockRegistryScope.Targets(controlSet))
+        foreach(var target in providers?WinsockRegistryScope.ProviderTargets(controlSet):
+            transports?WinsockRegistryScope.TransportTargets(controlSet):WinsockRegistryScope.Targets(controlSet))
         {
             using var key=Open(target.Path,false);
             var original=SessionManifestReadAccess.ReadObjectSecurity(key);
@@ -157,15 +173,17 @@ internal sealed class SessionWinsockReadAccess : IDisposable
         return JsonSerializer.Serialize(new{Scope="FIXED_X64_WINSOCK_REGISTRY_METADATA_ONLY",ControlSet=controlSet,Targets=rows,
             RegistryModified=false,StateRead=false,StateModified=false,PackageCapabilityAdded=false});
     }
-    internal static SessionWinsockReadAccess Prepare(ProtectedState state,VerifiedVersion version,OwnedKernelJob job,string sessionId,bool transports=false)
+    internal static SessionWinsockReadAccess Prepare(ProtectedState state,VerifiedVersion version,OwnedKernelJob job,string sessionId,bool transports=false,bool providers=false)
     {
         ProtectedState.RequireAdministrator();state.AssertHeld();version.AssertHeld(state);AssertNoPending(state);
+        if(providers && !transports)throw WfpNative.Contract("WinsockProviderRequiresTransportScope");
         if(!job.AtomicAdmissionReserved)throw WfpNative.Contract("WinsockAccessRequiresOriginalAtomicJob");
         var controlSet=CurrentControlSet();using var package=new InstallationPackageSid(state);
         var opened=new List<SafeRegistryHandle>();var targets=new List<WinsockReadTarget>();
         try
         {
-            foreach(var target in transports?WinsockRegistryScope.TransportTargets(controlSet):WinsockRegistryScope.Targets(controlSet))
+            foreach(var target in providers?WinsockRegistryScope.ProviderTargets(controlSet):
+                transports?WinsockRegistryScope.TransportTargets(controlSet):WinsockRegistryScope.Targets(controlSet))
             {
                 var key=Open(target.Path,true);opened.Add(key);
                 var original=SessionManifestReadAccess.ReadObjectSecurity(key);
@@ -176,7 +194,7 @@ internal sealed class SessionWinsockReadAccess : IDisposable
                 targets.Add(new(target.Path,target.Access,Content(key,target.Path),original,granted));
             }
             if(CurrentControlSet()!=controlSet)throw WfpNative.Contract("WinsockControlSetChangedBeforeIntent");
-            var intent=new WinsockReadIntent(transports?2:1,state.InstallationId,Identifiers.Hex32(sessionId),job.JobId,version.Package.Release,
+            var intent=new WinsockReadIntent(providers?3:transports?2:1,state.InstallationId,Identifiers.Hex32(sessionId),job.JobId,version.Package.Release,
                 version.Package.ManifestHash,package.Value,controlSet,targets.ToArray());
             Validate(intent,state.InstallationId,package.Value);
             var bytes=JsonSerializer.SerializeToUtf8Bytes(intent);if(bytes.Length>MaxIntentBytes)throw WfpNative.Contract("WinsockIntentBounds");
@@ -248,14 +266,15 @@ internal sealed class SessionWinsockReadAccess : IDisposable
     }
     internal static void Validate(WinsockReadIntent intent,string installation,string package)
     {
-        if(intent.SchemaVersion is not (1 or 2) || intent.InstallationId!=installation || intent.PackageSid!=package ||
-            intent.Targets is null || intent.Targets.Length!=(intent.SchemaVersion==1?25:28))
+        if(intent.SchemaVersion is not (1 or 2 or 3) || intent.InstallationId!=installation || intent.PackageSid!=package ||
+            intent.Targets is null || intent.Targets.Length!=(intent.SchemaVersion==1?25:intent.SchemaVersion==2?28:31))
             throw WfpNative.Contract("WinsockIntentScopeMismatch");
         _=Identifiers.Hex32(intent.SessionId);_=Identifiers.Hex32(intent.JobId);_=Identifiers.Hex32(intent.Release);_=Identifiers.Hash(intent.ManifestSHA256);
         if(intent.Targets.Any(t=>t is null))throw WfpNative.Contract("WinsockIntentTargetMissing");
         var targets=intent.Targets.Select(t=>new WinsockRegistryScope.Target(t.Path,t.Access)).ToArray();
         if(intent.SchemaVersion==1)WinsockRegistryScope.RequireExactTargets(intent.ControlSet,targets);
-        else WinsockRegistryScope.RequireExactTransportTargets(intent.ControlSet,targets);
+        else if(intent.SchemaVersion==2)WinsockRegistryScope.RequireExactTransportTargets(intent.ControlSet,targets);
+        else WinsockRegistryScope.RequireExactProviderTargets(intent.ControlSet,targets);
         foreach(var target in intent.Targets)
         {
             if(target.Path.Length==0)WinsockRegistryScope.RequireSupportedRootSecurity(target.OriginalSecurity);

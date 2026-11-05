@@ -5,6 +5,68 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-05 实际token默认对象ACL与候选规则
+
+真实LPAC自身原始权限/默认DACL读取及原owner闭合导出已核验：遍历权限已启用，默认
+DACL含package GA而缺实际User GA。该事实不是已确定的旧socket失败原因。新精确规则与
+自有尚未resume子token原语为SOURCE/BUILD，22项普通组件与普通入口拒绝VERIFIED；
+没有接入运行调用点、实际token写入、新安装或网络/L3隐私成功。见
+[证据](STATUS.md#2026-11-05-lpac原始token事实与自有默认dacl候选源码)。
+PRODUCT_DELIVERY_NOT_ACCEPTED，真实Claude仍延期。
+
+## 2026-11-05 现装3e2的真实LPAC endpoint拒绝
+
+VERIFIED(原owner封存LPAC、mask2、cap0下固定原生endpoint创建实际拒绝C0000022，并闭合导出)。
+本人普通同参数正控制成功，受限侧确实调用一次NtCreateFile、关闭owned handle；9文件hash、
+原输入绑定和声明修改独立匹配。工程测试1/退出0仅为诊断完整性，网络FAIL保持。旧网关
+内部调用未直接跟踪，设备授权与L3影响未验收，没有实施新AFD租约/capability/安装。
+见[证据](STATUS.md#2026-11-05-原owner真实lpac的固定endpoint创建拒绝)。
+PRODUCT_DELIVERY_NOT_ACCEPTED，真实Claude继续延期。
+
+## 2026-11-05 固定endpoint诊断r2结果
+
+VERIFIED(原owner封存后的固定项目编译/有界诊断/闭合导出)：9文件独立hash和唯一声明修改
+匹配。观察仅确证AppContainer下class46查询返回87，endpoint未调用；LPAC endpoint与网络
+仍UNKNOWN/FAIL。新r3复用原owner既有AccessCheck语义，普通mask3及普通非AC拒绝通过；
+新的实际LPAC运行NOT_RUN，不继承r2工程Exit0为安全结论。见[证据](STATUS.md#2026-11-05-endpoint诊断r2精确定位令牌查询错误)。
+没有新增网络、设备、capability、完整L3类别或GPU/GUI/IPv6验收，PRODUCT_DELIVERY_NOT_ACCEPTED。
+
+## 2026-11-05 固定endpoint离线项目失败
+
+本人普通1001固定endpoint创建/关闭正控制成功；实际封存LPAC项目在Run阶段失败，公开
+原owner确认准入关闭、先隔离后停止、同Job归零及零停止错误，未释放/读取结果。
+具体LPAC endpoint是否被调用及状态UNKNOWN，网络仍FAIL。修正版有界阶段诊断仅有源码、
+无诊断语义检查和普通token拒绝的真实输出证据，受限实测NOT_RUN；不能据此宣称AFD边界
+已定位或网络可用。见[证据](STATUS.md#2026-11-05-endpoint离线项目运行失败与有界诊断修正)。
+PRODUCT_DELIVERY_NOT_ACCEPTED，真实Claude继续延期。
+
+## 2026-11-05 3e2安装与原owner31对象资格
+
+CAPABILITY_DELIVERED(3e2安装版原owner31对象v3最小读租约、v1/v2恢复兼容、同Job
+closed-zero后精确恢复)。原Bootstrap INACTIVE更新、15公开资产/8指定回执独立核验通过；
+本人批准的新资格原owner终态与独立31对象前后字节基线一致。网络仍FAIL，socket创建
+从10022变为10013/线程C0000022，无CONNECT/双向交换，具体失败对象未动态证实。
+见[证据](STATUS.md#2026-11-05-3e2原owner31租约与socket10013)。新L3类别/完整GPU/GUI/
+全机IPv6与真实Claude未验收，PRODUCT_DELIVERY_NOT_ACCEPTED。
+
+## 2026-11-05 替代开发通道与Provider范围接入
+
+SOURCE/INTEGRATED/BUILD：原owner新增31对象Provider v3固定资格，旧v1/v2恢复兼容；
+普通权限替代开发通道已执行实际三工程构建0/0，40新策略及原兼容/入口检查通过。
+VERIFIED(31对象原生只读/内容，原28基线逐项相同)。不重启/重包装被拦截运行器、不改AV。
+新系统租约/原地恢复/受保护网络NOT_RUN；尚未固定新安装包。见[证据](STATUS.md#2026-11-05-替代开发通道与provider31候选)。
+原0f1网络FAIL，L3/GPU/GUI/IPv6/真实Claude仍未整体验收，PRODUCT_DELIVERY_NOT_ACCEPTED。
+
+## 2026-11-05 0f1诊断实测与新AV告警
+
+CAPABILITY_DELIVERED(0f1安装版原owner的单次socket数字上下文回执与28对象精确恢复)。
+实际返回10022/线程C0000022，网关交换FAIL；静态转换器对C0000022返回10013，故不能
+据线程状态断言具体失败对象。独立前后28项摘要相同。首次旧Broker哈希helper预检拒绝
+保留；修正固定helper经新具体许可运行，非自动重试。
+用户截图报告命令运行器路径的PDM告警，相关验证停止；告警来源/确切影响未知，不判误报。
+后续三键原生SD读取未取得成功回执。见[证据](STATUS.md#2026-11-05-0f1原生上下文结果与命令运行器告警)。
+没有新L3类别或网络/GPU/GUI/IPv6整体验收，PRODUCT_DELIVERY_NOT_ACCEPTED。
+
 ## 2026-11-05 单次socket创建诊断
 
 SOURCE/INTEGRATED/BUILD：原网关单次原生创建后保存Winsock与线程NT上下文，成功交给
