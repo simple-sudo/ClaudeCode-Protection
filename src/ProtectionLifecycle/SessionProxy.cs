@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Net;
 using System.Net.Security;
 using System.Net.Sockets;
+using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
@@ -294,6 +295,46 @@ internal sealed class SessionProxy : IDisposable
         catch(System.Reflection.TargetInvocationException error)when(error.InnerException is not null)
         {System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(error.InnerException).Throw();throw;}
     }
+    // Same single WSASocketW call and flags as the pinned SocketPal. Capture
+    // thread context before constructing an exception or querying the handle.
+    // LastNtStatus is supporting context, NOT the proven return of NtCreateFile.
+    internal sealed class FixedSocketCreationException : SocketException
+    {
+        internal int LastNtStatus { get; }
+        internal FixedSocketCreationException(int socketError,int lastNtStatus):base(socketError)
+        {LastNtStatus=lastNtStatus;}
+    }
+    [DllImport("ws2_32.dll",ExactSpelling=true,SetLastError=true)]
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
+    private static extern IntPtr WSASocketW(int family,int type,int protocol,IntPtr protocolInfo,uint group,uint flags);
+    [DllImport("ntdll.dll",ExactSpelling=true)]
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
+    private static extern int RtlGetLastNtStatus();
+    internal static Socket CreateFixedClientSocket()
+    {
+        // Resolve this P/Invoke before creation so first-call resolution cannot
+        // replace the context being sampled. Initialization is still explicit.
+        _=RtlGetLastNtStatus();
+        var handle=new SafeSocketHandle();
+        try
+        {
+            var raw=WSASocketW(2,1,6,IntPtr.Zero,0,0x81);
+            var error=Marshal.GetLastPInvokeError();
+            var status=RtlGetLastNtStatus();
+            Marshal.InitHandle(handle,raw);
+            if(handle.IsInvalid)throw new FixedSocketCreationException(error,status);
+            var socket=new Socket(handle);
+            try
+            {
+                if(socket.AddressFamily!=AddressFamily.InterNetwork || socket.SocketType!=SocketType.Stream ||
+                    socket.ProtocolType!=ProtocolType.Tcp || !socket.Blocking || socket.IsBound || socket.Connected)
+                    throw WfpNative.Contract("FixedSocketAdoptionDiffers");
+                return socket;
+            }
+            catch{socket.Dispose();throw;}
+        }
+        catch{handle.Dispose();throw;}
+    }
     internal static async ValueTask<Stream> OpenFixedClientTunnel(string sessionId,string secret,CancellationToken cancel,Action<string>? phase)
     {
         var header=FixedClientConnectHeader(sessionId,secret);
@@ -301,7 +342,7 @@ internal sealed class SessionProxy : IDisposable
         try
         {
             phase?.Invoke("HTTPS_SOCKET_INITIALIZATION");InitializeFixedClientSockets();
-            phase?.Invoke("HTTPS_SOCKET_CREATE");socket=new Socket(AddressFamily.InterNetwork,SocketType.Stream,ProtocolType.Tcp);
+            phase?.Invoke("HTTPS_SOCKET_CREATE");socket=CreateFixedClientSocket();
             phase?.Invoke("HTTPS_CONNECT");await socket.ConnectAsync(new IPEndPoint(IPAddress.Loopback,Port),cancel);
             var stream=new NetworkStream(socket,ownsSocket:true);
             phase?.Invoke("HTTPS_CONNECT_WRITE");

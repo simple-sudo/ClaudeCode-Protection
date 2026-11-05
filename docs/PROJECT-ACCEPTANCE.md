@@ -5,6 +5,14 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-05 单次socket创建诊断
+
+SOURCE/INTEGRATED/BUILD：原网关单次原生创建后保存Winsock与线程NT上下文，成功交给
+公开Socket/owned句柄；无新授权或二次尝试。VERIFIED(110项回执、普通未连接单socket
+不可继承/接管/关闭)。线程NT状态不等于具体内核调用返回；受限身份实测NOT_RUN，
+网络仍FAIL。见[证据](STATUS.md#2026-11-05-同次socket创建原生上下文诊断)。
+没有新L3或产品验收结论，PRODUCT_DELIVERY_NOT_ACCEPTED。
+
 ## 2026-11-05 系统传输租约与socket10022
 
 CAPABILITY_DELIVERED(d00安装版原owner28对象v2租约、v1兼容及closed/zero后精确恢复)。

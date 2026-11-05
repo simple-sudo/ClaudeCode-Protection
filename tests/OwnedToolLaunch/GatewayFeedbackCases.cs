@@ -66,6 +66,23 @@ internal static class GatewayFeedbackCases
         Accept(startupFrame.ToJsonString(),125);
         startupFrame["Errors"]![0]!["Kind"]="SOCKET_STARTUP_PRIVATE_PATH";Refuse(startupFrame.ToJsonString(),125);
         startupFrame=JsonNode.Parse(startupCode)!;startupFrame["Phase"]="HTTPS_SOCKET_CREATE_PRIVATE_PATH";Refuse(startupFrame.ToJsonString(),125);
+        var nativeFailureType=library.GetType("ProtectionLifecycle.SessionProxy+FixedSocketCreationException",true)!;
+        Exception Captured(int status)=>(Exception)Activator.CreateInstance(nativeFailureType,BindingFlags.Instance|BindingFlags.NonPublic,null,new object[]{10022,status},null)!;
+        foreach(var status in new[]{0,unchecked((int)0xc000000d),unchecked((int)0xc0000022)})
+        {
+            var captured=Result("HTTPS_SOCKET_CREATE",125,error:new HttpRequestException("private-fixture",Captured(status)));
+            Accept(captured,125);var pair=JsonNode.Parse(captured)!;
+            Check(pair["Errors"]!.AsArray().Count==3 && pair["Errors"]![1]!["Kind"]!.GetValue<string>()=="SOCKET_CREATE" &&
+                pair["Errors"]![1]!["Code"]!.GetValue<int>()==10022 && pair["Errors"]![2]!["Kind"]!.GetValue<string>()=="SOCKET_NT_CONTEXT" &&
+                pair["Errors"]![2]!["Code"]!.GetValue<int>()==status && !captured.Contains("private-fixture",StringComparison.Ordinal));
+            pair["Phase"]="HTTPS_CONNECT";Refuse(pair.ToJsonString(),125);
+            pair=JsonNode.Parse(captured)!;pair["Errors"]!.AsArray().RemoveAt(2);Refuse(pair.ToJsonString(),125);
+            pair=JsonNode.Parse(captured)!;pair["Errors"]!.AsArray().RemoveAt(1);Refuse(pair.ToJsonString(),125);
+            pair=JsonNode.Parse(captured)!;pair["Errors"]![1]!["Code"]=0;Refuse(pair.ToJsonString(),125);
+        }
+        var deepCaptured=Result("HTTPS_SOCKET_CREATE",125,error:new HttpRequestException("private-fixture",
+            new InvalidOperationException("private-fixture",new InvalidOperationException("private-fixture",Captured(0)))));
+        Accept(deepCaptured,125);Check(JsonNode.Parse(deepCaptured)!["Errors"]![3]!["Kind"]!.GetValue<string>()=="SOCKET");
         var registry=Result("HTTPS_SETTINGS",125,error:new TypeInitializationException("Microsoft.Win32.Registry",new System.Security.SecurityException("private-fixture")));
         Accept(registry,125);Check(JsonNode.Parse(registry)!["Errors"]![0]!["Kind"]!.GetValue<string>()=="REGISTRY_INITIALIZATION" && !registry.Contains("Microsoft.Win32",StringComparison.Ordinal));
         var unknown=Result("HTTPS_SETTINGS",125,error:new TypeInitializationException("private-type-token",new System.Security.SecurityException("private-fixture")));
@@ -108,5 +125,25 @@ internal static class GatewayFeedbackCases
         ProxyCall("InitializeFixedClientSockets");Check(initialized.GetValue(null) is 1);
         ProxyCall("InitializeFixedClientSockets");Check(initialized.GetValue(null) is 1);
         Console.WriteLine($"PASS {count} fixed gateway feedback checks and actual pinned-runtime process-local Winsock initialization/reuse; no exception messages, paths, tokens or raw output; diagnostic only. No socket creation/connections, UAC, child process, protected state, Job or WFP operation.");
+    }
+    [System.Runtime.InteropServices.DllImport("kernel32.dll",SetLastError=true,ExactSpelling=true)]
+    [System.Runtime.InteropServices.DefaultDllImportSearchPaths(System.Runtime.InteropServices.DllImportSearchPath.System32)]
+    [return:System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.Bool)]
+    private static extern bool GetHandleInformation(SafeSocketHandle handle,out uint flags);
+    internal static void RunSocketCreate(Assembly library)
+    {
+        var proxy=library.GetType("ProtectionLifecycle.SessionProxy",true)!;
+        proxy.GetMethod("InitializeFixedClientSockets",BindingFlags.Static|BindingFlags.NonPublic)!.Invoke(null,null);
+        var socket=(Socket)proxy.GetMethod("CreateFixedClientSocket",BindingFlags.Static|BindingFlags.NonPublic)!.Invoke(null,null)!;
+        var handle=socket.SafeHandle;
+        try
+        {
+            if(socket.AddressFamily!=AddressFamily.InterNetwork || socket.SocketType!=SocketType.Stream || socket.ProtocolType!=ProtocolType.Tcp ||
+                socket.IsBound || socket.Connected || !socket.Blocking || handle.IsInvalid || handle.IsClosed ||
+                !GetHandleInformation(handle,out var flags) || (flags&1)!=0)throw new InvalidOperationException("Fixed socket native adoption differs");
+        }
+        finally{socket.Dispose();}
+        if(!handle.IsClosed)throw new InvalidOperationException("Fixed socket ownership did not close");
+        Console.WriteLine("PASS ordinary fixed IPv4/TCP WSASocketW(2,1,6,NULL,0,0x81), public Socket adoption, noninheritance, unbound/disconnected state and owned handle closure. One socket, no bind/connect/listen/send, no LPAC/WFP/system permission changes; not protected-network qualification.");
     }
 }

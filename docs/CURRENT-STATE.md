@@ -1,5 +1,19 @@
 # 当前状态与授权摘要
 
+2026-11-05（America/New_York）接续8a2094f。固定网关客户端已沿原SessionProxy接入一次
+原生WSASocketW(2,1,6,NULL,0,0x81)创建，参数与固定.NET8.0.28 SocketPal相同；失败后在
+异常构造前采集Winsock错误及线程LastNtStatus。仅作为SOCKET_CREATE/SOCKET_NT_CONTEXT
+配对诊断，不把线程状态冒充NtCreateFile确切返回或自动授予重试/扩权。成功后交给公开
+Socket(SafeSocketHandle)，核对IPv4/TCP、未绑定/连接，原网关认证/WFP/owner流程保持。
+
+109固定输入最终三工程BUILD0/0、110项回执/边界检查及普通单socket无连接的创建/接管/
+不可继承/释放通过；六产品非生成语义0/0。SOURCE/INTEGRATED/BUILD，VERIFIED仅上述
+普通参考与回执。安装器仅增加已闭合d00确切前置清单，现场closed/zero及恢复门保持。
+当前实际安装仍d00/INACTIVE，原受限网络10022仍FAIL，新诊断受限运行NOT_RUN。
+下一步固定新候选/安装与原owner一次资格，再按其字节和影响分别审查执行。无新系统
+ACL/WFP操作、全机IPv6/代理/AV改变或真实Claude启动，PRODUCT_DELIVERY_NOT_ACCEPTED。
+[证据](STATUS.md#2026-11-05-同次socket创建原生上下文诊断)。
+
 2026-11-05（America/New_York）原Bootstrap已更新d00a68934f5943c2b63bddae28837769/INACTIVE，
 退出0，15公开资产及指定8回执独立核验通过。另一份具体工具批准与本人UAC后，新的
 `qualify-winsock-transport-session-gateway` 完成28对象租约运行；受限根仍在

@@ -5,6 +5,35 @@
 历史页的“当前/待执行/暂停/DELIVERABLE”按段落日期及限定范围解释，不是今天的状态或操作许可。
 不在本页复制当前安装和授权摘要。
 
+## 2026-11-05 同次socket创建原生上下文诊断
+
+基线8a2094f。本机固定mswsock（AFC5E4EE…）静态分支表明：WSPSocket到helper前剔除
+0x1C0标志，固定TCP helper接受OVERLAPPED；同一提供程序的原生状态转换器对未列举
+失败统一返回10022。因此现有代码不能由10022直接归因参数错误或设备缺权限，需采集
+同一次创建后的原生线程上下文，而不再猜测新增注册表/设备授权。
+参照[固定.NET8.0.28 SocketPal](https://github.com/dotnet/runtime/blob/v8.0.28/src/libraries/System.Net.Sockets/src/System/Net/Sockets/SocketPal.Windows.cs)
+及[公开SafeSocketHandle构造](https://github.com/dotnet/runtime/blob/v8.0.28/src/libraries/System.Net.Sockets/src/System/Net/Sockets/Socket.cs)。
+
+SessionProxy仅一次WSASocketW，参数2/1/6/NULL/0/0x81；SafeSocketHandle预先分配、原生
+句柄立即InitHandle，错误值与LastNtStatus在异常/接管前保存；System32精确DLL解析，
+原生状态读取PInvoke预热，绝不二次socket回退。成功用公开Socket构造并校验原协议和
+未绑定/连接状态，异常及成功关闭沿原owned句柄。只返回数字上下文；该线程值可能来自
+内部其他操作，**不是已证实NtCreateFile返回**，也不能单独证明首个失败对象或授权需求。
+
+GatewayChildReport保留4项上界、session/PID/退出绑定，仅在失败创建阶段接受相邻的
+SOCKET_CREATE/SOCKET_NT_CONTEXT对，拒绝孤立/缺项/错误阶段；深层异常无空间则保留
+普通SOCKET码，不生成残缺对。原有SOCKET/STARTUP、旧schema与正式Claude hold保持。
+Bootstrap只新增d00清单F5754A42…为确切迁移前置，原现场租约/closed/zero/恢复门不变。
+
+证据主目录 `work/socket-context-8a2094f/`，全部输入、初构建与最终构建均保留：
+- `build-payload-final/build-result.json` 129D0E07E186FDA9D8ED91006D9D4DF8A565D6D6BF5C3366D6CC7E6D8010D7D0；109输入，保护库/Broker/专项检查BUILD0/0，同库917EBC6538F9F7FE6083374D295F6215CCF28817A5515F6250548430B1EF29F5。
+- `gateway-feedback-final.stdout.txt` D081203F01C77EEE545E74EFAEC1A82B86652C44464C59E7CDD7B7747B93B778；110项回执及真实固定运行时初始化检查通过，不创建socket。
+- `gateway-socket-create-final.stdout.txt` 0FC38F4B00095A38EA5183E60CB554C7EA01C421DBA400A9A944F80AA392B85F；普通单次固定socket创建、公开接管、不可继承、未绑定/连接及关闭通过，未bind/connect/listen/send。
+- `source-types.json` 3BF9612A4277152A3169323D820071494EFF4F2E04FC8483C5D8F15E09094085；六产品非生成语义0/0（增加确切迁移前置清单前）。普通参考与BUILD不能证明LPAC网络成功。
+
+SOURCE/INTEGRATED/BUILD及VERIFIED(上述普通参考/回执)。没有新安装或系统租约/保护网络
+运行，没有新L3类别结果；原d00 socket10022 FAIL、GPU/GUI/全机IPv6及真实Claude未验收。
+
 ## 2026-11-05 d00系统传输租约与socket10022
 
 基线0fe58c4。固定helper/20文件普通持有预检后，具体工具审批和本人UAC，原Bootstrap
