@@ -5,6 +5,17 @@
 历史页的“当前/待执行/暂停/DELIVERABLE”按段落日期及限定范围解释，不是今天的状态或操作许可。
 不在本页复制当前安装和授权摘要。
 
+## 2026-11-05 socket上下文候选固定
+
+源码cabaac8。新0f1ec8b2bf474e9b9df34daf15a6fd30/UNACTIVATED_PRODUCT清单
+6CDC07DC3CEDEC82D6CCA5B2F705471DC79C9EE99CCB519BB89FBFEDCCF04053；
+`work/socket-context-8a2094f/verified-stage.json` 9EFC61A675682B59185142C6BCF4D22B855207EA959CA1DB86B6B51B2B859D68，
+20文件/内嵌清单静态核验。Bootstrap86输入离线叶构建0/0，使用同一917EBC65…保护库及
+48FE54E5…ref，无保护库重编译；`build-bootstrap/build-result.json`
+A94BE9627330DBB26F48E228982DE87BCF8FE43A3B5EC5A1D81039F150026C36。
+原GUI/日常程序源输入与旧已构建字节核对相同；d00→0f1确切迁移内存门7项通过，未读
+保护状态/执行安装。SOURCE/BUILD，候选尚未获系统安装或新资格行为实测。
+
 ## 2026-11-05 同次socket创建原生上下文诊断
 
 基线8a2094f。本机固定mswsock（AFC5E4EE…）静态分支表明：WSPSocket到helper前剔除
