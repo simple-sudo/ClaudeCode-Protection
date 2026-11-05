@@ -30,8 +30,9 @@ internal static class Program
                     var processed=await WorkspaceProcessing.Run(args[1],args[2]);
                     Console.WriteLine(JsonSerializer.Serialize(processed.Report));return processed.ExitCode;
                 case "workspace-build-csharp":
-                    if(args.Length!=3)return 64;
-                    var callerBuilt=await WorkspaceProcessing.BuildCaller(args[1],args[2]);
+                    var stopInput=args.Length==4 && args[3]==WorkspaceStopControl.ClientFlag && Console.IsInputRedirected;
+                    if(args.Length!=3 && !stopInput)return 64;
+                    var callerBuilt=await WorkspaceProcessing.BuildCaller(args[1],args[2],stopInput);
                     Console.WriteLine(JsonSerializer.Serialize(callerBuilt.Report));return callerBuilt.ExitCode;
                 case "workspace-check-csharp":
                     if(args.Length!=2)return 64;

@@ -12,8 +12,16 @@ if(args.Length==2 && args[0]=="--own-project-client")
     if(args[1]=="complete"){Console.WriteLine("OWN_CLIENT_COMPLETE");return 259;}
     if(args[1]=="wait"){Console.WriteLine("OWN_CLIENT_READY");Console.ReadLine();return 0;}
     if(args[1]=="overflow"){Console.WriteLine(new string('x',65537));Console.ReadLine();return 0;}
+    if(args[1]=="cooperative-stop")
+    {
+        Console.WriteLine("OWN_CLIENT_READY");
+        if(!await WorkspaceStopControl.ReadRequest(Console.OpenStandardInput(),CancellationToken.None))return 125;
+        await Task.Delay(100);
+        Console.WriteLine("OWN_CLIENT_STOP_RECEIPT");return 3;
+    }
     return 125;
 }
+if(args.Length==1 && args[0]=="--project-stop-transport"){Console.WriteLine(await ProjectClientCancellationCases.RunCooperative());return 0;}
 if(args.Length==1 && args[0]=="--edit-task-build"){Console.WriteLine(JsonSerializer.Serialize(ProjectTaskEditCases.RunOrdinaryCompiler()));return 0;}
 if(args.Length!=0)return 125;
 // External to the protection checkout, as required for daily project selection.

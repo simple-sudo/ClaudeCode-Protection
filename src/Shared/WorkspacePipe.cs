@@ -13,7 +13,6 @@ namespace ClaudeCodeProtection.Workspaces;
 // failures retain null flags and an error; a zero flag is an observed value.
 internal sealed record ToolCreationEvidence(uint? ChildProcessPolicy,int? ChildPolicyQueryError,
     uint? ImageLoadPolicy,int? ImagePolicyQueryError,int? ImageExecuteOpenError);
-internal sealed record WorkspaceStopEvidence(bool AdmissionClosed,bool QuarantineObservedBeforeStop,bool? FinalJobZero,int StopFailureCount);
 
 // Local IPC between the ordinary daily UI and its one explicitly elevated
 // installed Broker. v3 is DATA only; v5 requires paired host-resource denials.
@@ -42,7 +41,7 @@ internal static class WorkspacePipe
         var exit=r.GetProperty("ExitCode").GetInt32();var session=r.GetProperty("SessionId").GetString();
         var hash=r.GetProperty("ResultSHA256").GetString();var stage=r.GetProperty("FailureStage").GetString();var kind=r.GetProperty("FailureKind").GetString();
         int? code=r.GetProperty("FailureCode").ValueKind==JsonValueKind.Null?null:r.GetProperty("FailureCode").GetInt32();
-        var creation=ParseCreationEvidence(r.GetProperty("CreationEvidence"));var stop=ParseStopEvidence(r.GetProperty("StopEvidence"));
+        var creation=ParseCreationEvidence(r.GetProperty("CreationEvidence"));var stop=WorkspaceStopEvidence.Parse(r.GetProperty("StopEvidence"));
         if(session is not null && (session.Length!=32 || session.Any(c=>c is not (>= '0' and <= '9' or >= 'a' and <= 'f'))))
             throw new InvalidDataException("Workspace reply session differs");
         if(exit==0)
@@ -54,6 +53,8 @@ internal static class WorkspacePipe
             kind is null || kind.Length is <1 or >80 || kind.Any(c=>!char.IsAsciiLetterOrDigit(c)) || code is null ||
             r.GetProperty("Status").GetString()!=(callerProject?"CALLER_CSHARP_PROJECT_NOT_CONFIRMED":developProject?"BUNDLED_PROJECT_NOT_CONFIRMED":"WORKSPACE_DATA_NOT_CONFIRMED"))throw new InvalidDataException("Workspace failure reply differs");
         if((creation is not null || stop is not null) && (exit==0 || stage!="processing" || session is null))throw new InvalidDataException("Workspace diagnostic session differs");
+        if(kind=="ProjectStopRequested" && (!callerProject || exit!=3 || stage!="processing" || session is null || creation is not null || hasProjectFailure))
+            throw new InvalidDataException("Workspace project stop reply differs");
         if(creation is not null && (kind is not ("PowerShellCreateProcess" or "PowerShellImageExecuteOpen") ||
             kind=="PowerShellCreateProcess" && creation.ImageExecuteOpenError!=0 ||
             kind=="PowerShellImageExecuteOpen" && (creation.ImageExecuteOpenError==0 || creation.ImageExecuteOpenError!=code)))
@@ -94,16 +95,6 @@ internal static class WorkspacePipe
         if((child is null)!=(childError is not null) || (image is null)!=(imageError is not null) || childError==0 || imageError==0 || execute is null)
             throw new InvalidDataException("Unobserved policy cannot become a zero flag");
         return new(child,childError,image,imageError,execute);
-    }
-    private static WorkspaceStopEvidence? ParseStopEvidence(JsonElement value)
-    {
-        if(value.ValueKind==JsonValueKind.Null)return null;
-        RequireFields(value,"AdmissionClosed","QuarantineObservedBeforeStop","FinalJobZero","StopFailureCount");
-        bool Flag(string name){var item=value.GetProperty(name);if(item.ValueKind is not (JsonValueKind.True or JsonValueKind.False))throw new InvalidDataException("Stop observation must be boolean");return item.GetBoolean();}
-        var zero=value.GetProperty("FinalJobZero");bool? finalZero=zero.ValueKind==JsonValueKind.Null?null:Flag("FinalJobZero");
-        var count=value.GetProperty("StopFailureCount");
-        if(count.ValueKind!=JsonValueKind.Number || !count.TryGetInt32(out var failures) || failures is <0 or >1024)throw new InvalidDataException("Stop failure count refused");
-        return new(Flag("AdmissionClosed"),Flag("QuarantineObservedBeforeStop"),finalZero,failures);
     }
     private static void RequireFields(JsonElement value,params string[] expected)
     {

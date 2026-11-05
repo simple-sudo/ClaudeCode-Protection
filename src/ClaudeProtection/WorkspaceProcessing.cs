@@ -12,9 +12,9 @@ internal static class WorkspaceProcessing
         =>await Exchange(inputPath,resultPath,false);
     internal static async Task<(int ExitCode,object Report)> Develop(string inputPath,string resultPath)
         =>await Exchange(inputPath,resultPath,true);
-    internal static async Task<(int ExitCode,object Report)> BuildCaller(string inputPath,string resultPath)
-        =>await Exchange(inputPath,resultPath,true,true);
-    private static async Task<(int ExitCode,object Report)> Exchange(string inputPath,string resultPath,bool developProject,bool callerProject=false)
+    internal static async Task<(int ExitCode,object Report)> BuildCaller(string inputPath,string resultPath,bool stopInput)
+        =>await Exchange(inputPath,resultPath,true,true,stopInput);
+    private static async Task<(int ExitCode,object Report)> Exchange(string inputPath,string resultPath,bool developProject,bool callerProject=false,bool stopInput=false)
     {
         WorkspaceFiles.RequireOrdinaryUser();
         if(callerProject)
@@ -59,6 +59,19 @@ internal static class WorkspaceProcessing
         using(var transfer=new CancellationTokenSource(TimeSpan.FromSeconds(15)))
             await WorkspacePipe.Write(server,input,WorkspaceBundle.MaxBundleBytes,transfer.Token);
         using var completion=new CancellationTokenSource(TimeSpan.FromSeconds(75));
+        if(stopInput)
+            _=Task.Run(async()=>
+            {
+                // The GUI owns this ordinary process's stdin. EOF is common
+                // for command-line automation and does not request a stop.
+                try
+                {
+                    using var inputSignal=Console.OpenStandardInput();
+                    if(await WorkspaceStopControl.ReadRequest(inputSignal,completion.Token))
+                        await server.WriteAsync(new[]{WorkspaceStopControl.Request}.AsMemory(),completion.Token);
+                }
+                catch(Exception error)when(error is IOException or InvalidDataException or OperationCanceledException or InvalidOperationException){}
+            });
         var response=await WorkspacePipe.Read(server,16384,completion.Token);
         var reply=WorkspacePipe.ParseReply(response,expected,developProject,callerProject);var session=reply.SessionId;var resultHash=reply.ResultSHA256;
         if(reply.ExitCode!=0)

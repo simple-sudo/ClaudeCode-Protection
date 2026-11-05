@@ -1,10 +1,62 @@
 using System.Diagnostics;
+using System.IO.Pipes;
 using System.Reflection;
 using System.Text.Json;
+using ClaudeCodeProtection.Workspaces;
 using ProtectionCenter;
 
 internal static class ProjectClientCancellationCases
 {
+    internal static async Task<int> RunCooperative()
+    {
+        var host=@"C:\Program Files\dotnet\dotnet.exe";
+        var start=new ProcessStartInfo(host){UseShellExecute=false,CreateNoWindow=true,WorkingDirectory=AppContext.BaseDirectory,
+            RedirectStandardInput=true,StandardInputEncoding=new System.Text.UTF8Encoding(false),RedirectStandardOutput=true,RedirectStandardError=true};
+        start.Environment.Clear();
+        foreach(var name in new[]{"SystemRoot","windir","SystemDrive","TEMP","TMP"})
+            if(Environment.GetEnvironmentVariable(name) is string value)start.Environment[name]=value;
+        foreach(var argument in new[]{"exec","--fx-version","8.0.28",Assembly.GetExecutingAssembly().Location,"--own-project-client","cooperative-stop"})
+            start.ArgumentList.Add(argument);
+        using var child=Process.Start(start)??throw new IOException("Ordinary stop fixture did not start");
+        try
+        {
+            if(await child.StandardOutput.ReadLineAsync().WaitAsync(TimeSpan.FromSeconds(5))!="OWN_CLIENT_READY")
+                throw new IOException("Ordinary stop fixture not ready");
+            using var cancel=new CancellationTokenSource(TimeSpan.FromMilliseconds(100));
+            var result=await BackendClient.WaitProjectClient(child,host,cancel.Token,cooperativeStop:true).WaitAsync(TimeSpan.FromSeconds(8));
+            if(!cancel.IsCancellationRequested || result.ExitCode!=3 || result.Output.Trim()!="OWN_CLIENT_STOP_RECEIPT" || result.Error.Length!=0)
+                throw new InvalidDataException("Cooperative stop discarded the client's terminal receipt");
+        }
+        finally
+        {
+            if(!child.HasExited){child.StandardInput.Close();if(!child.WaitForExit(5000))throw new IOException("Ordinary stop fixture not terminal");}
+        }
+        var pipeName="CpcProjectStopTest-"+Guid.NewGuid().ToString("N");
+        using var server=new NamedPipeServerStream(pipeName,PipeDirection.InOut,1,PipeTransmissionMode.Byte,PipeOptions.Asynchronous|PipeOptions.CurrentUserOnly);
+        using var client=new NamedPipeClientStream(".",pipeName,PipeDirection.InOut,PipeOptions.Asynchronous);
+        using var deadline=new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        await Task.WhenAll(server.WaitForConnectionAsync(deadline.Token),client.ConnectAsync(deadline.Token));
+        using var pendingCancellation=new CancellationTokenSource();
+        var idle=WorkspaceStopControl.ReadRequest(client,pendingCancellation.Token);
+        pendingCancellation.Cancel();
+        try{await idle.WaitAsync(deadline.Token);throw new InvalidDataException("Idle read did not cancel");}
+        catch(OperationCanceledException)when(idle.IsCanceled){}
+        // Normal completion still has a writable channel after draining the
+        // unused read. A new read accepts only the fixed byte.
+        var response=new byte[1];
+        var receiveReply=server.ReadExactlyAsync(response,deadline.Token);
+        await client.WriteAsync(new byte[]{0x53},deadline.Token);
+        await receiveReply;
+        if(response[0]!=0x53)throw new InvalidDataException("Reply channel changed after cancellation");
+        var receiveStop=WorkspaceStopControl.ReadRequest(client,deadline.Token);
+        await server.WriteAsync(new[]{WorkspaceStopControl.Request},deadline.Token);
+        if(!await receiveStop)throw new InvalidDataException("Fixed stop byte rejected");
+        var receiveInvalid=WorkspaceStopControl.ReadRequest(client,deadline.Token);
+        await server.WriteAsync(new byte[]{0x01},deadline.Token);
+        try{await receiveInvalid;}
+        catch(InvalidDataException){return 4;}
+        throw new InvalidDataException("Unknown control byte accepted");
+    }
     internal static async Task<int> Run()
     {
         var checks=0;

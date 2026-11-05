@@ -15,7 +15,7 @@
     <Compile Include="../Shared/ProxyDestinationPolicy.cs" Link="ProxyDestinationPolicy.cs" />
     <Compile Include="../Shared/StrictEnvironmentRequirements.cs" Link="StrictEnvironmentRequirements.cs" />
     <Compile Include="../Shared/WorkspaceBundle.cs;../Shared/WorkspaceFiles.cs" />
-    <Compile Include="WorkspaceProcessing.cs;WorkspaceInstalledHost.cs;../Shared/WorkspacePipe.cs" />
+    <Compile Include="WorkspaceProcessing.cs;WorkspaceInstalledHost.cs;../Shared/WorkspacePipe.cs;../Shared/WorkspaceStopControl.cs" />
     <Compile Include="../Shared/TextSummarySource.cs" />
     <Compile Include="../Shared/CSharpProjectTask.cs" />
     <Compile Include="../Shared/HostPrivacyContract.cs;../Shared/ProjectFailure.cs" />

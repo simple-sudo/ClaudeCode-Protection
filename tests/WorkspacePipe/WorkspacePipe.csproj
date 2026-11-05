@@ -9,7 +9,7 @@
   </PropertyGroup>
   <ItemGroup>
     <!-- Exact ordinary IPC and output reservation only. No UAC or Broker. -->
-    <Compile Include="Program.cs;../../src/Shared/WorkspacePipe.cs;../../src/Shared/WorkspaceBundle.cs;../../src/Shared/WorkspaceFiles.cs" />
+    <Compile Include="Program.cs;../../src/Shared/WorkspacePipe.cs;../../src/Shared/WorkspaceBundle.cs;../../src/Shared/WorkspaceFiles.cs;../../src/Shared/WorkspaceStopControl.cs" />
     <Compile Include="../../src/Shared/WindowsDirectoryNames.cs;../../src/ProtectionLifecycle/DirectoryNamePage.cs" />
     <Compile Include="../../src/Shared/TextSummarySource.cs" />
     <Compile Include="../../src/Shared/HostPrivacyContract.cs;../../src/Shared/ProjectFailure.cs" />

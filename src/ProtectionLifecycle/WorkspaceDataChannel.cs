@@ -46,7 +46,26 @@ public static partial class InstalledBroker
                 if(callerProject)
                 {
                     if(WorkspaceBundle.Hash(input)!=expected)throw new InvalidDataException("Caller project byte binding differs");
-                    sourceCount=CSharpProjectTask.Parse(input).Definition.Sources.Length;return ProtectedSession.BuildCallerProject(layout,state,version,input,callerLifetime.AssertAlive);
+                    sourceCount=CSharpProjectTask.Parse(input).Definition.Sources.Length;
+                    // The authenticated daily peer can only stop this invocation.
+                    // Keep its pipe and process alive for the original stop receipt.
+                    using var receiveStop=new CancellationTokenSource();
+                    var request=WorkspaceStopControl.ReadRequest(channel,receiveStop.Token);
+                    void AssertCallerRunning()
+                    {
+                        callerLifetime.AssertAlive();
+                        if(!request.IsCompleted)return;
+                        if(request.GetAwaiter().GetResult())throw WfpNative.Contract(WorkspaceStopControl.RequestedStage);
+                        throw WfpNative.Contract("WorkspaceProjectControlPipeClosed");
+                    }
+                    try{return ProtectedSession.BuildCallerProject(layout,state,version,input,AssertCallerRunning);}
+                    finally
+                    {
+                        receiveStop.Cancel();
+                        try{_=request.GetAwaiter().GetResult();}
+                        catch(OperationCanceledException)when(receiveStop.IsCancellationRequested){}
+                        catch(Exception error)when(error is IOException or InvalidDataException){} // The active supervision checks handle a failed control read.
+                    }
                 }
                 TextSummarySource.RequireBaseline(input);
                 return ProtectedSession.DevelopBundledProjectForCaller(layout,state,version,callerLifetime.AssertAlive);
@@ -116,6 +135,9 @@ public static partial class InstalledBroker
                     diagnostic.ValueKind!=JsonValueKind.Null && ProjectFailureStageMatches(projectChild.GetProperty("FailureStage").GetString()) &&
                     projectChild.GetProperty("ToolExit").ValueKind==JsonValueKind.Number && projectChild.GetProperty("ToolExit").GetInt32()!=0)
                 {projectFailure=ProjectFailureContract.Parse(diagnostic,sourceCount);failureKind="ProjectTaskFailed";}
+                if(callerProject && r.GetProperty("Failures").EnumerateArray().Any(error=>
+                    error.GetProperty("Stage").GetString()==WorkspaceStopControl.RequestedStage))
+                {projectFailure=null;creationEvidence=null;failureKind="ProjectStopRequested";}
             }
         }
         catch(Exception ex){exit=125;output=null;resultHash=null;creationEvidence=null;stopEvidence=null;hostPrivacy=null;ownerSealedBeforeCode=false;projectFailure=null;failureStage=stage;failureKind=ex.GetType().Name;failureCode=ex is Win32Exception native?native.NativeErrorCode:ex.HResult;}

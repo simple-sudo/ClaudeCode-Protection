@@ -57,6 +57,7 @@ internal static class BackendClient
         using var reviewed=HoldReviewedInput(inputPath,expectedSHA256);
         var executable=Path.Combine(Root,"bin","current","ClaudeProtection.exe");
         var info=new ProcessStartInfo(executable){UseShellExecute=false,CreateNoWindow=true,WorkingDirectory=Root,
+            RedirectStandardInput=true,StandardInputEncoding=new System.Text.UTF8Encoding(false),
             RedirectStandardOutput=true,RedirectStandardError=true,StandardOutputEncoding=System.Text.Encoding.UTF8,StandardErrorEncoding=System.Text.Encoding.UTF8};
         info.Environment.Clear();
         foreach(var name in new[]{"SystemRoot","windir","SystemDrive","TEMP","TMP","USERPROFILE","LOCALAPPDATA","APPDATA","ProgramFiles","ProgramFiles(x86)","ProgramW6432","PROCESSOR_ARCHITECTURE"})
@@ -64,15 +65,30 @@ internal static class BackendClient
         info.Environment["PATH"]=@"C:\Program Files\dotnet;C:\Windows\System32;C:\Windows";
         info.Environment["DOTNET_ROOT"]=@"C:\Program Files\dotnet";info.Environment["DOTNET_ROLL_FORWARD"]="LatestPatch";
         info.ArgumentList.Add("workspace-build-csharp");info.ArgumentList.Add(inputPath);info.ArgumentList.Add(resultPath);
+        info.ArgumentList.Add(WorkspaceStopControl.ClientFlag);
         cancellation.ThrowIfCancellationRequested();
         using var process=Process.Start(info)??throw new IOException("项目调用未能启动");
-        return await WaitProjectClient(process,executable,cancellation);
+        return await WaitProjectClient(process,executable,cancellation,cooperativeStop:true);
     }
     // Only receives the process returned by the immediately preceding ordinary
     // Start. No PID lookup/tree stop or elevated-owner management is provided.
-    internal static async Task<BackendResult> WaitProjectClient(Process process,string executable,CancellationToken cancellation)
+    internal static async Task<BackendResult> WaitProjectClient(Process process,string executable,CancellationToken cancellation,bool cooperativeStop=false)
     {
         var created=process.StartTime.ToFileTimeUtc();_=process.SafeHandle;
+        using var signalLifetime=CancellationTokenSource.CreateLinkedTokenSource(cancellation);
+        async Task SendStop()
+        {
+            try{await Task.Delay(Timeout.Infinite,signalLifetime.Token);}
+            catch(OperationCanceledException){}
+            if(!cancellation.IsCancellationRequested)return;
+            try
+            {
+                await process.StandardInput.BaseStream.WriteAsync(new[]{WorkspaceStopControl.Request}.AsMemory());
+                await process.StandardInput.BaseStream.FlushAsync();
+            }
+            catch(Exception error)when(error is IOException or InvalidOperationException){}
+        }
+        var stopRequest=cooperativeStop?SendStop():Task.CompletedTask;
         try
         {
             async Task<string> ReadBounded(StreamReader reader,int maximum)
@@ -81,7 +97,7 @@ internal static class BackendClient
                 while(true){var count=await reader.ReadAsync(buffer);if(count==0)return text.ToString();if(text.Length+count>maximum)throw new IOException("项目调用输出超出上限");text.Append(buffer,0,count);}
             }
             var output=ReadBounded(process.StandardOutput,65536);var error=ReadBounded(process.StandardError,16384);
-            using var deadline=CancellationTokenSource.CreateLinkedTokenSource(cancellation);deadline.CancelAfter(TimeSpan.FromSeconds(180));
+            using var deadline=CancellationTokenSource.CreateLinkedTokenSource(cooperativeStop?CancellationToken.None:cancellation);deadline.CancelAfter(TimeSpan.FromSeconds(180));
             var exited=process.WaitForExitAsync(deadline.Token);
             // Stop on a failed drain while the client is still running. Once a
             // pipe exceeds its bound, further writes can block that client.
@@ -94,12 +110,14 @@ internal static class BackendClient
                 await second;
             }
             await exited;
-            cancellation.ThrowIfCancellationRequested();
+            if(!cooperativeStop)cancellation.ThrowIfCancellationRequested();
             var stdout=await output.WaitAsync(TimeSpan.FromSeconds(1));var stderr=await error.WaitAsync(TimeSpan.FromSeconds(1));
             return new(process.ExitCode,stdout,stderr);
         }
         finally
         {
+            signalLifetime.Cancel();
+            await stopRequest;
             if(!process.HasExited)
             {
                 if(process.StartTime.ToFileTimeUtc()!=created || !SameProjectClientImage(process.MainModule?.FileName,executable))

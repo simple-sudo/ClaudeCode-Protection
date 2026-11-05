@@ -224,11 +224,15 @@ internal sealed class CenterWindow : Window
             projectCancellation=cancel;RefreshActions();
             try{result=await BackendClient.BuildCallerProject(run.InputPath,run.ResultPath,project.InputSHA256,cancel.Token);}
             finally{projectCancellation=null;RefreshActions();}
-            cancel.Token.ThrowIfCancellationRequested();
             if(result.ExitCode!=0 || result.Error.Length!=0)
             {
                 var message=project.DescribeFailure(result);activity.Text=message;
                 details.Text+="\r\n\r\n"+message;return;
+            }
+            if(cancel.IsCancellationRequested)
+            {
+                activity.Text="项目已结束并返回结果，取消请求未使本次运行停止。结果未自动提取。";
+                details.Text+="\r\n"+activity.Text;return;
             }
             var restored=await Task.Run(()=>project.AcceptResult(run,result));
             details.Text=restored.ReviewText+"\r\n本次仅核对所列的"+ClaudeCodeProtection.Workspaces.HostPrivacyContract.Roles.Length+"项资源/权限；其他保护范围尚未完整验收。\r\n本次运行目录："+run.Directory;

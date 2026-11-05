@@ -170,6 +170,14 @@ internal sealed class CallerProjectSession
             var session=r.GetProperty("SessionId").GetString()??"";
             if(session.Length!=32 || session.Any(c=>!char.IsAsciiHexDigitLower(c)))return fallback;
             var kind=r.GetProperty("FailureKind").GetString();
+            if(kind=="ProjectStopRequested" && result.ExitCode==3 && r.GetProperty("ProjectFailure").ValueKind==JsonValueKind.Null &&
+                r.GetProperty("CreationEvidence").ValueKind==JsonValueKind.Null)
+            {
+                var stop=WorkspaceStopEvidence.Parse(r.GetProperty("StopEvidence"));
+                return stop is {AdmissionClosed:true,QuarantineObservedBeforeStop:true,FinalJobZero:true,StopFailureCount:0}
+                    ?"保护侧已关闭本次准入，确认先隔离再停止，且本次项目进程组已归零。结果未释放。"
+                    :"保护侧收到取消请求，本次项目的关闭证据不完整。结果未释放。";
+            }
             var sealedBeforeCode=r.GetProperty("OwnerSealedBeforeCode").GetBoolean();
             if(kind=="ResourceSessionFailed" && !sealedBeforeCode && r.GetProperty("ProjectFailure").ValueKind==JsonValueKind.Null &&
                 r.GetProperty("HostPrivacy").ValueKind==JsonValueKind.Object)

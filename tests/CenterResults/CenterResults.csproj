@@ -12,7 +12,7 @@
     <Compile Include="../../src/Shared/ProjectFailure.cs" />
     <Compile Include="../../src/ProtectionCenter/WorkspaceResultSession.cs" Link="WorkspaceResultSession.cs" />
     <Compile Include="ProjectClientCancellationCases.cs;ProjectEditQueueCases.cs;ProjectTaskEditCases.cs;../../src/ProtectionCenter/ProjectEditQueue.cs;ProjectFlowCases.cs;../../src/ProtectionCenter/CallerProjectSession.cs;../../src/ProtectionCenter/BackendClient.cs" />
-    <Compile Include="../../src/ClaudeProtection/WorkspaceInstalledHost.cs;../../src/Shared/CSharpProjectTask.cs;../../src/Shared/HostPrivacyContract.cs;../../src/Shared/UserDataPaths.cs" />
+    <Compile Include="../../src/ClaudeProtection/WorkspaceInstalledHost.cs;../../src/Shared/CSharpProjectTask.cs;../../src/Shared/HostPrivacyContract.cs;../../src/Shared/UserDataPaths.cs;../../src/Shared/WorkspaceStopControl.cs" />
     <Compile Include="../../src/Shared/WorkspaceBundle.cs" Link="WorkspaceBundle.cs" />
     <Compile Include="../../src/Shared/WorkspaceFiles.cs" Link="WorkspaceFiles.cs" />
     <Compile Include="../../src/Shared/WindowsDirectoryNames.cs" Link="WindowsDirectoryNames.cs" />
