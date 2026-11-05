@@ -1,5 +1,23 @@
 # 当前状态与授权摘要
 
+2026-11-04（America/New_York）`d9da34c2525041c6bb2e6c41f717034b` 已由原Bootstrap完成
+未激活更新，退出0。本人UAC及本次具体工具审批后，原owner核验现有6800前置、准入关闭、
+Job和隔离等现场门禁；独立核对15项已安装公开资产长度、摘要和非重解析路径，匹配清单
+`88B0AA52D63C4614B6431327AB3735172332454DF039DBBC9C9214B3938F29B4`，Activation=INACTIVE。
+
+该安装版已完成两次分别审批的原离线项目验证。固定CallerDataReport在六项新编译器
+读面门禁下完成声明编辑、编译、运行、3测试和11文件导出，Count=3/Total=12。
+随后固定12秒等待任务在原owner运行期间收到普通daily的唯一停止信号，回执为
+`ProjectStopRequested`、OwnerSealedBeforeCode=true、准入关闭、先隔离再停止、
+FinalJobZero=true、零停止错误，结果保持0字节。单次观察在发送后208ms收到终态，
+仅为此场景的控制器观测值。CAPABILITY_DELIVERED(d9da安装版离线开发与本次项目协作停止回执)。
+实际GUI点击、其他会话/外部进程和网络连接排空仍NOT_RUN，不能提示可关闭FlClash或恢复IPv6。
+[证据](STATUS.md#2026-11-04-d9da未激活安装与原项目停止实测)。
+
+上述安装与两次项目授权均已消耗，现场无自动重试或恢复。最新安装为d9da；
+受保护代理联网仍受Winsock10107阻塞，新增主机名/卷序列号路径及完整L3矩阵、正式Claude、
+GPU资格与全机IPv6生命周期尚待验收。PRODUCT_DELIVERY_NOT_ACCEPTED。
+
 2026-11-04（America/New_York）接续 `e897a85`。本机x64 `ws2_32.dll` 静态链确认：
 `WSAStartup` 初始进程对象构造检查 `TokenIsAppContainer`，真分支用
 `RegOpenKeyExA(HKLM, System\CurrentControlSet\Services\WinSock2\Parameters, 0, KEY_READ)`；

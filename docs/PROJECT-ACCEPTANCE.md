@@ -5,6 +5,15 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-04 d9da安装版开发与协作停止
+
+CAPABILITY_DELIVERED(d9da原离线项目开发及本次项目停止回执)。
+新门禁下固定数据项目正常完成编辑/编译/运行/3测试/11文件导出，固定等待项目经普通入口
+发出停止请求，原owner返回关闭准入、先隔离后停止、同Job归零和零停止错误。
+安装版清单、实际输入和回执见[实测记录](STATUS.md#2026-11-04-d9da未激活安装与原项目停止实测)。
+范围仅为固定离线项目。GUI实点、其他/外部Claude进程族、网络连接排空、FlClash安全关闭、
+IPv6恢复、正式Claude、GPU与完整L3仍未验收。PRODUCT_DELIVERY_NOT_ACCEPTED。
+
 ## 2026-11-04 固定离线编译器真实内容证据
 
 CAPABILITY_DELIVERED(6800原离线编译器固定真实内容探针与可信侧对照)。

@@ -5,6 +5,38 @@
 历史页的“当前/待执行/暂停/DELIVERABLE”按段落日期及限定范围解释，不是今天的状态或操作许可。
 不在本页复制当前安装和授权摘要。
 
+## 2026-11-04 d9da未激活安装与原项目停止实测
+
+原Bootstrap在固定保护目录更新6800→d9da34c2525041c6bb2e6c41f717034b，退出0。
+工具具体审批与本人UAC后，固定helper仅拷贝20项已持有/核对字节并调用 `update-inactive`。
+原安装器执行原现场关闭与所有权门禁，固定helper回读选择为INACTIVE，独立复核15项公开
+资产与清单一致。未执行安装后网关测试。安装核验SHA256
+`759A186E2773BF6947C6FF78B2125AD00F1EF04A58EA235CBD10852C30DBCB2A`，
+证据根 `work/winsock-appcontainer-branch-6800/`。普通预检首版因PowerShell包装类型不能
+传入String而拒绝，显式取基础String后通过；拒绝发生在UAC/系统操作之前。
+
+两项新项目各经具体工具审批及本人UAC，使用此安装版的daily→原Broker→ProtectedSession→
+LPAC/Job和原三actor封存/六项编译器读面门禁。固定非秘密CallerDataReport输入保留原
+摘要B530770FA523DCC12532702D9D312DD0F02FE143FB42BB4B90F7A0559F2DDECE，
+完成原声明编辑、编译、运行、3测试、11文件导出；普通复核生成Count=3/Total=12及
+逐文件摘要。公开回执SHA256
+`B26F7490D87DE57278B08A46050162A7951371F8C17AA17F4D5AF9F230CB0B66`。
+
+取消任务固定输入SHA256 `49ADCA496DC02CD46C0139E5AF1F22238DB17C7F2AE0050A8733AD0ABC624B53`，
+仅两文件、一个常量编辑、12秒进程内等待与一次测试。普通控制器持有新daily及新出现的
+唯一已安装Broker元数据身份，观察owner后8017ms向自己daily的stdin写固定停止字节。
+原Broker返回 `ProjectStopRequested`，OwnerSealedBeforeCode=true，三actor33/33/28观察存在。
+回执明确AdmissionClosed=true、QuarantineObservedBeforeStop=true、FinalJobZero=true、
+StopFailureCount=0，结果未释放且预留文件0字节。发送至收到终态的控制器单次观察为208ms，
+不推导其他机器、网络或正式Claude响应时限。回执SHA256
+`BEE32E62E8790E39509B927E397C5CC4E44A177D313C7D3CD90F4C4A83B6851E`，
+信号记录SHA256 `48E2E9A6C8A3893B46555C6BFDCF7BBEE3ED34999E72E6970DF16FE146BB5D0B`。
+证据根 `work/installed-d9da-development-stop/`。
+
+CAPABILITY_DELIVERED(d9da原离线任务在新门禁下运行及本次任务协作停止回执)。
+没有GUI实际点击、其他会话/未知外部进程停止或网络排空验证，没有新L3内容对照。
+三次本次具体高影响授权已消耗，未读取额外私有错误/raw Job/Stop，也未强停owner或重试。
+
 ## 2026-11-04 定位Winsock AppContainer分支并固定停止候选
 
 本机x64 `ws2_32.dll` SHA256 `89F6CE4B21C5D78488B5ACE0B7AAD937AB7DA12C0928AD9B2ECDF59CA9AD6B95`。
