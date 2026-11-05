@@ -5,6 +5,15 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-05 自身默认DACL实际验证未修复AFD
+
+VERIFIED(原owner真实LPAC自身模板128→164→128精确修改/恢复，身份/权限不变，20文件
+闭合导出独立一致)。同参数AFD endpoint仍C0000022，因此不接入产品联网路径。
+网卡/TCP4/TCP6三个真实内容API前后返回5、同用户普通真实参考成功；范围内的实际内容
+拒绝对照成立，其他API/资源和全面L3未验收。没有正常Socket、HTTPS、GPU身份隔离、
+GUI/IPv6或正式Claude新交付。见[证据](STATUS.md#2026-11-05-自身默认dacl实际修改恢复成功endpoint仍拒绝)。
+PRODUCT_DELIVERY_NOT_ACCEPTED；本次单次许可消耗，不重跑或扩大权限。
+
 ## 2026-11-05 实际token默认对象ACL与候选规则
 
 真实LPAC自身原始权限/默认DACL读取及原owner闭合导出已核验：遍历权限已启用，默认

@@ -23,6 +23,7 @@
     <Compile Include="SessionWinsockReadAccess.cs" />
     <Compile Include="ProxyChannel.cs;NetworkQualification.cs" />
     <Compile Include="GpuQualification.cs" />
+    <Compile Include="GpuIdentityObservation.cs" />
     <Compile Include="ProcessLocalRevocation.cs" />
     <Compile Include="ProtectionRuntimeLease.cs" />
     <Compile Include="SessionProxy.cs;GatewayDestinationGuard.cs;GatewayChildReport.cs;ProtectedSession.cs" />

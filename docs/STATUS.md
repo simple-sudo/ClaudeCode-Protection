@@ -5,6 +5,56 @@
 历史页的“当前/待执行/暂停/DELIVERABLE”按段落日期及限定范围解释，不是今天的状态或操作许可。
 不在本页复制当前安装和授权摘要。
 
+## 2026-11-05 AFD分层访问与CUDA真实身份参考
+
+新增GpuIdentityObservation.cs，固定cuInit/驱动版本/设备数/ordinal0/名称/总显存/UUIDv1/
+UUIDv2/LUID九项本机元数据读取；独立保留每项实际状态与DLL/导出不可用，初始化失败后
+不假造设备结果。不创建context、不分配GPU内存、不执行kernel/model，底层驱动实现
+可能自行使用IOCTL，不能把“未主动调用AFD IOCTL”扩张为整个CUDA无驱动请求。
+CUuuid按16 octets保留顺序，不用Windows GUID混合端序。代码仅可信评估，不输出正式
+Claude工具通道，不授予准入或任何设备权限。签名核对[NVIDIA文档](https://docs.nvidia.com/cuda/archive/12.8.2/cuda-driver-api/group__CUDA__DEVICE.html)。
+
+新tests/DeviceBoundary固定5项打开/关闭，普通1003及本人1001均实测：Device目录遍历
+及AFD根READ_CONTROL|SYNCHRONIZE成功；相同EA的endpoint零权限拒绝C0000022，
+读写同步与原权限成功。所有持有handle闭合且成功handle非继承，没有连接/AFD IOCTL/
+ACL或Token写入。普通零权限也拒绝的反例保留，不能据其推断LPAC命名空间或驱动拒绝。
+同用户CUDA九项均0，两个UUID同真实nvidia-smi；可信普通参考不是LPAC泄漏。
+
+新86源/资源输入保护库及普通工具BUILD0错误0警告。device-stage候选复用原TokenFacts，
+加入上述两个精确源码及有界Entry/Checks；5源/163引用非生成语义0诊断，现装
+workspace-check-csharp确认74DBF27870EA1828BC844F6FC5E2BB6897C4FE7FDD39206726DA5E2A23F9328F
+6文件输入、1声明修改、预计12结果文件，CodeExecuted=false。新受限运行仍NOT_RUN，
+未发新UAC或改变Token/设备/网络。普通真实原值、构建及候选材料均留同一主证据目录的
+device-stage/；不复活前次DACL操作许可。源码/普通参考属SOURCE/BUILD+VERIFIED(scope)，
+不当作受限联网/GPU计算/标识隔离或完整产品交付。
+
+## 2026-11-05 自身默认DACL实际修改恢复成功，endpoint仍拒绝
+
+本人具体批准固定539E84F959470BE12574EF2821A8888597E17C67F04E0817A03CDB72B90C3C12
+控制器及8523C4F0D30E01181C69FD67DEDC326458415921AB9D8F6B625C525D6992BCC2输入。
+Codex正式工具直接启动，本人UAC；原daily句柄18156终态0，原owner会话
+e052114703a24e4c95078503f33ed800，root34972/tool22232。精确20文件及声明修改、输入和
+结果016967B6E7FF8C26BDC5CE13C563A33751FB4ECEE48EE063BDCE613B3D43EEAE独立匹配。
+原owner成功闭合才导出；未读取额外私有error/rawJob/Stop或调用恢复。
+
+真实LPAC自身默认DACL原128字节→164字节，实际User GA唯一增加；setter一次/恢复一次，
+身份/package/AccessCheck2/low/cap0及原始权限不变，最终原DACL与原身份/权限完全一致。
+单次原生endpoint仍C0000022，EA168D8752…，owned handle关闭，无bind/connect/IOCTL。
+修改前后网卡及TCP4/TCP6内容API各返回5（SIZE阶段），无成功内容；同用户普通1001
+真实8网卡/135 TCP4/11 TCP6参考成立，1003参考网卡/MAC一致。动态数量属于顺序采样，
+不作原子连接差异推断。只完成三条路径的真实内容尝试与可信原值对照，不是全面L3。
+
+核验work/network-content-3cf6fc0-20261105/verified-result.json SHA256
+2BDCAA3AB8CADF2D7FFB47F3CD34C44E1C960CA3DB97E193D5DDA5976D12D9B5；
+endpoint-and-l3-analysis.json SHA256
+1169D2D932935158FD85E13084F8B578F9DFFBAA29AAE7CF5EB2615C2BAB85AE。
+原始内容/所有回执留本机。AV/BFE仍Running；进程为空仅为附加观察，不替代闭合证明。
+普通nvidia-smi元数据查询返回0，保留真实型号/驱动/显存/UUID，serial N/A；无计算、无
+驱动修改，不推导LPAC可读或GPU能力交付。
+
+VERIFIED(自身模板精确修改/恢复、实际endpoint拒绝和上述内容路径对照)。候选未修复
+AFD，不接入产品调用或重试同一假设；正常Socket与强制代理HTTPS仍未成功。
+
 ## 2026-11-05 从3cf6fc0恢复：真实宿主网络内容参考与可信解码
 
 用户恢复持续开发。新源码NetworkContentSnapshot.cs只处理有界留存字节：固定x64 ABI、

@@ -1,7 +1,26 @@
 # 自有受限进程未来对象默认 DACL 候选
 
-SOURCE / BUILD，普通组件范围 VERIFIED；尚未接入任何创建/资格路径，未安装、未调整真实
-LPAC token，不能证明 endpoint 或网络已修复。最新运行/授权只见 CURRENT-STATE。
+SOURCE / BUILD；2026-11-05原owner单次真实LPAC进程内修改/精确恢复已VERIFIED，
+endpoint仍拒绝C0000022。产品创建/网关资格路径仍无调用点，未安装新库。
+该候选不能作为AFD修复接入，最新运行/授权只见 CURRENT-STATE。
+
+## 2026-11-05 单次实际验证：修改生效但endpoint仍拒绝
+
+本人明确批准539E84F9…/8523C4F0…，原owner会话e052114703a24e4c95078503f33ed800。
+自身token模板128→164→128，User GA精确增加/移除，实际LPAC/package/low/cap0、权限
+及最终原DACL均独立一致；未改变已有宿主对象ACL。原EA168D8752…下单次NtCreateFile
+仍返回C0000022，非成功IoStatus的零值不覆盖真实失败。handle关闭，未连接或IOCTL。
+
+前后真实GetAdaptersAddresses(flags0x80)、GetExtendedTcpTable(AF2/23,class5)各三次
+内容获取均在SIZE返回5，未得到缓冲原值。同用户普通1001真实参考8网卡/135条TCP4/
+11条TCP6可读，1003普通参考网卡/MAC逐项一致。仅说明这三条访问路径在该变化前后
+拒绝；不证明其他资源/替代API、跨进程/新对象及整体L3安全，也不证明正常Socket。
+
+20文件、原输入及唯一声明修改独立验证；原owner封存后运行、闭合后释放结果。证据
+work/network-content-3cf6fc0-20261105/verified-result.json（2BDCAA3A…）与
+endpoint-and-l3-analysis.json（1169D2D9…）。本次许可消耗，不重跑；不扩大设备权限、
+capability或降低LPAC。后续定位须区分命名空间/访问掩码/驱动层，不继续重复此setter。
+下文保留形成候选时的依据和机制，不将静态解释追认为实际故障根因。
 
 ## 依据与候选范围
 

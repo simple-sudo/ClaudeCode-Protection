@@ -1,5 +1,34 @@
 # 当前状态与授权摘要
 
+2026-11-05继续收敛失败原因并独立推进GPU：新增GpuIdentityObservation源码（仅可信评估，
+不进正式Claude通道），固定9项CUDA元数据调用，无context/显存分配/kernel/model。
+普通1003及本人1001真实CUDA v1/v2 UUID均与nvidia-smi一致，型号/显存/驱动/LUID读取
+成功；这不是受限泄漏或计算证明。新NativeBoundary固定5项普通参考：Device目录遍历、
+AFD根READ_CONTROL|SYNCHRONIZE及endpoint零权限/读写同步/原权限。本人1001前三类中
+零权限endpoint同样C0000022，其余4项成功且非继承handle闭合；因此不能用“零权限也拒绝”
+单独定位LPAC故障层。新86输入保护库与普通参考工具BUILD0/0，候选5源语义0诊断，
+现装workspace-check-csharp验证74DBF278…输入但CodeExecuted=false。新device-stage
+拟在原owner原LPAC中仅做相同5项访问与CUDA真实标识获取，不改Token/ACL/capability；
+预计12文件闭合导出。新受限运行NOT_RUN，须固定新控制器及具体人类决定，不能重用
+前一次已消耗许可。主证据仍work/network-content-3cf6fc0-20261105，原值不提交。
+
+2026-11-05本人具体批准控制器539E84F9…/输入8523C4F0…后，Codex正式工具发起、本人UAC，
+原句柄终态0，会话e052114703a24e4c95078503f33ed800由原owner闭合导出20文件。独立核验
+输入/全部文件hash/唯一声明修改通过。真实LPAC的自身默认DACL确实128→164字节，
+只增加实际User GA，身份/package/low/AccessCheck2/cap0及原权限不变；精确恢复128字节，
+最终DACL/身份/权限与修改前完全一致。但同EA168D8752…的单次AFD endpoint仍返回
+C0000022、owned handle已闭；候选不能修复该拒绝，禁止将此setter接入产品网络路径或
+重复同一假设。前后GetAdaptersAddresses及TCP4/TCP6内容尝试均在SIZE阶段返回5，无内容。
+同用户普通1001实际参考8网卡/135条TCP4/11条TCP6可读，工具1003参考与其网卡/MAC一致。
+VERIFIED(精确自身Token模板修改/恢复、同身份endpoint拒绝及上述3条真实内容路径的前后
+拒绝对照)，不是全面L3或Socket/HTTPS成功。原owner封存、闭合导出和隔离链保持；不读
+额外私有error/rawJob/Stop、不另行恢复。本次许可已消耗，不重跑。核验摘要2BDCAA3A…，
+分析1169D2D9…均在work/network-content-3cf6fc0-20261105，原值不提交。
+普通GPU元数据参考实际成功取得NVIDIA型号/驱动/显存/UUID，序列号N/A；该结果仅可信
+宿主可见，尚未执行新LPAC GPU身份读取/计算，不能算泄漏或GPU隔离通过。
+下一步区分对象命名空间/实际请求权限与驱动内返回阶段，保持无设备ACL或capability扩权；
+独立推进GUI/IPv6 owner生命周期。现装3e2/INACTIVE，网络FAIL，正式Claude继续延期。
+
 2026-11-05用户从3cf6fc0明确恢复持续产品开发，替代下文阶段结束后的暂停要求；高影响
 Token/UAC/安装/WFP/IPv6/正式Claude操作仍需各自具体决定，旧单次许可不复活。
 本轮新增可信侧NetworkContentSnapshot有界解码器（不解引用历史指针、不签发准入），
