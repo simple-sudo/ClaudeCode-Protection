@@ -145,9 +145,14 @@ internal sealed class ProxyChannelLease : IDisposable
     private static uint ListenerOwner()=>ReadLoopbackOwner(CompiledFencePolicy.ProxyPort,null);
     internal static uint SessionPeerOwner(int sourcePort)=>ReadLoopbackOwner(sourcePort,SessionProxy.Port);
     internal static uint SessionListenerOwner()=>ReadLoopbackOwner(SessionProxy.Port,null);
+    internal static uint QueryTcpOwnerTableSize(bool ipv6,out uint size)
+    {
+        size=0;
+        return GetExtendedTcpTable(IntPtr.Zero,ref size,false,ipv6?23u:2u,5,0);
+    }
     private static uint ReadLoopbackOwner(int localPort,int? remotePort)
     {
-        uint size=0;var first=GetExtendedTcpTable(IntPtr.Zero,ref size,false,2,5,0);
+        var first=QueryTcpOwnerTableSize(false,out var size);
         if(first!=122 || size is <4 or >1024*1024)throw new WfpFailure("SizeProxyOwnerTable",first);
         for(var attempt=0;attempt<4;attempt++)
         {
@@ -167,6 +172,7 @@ internal sealed class ProxyChannelLease : IDisposable
     }
     public void Dispose(){if(disposed)return;disposed=true;image.Dispose();directory.Dispose();process.Dispose();}
     private static Win32Exception Error(string stage){var e=new Win32Exception(Marshal.GetLastWin32Error());e.Data["Stage"]=stage;return e;}
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
     [DllImport("iphlpapi.dll",ExactSpelling=true)] private static extern uint GetExtendedTcpTable(IntPtr table,ref uint size,[MarshalAs(UnmanagedType.Bool)] bool sorted,uint family,int tableClass,uint reserved);
     [DllImport("kernel32.dll",SetLastError=true)] private static extern SafeProcessHandle OpenProcess(uint access,[MarshalAs(UnmanagedType.Bool)] bool inherit,uint pid);
     [DllImport("kernel32.dll",SetLastError=true)] private static extern uint WaitForSingleObject(SafeProcessHandle process,uint milliseconds);

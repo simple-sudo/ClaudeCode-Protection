@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Net.NetworkInformation;
 using System.Runtime.InteropServices;
 using System.Security.Principal;
 using System.Text;
@@ -17,6 +18,10 @@ internal sealed partial class HostPrivacyProbe : IDisposable
     private sealed record Plan(string SessionId,string InstallationId,string Release,Target[] Targets);
     private sealed record RestrictedTarget(string Role,string Kind,string Path,int Pid,bool OwnerObservedAbsent);
     private sealed record RestrictedPlan(int SchemaVersion,string SessionId,string InstallationId,string Release,RestrictedTarget[] Targets);
+    private sealed record CompilerNetworkReads(int Adapters,uint Tcp4Size,uint Tcp6Size)
+    {
+        internal bool Denied=>Adapters==5 && Tcp4Size==5 && Tcp6Size==5;
+    }
     private readonly Plan plan;
     private readonly List<SafeProcessHandle> processes;
     private readonly HostPrivacyExecutionGate execution;
@@ -40,6 +45,12 @@ internal sealed partial class HostPrivacyProbe : IDisposable
     }
     internal static HostPrivacyProbe Capture(string session,string installation,string release)
     {
+        // The offline compiler's refusal only counts on a host where these
+        // same APIs are reachable. Keep the returned host data in memory.
+        if(NetworkInterface.GetAllNetworkInterfaces().Length==0 ||
+            ProxyChannelLease.QueryTcpOwnerTableSize(false,out var size4)!=122 || size4<4 ||
+            ProxyChannelLease.QueryTcpOwnerTableSize(true,out var size6)!=122 || size6<4)
+            throw WfpNative.Contract("HostNetworkReadPositiveControlMissing");
         using var human=WindowsIdentity.GetCurrent();var sid=human.User?.Value??throw WfpNative.Contract("HostPrivacyHumanMissing");
         var profile=Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
         var roaming=Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
@@ -130,12 +141,25 @@ internal sealed partial class HostPrivacyProbe : IDisposable
         using var file=new FileStream(WindowsPathSeal.Open(ReportPath(workspace,actor),false,true),FileAccess.Read);
         if(file.Length is <1 or >16384)throw WfpNative.Contract("HostPrivacyReportBounds");
         var bytes=new byte[(int)file.Length];file.ReadExactly(bytes);using var json=JsonDocument.Parse(bytes,new JsonDocumentOptions{MaxDepth=4});
-        var r=json.RootElement;HostPrivacyContract.Fields(r,"SchemaVersion","SessionId","PlanSHA256","Pid","Cases");
+        var r=json.RootElement;
+        if(actor=="project")
+            HostPrivacyContract.Fields(r,"SchemaVersion","SessionId","PlanSHA256","Pid","Cases","NetworkReads");
+        else
+            HostPrivacyContract.Fields(r,"SchemaVersion","SessionId","PlanSHA256","Pid","Cases");
         foreach(var c in r.GetProperty("Cases").EnumerateArray())HostPrivacyContract.Fields(c,"Role","Kind","Status","Error");
         var result=JsonSerializer.Deserialize<HostPrivacyObservation>(bytes)??throw WfpNative.Contract("HostPrivacyReportMissing");
         if(result.SchemaVersion!=1 || result.SessionId!=plan.SessionId || result.PlanSHA256!=SHA256 || result.Pid!=expectedPid)
             throw WfpNative.Contract("HostPrivacyActorBindingDiffers");
-        if(actor=="project")HostPrivacyContract.ValidateCompilerCases(result.Cases);else HostPrivacyContract.ValidateCases(result.Cases);
+        if(actor=="project")
+        {
+            HostPrivacyContract.ValidateCompilerCases(result.Cases);
+            var network=r.GetProperty("NetworkReads");
+            HostPrivacyContract.Fields(network,"Adapters","Tcp4Size","Tcp6Size");
+            var reads=new CompilerNetworkReads(network.GetProperty("Adapters").GetInt32(),
+                network.GetProperty("Tcp4Size").GetUInt32(),network.GetProperty("Tcp6Size").GetUInt32());
+            if(!reads.Denied)throw WfpNative.Contract("CompilerHostNetworkReadsNotDenied");
+        }
+        else HostPrivacyContract.ValidateCases(result.Cases);
         return result;
     }
     internal bool ExecutionReleased=>execution.ExecutionReleased;
@@ -279,9 +303,21 @@ internal sealed partial class HostPrivacyProbe : IDisposable
         }).ToArray();
         HostPrivacyContract.ValidateCompilerCases(observations);
         var report=new HostPrivacyObservation(1,resource.Nonce,resource.HostPrivacySHA256,Environment.ProcessId,observations);
+        // Any result other than explicit access denied refuses execution. A
+        // TCP sizing response alone does not establish content exposure.
+        var network=new CompilerNetworkReads(ObserveAdapterRead(),
+            ProxyChannelLease.QueryTcpOwnerTableSize(false,out _),ProxyChannelLease.QueryTcpOwnerTableSize(true,out _));
         using(var output=new FileStream(ReportPath(workspace,"project"),FileMode.CreateNew,FileAccess.Write,FileShare.None))
-        {JsonSerializer.Serialize(output,report);output.Flush(true);}
-        return observations.All(c=>c.Status=="ACCESS_DENIED" && c.Error==5);
+        {
+            JsonSerializer.Serialize(output,new {report.SchemaVersion,report.SessionId,report.PlanSHA256,report.Pid,report.Cases,NetworkReads=network});
+            output.Flush(true);
+        }
+        return network.Denied && observations.All(c=>c.Status=="ACCESS_DENIED" && c.Error==5);
+    }
+    private static int ObserveAdapterRead()
+    {
+        try{_=NetworkInterface.GetAllNetworkInterfaces();return 0;}
+        catch(NetworkInformationException error){return error.NativeErrorCode;}
     }
     private static string ReportPath(string workspace,string actor)=>WindowsPathSeal.Child(workspace,"host-privacy-"+actor+".json");
     // Request only FILE_READ_DATA, asynchronously: no denial caused solely by

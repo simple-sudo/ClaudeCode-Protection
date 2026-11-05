@@ -5,6 +5,16 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-04 固定离线编译器真实内容证据
+
+CAPABILITY_DELIVERED(6800原离线编译器固定真实内容探针与可信侧对照)。
+实际普通宿主参考与原LPAC编译器的同路径内容尝试由原三actor执行门、关闭导出及摘要核对绑定。
+范围限于网卡枚举、双栈TCP owner表、两条固定注册表读取及本地时区；时区失败原因UNKNOWN，
+其他工具/API、正式Claude等价性及完整L3矩阵未验收。原生Winsock仍FAIL 10107。
+新编译器门禁SOURCE / INTEGRATED / BUILD，新候选安装和原生运行NOT_RUN。
+[证据范围](STATUS.md#2026-11-04-6800离线真实内容对照与编译器门禁)。
+PRODUCT_DELIVERY_NOT_ACCEPTED。
+
 ## 2026-11-04 固定离线数据项目的三actor封存与结果交付
 
 范围：已安装6800070c、固定五文件CallerDataReport、原daily→Broker→ProtectedSession→LPAC/Job

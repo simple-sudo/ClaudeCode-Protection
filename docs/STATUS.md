@@ -5,6 +5,33 @@
 历史页的“当前/待执行/暂停/DELIVERABLE”按段落日期及限定范围解释，不是今天的状态或操作许可。
 不在本页复制当前安装和授权摘要。
 
+## 2026-11-04 6800离线真实内容对照与编译器门禁
+
+经单次工具审批及本人UAC，原6800070c daily→Broker→ProtectedSession→LPAC/Job离线链运行
+固定三文件C#探针。原owner先封存33/33/28项三actor观察，完成声明的常量编辑、编译、
+执行及一次自检，通过原关闭和导出门后释放九文件。独立复核输入、精确编辑、逐文件摘要、
+原owner会话与编译器PID。未发起外联，未读取额外私有错误或raw Job/Stop。
+公开回执SHA256 `80D99B44AF498417206C38264D1685E209DA83F1D79B8342605C8E7DE7D4160C`。
+
+| 对照路径 | 可信宿主实际结果 | 受限编译器实际结果 |
+| --- | --- | --- |
+| WSCEnumProtocols、原生 WSAStartup(2.2) | 14项，启动0 | 目录-1/错误8、原生启动10107，未创建套接字 |
+| .NET 网卡与网络属性 | 标识、MAC、地址、网关、DNS真实返回 | 枚举拒绝5 |
+| GetExtendedTcpTable IPv4/IPv6 owner表 | 真实端点与PID，快照可关联FlClashCore及GameViewerServer | 两种地址族均拒绝5 |
+| 固定注册表值 | MachineGuid和BIOS SystemFamily真实返回 | 两条路径SecurityException，无字段返回 |
+| TimeZoneInfo.Local | 实际时区ID | TypeInitializationException，原因和替代路径UNKNOWN |
+
+可信侧能从端点和PID关联代理与远控软件；普通读取未核实创建时间连续性，未推断运营商或
+所在地。另有可信侧GPU UUID及FlClash四项非认证配置原值。普通WLAN返回5、四类CIM查询
+失败，SSID/BSSID、CIM硬件原值和这些补充路径的受限侧结果尚未取得。目录差异未定位
+具体注册表键或提供程序，不能归因于FlClash/AV。私有原值及输入留在 `work/l3-host-content-6800/`；
+对照摘要SHA256 `8B6973CBAE5E359C8F8476FA2FF16883CD792C5E756646CD7037D362CC8D04A2`。
+
+新源码在原编译器私有报告加入三项状态码，由原owner在放行前严格核对。TCP大小探测本身
+不导出连接值。82输入的ProtectionLifecycle/ProtectionBroker离线BUILD 0/0，两份库字节一致。
+BUILD回执SHA256 `5177FFB831E3BC003BCE054B732552A2889966611CC6C51E12A14B747AE5B2EB`。
+六产品工程非生成语义检查0/0。新候选INTEGRATED/BUILD，安装和受限执行NOT_RUN。
+
 ## 2026-11-04 6800运行与测试失败反馈实测
 
 同一固定五文件CallerDataReport示例保留原求和修改，每次只增加一项声明的修改。两次均核对
