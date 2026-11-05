@@ -4,6 +4,10 @@
 > 现行要求见[SECURITY-REQUIREMENTS](SECURITY-REQUIREMENTS.md)，当前授权/最近安装观察见
 > [CURRENT-STATE](CURRENT-STATE.md)。既有日常环境保护原则保留，历史配置描述不能当作本次实时核验。
 
+## 2026-11-04 用户新操作顺序（仅设计）
+
+原文2026-10-25“只在自己所属 Claude 会话范围内叠加限制”是历史侧重点，不再排斥新增的用户主动全机原生 IPv6 临时出站阻断。正式顺序：打开保护程序→「准备启动」并先阻断 IPv6→用户手动打开 FlClash Global + TUN→「开始检查」通过→保护程序「启动 Claude Code」；退出时「一键关闭所有 Claude 进程」且 owner 核验安全→用户手动关闭 FlClash→返回 GUI「恢复 IPv6」。代理故障不自动恢复，Claude 永久防直连独立于全机 IPv6 恢复。详细需求见[SECURITY-REQUIREMENTS](SECURITY-REQUIREMENTS.md)与[生命周期 V1](PROTECTED-STARTUP-SHUTDOWN-LIFECYCLE-V1.md)。当前未修改真实网络/启动权限。
+
 用户于 2026-10-25 明确说明：平时通常开启 FlClash 全局模式，日常网络几乎都经代理。所给截图显示全局模式、系统代理、虚拟网卡开启。
 
 ## 设计约束

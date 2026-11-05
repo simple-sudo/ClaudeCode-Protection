@@ -28,6 +28,15 @@ group SID作唯一restricting SID；不增加enabled group/capability，不模�
 结果直接授予registryRead。没有新安装、ACL/服务/网络改动或真实Claude启动；现有零能力链不变。
 真实会话网络资格和完整产品交付仍未成立，自评/画像仍DESIGN。
 
+**2026-11-04 用户新需求（仅文档，DESIGN / NOT_RUN）**：新增
+[受保护启动与安全退出生命周期 V1](PROTECTED-STARTUP-SHUTDOWN-LIFECYCLE-V1.md)：
+先打开保护 GUI 点击「准备启动」并确认全机原生 IPv6 出站阻断，用户手动开启 FlClash Global + TUN，
+返回点「开始检查」通过后再由 GUI「启动 Claude Code」。退出时先「一键关闭所有 Claude 进程」
+并由 owner 核验关闭/网络排空，允许用户自行关闭 FlClash，返回 GUI 才能显式恢复普通 IPv6。
+代理意外故障绝不自动恢复 IPv6，Claude 独立持久防直连规则在普通系统 IPv6 恢复后仍有效。
+这只是开发目标录入，不是当前已安装的全机 IPv6/正式 Claude 功能，不更改6800安装与 Winsock10107
+失败、固定离线开发成功证据或具体高影响操作授权。
+
 本轮已通过正式工具人工审批及本人UAC，使用现有6800日常入口→原Broker完成一次固定离线
 CallerDataReport任务：五文件输入、声明的源码修改、实际编译/运行/3测试、11文件导出与
 普通新目录还原成功。原owner在代码前封存三actor隐私观察；根/独立探针各33项中32拒绝5、

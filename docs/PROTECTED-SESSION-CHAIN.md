@@ -3,6 +3,11 @@
 > 文档效力（2026-11-02）：机制/阶段记录。所有“当前安装”和待办均按各段日期解释；后续工作区能力不使旧固定资格入口成为正式会话旁路。P0自我保护接入应复用原所有者，仍需新增具体实现与验证。
 > 最新状态/授权只见[CURRENT-STATE](CURRENT-STATE.md)，正式目标与术语见[SECURITY-REQUIREMENTS](SECURITY-REQUIREMENTS.md)。以下旧状态与操作许可不自动延续。
 
+## 2026-11-04 原会话所有者新增入口要求（仅设计）
+
+新 GUI 要依次提供「准备启动」先阻断全机原生 IPv6 外联、提醒用户手动打开 FlClash Global + TUN、「开始检查」通过后「启动 Claude Code」；使用**现有** InstalledBroker→ProtectedSession→LPAC/Job/WFP 可信原子入口，不允许普通 Claude 先运行再补沙箱。退出「一键关闭所有 Claude 进程」，owner 先撤销授权/转发并精确封闭原 Job/通道，核对结果后提示用户手动关 FlClash，之后 GUI 才能请求独立恢复普通 IPv6。代理故障保持 Claude 永久拒绝直连和全机 IPv6 阻断，不自动恢复。具体状态与验收工作包见[生命周期 V1](PROTECTED-STARTUP-SHUTDOWN-LIFECYCLE-V1.md)。
+以上 REQUIREMENT_ONLY / DESIGN / NOT_RUN，旧固定离线项目与 synthetic 网关不可冒充正式 Claude 准入。
+
 2026-10-27；首轮 `04e7419`，后续继续同一所有者。本文件描述源码与限定接线，不代表完整会话已验收。
 2026-10-29当前安装659d76df保持INACTIVE：同一SessionResources使用daily共享数据包实现材料化三文件项目，原Git处理/独立全部对象核对通过；Job完整隔离/关闭归零后生成原包绑定结果，再精确清理52项。安装daily普通用户可比较结果。
 任意项目字节进入Broker仍缺可信一次性工作区授权与持久成果交付，不接受任意包、宿主路径或命令来绕过正式准入。
