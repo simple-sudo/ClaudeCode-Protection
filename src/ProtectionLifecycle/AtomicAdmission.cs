@@ -504,10 +504,10 @@ internal sealed class AtomicChild : IDisposable
                 result=GatewayChildReport.Result(id,phase,125);
             else
             {
-                // LPAC registry opens require registryRead, regardless of this
-                // resource's DACL. Use only the original owner's public calendar
-                // with a pinned managed compatibility adapter; never add that
-                // broad capability or treat the adapter as a privacy boundary.
+                // The historical leaf-only lease did not repair predefined
+                // hive mapping. Use the original owner's public calendar
+                // with a pinned managed compatibility adapter; never add
+                // registryRead or treat the adapter as a privacy boundary.
                 phase="TIMEZONE_PUBLIC_CACHE";
                 PublicTimeZoneSnapshot.ApplyForFixedWorker(
                     Environment.GetEnvironmentVariable("CPC_PUBLIC_TIMEZONE_SNAPSHOT")??throw new InvalidDataException("FixedPublicTimeZoneSnapshotMissing"),

@@ -9,6 +9,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="RestrictingSidCases.cs" />
+    <Compile Include="WinsockRegistryScopeCases.cs" />
     <Compile Include="Program.cs;TimeZoneReadCases.cs;GatewayFeedbackCases.cs;GatewayQualificationBoundaryCases.cs;ProjectFailureExecutionCases.cs;ControlFileGateCases.cs;WorkspaceCallerLifetimeCases.cs;MaintenanceIdentityCases.cs;ResetSettingsFileCases.cs;PrivacyProbeClosureCases.cs" />
     <EmbeddedResource Include="../../samples/CallerDataReport/cpc-project.json" LogicalName="DataFixture.cpc-project.json" />
     <EmbeddedResource Include="../../samples/CallerDataReport/src/Entry.cs" LogicalName="DataFixture.src/Entry.cs" />

@@ -1,5 +1,26 @@
 # 当前状态与授权摘要
 
+2026-11-04（America/New_York）接续 `a04316e`，已安装版本仍为d9da/INACTIVE。
+原离线LPAC编译器的新实测推翻了“零capability必然不能打开任何注册表键”的过宽判断。
+只在本人新建的专属volatile测试键上加精确package、无继承KEY_READ后，直接NtOpenKey读取
+真实Marker成功；同一进程经预定义HKU的RegOpenKeyExW返回5，三个原生根键打开均拒绝。
+真实MachineGuid及Winsock目录仍为 `0xC0000022`，未取得值。原owner封存、归零和导出完成，
+专属键授权随后精确移除。首次输入误用了工具隔离账户SID，正控制无效，已保留并单独更正。
+
+本机KernelBase静态路径显示预定义根映射先请求MAXIMUM_ALLOWED句柄。另一次普通本人账户
+只读实测确认，父键只有READ_CONTROL的句柄仍能按标准API打开合法子键，父键值查询返回5。
+这支持下一候选将HKLM根权限缩小为READ_CONTROL，不能视为已实测系统根租约或网络修复。
+新增内部 `WinsockRegistryScope` 固定25个x64目标（HKLM根仅READ_CONTROL、14协议/5命名空间
+目录），只生成权限描述符及检查范围，**没有接入原owner或改变系统权限**。105固定输入两工程
+离线BUILD 0错误/0警告，48项内存权限策略检查通过，六产品非生成语义0/0。首版测试的可空性
+编译失败保留。SOURCE / BUILD / VERIFIED(上述实际离线访问与普通句柄、内存策略)。
+
+下一工作是把该最小范围接到原owner的租约日志、持有检查、closed/zero恢复及固定资格链，
+完成具体候选后再按其字节和影响审查一次系统验证。不能重跑旧时区/系统实验或把新范围扩张为
+registryRead。两次离线任务与普通只读句柄检查的具体授权均已消耗。没有新安装、系统键ACL
+变更、socket/CONNECT、FlClash/UU/IPv6变化或真实Claude启动。Winsock10107修复、完整L3、
+GPU和产品验收仍未成立。[证据](STATUS.md#2026-11-04-区分lpac叶子授权与预定义根映射)。
+
 2026-11-04（America/New_York）`d9da34c2525041c6bb2e6c41f717034b` 已由原Bootstrap完成
 未激活更新，退出0。本人UAC及本次具体工具审批后，原owner核验现有6800前置、准入关闭、
 Job和隔离等现场门禁；独立核对15项已安装公开资产长度、摘要和非重解析路径，匹配清单

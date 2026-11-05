@@ -17,6 +17,7 @@
     <Compile Include="../Shared/WindowsDirectoryNames.cs" />
     <Compile Include="AtomicAdmission.cs" />
     <Compile Include="RestrictingSidToken.cs" />
+    <Compile Include="WinsockRegistryScope.cs" />
     <Compile Include="ProxyChannel.cs;NetworkQualification.cs" />
     <Compile Include="GpuQualification.cs" />
     <Compile Include="ProcessLocalRevocation.cs" />

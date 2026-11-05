@@ -5,6 +5,47 @@
 历史页的“当前/待执行/暂停/DELIVERABLE”按段落日期及限定范围解释，不是今天的状态或操作许可。
 不在本页复制当前安装和授权摘要。
 
+## 2026-11-04 区分LPAC叶子授权与预定义根映射
+
+基线 `a04316e`，原d9da未激活安装未变。只在本人HKCU下新建专属volatile测试键，精确
+package SID一条无继承KEY_READ，不改现有键或系统ACL。原owner的离线项目链、三actor
+执行前封存及既有六项编译器网卡/TCP/UDP/SMBIOS拒绝门继续生效。
+
+首次 `work/registry-root-mapping-a04316e/` 输入由工具隔离账户准备，SID末尾1003，实际控制器
+本人为1001，导致可信/受限两侧均查错对象。原任务退出0且按对象检查移除授权，但该机制正控制
+标为INVALID_POSITIVE_CONTROL。未把NOT_FOUND算为安全拒绝，也未重跑同一输入。
+
+随后单独审批的修订 `work/registry-root-mapping-a04316e-r2/` 固定实际owner SID及新键02。
+普通正控制的原生/标准Marker和真实MachineGuid必须成功，才可请求原Broker的本人UAC。
+输入SHA256 `4EE0500FF115D8B668CF414296F572C75D5A9DF79FB3D576DECFBF1B9A43FA57`。
+同一实际LPAC编译器直接NtOpenKey取得精确授权叶子Marker，而标准RegOpenKeyExW经预定义
+HKU返回5。原生HKLM/HKU/本人根均 `0xC0000022`；真实MachineGuid和Winsock目录同样拒绝，
+可信对照取得真实MachineGuid与目录版本2.0。PID绑定到原ToolPid，33/33/28检查，9文件回包
+所有摘要和唯一定义编辑独立核验。结果回包SHA256
+`2A101DE49963737DAF84FC8BDBDFBFC3D3773F0D985BAD7A336B57D640A3CF48`，owner回执
+`B470DDE1D56C78E4908E6EF2C49C91277E991470324EE1CD001CF6CCC77854CF`。
+成功导出后精确移除测试授权，两个测试键保留本次启动期间的普通owner证据。真实值仅留本机。
+汇总 `verified-evidence.json` SHA256
+`EDB9D79DAFBDBDC0B4FAB8E7DD7FE1ECD8A77E54DF61ADA72CDCACE23BB28902`。
+
+本机KernelBase SHA256 `8E8499FC4750EBC487A30CD07DC7DB635BA6DBE9B66F83EC695A5AF70B71C07C`，
+预定义根映射代码先请求MAXIMUM_ALLOWED，再经HKLM回调打开根对象。静态链文件SHA256
+`E58F2C4A5DD9250CFA65F5C82F544B72FE33646511B5AD542275F6276EE8222B`，非内部动态跟踪。
+另一次分别审批的普通本人只读检查，父键句柄仅READ_CONTROL仍能经RegOpenKeyEx打开原测试
+子键，父键值查询5，未改变任何键；记录SHA256
+`43F7473BA2C71BE86A97FE84483862EA2825900FAA1B364A9906775E81BC4F37`。
+
+新增内部WinsockRegistryScope，仅定义HKLM根READ_CONTROL与固定14协议/5命名空间的25个
+x64精确目标、无继承权限描述符、列表与权限漂移拒绝策略。不执行ACL写入或授予capability，
+尚未接入ProtectedSession/恢复/安装。105输入的原保护库与专项目标测试两工程BUILD 0/0，
+两库SHA256同为 `98AE74DFE94D3FD8DBBB0A86C3D8AC2D6A6DBBF5D30C35751CF5F4D75E0FF58D`。
+首版仅测试可空性CS8602编译失败，修正后在全新build-scope-r2通过，保留首版日志。
+构建汇总SHA256 `087BF5F69A35CE39E505CB4B85D556E04F579863B569D8EAEA0740B067A7B536`。
+固定唯一 `winsock-registry-scope` 模式48项内存策略检查通过，回执SHA256
+`1EC29C5FD693C0A2870D5C1C74024626CE615877FA9CE6EF2BECB38601A11FB7`。
+六产品非生成语义0/0，记录SHA256 `5D3A423D2240CC86C4412459B2C4A6B9A05146C44D9742EDBB0C267E2CA8EBD2`。
+上述BUILD/普通/实际LPAC范围分别保留，不能合并成新系统租约、正式网络或产品验收。
+
 ## 2026-11-04 d9da未激活安装与原项目停止实测
 
 原Bootstrap在固定保护目录更新6800→d9da34c2525041c6bb2e6c41f717034b，退出0。

@@ -74,7 +74,23 @@ SOURCE/BUILD/INTEGRATED；36固定非秘密地址检查及精确前置选择通�
 
 V2 用严格且有界的 JSON 整数字段传递偏移、日期和夏令时转换规则，以公开构造 API 恢复；保留真实 ID、规则、摘要和本次会话绑定。16KiB 与128条规则上限、不支持或非规范规则拒绝、固定运行时布局检查仍生效。不使用 `TimeZoneInfo.FromSerializedString`：其[转换时间读取](https://github.com/dotnet/runtime/blob/v8.0.28/src/libraries/System.Private.CoreLib/src/System/TimeZoneInfo.StringSerializer.cs)经日期解析可在绑定之前触发本地时间和注册表初始化。本机固定 CoreLib IL 与冷缓存回归支持这一源码缺陷，新版普通读取确认两缓存未提前初始化。该证据不替代真实 LPAC/HTTPS 测试。
 
-历史 SessionTimeZoneReadAccess 的两键 KEY_READ 租约及原恢复记录继续保留。LPAC 打开注册表另需 capability，单改两键 DACL 已证明不足，不再作为新修复方案。历史租约仅按原严格归属、原 Job durable closed/zero和逐键恢复门处理；未知 ACL 漂移不擦除、不合并，不自动恢复或重试。
+历史 SessionTimeZoneReadAccess 的两键 KEY_READ 租约及原恢复记录继续保留。其当时未修复时区初始化，不能推导零capability永远无法读取精确授权叶子键；后续实际原生叶子读取与标准API根映射的区别见下。旧两键租约不自动重启，历史恢复仍要求原严格归属、原 Job durable closed/zero和逐键检查；未知ACL漂移不擦除、不合并，不自动恢复或重试。
+
+## 预定义根映射与固定Winsock权限候选
+
+实际d9da离线LPAC在普通owner新建的专属键上，直接NtOpenKey取得精确package授权的Marker，
+标准RegOpenKeyExW经预定义HKU仍拒绝5。三个根对象的原生打开也拒绝。该结果限定于本机、
+本次实际身份和键，纠正此前“所有叶子打开硬性需要registryRead”的过宽解释。
+[完整实测](STATUS.md#2026-11-04-区分lpac叶子授权与预定义根映射)包含真实MachineGuid正控制及受限拒绝。
+
+本机KernelBase静态链显示根映射先请求MAXIMUM_ALLOWED；普通只读父句柄试验进一步确认
+READ_CONTROL足以按标准API打开合法子键，而自身值查询仍拒绝。新增WinsockRegistryScope
+只固定25个x64目标及权限描述符，HKLM根仅READ_CONTROL，无值查询/子键枚举/继承；其余为
+当前14协议/5命名空间目录的精确KEY_READ键，不包括32位目录、AppId_Catalog、其他系统树。
+列表、ControlSet范围、掩码、既有权限及唯一package ACE检查在内存执行。该候选尚无系统
+写入、租约日志、恢复接入或网络实测，不改变现有零capability/LPAC/Job/WFP/owner。
+必须完成原owner归属日志、持续持有/漂移检查及closed/zero后精确恢复，再审查具体系统候选。
+原时区兼容适配保持，registryRead不是候选权限；公开API的进程内重映射也未采用。
 
 最新安装、失败、授权及验证范围只见 CURRENT-STATE。7aa的原单次测试停于 TIMEZONE_PUBLIC_CACHE；后续8aee已安装，固定LPAC根越过V2时区初始化及本地绑定，在HTTPS_CONNECT返回SOCKET10107，尚无HTTP成功或双向写入见证。该错误根因未知，不能直接推断为权限、代理或AV问题。原失败不重写，不自动重跑。系统审查草案及普通回归不是人类操作许可。
 

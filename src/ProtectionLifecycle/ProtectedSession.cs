@@ -684,7 +684,7 @@ internal sealed class ProtectedSession
             }
             child=AtomicChild.CreateSession(layout,state,version,job,profile,preparation,feedbackPipe?.ClientSafePipeHandle.DangerousGetHandle()??IntPtr.Zero);
             feedbackPipe?.DisposeLocalCopyOfClientHandle();
-            // Zero-capability LPAC cannot open registry keys. The fixed worker
+            // This worker has no predefined registry hive mapping lease. It
             // receives only the original owner's public calendar, not a new
             // host ACL lease. Historical journal recovery remains separate.
             runtime=new ProtectionRuntimeLease(state,version,job,fences,upstream,gateway,preparation:preparation);

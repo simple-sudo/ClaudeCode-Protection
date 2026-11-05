@@ -5,6 +5,15 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-04 注册表根映射与最小权限候选
+
+VERIFIED(d9da原离线LPAC编译器在精确package叶子授权下原生读取成功、标准API根映射拒绝；
+普通READ_CONTROL父句柄打开合法子键且值查询拒绝)。首次SID错配正控制无效，失败保留。
+真实MachineGuid/Winsock值未在受限侧返回，授权移除有原对象检查。见[证据](STATUS.md#2026-11-04-区分lpac叶子授权与预定义根映射)。
+WinsockRegistryScope为SOURCE/BUILD/48项内存策略检查，未接入原owner、未安装或修改系统ACL。
+尚未证明HKLM根与目录租约在同一LPAC中可用，未修复Winsock10107、未进行socket/CONNECT，
+不能计为网络能力交付、完整L3或PRODUCT_DELIVERY_ACCEPTED。
+
 ## 2026-11-04 d9da安装版开发与协作停止
 
 CAPABILITY_DELIVERED(d9da原离线项目开发及本次项目停止回执)。
