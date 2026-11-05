@@ -5,6 +5,40 @@
 历史页的“当前/待执行/暂停/DELIVERABLE”按段落日期及限定范围解释，不是今天的状态或操作许可。
 不在本页复制当前安装和授权摘要。
 
+## 2026-11-05 a149安装与Winsock初始化突破
+
+源码97cf12b，具体工具批准及本人UAC后，原Bootstrap按固定前置d9da完成a149f2f3a8e44dd0b1dc664c13df57bc
+INACTIVE更新，原helper终态0。15公开资产长度/摘要/非重解析路径与F0F03EDE…清单匹配，
+8个指定安装回执复制保留，核验 `verified-installed.json` SHA256
+`926942716F6D73111A52AA83970AEE2F3E613261B61FCCE48879FA91F99AA167`。
+实际安装不运行产品工作负载，不授予正式Claude启动；旧d9da保留。
+
+随后另一份具体范围审查、工具批准及本人UAC，`gateway-once/` 固定新命令
+qualify-winsock-session-gateway，仅已安装原Broker→ProtectedSession→原Job/LPAC/WFP/
+网关的固定canary。25个注册表对象先日志、根最后添加精确package无继承最小读权限；
+持续持有、实际目录摘要、准入、Job和网关绑定检查保持。没有registryRead或网络能力扩权。
+实际恢复执行成功，根越过单独的同一运行时EnsureInitialized，失败阶段转为
+HTTPS_SOCKET_CREATE / HTTP -2147467259 / SOCKET 5，子进程退出125，owner退出3。
+SessionId=790d54f10be54856a2d1e81f89461f18，JobId=08c3d443987449939e3dbf5bd9d18943。
+原始公开报告SHA256 `A2E6E62F82DFBB527032671F42D14086308B6EDB7DEE8A4D007DC73446A690E4`。
+没有进入网关连接/CONNECT写入，双向交换见证false，HTTP状态null；网络验收为FAIL。
+
+原公开报告确认AdmissionClosed=true、QuarantineObservedBeforeStop=true，QuarantineAtMs与
+JobStopAtMs同为305；同Job ActiveBefore/After=0、ProcessIds为空、limits8192，停止错误为空。
+25对象Restored=true，原意图摘要4B8800539E738E3BCD3E655A7E2FD6A7BD74B2EEEA8C27C875079E592B6FF625。
+原owner终态由持有句柄确认，helper终态125也保留，不把具体网络失败改成总体成功。
+独立普通只读原生25对象及目录内容摘要与租约前完全相同，回读输出SHA256
+`B0CC774CBD2800441D59672E62A1FF6A5B3CB5BD80F2D169D23BEA53B91CCC8A`。
+汇总 `verified-gateway-result.json` SHA256
+`93321C84E8C66B2EFC97C697880A49D2FF377700980E8D1F2CD2D025D9BC86B0`。
+没有额外读取既有私有错误/rawJob/Stop，没有重试或自动inspect/recovery，没有全机IPv6、
+FlClash/UU、AV变更或真实Claude。完整L3/GPU/GUI及产品验收仍未成立。
+
+CAPABILITY_DELIVERED(a149原owner系统Winsock25对象最小权限租约、持续持有与closed/zero
+后精确恢复)。VERIFIED(此次受限根Winsock初始化通过、socket创建失败)，不能扩大为网络能力交付。
+下一步定位socket创建的实际失败对象/原生状态；单个SOCKET5不足以归因到AFD、网络capability、
+AV或WFP。本机mswsock只读导入显示NtCreateFile/注册表接口，静态元数据不是动态失败证据。
+
 ## 2026-11-05 原生Winsock候选固定
 
 接续60784df，`work/winsock-native-candidate-60784df/` 固定a149f2f3a8e44dd0b1dc664c13df57bc

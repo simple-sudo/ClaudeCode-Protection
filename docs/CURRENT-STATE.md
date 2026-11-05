@@ -1,5 +1,22 @@
 # 当前状态与授权摘要
 
+2026-11-05（America/New_York）a149f2f3已由原Bootstrap完成未激活更新（退出0），15公开
+安装文件的长度/摘要/非重解析路径独立核对通过。本人UAC与具体工具审批后，新的原owner
+`qualify-winsock-session-gateway` 已实际执行：25对象最小读权限租约精确添加和恢复，
+原受限根已越过Winsock初始化，随后在 `HTTPS_SOCKET_CREATE` 返回SOCKET/5、根退出125、
+owner退出3，没有网关双向交换或CONNECT成功。旧10107不再是本次失败点，**网络仍FAIL**。
+
+原公开回执确认关闭准入、先隔离再停止、同Job零成员及零停止错误，WinsockReadResource
+KeyCount=25/Restored=true。独立原生只读回读25对象及内容摘要，与原始基线逐项完全相同，
+根仍无P/AI、无残留本次package ACE。CAPABILITY_DELIVERED(a149固定原owner系统Winsock
+最小权限租约与closed/zero后精确恢复)，不等于固定网络交换、全部隐私或完整产品交付。
+
+现场版本为a149/INACTIVE，清单F0F03EDE…，库FA5BF36F…；本次安装、资格与事后只读
+具体许可已消耗，无自动重试/额外私有错误/rawJob/Stop或恢复调用。没有改FlClash/UU、
+全机IPv6、AV或启动真实Claude。下一工作定位套接字创建的实际失败对象/状态；不能从
+错误5直接归因到设备、网络capability、AV或WFP，也不能为兼容直接扩权。
+[实测证据](STATUS.md#2026-11-05-a149安装与winsock初始化突破)。
+
 2026-11-05（America/New_York）`60784df` 原生读取修复已保存为本地提交。新固定INACTIVE候选
 `a149f2f3a8e44dd0b1dc664c13df57bc` 的20文件和内嵌清单已静态核验，清单摘要
 `F0F03EDE10E1247B788F298BC877A1B8EAF7EFF9773B8D667F93EEC30EB940EC`；Broker/Bootstrap同库

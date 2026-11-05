@@ -5,6 +5,14 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-05 系统Winsock租约与网络下一失败点
+
+CAPABILITY_DELIVERED(a149安装版原owner的25对象最小权限租约、持续持有、原Job closed/zero
+后精确恢复)。INACTIVE安装15公开文件核验通过，实际系统租约恢复回执与独立25对象基线
+回读一致。受限根已越过Winsock初始化，随后socket创建返回5，固定网关交换FAIL，未有CONNECT。
+证据见[记录](STATUS.md#2026-11-05-a149安装与winsock初始化突破)。网络可用、完整L3、GPU、
+GUI启停、全部相关进程退出与全机IPv6仍未验收；真实Claude延期，PRODUCT_DELIVERY_NOT_ACCEPTED。
+
 ## 2026-11-05 原生权限回读与参考恢复
 
 VERIFIED(普通本人原生查询与provider差异、新自有旧式父键精确授权/恢复及子键不变)。
