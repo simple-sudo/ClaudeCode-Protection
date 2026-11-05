@@ -206,11 +206,10 @@ internal sealed class SessionManifestReadAccess : IDisposable
     }
     internal static string ReadSecurity(SafeRegistryHandle handle)
     {
-        // Read the registry OBJECT security, including its actual protection
-        // control bits. The preserved RegGetKeySecurity observation on this
-        // host synthesized an unprotected ACL and an extra owner ACE, unlike
-        // the independent Windows security provider. Never normalize that
-        // discrepancy away or use the synthesized ACL as restoration bytes.
+        // Preserve the provider contract of the existing manifest/time-zone
+        // journals. A new Winsock lease uses ReadObjectSecurity instead: the
+        // ordinary-owner native parity experiment showed this provider can
+        // project P on a legacy key whose native object descriptor has no P.
         var status=GetSecurityInfo(handle,4,5,out _,out _,out var dacl,out _,out var descriptor); // SE_REGISTRY_KEY.
         if(status!=0)throw new Win32Exception(checked((int)status));
         try
@@ -222,6 +221,29 @@ internal sealed class SessionManifestReadAccess : IDisposable
             return Canonical(new RawSecurityDescriptor(bytes,0));
         }
         finally{if(descriptor!=IntPtr.Zero)LocalFree(descriptor);}
+    }
+    internal static string ReadObjectSecurity(SafeRegistryHandle handle)
+    {
+        // Read the held object without the provider's caller-dependent projection.
+        // Query only OWNER|DACL. A size change or failed second read refuses;
+        // there is no normalization or automatic retry.
+        const int tooSmall=unchecked((int)0xc0000023);
+        var status=NtQuerySecurityObject(handle,5,IntPtr.Zero,0,out var size);
+        if(status!=tooSmall)throw WfpNative.Contract("RegistryObjectSecuritySizeQueryRefused");
+        if(size is <20 or >MaxSecurityDescriptorBytes)throw WfpNative.Contract("RegistryObjectSecuritySizeRefused");
+        var buffer=Marshal.AllocHGlobal(checked((int)size));
+        try
+        {
+            status=NtQuerySecurityObject(handle,5,buffer,size,out var actual);
+            if(status!=0)throw new Win32Exception(unchecked((int)RtlNtStatusToDosError(status)));
+            if(actual!=size)throw WfpNative.Contract("RegistryObjectSecuritySizeChanged");
+            var bytes=new byte[checked((int)size)];Marshal.Copy(buffer,bytes,0,bytes.Length);
+            var descriptor=new RawSecurityDescriptor(bytes,0);
+            if(descriptor.Owner is null || descriptor.DiscretionaryAcl is null)
+                throw WfpNative.Contract("RegistryObjectSecurityMissing");
+            return Canonical(descriptor);
+        }
+        finally{Marshal.FreeHGlobal(buffer);}
     }
     internal const int MaxSecurityDescriptorBytes=4096;
     internal static void WriteSecurity(SafeRegistryHandle handle,string value,bool protect=true,bool requestAutoInheritance=false)
@@ -239,4 +261,6 @@ internal sealed class SessionManifestReadAccess : IDisposable
     [DllImport("advapi32.dll")] private static extern uint GetSecurityDescriptorLength(IntPtr descriptor);
     [DllImport("kernel32.dll")] private static extern IntPtr LocalFree(IntPtr memory);
     [DllImport("advapi32.dll")] private static extern int RegSetKeySecurity(SafeRegistryHandle key,uint information,byte[] descriptor);
+    [DllImport("ntdll.dll",ExactSpelling=true)] private static extern int NtQuerySecurityObject(SafeRegistryHandle handle,uint information,IntPtr buffer,uint size,out uint used);
+    [DllImport("ntdll.dll",ExactSpelling=true)] private static extern uint RtlNtStatusToDosError(int status);
 }

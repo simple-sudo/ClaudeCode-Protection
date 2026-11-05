@@ -117,7 +117,7 @@ internal sealed class SessionWinsockReadAccess : IDisposable
         foreach(var target in WinsockRegistryScope.Targets(controlSet))
         {
             using var key=Open(target.Path,false);
-            var original=SessionManifestReadAccess.ReadSecurity(key);
+            var original=SessionManifestReadAccess.ReadObjectSecurity(key);
             _=WinsockRegistryScope.AddReadAce(original,"S-1-15-2-1-2-3-4-5-6-7",target.Access);
             var flags=new RawSecurityDescriptor(original).ControlFlags;
             rows.Add(new{target.Path,target.Access,SecurityControl=flags.ToString(),ContentSHA256=Content(key,target.Path),SecuritySHA256=Convert.ToHexString(SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(original)))});
@@ -137,7 +137,7 @@ internal sealed class SessionWinsockReadAccess : IDisposable
             foreach(var target in WinsockRegistryScope.Targets(controlSet))
             {
                 var key=Open(target.Path,true);opened.Add(key);
-                var original=SessionManifestReadAccess.ReadSecurity(key);
+                var original=SessionManifestReadAccess.ReadObjectSecurity(key);
                 if(target.Path.Length==0)WinsockRegistryScope.RequireSupportedRootSecurity(original);
                 var granted=WinsockRegistryScope.AddReadAce(original,package.Value,target.Access);
                 if(new RawSecurityDescriptor(granted).BinaryLength>SessionManifestReadAccess.MaxSecurityDescriptorBytes)
@@ -169,7 +169,7 @@ internal sealed class SessionWinsockReadAccess : IDisposable
         }
         applied=true;AssertHeld();
     }
-    private string Read(int i){AssertName(keys[i],intent.Targets[i].Path);return SessionManifestReadAccess.ReadSecurity(keys[i]);}
+    private string Read(int i){AssertName(keys[i],intent.Targets[i].Path);return SessionManifestReadAccess.ReadObjectSecurity(keys[i]);}
     private static void Write(SafeRegistryHandle key,string security)
     {
         var flags=new RawSecurityDescriptor(security).ControlFlags;
@@ -203,7 +203,7 @@ internal sealed class SessionWinsockReadAccess : IDisposable
         var job=OwnedJobIntent.ReadAll(state).SingleOrDefault(j=>j.JobId==intent.JobId)??throw WfpNative.Contract("WinsockOriginalJobMissing");
         if(job.Release!=intent.Release || job.ManifestSHA256!=intent.ManifestSHA256 || AtomicJobCompletion.ReadClosed(state,job) is null)
             throw WfpNative.Contract("WinsockRestoreRequiresDurableClosedJob");
-        string Read(int i){AssertName(keys[i],intent.Targets[i].Path);return SessionManifestReadAccess.ReadSecurity(keys[i]);}
+        string Read(int i){AssertName(keys[i],intent.Targets[i].Path);return SessionManifestReadAccess.ReadObjectSecurity(keys[i]);}
         string Decide(int i)=>SessionManifestReadAccess.RestoreDecision(Read(i),intent.Targets[i].OriginalSecurity,intent.Targets[i].GrantedSecurity);
         for(var i=0;i<keys.Length;i++)_=Decide(i);
         // Root first, after closed/zero. Never normalize or merge unknown ACLs.
@@ -232,7 +232,7 @@ internal sealed class SessionWinsockReadAccess : IDisposable
     internal static void RequireCurrentRootControl()
     {
         using var root=Open("",false);
-        WinsockRegistryScope.RequireSupportedRootSecurity(SessionManifestReadAccess.ReadSecurity(root));
+        WinsockRegistryScope.RequireSupportedRootSecurity(SessionManifestReadAccess.ReadObjectSecurity(root));
     }
     private static IReadOnlyList<(WinsockReadIntent Intent,string Hash)> Pending(ProtectedState state)
     {

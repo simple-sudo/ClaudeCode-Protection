@@ -5,6 +5,15 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-05 原生权限回读与参考恢复
+
+VERIFIED(普通本人原生查询与provider差异、新自有旧式父键精确授权/恢复及子键不变)。
+Winsock租约已改用原生描述符，旧式根资格误判已修订；109输入三工程BUILD 0/0、33项策略
+检查与六工程非生成语义通过。详见[证据](STATUS.md#2026-11-05-原生权限回读修复与旧式参考精确往返)。
+三次hive加载与一次新HKCU容器恢复失败保留，不能计为恢复通过；最终普通参考采用另一
+实际原生查询机制，未重跑旧对象。实际系统根租约、安装候选、受保护socket/CONNECT、
+完整L3、GPU、GUI启停与全机IPv6仍NOT_RUN/未验收，PRODUCT_DELIVERY_NOT_ACCEPTED。
+
 ## 2026-11-04 原owner Winsock租约源码闭环
 
 INTEGRATED / BUILD：25对象日志、持续检查、原Job closed/zero后精确恢复、待恢复门禁与

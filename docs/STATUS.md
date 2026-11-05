@@ -5,6 +5,48 @@
 历史页的“当前/待执行/暂停/DELIVERABLE”按段落日期及限定范围解释，不是今天的状态或操作许可。
 不在本页复制当前安装和授权摘要。
 
+## 2026-11-05 原生权限回读修复与旧式参考精确往返
+
+基线837a0fa。记录根 `work/legacy-root-hive-837a0fa/`；第二份hive输入在同级
+`work/legacy-root-hive-837a0fa-r2/`，保留冻结字节和每次单独审批、本人UAC及终态回执。
+最初ORCreateHive与Windows新私有app-hive关闭后离线保存两种输入分别LOAD/87，未进入
+任何package grant。新增native-export-control将两个新本人Marker键原生RegSaveKeyEx导出，
+正控制仍LOAD/87，立即记录C000000D；后续离线模板和旧式往返NOT_RUN。
+restore-reference只向一个全新专属HKCU容器调用RegRestoreKey(0)，返回1/C0000002，
+未取得模板或添加package grant，新容器保留。上述四个辅助程序的原句柄均终态125，
+自身Backup/Restore状态恢复，实际HKLM根前后只读摘要相同。无未知对象接管、强停、
+强制恢复/卸载或自动重试；首次两个加载失败没有成功挂载，未伪造卸载完成。
+
+关键新只读对照发现：普通本人SID1001同句柄下，旧Case0的NtQuerySecurityObject真实
+OWNER|DACL无P/AI，GetSecurityInfo却投影为P；旧Case1两者均AI，实际HKLM根两者均无P/AI。
+工具隔离身份下Case0 provider也无P，因此不能把其他身份的provider结果替代实际owner。
+原生查询与provider相异的回执SHA256
+`270FFAA35AD4661AF2F65712176C6B30FF1021622805E2E83E5C9F80CD122953`。
+早先新键矩阵的P观察保留原字节，明确降为provider投影，不能解释为原生对象确实发生P变化。
+私有堆权限合并与固定内核文件静态调用检查仅为辅助，不是实际注册表行为或内核执行证明。
+
+随后单独审批 `native-roundtrip/`，仅新本人volatile父/Before子键，读取系统根模板但改写
+目标只有新父键，owner换为本人。原生查询先确认精确无P/AI，添加当前package无继承
+READ_CONTROL，RegSetKeySecurity(4)不加AR/AI/P，精确回读，再按相同机制移除并核实原始
+权限及既有子键前后完全相同。结果SHA256
+`E5495B88AD4F22FEBDF5F4091DE5ED3F8848DEE728201B9B7124B831D214C32E`。
+该实测是普通本人合成原生参考，不是实际HKLM根租约、LPAC网络、真实内容L3或正式Claude。
+
+新增ReadObjectSecurity为固定OWNER|DACL两次NtQuerySecurityObject，20..4096长度与返回长度
+约束、失败/长度漂移拒绝，无自动重试/归一化。仅新Winsock租约读路径使用，旧manifest及
+time-zone恢复日志保持provider合同。新旧式根资格门以原生控制位和显式ACE约束替代错误P
+拒绝；正式启动/SystemTestingBlocked保持。三工程109输入离线BUILD均0/0，三保护库一致
+`8FFDB6E0EC5F12065B8F84D8A1FE81D1966DA45ABD3252E0BF8EE2818B76A14E`，构建记录
+`3EB7A073F83AD29FE6FA0ADC00E7E6EA1C8AD146E18329CF916847DC2EB91410`。
+首版构建控制器在旧HEAD检查停止，没有启动构建；修订控制器/新输出独立固定。生成脚本
+两次替换拒绝和首版C#路径转义编译失败亦保留，不把后续打印标记当作编译通过证据。
+
+33项日志/目标/控制位/普通维护拒绝检查通过，回执
+`1C9F2F272029E5A458B72FB6CFF269720CA6ECE85AB9B749D988DE92EE0555E2`。
+新构建原生只读25对象摘要与前次provider基线逐项相同，未写系统权限；六产品非生成语义0/0。
+汇总SHA256 `05EC28F32B518320F2DF53C637B21C5CE64BF973AAB1BCA4FBABE31D941CB842`。
+SOURCE / INTEGRATED / BUILD / VERIFIED(上述限定范围)，无新安装/受保护网络修复/产品验收。
+
 ## 2026-11-04 原owner Winsock租约接入与根权限资格缺口
 
 基线 `0e32c1e`。新增SessionWinsockReadAccess，沿原ProtectedSession固定资格链保存25个

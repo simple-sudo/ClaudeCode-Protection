@@ -41,13 +41,15 @@ internal static class WinsockLeaseCases
         }
         Refuse(()=>Validate(valid,owner:new string('e',32)));Refuse(()=>Validate(valid,sid:"S-1-15-2-9-8-7-6-5-4-3"));
         var legacy=original.Replace("D:P","D:",StringComparison.Ordinal);
-        Refuse(()=>Call(scope,"RequireSupportedRootSecurity",legacy));
+        Call(scope,"RequireSupportedRootSecurity",legacy);Check(true);
         Call(scope,"RequireSupportedRootSecurity",original);Check(true);
         Call(scope,"RequireSupportedRootSecurity",original.Replace("D:P","D:AI",StringComparison.Ordinal));Check(true);
         var legacyIntent=JsonNode.Parse(valid)!.AsObject();
         legacyIntent["Targets"]![0]!["OriginalSecurity"]=legacy;
         legacyIntent["Targets"]![0]!["GrantedSecurity"]=(string)Call(scope,"AddReadAce",legacy,package,0x20000)!;
-        Refuse(()=>Validate(legacyIntent.ToJsonString()));
+        Validate(legacyIntent.ToJsonString());Check(true);
+        Refuse(()=>Call(scope,"RequireSupportedRootSecurity","O:SYD:AR(A;;KA;;;SY)"));
+        Refuse(()=>Call(scope,"RequireSupportedRootSecurity","O:SYD:(A;ID;KA;;;SY)"));
         foreach(var mutate in new Action<JsonObject>[] {
             j=>j["SchemaVersion"]=2,j=>j["ControlSet"]=0,j=>j["ControlSet"]=2,j=>j["SessionId"]="bad",
             j=>j["JobId"]="bad",j=>j["Release"]="bad",j=>j["ManifestSHA256"]="bad",j=>j["Targets"]=null,

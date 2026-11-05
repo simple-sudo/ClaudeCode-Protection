@@ -1,5 +1,27 @@
 # 当前状态与授权摘要
 
+2026-11-05（America/New_York）接续 `837a0fa`。已定位此前普通新键的权限控制位误判：同一
+本人普通身份、同一句柄，NtQuerySecurityObject对Case0返回无P/AI，而GetSecurityInfo返回P；
+实际HKLM根两种接口均无P/AI。原记录保留，但不能再用该provider投影断言原生键变化。
+全新本人volatile父/子键改用原生OWNER|DACL查询，原样模板、无继承package READ_CONTROL
+添加/精确移除、既有子键前后不变均通过。没有写实际HKLM根权限。
+
+Winsock租约所有基线、持有、恢复及只读检查已使用原生对象查询；旧manifest/time-zone日志的
+provider语义保持。新资格门接受明确显式ACE的旧式根，拒绝未表达控制位及旧式继承ACE；
+正式Claude hold不变。109输入三工程BUILD 0/0、三库相同；33项策略检查及六产品非生成
+语义0/0，原生只读25目标与先前系统基线完全相同。SOURCE / INTEGRATED / BUILD /
+VERIFIED(普通自有参考及限定只读/策略)。仍未安装、未运行实际系统根租约或修复Winsock10107。
+
+此前两份合成hive加载均87；新增原生导出正控制也87/C000000D，后续模板步骤未执行。
+另一独立新HKCU容器恢复返回1/C0000002，未取得基线或添加授权，新容器保留。辅助进程均
+原句柄终态、自身临时权限恢复、实际HKLM根前后摘要相同；未强制卸载/终止/重试。没有从
+这些失败推导实际根恢复不可能，挂载/恢复参考路线停止。所有具体操作许可已消耗。
+
+下一步固定未激活候选及其安装/原owner单次系统资格范围，再分别审查执行；无新安装、
+WFP/IPv6/代理/AV变更、受保护socket/CONNECT或真实Claude。完整L3、GPU、GUI启停及全机
+IPv6生命周期仍未验收，PRODUCT_DELIVERY_NOT_ACCEPTED。
+[证据](STATUS.md#2026-11-05-原生权限回读修复与旧式参考精确往返)。
+
 2026-11-04（America/New_York）接续 `0e32c1e`。原owner的Winsock租约、日志、持续对象/权限/
 目录内容检查、closed/zero后恢复、待恢复阻断及固定inspect/recover入口已接入源码。
 新 `qualify-winsock-session-gateway` 与旧网关资格入口分离，不接收路径或程序输入，正式

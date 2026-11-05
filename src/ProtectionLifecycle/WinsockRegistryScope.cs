@@ -15,14 +15,20 @@ internal static class WinsockRegistryScope
     internal const int ProtocolEntries = 14, NamespaceEntries = 5;
     internal sealed record Target(string Path, int Access);
 
-    // Native own-key qualification observed that writing a legacy unprotected
-    // root (neither P nor AI) produces P or AI. Do not mutate that baseline
-    // while exact restoration of its control bits remains unqualified.
+    // Native OWNER|DACL queries, rather than the provider projection, qualified
+    // a no-P/no-AI own-key grant/restore with unchanged existing child security.
+    // Legacy roots must have explicit ACEs and representable control bits.
+    // This admits only the separate fixed qualification; formal launch stays held.
     internal static void RequireSupportedRootSecurity(string security)
     {
-        var flags=new RawSecurityDescriptor(security).ControlFlags;
+        var descriptor=new RawSecurityDescriptor(security);var flags=descriptor.ControlFlags;
+        const ControlFlags required=ControlFlags.DiscretionaryAclPresent|ControlFlags.SelfRelative;
+        const ControlFlags supported=required|ControlFlags.DiscretionaryAclProtected|ControlFlags.DiscretionaryAclAutoInherited;
+        if((flags&required)!=required || (flags&~supported)!=0 || descriptor.DiscretionaryAcl is null)
+            throw WfpNative.Contract("WinsockRootControlNotSupported");
         if((flags&(ControlFlags.DiscretionaryAclProtected|ControlFlags.DiscretionaryAclAutoInherited))==0)
-            throw WfpNative.Contract("LegacyWinsockRootControlNotQualified");
+            foreach(GenericAce ace in descriptor.DiscretionaryAcl)
+                if((ace.AceFlags&AceFlags.Inherited)!=0)throw WfpNative.Contract("LegacyWinsockInheritedAceNotQualified");
     }
 
     // This candidate is deliberately tied to the reviewed x64 catalog shape.
