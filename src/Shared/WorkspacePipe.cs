@@ -80,6 +80,9 @@ internal static class WorkspacePipe
                 throw new InvalidDataException("Project failure cannot authorize success or replace owner evidence");
             projectFailure=ProjectFailureContract.Parse(failureValue);
         }
+        if(ProjectWorkerFeedback.IsKind(kind) && (!callerProject || exit==0 || stage!="processing" || session is null ||
+            !sealedBeforeCode || privacy is null || creation is not null || hasProjectFailure))
+            throw new InvalidDataException("Project worker feedback requires original sealed caller-project failure");
         return new(exit,session,hash,stage,kind,code,creation,stop,privacy,sealedBeforeCode,projectFailure);
     }
     internal static ToolCreationEvidence? ParseCreationEvidence(JsonElement value)

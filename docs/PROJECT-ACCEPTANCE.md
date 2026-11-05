@@ -5,6 +5,17 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-05 设备矩阵/CUDA资格未确认及失败反馈源码
+
+原owner会话66887384…身份封存后失败，公开停止闭合证据成立，结果未释放且未读取。
+实际AFD矩阵/CUDA内容UNKNOWN；经另次具体批准的私有定点reader也失败，未得摘要，不
+推导故障原因。两次许可均消耗，不重跑/恢复。新增原owner→普通调用者/GUI的有限工作
+进程反馈为SOURCE/BUILD/INTEGRATED；27项新契约及既有协议/GUI普通检查通过，未安装或
+实证新的系统失败回传。正常Socket/HTTPS、GPU标识隔离与计算、GUI/IPv6、全面L3和
+正式Claude均未通过，不标CAPABILITY_DELIVERED(受限网络/GPU/实装回传)。
+见[证据](STATUS.md#2026-11-05-定点设备资格失败及有界工作进程反馈源码)。
+PRODUCT_DELIVERY_NOT_ACCEPTED，持续开发目标保持。
+
 ## 2026-11-05 自身默认DACL实际验证未修复AFD
 
 VERIFIED(原owner真实LPAC自身模板128→164→128精确修改/恢复，身份/权限不变，20文件

@@ -5,6 +5,39 @@
 历史页的“当前/待执行/暂停/DELIVERABLE”按段落日期及限定范围解释，不是今天的状态或操作许可。
 不在本页复制当前安装和授权摘要。
 
+## 2026-11-05 定点设备资格失败及有界工作进程反馈源码
+
+本人具体批准B77B275DE41F85E35519AF52055BF5B616DFA4270BD0E6BDEF866263BA769643及
+74DBF27870EA1828BC844F6FC5E2BB6897C4FE7FDD39206726DA5E2A23F9328F；Codex发起、本人UAC。
+原daily34808终态3，会话66887384c3784bab94729884331cabf0，root18896/tool14644/probe12272。
+公开owner封存成立，失败仅processing/ResourceSessionFailed，ProjectFailure=null；公开停止
+证据为AdmissionClosed/QuarantineBeforeStop/FinalJobZero真，StopFailureCount0。结果未释放，
+存在文件未读取；AFD各项及CUDA是否实际执行/返回内容UNKNOWN，未重跑或恢复。
+相同PID/时段普通Application Error事件查询无结果，不能据此推导未崩溃或CUDA超时。
+
+本人另外具体批准固定1F17E4E0…入口及95EEA364…只读helper，限定该会话after/tool-error
+两份私有记录；允许读取after内含Job/Stop，但只计划输出有限失败字段、不导出原始Job/
+Stop或未释放结果。实际提升reader32596于13:30:47Z终态1，指定摘要未得，新摘要目录
+元数据观察不存在。私有读取进度及失败层UNKNOWN，许可消耗；没有自动重试、额外读取
+或强停。普通工具1003上的PS5初始化/模块/RemoteSigned参考成功，仅排除其自身环境的
+初始化必然失败；不替代本人提升进程证据。该reader缺少失败阶段回执，准备不足明确保留，
+若未来再取证必须先普通fixture验证并固定新的有界错误回传，不能直接重跑。
+
+新增Shared/ProjectWorkerFeedback.cs和原WorkspaceDataChannel调用，原封存失败上下文
+通过同session/root PID绑定、唯一字段、精确阶段/类型、Int32码提取固定枚举。未知前缀、
+异会话/root、重复字段、非数字码及已有结构化ProjectFailure不降格成新类别。现有
+WorkspacePipe v3/v5/v6保留，worker反馈只能附着失败、已封存caller-project及隐私证据，
+不产生结果hash/运行/关闭代理权限。普通GUI显示有限失败原因、十六进制码和独立停止
+证据完整性；未封存、伪造、隐私缺失或异常字段保持通用未知。未安装新实现。
+
+保护库87输入、daily、Center、WorkspacePipe与CenterResults BUILD0错误0警告；六个src
+项目非生成语义0/0。27项worker反馈契约、25项原项目失败契约、原reply/project契约通过。
+CenterResults工具1003首试临时目录祖先访问5失败，保留原记录；相同工件在本人普通
+1001通过11项结果检查、151项项目流程、12项取消检查，无提升/UAC/网络/受保护会话。
+证据feedback-stage/内构建、source-graph.json、pipe-checks.json、center-checks.json及
+center-checks-human.json。SOURCE/BUILD/INTEGRATED+VERIFIED(普通组件)，不是实装回传、
+Socket/GPU/全面L3或PRODUCT_DELIVERY_ACCEPTED。
+
 ## 2026-11-05 AFD分层访问与CUDA真实身份参考
 
 新增GpuIdentityObservation.cs，固定cuInit/驱动版本/设备数/ordinal0/名称/总显存/UUIDv1/

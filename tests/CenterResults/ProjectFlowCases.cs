@@ -92,6 +92,16 @@ internal static class ProjectFlowCases
             HostPrivacy=privacy,OwnerSealedBeforeCode=true,ProjectFailure=compilerFailure,ResultReleased=false,AutomaticRetry=false})!.AsObject();
         var display=session.DescribeFailure(new(3,Failure().ToJsonString(),""));
         Require(display.Contains("CS0103  Entry.cs：第7行，第9列") && display.Contains("结果未导出"),"compiler failure maps index to reviewed source name");
+        foreach(var workerKind in new[]{"ProjectCompilerWaitTimeout","ProjectCompilerDrainTimeout","ProjectCompilerExited","ProjectCompilerOutputUnexpected","ProjectCompilerStartFailed","ProjectCompilerWaitFailed"})
+        {
+            var worker=Failure();worker["FailureKind"]=workerKind;worker["ProjectFailure"]=null;worker["FailureCode"]=unchecked((int)0xc0000005);
+            var workerText=session.DescribeFailure(new(3,worker.ToJsonString(),""));
+            Require(workerText.Contains("0xC0000005") && workerText.Contains("停止证据尚不完整") && workerText.Contains("结果未导出"),"bounded worker failure visible without asserting closure");
+            worker["StopEvidence"]=JsonSerializer.SerializeToNode(new {AdmissionClosed=true,QuarantineObservedBeforeStop=true,FinalJobZero=true,StopFailureCount=0});
+            Require(session.DescribeFailure(new(3,worker.ToJsonString(),"")).Contains("进程组已归零"),"exact stop evidence remains separately visible");
+            worker["OwnerSealedBeforeCode"]=false;
+            Require(!session.DescribeFailure(new(3,worker.ToJsonString(),"")).Contains("0xC0000005"),"unsealed worker cannot publish classified feedback");
+        }
         foreach(var mutate in new Action<JsonObject>[]{j=>j["BaseSHA256"]=new string('A',64),j=>j["ResultReleased"]=true,j=>j["AutomaticRetry"]=true,
             j=>j["OwnerSealedBeforeCode"]=false,j=>j["ProjectFailure"]!["Diagnostics"]![0]!["SourceIndex"]=31,
             j=>j["ProjectFailure"]!["Diagnostics"]![0]!["SourcePath"]="C:\\PRIVATE",j=>j["PrivateMessage"]="SECRET"})

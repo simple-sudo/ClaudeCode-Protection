@@ -185,6 +185,23 @@ internal sealed class CallerProjectSession
                 var privacy=HostPrivacyContract.Parse(r.GetProperty("HostPrivacy"),session,false);
                 return DescribePrivacyBlock(privacy)??fallback;
             }
+            if(ProjectWorkerFeedback.IsKind(kind))
+            {
+                if(!sealedBeforeCode || r.GetProperty("ProjectFailure").ValueKind!=JsonValueKind.Null ||
+                    r.GetProperty("CreationEvidence").ValueKind!=JsonValueKind.Null || !r.GetProperty("FailureCode").TryGetInt32(out var workerCode))return fallback;
+                _=HostPrivacyContract.Parse(r.GetProperty("HostPrivacy"),session,true);
+                var stop=WorkspaceStopEvidence.Parse(r.GetProperty("StopEvidence"));
+                var message=kind switch {
+                    "ProjectCompilerWaitTimeout"=>"受保护的项目工作进程等待超时",
+                    "ProjectCompilerDrainTimeout"=>"项目工作进程已退出，但输出读取超时",
+                    "ProjectCompilerExited"=>"受保护的项目工作进程异常退出",
+                    "ProjectCompilerOutputUnexpected"=>"项目工作进程产生了不符合约定的输出",
+                    "ProjectCompilerStartFailed"=>"受保护的项目工作进程未能启动",
+                    _=>"受保护的项目工作进程等待失败"};
+                var closure=stop is {AdmissionClosed:true,QuarantineObservedBeforeStop:true,FinalJobZero:true,StopFailureCount:0}
+                    ?"保护侧已确认先隔离再停止，且本次进程组已归零。":"本次停止证据尚不完整。";
+                return message+"（代码 "+workerCode+" / 0x"+unchecked((uint)workerCode).ToString("X8")+"）。\r\n"+closure+"结果未导出；不会自动重试。";
+            }
             if(kind!="ProjectTaskFailed" || !sealedBeforeCode)return fallback;
             _=HostPrivacyContract.Parse(r.GetProperty("HostPrivacy"),session,true);
             var failure=ProjectFailureContract.Parse(r.GetProperty("ProjectFailure"),task.Definition.Sources.Length);

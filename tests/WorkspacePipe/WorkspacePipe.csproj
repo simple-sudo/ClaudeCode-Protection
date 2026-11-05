@@ -13,6 +13,7 @@
     <Compile Include="../../src/Shared/WindowsDirectoryNames.cs;../../src/ProtectionLifecycle/DirectoryNamePage.cs" />
     <Compile Include="../../src/Shared/TextSummarySource.cs" />
     <Compile Include="../../src/Shared/HostPrivacyContract.cs;../../src/Shared/ProjectFailure.cs" />
+    <Compile Include="../../src/Shared/ProjectWorkerFeedback.cs;ProjectWorkerFeedbackCases.cs" />
     <Compile Include="HostPrivacyExecutionGateCases.cs;../../src/ProtectionLifecycle/HostPrivacyExecutionGate.cs" />
     <Compile Include="CallerCSharpCases.cs;CallerDataCases.cs;ProjectFailureCases.cs;../../src/Shared/CSharpProjectTask.cs" />
     <EmbeddedResource Include="../../samples/CallerDataReport/cpc-project.json" LogicalName="DataFixture.cpc-project.json" />

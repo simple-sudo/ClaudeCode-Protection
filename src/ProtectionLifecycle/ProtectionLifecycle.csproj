@@ -30,6 +30,7 @@
     <Compile Include="SessionResources.cs;HostPrivacyControlFiles.cs" />
     <Compile Include="BundledProjectDevelopment.cs;../Shared/TextSummarySource.cs" />
     <Compile Include="CallerCSharpProject.cs;../Shared/CSharpProjectTask.cs;../Shared/ProjectFailure.cs" />
+    <Compile Include="../Shared/ProjectWorkerFeedback.cs" />
     <Compile Include="HostPrivacyProbe.cs;HostPrivacyFileState.cs;HostPrivacyExecutionGate.cs;../Shared/HostPrivacyContract.cs" />
     <Compile Include="SessionManifestReadAccess.cs;SessionTimeZoneReadAccess.cs;PublicTimeZoneSnapshot.cs" />
     <Compile Include="SessionEtwProviderAccess.cs" />

@@ -129,6 +129,9 @@ public static partial class InstalledBroker
                         failureCode=code.GetInt32();
                     if(failureKind is "PowerShellCreateProcess" or "PowerShellImageExecuteOpen" && child.TryGetProperty("CreationEvidence",out var creation))
                         creationEvidence=WorkspacePipe.ParseCreationEvidence(creation);
+                    if(callerProject && ownerSealedBeforeCode && hostPrivacy is not null &&
+                        ProjectWorkerFeedback.FromOwnerChild(child,session,hostPrivacy.RootPid) is { } workerFailure)
+                    {failureKind=workerFailure.Kind;failureCode=workerFailure.Code;}
                 }
                 if(callerProject && ownerSealedBeforeCode && r.TryGetProperty("Child",out var projectChild) &&
                     projectChild.ValueKind==JsonValueKind.Object && projectChild.TryGetProperty("ProjectFailure",out var diagnostic) &&
