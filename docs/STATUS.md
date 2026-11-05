@@ -5,6 +5,36 @@
 历史页的“当前/待执行/暂停/DELIVERABLE”按段落日期及限定范围解释，不是今天的状态或操作许可。
 不在本页复制当前安装和授权摘要。
 
+## 2026-11-04 定位Winsock AppContainer分支并固定停止候选
+
+本机x64 `ws2_32.dll` SHA256 `89F6CE4B21C5D78488B5ACE0B7AAD937AB7DA12C0928AD9B2ECDF59CA9AD6B95`。
+用本机LLVM/Dumpbin核对导出、调用与导入地址，确认初始 `WSAStartup` 进程对象构造从
+RVA 0xA1AC 进入目录打开函数 0xA6B8。该函数检查 `TokenIsAppContainer`（29），
+真分支 RVA 0xA8B0 使用 `RegOpenKeyExA` 打开 HKLM 的
+`System\CurrentControlSet\Services\WinSock2\Parameters`，请求 `KEY_READ`（0x20019）。
+失败分支返回空句柄，调用方分支 RVA 0xA5B1 设置 0x277B（10107）。
+原生静态切片SHA256 `036D5825F85217CF9F5321D9BF2061969728078A97124556E8CADCDBEB2FE31D`。
+
+经一次具体审批和本人UAC，原6800 offline daily/Broker/LPAC/Job固定编译器返回AppContainer标志1、
+原生 `WSAStartup` 10107，独立调用同一ANSI打开、同一对象及访问掩码返回5。普通宿主标志0、
+启动0、同一打开成功并读到实际目录版本2.0。静态链与同身份实测共同定位了直接前置条件，
+尚未捕获内部动态调用次序，也没有实测只放行该对象后的行为。另三条L3实际读取路径为
+`GetComputerNameExW` 的物理DNS/NetBIOS主机名和 `GetVolumeInformationW` 的系统卷序列号，
+普通侧取得真实参考值，受限侧均拒绝5且无原值。仅覆盖此离线编译器及固定API。
+原三actor封存后执行、闭合和导出门通过，独立核对九文件、声明编辑、会话和编译器PID。
+核验摘要SHA256 `2C61FB3239E5BCC2106514C0BD8FC2843F56BB8E25A11EB8509684DAF5AD3AFD`。
+
+固定 `d9da34c2525041c6bb2e6c41f717034b` INACTIVE 候选，清单SHA256
+`88B0AA52D63C4614B6431327AB3735172332454DF039DBBC9C9214B3938F29B4`。
+重新核对日常/GUI源字节与协作停止构建输入一致，复用其已建资产。重新离线构建83固定
+输入的Broker/保护库通过，Bootstrap独立重编保护库的第一次构建字节不同，保留该结果。
+r2固定84项输入，只编译Bootstrap，使用同一保护库与引用程序集，0错误、0警告。静态
+读取内嵌清单并核对所有20文件，普通预检通过。核验清单SHA256
+`B5F1CB7580635B909693BF3E866DF354C52A457623C99BEC453D970EEA74111B`。
+候选保存在 `work/winsock-appcontainer-branch-6800/stage/`。已安装前置的公开清单通过复核，
+安装前仍须由原owner核对保护选择与所有现场门禁。本轮未安装新包、未实测新GUI/门禁，
+未增加 `registryRead` 或授予正式联网、启动及系统规则更改资格。
+
 ## 2026-11-04 Winsock对象对照与UDP和SMBIOS执行门禁
 
 单次工具审批及本人UAC后，6800070c原daily/Broker/ProtectedSession的离线LPAC编译器

@@ -1,5 +1,20 @@
 # 当前状态与授权摘要
 
+2026-11-04（America/New_York）接续 `e897a85`。本机x64 `ws2_32.dll` 静态链确认：
+`WSAStartup` 初始进程对象构造检查 `TokenIsAppContainer`，真分支用
+`RegOpenKeyExA(HKLM, System\CurrentControlSet\Services\WinSock2\Parameters, 0, KEY_READ)`；
+打开失败返回空句柄，调用者可返回10107。已安装6800的原离线LPAC编译器独立实测同一入口
+和掩码返回5，原生WSAStartup返回10107，普通对照成功且读得目录版本2.0。证据直接指向
+初始目录打开条件，尚无内部动态栈/事件轨迹或最小权限修复实测。此轮另以同一实际受限
+编译器对照物理DNS主机名、物理NetBIOS名及C卷序列号，三条路径均拒绝5，未返回原值。
+[证据](STATUS.md#2026-11-04-定位winsock-appcontainer分支并固定停止候选)。
+
+新候选 `d9da34c2525041c6bb2e6c41f717034b` 汇合原协作停止回执与编译器网卡、双栈
+TCP/UDP、SMBIOS前置门禁。原Bootstrap仅追加现有6800确切清单作为可审查前置，现场
+所有准入关闭、Job和隔离条件保持。20文件、内嵌清单及相同保护库核对通过，普通预检通过。
+候选尚未安装，实际GUI停止与新门禁仍NOT_RUN；原受保护联网仍FAIL，完整产品未验收。
+本轮一次旧版离线实验授权已消耗。
+
 2026-11-04（America/New_York）接续 `17a9bac`，已安装 `6800070c` 原Broker完成一次离线LPAC
 真实内容对照。六个Winsock字段及MachineGuid在普通身份由两种打开方式取得相同实际值，
 受限编译器的 `RegOpenKeyExW` 均返回5，`NtOpenKey` 均返回 `0xC0000022`。同一受限进程
