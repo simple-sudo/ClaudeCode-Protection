@@ -5,6 +5,35 @@
 历史页的“当前/待执行/暂停/DELIVERABLE”按段落日期及限定范围解释，不是今天的状态或操作许可。
 不在本页复制当前安装和授权摘要。
 
+## 2026-11-05 d00系统传输租约与socket10022
+
+基线0fe58c4。固定helper/20文件普通持有预检后，具体工具审批和本人UAC，原Bootstrap
+按确切a149前置完成d00a68934f5943c2b63bddae28837769 INACTIVE更新，退出0。15公开资产
+长度/摘要/非重解析路径和8指定回执核验记录87023A89661D26512E569C3CBA6F148B0F70A798901E58D5F4B3832242D52657。
+旧a149保留；没有安装后自动启动工作负载。
+
+随后独立具体批准及本人UAC，新原Broker命令qualify-winsock-transport-session-gateway，
+仅固定canary/原Job/LPAC零capability/WFP/网关；28对象v2日志/最小授权/持续持有/精确恢复
+实际运行。SessionId=8c5a2fd59c5b48e58f3499f0a129716e，JobId=58cd9ae6efec4d42be8d05fa693067fd。
+受限根恢复执行后仍在HTTPS_SOCKET_CREATE返回125，HTTP -2147467259 / SOCKET 10022；
+原owner退出3，无网关错误反馈、无CONNECT/双向交换见证、HTTP状态null。原始公开报告
+AC08657F0634B975E0B8AE64739140B650FD2BE72DF0A354DBEBCCB004C0B831。错误相对a149的5
+已经变化，但尚无内部动态轨迹定位10022来源，不从该码推导AFD/能力/AV/WFP的确定归因。
+
+原公开回执同Job ActiveBefore/After=0、ProcessIds空、limits8192，AdmissionClosed=true，
+QuarantineObservedBeforeStop=true、两时间同为311ms，停止错误空；28项Restored=true，意图
+A928E9A21A434A540DBE6F0E7F76297CCBC7B2583AE89ED2A1C9458284B210DD。原owner和helper
+均有各自原句柄终态，helper125保留为失败，不把成功恢复包装为网络通过。
+事后另一次具体普通只读，28项原生权限及内容摘要与租约前完全一致，输出
+43A5C6D99CEC5E6F3F21A4CD2E23D1EA3F57B61552116DE8A8957A517E280065，含两个P+AI键；无残留本次ACE。
+汇总verified-gateway-result.json摘要2EB3A88600A8A25352ED37567B86546140BA268492ADF56476612EE425CE60A5。
+
+CAPABILITY_DELIVERED(d00原owner28对象v2租约、v1兼容与同Job闭合后精确恢复)；网络FAIL，
+完整L3/工具与GPU新资格/GUI/IPv6仍未验收，正式Claude延期。没有自动重试/恢复、额外既有
+私有错误/rawJob/Stop读取、全机IPv6、FlClash/UU或AV改动。全部具体操作许可已消耗。
+下一步优先取得同受限创建路径的精确阶段/原生结果，不以继续增加注册表范围或网络capability
+替代定位。微软WSP表/LPWSPSocket合同用于解释静态表位置，实际行为仍以本机固定字节及实测为界。
+
 ## 2026-11-05 Winsock传输映射最小范围候选
 
 补充：源码c0df1e8后固定d00a68934f5943c2b63bddae28837769候选，清单

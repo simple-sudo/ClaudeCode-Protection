@@ -5,6 +5,13 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-05 系统传输租约与socket10022
+
+CAPABILITY_DELIVERED(d00安装版原owner28对象v2租约、v1兼容及closed/zero后精确恢复)。
+15公开资产安装核验、原owner恢复回执及独立28对象原生基线回读一致。受限根socket创建
+错误从5变为10022，仍无CONNECT/网关交换，网络FAIL。见[证据](STATUS.md#2026-11-05-d00系统传输租约与socket10022)。
+完整L3/GPU/GUI/全机IPv6与真实Claude验收仍未完成，PRODUCT_DELIVERY_NOT_ACCEPTED。
+
 ## 2026-11-05 系统Winsock租约与网络下一失败点
 
 CAPABILITY_DELIVERED(a149安装版原owner的25对象最小权限租约、持续持有、原Job closed/zero

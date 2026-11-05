@@ -1,5 +1,22 @@
 # 当前状态与授权摘要
 
+2026-11-05（America/New_York）原Bootstrap已更新d00a68934f5943c2b63bddae28837769/INACTIVE，
+退出0，15公开资产及指定8回执独立核验通过。另一份具体工具批准与本人UAC后，新的
+`qualify-winsock-transport-session-gateway` 完成28对象租约运行；受限根仍在
+HTTPS_SOCKET_CREATE失败，但SOCKET错误从a149的5变为10022。没有网关连接/CONNECT或
+双向交换成功，网络仍FAIL；不能仅凭错误变化断言内部首个失败对象已经完整定位。
+
+原owner报告28对象Restored=true、准入关闭、先隔离再停止、同Job零成员及零停止错误。
+事后独立原生只读28对象/内容与前基线逐项相同，包括新P+AI映射键。现场清单F5754A42…、
+保护库F86097BD…，旧a149保留。CAPABILITY_DELIVERED(d00原owner28对象v2最小权限租约、
+v1恢复兼容与closed/zero后精确恢复)，不等于网络、完整L3或产品验收。
+
+本次安装、新资格和事后只读许可已消耗，无自动重试、额外私有错误/rawJob/Stop或恢复。
+未添加网络capability，未改FlClash/UU、全机IPv6、AV或启动真实Claude。下一步应区分
+WSPSocket、协议helper及原生endpoint创建返回10022的具体阶段/状态，避免继续凭错误码扩大授权。
+完整L3、GPU、GUI启停及全机IPv6仍未验收，PRODUCT_DELIVERY_NOT_ACCEPTED。
+[证据](STATUS.md#2026-11-05-d00系统传输租约与socket10022)。
+
 2026-11-05新28对象源码已提交c0df1e8。固定d00a68934f5943c2b63bddae28837769未激活候选，
 20文件及内嵌清单核验通过，清单F5754A429380192B3A77D4F90B95D19F1A49DA51D5FBDBAE8436895D200DA605；
 Broker/Bootstrap同库F86097BDD13A3D0455163059F3ED05FEA14477F6C73542627A1E8B629DC551AF。
