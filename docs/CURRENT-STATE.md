@@ -1,5 +1,15 @@
 # 当前状态与授权摘要
 
+2026-11-05（America/New_York）`60784df` 原生读取修复已保存为本地提交。新固定INACTIVE候选
+`a149f2f3a8e44dd0b1dc664c13df57bc` 的20文件和内嵌清单已静态核验，清单摘要
+`F0F03EDE10E1247B788F298BC877A1B8EAF7EFF9773B8D667F93EEC30EB940EC`；Broker/Bootstrap同库
+`FA5BF36FB08956381FDCE73F35FFFECBF40CF05D6311084590C9596508D85112`。
+Bootstrap仅新增d9da确切前置清单，现场closed/zero、隔离、恢复和INACTIVE门保持。109输入
+载荷及86输入安装器叶节点离线构建0/0，最终33项策略、确切d9da迁移内存门7项及六工程非
+生成语义通过。日常/GUI源字节与原构建相同。候选尚未安装，未运行新系统租约或受保护网络。
+下一步按固定helper和工件审查一次原Bootstrap未激活更新，之后另行固定原owner网络资格。
+[候选证据](STATUS.md#2026-11-05-原生winsock候选固定)。
+
 2026-11-05（America/New_York）接续 `837a0fa`。已定位此前普通新键的权限控制位误判：同一
 本人普通身份、同一句柄，NtQuerySecurityObject对Case0返回无P/AI，而GetSecurityInfo返回P；
 实际HKLM根两种接口均无P/AI。原记录保留，但不能再用该provider投影断言原生键变化。

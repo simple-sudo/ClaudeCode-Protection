@@ -5,6 +5,21 @@
 历史页的“当前/待执行/暂停/DELIVERABLE”按段落日期及限定范围解释，不是今天的状态或操作许可。
 不在本页复制当前安装和授权摘要。
 
+## 2026-11-05 原生Winsock候选固定
+
+接续60784df，`work/winsock-native-candidate-60784df/` 固定a149f2f3a8e44dd0b1dc664c13df57bc
+INACTIVE候选。原Bootstrap前置仅追加d9da公开清单88B0AA52…，没有解除现场维护门。
+109输入载荷三工程BUILD0/0，记录4469FA7501B0B69B3F40C66A5B528F35635C677097DE85B556A6915E317C5364。
+安装器首版在预期输入计数87与实际86不符处停止；修订新输出86输入，只编译Bootstrap叶节点，
+复用精确相同runtime/ref库，BUILD0/0，记录77D5B8A2AAA8F8E854FB678877934249730DB4094E0AE20C9BDAD928303BBFD1。
+固定14载荷、内嵌清单及20文件核验通过，清单F0F03EDE10E1247B788F298BC877A1B8EAF7EFF9773B8D667F93EEC30EB940EC，
+三处runtime同为FA5BF36FB08956381FDCE73F35FFFECBF40CF05D6311084590C9596508D85112，核验记录
+5A0B9778F8B37E0E6B219E7352FB4286F8CD0420BB728B5C3401B26A331A91BD。
+日常/GUI全部源码输入与原协作停止构建记录逐项相同，复用其字节；没有声称重新构建GUI。
+最终33项租约策略检查通过；原确切d9da→新候选内存迁移选择与六项漂移拒绝通过，首版PowerShell
+异常包装处理未捕获拒绝的控制器错误保留，不作为产品门失效。六产品非生成语义0/0。
+SOURCE / BUILD / VERIFIED(有限普通与静态工件)，尚未安装、修改系统ACL/WFP/IPv6或运行新网络资格。
+
 ## 2026-11-05 原生权限回读修复与旧式参考精确往返
 
 基线837a0fa。记录根 `work/legacy-root-hive-837a0fa/`；第二份hive输入在同级
