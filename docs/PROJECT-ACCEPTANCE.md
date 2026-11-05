@@ -5,6 +5,15 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-04 原owner Winsock租约源码闭环
+
+INTEGRATED / BUILD：25对象日志、持续检查、原Job closed/zero后精确恢复、待恢复门禁与
+固定资格/维护入口已接入，三工程构建及31项限定普通检查通过。没有系统租约实测或新安装。
+三个新建键参考的初始条件失败，八条件普通原生矩阵未重现旧式根控制位；既有HKLM根原地
+往返NOT_RUN，精确恢复资格UNKNOWN。新入口对此基线先拒绝，不从新建键推导实际根必然失败。
+证据见[记录](STATUS.md#2026-11-04-原owner-winsock租约接入与根权限资格缺口)。
+Winsock10107修复、系统租约、真实代理联网、完整L3及PRODUCT_DELIVERY_ACCEPTED均未成立。
+
 ## 2026-11-04 注册表根映射与最小权限候选
 
 VERIFIED(d9da原离线LPAC编译器在精确package叶子授权下原生读取成功、标准API根映射拒绝；

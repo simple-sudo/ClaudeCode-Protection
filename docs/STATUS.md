@@ -5,6 +5,49 @@
 历史页的“当前/待执行/暂停/DELIVERABLE”按段落日期及限定范围解释，不是今天的状态或操作许可。
 不在本页复制当前安装和授权摘要。
 
+## 2026-11-04 原owner Winsock租约接入与根权限资格缺口
+
+基线 `0e32c1e`。新增SessionWinsockReadAccess，沿原ProtectedSession固定资格链保存25个
+确切对象的原始/目标权限及目录内容摘要，绑定安装/版本/会话/原Job/package及实际ControlSet。
+逐键持有、根最后授权、原owner运行检查、原Job durable closed/zero后根先恢复、最终全对象
+精确回读后封闭记录；未知漂移不合并，失败意图阻断后续普通生命周期。固定资格/inspect/recover
+入口无路径/程序参数，不复用旧资格许可，不改变正式Claude/SystemTestingBlocked门。
+
+`work/winsock-lease-0e32c1e/` 下build-r1和修订build-r2分别固定输入，三工程均0错误/0警告。
+修订109项输入，build-r2汇总SHA256
+`8D841C925E6D8AD54AB419213D0442FB0982CC2D570356F95523D9F6EEECDD01`，三个保护库副本同为
+`32B05DE50582800211270709701608296BD211047E23447B1B97713AE5719818`。
+修订31项内存日志/目标/权限/摘要/旧式根拒绝及实际普通调用身份检查通过，回执SHA256
+`AAAF3595759DD3EE2A5EB219A3C54B494E7DDF704B5847A2F27548366D8BE97D`。
+首版27项原网关资格边界检查通过，回执SHA256
+`6F963CB020579141E3556B0EE3AF2B2F87007A12BBFB6EB0FC1519393775CA53`。
+六产品非生成语义0/0，修订记录SHA256
+`77404A90C3E5FBD72C4587DF4A299973D201517A1E938E7940E6058059AA30AF`。
+
+25个实际系统对象的只读布局及权限策略检查通过，两次目标/原权限/内容摘要完全相同。
+HKLM根的GetSecurityInfo基线为无P/AI，摘要
+`1F838C7F2FB6678BDCC5748A0F0C0B89E6E9010D99AE26D337D8000A38FB058E`，其余24对象有AI。
+修订只读输出SHA256 `B0CC774CBD2800441D59672E62A1FF6A5B3CB5BD80F2D169D23BEA53B91CCC8A`。
+未对这些系统对象写权限或值，未运行新受保护会话。
+
+分别审批的三组新建本人HKCU volatile父/子键，用RegSetKeySecurity或SetSecurityInfo尝试建立
+旧式根模板，均在初始权限精确回读检查处退出1（FixtureOriginalAclNotObserved），没有进入
+package授权步骤，子键继承与完整往返均未资格化。前两组也没有进入原定授权后的移除步骤；
+此处不能把没有授权误写成已完成完整恢复。只读新句柄复核看到保护位差异。源/控制器/尝试
+均保留，失败索引native-inheritance-failures.json注明为本轮工具终态的追记，不冒充控制器原始JSON。
+
+随后独立固定的八条件矩阵，每个条件只写一个全新本人普通键。RegSetKeySecurity、
+NtSetSecurityObject和SetSecurityInfo的调用均返回0，所观察控制位为P或AI，没有完整旧式模板。
+没有package授权、系统键更改、Job/网络/Claude；记录SHA256
+`45175F93DEEA57CAA950BA7A28944CFEC101327312F470674902B2159B369BF3`。
+所有条件是**新建键**而非既有HKLM根，不能用它们断言实际根原地更新一定失败；它们说明本轮
+尚未建立可用的旧式原生参考及恢复资格。没有通过放宽比较器掩盖差异。源码现在在新资格
+Execute之前读取并拒绝该未资格化控制位，Prepare及意图验证重复约束；旧网关入口不取得租约。
+
+上述为INTEGRATED / BUILD / VERIFIED(限定普通检查和原生新建对象)，不是系统租约VERIFIED，
+没有新安装、受保护socket/CONNECT或网络修复。开发汇总SHA256
+`E4E08E123C29224FF4858AC7578E493EF8C31363369A7402102A1F0B3A81C8B7`。
+
 ## 2026-11-04 区分LPAC叶子授权与预定义根映射
 
 基线 `a04316e`，原d9da未激活安装未变。只在本人HKCU下新建专属volatile测试键，精确

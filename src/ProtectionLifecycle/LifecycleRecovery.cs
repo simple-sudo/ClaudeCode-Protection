@@ -167,6 +167,7 @@ internal static class LifecycleRecovery
         if(!forManifestAccessRecovery)SessionManifestReadAccess.AssertNoPending(state);
         if(!forManifestAccessRecovery)SessionEtwProviderAccess.AssertNoPending(state);
         if(!forManifestAccessRecovery)SessionTimeZoneReadAccess.AssertNoPending(state);
+        if(!forManifestAccessRecovery)SessionWinsockReadAccess.AssertNoPending(state);
         if(!forNetworkMigration)FencePlan.AssertNoPendingMigration(state);
         foreach(var leaf in state.ListLeaves("plan-"))
         {

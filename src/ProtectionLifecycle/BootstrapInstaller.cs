@@ -117,6 +117,7 @@ public static class BootstrapInstaller
             LifecycleRecovery.AssertNoPending(state,forManifestAccessRecovery:true);
             SessionManifestReadAccess.AssertNoPending(state);
             SessionEtwProviderAccess.AssertNoPending(state);
+            SessionWinsockReadAccess.AssertNoPending(state);
             approval.AssertHeld();version.AssertHeld(state);
             stage="REVIEWED_TIMEZONE_RECOVERY";
             var result=SessionTimeZoneReadAccess.Recover(state,reviewedIncidentOnly:true);

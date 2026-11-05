@@ -27,6 +27,8 @@ internal sealed class ProtectedSession
     // Chosen only by the compiled fixed gateway operation, never by data,
     // environment, persisted evidence or a formal-launch caller.
     private readonly bool gatewayQualification;
+    private readonly bool winsockQualification;
+    private SessionWinsockReadAccess? winsockAccess;
     private const long GatewayQualificationLimitMs=30000;
     private readonly string id = Guid.NewGuid().ToString("N"), pointerSHA256;
     private readonly Stopwatch clock = Stopwatch.StartNew();
@@ -48,8 +50,10 @@ internal sealed class ProtectedSession
     private GatewayChildReport? gatewayChildFeedback;
     private ProtectionRuntimeLease? runtime;
     private SessionResources? resources;
-    private ProtectedSession(FixedLayout layout,ProtectedState state,VerifiedVersion version,bool gatewayQualification=false)
+    private ProtectedSession(FixedLayout layout,ProtectedState state,VerifiedVersion version,bool gatewayQualification=false,bool winsockQualification=false)
     {
+        if(winsockQualification && !gatewayQualification)throw WfpNative.Contract("WinsockLeaseRequiresFixedGatewayQualification");
+        this.winsockQualification=winsockQualification;
         this.layout=layout;this.state=state;this.version=version;this.gatewayQualification=gatewayQualification;
         pointerSHA256=state.Read("current.json",4096).SHA256;
         (expectations,expectationsSHA256,expectationsReason)=ReadExpectations();
@@ -453,6 +457,12 @@ internal sealed class ProtectedSession
         ProtectedState.RequireAdministrator();state.AssertHeld();version.AssertHeld(state);
         return new ProtectedSession(layout,state,version,gatewayQualification:true).Execute();
     }
+    internal static (int ExitCode,string Report) QualifyWinsockSessionGateway(FixedLayout layout,ProtectedState state,VerifiedVersion version)
+    {
+        ProtectedState.RequireAdministrator();state.AssertHeld();version.AssertHeld(state);
+        SessionWinsockReadAccess.RequireCurrentRootControl();
+        return new ProtectedSession(layout,state,version,gatewayQualification:true,winsockQualification:true).Execute();
+    }
     private bool CurrentWorkloadEvidenceEligible()=>gatewayQualification?
         clock.ElapsedMilliseconds>=0 && clock.ElapsedMilliseconds<GatewayQualificationLimitMs:
         !SystemTestingBlocked && EnvironmentEligible() && SystemSecurityEligible();
@@ -465,6 +475,7 @@ internal sealed class ProtectedSession
             throw WfpNative.Contract("FixedGatewayQualificationExpiredOrBindingDrift");
         if(preparation?.RootPid is not null)
             (preparation.PublicTimeZone??throw WfpNative.Contract("TimeZoneResourceNotPrepared")).AssertCurrent();
+        winsockAccess?.AssertHeld();
         gateway.AssertHealthy();
     }
     private bool PreparationEnvironmentEligible()=>expectations is not null && environment.Where(e=>e.Id is "host-timezone" or "host-locale")
@@ -636,6 +647,7 @@ internal sealed class ProtectedSession
             SessionId=owner.id,JobId=owner.job!.JobId,AppContainerSid=owner.sid,NetworkPolicySHA256=SessionProxy.PolicySHA256,
             RootPid=owner.preparation?.RootPid,RootCreatedFileTime=owner.preparation?.RootCreatedFileTime,
             Resources=ResourceScope,FixedGatewayQualification=owner.gatewayQualification,TimeZoneReadIntentSHA256=(string?)null,
+            WinsockReadIntentSHA256=owner.winsockAccess?.IntentSHA256,
             PublicTimeZoneSnapshotSHA256=owner.preparation?.PublicTimeZone?.SHA256,EnvironmentIntentSHA256=owner.expectationsSHA256,FenceIntents=owner.fences.Select(f=>f.IntentSHA256).ToArray(),
             RequiredEnvironmentIds=StrictEnvironmentRequirements.Required.Select(def=>def.Id).ToArray()
         })));
@@ -684,9 +696,13 @@ internal sealed class ProtectedSession
             }
             child=AtomicChild.CreateSession(layout,state,version,job,profile,preparation,feedbackPipe?.ClientSafePipeHandle.DangerousGetHandle()??IntPtr.Zero);
             feedbackPipe?.DisposeLocalCopyOfClientHandle();
-            // This worker has no predefined registry hive mapping lease. It
-            // receives only the original owner's public calendar, not a new
-            // host ACL lease. Historical journal recovery remains separate.
+            if(winsockQualification)
+            {
+                winsockAccess=SessionWinsockReadAccess.Prepare(state,version,job,id);
+                winsockAccess.Apply();
+            }
+            // Calendar compatibility remains process-local. Only the distinct
+            // compiled Winsock qualification requests the exact registry lease.
             runtime=new ProtectionRuntimeLease(state,version,job,fences,upstream,gateway,preparation:preparation);
             runtime.AssertHealthy();RefreshEnvironment(true);
             if(!CurrentWorkloadEvidenceEligible())throw WfpNative.Contract("FullSessionAdmissionRefusedAfterSuspendedPreparation");
@@ -736,6 +752,7 @@ internal sealed class ProtectedSession
                 foreach(var fence in fences)try{_=fence.ReinstateQuarantine();}catch(Exception ex){errors.Add(ex);}
                 if(job is not null)try{zero=job.AtomicAdmissionReserved?job.CloseAtomicAdmissionAndStop():job.StopAndVerifyZero();}catch(Exception ex){errors.Add(ex);}
             }
+            if(winsockAccess is not null && zero is not null)try{winsockAccess.RestoreAfterClosedJob(zero);}catch(Exception ex){errors.Add(ex);}
             if(profile?.ProcessCreationAttempted==true && zero is not null)try{profile.AfterOwnedJobZero(zero);}catch(Exception ex){errors.Add(ex);}
             if(exited is not null)
                 try{childExitCode=exited.WaitAsync(TimeSpan.FromSeconds(3)).GetAwaiter().GetResult();}catch(Exception ex){errors.Add(ex);}
@@ -743,7 +760,7 @@ internal sealed class ProtectedSession
             try{ReadFixedFeedback();}catch(Exception ex){errors.Add(ex);}
             // Stop/zero precedes profile and exact loopback removal. A failure
             // in one cleanup must not suppress the other owners' attempts.
-            foreach(var resource in new IDisposable?[]{child,gateway,loopback,profile,job,feedbackReader,feedbackPipe})
+            foreach(var resource in new IDisposable?[]{winsockAccess,child,gateway,loopback,profile,job,feedbackReader,feedbackPipe})
                 try{resource?.Dispose();}catch(Exception ex){errors.Add(ex);}
             foreach(var fence in fences)try{fence.Dispose();}catch(Exception ex){errors.Add(ex);}
             try{upstream?.Dispose();}catch(Exception ex){errors.Add(ex);}
@@ -802,6 +819,7 @@ internal sealed class ProtectedSession
         GatewayChildFeedback=gatewayChildFeedback,GatewayFailure=gateway?.FailureFeedback,GatewayChildFeedbackUsedForAdmission=false,
         FixedGatewayRootBidirectionalWriteObserved=fixedExchangeObserved,
         PublicTimeZoneReadResource=(object?)null,
+        WinsockReadResource=winsockAccess is null?(object?)null:new{winsockAccess.KeyCount,winsockAccess.Restored,winsockAccess.IntentSHA256},
         PublicTimeZoneProjection=preparation?.PublicTimeZone is not PublicTimeZoneSnapshot zone?null:new {
             Source="ORIGINAL_OWNER_PUBLIC_CALENDAR",SnapshotSHA256=zone.SHA256,CoreLibModule=PublicTimeZoneSnapshot.CoreLibModule,
             HostRegistryAclModified=false,RegistryCapabilityAdded=false,CompatibilityOnly=true,RequiredBeforeHttps=true},

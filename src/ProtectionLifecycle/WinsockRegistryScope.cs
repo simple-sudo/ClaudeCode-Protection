@@ -15,6 +15,16 @@ internal static class WinsockRegistryScope
     internal const int ProtocolEntries = 14, NamespaceEntries = 5;
     internal sealed record Target(string Path, int Access);
 
+    // Native own-key qualification observed that writing a legacy unprotected
+    // root (neither P nor AI) produces P or AI. Do not mutate that baseline
+    // while exact restoration of its control bits remains unqualified.
+    internal static void RequireSupportedRootSecurity(string security)
+    {
+        var flags=new RawSecurityDescriptor(security).ControlFlags;
+        if((flags&(ControlFlags.DiscretionaryAclProtected|ControlFlags.DiscretionaryAclAutoInherited))==0)
+            throw WfpNative.Contract("LegacyWinsockRootControlNotQualified");
+    }
+
     // This candidate is deliberately tied to the reviewed x64 catalog shape.
     // Other catalog names/counts, 32-bit tools and catalog changes need review.
     internal static Target[] Targets(int controlSet)
