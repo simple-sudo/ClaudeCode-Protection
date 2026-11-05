@@ -5,6 +5,41 @@
 历史页的“当前/待执行/暂停/DELIVERABLE”按段落日期及限定范围解释，不是今天的状态或操作许可。
 不在本页复制当前安装和授权摘要。
 
+## 2026-11-05 Winsock传输映射最小范围候选
+
+基线32ab60b；记录 `work/winsock-transport-32ab60b/`。本机mswsock.dll摘要
+AFC5E4EE1B6603E7BE493C81F58F057FD42241CF1B27F0118E33C2742245D5D9。只读WSPStartup拷贝
+表0x55030、WSPPROC_TABLE第28项指向0x4480；固定IPv4/TCP分支经0x48a0→0x55b0→0x6454，
+后者RegOpenKeyExW(HKLM,SYSTEM\CurrentControlSet\Services\Winsock\Parameters,0,KEY_READ)
+并读取Transports。映射分支0x65a4构造Services\传输名\Parameters\Winsock并读取Mapping，
+失败状态向调用者返回。静态文本摘要564F6297E126FC3C8D06F433BD7382A4CD7F7A2F72890474A9BDEAB319A49007；
+不是内部动态栈/事件跟踪，未据此断言a149 socket5已经完全归因。
+
+真实宿主Transports为Tcpip6/Tcpip/vmbus/Psched/afunix/RFCOMM，映射为固定IPv6/IPv4的8x3
+数组；HelperDLL为wship6.dll/wshtcpip.dll，ProviderGUID为系统协议提供程序通用GUID，并非
+硬件个体UUID。原始实际内容参考5BF2E19EC3FD4A5C2A513315840543FC19E73B8A47AFC7BCD7EA974DF2119F32，
+只在本机保存，未变更Windows配置。该可信侧内容不是受限侧L3获取证明。
+
+源码新增独立固定命令，无路径/程序/目标参数，只在原ProtectedSession选择新28对象v2
+租约。旧25对象v1与旧入口保持，历史闭合记录仍可验证；日志恢复仍使用原owner、同Job
+durable closed/zero、根先恢复、逐对象精确回读和pending阻断。仅追加3个叶级KEY_READ，
+不授整棵Services/Tcpip配置树、映射子键、RFCOMM/其他传输键或capability/device权限。
+严格固定传输选择、映射、HelperDLL、通用GUID及内容摘要；原正式启动hold和强制网络不变。
+Bootstrap仅追加a149确切前置F0F03EDE…，所有现场INACTIVE/闭合维护门保持。
+
+实际映射键P+AI，先独立审批新本人volatile父/子参考，RegSetKeySecurity带保护信息及AR+AI，
+原生模板/精确grant/原样restore和既有子键不变均通过，记录
+5D0E3970619FD7F303EB510E580FF15C1A09148E966CCA5D8DCC039B37FBDE18。未写实际系统映射键。
+因此修订Winsock.Write在AI存在时携带AR，包括P+AI。初版build-payload及检查保留，未用于安装。
+修订109输入三工程0/0，三库同为F86097BDD13A3D0455163059F3ED05FEA14477F6C73542627A1E8B629DC551AF；
+BUILD记录E2DF3FFD7F7F6E8367369884B18AB477D0410C2DEC3CCBD0278A3E799904053E。
+旧33项、新27项限定普通策略通过；两个检查控制器result结构相同，原stdout分别保留实际33/27项。
+最终28目标原生只读与内容验证通过，原25对象摘要与a149恢复基线逐项相同，输出
+43A5C6D99CEC5E6F3F21A4CD2E23D1EA3F57B61552116DE8A8957A517E280065。
+六产品非生成语义0/0，记录0549CC2F59F89BF108BB2436D5251793EEB1DF7560F44095DC54B7B75ECBBB90。
+SOURCE/INTEGRATED/BUILD/VERIFIED(普通参考、策略及可信侧只读)，未安装新版本，未执行新
+28系统租约/联网，不将普通或静态证据扩大为L3、真实Claude或PRODUCT_DELIVERY_ACCEPTED。
+
 ## 2026-11-05 a149安装与Winsock初始化突破
 
 源码97cf12b，具体工具批准及本人UAC后，原Bootstrap按固定前置d9da完成a149f2f3a8e44dd0b1dc664c13df57bc

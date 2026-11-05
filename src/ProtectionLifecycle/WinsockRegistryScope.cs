@@ -59,6 +59,35 @@ internal static class WinsockRegistryScope
         if (targets.Count != expected.Length || !targets.SequenceEqual(expected))
             throw WfpNative.Contract("WinsockRegistryTargetsDiffer");
     }
+    // The first IPv4 TCP match is reached after the stock Tcpip6 then Tcpip
+    // mappings. No entire service/Parameters tree, transport child, Bluetooth,
+    // adapter configuration, capability or device grant is included.
+    internal static Target[] TransportTargets(int controlSet)
+    {
+        var existing=Targets(controlSet);
+        var services=@"SYSTEM\ControlSet"+controlSet.ToString("D3",CultureInfo.InvariantCulture)+@"\Services\";
+        return existing.Concat(new[]{new Target(services+@"Winsock\Parameters",CatalogAccess),
+            new Target(services+@"Tcpip6\Parameters\Winsock",CatalogAccess),
+            new Target(services+@"Tcpip\Parameters\Winsock",CatalogAccess)}).ToArray();
+    }
+    internal static void RequireExactTransportTargets(int controlSet,IReadOnlyList<Target> targets)
+    {
+        if(!targets.SequenceEqual(TransportTargets(controlSet)))throw WfpNative.Contract("WinsockTransportTargetsDiffer");
+    }
+    internal static void RequireTransportSelection(string[] names)
+    {
+        if(!names.SequenceEqual(new[]{"Tcpip6","Tcpip","vmbus","Psched","afunix","RFCOMM"},StringComparer.Ordinal))
+            throw WfpNative.Contract("WinsockTransportSelectionChanged");
+    }
+    internal static void RequireTransportMapping(byte[] bytes,int family)
+    {
+        if(family is not (2 or 23) || bytes.Length!=104 || BitConverter.ToInt32(bytes,0)!=8 || BitConverter.ToInt32(bytes,4)!=3)
+            throw WfpNative.Contract("WinsockTransportMappingShapeChanged");
+        var pairs=new[]{(1,6),(1,0),(0,6),(2,17),(2,0),(0,17),(3,255),(3,0)};
+        for(var i=0;i<pairs.Length;i++)
+            if(BitConverter.ToInt32(bytes,8+i*12)!=family || BitConverter.ToInt32(bytes,12+i*12)!=pairs[i].Item1 ||
+                BitConverter.ToInt32(bytes,16+i*12)!=pairs[i].Item2)throw WfpNative.Contract("WinsockTransportMappingChanged");
+    }
 
     // Retain the existing system-owner, untrusted-writer and canonical ACL
     // policy. Replace only the newly added exact package ACE's access mask.

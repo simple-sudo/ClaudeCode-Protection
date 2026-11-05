@@ -28,6 +28,7 @@ internal sealed class ProtectedSession
     // environment, persisted evidence or a formal-launch caller.
     private readonly bool gatewayQualification;
     private readonly bool winsockQualification;
+    private readonly bool winsockTransportQualification;
     private SessionWinsockReadAccess? winsockAccess;
     private const long GatewayQualificationLimitMs=30000;
     private readonly string id = Guid.NewGuid().ToString("N"), pointerSHA256;
@@ -50,9 +51,11 @@ internal sealed class ProtectedSession
     private GatewayChildReport? gatewayChildFeedback;
     private ProtectionRuntimeLease? runtime;
     private SessionResources? resources;
-    private ProtectedSession(FixedLayout layout,ProtectedState state,VerifiedVersion version,bool gatewayQualification=false,bool winsockQualification=false)
+    private ProtectedSession(FixedLayout layout,ProtectedState state,VerifiedVersion version,bool gatewayQualification=false,bool winsockQualification=false,bool winsockTransportQualification=false)
     {
         if(winsockQualification && !gatewayQualification)throw WfpNative.Contract("WinsockLeaseRequiresFixedGatewayQualification");
+        if(winsockTransportQualification && !winsockQualification)throw WfpNative.Contract("WinsockTransportRequiresFixedWinsockQualification");
+        this.winsockTransportQualification=winsockTransportQualification;
         this.winsockQualification=winsockQualification;
         this.layout=layout;this.state=state;this.version=version;this.gatewayQualification=gatewayQualification;
         pointerSHA256=state.Read("current.json",4096).SHA256;
@@ -463,6 +466,12 @@ internal sealed class ProtectedSession
         SessionWinsockReadAccess.RequireCurrentRootControl();
         return new ProtectedSession(layout,state,version,gatewayQualification:true,winsockQualification:true).Execute();
     }
+    internal static (int ExitCode,string Report) QualifyWinsockTransportSessionGateway(FixedLayout layout,ProtectedState state,VerifiedVersion version)
+    {
+        ProtectedState.RequireAdministrator();state.AssertHeld();version.AssertHeld(state);
+        SessionWinsockReadAccess.RequireCurrentRootControl();
+        return new ProtectedSession(layout,state,version,gatewayQualification:true,winsockQualification:true,winsockTransportQualification:true).Execute();
+    }
     private bool CurrentWorkloadEvidenceEligible()=>gatewayQualification?
         clock.ElapsedMilliseconds>=0 && clock.ElapsedMilliseconds<GatewayQualificationLimitMs:
         !SystemTestingBlocked && EnvironmentEligible() && SystemSecurityEligible();
@@ -698,7 +707,7 @@ internal sealed class ProtectedSession
             feedbackPipe?.DisposeLocalCopyOfClientHandle();
             if(winsockQualification)
             {
-                winsockAccess=SessionWinsockReadAccess.Prepare(state,version,job,id);
+                winsockAccess=SessionWinsockReadAccess.Prepare(state,version,job,id,winsockTransportQualification);
                 winsockAccess.Apply();
             }
             // Calendar compatibility remains process-local. Only the distinct

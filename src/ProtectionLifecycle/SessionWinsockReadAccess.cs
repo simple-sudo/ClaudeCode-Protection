@@ -69,7 +69,33 @@ internal sealed class SessionWinsockReadAccess : IDisposable
         if(names.Length>16 || children.Length>16 || names.Any(n=>n.Length>64))throw WfpNative.Contract("WinsockCatalogInventoryBounds");
         string[] allowed;
         string[] expectedChildren;
-        if(path.EndsWith(@"\Parameters",StringComparison.Ordinal))
+        if(path.EndsWith(@"\Winsock\Parameters",StringComparison.Ordinal))
+        {
+            allowed=new[]{"Transports"};expectedChildren=Array.Empty<string>();
+            if(view.GetValueKind("Transports")!=RegistryValueKind.MultiString || view.GetValue("Transports") is not string[] transports)
+                throw WfpNative.Contract("WinsockTransportSelectionMissing");
+            WinsockRegistryScope.RequireTransportSelection(transports);
+        }
+        else if(path.EndsWith(@"\Parameters\Winsock",StringComparison.Ordinal))
+        {
+            var ipv6=path.EndsWith(@"\Tcpip6\Parameters\Winsock",StringComparison.Ordinal);
+            allowed=new[]{"UseDelayedAcceptance","MaxSockAddrLength","MinSockAddrLength","HelperDllName","ProviderGUID","OfflineCapable","Mapping"};
+            expectedChildren=new[]{"0","1","2"};
+            int Dword(string name)=>view.GetValueKind(name)==RegistryValueKind.DWord && view.GetValue(name) is int value?value:
+                throw WfpNative.Contract("WinsockTransportDwordMissing");
+            if(Dword("UseDelayedAcceptance")!=0 || Dword("OfflineCapable")!=1 || Dword("MinSockAddrLength")!=(ipv6?28:16) || Dword("MaxSockAddrLength")!=(ipv6?28:16) ||
+                view.GetValueKind("HelperDllName")!=RegistryValueKind.ExpandString ||
+                view.GetValue("HelperDllName",null,RegistryValueOptions.DoNotExpandEnvironmentNames) is not string helper ||
+                helper!=(ipv6?@"%SystemRoot%\System32\wship6.dll":@"%SystemRoot%\System32\wshtcpip.dll") ||
+                view.GetValueKind("ProviderGUID")!=RegistryValueKind.Binary || view.GetValue("ProviderGUID") is not byte[] provider ||
+                !provider.SequenceEqual(Guid.Parse(ipv6?"f9eab0c0-26d4-11d0-bbbf-00aa006c34e4":"e70f1aa0-ab8b-11cf-8ca3-00805f48a192").ToByteArray()) ||
+                view.GetValueKind("Mapping")!=RegistryValueKind.Binary || view.GetValue("Mapping") is not byte[] mapping)
+                throw WfpNative.Contract("WinsockTransportDefinitionChanged");
+            WinsockRegistryScope.RequireTransportMapping(mapping,ipv6?23:2);
+            if(!names.Order(StringComparer.Ordinal).SequenceEqual(allowed.Order(StringComparer.Ordinal),StringComparer.Ordinal))
+                throw WfpNative.Contract("WinsockTransportValueSetChanged");
+        }
+        else if(path.EndsWith(@"\Parameters",StringComparison.Ordinal))
         {
             allowed=new[]{"AutodialDLL","NameSpace_Callout","WinSock_Registry_Version","Current_NameSpace_Catalog","Current_Protocol_Catalog"};
             expectedChildren=new[]{"AppId_Catalog","NameSpace_Catalog5","Protocol_Catalog9"};
@@ -105,16 +131,21 @@ internal sealed class SessionWinsockReadAccess : IDisposable
         {
             var kind=view.GetValueKind(name);
             var value=view.GetValue(name,null,RegistryValueOptions.DoNotExpandEnvironmentNames);
-            if(value is null || value is not (string or int or long or byte[]) || value is string text && text.Length>4096 || value is byte[] bytes && bytes.Length>8192)
+            if(value is null || value is not (string or int or long or byte[] or string[]) || value is string text && text.Length>4096 || value is byte[] bytes && bytes.Length>8192 ||
+                value is string[] strings && (strings.Length>16 || strings.Any(s=>s.Length>64)))
                 throw WfpNative.Contract("WinsockCatalogValueBounds");
             values.Add(new{Name=name,Kind=(int)kind,Value=value});
         }
         return Convert.ToHexString(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(new{Children=children,Values=values})));
     }
     internal static string InspectCurrentMetadata()
+        =>InspectMetadata(false);
+    internal static string InspectTransportMetadata()
+        =>InspectMetadata(true);
+    private static string InspectMetadata(bool transports)
     {
         var controlSet=CurrentControlSet();var rows=new List<object>();
-        foreach(var target in WinsockRegistryScope.Targets(controlSet))
+        foreach(var target in transports?WinsockRegistryScope.TransportTargets(controlSet):WinsockRegistryScope.Targets(controlSet))
         {
             using var key=Open(target.Path,false);
             var original=SessionManifestReadAccess.ReadObjectSecurity(key);
@@ -126,7 +157,7 @@ internal sealed class SessionWinsockReadAccess : IDisposable
         return JsonSerializer.Serialize(new{Scope="FIXED_X64_WINSOCK_REGISTRY_METADATA_ONLY",ControlSet=controlSet,Targets=rows,
             RegistryModified=false,StateRead=false,StateModified=false,PackageCapabilityAdded=false});
     }
-    internal static SessionWinsockReadAccess Prepare(ProtectedState state,VerifiedVersion version,OwnedKernelJob job,string sessionId)
+    internal static SessionWinsockReadAccess Prepare(ProtectedState state,VerifiedVersion version,OwnedKernelJob job,string sessionId,bool transports=false)
     {
         ProtectedState.RequireAdministrator();state.AssertHeld();version.AssertHeld(state);AssertNoPending(state);
         if(!job.AtomicAdmissionReserved)throw WfpNative.Contract("WinsockAccessRequiresOriginalAtomicJob");
@@ -134,7 +165,7 @@ internal sealed class SessionWinsockReadAccess : IDisposable
         var opened=new List<SafeRegistryHandle>();var targets=new List<WinsockReadTarget>();
         try
         {
-            foreach(var target in WinsockRegistryScope.Targets(controlSet))
+            foreach(var target in transports?WinsockRegistryScope.TransportTargets(controlSet):WinsockRegistryScope.Targets(controlSet))
             {
                 var key=Open(target.Path,true);opened.Add(key);
                 var original=SessionManifestReadAccess.ReadObjectSecurity(key);
@@ -145,7 +176,7 @@ internal sealed class SessionWinsockReadAccess : IDisposable
                 targets.Add(new(target.Path,target.Access,Content(key,target.Path),original,granted));
             }
             if(CurrentControlSet()!=controlSet)throw WfpNative.Contract("WinsockControlSetChangedBeforeIntent");
-            var intent=new WinsockReadIntent(1,state.InstallationId,Identifiers.Hex32(sessionId),job.JobId,version.Package.Release,
+            var intent=new WinsockReadIntent(transports?2:1,state.InstallationId,Identifiers.Hex32(sessionId),job.JobId,version.Package.Release,
                 version.Package.ManifestHash,package.Value,controlSet,targets.ToArray());
             Validate(intent,state.InstallationId,package.Value);
             var bytes=JsonSerializer.SerializeToUtf8Bytes(intent);if(bytes.Length>MaxIntentBytes)throw WfpNative.Contract("WinsockIntentBounds");
@@ -175,7 +206,10 @@ internal sealed class SessionWinsockReadAccess : IDisposable
         var flags=new RawSecurityDescriptor(security).ControlFlags;
         var protect=(flags&ControlFlags.DiscretionaryAclProtected)!=0;
         SessionManifestReadAccess.WriteSecurity(key,security,protect,
-            requestAutoInheritance:!protect && (flags&ControlFlags.DiscretionaryAclAutoInherited)!=0);
+            // P+AI transport mappings retain both bits only when the input
+            // carries AR+AI as well as the explicit protection information.
+            // Qualified with native own-parent/child exact grant/restore.
+            requestAutoInheritance:(flags&ControlFlags.DiscretionaryAclAutoInherited)!=0);
     }
     private void AssertContent()
     {
@@ -214,11 +248,14 @@ internal sealed class SessionWinsockReadAccess : IDisposable
     }
     internal static void Validate(WinsockReadIntent intent,string installation,string package)
     {
-        if(intent.SchemaVersion!=1 || intent.InstallationId!=installation || intent.PackageSid!=package || intent.Targets is not {Length:25})
+        if(intent.SchemaVersion is not (1 or 2) || intent.InstallationId!=installation || intent.PackageSid!=package ||
+            intent.Targets is null || intent.Targets.Length!=(intent.SchemaVersion==1?25:28))
             throw WfpNative.Contract("WinsockIntentScopeMismatch");
         _=Identifiers.Hex32(intent.SessionId);_=Identifiers.Hex32(intent.JobId);_=Identifiers.Hex32(intent.Release);_=Identifiers.Hash(intent.ManifestSHA256);
         if(intent.Targets.Any(t=>t is null))throw WfpNative.Contract("WinsockIntentTargetMissing");
-        WinsockRegistryScope.RequireExactTargets(intent.ControlSet,intent.Targets.Select(t=>new WinsockRegistryScope.Target(t.Path,t.Access)).ToArray());
+        var targets=intent.Targets.Select(t=>new WinsockRegistryScope.Target(t.Path,t.Access)).ToArray();
+        if(intent.SchemaVersion==1)WinsockRegistryScope.RequireExactTargets(intent.ControlSet,targets);
+        else WinsockRegistryScope.RequireExactTransportTargets(intent.ControlSet,targets);
         foreach(var target in intent.Targets)
         {
             if(target.Path.Length==0)WinsockRegistryScope.RequireSupportedRootSecurity(target.OriginalSecurity);

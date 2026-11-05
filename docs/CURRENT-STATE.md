@@ -1,5 +1,20 @@
 # 当前状态与授权摘要
 
+2026-11-05（America/New_York）接续32ab60b。固定本机mswsock的WSP表和IPv4 TCP创建静态链
+发现额外Winsock传输列表及映射依赖，宿主真实内容已核对。新固定
+`qualify-winsock-transport-session-gateway` 源码沿原owner/租约，仅新增物理ControlSet下
+Winsock\Parameters、Tcpip6\Parameters\Winsock、Tcpip\Parameters\Winsock三键KEY_READ；
+不授权父服务配置树、0/1/2子键或其他传输。实际六名称/顺序、Mapping8x3、HelperDLL及通用
+ProviderGUID、值/子键形态严格固定，内容漂移拒绝。旧25对象入口与v1日志保持，新28对象v2。
+
+两个新增映射键的原生P+AI经独立新本人volatile父/子参考完成精确添加/恢复及子键不变；
+Winsock写入保留P+AI时携带AR+AI。109输入修订三工程BUILD0/0，旧33项、新27项策略和六
+产品非生成语义0/0，28目标实际只读检查通过、原25摘要未变。SOURCE/INTEGRATED/BUILD；
+新28对象系统租约/网络尚NOT_RUN，静态链不能单独证明上次错误5的动态原因。
+当前安装仍a149/INACTIVE，正式Claude、完整L3、GPU与全机IPv6/GUI启停未验收。
+下一步固定新候选并按具体范围审查原Bootstrap更新与新入口的一次系统资格。
+[证据](STATUS.md#2026-11-05-winsock传输映射最小范围候选)。
+
 2026-11-05（America/New_York）a149f2f3已由原Bootstrap完成未激活更新（退出0），15公开
 安装文件的长度/摘要/非重解析路径独立核对通过。本人UAC与具体工具审批后，新的原owner
 `qualify-winsock-session-gateway` 已实际执行：25对象最小读权限租约精确添加和恢复，
