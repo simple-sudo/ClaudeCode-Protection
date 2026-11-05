@@ -5,6 +5,34 @@
 历史页的“当前/待执行/暂停/DELIVERABLE”按段落日期及限定范围解释，不是今天的状态或操作许可。
 不在本页复制当前安装和授权摘要。
 
+## 2026-11-04 Winsock对象对照与UDP和SMBIOS执行门禁
+
+单次工具审批及本人UAC后，6800070c原daily/Broker/ProtectedSession的离线LPAC编译器
+执行固定三文件探针。原三actor封存、声明的常量编辑及一次自检完成，原owner核验关闭后
+导出九文件。独立验证原会话与编译器PID、输入和输出清单、逐文件摘要和唯一源码编辑。
+
+普通身份从两个打开入口读到相同的六项Winsock目录真实值和MachineGuid。受限进程在
+`RegOpenKeyExW` 和 `NtOpenKey` 分别收到5与 `0xC0000022`，没有返回对应原值。
+`ws2_32.dll`、`mswsock.dll` 两侧均能读出MZ文件头。普通 `WSAStartup(2.2)` 返回0，
+受限调用返回10107。此实验不采集内部调用轨迹，DLL文件读取也不证明模块加载。
+
+复核上轮目录文本时确认 `nlasvc.dll` 出现在描述行，运输提供程序路径只见 `mswsock.dll`；
+两种命名空间目录的实际 `LibraryPath` 另外包含系统模块。两侧读取 `nlasvc.dll` 均返回2，
+不计权限拒绝。提供程序角色纠正证据SHA256
+`1827F90C09D62B26AE59429746CA753BFBD84441BD6F2983AAE13B3559C2F38C`。
+
+普通身份取得真实4213字节SMBIOS，按DMTF Type 1布局确认存在非占位UUID；普通IPv4/IPv6
+UDP owner表分别有42/22行。受限身份对三个接口均收到5且无内容，未确认此处有禁止值暴露。
+这些实证只覆盖所列API和离线编译器。原始材料留在 `work/winsock-native-objects-6800/`，
+结果核验摘要SHA256 `E5FC6F53CE54AC91EE4A009BC65CDC56FEE991F21D66464BF87D9DDD929FF12E`。
+初次普通准备脚本被源状态门拦截，r2生成固定输入后仅执行一次系统对照。
+
+新增源码将IPv4/IPv6 UDP与SMBIOS容量查询接入原编译器的前置门禁，非明确拒绝不得放行。
+原owner验证宿主API正控制，按会话、计划摘要、PID绑定读取状态，普通公开回执结构保持。
+83固定输入保护库和Broker离线BUILD 0/0，库副本一致；六产品工程非生成语义0/0。
+构建回执SHA256 `3B9AF38B8A429906DB3F36A7653F4476C1A47D13EF5CFB697AAA60E264AF276A`。
+候选SOURCE / INTEGRATED / BUILD，安装及受限执行NOT_RUN。
+
 ## 2026-11-04 本次项目协作停止与回执
 
 保护中心保留当前普通daily进程及其输出，显式启用一次停止信号；CLI既有三参数调用继续

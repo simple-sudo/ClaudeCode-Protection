@@ -18,9 +18,9 @@ internal sealed partial class HostPrivacyProbe : IDisposable
     private sealed record Plan(string SessionId,string InstallationId,string Release,Target[] Targets);
     private sealed record RestrictedTarget(string Role,string Kind,string Path,int Pid,bool OwnerObservedAbsent);
     private sealed record RestrictedPlan(int SchemaVersion,string SessionId,string InstallationId,string Release,RestrictedTarget[] Targets);
-    private sealed record CompilerNetworkReads(int Adapters,uint Tcp4Size,uint Tcp6Size)
+    private sealed record CompilerHostReads(int Adapters,uint Tcp4Size,uint Tcp6Size,uint Udp4Size,uint Udp6Size,int SmbiosSize)
     {
-        internal bool Denied=>Adapters==5 && Tcp4Size==5 && Tcp6Size==5;
+        internal bool Denied=>Adapters==5 && Tcp4Size==5 && Tcp6Size==5 && Udp4Size==5 && Udp6Size==5 && SmbiosSize==5;
     }
     private readonly Plan plan;
     private readonly List<SafeProcessHandle> processes;
@@ -45,12 +45,16 @@ internal sealed partial class HostPrivacyProbe : IDisposable
     }
     internal static HostPrivacyProbe Capture(string session,string installation,string release)
     {
-        // The offline compiler's refusal only counts on a host where these
-        // same APIs are reachable. Keep the returned host data in memory.
+        // Confirm the same APIs are available to the owner. Except for
+        // adapter enumeration, the gate queries only required buffer sizes.
         if(NetworkInterface.GetAllNetworkInterfaces().Length==0 ||
             ProxyChannelLease.QueryTcpOwnerTableSize(false,out var size4)!=122 || size4<4 ||
-            ProxyChannelLease.QueryTcpOwnerTableSize(true,out var size6)!=122 || size6<4)
+            ProxyChannelLease.QueryTcpOwnerTableSize(true,out var size6)!=122 || size6<4 ||
+            QueryUdpOwnerTableSize(false,out var udp4)!=122 || udp4<4 ||
+            QueryUdpOwnerTableSize(true,out var udp6)!=122 || udp6<4)
             throw WfpNative.Contract("HostNetworkReadPositiveControlMissing");
+        if(QuerySmbiosSize(out var firmwareSize)!=0 || firmwareSize<8)
+            throw WfpNative.Contract("HostSmbiosReadPositiveControlMissing");
         using var human=WindowsIdentity.GetCurrent();var sid=human.User?.Value??throw WfpNative.Contract("HostPrivacyHumanMissing");
         var profile=Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
         var roaming=Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
@@ -143,7 +147,7 @@ internal sealed partial class HostPrivacyProbe : IDisposable
         var bytes=new byte[(int)file.Length];file.ReadExactly(bytes);using var json=JsonDocument.Parse(bytes,new JsonDocumentOptions{MaxDepth=4});
         var r=json.RootElement;
         if(actor=="project")
-            HostPrivacyContract.Fields(r,"SchemaVersion","SessionId","PlanSHA256","Pid","Cases","NetworkReads");
+            HostPrivacyContract.Fields(r,"SchemaVersion","SessionId","PlanSHA256","Pid","Cases","HostReads");
         else
             HostPrivacyContract.Fields(r,"SchemaVersion","SessionId","PlanSHA256","Pid","Cases");
         foreach(var c in r.GetProperty("Cases").EnumerateArray())HostPrivacyContract.Fields(c,"Role","Kind","Status","Error");
@@ -153,11 +157,13 @@ internal sealed partial class HostPrivacyProbe : IDisposable
         if(actor=="project")
         {
             HostPrivacyContract.ValidateCompilerCases(result.Cases);
-            var network=r.GetProperty("NetworkReads");
-            HostPrivacyContract.Fields(network,"Adapters","Tcp4Size","Tcp6Size");
-            var reads=new CompilerNetworkReads(network.GetProperty("Adapters").GetInt32(),
-                network.GetProperty("Tcp4Size").GetUInt32(),network.GetProperty("Tcp6Size").GetUInt32());
-            if(!reads.Denied)throw WfpNative.Contract("CompilerHostNetworkReadsNotDenied");
+            var host=r.GetProperty("HostReads");
+            HostPrivacyContract.Fields(host,"Adapters","Tcp4Size","Tcp6Size","Udp4Size","Udp6Size","SmbiosSize");
+            var reads=new CompilerHostReads(host.GetProperty("Adapters").GetInt32(),
+                host.GetProperty("Tcp4Size").GetUInt32(),host.GetProperty("Tcp6Size").GetUInt32(),
+                host.GetProperty("Udp4Size").GetUInt32(),host.GetProperty("Udp6Size").GetUInt32(),
+                host.GetProperty("SmbiosSize").GetInt32());
+            if(!reads.Denied)throw WfpNative.Contract("CompilerHostReadsNotDenied");
         }
         else HostPrivacyContract.ValidateCases(result.Cases);
         return result;
@@ -304,20 +310,32 @@ internal sealed partial class HostPrivacyProbe : IDisposable
         HostPrivacyContract.ValidateCompilerCases(observations);
         var report=new HostPrivacyObservation(1,resource.Nonce,resource.HostPrivacySHA256,Environment.ProcessId,observations);
         // Any result other than explicit access denied refuses execution. A
-        // TCP sizing response alone does not establish content exposure.
-        var network=new CompilerNetworkReads(ObserveAdapterRead(),
-            ProxyChannelLease.QueryTcpOwnerTableSize(false,out _),ProxyChannelLease.QueryTcpOwnerTableSize(true,out _));
+        // Sizing response alone does not establish content exposure.
+        var host=new CompilerHostReads(ObserveAdapterRead(),
+            ProxyChannelLease.QueryTcpOwnerTableSize(false,out _),ProxyChannelLease.QueryTcpOwnerTableSize(true,out _),
+            QueryUdpOwnerTableSize(false,out _),QueryUdpOwnerTableSize(true,out _),QuerySmbiosSize(out _));
         using(var output=new FileStream(ReportPath(workspace,"project"),FileMode.CreateNew,FileAccess.Write,FileShare.None))
         {
-            JsonSerializer.Serialize(output,new {report.SchemaVersion,report.SessionId,report.PlanSHA256,report.Pid,report.Cases,NetworkReads=network});
+            JsonSerializer.Serialize(output,new {report.SchemaVersion,report.SessionId,report.PlanSHA256,report.Pid,report.Cases,HostReads=host});
             output.Flush(true);
         }
-        return network.Denied && observations.All(c=>c.Status=="ACCESS_DENIED" && c.Error==5);
+        return host.Denied && observations.All(c=>c.Status=="ACCESS_DENIED" && c.Error==5);
     }
     private static int ObserveAdapterRead()
     {
         try{_=NetworkInterface.GetAllNetworkInterfaces();return 0;}
         catch(NetworkInformationException error){return error.NativeErrorCode;}
+    }
+    private static uint QueryUdpOwnerTableSize(bool ipv6,out uint size)
+    {
+        size=0;
+        return GetExtendedUdpTable(IntPtr.Zero,ref size,false,ipv6?23u:2u,1,0);
+    }
+    private static int QuerySmbiosSize(out uint size)
+    {
+        const uint rawSmbios=0x52534D42; // RSMB
+        size=GetSystemFirmwareTable(rawSmbios,0,IntPtr.Zero,0);
+        return size!=0?0:Marshal.GetLastWin32Error();
     }
     private static string ReportPath(string workspace,string actor)=>WindowsPathSeal.Child(workspace,"host-privacy-"+actor+".json");
     // Request only FILE_READ_DATA, asynchronously: no denial caused solely by
@@ -371,4 +389,8 @@ internal sealed partial class HostPrivacyProbe : IDisposable
     [DllImport("kernel32.dll",EntryPoint="QueryFullProcessImageNameW",CharSet=CharSet.Unicode,SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)] private static extern bool QueryFullProcessImageName(SafeProcessHandle process,uint flags,StringBuilder path,ref int length);
     [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
     [DllImport("advapi32.dll",EntryPoint="RegOpenKeyExW",CharSet=CharSet.Unicode)] private static extern int RegOpenKeyEx(IntPtr root,string path,uint options,uint access,out SafeRegistryHandle key);
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
+    [DllImport("iphlpapi.dll",ExactSpelling=true)] private static extern uint GetExtendedUdpTable(IntPtr table,ref uint size,[MarshalAs(UnmanagedType.Bool)]bool sorted,uint family,int tableClass,uint reserved);
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
+    [DllImport("kernel32.dll",ExactSpelling=true,SetLastError=true)] private static extern uint GetSystemFirmwareTable(uint provider,uint table,IntPtr buffer,uint size);
 }
