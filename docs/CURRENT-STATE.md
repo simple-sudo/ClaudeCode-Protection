@@ -28,6 +28,18 @@ group SID作唯一restricting SID；不增加enabled group/capability，不模�
 结果直接授予registryRead。没有新安装、ACL/服务/网络改动或真实Claude启动；现有零能力链不变。
 真实会话网络资格和完整产品交付仍未成立，自评/画像仍DESIGN。
 
+**2026-11-04 设备所有者进一步明确的研发授权/强制测试目标（仅文档）**：
+[真实敏感数据强制对抗实验规范](REAL-DATA-ADVERSARIAL-ASSURANCE.md)明确：
+本项目保护的信息对 Claude/官方服务及其派生进程受限，**不是对 Codex、ChatGPT、
+其他授权开发者的全局敏感禁读定义**。用户明确授权 Codex/ChatGPT 对自己控制的 Windows
+主机、网络、FlClash/UU、硬件 ID、位置和画像线索充分读取和分析真实内容；
+**不能最小化为只测是否可打开、不能用合成样本替代必需 L3 实验，也不能因云端开发工具
+自动回避真实数据**。可信 owner 基准原值、与 Claude 同等受限身份的主动真实读取尝试、
+实际内容核验和跨源画像是新 P0-ASSURANCE 必需研发/验收工作；正式 Claude 仍不得读取
+这些数据或测试原始报告。原始证据可由授权研发者审查，不默认公开 Git/CI/送入 Claude。
+本轮只更新文档，没有在本机执行新数据采集、权限测试、产品安装或正式 Claude 启动；
+现有6800/Winsock10107失败、既往有限拒绝和具体高影响许可状态均不改变。
+
 **2026-11-04 用户新需求（仅文档，DESIGN / NOT_RUN）**：新增
 [受保护启动与安全退出生命周期 V1](PROTECTED-STARTUP-SHUTDOWN-LIFECYCLE-V1.md)：
 先打开保护 GUI 点击「准备启动」并确认全机原生 IPv6 出站阻断，用户手动开启 FlClash Global + TUN，

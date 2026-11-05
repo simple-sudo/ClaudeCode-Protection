@@ -8,10 +8,11 @@
 
 1. 阅读[当前状态与授权摘要](docs/CURRENT-STATE.md)：唯一最新基线、最近安装观察、缺口与授权。
 2. 阅读[现行安全需求](docs/SECURITY-REQUIREMENTS.md)：完整产品范围、P0/P1/P2与交付术语。
-3. 新的 [受保护启动与安全退出生命周期 V1](docs/PROTECTED-STARTUP-SHUTDOWN-LIFECYCLE-V1.md)：先阻断全机 IPv6、用户手动开 FlClash、预检后 GUI 启动 Claude、受控退出后用户手动关 FlClash 再恢复 IPv6，目前仅 DESIGN。
-4. 按任务阅读专题；需要证据再查[开发记录索引](docs/STATUS.md)和
+3. **[真实敏感数据强制对抗实验规范](docs/REAL-DATA-ADVERSARIAL-ASSURANCE.md)**：Codex/ChatGPT 是经设备所有者授权的研发者，必须充分读取、检查并分析真实本机信息；Claude 语境下的敏感不是对所有软件/云端研发模型的全局禁止，L3 真实内容实验不得省略。
+4. 新的 [受保护启动与安全退出生命周期 V1](docs/PROTECTED-STARTUP-SHUTDOWN-LIFECYCLE-V1.md)：先阻断全机 IPv6、用户手动开 FlClash、预检后 GUI 启动 Claude、受控退出后用户手动关 FlClash 再恢复 IPv6，目前仅 DESIGN。
+5. 按任务阅读专题；需要证据再查[开发记录索引](docs/STATUS.md)和
    [验收账本](docs/PROJECT-ACCEPTANCE.md)。专题不能以“本文件优先”永久覆盖后续用户要求。
-5. 自评/画像评估的新目标及验收合同见[可信自评与画像专题](docs/ASSURANCE-AND-EXPOSURE-PROFILING.md)；
+6. 自评/画像评估的新目标及验收合同见[可信自评与画像专题](docs/ASSURANCE-AND-EXPOSURE-PROFILING.md)；
    目前仅 REQUIREMENT_ONLY / DESIGN，不应从文档或合成测试推导新启动许可。
 
 用户2026-11-02已恢复产品功能开发；文档语义和文件系统轻量化治理阶段已结束。
@@ -30,7 +31,7 @@
 
 ## 操作边界
 
-- 自主推进已授权的普通审查/编辑，复用有效成果。只做解决当前问题所需的验证，不重复无交付收益的证明。
+- 自主推进已授权的普通审查/编辑，复用有效成果。**用户明确授权 Codex/ChatGPT 充分获取和分析本机真实网络、代理/UU、设备标识、位置/指纹等 Claude 受限信息作为必要研发实验数据**；不得因“敏感/云端模型/尽量最小”回避、缩减或用模拟内容替代必需 L3 实验。只避免无交付收益的重复试验。
 - 已消耗的UAC、安装、系统实验、恢复和Claude启动授权不复活；旧授权不跨版本/输入/期限转授。
   高影响操作先固定工件、输入/输出、影响、时限、停止/恢复边界并取得适用的具体人类决定；本人确认UAC。
 - 不自动确认UAC、不提供高权限shell/任意脚本或通用提权入口；普通GUI、检查和日常维护保持普通权限。
@@ -50,7 +51,7 @@
 
 - 复用原安装→Broker→ProtectedSession→Job/LPAC/WFP→工作区/工具→监督/结果/恢复所有者。
   不另建通用执行器，不默认VM、CPU-only或无约束回退；保留授权工具与NVIDIA目标。
-- P0宿主隐私、强制网络、自我保护并列；P1真实有效信息最小暴露；P2仅有限辅助混淆。
+- P0宿主隐私、强制网络、自我保护与 P0-ASSURANCE 真实内容对抗实验同时推进；**P1信息最小暴露仅限制正式 Claude 可见面，不限制授权研发测试的真实数据覆盖**；P2仅有限辅助混淆。
   所有Claude派生工具保持实际资源边界，保护源码/控制面默认不进入日常Claude工作区。
   中性运行命名必须有完整一致方案，不能冒充第三方身份或规避AV；本轮未实施命名/混淆。
 - 数据导入由普通用户显式选择，Broker不按不可信宿主路径读文件；DATA授权不授予代码执行权。

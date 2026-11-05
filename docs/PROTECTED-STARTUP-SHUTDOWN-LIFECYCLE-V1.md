@@ -3,6 +3,18 @@
 > 2026-11-04 用户确认的新目标。**REQUIREMENT_ONLY / DESIGN / NOT_RUN**：本文仅改变需求与计划，未更改系统、未实现新 GUI、未安装规则、未启动真实 Claude。
 > 权威安全需求：[SECURITY-REQUIREMENTS](SECURITY-REQUIREMENTS.md)；最新安装/失败/授权：[CURRENT-STATE](CURRENT-STATE.md)；历史证据仍以原版本和场景为限。本计划不构成 UAC、安装、全机网络更改或真实 Claude 启动许可。
 
+## 2026-11-04 新增安全前置：真实敏感数据强制实验
+
+本生命周期的 P0-HOST/NET/SELF/ASSURANCE 验收遵循
+[真实敏感数据强制对抗实验规范](REAL-DATA-ADVERSARIAL-ASSURANCE.md)。
+用户允许 Codex/ChatGPT 充分读取和分析本人真实宿主指纹、物理网络、FlClash/UU 等信息作为研发数据；
+不得因为它们“对 Claude 敏感”或开发模型在云端就改用模拟测试。
+完成 GUI、IPv6 门和网络准入设计/源码不构成宿主隐私通过：
+关键目标必须用与 Claude 等价的**实际受限身份**尝试获取真实内容，
+由可信 owner 记录原值、来源、跨源画像和实际拒绝；L3 未完成不得把正式 Claude 会话列为验收通过。
+开发者的真实数据访问权不得转交正式 Claude，原始实验信息不自动发布到 GitHub/CI/Anthropic 通道。
+本段是 REQUIREMENT_ONLY / NOT_RUN，不解除现有正式启动和高影响系统操作门禁。
+
 ## 1. 三个独立控制面
 
 | 控制面 | 目标、拥有者与不可交换的边界 |

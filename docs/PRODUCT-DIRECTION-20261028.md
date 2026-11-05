@@ -3,6 +3,7 @@
 > 2026-10-28阶段方向，保留当时数据切片与授权边界。现行目标与优先级见
 > [SECURITY-REQUIREMENTS](SECURITY-REQUIREMENTS.md)，最新实现/安装/授权见[CURRENT-STATE](CURRENT-STATE.md)。
 > 下文“本次/当前/下一步”不是今天的待执行计划；DATA无代码边界不因后来v6项目能力而取消。
+> **2026-11-04 新规范**：[真实数据强制对抗实验](REAL-DATA-ADVERSARIAL-ASSURANCE.md)取代下文当时“禁止读取真实秘密制造样本”的一般研发方法限制；历史旧切片仍仅证明其已测对象，不得据旧范围要求 Codex 回避授权真实内容实验。
 
 2026-10-28用户续开发要求。本次继续原安装程序→Broker→ProtectedSession→AppContainer/Job/WFP→授权工作区/工具→监督/恢复链；不另建执行器、VM或默认CPU-only路线。
 
