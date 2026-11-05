@@ -1,5 +1,11 @@
 # 当前状态与授权摘要
 
+2026-11-05新28对象源码已提交c0df1e8。固定d00a68934f5943c2b63bddae28837769未激活候选，
+20文件及内嵌清单核验通过，清单F5754A429380192B3A77D4F90B95D19F1A49DA51D5FBDBAE8436895D200DA605；
+Broker/Bootstrap同库F86097BDD13A3D0455163059F3ED05FEA14477F6C73542627A1E8B629DC551AF。
+86输入Bootstrap叶构建0/0，原a149→d00确切迁移内存门7项通过。候选尚未安装，现有a149
+系统状态及网络socket5失败不变；安装和新资格仍分别按固定字节/影响具体审查。
+
 2026-11-05（America/New_York）接续32ab60b。固定本机mswsock的WSP表和IPv4 TCP创建静态链
 发现额外Winsock传输列表及映射依赖，宿主真实内容已核对。新固定
 `qualify-winsock-transport-session-gateway` 源码沿原owner/租约，仅新增物理ControlSet下
