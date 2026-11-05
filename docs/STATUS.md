@@ -5,6 +5,31 @@
 历史页的“当前/待执行/暂停/DELIVERABLE”按段落日期及限定范围解释，不是今天的状态或操作许可。
 不在本页复制当前安装和授权摘要。
 
+## 2026-11-05 从3cf6fc0恢复：真实宿主网络内容参考与可信解码
+
+用户恢复持续开发。新源码NetworkContentSnapshot.cs只处理有界留存字节：固定x64 ABI、
+相对原缓冲基址解析，不解引用已释放地址；结构长度、指针、字符串、链表循环、MAC长度、
+地址族/前缀、TCP行数/尾字节/状态异常拒绝。TCP listener远端字段按无意义处理，IPv6 TCP
+scope使用网络字节序、sockaddr scope使用本机字节序。没有添加任何capability/系统ACL、
+设备授权、网络放行或Token修改；接入保护库编译，尚无owner自动准入调用。
+
+tests/NetworkContent提供固定普通真实参考、原候选留存数据解码及22项有意义边界检查。
+BUILD0错误0警告；保护库85项源/资源输入持有构建同样0/0。普通身份1003真实调用
+GetAdaptersAddresses(flags0x80)和GetExtendedTcpTable(class5,AF2/23)，成功保留网卡/TCP4/
+TCP6原缓冲与可读内容；第一采样8/127/11。后续.NET独立实现解码对照不是独立OS来源，
+两次采样动态TCP数量差异不作泄漏或安全结论。原始网卡GUID/MAC/物理IPv6/DNS与FlClash
+信息留在本机work/network-content-3cf6fc0-20261105，Git只收代码及不含原值的限定记录。
+
+证据：test-build.json、decoder-tests.json、lifecycle-source-inputs.json、
+lifecycle-build-receipt.json、host-reference-01/与host-reference-02/。第一次保护库调用
+误用了不存在的独立PowerShell路径，未启动；改用当前已提供pwsh后成功，不属系统操作重试。
+SOURCE/BUILD+VERIFIED(普通真实内容与解码)。此阶段新增可信对照能力，尚无正常Socket、
+受限L3、GUI生命周期、GPU或正式Claude新交付；不标CAPABILITY_DELIVERED(受限网络)。
+
+结构来源：[微软网卡结构](https://learn.microsoft.com/en-us/windows/win32/api/iptypes/ns-iptypes-ip_adapter_addresses_lh)、
+[微软TCP6结构](https://learn.microsoft.com/en-us/windows/win32/api/tcpmib/ns-tcpmib-mib_tcp6row_owner_pid)。
+精确候选输入8523C4F0…未改写；新的单次Token修改及受限运行须另行固定并由本人决定。
+
 ## 2026-11-05 默认对象ACL资格材料阶段结束并按用户要求暂停
 
 用户明确要求当前阶段结束后先暂停。完成普通材料检查后停止工作，不申请/发起新系统运行。

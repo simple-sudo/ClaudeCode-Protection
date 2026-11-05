@@ -1,5 +1,19 @@
 # 当前状态与授权摘要
 
+2026-11-05用户从3cf6fc0明确恢复持续产品开发，替代下文阶段结束后的暂停要求；高影响
+Token/UAC/安装/WFP/IPv6/正式Claude操作仍需各自具体决定，旧单次许可不复活。
+本轮新增可信侧NetworkContentSnapshot有界解码器（不解引用历史指针、不签发准入），
+支持原固定候选的x64网卡/地址/DNS/网关/MAC及IPv4/IPv6 TCP内容。22项解析边界检查通过，
+独立普通参考工具与85输入保护库BUILD均0错误0警告；没有安装新库或执行token setter。
+普通工具身份1003实际采集8网卡、127条TCP4及11条TCP6的第一份完整原始参考，取得
+FlClash隧道与物理网卡真实地址、DNS、MAC、网关；第二份增加.NET独立解码对照（底层
+Windows来源可相同且顺序采样非原子）。原值仅在work/network-content-3cf6fc0-20261105
+留本机，不纳入Git/CI/Claude。SOURCE/BUILD及VERIFIED(普通真实内容采集与解码)，不是
+受限L3、Socket修复或产品交付；LPAC修改前后实际内容、endpoint/Socket/HTTPS仍NOT_RUN。
+原self-token-endpoint-l3-once输入8523C4F0…保持原字节；下一步固定原owner单次执行及
+恢复边界，取得新的具体人类决定后才能运行。最后安装观察3e2/INACTIVE，不以普通参考
+推导新安装状态，网络仍FAIL，真实Claude继续延期，PRODUCT_DELIVERY_NOT_ACCEPTED。
+
 2026-11-05用户补充要求本阶段完成本地提交后再暂停。本轮收尾提交范围限当前源码、
 已安装3e2批准清单、相关测试与状态/专题记录；work中的固定工件、运行回执、原始数据、
 生成程序均留本机，不纳入提交，不push或改变remote。84项保护库输入与既有成功构建

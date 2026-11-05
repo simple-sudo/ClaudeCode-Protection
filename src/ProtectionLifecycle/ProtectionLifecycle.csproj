@@ -17,6 +17,7 @@
     <Compile Include="../Shared/WindowsDirectoryNames.cs" />
     <Compile Include="AtomicAdmission.cs" />
     <Compile Include="OwnedObjectDefaultDaclPolicy.cs" />
+    <Compile Include="NetworkContentSnapshot.cs" />
     <Compile Include="RestrictingSidToken.cs" />
     <Compile Include="WinsockRegistryScope.cs" />
     <Compile Include="SessionWinsockReadAccess.cs" />
