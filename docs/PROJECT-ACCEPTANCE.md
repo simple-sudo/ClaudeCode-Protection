@@ -5,6 +5,15 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-06 观察器真实闭合及原项目运行失败
+
+VERIFIED(93B193D4固定研发观察器真实seal/采集/自有Stop0/Token保持)，采集循环
+覆盖风险明确，未读ETL，不证明AFD分支或网络可用。原owner项目Run失败、无结果
+释放；公开准入关闭/quarantine/Job零/停止0错误通过，不新增私有读取或清理结论。
+新自身pseudo handle读取/事件过滤仅SOURCE/BUILD与66项普通验证，LPAC/过滤原生
+NOT_RUN。完整产品、Socket/HTTPS、L3及正式Claude仍未验收。
+见[证据](STATUS.md#2026-11-06-真实afd采集闭合项目run失败与后续修复)。
+
 ## 2026-11-06 TokenBefore定位及普通标量读取
 
 批准的A300344F…原观察器实际回报TokenBefore，未启动本次LPAC或读取ETL；采集未通过。

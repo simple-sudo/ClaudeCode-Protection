@@ -1,5 +1,25 @@
 # 当前状态与授权摘要
 
+2026-11-06本人批准93B193D4…后，原观察器真实完成10:42:12.904–10:43:43.333Z
+固定采集，原句柄终态0、自己的trace/GUID停止0、Token/权限前后一致、前后full2/
+elevated1/非AC/无冒充；终态24CB3A6D…，原程序集EA1D86C2…、源8840D827…。新目录
+seal/ETL有效APP/RAP deny/摘要pending发布检查走过实际链，但没有LPAC读取该目录
+的负控制，不能提升为完整自我保护/L3。ETL16MiB、691缓冲、loss三项0但可能循环
+覆盖，完整覆盖UNKNOWN；ETL F3DC8723…原位保留且未读取。
+
+同次原owner项目372b0f6b…终态3，OwnerSealedBeforeCode=true，ProjectFailure=Run，
+未释放结果。原公开Stop：准入关闭、停止前quarantine、Job零、失败0；双actor及probe
+公开92拒绝/2个owner缺失观察保留，不把缺失当拒绝。没有额外私有Job/Stop或失败结果
+读取，没有自动重试/强停/恢复。本次整体许可已消耗，真实AFD分支仍UNKNOWN。
+
+源码发现新Report构造器在try之前调用Process.StartTime，可能在受限密封进程上失败；
+原Run摘要不含异常原值，不能唯一归因。后续改成自身pseudo handle GetProcessTimes，
+放在捕获范围内并保留实际错误，不增加OpenProcess/PID参数或权限；普通自身实测通过，
+LPAC新方法NOT_RUN。为避免已观察到的循环覆盖，新观察器请求event1000过滤，ABI
+6/16/48与过滤数据检查通过，不声称原生已应用；新增全新session/目录保持旧证据。
+四项目BUILD0/0、66项普通解析/协议/过滤数据及自身时间检查通过；新探针四源/163引用
+非生成0诊断。新受限probe、事件过滤及关联NOT_RUN，没有新增Socket/HTTPS/L3交付。
+
 2026-11-06本人再次批准A300344F…新固定版本后，观察器原句柄终态1129316357，有限
 阶段明确为TokenBefore；未生成ready/terminal，没有发起原LPAC或读ETL。许可已消耗，
 无重试/强停/恢复，原candidate-r2冻结字节和失败保留。它定位了观察器采集前的自身
@@ -16,7 +36,7 @@ query kind/大小/错误/标量，不含Token句柄/凭据，既有对象权限�
 四项目BUILD0/0，原62项阶段/关联检查仍限其原范围；普通修正后自身查询已实测，
 新管理员目录/Token/采集/停止均NOT_RUN，旧失败不回填，正式Claude和完整产品未验收。
 
-2026-11-06本人批准固定审查C23381A3…后，原普通控制器经本人UAC发起观察器32240；
+2026-11-06本人批准固定审查C23381A3…后，原普通控制器经本人UAC发起固定观察器；
 原持有进程终态125，未生成ready/terminal，阶段/原因及trace内核闭合UNKNOWN。
 没有lpac-project-attempt，不曾启动本次原受限任务或读取ETL；后读固定trace根不存在，
 不以缺目录/回执推断未创建trace或已清理。本次整体许可已消耗，无自动重试/强停/

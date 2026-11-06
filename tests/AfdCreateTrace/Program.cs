@@ -15,11 +15,11 @@ using AfdObserverProtocol;
 // host ACL updates, WFP setters, capability/Token adjustment or retry API.
 internal static class Program
 {
-    internal const string Root=@"C:\Program Files\ClaudeCodeProtection-AfdObserver-e0b95a8-20261106-01";
-    private const string Name="Cpc.AfdCreate.e0b95a8.20261106.01";
+    internal const string Root=@"C:\Program Files\ClaudeCodeProtection-AfdObserver-532de42-20261106-02";
+    private const string Name="Cpc.AfdCreate.532de42.20261106.02";
     private static string Human=string.Empty;
     private static readonly Guid Provider=new("e53c6823-7bb8-44bb-90dc-3f86090d48a6");
-    private static readonly Guid Session=new("426ef2b7-7538-448b-b54e-5fd4d9cba26d");
+    private static readonly Guid Session=new("3123256e-6993-41b1-b060-d6f057e28088");
     private const string DriverHash="F93639BB027E19DF5460C6D2BC69DB08139AF5D716743AC88BA15E581934DD76";
     private const int DurationSeconds=90;
     private static string Sddl=>"O:BAG:BAD:P(D;OICI;FA;;;S-1-15-2-1)(D;OICI;FA;;;S-1-15-2-2)(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)(A;OICI;0x1200a9;;;"+Human+")";
@@ -39,7 +39,8 @@ internal static class Program
             Layout();
             Console.WriteLine(JsonSerializer.Serialize(new {Scope="AFD_OBSERVER_LAYOUT_ONLY_NO_CAPTURE",PropertiesBytes=Marshal.SizeOf<Properties>(),
                 PropertiesFileOffset=Marshal.OffsetOf<Properties>(nameof(Properties.FileOffset)).ToInt32(),MaximumSeconds=DurationSeconds,
-                MaximumFileMiB=16,Keyword=4,Level=4,Provider,FreshRootExists=Directory.Exists(Root),TraceStarted=false}));return 0;
+                MaximumFileMiB=16,Keyword=4,Level=4,Provider,EventIdFilterRequested=1000,FilterParametersBytes=Marshal.SizeOf<EventIdFilter.Parameters>(),
+                FreshRootExists=Directory.Exists(Root),TraceStarted=false}));return 0;
         }
         if(args.Length!=1 || args[0]!="--run-fixed")return 125;
         using var identity=WindowsIdentity.GetCurrent();
@@ -50,7 +51,7 @@ internal static class Program
         var stage=ObserverStage.Inputs;ObserverStage? failureStage=null;uint? native=null,stopCode=null;bool created=false,started=false,ownStopped=false,tokenUnchanged=false;
         ulong handle=0;IntPtr memory=IntPtr.Zero;Properties? final=null;
         var beginning=DateTime.UtcNow;string? failure=null;int? failureCode=null;string? before=null;
-        FileStream? driver=null;
+        FileStream? driver=null;EventIdFilter? eventFilter=null;
         var tokenBefore=new TokenObservation();var tokenAfter=new TokenObservation();
         try
         {
@@ -87,15 +88,16 @@ internal static class Program
             stage=ObserverStage.ConfirmOwnTrace;AssertOwn(handle,memory);
             stage=ObserverStage.EnableFixedProvider;
             var provider=Provider;
-            // Keyword4 is the manifest's endpoint/operation diagnostic stream.
-            // Other process metadata may occur; this is not packet capture and
-            // no claim of provider-side PID/event filtering is made.
-            native=EnableTraceEx2(handle,ref provider,1,4,4,0,1000,IntPtr.Zero);
+            // Scope the manifest stream to event1000. This requests ETW event-ID
+            // filtering, not PID filtering; actual event inventory remains a
+            // decoder qualification and other actor metadata may still occur.
+            eventFilter=new EventIdFilter(Session);
+            native=EnableTraceEx2(handle,ref provider,1,4,4,0,1000,eventFilter.Pointer);
             if(native!=0)throw new InvalidOperationException("EnableRejected");
             stage=ObserverStage.EvidenceReadback;AssertEvidenceFile(Path.Combine(Root,"afd.etl"));
             stage=ObserverStage.PublishReady;
             WriteNew("ready.json",new {Scope="FIXED_AFD_KEYWORD4_OBSERVER_READY",Session,Provider,Name,StartedUtc=DateTime.UtcNow,
-                DurationSeconds,MaxFileMiB=16,OwnerSidSHA256=Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(Human))),NoTargetProcessControl=true,NoPacketCaptureRequested=true});
+                DurationSeconds,MaxFileMiB=16,EventIdFilterRequested=1000,OwnerSidSHA256=Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(Human))),NoTargetProcessControl=true,NoPacketCaptureRequested=true});
             stage=ObserverStage.Observe;
             var watch=Stopwatch.StartNew();
             while(watch.ElapsedMilliseconds<DurationSeconds*1000)
@@ -115,6 +117,7 @@ internal static class Program
                 catch(Exception error){failure??=error.GetType().Name;failureCode??=error.HResult;failureStage??=ObserverStage.StopOwnTrace;}
             }
             if(memory!=IntPtr.Zero)Marshal.FreeHGlobal(memory);
+            eventFilter?.Dispose();
             try{using var current=WindowsIdentity.GetCurrent();var after=TokenFacts(current,tokenAfter);tokenUnchanged=before is not null && current.User?.Value==Human && before==after;}
             catch(Exception error){failure??=error.GetType().Name;failureCode??=error.HResult;failureStage??=ObserverStage.TokenAfter;}
             if(!tokenUnchanged)failureStage??=ObserverStage.TokenAfter;
@@ -132,7 +135,7 @@ internal static class Program
                         OwnerSidSHA256=Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(Human))),
                         StartedUtc=beginning,EndedUtc=DateTime.UtcNow,Statistics=final is null ? null : new {final.Value.EventsLost,final.Value.BuffersWritten,final.Value.LogBuffersLost,final.Value.RealTimeBuffersLost},ETLSHA256=hash,ETLBytes=length,
                         CircularMayHaveOverwritten=final is null || (ulong)final.Value.BuffersWritten*64*1024>=16*1024*1024,
-                        KernelBranchCorrelationVerified=false,TargetJobClosed=false,NetworkAdmission=false,NoAutomaticRetry=true});
+                        EventIdFilterRequested=1000,KernelBranchCorrelationVerified=false,TargetJobClosed=false,NetworkAdmission=false,NoAutomaticRetry=true});
                 }
                 catch(Exception error){failure??=error.GetType().Name;failureCode??=error.HResult;failureStage??=ObserverStage.TerminalPublication;}
             }
@@ -253,7 +256,7 @@ internal static class Program
         Marshal.StructureToPtr(props,p,false);Marshal.Copy(name,0,IntPtr.Add(p,120),name.Length);Marshal.Copy(file,0,IntPtr.Add(p,(int)props.FileOffset),file.Length);
     }
     private static void Layout()
-    {if(!Environment.Is64BitProcess || Marshal.SizeOf<SecurityAttributes>()!=24 || Marshal.SizeOf<Wnode>()!=48 || Marshal.SizeOf<Properties>()!=120 || Marshal.OffsetOf<Properties>(nameof(Properties.FileOffset)).ToInt32()!=112 || Marshal.OffsetOf<Properties>(nameof(Properties.LoggerOffset)).ToInt32()!=116)throw new PlatformNotSupportedException("FixedX64EtwAbiRequired");}
+    {EventIdFilter.AssertLayout();if(!Environment.Is64BitProcess || Marshal.SizeOf<SecurityAttributes>()!=24 || Marshal.SizeOf<Wnode>()!=48 || Marshal.SizeOf<Properties>()!=120 || Marshal.OffsetOf<Properties>(nameof(Properties.FileOffset)).ToInt32()!=112 || Marshal.OffsetOf<Properties>(nameof(Properties.LoggerOffset)).ToInt32()!=116)throw new PlatformNotSupportedException("FixedX64EtwAbiRequired");}
     [StructLayout(LayoutKind.Sequential)] private struct SecurityAttributes {public uint Length;public IntPtr Descriptor;public int Inherit;}
     [StructLayout(LayoutKind.Sequential)] internal struct Wnode
     {public uint BufferSize,ProviderId;public ulong HistoricalContext,TimeStamp;public Guid Guid;public uint ClientContext,Flags;}

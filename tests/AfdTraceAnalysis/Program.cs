@@ -4,6 +4,7 @@ using AfdTraceAnalysis;
 using AfdObserverProtocol;
 using System.Diagnostics;
 using System.Reflection;
+using System.Runtime.InteropServices;
 
 if(args.Length==1 && args[0]=="--own-stage-exit")return ObserverOutcome.Failure(ObserverStage.TokenBefore);
 if(args.Length!=0)return 125;
@@ -65,6 +66,19 @@ foreach(var stage in Enum.GetValues<ObserverStage>())
 foreach(var code in new[]{0,125,-1,unchecked((int)0xc0000005),0x43500000,0x435000ff,0x43500101})
     Check(ObserverOutcome.Decode(code) is null,"unrecognized native/legacy exit is UNKNOWN, not a stage or cleanup proof");
 Reject(()=>ObserverOutcome.Failure((ObserverStage)255),"undefined stage cannot be encoded");
+EventIdFilter.AssertLayout();
+var source=Guid.Parse("426ef2b7-7538-448b-b54e-5fd4d9cba26d");
+using(var filter=new EventIdFilter(source))
+{
+    var parameters=Marshal.PtrToStructure<EventIdFilter.Parameters>(filter.Pointer);
+    var descriptor=Marshal.PtrToStructure<EventIdFilter.Descriptor>(parameters.Descriptors);
+    var ids=Marshal.PtrToStructure<EventIdFilter.EventIds>(new IntPtr(unchecked((long)descriptor.Pointer)));
+    Check(parameters.Version==2 && parameters.Source==source && parameters.EnableProperty==0 && parameters.ControlFlags==0 && parameters.Count==1,"fixed version2 event-filter parameters");
+    Check(descriptor.Type==0x80000200 && descriptor.Size==6 && ids.FilterIn==1 && ids.Reserved==0 && ids.Count==1 && ids.Event==1000,"only manifest event1000 requested");
+    filter.Dispose();filter.Dispose();Check(filter.Pointer==IntPtr.Zero,"event-filter data released idempotently without native tracing");
+}
+var creation=NativeBoundary.ReadOwnCreation();
+Check(creation.Success && creation.Win32Error==0 && creation.FileTime>0 && creation.FileTime<=NativeBoundary.PreciseFileTime(),"actual own process creation read via pseudo handle without OpenProcess");
 var host=@"C:\Program Files\dotnet\dotnet.exe";
 var info=new ProcessStartInfo(host){UseShellExecute=false,CreateNoWindow=true,RedirectStandardOutput=true,RedirectStandardError=true};
 info.Environment.Clear();
@@ -77,5 +91,5 @@ using(var child=Process.Start(info)??throw new IOException("Own exit fixture did
     Check(ObserverOutcome.Decode(child.ExitCode)==ObserverStage.TokenBefore && child.StandardOutput.ReadToEnd().Length==0 && child.StandardError.ReadToEnd().Length==0,
         "actual ordinary Win32 process exit preserves full finite stage without output file or UAC");
 }
-Console.WriteLine(JsonSerializer.Serialize(new{Scope="L1_AFD_EVENT_DECODING_AND_CALL_CORRELATION_ONLY",Passed=passed,
-    OwnOrdinaryExitFixtureExecuted=true,NativeCapture=false,ProtectedExecution=false,NetworkAdmission=false,NoEventIsNoExecutionProof=false}));return 0;
+Console.WriteLine(JsonSerializer.Serialize(new{Scope="ORDINARY_AFD_ANALYSIS_PROTOCOL_AND_OWN_PROCESS_METADATA",Passed=passed,
+    OwnOrdinaryExitFixtureExecuted=true,OwnProcessTimesRead=true,NativeCapture=false,ProtectedExecution=false,NetworkAdmission=false,NoEventIsNoExecutionProof=false}));return 0;

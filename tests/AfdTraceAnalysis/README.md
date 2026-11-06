@@ -5,6 +5,9 @@ No ETW control, device access, Token change or network API.
 The executable runs L1 parser/correlation fixtures and one fixed ordinary own
 child to verify the full Win32 error-stage exit code survives without a file or
 UAC. Its only argument mode, `--own-stage-exit`, returns that constant stage.
+It also reads only its own creation time using GetProcessTimes and the current
+process pseudo handle; no OpenProcess, PID argument or DACL change is used.
+Filter tests allocate only fixed event1000 data and make no tracing call.
 `AfdAnalysisBridge.Analyze` accepts data, never a path or execution request.
 
 Checks the fixed provider, event 1000/version 0, ordered nine-field manifest,

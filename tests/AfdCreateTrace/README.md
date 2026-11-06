@@ -48,3 +48,11 @@ LPAC启动。随后普通自身检查复现TokenElevation(class20)零缓冲查�
 新目录创建并seal后才进行驱动/Token门，以便门失败也能留有限真实诊断；采集门仍全部
 在StartTrace之前。前后TokenObservation仅保留query kind/大小/失败码/提升标量，成功
 查询的GetLastError不作为错误，查询开始清空旧returned length，首次失败阶段不被覆盖。
+
+93B193D4版本首次真实采集/自身Stop0/Token保持通过，原项目Run失败未释放结果且
+ETL未读。691个64KiB缓冲/16MiB circular存在绕卷可能，不能称完整覆盖。后续版
+请求ETW manifest event-ID过滤，仅event1000，keyword4/level4及90秒/16MiB不变；
+6字节EVENT_FILTER_EVENT_ID、16字节descriptor与48字节version2参数已普通布局/
+内容检查，不代表Windows实际过滤已验收。原PID不在provider端过滤，其他actor创建
+元数据仍可能出现，完整覆盖仍须检查loss/wrap。新session/目录仅用于新实验归属，
+旧受控ETL/回执原位保留，不认领/停止旧session，不为绕过检测改名。

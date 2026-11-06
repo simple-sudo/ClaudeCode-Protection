@@ -5,6 +5,32 @@
 历史页的“当前/待执行/暂停/DELIVERABLE”按段落日期及限定范围解释，不是今天的状态或操作许可。
 不在本页复制当前安装和授权摘要。
 
+## 2026-11-06 真实AFD采集闭合、项目Run失败与后续修复
+
+本人批准93B193D4271F621425043ADA8BCBD9649B18E12A5AE4B3261F48F19BF79C5B8A；
+candidate-r3保留冻结链。原观察器句柄终态0，真实seal/Start/Enable/ready/自身
+GUID及句柄query/Stop0/Token前后一致通过。源8840D827…、库EA1D86C2…，终态
+24CB3A6D5E3D450413525BBA6E4C74BC5A60CB9A3677293436C49592D0C59280。前后full2/
+elevated1/非AC/无冒充，权限hash相同；10:42:12.9043813–10:43:43.3335421Z。
+ETL F3DC8723024DAAB89EB25E80DC9CF252E88C1934DE302F3EE2BBA3D83741DC5D、16MiB、
+691 buffers，三项lost0但CircularMayHaveOverwritten=true，不声称完整覆盖。未读ETL。
+VERIFIED(有限研发观察器真实创建/采集/自身闭合与Token保持)，不是产品网络交付。
+
+原610b owner会话372b0f6b508e46cc8eaca6cb3f1e7223项目终态3，实际actor PID留本机
+回执；OwnerSealedBeforeCode=true，ProjectFailure.Run；原公开Stop四项为
+closed=true/quarantine=true/JobZero=true/errors0，92项拒绝与2个owner缺失。没有结果
+释放，未读结果、私有错误或raw Job/Stop；原许可消耗，无重试/强停/另行恢复。
+
+后续源码修正候选把自身创建时间读取从try外Process.StartTime改为固定pseudo handle
+GetProcessTimes并在try内保留错误；该原Run失败仍无唯一异常证明。普通自身时间实际
+读取成功；新LPAC方法NOT_RUN。ETW请求单event1000，EventIdFilter数据布局6/16/48、
+offset4/32/40及类型0x80000200/固定1项通过，原生过滤是否生效NOT_RUN。
+参考[EVENT_FILTER_EVENT_ID](https://learn.microsoft.com/en-us/windows/win32/api/evntprov/ns-evntprov-event_filter_event_id)、
+[ENABLE_TRACE_PARAMETERS](https://learn.microsoft.com/en-us/windows/win32/api/evntrace/ns-evntrace-enable_trace_parameters)、
+[EVENT_FILTER_DESCRIPTOR](https://learn.microsoft.com/en-us/windows/win32/api/evntprov/ns-evntprov-event_filter_descriptor)。
+四项目BUILD0/0、66普通检查通过；新探针四源/163引用非生成0诊断。新session/目录仅
+区分新工件证据归属，不删除旧trace数据或改名绕过AV；没有新增Socket/HTTPS/L3通过。
+
 ## 2026-11-06 观察器TokenBefore实际失败与固定标量查询修复
 
 本人批准A300344F707C20535AB845D54499EAEAAAEDF84632A81268CA057DDCE51C72C9，
@@ -30,7 +56,7 @@ ordinary-own-token-fixed-scalars.json为直接4字节/Win32 0/完整结果。固
 本人批准C23381A338AB378567E69BD76EEAAF8EBE4F15B13AFF7658C3A6798B0461CD36；
 冻结controller、输入29A66E62…及原观察器26337374…保存在
 work/afd-call-correlation-20261106-01/candidate。10:21:45Z发起一次，UAC后观察器
-32240创建于10:21:48.9612906Z，原持有句柄终态125，无ready/terminal。没有本次
+原观察器创建于10:21:48.9612906Z，实际PID留本机，原持有句柄终态125，无ready/terminal。没有本次
 LPAC attempt或ETL读取，具体早期失败/内核trace闭合UNKNOWN；固定根后读不存在
 不替代闭合证据。许可已消耗，无重试/强停/另行恢复/额外私有读取。AV/BFE Running，
 公开事件无匹配，厂商完整告警覆盖UNKNOWN。原字节保留，不回填失败。

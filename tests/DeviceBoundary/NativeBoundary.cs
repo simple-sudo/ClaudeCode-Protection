@@ -18,6 +18,17 @@ internal static class NativeBoundary
     [DllImport("kernel32.dll",ExactSpelling=true),DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
     private static extern void GetSystemTimePreciseAsFileTime(out long value);
     internal static long PreciseFileTime(){GetSystemTimePreciseAsFileTime(out var value);return value;}
+    internal sealed record OwnCreation(bool Success,long FileTime,int Win32Error);
+    [DllImport("kernel32.dll",ExactSpelling=true,SetLastError=true),DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
+    [return:MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetProcessTimes(IntPtr process,out long creation,out long exit,out long kernel,out long user);
+    internal static OwnCreation ReadOwnCreation()
+    {
+        // The current-process pseudo handle is never opened, adopted or closed.
+        // No PID lookup or access to another process is possible here.
+        var ok=GetProcessTimes(new IntPtr(-1),out var created,out _,out _,out _);
+        return new(ok,ok?created:0,ok?0:Marshal.GetLastWin32Error());
+    }
     [StructLayout(LayoutKind.Sequential)] private struct UnicodeString {internal ushort Length,MaximumLength;internal IntPtr Buffer;}
     [StructLayout(LayoutKind.Sequential)] private struct Attributes {internal uint Length;internal IntPtr Root,Name;internal uint Flags;internal IntPtr Security,Qos;}
     [StructLayout(LayoutKind.Sequential)] private struct IoStatus {internal IntPtr Status;internal UIntPtr Information;}
