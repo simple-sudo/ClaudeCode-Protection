@@ -7,6 +7,17 @@
 
 ## 2026-11-06 AFD解析前后固定负对照与标签参考
 
+本阶段按用户要求提交后暂停。观察器最终SOURCE/BUILD及普通实际守卫验证完成：
+显式0x1200A9避免通用读取掩码映射误判；新ETL有效APP/RAP deny、规范顺序检查和
+pending摘要原子发布。最终构建0/0，源码7B63F760…、程序集26337374…。普通新文件
+三项真实DACL对照结果符合预期：有效deny接受、缺RAP与allow先于deny拒绝；结构/
+普通执行拒绝通过，系统trace目录未创建。记录observer-final-guard-result-r3.json。
+保留普通fixture的SeSecurityPrivilege1314、反射PSObject参数类型错误以及通用掩码
+报告的有符号格式失败，均非trace实际运行；修正未调整Token或修改已有系统ACL。
+work/afd-create-trace-e0b95a8-20261106/candidate联合观察/actor读取草稿保留但未最终
+固定或获执行批准，不能运行。真实ETW采集/停止/分支关联NOT_RUN，Socket仍FAIL，
+不据新增观察器宣称CAPABILITY_DELIVERED(Socket)或PRODUCT_DELIVERY_ACCEPTED。
+
 后续本人批准D09AABDE604EC47CC5FE1A64F80DDD660CB98AE8F8385FA6197004AFCFF91051，
 入口56862649…/输入41C0DAB6…在现装610b原owner下单次完成。ordinary daily终态0，
 会话e18b7482…，原owner闭合后11文件绑定释放；结果

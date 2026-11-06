@@ -21,7 +21,7 @@ internal static class Program
     private static readonly Guid Session=new("426ef2b7-7538-448b-b54e-5fd4d9cba26d");
     private const string DriverHash="F93639BB027E19DF5460C6D2BC69DB08139AF5D716743AC88BA15E581934DD76";
     private const int DurationSeconds=90;
-    private static string Sddl=>"O:BAG:BAD:P(D;OICI;FA;;;S-1-15-2-1)(D;OICI;FA;;;S-1-15-2-2)(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)(A;OICI;GRGX;;;"+Human+")";
+    private static string Sddl=>"O:BAG:BAD:P(D;OICI;FA;;;S-1-15-2-1)(D;OICI;FA;;;S-1-15-2-2)(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)(A;OICI;0x1200a9;;;"+Human+")";
 
     private static int Main(string[] args)
     {
@@ -74,6 +74,7 @@ internal static class Program
             // no claim of provider-side PID/event filtering is made.
             native=EnableTraceEx2(handle,ref provider,1,4,4,0,1000,IntPtr.Zero);
             if(native!=0)throw new InvalidOperationException("EnableRejected");
+            AssertEvidenceFile(Path.Combine(Root,"afd.etl"));
             WriteNew("ready.json",new {Scope="FIXED_AFD_KEYWORD4_OBSERVER_READY",Session,Provider,Name,StartedUtc=DateTime.UtcNow,
                 DurationSeconds,MaxFileMiB=16,OwnerSidSHA256=Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(Human))),NoTargetProcessControl=true,NoPacketCaptureRequested=true});
             stage="observe";
@@ -103,7 +104,7 @@ internal static class Program
                 {
                     var file=Path.Combine(Root,"afd.etl");string? hash=null;long? length=null;
                     if(ownStopped && File.Exists(file))
-                    {using var etl=File.Open(file,FileMode.Open,FileAccess.Read,FileShare.Read);length=etl.Length;hash=Convert.ToHexString(SHA256.HashData(etl));}
+                    {AssertEvidenceFile(file);using var etl=File.Open(file,FileMode.Open,FileAccess.Read,FileShare.Read);length=etl.Length;hash=Convert.ToHexString(SHA256.HashData(etl));}
                     WriteNew("terminal.json",new {Scope="FIXED_AFD_OBSERVER_TERMINAL_NOT_NETWORK_OR_PRIVACY_PASS",Stage=stage,NativeCode=native,StopCode=stopCode,
                         Failure=failure,FailureCode=failureCode,Started=started,OwnStopped=ownStopped,TokenUnchanged=tokenUnchanged,Session,Provider,
                         OwnerSidSHA256=Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(Human))),
@@ -121,7 +122,29 @@ internal static class Program
     private static byte[] AclBytes(RawSecurityDescriptor sd)
     {var acl=sd.DiscretionaryAcl??throw new InvalidDataException("DaclMissing");var b=new byte[acl.BinaryLength];acl.GetBinaryForm(b,0);return b;}
     private static void WriteNew(string name,object value)
-    {using var f=new FileStream(Path.Combine(Root,name),FileMode.CreateNew,FileAccess.Write,FileShare.Read);f.Write(JsonSerializer.SerializeToUtf8Bytes(value,new JsonSerializerOptions{IncludeFields=true}));f.Flush(true);}
+    {
+        var pending=Path.Combine(Root,name+".pending");
+        using(var f=new FileStream(pending,FileMode.CreateNew,FileAccess.Write,FileShare.None))
+        {f.Write(JsonSerializer.SerializeToUtf8Bytes(value,new JsonSerializerOptions{IncludeFields=true}));f.Flush(true);}
+        AssertEvidenceFile(pending);
+        File.Move(pending,Path.Combine(Root,name),false);
+    }
+    private static void AssertEvidenceFile(string path)
+    {
+        if((File.GetAttributes(path)&FileAttributes.ReparsePoint)!=0)throw new InvalidOperationException("RedirectedEvidenceFile");
+        var security=FileSystemAclExtensions.GetAccessControl(new FileInfo(path),AccessControlSections.Access);
+        if(!security.AreAccessRulesCanonical)throw new InvalidOperationException("EvidenceDaclOrderUnknown");
+        var descriptor=new RawSecurityDescriptor(security.GetSecurityDescriptorBinaryForm(),0);
+        if(descriptor.DiscretionaryAcl is null)throw new InvalidOperationException("EvidenceDaclMissing");
+        foreach(var sid in new[]{"S-1-15-2-1","S-1-15-2-2"})
+        {
+            bool denied=false;
+            foreach(GenericAce ace in descriptor.DiscretionaryAcl)
+                if(ace is CommonAce deny && deny.AceQualifier==AceQualifier.AccessDenied && (deny.AceFlags&AceFlags.InheritOnly)==0 &&
+                    deny.SecurityIdentifier.Value==sid && (deny.AccessMask&0x1f01ff)==0x1f01ff)denied=true;
+            if(!denied)throw new InvalidOperationException("EvidenceAppContainerDenyMissing");
+        }
+    }
     private static void RequireFreshRoot()
     {
         try{_ = File.GetAttributes(Root);throw new InvalidOperationException("FreshRootRequired");}

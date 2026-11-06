@@ -9,6 +9,12 @@
 不请求数据包内容。原ETL只留新的受控Program Files研发目录，APP/RAP明确拒绝；
 当前可信用户可读，管理员/SYSTEM可写，不改现有对象权限。根路径及session名固定且
 必须全新，原StartTrace返回句柄与session GUID核对后才能停止，不能认领同名旧会话。
+普通新目录控制已确认GRGX会映射为0x1200A9；使用后者核对实际目录DACL字节，避免
+把等价掩码误当seal失败。就绪发布前核对实际ETL文件的APP/RAP有效deny，摘要先写新
+pending文件、核对其deny后原子发布；停止后再核对ETL。这里仍需要真实原生资格，不能
+用目录控制当受限身份读取拒绝或完整L3证据。
+最终普通自有文件对照验证：有效APP/RAP deny接受，缺RAP deny及allow在deny前的
+非规范DACL拒绝。只验证文件检查函数，真实trace文件的创建/权限/停止仍NOT_RUN。
 
 只有ETW的start/enable/query/stop操作；正常期限或新AV/服务故障都只尝试一次停止自己
 证明拥有的trace。原LPAC/Job/应用停止仍归原owner，观察器没有任何目标进程控制API。
