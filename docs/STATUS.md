@@ -5,6 +5,24 @@
 历史页的“当前/待执行/暂停/DELIVERABLE”按段落日期及限定范围解释，不是今天的状态或操作许可。
 不在本页复制当前安装和授权摘要。
 
+## 2026-11-06 AFD解析前后固定负对照与标签参考
+
+tests/AfdDispatchBoundary复用NativeBoundary新增三固定请求；原五项矩阵保持请求不变，
+失败输出句柄不再认领，失败IO_STATUS_BLOCK标UNDEFINED_ON_FAILURE。两项目隔离
+SDK8.0.422构建0/0；首次CS8604修复记录保留。本人普通1001实测原endpoint成功，
+family35/flags2各C000000D，成功句柄不可继承并关闭；普通结果0611A1ACD5B86D98E4AF00874B57C895B7DA5F64FE7B85BCB0FCA956BA781295。
+另以READ_CONTROL只读根、Device、AFD的OWNER/DACL前后及LABEL：全部成功，无显式
+标签ACE，AFD为S:AI，前后DACL/owner字节相同，句柄关闭。标签记录
+C5CD0C2DBDA0C380ADD38CF3030CDACD00BEA883CD6DD567D02CD42B21228AE0。
+原始记录与离线扩展函数反汇编位于work/afd-reject-stage-ea119d5-20261106，未入Git。
+
+匹配AFD/PDB的分支：flags2在RVA1559A/155A0，family35在RVA1562B/1562E拒绝，
+均早于本路径的AfdAllocateEndpoint调用。RVA4E03C的SeAccessCheck输入是
+AfdAdminSecurityDescriptor；调用方RVA15948只保存布尔结果，不据此归因endpoint
+拒绝。扩展AfdGetTransportInfo/AfdGetGroup静态读取不代表实际执行跟踪。
+SOURCE/BUILD/VERIFIED(普通参考及离线匹配分支)；受限对照NOT_RUN、拒绝组件UNKNOWN，
+没有Socket/HTTPS/L3或新增产品能力通过，不解锁旧入口、默认DACL候选或全机设备权限。
+
 ## 2026-11-06 610b真实普通父身份GPU参考正常闭合
 
 本人批准73AC9CC7…，一次执行完毕，安装/daily/原资格owner/指定新记录reader全部终态0。

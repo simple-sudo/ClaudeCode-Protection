@@ -1,5 +1,21 @@
 # 当前状态与授权摘要
 
+2026-11-06从ea119d5回到AFD拒绝层定位。新增tests/AfdDispatchBoundary固定三项解析
+对照，复用原NativeBoundary；修正原生失败时认领输出句柄/把IO_STATUS_BLOCK默认0
+当有效输出的问题。原五项矩阵请求不变，历史失败不回填。新对照及原DeviceBoundary
+均隔离构建0警告/0错误；首次新构建CS8604经空值流检查修复，保留失败记录。
+本人普通1001真实执行：原IPv4/TCP endpoint成功，family35与flags2各C000000D，
+成功句柄不可继承且关闭，未连接/IOCTL/安全写入。参考0611A1AC…留work/afd-reject-stage-
+ea119d5-20261106。固定READ_CONTROL读取根、Device、AFD标签均成功，无显式label ACE；
+AFD返回S:AI，三对象owner/DACL前后字节一致，句柄关闭，记录C5CD0C2D…。无显式
+标签不等于低完整性可写。匹配驱动离线分支显示两标记在本路径的endpoint分配前拒绝；
+内部AfdPerformSecurityCheck使用admin描述符并保存布尔标志，不能据函数名认定本次
+创建失败点。以上只有SOURCE/BUILD/VERIFIED(普通固定参考/离线分支)，不是新产品能力。
+新原owner/真实LPAC对照NOT_RUN，尚无本轮具体执行批准；拟复用现装610b，不安装。
+现装610b/INACTIVE及全部既有隔离边界不变，AFD/Socket/HTTPS仍FAIL；完整L3及最终产品
+未通过。下一步固定三个相同请求在原LPAC的返回差异，不重复已失败默认DACL候选或
+扩大capability/设备权限，不把负对照差异当内核调用跟踪。
+
 2026-11-06本人批准73AC9CC7…后真实单次链已完整通过：原安装helper、普通daily、其
 持有资格owner及指定新记录reader均终态0。现装610b108c2bc54041b52c88adf0303122 /
 INACTIVE，manifest2ACC0397…，15公开安装资产逐项一致；原安装实时闭合/quarantine/
