@@ -5,6 +5,14 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-05 GPU调用进度及普通真实计算
+
+SOURCE/BUILD/INTEGRATED(原GPU资格源码链)，VERIFIED(普通协议与真实宿主1KiB/256元素
+CUDA计算、16调用/32帧和正常精确清理)。28协议fixture及原合成绑定检查通过。
+未安装、未执行新受限GPU或故障恢复；管理owner同步HOST_CONTROL仍缺独立有界执行。
+不标CAPABILITY_DELIVERED(受保护GPU)、身份隐私通过或PRODUCT_DELIVERY_ACCEPTED。
+AFD既有稀疏事件未定位拒绝层。见[证据](STATUS.md#2026-11-05-原gpu逐调用进度及宿主真实计算)。
+
 ## 2026-11-05 原owner失败摘要实际可用
 
 VERIFIED(经本人批准原owner inactive更新、15公开安装文件及指定真实历史终态摘要)。

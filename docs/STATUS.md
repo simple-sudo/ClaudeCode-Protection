@@ -5,6 +5,23 @@
 历史页的“当前/待执行/暂停/DELIVERABLE”按段落日期及限定范围解释，不是今天的状态或操作许可。
 不在本页复制当前安装和授权摘要。
 
+## 2026-11-05 原GPU逐调用进度及宿主真实计算
+
+新增GpuCallProgress，接入AtomicChild/GpuQualification原输出管道；固定16调用/32帧、
+原PID/nonce、严格有界及有序帧，保留最后报告阶段；不把自报升级为实际执行/清理/权限。
+计算门要求原报告和完整成功阶段序列同时成立，通信失败仍尝试原有精确资源清理。
+保护库/Broker/工具BUILD0/0，28协议/真实普通管道fixture及原GPU报告合成检查通过，
+六个src项目非生成0/0。普通1003真实CUDA参考16调用均0：RTX4060 Laptop、driver13030、
+1KiB/256元素，计算hash4ADEB88C463E46506A15EF3743B8E106C7554A7CE7427BE97E291713B95A4034，
+清理成功，32帧/4项断言通过。r3收据
+CE92D2EC495637B4F8004CFF8C541ADB8B31A8EA9D00813C66F3C3FB195BE976。
+work/afd-gpu-boundary-1c06ae9-20261105保留所有输入、原始普通事件与真实GPU输出；初始26项
+及r2参考保留。未安装、未执行受限GPU或驱动故障实验；旧owner同步HOST_CONTROL存在
+无独立限时隔离缺口，原系统资格hold不变，后续必须先解决该缺口。
+只读既有LPAC日志取得238条匹配实验进程事件，但仅时间/StackHash且截断覆盖未知，不能
+定位AFD拒绝层；没有新追踪或系统实验。SOURCE/BUILD/INTEGRATED(原GPU源码链)，
+VERIFIED(普通宿主CUDA及协议)，不是受保护GPU能力或产品完整交付。
+
 ## 2026-11-05 原owner失败反馈inactive更新及真实失败摘要
 
 本人批准原入口后，执行前发现其预检/执行回执重名；原入口未运行、未触发UAC，工件和

@@ -1,0 +1,94 @@
+using System.Diagnostics;
+using System.Reflection;
+using System.Security.Principal;
+using System.Text.Json;
+using ProtectionLifecycle;
+
+using var identity=WindowsIdentity.GetCurrent();
+if(new WindowsPrincipal(identity).IsInRole(WindowsBuiltInRole.Administrator))throw new InvalidOperationException("Ordinary context required");
+if(args.Length==2 && args[0] is "fixture-child" or "native-child")
+{
+    var childNonce=args[1];var childPid=Environment.ProcessId;
+    if(args[0]=="fixture-child")
+    {
+        var writer=new GpuCallProgressWriter(Console.Out,childNonce,childPid);writer.Emit(0,0,null);
+        if(await Console.In.ReadLineAsync().WaitAsync(TimeSpan.FromSeconds(5))!="GO")return 125;
+        writer.Emit(0,1,0);Console.WriteLine(Final(childNonce,childPid));return 0;
+    }
+    var library=typeof(InstalledBroker).Assembly;const BindingFlags hidden=BindingFlags.NonPublic|BindingFlags.Instance|BindingFlags.Public;
+    var plan=Activator.CreateInstance(library.GetType("ProtectionLifecycle.GpuProbePlan",true)!,hidden,null,new object[]{childNonce,1},null)!;
+    var progress=Activator.CreateInstance(library.GetType("ProtectionLifecycle.GpuCallProgressWriter",true)!,hidden,null,new object[]{Console.Out,childNonce,childPid},null)!;
+    var gpu=library.GetType("ProtectionLifecycle.GpuQualification",true)!;
+    var report=gpu.GetMethod("Compute",BindingFlags.Static|BindingFlags.NonPublic)!.Invoke(null,new[]{plan,"ORDINARY_HOST_GPU_PROGRESS_REFERENCE",progress})!;
+    Console.WriteLine(JsonSerializer.Serialize(report,report.GetType()));
+    return (bool)gpu.GetMethod("Qualified",BindingFlags.Static|BindingFlags.NonPublic)!.Invoke(null,new[]{report})!?0:3;
+}
+if(args.Length!=1 || args[0] is not ("policy" or "host-compute"))return 64;
+var nonce=new string('a',32);const int pid=42;var checks=0;
+void Check(bool condition,string name){checks++;if(!condition)throw new Exception("FAILED: "+name);}
+GpuCallProgressReader Reader(bool required=true){var value=new GpuCallProgressReader(nonce,required);value.Bind(pid);return value;}
+string Frame(int sequence,int api,int phase,int? code=null,string? n=null,int p=pid)=>JsonSerializer.Serialize(new{Kind="GPU_CALL_PROGRESS_V1",Nonce=n??nonce,Pid=p,Sequence=sequence,Api=api,Phase=phase,Code=code})+"\n";
+async Task Reject(string input,string name)
+{
+    try{_=await Reader().ReadAsync(new StringReader(input));}
+    catch(Exception error)when(error is InvalidDataException or JsonException){checks++;return;}
+    throw new Exception("ACCEPTED: "+name);
+}
+if(args[0]=="host-compute")
+{
+    using var child=Start("native-child",nonce);var reader=new GpuCallProgressReader(nonce,true);reader.Bind(child.Id);
+    var text=reader.ReadAsync(child.StandardOutput);var errors=child.StandardError.ReadToEndAsync();
+    if(!child.WaitForExit(20000)){Console.Error.WriteLine("HOST_GPU_REFERENCE_STILL_RUNNING_ORIGINAL_HANDLE_HELD");child.WaitForExit();}
+    var finalText=await text;var stderr=await errors;using var final=JsonDocument.Parse(finalText);
+    var root=final.RootElement;var last=reader.Snapshot();
+    // Preserve the actual native return/cleanup evidence before assertions.
+    Console.WriteLine(JsonSerializer.Serialize(new{Scope="ORDINARY_HOST_REAL_CUDA_1KIB_256_ELEMENTS_AND_PROGRESS_PIPE",Checks=4,
+        ChildPid=child.Id,ChildExit=child.ExitCode,StderrLength=stderr.Length,FinalReport=final.RootElement,LastReportedCall=last,
+        LpacExecuted=false,OriginalOwnerExecuted=false,SystemPolicyChanged=false}));
+    Check(child.ExitCode==0 && stderr.Length==0,"host process completion");
+    Check(root.GetProperty("ComputeMatched").GetBoolean() && root.GetProperty("ResourceCleanupSucceeded").GetBoolean(),"real kernel and owned cleanup");
+    Check(root.GetProperty("AllocatedBytes").GetInt32()==1024 && root.GetProperty("Elements").GetInt32()==256,"fixed allocation");
+    Check(root.GetProperty("Steps").GetArrayLength()==16 && reader.ReportsCompleteSuccessfulSequence && last is {Sequence:32,ApiIndex:15,Phase:"RETURNED",Code:0},"all native call boundaries transported");
+    Console.WriteLine(JsonSerializer.Serialize(new{Scope="ORDINARY_HOST_REAL_CUDA_REFERENCE_ASSERTIONS",Passed=true,Checks=checks}));return 0;
+}
+var full=new StringWriter();var emitter=new GpuCallProgressWriter(full,nonce,pid);
+for(var api=0;api<16;api++){emitter.Emit(api,0,null);emitter.Emit(api,1,0);}full.WriteLine(Final(nonce,pid));
+var complete=Reader();_=await complete.ReadAsync(new StringReader(full.ToString()));
+Check(complete.Snapshot() is {Sequence:32,ApiIndex:15,Api:"cuCtxDestroy_v2",Phase:"RETURNED",Code:0},"complete progress");
+Check(complete.ReportsCompleteSuccessfulSequence,"all successful reports required for positive transport consistency");
+Check(await Reader(false).ReadAsync(new StringReader(Final(nonce,pid)))==Final(nonce,pid),"legacy final without newline");
+await Reject(Final(nonce,pid),"missing required progress");
+await Reject(Frame(1,0,0)+Final(nonce,pid),"pending native call cannot be completed by final");
+await Reject(Frame(1,0,0,n:new string('b',32)),"foreign nonce");await Reject(Frame(1,0,0,p:43),"foreign PID");
+await Reject(Frame(2,0,0),"sequence gap");await Reject(Frame(1,1,0),"skipped first call");await Reject(Frame(1,16,0),"unknown API");
+await Reject(Frame(1,0,3),"unknown phase");await Reject(Frame(1,0,0,1),"entry code");await Reject(Frame(1,0,1,0),"return without entry");
+await Reject(Frame(1,0,0)+Frame(2,1,1,0),"wrong return API");
+await Reject(Frame(1,0,0)+Frame(2,1,0),"overlapping call");await Reject(Frame(1,0,0)+Frame(1,0,1,0),"replay");
+await Reject(Frame(1,0,0)+Frame(2,0,1,0)+Frame(3,0,0),"backwards call");
+await Reject(Frame(1,0,0).Replace("\"Api\":0","\"Api\":0,\"Api\":0",StringComparison.Ordinal),"duplicate field");
+await Reject(Frame(1,0,0).Replace("\"Api\":0","\"Api\":0,\"Message\":\"PRIVATE\"",StringComparison.Ordinal),"extra field");
+await Reject(new string('x',16385),"line bound");await Reject("\n","empty frame");await Reject("{bad}\n","invalid JSON");
+await Reject(Frame(1,0,0)+Frame(2,0,1,0)+Final(nonce,pid)+"\n"+Frame(3,1,0),"data after final");
+var abrupt=Reader();try{_=await abrupt.ReadAsync(new StringReader(Frame(1,0,0)));}catch(InvalidDataException){}
+Check(abrupt.Snapshot() is {Sequence:1,Api:"cuInit",Phase:"ENTERED_NOT_RETURNED"},"last entered call retained after EOF failure");
+var cleanup=Reader();_=await cleanup.ReadAsync(new StringReader(Frame(1,0,0)+Frame(2,0,2,-1)+Frame(3,15,0)+Frame(4,15,1,0)+Final(nonce,pid)));
+Check(cleanup.Snapshot() is {ApiIndex:15,Code:0},"cleanup after failure retained");
+Check(!cleanup.ReportsCompleteSuccessfulSequence && !abrupt.ReportsCompleteSuccessfulSequence,"failure or missing calls cannot become successful sequence");
+using(var child=Start("fixture-child",nonce))
+{
+    var reader=new GpuCallProgressReader(nonce,true);reader.Bind(child.Id);var task=reader.ReadAsync(child.StandardOutput);
+    var clock=Stopwatch.StartNew();while(reader.Snapshot() is null && clock.ElapsedMilliseconds<3000)await Task.Delay(5);
+    Check(reader.Snapshot() is {ApiIndex:0,Phase:"ENTERED_NOT_RETURNED"} && !task.IsCompleted,"entered frame visible while original child and pipe still live");
+    await child.StandardInput.WriteLineAsync("GO");await child.StandardInput.FlushAsync();await child.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(5));
+    _=await task;Check(child.ExitCode==0 && reader.Snapshot() is {Phase:"RETURNED",Code:0},"fixture resumes and closes normally");
+}
+Console.WriteLine(JsonSerializer.Serialize(new{Scope="ORDINARY_GPU_PROGRESS_PROTOCOL_AND_LIVE_PIPE_FIXTURE",Checks=checks,Passed=true,NativeGpuExecuted=false,Installed=false}));return 0;
+
+static string Final(string nonce,int pid)=>JsonSerializer.Serialize(new{SchemaVersion=1,Pid=pid,Nonce=nonce});
+static Process Start(string mode,string nonce)
+{
+    var start=new ProcessStartInfo(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),"dotnet","dotnet.exe"))
+    {UseShellExecute=false,CreateNoWindow=true,RedirectStandardOutput=true,RedirectStandardError=true,RedirectStandardInput=true};
+    start.ArgumentList.Add(typeof(InstalledBroker).Assembly==Assembly.GetExecutingAssembly()?throw new Exception("Test entry required"):Assembly.GetExecutingAssembly().Location);
+    start.ArgumentList.Add(mode);start.ArgumentList.Add(nonce);return Process.Start(start)??throw new Exception("Own test child did not start");
+}

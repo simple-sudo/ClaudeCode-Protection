@@ -642,7 +642,8 @@ internal sealed class AtomicChild : IDisposable
             if(gpuPlan.Length>256 || !token.LpacAccessCheckObserved || token.ApplicationPackageAccessMask!=2)
                 throw WfpNative.Contract("GpuPlanOrLpacIdentityRefused");
             var gpu=JsonSerializer.Deserialize<GpuProbePlan>(gpuPlan)??throw WfpNative.Contract("GpuPlanMissing");gpu.Validate();
-            var computed=GpuQualification.Compute(gpu,GpuQualification.LpacScope);Console.WriteLine(JsonSerializer.Serialize(computed));return GpuQualification.Qualified(computed)?0:3;
+            var progress=gpu.ProgressProtocol==1?new GpuCallProgressWriter(Console.Out,gpu.Nonce,Environment.ProcessId):null;
+            var computed=GpuQualification.Compute(gpu,GpuQualification.LpacScope,progress);Console.WriteLine(JsonSerializer.Serialize(computed));return GpuQualification.Qualified(computed)?0:3;
         }
         if(plan is not null)
         {

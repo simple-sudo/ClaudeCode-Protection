@@ -1,5 +1,30 @@
 # 当前状态与授权摘要
 
+2026-11-05独立推进GPU：新增GpuCallProgress并接入原AtomicChild GPU输出/原GpuQualification
+读取链。固定16 API、最多32个进入/返回/异常帧；PID/nonce在resume前绑定，单帧512、
+最终报告16384、全流32768字符，有序/去重/限定字段；缺终态时保留最后有效报告的调用
+阶段。正向结果同时要求完整16个成功返回和原LPAC/Job/WFP/计算/停止门；进度仅受绑
+子进程自报，不证明执行/隐私/清理或准入。输出失败不跳过原有模块/显存/context清理。
+进入帧只标记P/Invoke尝试，仍包含延迟DLL加载，不证明已进入驱动API函数体。
+保留legacy protocol0；新GPU owner请求protocol1；没有新CLI、权限或正式启动入口。
+保护库/Broker及测试BUILD0/0，28项普通协议和真实管道子进程fixture通过，原GPU报告
+绑定合成检查通过，六个src项目非生成0/0。普通1003实际RTX4060 Laptop完成1KiB/256
+元素CUDA计算，driver13030，16调用均0、模块/显存/context清理成功、32阶段帧齐全，
+4项真实参考断言通过。结果hash4ADEB88C…，最新r3收据CE92D2EC…位于
+work/afd-gpu-boundary-1c06ae9-20261105/verification-r3。初始26项及r2真实参考均保留。
+SOURCE/BUILD/INTEGRATED(原GPU资格源码链)，VERIFIED(普通协议/宿主真实CUDA与管道)，
+尚未安装或执行新LPAC GPU，不标CAPABILITY_DELIVERED(受保护GPU)或隐私通过。
+审查同时确认旧HOST_CONTROL仍在管理owner线程同步执行CUDA、先于受限child限时租约，
+不能承诺驱动挂起时owner有界返回。现有GPU系统资格hold保持关闭；必须先实现受控、
+限时的宿主参考所有权再提出该提升资格，不通过延长时间或另开通用执行器绕过此缺口。
+
+AFD侧复用已验证设备描述符/标志与历史拒绝；只读既有LPAC Operational元数据及AFD-only
+实验时间窗。取得238条匹配root/tool记录（15/223），仅FailureTime/StackHash，无对象
+路径/请求权限/调用栈；查询先限256再筛PID，完整覆盖UNKNOWN，不是238次AFD失败或
+实际拒绝层证明。没有新建追踪、重跑实验、读取额外私有owner错误或未释放结果。
+本轮无安装/UAC/现有Token/ACL/cap/WFP/IPv6/代理变更，正式Claude未启动；现装保持
+最近核验f6ab7b19/INACTIVE，AFD/Socket/HTTPS仍FAIL，原组合CUDA内部阶段仍UNKNOWN。
+
 2026-11-05本人明确批准修正入口2CBCD5BD…/review3B19E574…后，原句柄helper5448终态0，
 现装已独立核验为f6ab7b19178e4226bf0b6bcdf1ef744a / INACTIVE，manifest仍E6F10C41…，
 15个公开安装文件与原固定清单逐项一致。原更新owner报告全部适用closed-admission/

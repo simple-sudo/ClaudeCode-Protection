@@ -6,9 +6,9 @@ using System.Text.Json;
 
 namespace ProtectionLifecycle;
 
-internal sealed record GpuProbePlan(string Nonce)
+internal sealed record GpuProbePlan(string Nonce,int ProgressProtocol=0)
 {
-    internal void Validate()=>_=Identifiers.Hex32(Nonce);
+    internal void Validate(){_=Identifiers.Hex32(Nonce);if(ProgressProtocol is not (0 or 1))throw new InvalidDataException("GpuProgressProtocolUnknown");}
 }
 internal sealed record CudaStep(string Stage,int Result);
 internal sealed record GpuChildReport(int SchemaVersion,int Pid,string Nonce,string Scope,int? DriverVersion,string? Device,
@@ -43,7 +43,7 @@ internal static class GpuQualification
             ret;
         }
         """;
-    internal static GpuChildReport Compute(GpuProbePlan plan,string scope)
+    internal static GpuChildReport Compute(GpuProbePlan plan,string scope,GpuCallProgressWriter? progress=null)
     {
         plan.Validate();var steps=new List<CudaStep>();IntPtr context=IntPtr.Zero,module=IntPtr.Zero,host=IntPtr.Zero,arg=IntPtr.Zero,args=IntPtr.Zero,ptx=IntPtr.Zero;
         ulong deviceMemory=0;int? driver=null;string? deviceName=null,hash=null,failure=null;var allocated=0;var matched=false;var clean=true;
@@ -51,17 +51,17 @@ internal static class GpuQualification
         try
         {
             Environment.SetEnvironmentVariable("CUDA_CACHE_DISABLE","1");
-            Check("cuInit",Cuda.Init(0));Check("cuDriverGetVersion",Cuda.DriverVersion(out var version));driver=version;
-            Check("cuDeviceGetCount",Cuda.DeviceCount(out var count));if(count<1)throw new InvalidOperationException("NoCudaDevice");
-            Check("cuDeviceGet",Cuda.DeviceGet(out var device,0));var name=new StringBuilder(128);Check("cuDeviceGetName",Cuda.DeviceName(name,128,device));deviceName=name.ToString();
-            Check("cuCtxCreate_v2",Cuda.ContextCreate(out context,0,device));Check("cuMemAlloc_v2",Cuda.Allocate(out deviceMemory,(nuint)Bytes));allocated=Bytes;
+            Check("cuInit",()=>Cuda.Init(0));int version=0;Check("cuDriverGetVersion",()=>Cuda.DriverVersion(out version));driver=version;
+            int count=0;Check("cuDeviceGetCount",()=>Cuda.DeviceCount(out count));if(count<1)throw new InvalidOperationException("NoCudaDevice");
+            int device=0;Check("cuDeviceGet",()=>Cuda.DeviceGet(out device,0));var name=new StringBuilder(128);Check("cuDeviceGetName",()=>Cuda.DeviceName(name,128,device));deviceName=name.ToString();
+            Check("cuCtxCreate_v2",()=>Cuda.ContextCreate(out context,0,device));Check("cuMemAlloc_v2",()=>Cuda.Allocate(out deviceMemory,(nuint)Bytes));allocated=Bytes;
             host=Marshal.AllocHGlobal(Bytes);var input=Enumerable.Range(0,Count).Select(i=>i*3).ToArray();Marshal.Copy(input,0,host,Count);
-            Check("cuMemcpyHtoD_v2",Cuda.CopyToDevice(deviceMemory,host,(nuint)Bytes));
-            ptx=Marshal.StringToHGlobalAnsi(Kernel);Check("cuModuleLoadData",Cuda.ModuleLoad(out module,ptx));
-            Check("cuModuleGetFunction",Cuda.Function(out var function,module,"cpc_add7"));
+            Check("cuMemcpyHtoD_v2",()=>Cuda.CopyToDevice(deviceMemory,host,(nuint)Bytes));
+            ptx=Marshal.StringToHGlobalAnsi(Kernel);Check("cuModuleLoadData",()=>Cuda.ModuleLoad(out module,ptx));
+            IntPtr function=IntPtr.Zero;Check("cuModuleGetFunction",()=>Cuda.Function(out function,module,"cpc_add7"));
             arg=Marshal.AllocHGlobal(8);Marshal.WriteInt64(arg,unchecked((long)deviceMemory));args=Marshal.AllocHGlobal(IntPtr.Size);Marshal.WriteIntPtr(args,arg);
-            Check("cuLaunchKernel",Cuda.Launch(function,1,1,1,Count,1,1,0,IntPtr.Zero,args,IntPtr.Zero));
-            Check("cuCtxSynchronize",Cuda.Synchronize());Check("cuMemcpyDtoH_v2",Cuda.CopyFromDevice(host,deviceMemory,(nuint)Bytes));
+            Check("cuLaunchKernel",()=>Cuda.Launch(function,1,1,1,Count,1,1,0,IntPtr.Zero,args,IntPtr.Zero));
+            Check("cuCtxSynchronize",()=>Cuda.Synchronize());Check("cuMemcpyDtoH_v2",()=>Cuda.CopyFromDevice(host,deviceMemory,(nuint)Bytes));
             var output=new int[Count];Marshal.Copy(host,output,0,Count);matched=output.Select((v,i)=>v==input[i]+7).All(v=>v);
             var result=new byte[Bytes];Buffer.BlockCopy(output,0,result,0,Bytes);hash=Convert.ToHexString(SHA256.HashData(result));
             if(!matched)throw new InvalidDataException("CudaResultMismatch");
@@ -77,9 +77,17 @@ internal static class GpuQualification
             Environment.SetEnvironmentVariable("CUDA_CACHE_DISABLE",previousCache);
         }
         return new(1,Environment.ProcessId,plan.Nonce,scope,driver,deviceName,allocated,Count,hash,matched,clean,steps.ToArray(),failure);
-        void Check(string stage,int code){steps.Add(new(stage,code));if(code!=0)throw new InvalidOperationException("CudaCallFailed");}
+        bool Notify(string stage,int phase,int? code)
+        {try{progress?.Emit(Array.IndexOf(GpuCallProgressReader.Stages,stage),phase,code);return true;}catch{failure??="GpuProgressWriteFailed";return false;}}
+        int Call(string stage,Func<int> call,bool cleanup)
+        {
+            if(!Notify(stage,0,null) && !cleanup)throw new IOException("GpuProgressWriteFailed");
+            try{var code=call();Notify(stage,1,code);return code;}
+            catch(Exception error){Notify(stage,2,error.HResult);throw;}
+        }
+        void Check(string stage,Func<int> call){var code=Call(stage,call,false);steps.Add(new(stage,code));if(code!=0)throw new InvalidOperationException("CudaCallFailed");}
         void Release(string stage,Func<int> call)
-        {try{var code=call();steps.Add(new(stage,code));if(code!=0)clean=false;}catch(Exception ex){clean=false;failure??=ex.GetType().Name;}}
+        {try{var code=Call(stage,call,true);steps.Add(new(stage,code));if(code!=0)clean=false;}catch(Exception ex){clean=false;failure??=ex.GetType().Name;}}
     }
     internal static bool Qualified(GpuChildReport report)=>report.ComputeMatched && report.ResourceCleanupSucceeded && report.FailureType is null &&
         report.DriverVersion is >0 && report.Device is {Length:>0 and <=127} && !report.Device.Any(char.IsControl) &&
@@ -99,8 +107,9 @@ internal static class GpuQualification
         foreach(var intent in OwnedJobIntent.ReadAll(state))if(AtomicJobCompletion.ReadClosed(state,intent) is null)throw WfpNative.Contract("GpuRequiresPriorAdmissionsClosed");
         var plans=FencePlan.ReadAll(state);if(plans.Count==0)throw WfpNative.Contract("GpuRequiresQuarantine");
         var fences=new List<PersistentFence>();var failures=new List<Exception>();
-        var id=Guid.NewGuid().ToString("N");var plan=new GpuProbePlan(id);
+        var id=Guid.NewGuid().ToString("N");var plan=new GpuProbePlan(id,1);
         GpuChildReport? baseline=null,observed=null;RuntimeStop? stopped=null;uint? exit=null;string? jobId=null;
+        var progress=new GpuCallProgressReader(id,true);
         try
         {
             foreach(var fence in plans)fences.Add(PersistentFence.OpenExisting(state,fence.Data.FenceId));
@@ -109,18 +118,19 @@ internal static class GpuQualification
             if(!Qualified(baseline))throw WfpNative.Contract("GpuHostControlNotQualified");
             using var profile=InstallationProfileLease.Create(state);using var job=OwnedKernelJob.CreateEmpty(state,version);jobId=job.JobId;
             using var pipe=new AnonymousPipeServerStream(PipeDirection.In,HandleInheritability.Inheritable);using var reader=new StreamReader(pipe,Encoding.UTF8,false,4096,true);
-            var text=ReadBounded(reader);
+            var text=progress.ReadAsync(reader);
             AtomicChild? child=null;ProtectionRuntimeLease? runtime=null;
             try
             {
                 child=AtomicChild.CreateCanary(layout,state,version,job,profile,output:pipe.ClientSafePipeHandle.DangerousGetHandle(),gpu:plan);
+                progress.Bind(checked((int)child.Pid));
                 pipe.DisposeLocalCopyOfClientHandle();
                 runtime=ProtectionRuntimeLease.ForFixedGpu(state,version,job,fences,child,id);
                 runtime.Activate(30000);_=child.ResumeQuarantined();
-                do{runtime.AssertHealthy();exit=child.ObserveFixedGpuExit();}while(exit is null);
+                do{runtime.AssertHealthy();if(text.IsFaulted)_=text.GetAwaiter().GetResult();exit=child.ObserveFixedGpuExit();}while(exit is null);
                 runtime.AssertHealthy();
                 observed=JsonSerializer.Deserialize<GpuChildReport>(text.WaitAsync(TimeSpan.FromSeconds(3)).GetAwaiter().GetResult())??throw WfpNative.Contract("GpuReportMissing");
-                if(!QualifiedChild(observed,id,child.Pid,exit.Value,baseline))
+                if(!progress.ReportsCompleteSuccessfulSequence || !QualifiedChild(observed,id,child.Pid,exit.Value,baseline))
                     throw WfpNative.Contract("GpuIsolatedComputationNotQualified");
             }
             catch(Exception ex){failures.Add(ex);}
@@ -148,6 +158,7 @@ internal static class GpuQualification
                 catch(Exception ex){failures.Add(ex);}
                 try{child?.Dispose();}catch(Exception ex){failures.Add(ex);}
                 try{pipe.DisposeLocalCopyOfClientHandle();}catch(Exception ex){failures.Add(ex);}
+                try{_=text.WaitAsync(TimeSpan.FromSeconds(2)).GetAwaiter().GetResult();}catch(Exception ex){failures.Add(ex);}
             }
         }
         catch(Exception ex){failures.Add(ex);}
@@ -161,17 +172,13 @@ internal static class GpuQualification
         var report=JsonSerializer.Serialize(new {SchemaVersion=1,state.InstallationId,RequestId=id,version.Package.Release,JobId=jobId,
             Status=complete?"BOUNDED_CUDA_KERNEL_IN_LPAC_OBSERVED":"ISOLATED_GPU_NOT_CONFIRMED",Host=baseline,Child=observed,ChildExit=exit,
             OneShotAdmissionClosedAndMembersZero=closed,StopObservation=stopped,Failures=failures.SelectMany(WfpNative.Describe).ToArray(),
+            LastReportedCall=progress.Snapshot(),CallProgressEvidence="BOUND_CHILD_SELF_REPORT_NOT_EXECUTION_PRIVACY_CLEANUP_OR_ADMISSION_PROOF",
             NetworkOpened=false,PyTorchQualified=false,OtherProcessGpuMemoryIsolationQualified=false,HostResourceIsolationQualified=false,ClaudeLaunched=false});
         state.WriteNew("gpu-after-"+id+".json",Encoding.UTF8.GetBytes(report));return(complete?0:3,report);
         void AssertQuarantine()
         {
             if(fences.Count!=plans.Count || fences.Any(f=>!f.Observe().FullQuarantineObserved))throw WfpNative.Contract("GpuFullQuarantineRequired");
         }
-    }
-    private static async Task<string> ReadBounded(StreamReader reader)
-    {
-        var data=new char[16385];var total=0;while(total<data.Length){var count=await reader.ReadAsync(data.AsMemory(total));if(count==0)return new string(data,0,total);total+=count;}
-        throw WfpNative.Contract("GpuReportTooLarge");
     }
     private static class Cuda
     {
