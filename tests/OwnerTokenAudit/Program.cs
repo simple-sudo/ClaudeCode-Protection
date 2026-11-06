@@ -3,6 +3,13 @@ using System.Security.Cryptography;
 using System.Text.Json;
 using OwnerTokenAudit;
 
+if(args.Length==1 && args[0]=="--fixed-child-259")return 259;
+if(args.Length==1 && args[0]=="--fixed-child-blocked")
+{
+    Console.WriteLine("ready");Console.Out.Flush();
+    try{return Console.In.ReadLineAsync().WaitAsync(TimeSpan.FromSeconds(5)).GetAwaiter().GetResult()=="release"?7:125;}
+    catch(TimeoutException){return 125;}
+}
 if(args.Length!=1 || args[0]!="selftest")return 125;
 int checks=0;
 void Check(bool ok){if(!ok)throw new InvalidDataException("OwnerTokenAuditAssertion");checks++;}
@@ -35,7 +42,8 @@ var zero=OwnTokenObservation.Capture(0);var a5=OwnTokenObservation.Capture(0xa5)
 Check(zero.Complete && a5.Complete && fiveA.Complete);
 Check(zero.ThreadImpersonating==false && zero.Elevated==0 && zero.AppContainer==0);
 var zeroA5=OwnTokenObservation.Compare(zero,a5);var a5FiveA=OwnTokenObservation.Compare(a5,fiveA);
-Console.WriteLine(JsonSerializer.Serialize(new{Scope="ORDINARY_OWN_TOKEN_READS_AND_DIAGNOSTIC_FIXTURES_ONLY",Passed=checks,
+var startedProcessCases=StartedProcessCases.Run(Check);
+Console.WriteLine(JsonSerializer.Serialize(new{Scope="ORDINARY_OWN_TOKEN_FIXTURES_AND_FIXED_CHILD_HANDLE_OBSERVATIONS_ONLY",Passed=checks,StartedProcesses=startedProcessCases,
     Zero=zero,A5=a5,FiveA=fiveA,ZeroA5=zeroA5,A5FiveA=a5FiveA,TokenAdjusted=false,NativeOperationRetried=false,AdmissionGranted=false}));
 // Differences remain observable evidence, not an ignored pass. They do not
 // overwrite the earlier elevated helper's failed final audit.

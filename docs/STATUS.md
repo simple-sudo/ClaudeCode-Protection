@@ -5,6 +5,31 @@
 历史页的“当前/待执行/暂停/DELIVERABLE”按段落日期及限定范围解释，不是今天的状态或操作许可。
 不在本页复制当前安装和授权摘要。
 
+## 2026-11-06 更新成功后自身调试权限变化真实定位
+
+本人批准502A49DA…一次操作，原安装回执370989DA5C5A9AA21951761A3EE8E6D6F886AA05347E559DE7E449CE0C0AF09E
+确认c526→41fb/1B092FE1…/INACTIVE，无安装WFP/Job/Claude修改。操作器随后在
+TOKEN_INSTALLED/stage4发现LUID20属性0→2，其他身份/查询完整；此前五点原始权限
+与身份相同。终态0795AE384A964B24FBB6C74C2435119C1224AEF8DBA0DD9F4324B53AEB5AACC5，
+整体FAIL保留，未调用后续原owner canary/发HTTPS。无额外私有读取、重试或强停。
+
+本机.NET8.0.28+46295af…/System.Diagnostics.Process.dll SHA4CA86970…实际元数据
+包含ProcessManager构造器OpenProcessToken/AdjustTokenPrivileges；[匹配微软源码](https://raw.githubusercontent.com/dotnet/runtime/v8.0.28/src/libraries/System.Diagnostics.Process/src/System/Diagnostics/ProcessManager.Windows.cs)
+明确启用SeDebugPrivilege，Process.ExitCode→HasExited→ProcessManager的原调用与
+该观测相符。没有管理员调用栈/新复现，不把更早模糊stage8追认为唯一同因。
+
+新增StartedProcessObservation只通过原启动句柄查询PID/创建时间/信号与退出码，无
+OpenProcess/枚举/Token调整/终止。34项普通检查实际观察退出259（信号后合法值）及
+等待后退出7、未结束拒读退出码、超界等待拒绝；自身原始权限保持。运行库只作
+元数据读取、不反射执行其构造器。BUILD0/0；新管理员替代/HTTPS仍NOT_RUN。
+现装41fb公开15文件再次匹配，不读私有选择状态。针对该已安装候选的新固定操作器
+BUILD0/0、35项闭合与22项Token门fixture、真实普通创建前拒绝通过；只调一次原固定
+canary，没有安装/新payload。首轮固定清单字符串生成、匿名成员编译失败保留；
+仍无新操作许可/执行。材料同任务operation-native-observation，旧审批工件原位不改。
+原失败材料留work/no-content-https-canary-20261106-01/operation，普通新验证留
+work/owner-token-audit-20261106-01/selftest-r2.json。公开Application运行窗零项，
+AV/BFE Running，完整厂商覆盖UNKNOWN。无清理。
+
 ## 2026-11-06 固定无内容HTTPS研发用途准备
 
 原管理链新增精确研发用途及编译固定worker，严格比较默认仍拒绝1702；只有单独
