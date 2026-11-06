@@ -48,6 +48,10 @@ Windows机制依据：[父进程属性与JOB_LIST](https://learn.microsoft.com/e
 [句柄继承](https://learn.microsoft.com/en-us/windows/win32/sysinfo/handle-inheritance)、
 [mandatory integrity](https://learn.microsoft.com/en-us/windows/win32/secauthz/mandatory-integrity-control)。
 
+最终执行前scope已改为 `TRUSTED_ORDINARY_HOST_GPU_REFERENCE_NOT_LPAC`，删除旧LINKED
+命名，避免误写身份来源；该字段本身始终不是Token事实或准入证据。未执行8ca1包保留，
+最终fa8d候选及单次资格准备见candidate-final目录，尚未安装/原生验证。
+
 ## 关联 Token 原型的历史结果
 
 4588实际资格仍拒绝HostGpuNormalTokenRoleMismatch，未得到创建身份/CUDA帧，新原Job

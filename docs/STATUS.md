@@ -5,6 +5,21 @@
 历史页的“当前/待执行/暂停/DELIVERABLE”按段落日期及限定范围解释，不是今天的状态或操作许可。
 不在本页复制当前安装和授权摘要。
 
+## 2026-11-06 父属性适配最终scope与固定资格准备
+
+在系统执行前发现旧scope名称仍含LINKED，修正为TRUSTED_ORDINARY_HOST_GPU_REFERENCE_NOT_LPAC，
+保留未执行8ca1候选原字节。最终fa8d9abae6d64aeaa26539770c887ad2：manifest
+92111D9F9D4DC6199788BD561CBDE744F3DD1CFA8C47700B22B8B3531764DDAE；库
+325C53D17387C91926355B2164B15A4290C5638AC8D2E63CE160986AAF841BC4；stage
+235C33F832283B60E1F6FB03B9F7BDFA127C40877BE670B1E012305997BC4700。
+candidate-final保留新8项目+Bootstrap0/0、75/35/28/40普通检查、182条跨项目输入（151
+唯一路径）及20文件固定
+核验。普通r2管道实测所涉源未变，仅复用其限定证据。新原生路径尚未安装/运行。
+固定操作准备由原ordinary controller持有安装helper、新daily及指定新记录reader原句柄；
+安装/资格/新记录读取各由本人UAC，停止/超时不认领未知进程或重跑；原值只落新受控
+Program Files目录，APP/RAP拒绝。不是新的系统操作授权。SOURCE/BUILD/INTEGRATED，
+无新增CAPABILITY_DELIVERED(GPU)；后续须普通预检和具体决定。
+
 ## 2026-11-06 原安装普通调用方父属性GPU参考源码
 
 实现GpuReferenceCaller、GpuCallerCreation、GpuReferenceChannel及原daily固定支持命令，

@@ -94,7 +94,7 @@ JsonObject Report(string scope)=>new(){["SchemaVersion"]=1,["Pid"]=42,["Nonce"]=
     ["Steps"]=new JsonArray(stages.Select(s=>(JsonNode?)new JsonObject{["Stage"]=s,["Result"]=0}).ToArray())};
 JsonObject Stop()=>new(){["SessionId"]=nonce,["Reason"]="FIXED_HOST_GPU_REFERENCE_TERMINAL",["AdmissionClosed"]=true,["QuarantineObservedBeforeStop"]=true,
     ["QuarantineAtMs"]=1,["JobStopAtMs"]=2,["Failures"]=new JsonArray(),["FinalJob"]=new JsonObject{["JobId"]=job,["LimitFlags"]=8192,["ActiveBefore"]=0,["ActiveAfter"]=0,["ProcessIds"]=new JsonArray(),["AtUtc"]="SYNTHETIC"}};
-const string hostScope="TRUSTED_LINKED_ORDINARY_HOST_GPU_REFERENCE_NOT_LPAC";const string lpacScope="LPAC_LOW_ZERO_CAPABILITIES";
+const string hostScope="TRUSTED_ORDINARY_HOST_GPU_REFERENCE_NOT_LPAC";const string lpacScope="LPAC_LOW_ZERO_CAPABILITIES";
 bool Qualifies(JsonObject report,JsonObject? stop=null,string? expectedNonce=null,uint pid=42,uint exit=0,bool progress=true,string? expectedJob=null)
     =>(bool)Call(host,"Qualified",Decode(report,reportType),expectedNonce??nonce,pid,exit,progress,stop is null?null:Decode(stop,stopType),expectedJob??job);
 Check(Qualifies(Report(hostScope),Stop()),"bound host report and original host-stop closure");

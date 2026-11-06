@@ -1,5 +1,18 @@
 # 当前状态与授权摘要
 
+2026-11-06父属性适配最终候选fa8d9abae6d64aeaa26539770c887ad2已构建/20文件核验：
+manifest92111D9F…，库325C53D1…，stage235C33F8…。此前未执行8ca1原字节保留，
+因GPU报告scope仍含旧LINKED名称而被替代；最终名称为TRUSTED_ORDINARY_HOST_GPU_REFERENCE_NOT_LPAC，
+不再把普通父属性继承误标成关联Token。75/35/28/40检查与8项目+Bootstrap构建0/0；
+普通r2管道7项实测所涉Shared管道源未变，按原fixture范围复用，不当作新跨权限证据。
+182条跨项目构建输入（151个唯一路径）无漂移，6src非生成0/0；source/build仍非实际能力交付。
+最终控制准备为一次INACTIVE更新、一次原普通daily触发UAC资格、其终态后仅读该新请求
+report/可选creation/三份原Job记录及current（各有固定上限），原值留新受控目录，拒绝
+APP/RAP读取；最多三次本人UAC。安装120秒、普通daily90秒、后读owner15秒观察，
+超时保留原句柄等待、不强停/重试/恢复。新管道label/父属性/Job/GPU仍NOT_RUN，
+须固定工件/输入输出和普通预检后取得新的具体决定；当前没有该操作批准。
+现装仍最近核验4588/INACTIVE；AFD/Socket/HTTPS FAIL与全部未验收边界不变。
+
 2026-11-06新增真正普通调用方的父属性适配：原daily固定gpu-host-reference→本人UAC→
 原WithCurrentInstallation→GpuReferenceCaller/GpuCallerCreation→原Job/runtime/闭合。
 双向真实pipePID和持有原Broker/普通caller句柄，当前安装daily映像/创建时间/同用户/

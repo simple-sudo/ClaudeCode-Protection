@@ -13,7 +13,7 @@ internal sealed record GpuHostReferenceResult(string RequestId,string? JobId,uin
 // CUDA entry point runs on its management thread and no target/input is supplied.
 internal static class GpuHostReferenceQualification
 {
-    internal const string Scope="TRUSTED_LINKED_ORDINARY_HOST_GPU_REFERENCE_NOT_LPAC";
+    internal const string Scope="TRUSTED_ORDINARY_HOST_GPU_REFERENCE_NOT_LPAC";
     // The admin owner's queried linked token can be identification-only.
     // Never accept it as a primary token or acquire TCB to make this route
     // work. A held, authenticated ordinary creation owner is not integrated.
