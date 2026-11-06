@@ -5,6 +5,14 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-06 普通调用方父属性适配
+
+SOURCE/BUILD/INTEGRATED(原daily/安装owner/Job/runtime源码)。75策略检查、35前驱、
+28进度、40摘要及8项目+Bootstrap构建0/0；6src非生成0/0。VERIFIED(普通同进程管道
+7项peer/ACL/帧/普通端点拒绝)，无UAC/新父属性/Job/GPU。新8ca1候选尚未安装，
+跨权限报告、Token继承、原生Job闭合/计算/故障未验证；旧hold不解除，无GPU/隐私/
+Claude/产品交付声明。见[证据](STATUS.md#2026-11-06-原安装普通调用方父属性gpu参考源码)。
+
 ## 2026-11-05 4588真实资格拒绝与原Job闭合
 
 VERIFIED(经本人批准4588 INACTIVE更新、15公开资产、失败新Job准入闭合/零成员及普通

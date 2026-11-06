@@ -2,6 +2,7 @@ using System.IO.Pipes;
 using System.Security.Principal;
 using System.Text;
 using System.Text.Json;
+using ClaudeCodeProtection.Workspaces;
 
 namespace ProtectionLifecycle;
 
@@ -31,11 +32,82 @@ internal static class GpuHostReferenceQualification
             var raw=Environment.GetEnvironmentVariable("CPC_HOST_GPU_REFERENCE");if(raw is null || raw.Length>256)throw WfpNative.Contract("HostGpuPlanBounds");
             var plan=JsonSerializer.Deserialize<GpuProbePlan>(raw)??throw WfpNative.Contract("HostGpuPlanMissing");plan.Validate();
             if(plan.ProgressProtocol!=1)throw WfpNative.Contract("HostGpuProgressRequired");
+            var reportOwner=Environment.GetEnvironmentVariable("CPC_HOST_GPU_REPORT_OWNER");
+            if(reportOwner is not null)return RunConnectedChild(plan,reportOwner);
             var writer=new GpuCallProgressWriter(Console.Out,plan.Nonce,Environment.ProcessId);
             var report=GpuQualification.Compute(plan,Scope,writer);Console.WriteLine(JsonSerializer.Serialize(report));
             return GpuQualification.Qualified(report)?0:3;
         }
         catch(Exception error){Console.Error.WriteLine("Host GPU reference child not confirmed: "+error.GetType().Name+"; code="+error.HResult);return 125;}
+    }
+    private static int RunConnectedChild(GpuProbePlan plan,string ownerText)
+    {
+        if(!int.TryParse(ownerText,System.Globalization.NumberStyles.None,System.Globalization.CultureInfo.InvariantCulture,out var owner) || owner<=0 || owner==Environment.ProcessId)
+            throw WfpNative.Contract("HostGpuFixedReportOwnerRequired");
+        using var channel=new NamedPipeClientStream(".",WorkspacePipe.HostGpuName(owner,plan.Nonce,true),PipeDirection.InOut,PipeOptions.Asynchronous,TokenImpersonationLevel.Identification);
+        channel.Connect(5000);WorkspacePipe.AssertPeer(channel,owner,false);
+        using var timeout=new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        var bytes=WorkspacePipe.Read(channel,256,timeout.Token).GetAwaiter().GetResult();
+        using(var doc=JsonDocument.Parse(bytes))
+        {
+            var r=doc.RootElement;StrictJson.Fields(r,"SchemaVersion","Nonce","ChildPid","Status");
+            if(r.GetProperty("SchemaVersion").GetInt32()!=1 || StrictJson.Text(r,"Nonce")!=plan.Nonce ||
+                r.GetProperty("ChildPid").GetInt32()!=Environment.ProcessId || StrictJson.Text(r,"Status")!="ORIGINAL_OWNER_BOUND_REPORT_CHANNEL")
+                throw WfpNative.Contract("HostGpuReportChannelBindingMismatch");
+        }
+        WorkspacePipe.AssertPeer(channel,owner,false);
+        using var output=new StreamWriter(channel,new UTF8Encoding(false),4096,true){AutoFlush=true};
+        var progress=new GpuCallProgressWriter(output,plan.Nonce,Environment.ProcessId);
+        var report=GpuQualification.Compute(plan,Scope,progress);output.WriteLine(JsonSerializer.Serialize(report));
+        return GpuQualification.Qualified(report)?0:3;
+    }
+    internal static GpuHostReferenceResult RunBound(ProtectedState state,VerifiedVersion version,FixedLayout layout,IReadOnlyList<PersistentFence> fences,GpuReferenceCaller caller)
+    {
+        state.AssertHeld();version.AssertHeld(state);caller.AssertCurrent();LifecycleRecovery.AssertNoPending(state);InstallationLoopbackLease.AssertClosedHistory(state);
+        foreach(var prior in OwnedJobIntent.ReadAll(state))if(AtomicJobCompletion.ReadClosed(state,prior) is null)throw WfpNative.Contract("HostGpuRequiresPriorAdmissionsClosed");
+        var id=Guid.NewGuid().ToString("N");var plan=new GpuProbePlan(id,1);var progress=new GpuCallProgressReader(id,true);
+        var errors=new List<Exception>();uint? pid=null,exit=null;GpuHostTokenFacts? token=null;GpuChildReport? report=null;RuntimeStop? stop=null;
+        AssertQuarantine();
+        using var connection=new CancellationTokenSource(TimeSpan.FromSeconds(35));
+        using var pipe=WorkspacePipe.CreateHostGpu(Environment.ProcessId,id,true);
+        using var reader=new StreamReader(pipe,Encoding.UTF8,false,4096,true);
+        var connected=pipe.WaitForConnectionAsync(connection.Token);
+        using var job=OwnedKernelJob.CreateEmpty(state,version);AtomicChild.HostGpuReferenceChild? child=null;ProtectionRuntimeLease? runtime=null;Task<string>? text=null;
+        try
+        {
+            child=AtomicChild.CreateHostGpuFromCaller(layout,state,version,job,plan,caller);pid=child.Pid;token=child.VerifiedToken;
+            progress.Bind(checked((int)pid.Value));
+            runtime=ProtectionRuntimeLease.ForHostGpuReference(state,version,job,fences,child,id,caller.AssertCurrent);
+            runtime.Activate(30000);child.Resume();
+            while(!connected.Wait(100)){runtime.AssertHealthy();if(child.ObserveExit() is not null)throw WfpNative.Contract("HostGpuExitedBeforeReportConnection");}
+            connected.GetAwaiter().GetResult();runtime.AssertHealthy();WorkspacePipe.AssertPeer(pipe,checked((int)pid.Value),true);
+            using(var transfer=new CancellationTokenSource(TimeSpan.FromSeconds(3)))
+                WorkspacePipe.Write(pipe,JsonSerializer.SerializeToUtf8Bytes(new{SchemaVersion=1,Nonce=id,ChildPid=pid.Value,Status="ORIGINAL_OWNER_BOUND_REPORT_CHANNEL"}),256,transfer.Token).GetAwaiter().GetResult();
+            text=progress.ReadAsync(reader);
+            do{runtime.AssertHealthy();if(text.IsFaulted)_=text.GetAwaiter().GetResult();exit=child.ObserveExit();}while(exit is null);
+            runtime.AssertHealthy();
+            report=JsonSerializer.Deserialize<GpuChildReport>(text.WaitAsync(TimeSpan.FromSeconds(3)).GetAwaiter().GetResult())??throw WfpNative.Contract("HostGpuBoundReportMissing");
+        }
+        catch(Exception error){errors.Add(error);}
+        finally
+        {
+            try
+            {
+                if(runtime is not null){stop=runtime.Stop(RuntimeStop.HostGpuTerminalReason);if(!stop.ConfirmsClosedHostGpu(id,job.JobId))throw WfpNative.Contract("HostGpuBoundStopUnconfirmed");}
+                else if(job.AtomicAdmissionReserved){try{AssertQuarantine();}catch(Exception error){errors.Add(error);}_=job.CloseAtomicAdmissionAndStop();}
+            }
+            catch(Exception error){errors.Add(error);}
+            try{child?.Dispose();}catch(Exception error){errors.Add(error);}
+            connection.Cancel();
+            try{if(text is not null)_=text.WaitAsync(TimeSpan.FromSeconds(2)).GetAwaiter().GetResult();else connected.GetAwaiter().GetResult();}
+            catch(Exception error){if(error is not OperationCanceledException)errors.Add(error);}
+        }
+        try{AssertQuarantine();}catch(Exception error){errors.Add(error);}
+        var complete=errors.Count==0 && token is not null && report is not null && pid is not null && exit is not null &&
+            Qualified(report,id,pid.Value,exit.Value,progress.ReportsCompleteSuccessfulSequence,stop,job.JobId);
+        var result=new GpuHostReferenceResult(id,job.JobId,pid,exit,token,report,progress.Snapshot(),complete,stop,errors.SelectMany(WfpNative.Describe).ToArray());
+        state.WriteNew("gpu-host-reference-"+id+".json",JsonSerializer.SerializeToUtf8Bytes(result));return result;
+        void AssertQuarantine(){if(fences.Count==0 || fences.Any(f=>!f.Observe().FullQuarantineObserved))throw WfpNative.Contract("HostGpuFullQuarantineRequired");}
     }
     internal static GpuHostReferenceResult Run(ProtectedState state,VerifiedVersion version,FixedLayout layout,IReadOnlyList<PersistentFence> fences)
     {

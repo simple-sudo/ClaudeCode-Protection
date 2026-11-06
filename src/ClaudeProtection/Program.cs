@@ -16,6 +16,9 @@ internal static class Program
             WorkspaceFiles.RequireOrdinaryUser();
             switch (args.FirstOrDefault())
             {
+                case "gpu-host-reference":
+                    if(args.Length!=1)return 64;
+                    var gpuReference=await HostGpuReferenceProcessing.Run();Console.WriteLine(JsonSerializer.Serialize(gpuReference.Report));return gpuReference.ExitCode;
                 case "workspace-sample":
                     if(args.Length!=2)return 64;
                     WorkspaceFiles.RequireOrdinaryUser();

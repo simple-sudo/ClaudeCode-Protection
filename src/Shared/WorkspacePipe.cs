@@ -113,17 +113,30 @@ internal static class WorkspacePipe
         return "CPC.WorkspaceData."+ownerPid.ToString(System.Globalization.CultureInfo.InvariantCulture)+"."+nonce;
     }
     internal static NamedPipeServerStream Create(int ownerPid,string nonce)
+        =>CreateCore(ownerPid,Name(ownerPid,nonce),false,false);
+    internal static string HostGpuName(int ownerPid,string nonce,bool childReport=false)
+        =>Name(ownerPid,nonce)+(childReport?".HostGpu.ChildReport":".HostGpu.Caller");
+    internal static NamedPipeServerStream CreateHostGpu(int ownerPid,string nonce,bool childReport=false)
+        =>CreateCore(ownerPid,HostGpuName(ownerPid,nonce,childReport),true,childReport);
+    private static NamedPipeServerStream CreateCore(int ownerPid,string pipeName,bool hostGpu,bool elevatedReport)
     {
         if(ownerPid!=Environment.ProcessId)throw new InvalidDataException("Workspace channel must belong to this process");
         using var user=WindowsIdentity.GetCurrent();var sid=user.User??throw new InvalidOperationException("Human user required");
-        WorkspaceFiles.RequireOrdinaryToken(user.AccessToken);
+        if(elevatedReport)
+        {
+            if(!new WindowsPrincipal(user).IsInRole(WindowsBuiltInRole.Administrator))throw new InvalidDataException("Elevated fixed GPU report owner required");
+        }
+        else WorkspaceFiles.RequireOrdinaryToken(user.AccessToken);
         var security=new PipeSecurity();security.SetOwner(sid);security.SetAccessRuleProtection(true,false);
         security.AddAccessRule(new PipeAccessRule(new SecurityIdentifier(WellKnownSidType.NetworkSid,null),PipeAccessRights.FullControl,AccessControlType.Deny));
+        if(hostGpu)foreach(var package in new[]{"S-1-15-2-1","S-1-15-2-2"})
+            security.AddAccessRule(new PipeAccessRule(new SecurityIdentifier(package),PipeAccessRights.FullControl,AccessControlType.Deny));
+        if(elevatedReport)security.SetSecurityDescriptorSddlForm("S:(ML;;NW;;;ME)",AccessControlSections.Audit);
         security.AddAccessRule(new PipeAccessRule(sid,PipeAccessRights.FullControl,AccessControlType.Allow));
         // Explicit same-user ACL permits the user's elevated token as well.
         // CurrentUserOnly would additionally impose elevation-specific checks.
         // No APP_PACKAGES/Everyone/Users grants; no remote or inherited access.
-        return NamedPipeServerStreamAcl.Create(Name(ownerPid,nonce),PipeDirection.InOut,1,PipeTransmissionMode.Byte,
+        return NamedPipeServerStreamAcl.Create(pipeName,PipeDirection.InOut,1,PipeTransmissionMode.Byte,
             PipeOptions.Asynchronous|PipeOptions.FirstPipeInstance,65536,65536,security,HandleInheritability.None);
     }
     internal static void AssertPeer(PipeStream pipe,int expectedPid,bool server)

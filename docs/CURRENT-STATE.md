@@ -1,5 +1,26 @@
 # 当前状态与授权摘要
 
+2026-11-06新增真正普通调用方的父属性适配：原daily固定gpu-host-reference→本人UAC→
+原WithCurrentInstallation→GpuReferenceCaller/GpuCallerCreation→原Job/runtime/闭合。
+双向真实pipePID和持有原Broker/普通caller句柄，当前安装daily映像/创建时间/同用户/
+session/primary medium limited及权限事实；父句柄仅0x00101080。固定CreateProcess的
+PARENT_PROCESS继承该普通身份，原JOB_LIST/suspended/BA+SY seal、inherit=false，
+无Token复制/分配/调权或CreateProcessAsUser，无Explorer或任意执行目标。实际创建后
+Token精确回读、owner前后Token一致及原对象门均保留；新独占报告管道PID/nonce握手后
+才计算，APP/RAP显式拒绝，提升报告端点初始medium label。原先quarantine再关Job，
+另读本次原completion核验闭合。普通界面只有4096字节固定无权限摘要，原值留protected
+state，观察超时持有原句柄等待终态，不强停/重试。旧无caller资格及整体GPU hold不变。
+SOURCE/BUILD/INTEGRATED(原安装/daily/owner源码)，75策略、35前驱、28进度、40摘要
+检查通过；普通1001真实同进程管道fixture7项通过，回执979907DF…，无UAC/父属性/Job/
+GPU。8个payload/测试项目和Bootstrap0/0，6src非生成0/0，182构建输入无漂移。
+20文件候选8ca1cb41f3f149c2a0cbbb8d3c36afd7，manifest6F6B1033…、库C40CEE12…，
+stage核验C01B33B8…，证据work/gpu-parent-b50d02b-20261106。尚未安装或原生创建验证；
+新管道跨权限/label、父属性Token继承、实际Job/CUDA及故障均NOT_RUN，不新增GPU
+CAPABILITY_DELIVERED。现装仍最近核验4588/INACTIVE，旧失败与权限保持原记录。
+下一步固定新普通caller链的实际资格：安装、父属性/Job/新报告管道及GPU仍需新具体
+决定；旧许可消耗不复活。本轮未UAC/安装/系统策略或现有ACL修改，未启动LPAC/Claude。
+AFD/Socket/HTTPS仍FAIL；完整隐私L3/生命周期/官方Claude/整机验收未通过。
+
 2026-11-05本人批准修正review852A4520…后单次执行：原helper15692终态125，4588a6ffbdb840a89522df268edfdc2f
 安装成功并独立核验15公开文件，现装 / INACTIVE，manifest C5D1B76E…。参考owner返回3，
 HostGpuNormalTokenRoleMismatch、uint32码2148734209；没有已确认子进程身份/CUDA帧。

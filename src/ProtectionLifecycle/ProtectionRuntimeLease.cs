@@ -66,10 +66,10 @@ internal sealed class ProtectionRuntimeLease
         return new(state,version,job,fences,null,null,null,null,null,Identifiers.Hex32(sessionId));
     }
     internal static ProtectionRuntimeLease ForHostGpuReference(ProtectedState state,VerifiedVersion version,OwnedKernelJob job,
-        IReadOnlyList<PersistentFence> fences,AtomicChild.HostGpuReferenceChild child,string sessionId)
+        IReadOnlyList<PersistentFence> fences,AtomicChild.HostGpuReferenceChild child,string sessionId,Action? assertCaller=null)
     {
         child.AssertOwner(state,version,job);
-        return new(state,version,job,fences,null,null,null,null,null,Identifiers.Hex32(sessionId),true);
+        return new(state,version,job,fences,null,null,null,null,assertCaller,Identifiers.Hex32(sessionId),true);
     }
     internal ProtectionRuntimeLease(ProtectedState state,VerifiedVersion version,OwnedKernelJob job,IReadOnlyList<PersistentFence> fences,ProxyChannelLease? proxy,
         SessionProxy? gateway=null,ProtectedSession.Preparation? preparation=null,ProtectedSession.ResourceQualification? resources=null,Action? assertCaller=null)
@@ -83,7 +83,7 @@ internal sealed class ProtectionRuntimeLease
         var offline=resources is not null || fixedGpu;
         if(offline?(proxy is not null || gateway is not null || preparation is not null):proxy is null)
             throw WfpNative.Contract("RuntimeScopeRequiresEitherOfflineResourcesOrLiveProxy");
-        if(assertCaller is not null && resources is null)throw WfpNative.Contract("WorkspaceCallerGuardRequiresOfflineResources");
+        if(assertCaller is not null && resources is null && !hostGpuReference)throw WfpNative.Contract("WorkspaceCallerGuardRequiresOfflineResources");
         this.assertCaller=assertCaller;
         this.resources=resources;resources?.AssertRuntimeObjects(job,version,fences);
         if((gateway is null)!=(preparation is null))throw WfpNative.Contract("SessionGatewayAndPreparationRequiredTogether");

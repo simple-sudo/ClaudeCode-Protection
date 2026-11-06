@@ -5,6 +5,26 @@
 历史页的“当前/待执行/暂停/DELIVERABLE”按段落日期及限定范围解释，不是今天的状态或操作许可。
 不在本页复制当前安装和授权摘要。
 
+## 2026-11-06 原安装普通调用方父属性GPU参考源码
+
+实现GpuReferenceCaller、GpuCallerCreation、GpuReferenceChannel及原daily固定支持命令，
+复用原双向pipe对端核验、当前安装host/文件持有、Job/停止链。真实普通peer原句柄/映像/
+创建时间/Token健康检查；PARENT_PROCESS+JOB_LIST+suspended、BA/SY seal、无句柄继承，
+无关联Token/复制/分配/调权/CreateAsUser/Explorer或任意命令。报告经独占管道的原PID/
+nonce握手，APP/RAP拒绝、提升端初始medium label；原Job闭合后另读原completion。
+详细机制/边界见[专题](GPU-HOST-REFERENCE.md#2026-11-06-当前安装普通调用方的父进程属性适配)。
+75策略、35前驱、28进度、40失败摘要及原GPU报告fixture通过，8个payload/测试及
+Bootstrap BUILD0/0，6src非生成0/0。普通1001真实同进程pipe7项检查通过，回执SHA
+979907DF58D0FF13ABC0EC2131026419FCDBE4CB3D069C4AC626A6D2684CA4F9；仅peer/
+ACL/帧/普通拒绝提升端点，不是跨权限、父属性、Job、GPU或故障证据。root初始54及r2
+75结果均保留；最终candidate182输入逐项无漂移，20文件/14资产/嵌入清单/双库核验。
+候选8ca1cb41f3f149c2a0cbbb8d3c36afd7，manifest
+6F6B10338BCC2BCFC46342D7AF01CEA7FAA29061949DF533569D160124E767CD，库
+C40CEE12AD9811520D2A3E088544F869A0038D4C965919290CBCA18FE3CC79FE；stage
+C01B33B8C1483C2B7E31A05536D25589EA0602A0A287476849B828546E1E046E。
+SOURCE/BUILD/INTEGRATED，VERIFIED(普通策略/管道fixture)；未安装或原生资格，未新增
+CAPABILITY_DELIVERED(受保护GPU或宿主受控GPU参考)，不得宣称隐私/整机完成。
+
 ## 2026-11-05 4588真实拒绝闭合与普通创建方缺口收敛
 
 本人批准852A4520…，原helper15692/125，4588安装成功、15公开资产匹配、INACTIVE；

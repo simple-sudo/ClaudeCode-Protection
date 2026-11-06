@@ -189,6 +189,7 @@ public static class BootstrapInstaller
             "D21A7D9F39A93E82087062EAD14F49329E7DBDD2743B2DC12DE98CAB6DC691F1"
         }; // Exact reviewed packages expose no launch/admission command.
         private static readonly string[] OneShotAdmissionManifests={
+            "C5D1B76E4CDC050033411625AEE119A6994BFE6A4235AA5F83EA440539FC7151", // 4588 exact inactive package; original failed host admission durably closed/zero. Every live update/recovery gate remains mandatory.
             "EFFDC3506DD376AA2601BE6C62505586C9C154E76EC4B838D007F73491069BE5", // 9bbbb exact inactive package; failed host reference's original atomic admission durably closed/zero. All live gates still mandatory.
             "E6F10C4174CE36061EE19EAE4A6F9155560DF2C9582A6552404A1534E915F1F8", // f6ab exact installed inactive package; every live closure/quarantine/recovery check remains mandatory.
             "849A2BFC1D9F08D1B581BD5C79EDBF1575048F5D20B3145D6297B10E1CF80C8F", // 3e2 exact installed public package; all live admission/Job/quarantine/recovery gates still required. Not an execution approval.

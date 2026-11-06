@@ -6,6 +6,15 @@ internal static class Program
 {
     private static int Main(string[] args)
     {
+        if(args.Length==3 && args[0]=="qualify-host-gpu-reference-pipe")
+        {
+            try
+            {
+                if(!int.TryParse(args[1],System.Globalization.NumberStyles.None,System.Globalization.CultureInfo.InvariantCulture,out var caller) || caller<=0)return 64;
+                return ProtectionLifecycle.InstalledBroker.QualifyHostGpuReferencePipe(caller,args[2]);
+            }
+            catch(Exception error){Console.Error.WriteLine("Bound host GPU reference not confirmed: "+error.GetType().Name+"; code="+error.HResult);return 125;}
+        }
         if(args.Length==1 && args[0]=="gpu-host-reference-child")return ProtectionLifecycle.InstalledBroker.RunHostGpuReferenceChild();
         if(args.Length==1 && args[0]=="qualify-host-gpu-reference")
         {
