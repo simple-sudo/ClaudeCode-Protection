@@ -1,8 +1,10 @@
 # AFD create event decoding and correlation
 
 Ordinary deterministic analysis, separate from the privileged capture observer.
-No process creation, ETW control, device access, Token change or network API.
-The executable accepts no arguments and runs only L1 parser/correlation fixtures.
+No ETW control, device access, Token change or network API.
+The executable runs L1 parser/correlation fixtures and one fixed ordinary own
+child to verify the full Win32 error-stage exit code survives without a file or
+UAC. Its only argument mode, `--own-stage-exit`, returns that constant stage.
 `AfdAnalysisBridge.Analyze` accepts data, never a path or execution request.
 
 Checks the fixed provider, event 1000/version 0, ordered nine-field manifest,

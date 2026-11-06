@@ -5,6 +5,22 @@
 历史页的“当前/待执行/暂停/DELIVERABLE”按段落日期及限定范围解释，不是今天的状态或操作许可。
 不在本页复制当前安装和授权摘要。
 
+## 2026-11-06 固定AFD观察器失败与有限早期阶段回报
+
+本人批准C23381A338AB378567E69BD76EEAAF8EBE4F15B13AFF7658C3A6798B0461CD36；
+冻结controller、输入29A66E62…及原观察器26337374…保存在
+work/afd-call-correlation-20261106-01/candidate。10:21:45Z发起一次，UAC后观察器
+32240创建于10:21:48.9612906Z，原持有句柄终态125，无ready/terminal。没有本次
+LPAC attempt或ETL读取，具体早期失败/内核trace闭合UNKNOWN；固定根后读不存在
+不替代闭合证据。许可已消耗，无重试/强停/另行恢复/额外私有读取。AV/BFE Running，
+公开事件无匹配，厂商完整告警覆盖UNKNOWN。原字节保留，不回填失败。
+
+后续ObserverOutcome用有限tag+阶段码投影首次失败，无新增路径/IPC/停止/权限接口。
+四项目隔离BUILD0/0，62检查通过，含实际自有普通dotnet子进程完整Win32退出码传递、
+旧125/崩溃/未定义值拒绝及原35项关联回归。新版结构及普通采集拒绝通过；管理员
+采集/权限seal/停止NOT_RUN。SOURCE/BUILD/VERIFIED(普通阶段协议与关联fixture)，
+没有新增Socket/HTTPS或产品交付。旧失败仍UNKNOWN，不反推新版实际运行结果。
+
 ## 2026-11-06 逐次AFD事件关联源码与普通验证
 
 tests/DeviceBoundary新增单独的ReadTimedDispatchMarkers，原请求字节/权限及原矩阵输出

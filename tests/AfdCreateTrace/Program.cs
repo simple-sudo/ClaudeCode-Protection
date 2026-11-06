@@ -7,6 +7,7 @@ using System.Security.Cryptography;
 using System.Security.Principal;
 using System.Text;
 using System.Text.Json;
+using AfdObserverProtocol;
 
 [assembly:DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
 
@@ -35,21 +36,25 @@ internal static class Program
         if(args.Length!=1 || args[0]!="--run-fixed")return 125;
         using var identity=WindowsIdentity.GetCurrent();
         if(identity.User is null || !new WindowsPrincipal(identity).IsInRole(WindowsBuiltInRole.Administrator))
-        {Console.WriteLine("FIXED_OBSERVER_REQUIRES_REVIEWED_HUMAN_UAC");return 125;}
+        {Console.WriteLine("FIXED_OBSERVER_REQUIRES_REVIEWED_HUMAN_UAC");return ObserverOutcome.Failure(ObserverStage.AdministrativeIdentityRequired);}
         Human=identity.User.Value;
         Layout();
-        var stage="inputs";uint? native=null,stopCode=null;bool created=false,started=false,ownStopped=false,tokenUnchanged=false;
+        var stage=ObserverStage.Inputs;ObserverStage? failureStage=null;uint? native=null,stopCode=null;bool created=false,started=false,ownStopped=false,tokenUnchanged=false;
         ulong handle=0;IntPtr memory=IntPtr.Zero;Properties? final=null;
         var beginning=DateTime.UtcNow;string? failure=null;int? failureCode=null;string? before=null;
         FileStream? driver=null;
         try
         {
-            RequireFreshRoot();
+            stage=ObserverStage.FreshRootCheck;RequireFreshRoot();
+            stage=ObserverStage.DriverOpen;
             driver=File.Open(@"C:\Windows\System32\drivers\afd.sys",FileMode.Open,FileAccess.Read,FileShare.Read);
+            stage=ObserverStage.DriverHash;
             if(Convert.ToHexString(SHA256.HashData(driver))!=DriverHash)throw new InvalidOperationException("DriverChanged");
+            stage=ObserverStage.TokenBefore;
             before=TokenFacts(identity);
+            stage=ObserverStage.SafetyBefore;
             Safety(beginning);
-            stage="create-owned-directory";
+            stage=ObserverStage.CreateOwnedDirectory;
             var descriptor=new RawSecurityDescriptor(Sddl);var bytes=new byte[descriptor.BinaryLength];descriptor.GetBinaryForm(bytes,0);
             var security=Marshal.AllocHGlobal(bytes.Length);
             try
@@ -59,30 +64,32 @@ internal static class Program
                 created=true;
             }
             finally{Marshal.FreeHGlobal(security);}
+            stage=ObserverStage.DirectorySeal;
             var observed=FileSystemAclExtensions.GetAccessControl(new DirectoryInfo(Root),AccessControlSections.Owner|AccessControlSections.Group|AccessControlSections.Access);
             var expected=new RawSecurityDescriptor(Sddl);var actual=new RawSecurityDescriptor(observed.GetSecurityDescriptorBinaryForm(),0);
             if(!observed.AreAccessRulesProtected || actual.Owner?.Value!=expected.Owner?.Value || actual.Group?.Value!=expected.Group?.Value ||
                 !AclBytes(actual).AsSpan().SequenceEqual(AclBytes(expected)))throw new InvalidOperationException("FreshDirectorySealDiffers");
-            stage="start-new-trace";
+            stage=ObserverStage.StartNewTrace;
             memory=Allocate();native=StartTrace(out handle,Name,memory);
             if(native!=0)throw new InvalidOperationException("StartRejectedNoAdoption");started=true;
-            AssertOwn(handle,memory);
-            stage="enable-fixed-provider";
+            stage=ObserverStage.ConfirmOwnTrace;AssertOwn(handle,memory);
+            stage=ObserverStage.EnableFixedProvider;
             var provider=Provider;
             // Keyword4 is the manifest's endpoint/operation diagnostic stream.
             // Other process metadata may occur; this is not packet capture and
             // no claim of provider-side PID/event filtering is made.
             native=EnableTraceEx2(handle,ref provider,1,4,4,0,1000,IntPtr.Zero);
             if(native!=0)throw new InvalidOperationException("EnableRejected");
-            AssertEvidenceFile(Path.Combine(Root,"afd.etl"));
+            stage=ObserverStage.EvidenceReadback;AssertEvidenceFile(Path.Combine(Root,"afd.etl"));
+            stage=ObserverStage.PublishReady;
             WriteNew("ready.json",new {Scope="FIXED_AFD_KEYWORD4_OBSERVER_READY",Session,Provider,Name,StartedUtc=DateTime.UtcNow,
                 DurationSeconds,MaxFileMiB=16,OwnerSidSHA256=Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(Human))),NoTargetProcessControl=true,NoPacketCaptureRequested=true});
-            stage="observe";
+            stage=ObserverStage.Observe;
             var watch=Stopwatch.StartNew();
             while(watch.ElapsedMilliseconds<DurationSeconds*1000)
             {Safety(beginning);Thread.Sleep(1000);}
         }
-        catch(Exception error){failure=error.GetType().Name;failureCode=error.HResult;}
+        catch(Exception error){failure=error.GetType().Name;failureCode=error.HResult;failureStage=stage;}
         finally
         {
             if(started)
@@ -91,12 +98,14 @@ internal static class Program
                 {
                     AssertOwn(handle,memory);stopCode=ControlTrace(handle,null,memory,1);
                     if(stopCode==0){ownStopped=true;final=Marshal.PtrToStructure<Properties>(memory);}
+                    else failureStage??=ObserverStage.StopOwnTrace;
                 }
-                catch(Exception error){failure??=error.GetType().Name;failureCode??=error.HResult;}
+                catch(Exception error){failure??=error.GetType().Name;failureCode??=error.HResult;failureStage??=ObserverStage.StopOwnTrace;}
             }
             if(memory!=IntPtr.Zero)Marshal.FreeHGlobal(memory);
             try{using var current=WindowsIdentity.GetCurrent();tokenUnchanged=before is not null && current.User?.Value==Human && before==TokenFacts(current);}
-            catch(Exception error){failure??=error.GetType().Name;failureCode??=error.HResult;}
+            catch(Exception error){failure??=error.GetType().Name;failureCode??=error.HResult;failureStage??=ObserverStage.TokenAfter;}
+            if(!tokenUnchanged)failureStage??=ObserverStage.TokenAfter;
             driver?.Dispose();
             if(created)
             {
@@ -105,19 +114,20 @@ internal static class Program
                     var file=Path.Combine(Root,"afd.etl");string? hash=null;long? length=null;
                     if(ownStopped && File.Exists(file))
                     {AssertEvidenceFile(file);using var etl=File.Open(file,FileMode.Open,FileAccess.Read,FileShare.Read);length=etl.Length;hash=Convert.ToHexString(SHA256.HashData(etl));}
-                    WriteNew("terminal.json",new {Scope="FIXED_AFD_OBSERVER_TERMINAL_NOT_NETWORK_OR_PRIVACY_PASS",Stage=stage,NativeCode=native,StopCode=stopCode,
+                    WriteNew("terminal.json",new {Scope="FIXED_AFD_OBSERVER_TERMINAL_NOT_NETWORK_OR_PRIVACY_PASS",Stage=stage.ToString(),FailureStage=failureStage?.ToString(),NativeCode=native,StopCode=stopCode,
                         Failure=failure,FailureCode=failureCode,Started=started,OwnStopped=ownStopped,TokenUnchanged=tokenUnchanged,Session,Provider,
                         OwnerSidSHA256=Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(Human))),
                         StartedUtc=beginning,EndedUtc=DateTime.UtcNow,Statistics=final is null ? null : new {final.Value.EventsLost,final.Value.BuffersWritten,final.Value.LogBuffersLost,final.Value.RealTimeBuffersLost},ETLSHA256=hash,ETLBytes=length,
                         CircularMayHaveOverwritten=final is null || (ulong)final.Value.BuffersWritten*64*1024>=16*1024*1024,
                         KernelBranchCorrelationVerified=false,TargetJobClosed=false,NetworkAdmission=false,NoAutomaticRetry=true});
                 }
-                catch(Exception error){failure??=error.GetType().Name;failureCode??=error.HResult;}
+                catch(Exception error){failure??=error.GetType().Name;failureCode??=error.HResult;failureStage??=ObserverStage.TerminalPublication;}
             }
         }
-        Console.WriteLine(JsonSerializer.Serialize(new {Scope="FIXED_AFD_OBSERVER_RESULT",Stage=stage,NativeCode=native,StopCode=stopCode,
+        Console.WriteLine(JsonSerializer.Serialize(new {Scope="FIXED_AFD_OBSERVER_RESULT",Stage=stage.ToString(),FailureStage=failureStage?.ToString(),NativeCode=native,StopCode=stopCode,
             Failure=failure,FailureCode=failureCode,Started=started,OwnStopped=ownStopped,TokenUnchanged=tokenUnchanged}));
-        return failure is null && ownStopped && tokenUnchanged ? 0 : 125;
+        if(failure is null && ownStopped && tokenUnchanged && failureStage is null)return 0;
+        return ObserverOutcome.Failure(failureStage??stage);
     }
     private static byte[] AclBytes(RawSecurityDescriptor sd)
     {var acl=sd.DiscretionaryAcl??throw new InvalidDataException("DaclMissing");var b=new byte[acl.BinaryLength];acl.GetBinaryForm(b,0);return b;}

@@ -1,7 +1,11 @@
 using System.Globalization;
 using System.Text.Json;
 using AfdTraceAnalysis;
+using AfdObserverProtocol;
+using System.Diagnostics;
+using System.Reflection;
 
+if(args.Length==1 && args[0]=="--own-stage-exit")return ObserverOutcome.Failure(ObserverStage.TokenBefore);
 if(args.Length!=0)return 125;
 int passed=0;
 void Check(bool condition,string reason){if(!condition)throw new InvalidDataException(reason);passed++;}
@@ -56,5 +60,22 @@ foreach(var altered in new[]{windows[1] with {ActorPid=102},windows[1] with {Act
     windows[1] with {Role="supplied-command"},windows[1] with {StartedFileTime=created-1},windows[1] with {FinishedFileTime=created+TimeSpan.TicksPerMinute}})
     Reject(()=>AfdCreateCorrelation.Correlate(new[]{windows[0],altered,windows[2]},rows),"invalid actor/request window");
 Reject(()=>AfdCreateCorrelation.Correlate(windows,Enumerable.Repeat(parsed,4097).ToArray()),"event count bounded");
+foreach(var stage in Enum.GetValues<ObserverStage>())
+    Check(ObserverOutcome.Decode(ObserverOutcome.Failure(stage))==stage,"finite first-failure stage survives exit code");
+foreach(var code in new[]{0,125,-1,unchecked((int)0xc0000005),0x43500000,0x435000ff,0x43500101})
+    Check(ObserverOutcome.Decode(code) is null,"unrecognized native/legacy exit is UNKNOWN, not a stage or cleanup proof");
+Reject(()=>ObserverOutcome.Failure((ObserverStage)255),"undefined stage cannot be encoded");
+var host=@"C:\Program Files\dotnet\dotnet.exe";
+var info=new ProcessStartInfo(host){UseShellExecute=false,CreateNoWindow=true,RedirectStandardOutput=true,RedirectStandardError=true};
+info.Environment.Clear();
+foreach(var name in new[]{"SystemRoot","windir","SystemDrive","TEMP","TMP"})
+    if(Environment.GetEnvironmentVariable(name) is string value)info.Environment[name]=value;
+foreach(var arg in new[]{"exec","--fx-version","8.0.28",Assembly.GetExecutingAssembly().Location,"--own-stage-exit"})info.ArgumentList.Add(arg);
+using(var child=Process.Start(info)??throw new IOException("Own exit fixture did not start"))
+{
+    await child.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(10));
+    Check(ObserverOutcome.Decode(child.ExitCode)==ObserverStage.TokenBefore && child.StandardOutput.ReadToEnd().Length==0 && child.StandardError.ReadToEnd().Length==0,
+        "actual ordinary Win32 process exit preserves full finite stage without output file or UAC");
+}
 Console.WriteLine(JsonSerializer.Serialize(new{Scope="L1_AFD_EVENT_DECODING_AND_CALL_CORRELATION_ONLY",Passed=passed,
-    NativeCapture=false,ProtectedExecution=false,NetworkAdmission=false,NoEventIsNoExecutionProof=false}));return 0;
+    OwnOrdinaryExitFixtureExecuted=true,NativeCapture=false,ProtectedExecution=false,NetworkAdmission=false,NoEventIsNoExecutionProof=false}));return 0;
