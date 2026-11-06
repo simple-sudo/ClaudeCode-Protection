@@ -5,6 +5,40 @@
 历史页的“当前/待执行/暂停/DELIVERABLE”按段落日期及限定范围解释，不是今天的状态或操作许可。
 不在本页复制当前安装和授权摘要。
 
+## 2026-11-06 既存WFP诊断只读源码
+
+TCPIP1012检查层拒绝后，普通研发及同桌面人类身份均实测EngineOpen0、两项GetOption
+返回5、自身Close0；采集状态UNKNOWN。未提升、启用新采集或重跑受限请求。新增
+WfpReadStatus独立叶项目与内部只读事件查询，21项普通筛选检查和本机SDK26100 x64
+25项结构编译断言通过；两个项目BUILD0/0。首次固定工程相对源路径错误已修复，
+原失败构建日志保留，未形成系统操作。准备材料仍在同一
+work/tcpip-create-boundary-20261106-01/wfp-history-candidate；管理员历史读取NOT_RUN。
+没有WFP setter/subscription、设备/代理/AV/IPv6变化或Claude。历史HEADER2无PID/TID，
+只按编译固定包/用户/路径/约4秒时窗匹配；空历史、关闭或淘汰不证明无拒绝。读取
+当前filter/layer仅限选中记录的ID，不能追认历史对象同一性或签发网络准入。
+
+## 2026-11-06 TCPIP检查层拒绝真实关联
+
+本人批准BD4E2E48951030C775D95A1EE89940D69FEF07C07E7AA3A1F6630F23C61F8FF0，
+原冻结链在work/tcpip-create-boundary-20261106-01/candidate。原owner会话da2e32e3…
+终态0，闭合释放11文件，输入5DB5E7AF…；结果
+729E135A859F5D99AFED3CCFF6DD4A3E2F28137FD58F2AC090C9A71EF5D5D168。actor、LPAC
+cap0、权限/默认DACL保持，未OpenProcess或改权限，私有Job/Stop未额外读取。
+11:38:36.0250863–11:40:06.2803478Z新trace自己的句柄/GUID Stop0、Token保持；
+终态0864D63F69CFFB8115E2D638045739D7A54C4E036D6C8588FD2412810EE02220。
+ETL60D33C30B0A3CA1D65F12D31DCA575F5123A5499F732484C189E7CE91EA2EBA6，3932160
+字节/60缓冲、lost三项0/未达到循环上限；409记录（AFD272、TCPIP136、元数据1），
+无非预期provider事件ID，未触及65536记录或4096选中上限。
+
+4条AFD/2条TCPIP在原封存ToolPid/header+payload PID/TID/各次时窗内：有效AFD分配
+1006/status0，TCPIP1012v1/C0000022（空local address、AF2、compartment1、实际
+ProcessStartKey留本机），TCPIP1001v0同状态，最后AFD1013/exit1/C0000022。两参数
+负标记仍分别为AFD1003/D、1001/D；缺TCPIP事件不用于证明未执行。正向证据支持
+inspection创建失败，最终callout/filter仍UNKNOWN，网络capability根因未证明。
+VERIFIED(本次固定双provider有限采集/原owner闭合结果释放/严格逐调用真实关联)，
+不是Socket/HTTPS或完整隐私交付。原许可消耗，无新权限/设备ACL/代理/IPv6/AV变化、
+Claude/重试/强停/另行恢复。普通固定reader用同一桌面用户执行，无新UAC/系统动作。
+
 ## 2026-11-06 TCPIP创建事件定向源码准备
 
 在已实测AFD TL完成拒绝后，新增固定双provider观察器与TCPIP严格解码，目标区分

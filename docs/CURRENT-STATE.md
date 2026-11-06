@@ -1,5 +1,27 @@
 # 当前状态与授权摘要
 
+2026-11-06 TCPIP真实检查层拒绝后，新增只读既存WFP诊断切片。普通研发及桌面人类
+身份EngineOpen0但collect/keyword GetOption均5、Close0；采集开关仍UNKNOWN，没有
+开启采集。21项普通身份/路径/时窗筛选、25项SDK结构断言通过；只读项目及固定入口
+BUILD0/0。新入口只查固定历史约4秒窗口，最多2048记录/16匹配及对应当前filter/
+layer，禁setter/trace/新LPAC/任意参数。历史WFP无PID/TID，匹配不是精确actor证明，
+缺记录/旧filter消失不证明不存在。新管理员读取NOT_RUN，尚无适用批准；上一轮
+BD4E2E48许可已消耗。现装未更改，正式Claude/Socket/HTTPS/完整L3与产品仍未验收。
+
+2026-11-06本人批准BD4E2E48…后，双provider有限采集与原owner三请求完成。原owner
+会话da2e32e3…闭合后释放11文件，输入5DB5E7AF…复用，结果729E135A…；实际身份/
+cap0/权限/DACL前后一致。trace自有Stop0、Token保持，终态0864D63F…；ETL
+60D33C30…为3932160字节/60缓冲，loss三项0且未触及本次循环上限。扫描409记录，
+AFD272/TCPIP136，无非预期ID；4条AFD与2条TCPIP绑定原封存actor/线程/逐调用时窗。
+
+有效请求TCPIP1012/v1/C0000022（inspection create failure，AF2、compartment1），
+随后1001/v0同状态；夹在AFD1006/0与1013/exit1/22之间。两参数负标记仍匹配AFD
+1003/D与1001/D。正向证据指向TCPIP端点创建检查层拒绝，不等于已唯一定位某WFP
+filter/callout或证明要加network capability。没有扩大权限、设备ACL/WFP/代理/IPv6/
+AV修改或Claude启动；未额外读取私有Job/Stop。原固定许可已消耗，无自动重试/恢复。
+下一步优先利用只读检查层诊断，不据此直接加cap或开放设备。Socket/HTTPS和完整
+产品/L3仍未验收。旧失败/原始值/ETL继续按本机证据区保留。
+
 2026-11-06继续从534f5cd推进TCPIP定向诊断。新源码在同一自有trace请求AFD1000及
 TCPIP六个固定创建事件（1001/1010/1011/1012/1013/1562、keyword1024/level4）；
 不扩大Token/capability/设备ACL或WFP权限。新严格TCPIP解码器按本机模板验证版本、

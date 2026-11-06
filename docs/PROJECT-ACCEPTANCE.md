@@ -5,6 +5,20 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-06 既存WFP只读诊断准备
+
+SOURCE/BUILD/VERIFIED(21项普通身份路径时窗筛选、25项本机SDK结构编译断言)。普通
+GetOption权限拒绝保持UNKNOWN；新管理员历史读取NOT_RUN，无新网络能力、权限或
+产品交付。现有TCPIP正向检查层证据不因历史查询准备升级成唯一根因或网络准入。
+
+## 2026-11-06 TCPIP端点创建检查层真实拒绝
+
+VERIFIED(BD4E2E48固定双provider自有采集/停止、原owner闭合结果释放、6条逐调用
+关联)。TCPIP1012/v1及1001/v0实际报告C0000022，收敛为创建inspection失败；
+不唯一归因某WFP组件或授予network capability。此次3.75MiB/60缓冲/lost0无已知
+绕卷，不推广成长期、全网络或完整L3覆盖。Socket/HTTPS与完整产品仍未通过。
+见[证据](STATUS.md#2026-11-06-tcpip检查层拒绝真实关联)。
+
 ## 2026-11-06 TCPIP定向诊断源码
 
 SOURCE/BUILD/VERIFIED(115项普通固定过滤/严格解析/身份时窗协议)，四项目BUILD0/0。

@@ -5,6 +5,19 @@ trace、权限变化或Claude许可；后续方向可按新证据调整，不是
 
 ## 真实观察与解释边界
 
+后续BD4E2E48…固定实验已完成双provider采集：有效请求的AFD1006/status0之后，
+同一原owner封存actor、header/payload PID、TID及逐调用窗口内出现TCPIP1012/v1/
+C0000022，随后TCPIP1001/v0同状态，最后AFD1013/exit1/C0000022。本机manifest将
+1012定义为endpoint create inspection status failure；不是1562的另一明确access
+denied分支。创建检查层拒绝有正向事件支持，具体WFP filter/callout或capability
+根因尚未唯一确定。实际AF2、compartment1及ProcessStartKey原值留本机，后者不当
+FILETIME或owner创建回执。
+
+原owner闭合释放11文件、实际Token权限/DACL前后相同，结果729E135A…；自有trace
+Stop0/Token保持，ETL60D33C30…为3.75MiB/60缓冲、三项lost0，未触及循环上限。
+409记录中AFD272/TCPIP136，选中4+2条；只证明这次有限观察范围。完整证据见
+[账本](STATUS.md#2026-11-06-tcpip检查层拒绝真实关联)，无Socket/HTTPS或L3验收。
+
 固定5D5CD38F…实验沿现装610b原daily/owner/LPAC/Job完成三请求，原owner封存后执行，
 正常闭合才释放11文件。实际capability0、low、package access mask2、两项自身权限
 及128字节默认DACL前后完全相同。自身pseudo handle时间查询成功，没有OpenProcess、
@@ -28,7 +41,8 @@ work/afd-call-correlation-20261106-01/candidate-r4及新外部结果目录，不
 调用点包括15AEE及TL回调2FFE0。实际拒绝状态由事件本身提供，不能只从函数名推断。
 
 这将后续排查收敛到传输层创建/完成路径，不再优先盲测全机AFD设备ACL或默认DACL。
-但最终是TCPIP访问检查、检查层/WFP、compartment、其他策略还是其他组件，仍UNKNOWN。
+该AFD单provider阶段未区分具体传输组件；后续双provider已收敛到上述TCPIP检查层，
+最终策略组件仍UNKNOWN。
 没有Socket/HTTPS通过，普通网络可用不能推导受限网络可用。
 
 ## 覆盖及解析限制
@@ -48,11 +62,20 @@ UTC对象/ISO-Z精度和歧义拒绝检查，最终73项普通检查、四项目
 
 ## 有价值的下一方向
 
-本机TCPIP事件定义已只读取得，未启动新的TCPIP采集。provider2F07E2EE…、keyword
+本机TCPIP事件定义先以只读取得，后续BD4E2E48…已完成固定采集。provider2F07E2EE…、keyword
 1024/部分附带1，固定1001/1010/1011/1012/1013/1562可分别提供总体完成、family未
 附加、compartment不存在、inspection状态、成功和明确access denied路径。版本与
 模板须按本机定义严格解析，ProcessStartKey仅作为实际字段，不自行猜测与actor创建
-时间相同。若继续有限联合诊断，应优先区分这些具体路径，而非重复相同AFD三项状态。
+时间相同。本轮已识别inspection路径，下一步优先读取既存WFP诊断记录，不重跑相同
+AFD状态以重复证明同一结论。
+
+普通研发身份与桌面人类身份均可打开WFP连接，但GetOption0的collect/keyword查询
+都返回5且自身连接Close0，不能据此声称采集已关闭。独立只读诊断源码没有任何WFP
+setter/subscription/新trace或受限启动入口；历史查询只保留固定约4秒窗口、包/用户/
+程序路径同时匹配的classify/capability drop，再按匹配记录ID读取当前filter/layer。
+历史事件无PID/TID，绑定不能升级成精确actor证明；当前filter即使存在也不独立证明
+历史对象未替换，缺记录/采集关闭/淘汰均保留UNKNOWN。21项普通筛选检查、25项本机
+SDK x64结构断言及BUILD通过；新的管理员读取尚NOT_RUN，须另有固定具体人类决定。
 
 网络capability是候选机制而非已证明根因。微软[AppContainer启动说明](https://learn.microsoft.com/en-us/windows/win32/secauthz/implementing-an-appcontainer)
 将网络访问与具体capability关联；[Chromium设计](https://chromium.googlesource.com/chromium/src/+/HEAD/docs/design/sandbox.md)
