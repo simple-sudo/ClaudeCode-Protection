@@ -5,6 +5,26 @@
 历史页的“当前/待执行/暂停/DELIVERABLE”按段落日期及限定范围解释，不是今天的状态或操作许可。
 不在本页复制当前安装和授权摘要。
 
+## 2026-11-06 观察器TokenBefore实际失败与固定标量查询修复
+
+本人批准A300344F707C20535AB845D54499EAEAAAEDF84632A81268CA057DDCE51C72C9，
+10:32:05Z单次执行，原观察器终态1129316357、固定阶段TokenBefore。无ready/terminal，
+没有LPAC attempt或ETL读取。原candidate-r2许可消耗/字节保留，无重试/强停/恢复，
+不认定AFD或Socket获得新能力，独立内核trace闭合仍UNKNOWN。
+
+普通自身只读数据ordinary-own-token-scalars.json明确query kind20、requested4、
+Win32 24/未完成；该记录ReturnedBytes4来自此前查询，后续已在每次查询开始清空，
+不能误记成class20第二次读取。实际失败发生在其零缓冲预查询。修正后
+ordinary-own-token-fixed-scalars.json为直接4字节/Win32 0/完整结果。固定标量直接
+查询也与原MaintenanceIdentity.ReadInt一致；不普遍放宽变长缓冲规则或提升要求。
+官方契约[TOKEN_ELEVATION](https://learn.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-token_elevation)
+为单DWORD，[GetTokenInformation](https://learn.microsoft.com/en-us/windows/win32/api/securitybaseapi/nf-securitybaseapi-gettokeninformation)
+以BOOL判成功、失败才解释GetLastError；本机24观察不推广为所有Windows契约。
+
+源码让新受控证据目录先seal，Token前后查询保留有限标量/大小/错误供研发审阅；
+全部原严格捕获门保留，普通inspect仅查自身。四项目BUILD0/0和实际普通自身查询通过；
+管理员新建目录/标量/采集/停止NOT_RUN，不能据普通成功认定原提升进程已修复。
+
 ## 2026-11-06 固定AFD观察器失败与有限早期阶段回报
 
 本人批准C23381A338AB378567E69BD76EEAAF8EBE4F15B13AFF7658C3A6798B0461CD36；

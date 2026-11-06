@@ -1,5 +1,21 @@
 # 当前状态与授权摘要
 
+2026-11-06本人再次批准A300344F…新固定版本后，观察器原句柄终态1129316357，有限
+阶段明确为TokenBefore；未生成ready/terminal，没有发起原LPAC或读ETL。许可已消耗，
+无重试/强停/恢复，原candidate-r2冻结字节和失败保留。它定位了观察器采集前的自身
+Token核验，不等于AFD拒绝层定位；内核trace独立闭合仍无新实测回执。
+
+普通自身Token只读实际复现：class20的零缓冲预查询返回24/所需4字节，旧逻辑只收122
+导致TokenSizeUnavailable；改用固定4字节直接查询后实际成功，前后记录留
+work/afd-call-correlation-20261106-01/ordinary-own-token*-scalars.json。不是管理员
+故障唯一分支实测，但给出具体兼容性修复依据。class18/20/29均固定DWORD，class3仍
+严格变长122/上限/精确回读；不把24普遍接受成变长成功，不放松完整提升/非AC/非冒充
+要求。新--inspect-own-token仅查自身、无捕获或写入，可在普通身份检查实际标量。
+后续新受控目录先创建并seal，再查Token/驱动及全部采集门；失败也可发布有限实际
+query kind/大小/错误/标量，不含Token句柄/凭据，既有对象权限不改。首次阶段仍保留。
+四项目BUILD0/0，原62项阶段/关联检查仍限其原范围；普通修正后自身查询已实测，
+新管理员目录/Token/采集/停止均NOT_RUN，旧失败不回填，正式Claude和完整产品未验收。
+
 2026-11-06本人批准固定审查C23381A3…后，原普通控制器经本人UAC发起观察器32240；
 原持有进程终态125，未生成ready/terminal，阶段/原因及trace内核闭合UNKNOWN。
 没有lpac-project-attempt，不曾启动本次原受限任务或读取ETL；后读固定trace根不存在，

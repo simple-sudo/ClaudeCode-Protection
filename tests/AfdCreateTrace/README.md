@@ -39,3 +39,12 @@ flags2为3E9；3F1是creator SD捕获失败，3F3是transport创建失败，3F4�
 回执可发布时保留，不通过退出码传原始Token数据。后续失败不覆盖首次失败阶段。
 新版BUILD、普通结构/创建前拒绝及实际普通子进程退出码传递通过；管理员采集NOT_RUN。
 不解锁或重跑旧冻结版本；后续仍需新固定审查与具体人类决定。
+
+下一固定版本A300344F…实际阶段TokenBefore（1129316357），没有ready/terminal或原
+LPAC启动。随后普通自身检查复现TokenElevation(class20)零缓冲查询错误24；它是
+固定DWORD，改成直接4字节精确读取，class3权限数组仍用原变长严格查询。普通修正
+读取成功，不证明原提升场景已修复。`--inspect-own-token`仅读自身有限标量，无trace/
+文件写入/权限变化；主采集入口仍强制完整提升/非AC/无冒充及前后权限一致。
+新目录创建并seal后才进行驱动/Token门，以便门失败也能留有限真实诊断；采集门仍全部
+在StartTrace之前。前后TokenObservation仅保留query kind/大小/失败码/提升标量，成功
+查询的GetLastError不作为错误，查询开始清空旧returned length，首次失败阶段不被覆盖。

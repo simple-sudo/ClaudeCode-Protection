@@ -26,6 +26,14 @@ internal static class Program
 
     private static int Main(string[] args)
     {
+        if(args.Length==1 && args[0]=="--inspect-own-token")
+        {
+            var scalar=new TokenObservation();string? errorType=null;int? errorCode=null;
+            try{using var own=WindowsIdentity.GetCurrent();_=TokenFacts(own,scalar,requireFull:false);}
+            catch(Exception error){errorType=error.GetType().Name;errorCode=error.HResult;}
+            Console.WriteLine(JsonSerializer.Serialize(new {Scope="OWN_TOKEN_SCALARS_ONLY_NO_CAPTURE_OR_WRITES",Observation=scalar,
+                FailureType=errorType,FailureCode=errorCode,TraceStarted=false},new JsonSerializerOptions{IncludeFields=true}));return 0;
+        }
         if(args.Length==1 && args[0]=="--inspect")
         {
             Layout();
@@ -43,17 +51,10 @@ internal static class Program
         ulong handle=0;IntPtr memory=IntPtr.Zero;Properties? final=null;
         var beginning=DateTime.UtcNow;string? failure=null;int? failureCode=null;string? before=null;
         FileStream? driver=null;
+        var tokenBefore=new TokenObservation();var tokenAfter=new TokenObservation();
         try
         {
             stage=ObserverStage.FreshRootCheck;RequireFreshRoot();
-            stage=ObserverStage.DriverOpen;
-            driver=File.Open(@"C:\Windows\System32\drivers\afd.sys",FileMode.Open,FileAccess.Read,FileShare.Read);
-            stage=ObserverStage.DriverHash;
-            if(Convert.ToHexString(SHA256.HashData(driver))!=DriverHash)throw new InvalidOperationException("DriverChanged");
-            stage=ObserverStage.TokenBefore;
-            before=TokenFacts(identity);
-            stage=ObserverStage.SafetyBefore;
-            Safety(beginning);
             stage=ObserverStage.CreateOwnedDirectory;
             var descriptor=new RawSecurityDescriptor(Sddl);var bytes=new byte[descriptor.BinaryLength];descriptor.GetBinaryForm(bytes,0);
             var security=Marshal.AllocHGlobal(bytes.Length);
@@ -69,6 +70,17 @@ internal static class Program
             var expected=new RawSecurityDescriptor(Sddl);var actual=new RawSecurityDescriptor(observed.GetSecurityDescriptorBinaryForm(),0);
             if(!observed.AreAccessRulesProtected || actual.Owner?.Value!=expected.Owner?.Value || actual.Group?.Value!=expected.Group?.Value ||
                 !AclBytes(actual).AsSpan().SequenceEqual(AclBytes(expected)))throw new InvalidOperationException("FreshDirectorySealDiffers");
+            // Seal the evidence sink first, so a pre-capture Token/query failure
+            // can leave its bounded actual facts. All original capture gates
+            // still run before StartTrace; no failed gate can start a trace.
+            stage=ObserverStage.DriverOpen;
+            driver=File.Open(@"C:\Windows\System32\drivers\afd.sys",FileMode.Open,FileAccess.Read,FileShare.Read);
+            stage=ObserverStage.DriverHash;
+            if(Convert.ToHexString(SHA256.HashData(driver))!=DriverHash)throw new InvalidOperationException("DriverChanged");
+            stage=ObserverStage.TokenBefore;
+            before=TokenFacts(identity,tokenBefore);
+            stage=ObserverStage.SafetyBefore;
+            Safety(beginning);
             stage=ObserverStage.StartNewTrace;
             memory=Allocate();native=StartTrace(out handle,Name,memory);
             if(native!=0)throw new InvalidOperationException("StartRejectedNoAdoption");started=true;
@@ -103,7 +115,7 @@ internal static class Program
                 catch(Exception error){failure??=error.GetType().Name;failureCode??=error.HResult;failureStage??=ObserverStage.StopOwnTrace;}
             }
             if(memory!=IntPtr.Zero)Marshal.FreeHGlobal(memory);
-            try{using var current=WindowsIdentity.GetCurrent();tokenUnchanged=before is not null && current.User?.Value==Human && before==TokenFacts(current);}
+            try{using var current=WindowsIdentity.GetCurrent();var after=TokenFacts(current,tokenAfter);tokenUnchanged=before is not null && current.User?.Value==Human && before==after;}
             catch(Exception error){failure??=error.GetType().Name;failureCode??=error.HResult;failureStage??=ObserverStage.TokenAfter;}
             if(!tokenUnchanged)failureStage??=ObserverStage.TokenAfter;
             driver?.Dispose();
@@ -116,6 +128,7 @@ internal static class Program
                     {AssertEvidenceFile(file);using var etl=File.Open(file,FileMode.Open,FileAccess.Read,FileShare.Read);length=etl.Length;hash=Convert.ToHexString(SHA256.HashData(etl));}
                     WriteNew("terminal.json",new {Scope="FIXED_AFD_OBSERVER_TERMINAL_NOT_NETWORK_OR_PRIVACY_PASS",Stage=stage.ToString(),FailureStage=failureStage?.ToString(),NativeCode=native,StopCode=stopCode,
                         Failure=failure,FailureCode=failureCode,Started=started,OwnStopped=ownStopped,TokenUnchanged=tokenUnchanged,Session,Provider,
+                        TokenBefore=tokenBefore,TokenAfter=tokenAfter,
                         OwnerSidSHA256=Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(Human))),
                         StartedUtc=beginning,EndedUtc=DateTime.UtcNow,Statistics=final is null ? null : new {final.Value.EventsLost,final.Value.BuffersWritten,final.Value.LogBuffersLost,final.Value.RealTimeBuffersLost},ETLSHA256=hash,ETLBytes=length,
                         CircularMayHaveOverwritten=final is null || (ulong)final.Value.BuffersWritten*64*1024>=16*1024*1024,
@@ -163,21 +176,42 @@ internal static class Program
         for(var parent=Directory.GetParent(Root);parent is not null;parent=parent.Parent)
             if((File.GetAttributes(parent.FullName)&FileAttributes.ReparsePoint)!=0)throw new InvalidOperationException("RedirectedParentRejected");
     }
-    private static string TokenFacts(WindowsIdentity identity)
+    private sealed class TokenObservation
+    {
+        public int? QueryKind,RequestedBytes,ReturnedBytes,Win32Error;
+        public string? QueryMode;
+        public bool? ThreadImpersonationDetected;
+        public uint? IsAppContainer,ElevationType,IsElevated;
+        public bool Complete;
+    }
+    private static string TokenFacts(WindowsIdentity identity,TokenObservation observation,bool requireFull=true)
     {
         byte[] Read(int kind)
         {
-            if(GetTokenInformation(identity.Token,kind,IntPtr.Zero,0,out var size) || Marshal.GetLastWin32Error()!=122 || size is <4 or >65536)
-                throw new InvalidOperationException("TokenSizeUnavailable");
+            observation.QueryKind=kind;
+            observation.ReturnedBytes=null;observation.Win32Error=null;int size=4;
+            if(kind is 18 or 20 or 29)
+            {observation.QueryMode="FIXED_DWORD";observation.RequestedBytes=4;}
+            else
+            {
+                observation.QueryMode="VARIABLE_SIZED";
+                var sized=GetTokenInformation(identity.Token,kind,IntPtr.Zero,0,out size);observation.Win32Error=sized?0:Marshal.GetLastWin32Error();observation.RequestedBytes=size;
+                if(sized || observation.Win32Error!=122 || size is <4 or >65536)
+                    throw new InvalidOperationException("TokenSizeUnavailable");
+            }
             var p=Marshal.AllocHGlobal(size);
-            try{if(!GetTokenInformation(identity.Token,kind,p,size,out var used) || used!=size)throw new InvalidOperationException("TokenReadUnavailable");
+            try{var read=GetTokenInformation(identity.Token,kind,p,size,out var used);observation.Win32Error=read?0:Marshal.GetLastWin32Error();observation.ReturnedBytes=used;
+                if(!read || used!=size)throw new InvalidOperationException("TokenReadUnavailable");
                 var b=new byte[size];Marshal.Copy(p,b,0,size);return b;}
             finally{Marshal.FreeHGlobal(p);}
         }
         using var impersonating=WindowsIdentity.GetCurrent(true);
-        if(impersonating is not null || BitConverter.ToUInt32(Read(29))!=0 || BitConverter.ToUInt32(Read(18))!=2 || BitConverter.ToUInt32(Read(20))!=1)
+        observation.ThreadImpersonationDetected=impersonating is not null;
+        observation.IsAppContainer=BitConverter.ToUInt32(Read(29));observation.ElevationType=BitConverter.ToUInt32(Read(18));observation.IsElevated=BitConverter.ToUInt32(Read(20));
+        if(impersonating is not null || observation.IsAppContainer!=0 || requireFull && (observation.ElevationType!=2 || observation.IsElevated!=1))
             throw new InvalidOperationException("FullHumanTokenWithoutImpersonationRequired");
-        return Convert.ToHexString(SHA256.HashData(Read(3)))+":"+Convert.ToHexString(Read(18))+":"+Convert.ToHexString(Read(20));
+        var result=Convert.ToHexString(SHA256.HashData(Read(3)))+":"+Convert.ToHexString(Read(18))+":"+Convert.ToHexString(Read(20));
+        observation.Complete=true;return result;
     }
     private static void Safety(DateTime beginning)
     {

@@ -5,6 +5,13 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-06 TokenBefore定位及普通标量读取
+
+批准的A300344F…原观察器实际回报TokenBefore，未启动本次LPAC或读取ETL；采集未通过。
+普通自身class20零缓冲错误24复现、固定4字节实际读取成功；四项目BUILD0/0。新版
+管理员身份/目录seal/trace采集及停止NOT_RUN，不能把此兼容修复算Socket或整机交付。
+见[证据](STATUS.md#2026-11-06-观察器tokenbefore实际失败与固定标量查询修复)。
+
 ## 2026-11-06 固定AFD采集未通过及阶段诊断源码
 
 批准的C23381A3…单次观察器终态125且无阶段回执，原LPAC未发起、ETL未读；采集/
