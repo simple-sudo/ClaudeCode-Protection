@@ -31,6 +31,13 @@ not a unique root cause. UTC conversion accepts an already-UTC DateTime or the
 original ISO-Z string, preserving fractional ticks; local/unspecified time is
 refused. Do not culture-format and reparse PowerShell JSON DateTime objects.
 
+The TCPIP decoder uses the locally inspected provider2F07E2EE… contracts for
+1001/v0,1010–1012/v0–1,1013/v0–2 and1562/v0. It validates ordered field sets,
+DWORD widths, full UInt64 ProcessStartKey and bounded socket-address bytes;
+kernel endpoint pointers are omitted. A start key is NOT interpreted as a
+creation FILETIME. Correlation retains exact header/payload PID/TID/call-window
+requirements and never declares unique root cause or network admission.
+
 The timed probe uses the original NativeBoundary request bytes and access masks;
 the older matrices/schema remain unchanged. These additions do not qualify
 Socket/HTTPS, privacy L3, an installed native lifecycle or official Claude.

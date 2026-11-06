@@ -89,6 +89,14 @@ using(var filter=new EventIdFilter(source))
     Check(descriptor.Type==0x80000200 && descriptor.Size==6 && ids.FilterIn==1 && ids.Reserved==0 && ids.Count==1 && ids.Event==1000,"only manifest event1000 requested");
     filter.Dispose();filter.Dispose();Check(filter.Pointer==IntPtr.Zero,"event-filter data released idempotently without native tracing");
 }
+using(var filter=EventIdFilter.TcpipCreate(source))
+{
+    var parameters=Marshal.PtrToStructure<EventIdFilter.Parameters>(filter.Pointer);
+    var descriptor=Marshal.PtrToStructure<EventIdFilter.Descriptor>(parameters.Descriptors);
+    var pointer=new IntPtr(unchecked((long)descriptor.Pointer));
+    Check(descriptor.Size==16 && Marshal.ReadByte(pointer)==1 && Marshal.ReadInt16(pointer,2)==6,"TCP filter exact six-ID data size");
+    Check(Enumerable.Range(0,6).Select(i=>(int)Marshal.ReadInt16(pointer,4+i*2)).SequenceEqual(new[]{1001,1010,1011,1012,1013,1562}),"TCP filter contains no extra network events");
+}
 var creation=NativeBoundary.ReadOwnCreation();
 Check(creation.Success && creation.Win32Error==0 && creation.FileTime>0 && creation.FileTime<=NativeBoundary.PreciseFileTime(),"actual own process creation read via pseudo handle without OpenProcess");
 var host=@"C:\Program Files\dotnet\dotnet.exe";
@@ -103,5 +111,6 @@ using(var child=Process.Start(info)??throw new IOException("Own exit fixture did
     Check(ObserverOutcome.Decode(child.ExitCode)==ObserverStage.TokenBefore && child.StandardOutput.ReadToEnd().Length==0 && child.StandardError.ReadToEnd().Length==0,
         "actual ordinary Win32 process exit preserves full finite stage without output file or UAC");
 }
-Console.WriteLine(JsonSerializer.Serialize(new{Scope="ORDINARY_AFD_ANALYSIS_PROTOCOL_AND_OWN_PROCESS_METADATA",Passed=passed,
+passed+=TcpipCases.Run();
+Console.WriteLine(JsonSerializer.Serialize(new{Scope="ORDINARY_AFD_TCPIP_ANALYSIS_PROTOCOL_AND_OWN_PROCESS_METADATA",Passed=passed,
     OwnOrdinaryExitFixtureExecuted=true,OwnProcessTimesRead=true,NativeCapture=false,ProtectedExecution=false,NetworkAdmission=false,NoEventIsNoExecutionProof=false}));return 0;

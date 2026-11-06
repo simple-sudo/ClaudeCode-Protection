@@ -6,7 +6,7 @@ internal enum ObserverStage
 {
     Inputs=1,FreshRootCheck,DriverOpen,DriverHash,TokenBefore,SafetyBefore,CreateOwnedDirectory,
     DirectorySeal,StartNewTrace,ConfirmOwnTrace,EnableFixedProvider,EvidenceReadback,PublishReady,
-    Observe,StopOwnTrace,TokenAfter,TerminalPublication,AdministrativeIdentityRequired
+    Observe,StopOwnTrace,TokenAfter,TerminalPublication,AdministrativeIdentityRequired,EnableTcpipProvider
 }
 
 // A finite, nonsecret error channel that survives UAC shell launch. A failed

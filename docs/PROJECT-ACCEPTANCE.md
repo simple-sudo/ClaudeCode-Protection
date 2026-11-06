@@ -5,6 +5,12 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-06 TCPIP定向诊断源码
+
+SOURCE/BUILD/VERIFIED(115项普通固定过滤/严格解析/身份时窗协议)，四项目BUILD0/0。
+真实双provider启用/新联合LPAC及TCPIP事件关联NOT_RUN，不新增Socket/HTTPS能力或
+L3/产品验收。原AFD正向事件证据保持原场景，新的TCPIP定义与fixture不当实测。
+
 ## 2026-11-06 真实LPAC三调用与传输完成路径关联
 
 VERIFIED(原owner闭合结果释放/实际身份保持/自身伪句柄读取/有限AFD事件逐调用关联)。

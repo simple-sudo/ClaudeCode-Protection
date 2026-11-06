@@ -15,11 +15,12 @@ using AfdObserverProtocol;
 // host ACL updates, WFP setters, capability/Token adjustment or retry API.
 internal static class Program
 {
-    internal const string Root=@"C:\Program Files\ClaudeCodeProtection-AfdObserver-532de42-20261106-02";
-    private const string Name="Cpc.AfdCreate.532de42.20261106.02";
+    internal const string Root=@"C:\Program Files\ClaudeCodeProtection-TcpCreate-534f5cd-20261106-01";
+    private const string Name="Cpc.TcpCreate.534f5cd.20261106.01";
     private static string Human=string.Empty;
     private static readonly Guid Provider=new("e53c6823-7bb8-44bb-90dc-3f86090d48a6");
-    private static readonly Guid Session=new("3123256e-6993-41b1-b060-d6f057e28088");
+    private static readonly Guid TcpipProvider=new("2f07e2ee-15db-40f1-90ef-9d7ba282188a");
+    private static readonly Guid Session=new("9f894fde-7ef3-4774-ae05-4c4f9e4951dc");
     private const string DriverHash="F93639BB027E19DF5460C6D2BC69DB08139AF5D716743AC88BA15E581934DD76";
     private const int DurationSeconds=90;
     private static string Sddl=>"O:BAG:BAD:P(D;OICI;FA;;;S-1-15-2-1)(D;OICI;FA;;;S-1-15-2-2)(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)(A;OICI;0x1200a9;;;"+Human+")";
@@ -37,9 +38,10 @@ internal static class Program
         if(args.Length==1 && args[0]=="--inspect")
         {
             Layout();
-            Console.WriteLine(JsonSerializer.Serialize(new {Scope="AFD_OBSERVER_LAYOUT_ONLY_NO_CAPTURE",PropertiesBytes=Marshal.SizeOf<Properties>(),
+            Console.WriteLine(JsonSerializer.Serialize(new {Scope="AFD_TCPIP_OBSERVER_LAYOUT_ONLY_NO_CAPTURE",PropertiesBytes=Marshal.SizeOf<Properties>(),
                 PropertiesFileOffset=Marshal.OffsetOf<Properties>(nameof(Properties.FileOffset)).ToInt32(),MaximumSeconds=DurationSeconds,
-                MaximumFileMiB=16,Keyword=4,Level=4,Provider,EventIdFilterRequested=1000,FilterParametersBytes=Marshal.SizeOf<EventIdFilter.Parameters>(),
+                MaximumFileMiB=16,Keyword=4,Level=4,Provider,EventIdFilterRequested=1000,TcpipProvider,TcpipKeyword=1024,
+                TcpipEvents=new[]{1001,1010,1011,1012,1013,1562},FlushSeconds=4,FilterParametersBytes=Marshal.SizeOf<EventIdFilter.Parameters>(),
                 FreshRootExists=Directory.Exists(Root),TraceStarted=false}));return 0;
         }
         if(args.Length!=1 || args[0]!="--run-fixed")return 125;
@@ -51,7 +53,7 @@ internal static class Program
         var stage=ObserverStage.Inputs;ObserverStage? failureStage=null;uint? native=null,stopCode=null;bool created=false,started=false,ownStopped=false,tokenUnchanged=false;
         ulong handle=0;IntPtr memory=IntPtr.Zero;Properties? final=null;
         var beginning=DateTime.UtcNow;string? failure=null;int? failureCode=null;string? before=null;
-        FileStream? driver=null;EventIdFilter? eventFilter=null;
+        FileStream? driver=null;EventIdFilter? eventFilter=null,tcpipFilter=null;
         var tokenBefore=new TokenObservation();var tokenAfter=new TokenObservation();
         try
         {
@@ -94,10 +96,15 @@ internal static class Program
             eventFilter=new EventIdFilter(Session);
             native=EnableTraceEx2(handle,ref provider,1,4,4,0,1000,eventFilter.Pointer);
             if(native!=0)throw new InvalidOperationException("EnableRejected");
+            stage=ObserverStage.EnableTcpipProvider;
+            var tcpip=TcpipProvider;tcpipFilter=EventIdFilter.TcpipCreate(Session);
+            native=EnableTraceEx2(handle,ref tcpip,1,4,1024,0,1000,tcpipFilter.Pointer);
+            if(native!=0)throw new InvalidOperationException("TcpipEnableRejected");
             stage=ObserverStage.EvidenceReadback;AssertEvidenceFile(Path.Combine(Root,"afd.etl"));
             stage=ObserverStage.PublishReady;
-            WriteNew("ready.json",new {Scope="FIXED_AFD_KEYWORD4_OBSERVER_READY",Session,Provider,Name,StartedUtc=DateTime.UtcNow,
-                DurationSeconds,MaxFileMiB=16,EventIdFilterRequested=1000,OwnerSidSHA256=Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(Human))),NoTargetProcessControl=true,NoPacketCaptureRequested=true});
+            WriteNew("ready.json",new {Scope="FIXED_AFD_TCPIP_CREATE_OBSERVER_READY",Session,Provider,Name,StartedUtc=DateTime.UtcNow,
+                DurationSeconds,MaxFileMiB=16,EventIdFilterRequested=1000,TcpipProvider,TcpipKeyword=1024,TcpipEvents=new[]{1001,1010,1011,1012,1013,1562},FlushSeconds=4,
+                OwnerSidSHA256=Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(Human))),NoTargetProcessControl=true,NoPacketCaptureRequested=true});
             stage=ObserverStage.Observe;
             var watch=Stopwatch.StartNew();
             while(watch.ElapsedMilliseconds<DurationSeconds*1000)
@@ -118,6 +125,7 @@ internal static class Program
             }
             if(memory!=IntPtr.Zero)Marshal.FreeHGlobal(memory);
             eventFilter?.Dispose();
+            tcpipFilter?.Dispose();
             try{using var current=WindowsIdentity.GetCurrent();var after=TokenFacts(current,tokenAfter);tokenUnchanged=before is not null && current.User?.Value==Human && before==after;}
             catch(Exception error){failure??=error.GetType().Name;failureCode??=error.HResult;failureStage??=ObserverStage.TokenAfter;}
             if(!tokenUnchanged)failureStage??=ObserverStage.TokenAfter;
@@ -129,18 +137,19 @@ internal static class Program
                     var file=Path.Combine(Root,"afd.etl");string? hash=null;long? length=null;
                     if(ownStopped && File.Exists(file))
                     {AssertEvidenceFile(file);using var etl=File.Open(file,FileMode.Open,FileAccess.Read,FileShare.Read);length=etl.Length;hash=Convert.ToHexString(SHA256.HashData(etl));}
-                    WriteNew("terminal.json",new {Scope="FIXED_AFD_OBSERVER_TERMINAL_NOT_NETWORK_OR_PRIVACY_PASS",Stage=stage.ToString(),FailureStage=failureStage?.ToString(),NativeCode=native,StopCode=stopCode,
+                    WriteNew("terminal.json",new {Scope="FIXED_AFD_TCPIP_OBSERVER_TERMINAL_NOT_NETWORK_OR_PRIVACY_PASS",Stage=stage.ToString(),FailureStage=failureStage?.ToString(),NativeCode=native,StopCode=stopCode,
                         Failure=failure,FailureCode=failureCode,Started=started,OwnStopped=ownStopped,TokenUnchanged=tokenUnchanged,Session,Provider,
                         TokenBefore=tokenBefore,TokenAfter=tokenAfter,
                         OwnerSidSHA256=Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(Human))),
                         StartedUtc=beginning,EndedUtc=DateTime.UtcNow,Statistics=final is null ? null : new {final.Value.EventsLost,final.Value.BuffersWritten,final.Value.LogBuffersLost,final.Value.RealTimeBuffersLost},ETLSHA256=hash,ETLBytes=length,
                         CircularMayHaveOverwritten=final is null || (ulong)final.Value.BuffersWritten*64*1024>=16*1024*1024,
-                        EventIdFilterRequested=1000,KernelBranchCorrelationVerified=false,TargetJobClosed=false,NetworkAdmission=false,NoAutomaticRetry=true});
+                        EventIdFilterRequested=1000,TcpipProvider,TcpipKeyword=1024,TcpipEvents=new[]{1001,1010,1011,1012,1013,1562},FlushSeconds=4,
+                        KernelBranchCorrelationVerified=false,TargetJobClosed=false,NetworkAdmission=false,NoAutomaticRetry=true});
                 }
                 catch(Exception error){failure??=error.GetType().Name;failureCode??=error.HResult;failureStage??=ObserverStage.TerminalPublication;}
             }
         }
-        Console.WriteLine(JsonSerializer.Serialize(new {Scope="FIXED_AFD_OBSERVER_RESULT",Stage=stage.ToString(),FailureStage=failureStage?.ToString(),NativeCode=native,StopCode=stopCode,
+        Console.WriteLine(JsonSerializer.Serialize(new {Scope="FIXED_AFD_TCPIP_OBSERVER_RESULT",Stage=stage.ToString(),FailureStage=failureStage?.ToString(),NativeCode=native,StopCode=stopCode,
             Failure=failure,FailureCode=failureCode,Started=started,OwnStopped=ownStopped,TokenUnchanged=tokenUnchanged}));
         if(failure is null && ownStopped && tokenUnchanged && failureStage is null)return 0;
         return ObserverOutcome.Failure(failureStage??stage);
@@ -252,7 +261,7 @@ internal static class Program
         Marshal.Copy(new byte[8192],0,p,8192);
         var file=Encoding.Unicode.GetBytes(Path.Combine(Root,"afd.etl")+"\0");var name=Encoding.Unicode.GetBytes(Name+"\0");
         var props=new Properties{Wnode=new(){BufferSize=8192,Guid=Session,ClientContext=1,Flags=0x20000},BufferSize=64,MinimumBuffers=8,MaximumBuffers=16,
-            MaximumFileSize=16,LogFileMode=2,FlushTimer=1,LoggerOffset=120,FileOffset=checked((uint)(120+name.Length))};
+            MaximumFileSize=16,LogFileMode=2,FlushTimer=4,LoggerOffset=120,FileOffset=checked((uint)(120+name.Length))};
         Marshal.StructureToPtr(props,p,false);Marshal.Copy(name,0,IntPtr.Add(p,120),name.Length);Marshal.Copy(file,0,IntPtr.Add(p,(int)props.FileOffset),file.Length);
     }
     private static void Layout()

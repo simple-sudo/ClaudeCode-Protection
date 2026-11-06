@@ -45,7 +45,7 @@ internal sealed record AfdCreateEvent(long FileTime,uint HeaderPid,uint HeaderTi
             (uint)values[7],(uint)values[0],(uint)values[1],(uint)values[4],(uint)values[5],(uint)values[6],(uint)values[8]);
     }
     private static uint U32(string value)=>checked((uint)Number(value));
-    private static ulong Number(string value)
+    internal static ulong Number(string value)
     {
         bool hex=value.StartsWith("0x",StringComparison.OrdinalIgnoreCase);var digits=hex?value[2..]:value;
         if(digits.Length is <1 or >20 || hex && digits.Length>16 ||

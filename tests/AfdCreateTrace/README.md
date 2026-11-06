@@ -56,3 +56,11 @@ ETL未读。691个64KiB缓冲/16MiB circular存在绕卷可能，不能称完整
 内容检查，不代表Windows实际过滤已验收。原PID不在provider端过滤，其他actor创建
 元数据仍可能出现，完整覆盖仍须检查loss/wrap。新session/目录仅用于新实验归属，
 旧受控ETL/回执原位保留，不认领/停止旧session，不为绕过检测改名。
+
+后续TCPIP定向版本在同一自有trace请求AFD1000，以及本机TCPIP provider
+2F07E2EE…/keyword1024/level4的1001、1010、1011、1012、1013、1562六事件。两次
+Enable仍只管理同一StartTrace返回的句柄，失败仅停止自有trace；不改Token、WFP或
+设备权限。TCPIP事件可能含其他进程的本地socket地址等元数据，留新受控ETL，不请求
+包内容。普通数据布局/固定六ID通过，真实双provider启用/采集尚NOT_RUN。
+FlushTimer改为4秒，目标减少稀疏事件的整缓冲刷新开销；90秒/16MiB不变，不预设
+不会绕卷。停止后仍核对loss/缓冲/哈希；该调整未进行新的系统实验。

@@ -1,5 +1,14 @@
 # 当前状态与授权摘要
 
+2026-11-06继续从534f5cd推进TCPIP定向诊断。新源码在同一自有trace请求AFD1000及
+TCPIP六个固定创建事件（1001/1010/1011/1012/1013/1562、keyword1024/level4）；
+不扩大Token/capability/设备ACL或WFP权限。新严格TCPIP解码器按本机模板验证版本、
+字段、地址字节及整数宽度，ProcessStartKey不当FILETIME，保留原owner/PID/TID/各次
+时窗门，不授予网络准入。115项普通检查、四项目BUILD0/0，两个固定filter数据集与
+结构通过；真实双provider启用/采集/解码仍NOT_RUN。刷新间隔4秒以尝试减少整缓冲
+开销，90秒/16MiB不变，不能预设覆盖通过。新资格在work/tcpip-create-boundary-
+20261106-01准备，尚无具体人类决定或新系统执行。旧成功/失败/ETL原位保留。
+
 2026-11-06本人批准5D5CD38F…后，新观察器与原owner三请求完整完成。原owner会话
 952f9d52…正常闭合后释放11文件，输入5DB5E7AF…、结果CC92D106…、独立核验
 EF51C3DD…。实际LPAC/mask2/cap0/low、权限及128字节默认DACL前后完全相同，自身

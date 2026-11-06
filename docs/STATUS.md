@@ -5,6 +5,18 @@
 历史页的“当前/待执行/暂停/DELIVERABLE”按段落日期及限定范围解释，不是今天的状态或操作许可。
 不在本页复制当前安装和授权摘要。
 
+## 2026-11-06 TCPIP创建事件定向源码准备
+
+在已实测AFD TL完成拒绝后，新增固定双provider观察器与TCPIP严格解码，目标区分
+本机模板的family/compartment/inspection/明确access-denied事件；不用普通文档
+推导本机capability根因。EventIdFilter仅暴露编译时AFD1项或TCPIP6项，native参数
+6/16字节data及16/48结构普通检查通过。刷新间隔4秒，90秒/16MiB不变；不能把减少
+缓冲开销的假设当无绕卷实测。新的SourceRoot/session固定、原对象不认领/恢复。
+115普通检查及四项目BUILD0/0，含本机11种TCPIP模板版本、未知版本/字段/溢出/DTD/
+地址长度拒绝、同owner线程时窗/明确拒绝与inspection分开、缺事件不证明拒绝。
+范围SOURCE/BUILD/VERIFIED(普通协议/数据解析)，真实双provider/LPAC新联合仍NOT_RUN。
+准备材料work/tcpip-create-boundary-20261106-01，未UAC/新系统变更/Claude或扩权。
+
 ## 2026-11-06 原LPAC调用与AFD传输完成事件真实关联
 
 本人批准5D5CD38FFB228FD5D578F1663B4DD092E0AEAFB71C1FF5773DB661AD2F41ECC4，
