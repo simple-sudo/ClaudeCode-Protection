@@ -156,6 +156,7 @@ internal sealed partial class AtomicChild : IDisposable
     internal string ExpectedPackageSid=>packageSid;
     internal string ExpectedImagePath=>image;
     internal bool RequiresLpac=>sessionPreparation is not null || resourceQualification is not null || gpuWorkload;
+    private LpacCapabilityProfile CapabilityProfile=>sessionPreparation?.CapabilityProfile??LpacCapabilityProfile.None;
     internal long ExpectedCreatedFileTime
     {
         get
@@ -261,25 +262,25 @@ internal sealed partial class AtomicChild : IDisposable
         if(!QueryFullProcessImageName(process,0,path,ref length))throw Error("ReadSuspendedSessionImage");
         var token=ReadToken(process);
         if(!string.Equals(WindowsPathSeal.Canonical(path.ToString()),image,StringComparison.OrdinalIgnoreCase) ||
-            !token.IsAppContainer || !token.LpacAccessCheckObserved || token.PackageSid!=packageSid || token.CapabilityCount!=0 || token.IntegritySid!="S-1-16-4096")
+            !token.IsAppContainer || !token.LpacAccessCheckObserved || token.PackageSid!=packageSid || !CapabilityProfile.Matches(token.CapabilityCount,token.Capabilities) || token.IntegritySid!="S-1-16-4096")
             throw WfpNative.Contract("SuspendedSessionRootImageOrTokenMismatch");
     }
-    internal static SafeProcessHandle HoldSessionPeer(OwnedKernelJob job,string sid,int sourcePort)
+    internal static SafeProcessHandle HoldSessionPeer(OwnedKernelJob job,string sid,int sourcePort,LpacCapabilityProfile? capabilities=null)
     {
         var process=OpenProcess(0x101000,false,ProxyChannelLease.SessionPeerOwner(sourcePort));
         try
         {
             if(process.IsInvalid)throw Error("OpenSessionGatewayPeer");
-            AssertSessionPeer(job,process,sid,sourcePort);return process;
+            AssertSessionPeer(job,process,sid,sourcePort,capabilities);return process;
         }
         catch{process.Dispose();throw;}
     }
-    internal static void AssertSessionPeer(OwnedKernelJob job,SafeProcessHandle process,string sid,int sourcePort)
+    internal static void AssertSessionPeer(OwnedKernelJob job,SafeProcessHandle process,string sid,int sourcePort,LpacCapabilityProfile? capabilities=null)
     {
         if(process.IsClosed || process.IsInvalid || WaitForSingleObject(process,0)!=0x102 || !job.ContainsProcess(process) ||
             ProxyChannelLease.SessionPeerOwner(sourcePort)!=GetProcessId(process))throw WfpNative.Contract("SessionGatewayPeerJobOrLifetimeMismatch");
         var token=ReadToken(process);
-        if(!token.IsAppContainer || !token.LpacAccessCheckObserved || token.PackageSid!=sid || token.CapabilityCount!=0 || token.IntegritySid!="S-1-16-4096")
+        if(!token.IsAppContainer || !token.LpacAccessCheckObserved || token.PackageSid!=sid || !(capabilities??LpacCapabilityProfile.None).Matches(token.CapabilityCount,token.Capabilities) || token.IntegritySid!="S-1-16-4096")
             throw WfpNative.Contract("SessionGatewayPeerTokenMismatch");
     }
     internal static (uint Pid,long CreatedFileTime) SessionPeerIdentity(SafeProcessHandle process)
@@ -356,6 +357,7 @@ internal sealed partial class AtomicChild : IDisposable
         using var package=network?.Kind==NetworkProbeKind.Control?InstallationPackageSid.ForNetworkControl(state):new InstallationPackageSid(state);
         profile.AssertPackage(package);
         var jobHandle=job.ReserveAtomicAdmission(version);
+        using var capabilityAttributes=(preparation?.CapabilityProfile??LpacCapabilityProfile.None).AllocateAttributes();
         IntPtr attributes=IntPtr.Zero,capabilities=IntPtr.Zero,jobList=IntPtr.Zero,environment=IntPtr.Zero,handles=IntPtr.Zero,packagesPolicy=IntPtr.Zero;
         bool initialized=false,handleHeld=false;
         try
@@ -367,7 +369,7 @@ internal sealed partial class AtomicChild : IDisposable
             attributes=Marshal.AllocHGlobal(checked((int)size));
             if(!InitializeProcThreadAttributeList(attributes,count,0,ref size))throw Error("AtomicInitializeAttributes");initialized=true;
             capabilities=Marshal.AllocHGlobal(Marshal.SizeOf<SecurityCapabilities>());
-            Marshal.StructureToPtr(new SecurityCapabilities{Sid=package.Pointer},capabilities,false);
+            Marshal.StructureToPtr(new SecurityCapabilities{Sid=package.Pointer,Capabilities=capabilityAttributes.Pointer,Count=capabilityAttributes.Count},capabilities,false);
             if(!UpdateProcThreadAttribute(attributes,0,(IntPtr)0x20009,capabilities,(nuint)Marshal.SizeOf<SecurityCapabilities>(),IntPtr.Zero,IntPtr.Zero))throw Error("AtomicSetPackageAtCreation");
             if(requireLpac)
             {
@@ -427,7 +429,9 @@ internal sealed partial class AtomicChild : IDisposable
             environment=Marshal.StringToHGlobalUni(environmentBlock);
             var startup=new StartupInfoEx{Basic=new(){Size=Marshal.SizeOf<StartupInfoEx>()},Attributes=attributes};
             if(report){startup.Basic.Flags=0x100;startup.Basic.Output=output;startup.Basic.Error=output;}
-            var command=new StringBuilder("\""+image+"\" "+(preparation?.IsGatewayQualification==true?"gateway-qualification-child":"admission-child"));
+            var command=new StringBuilder("\""+image+"\" "+(preparation?.CapabilityProfile.IsInternetClientQualification==true?
+                "internet-client-gateway-qualification-child":preparation?.CaptureCapabilityContent==true?"zero-capability-comparison-child":
+                preparation?.IsGatewayQualification==true?"gateway-qualification-child":"admission-child"));
             // The OS binds BOTH identity and Job before returning a suspended
             // initial thread. Only the explicit qualification report handle
             // may be inherited; no breakaway permission is enabled.
@@ -496,7 +500,7 @@ internal sealed partial class AtomicChild : IDisposable
         if(!QueryFullProcessImageName(process,0,path,ref length))throw Error("AtomicReadCreatedImage");
         if(!string.Equals(WindowsPathSeal.Canonical(path.ToString()),image,StringComparison.OrdinalIgnoreCase))throw WfpNative.Contract("AtomicCreatedImageMismatch");
         var token=ReadToken(process);
-        if(!token.IsAppContainer || RequiresLpac && !token.LpacAccessCheckObserved || token.PackageSid!=packageSid || token.CapabilityCount!=0 || token.IntegritySid!="S-1-16-4096")throw WfpNative.Contract("AtomicTokenBeforeResumeMismatch");
+        if(!token.IsAppContainer || RequiresLpac && !token.LpacAccessCheckObserved || token.PackageSid!=packageSid || !CapabilityProfile.Matches(token.CapabilityCount,token.Capabilities) || token.IntegritySid!="S-1-16-4096")throw WfpNative.Contract("AtomicTokenBeforeResumeMismatch");
         var plans=FencePlan.ReadAll(state);if(plans.Count==0)throw WfpNative.Contract("AtomicResumeRequiresRegisteredFence");
         var observations=new List<FenceObservation>();
         var proxyOnly=network?.RequiresProxy==true;
@@ -513,6 +517,7 @@ internal sealed partial class AtomicChild : IDisposable
             observations.Add(observed);
         }
         var proof=new {SchemaVersion=1,state.InstallationId,job.JobId,Pid,CreatedFileTime=created.ToString("X16"),Token=token,
+            ExpectedCapabilitiesSHA256=CapabilityProfile.SHA256,ObservedCapabilities=token.Capabilities?.CopyEntries(),
             ImageSHA256=version.Package.Files.Single(f=>f.Asset.Id=="broker-exe").SHA256,Job=snapshot,Fences=observations,
             Binding="SECURITY_CAPABILITIES_AND_JOB_LIST_AT_CREATION",Status="BEFORE_FIRST_RESUME",NetworkBehaviorQualified=false,
             SessionBindingSHA256=sessionAdmission?.BindingSHA256,
@@ -568,8 +573,16 @@ internal sealed partial class AtomicChild : IDisposable
         System.Globalization.CultureInfo.CurrentUICulture=invariant;
     }
     internal static int RunGatewayQualificationCanary()
+        =>RunGatewayQualificationCanaryCore(LpacCapabilityProfile.None,false);
+    internal static int RunInternetClientGatewayQualificationCanary()
+        =>RunGatewayQualificationCanaryCore(LpacCapabilityProfile.InternetClientQualification,true);
+    internal static int RunZeroCapabilityComparisonCanary()
+        =>RunGatewayQualificationCanaryCore(LpacCapabilityProfile.None,true);
+    private static int RunGatewayQualificationCanaryCore(LpacCapabilityProfile expectedCapabilities,bool captureCapabilityContent)
     {
         var phase="ENVIRONMENT";var id=Environment.GetEnvironmentVariable("CPC_SESSION_ID")??"";GatewayChildReport result;
+        GatewayNetworkContent? networkContent=null;
+        GatewayCapabilityEndpoint? endpoint=null;
         try
         {
             ConfigureFixedChildCulture();
@@ -583,10 +596,27 @@ internal sealed partial class AtomicChild : IDisposable
             // without token duplication. The original Broker checks the exact
             // held LPAC before resume and on every admitted member inspection.
             phase="IDENTITY";using var current=new SafeProcessHandle((IntPtr)(-1),false);var token=ReadToken(current,false);
-            if(!token.IsAppContainer || token.PackageSid is null || token.CapabilityCount!=0 || token.IntegritySid!="S-1-16-4096")
+            if(!token.IsAppContainer || token.PackageSid is null || !expectedCapabilities.Matches(token.CapabilityCount,token.Capabilities) || token.IntegritySid!="S-1-16-4096")
                 result=GatewayChildReport.Result(id,phase,125);
             else
             {
+                if(captureCapabilityContent)
+                {
+                    // One unbound socket is created and immediately closed;
+                    // no connect/bind/listen/IOCTL or external request. Continue
+                    // the real reads even when endpoint creation is refused.
+                    phase="NETWORK_CONTENT_READS";endpoint=GatewayCapabilityEndpoint.Observe();networkContent=GatewayCapabilityContent.Capture();
+                    if(!networkContent.AllThreeDenied)
+                    {
+                        phase="NETWORK_CONTENT_REQUIRES_ANALYSIS";
+                        throw new InvalidDataException("FixedNetworkCapabilityReadRequiresOwnerAnalysis");
+                    }
+                    if(endpoint is not {Created:true,OwnedHandleClosed:true,Phase:"SOCKET_CLOSED"})
+                    {
+                        phase=endpoint.Phase=="SOCKET_INITIALIZATION"?"HTTPS_SOCKET_INITIALIZATION":"HTTPS_SOCKET_CREATE";
+                        throw new InvalidDataException("FixedNetworkCapabilityEndpointNotConfirmed");
+                    }
+                }
                 // The historical leaf-only lease did not repair predefined
                 // hive mapping. Use the original owner's public calendar
                 // with a pinned managed compatibility adapter; never add
@@ -605,7 +635,8 @@ internal sealed partial class AtomicChild : IDisposable
             }
         }
         catch(Exception ex){result=GatewayChildReport.Result(id,phase,125,failure:ex);}
-        Console.WriteLine(JsonSerializer.Serialize(result));return result.ExitCode;
+        Console.WriteLine(captureCapabilityContent?
+            JsonSerializer.Serialize(new GatewayCapabilityChildReport(1,result,endpoint,networkContent)):JsonSerializer.Serialize(result));return result.ExitCode;
     }
     private static int RunFixedSessionHead(string sessionId,string sessionSecret,Action<string>? phase=null)
     {

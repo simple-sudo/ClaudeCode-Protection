@@ -1,5 +1,26 @@
 # 网络保护范围与开发优先级
 
+## 2026-11-06 最小能力与实际内容比较切片（SOURCE/BUILD，受限实测NOT_RUN）
+
+在AFD/TCPIP正向证据收敛到创建检查层、既存WFP历史查询未返回记录后，不再盲改
+设备ACL或把空历史解释成无策略。新的固定Broker资格以同一原owner链比较零能力
+与精确internetClient SID/属性；不选择私网、服务端、registryRead、身份/加密能力。
+普通项目/工具/正式启动不选择新能力。新源码、构建和普通测试不授予安装或新实验。
+
+候选保留原WFP endpoint策略hash与6规则，不把其AC-low-zero历史描述当新cap1身份
+证据；独立effective gateway hash及admission绑定精确能力hash。挂起/resume、持有
+成员及每次网关peer核验都取实际Token集合，不能仅凭CapabilityCount=1准入。
+未绑定endpoint先创建/闭合，随后真实读取适配器及IPv4/IPv6 owner-PID表；任何内容
+或UNKNOWN先停止，不发HEAD。只在三明确拒绝及endpoint闭合后继续原固定HTTPS。
+原owner仍负责关闭准入、quarantine、Job零和恢复；没有无约束回退或新管理执行器。
+
+可信侧已检查真实原值和跨源关联，只留本机证据区；这不是受限泄露或完整L3。
+GetExtendedTcpTable的pdwSize是估计大小，SDK SIZEOF_*_OWNER_PID有ALIGN_SIZE余量，
+本机实际两族均返回有效行加8字节。解码器现只接受packed或精确8-byte余量，并保留
+全部原始字节，不把余量当记录。其余ABI/任意尾部继续拒绝。参见
+[微软API说明](https://learn.microsoft.com/en-us/windows/win32/api/iphlpapi/nf-iphlpapi-getextendedtcptable)
+及[表对齐说明](https://learn.microsoft.com/en-us/windows/win32/api/tcpmib/ns-tcpmib-mib_tcptable_owner_pid)。
+
 本文件保留用户2026-10-25网络专题修订，不能永久覆盖后续正式要求。现行完整目标及优先级见
 [SECURITY-REQUIREMENTS](SECURITY-REQUIREMENTS.md)，最新状态/操作边界见[CURRENT-STATE](CURRENT-STATE.md)。
 IPv6阻断与必要负向测试继续有效，转发优化不属当前要求；“网络交付主线”不排除并列P0宿主隔离/自我保护。

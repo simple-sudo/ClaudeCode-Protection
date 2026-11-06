@@ -1,5 +1,32 @@
 # 当前状态与授权摘要
 
+2026-11-06从5da1af4继续后，最小网络能力候选已接入原管理链源码：两个独立固定
+Broker资格命令分别选择零能力对照与仅internetClient/S-1-15-3-1/属性4候选；不接受
+调用方SID/能力列表/程序/环境开关，日常GUI、项目工具和正式启动仍用原零能力门。
+原挂起创建时原子绑定package/LPAC/Job，候选身份由挂起、resume、成员监督、网关peer
+逐处核对实际SID/属性；admission及有效网关摘要绑定身份策略，对照不继承旧身份实测。
+
+两比较worker先用原固定Socket路径创建并关闭一个未绑定endpoint（无connect/bind/
+listen），无论endpoint失败与否再实际尝试适配器/IPv4/IPv6 owner-PID表。返回原值或
+UNKNOWN则在固定HTTPS前失败关闭并保留有界原始内容；三项明确拒绝与endpoint闭合
+才可进入原固定HTTPS。300000字符独立回报、原owner/PID/创建时间及状态校验已接入，
+不是完整L3通过，原零能力回报协议/大小保持。新能力源尚未安装或实际授予。
+
+五个候选工程隔离离线BUILD0/0；48项能力缓冲/属性检查、54项实际管理程序集普通
+边界检查、30项网络解码检查，既有137项网关回归和LPAC策略/自身查询通过。新的真实
+LPAC/能力对照/endpoint/HTTPS仍NOT_RUN，安装与系统实验尚无新固定批准。
+
+可信普通侧三API真实读取成功，原始37A9771E…；已检查8个适配器、173条IPv4及11条
+IPv6内容，含实际物理/虚拟接口、MAC、配置地址、FlClash及地址与TCP行的交叉来源关联。
+原值和分析仅留本机work，不进入Git/Claude；这不是受限泄露。真实TCP表多8字节尾部
+使旧解码器拒绝，已按SDK x64布局兼容精确8字节padding，其他长度仍拒绝；复用原始
+数据离线解码8CCDDB06…成功，无新采集。原脚本保留变量失误及空派生文件已标无效，
+原失败/首轮构建和SDK检查日志保留。现装仍以610b最近观察为限，无安装/WFP/设备
+ACL/代理/IPv6/AV变更或Claude启动。下一步固定候选包与原owner成对实测范围。
+12:28:25–13:07:51Z公开Application6条，无匹配新AV且查询未触上限，AV/BFE Running；
+完整厂商日志仍UNKNOWN。阶段元数据观察work约5.336GiB/PARTIAL/跳过8项，最大仍旧
+debugger/资格材料；新源档案、各版构建、原始数据与失败均保留，不开启清理。
+
 2026-11-06批准7E0A0E47…一次只读既存WFP历史查询后，原固定进程终态0/stage8，
 自Token前后保持，终态5807D49C…；EngineOpen/Close、EnumCreate/Destroy均0。
 当前collect=1、keyword=0，编译固定约4秒历史窗首page0/零记录且穷尽；无选中filter/

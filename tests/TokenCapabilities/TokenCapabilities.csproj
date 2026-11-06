@@ -4,5 +4,5 @@
     <ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable><TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
   </PropertyGroup>
-  <ItemGroup><Compile Include="Program.cs;../../src/ProtectionLifecycle/TokenCapabilitySnapshot.cs" /></ItemGroup>
+  <ItemGroup><Compile Include="Program.cs;../../src/ProtectionLifecycle/TokenCapabilitySnapshot.cs;../../src/ProtectionLifecycle/LpacCapabilityProfile.cs" /></ItemGroup>
 </Project>

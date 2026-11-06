@@ -5,6 +5,43 @@
 历史页的“当前/待执行/暂停/DELIVERABLE”按段落日期及限定范围解释，不是今天的状态或操作许可。
 不在本页复制当前安装和授权摘要。
 
+## 2026-11-06 原owner最小网络能力与真实内容比较候选
+
+在5da1af4基础上新增封闭LpacCapabilityProfile（None或精确internetClient），原
+AtomicChild创建属性、挂起/resume身份、ProtectedSession admission、成员监督及
+SessionProxy peer均使用原owner选定的实际SID/属性策略；非数量1替代身份。原全部
+普通项目/工具及旧资格仍零能力，Watchdog旧签名保留默认零策略。候选命令无参数，
+须原InstalledBroker/受持有安装/原管理身份，普通调用实测在私有状态之前拒绝。
+base endpoint/WFP hash保留，effective gateway hash另绑定身份hash；不会把cap1
+冒充历史AC-low-zero身份。未调用系统策略写入或原子创建来赋予capability。
+
+源码新增零能力/单一能力两固定比较worker，均先创建并闭合一个未绑定固定socket，
+随后实际读取GetAdaptersAddresses(AF_UNSPEC/gateway flag)、GetExtendedTcpTable
+AF2/23/owner-PID-all；每API最多一次sizing和一次data read、64KiB，无增长重试。
+任何返回内容/未知均在HTTPS之前停止，端点失败仍保留三API实测机会。三明确拒绝
+及endpoint闭合才可继续原HEAD；不声称三API等于完整P0/L3。独立300000字符回报
+绑定owner session/PID/held创建时间，严格字段、状态、buffer上限，旧零cap回报不变。
+owner保留有限原始回报/结果供本机研发，不授予Claude或正式工作区读取。
+
+work/lpac-network-profile-20261106-01/candidate-build-r4：ProtectionLifecycle、
+ProtectionBroker、LpacBoundary、GatewayCapabilityBoundary、OwnedToolLaunch均
+BUILD0警告/0错误，源/资源字节按r4计划和base64档案保留。普通实测48能力缓冲/
+属性及本进程查询、54实际管理程序集资格/监督/回报边界、30解码检查、137既有网关
+回归及原LPAC策略/自身AccessCheck通过。没有启动普通测试的Socket、受限进程、
+profile/Job/WFP或网关。r2测试入口缺return的编译失败已修复，原日志保留，不冒充
+系统资格失败。新的候选安装、LPAC对照、endpoint、转发与恢复仍NOT_RUN。
+
+同任务可信侧原始host-network-reference-r3.json
+37A9771EE613747BBAE3E74F40B73D84F886C81FBC6977020F208A038237109B，三API均read0，
+20240/4164/628字节；实际原值经审查与交叉来源关联分析留本机。8个adapter及其MAC/
+地址/DNS/gateway/代理标记，IPv4表173行、IPv6表11行；不据PID猜测进程身份，配置
+全局IPv6不当外联成功，未推断运营商/地理位置。可信可见不等于受限泄露，受限比较
+尚NOT_RUN。初始离线脚本保留变量Error引发非终止错误/无效空派生文件，已停止并
+显式invalidated；其后固定离线解析识别TCP trailing8。SDK26100 x64六结构/ALIGN_SIZE
+断言通过（首轮缺头失败保留），支持只接受packed或精确8-byte padding。
+原始数据未重采，新解码
+8CCDDB061EC0C604A92E37E4DF098B305F22BA3E70E1650AE07F679EDE1900D0。
+
 ## 2026-11-06 既存WFP历史读取与精确能力核验接入
 
 本人批准7E0A0E4704DF7E5A374944BD34E1FF65352FF2802577520905A5C4A823E73B33后，

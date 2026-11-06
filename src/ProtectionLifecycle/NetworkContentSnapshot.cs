@@ -18,7 +18,14 @@ internal static class NetworkContentSnapshot
     {
         if(bytes.Length is <4 or >262144 || family is not (2 or 23))throw Bad("TcpBoundsOrFamily");
         var count=U32(bytes,0);var stride=family==2?24:56;
-        if(count>(bytes.Length-4)/stride || 4+(long)count*stride!=bytes.Length)throw Bad("TcpCountOrTrailingBytes");
+        // SDK SIZEOF_TCPTABLE_OWNER_PID/SIZEOF_TCP6TABLE_OWNER_PID includes
+        // ALIGN_SIZE (8) beyond the counted rows. Native GetExtendedTcpTable
+        // returned exactly that length in the retained real host reference.
+        // Keep supporting packed retained fixtures, and reject every other
+        // length. Padding is retained in the raw evidence, never decoded as a
+        // row or used as a privacy/actor observation.
+        var rowsEnd=4+(long)count*stride;
+        if(count>(bytes.Length-4)/stride || bytes.Length!=rowsEnd && bytes.Length!=rowsEnd+8)throw Bad("TcpCountOrTrailingBytes");
         var result=new Tcp[count];
         for(int i=0;i<result.Length;i++)
         {

@@ -6,8 +6,8 @@ namespace ProtectionLifecycle;
 
 internal sealed record TokenCapability(string Sid,uint Attributes);
 
-// Query only. Existing admission paths continue to require Count==0. The
-// explicit singleton comparison is for future fixed qualification code, not a
+// Query only. Existing normal admission paths continue to require Count==0. The
+// explicit singleton comparison is for fixed qualification code, not a
 // way to grant a capability or select a launch profile from caller data.
 internal sealed class TokenCapabilitySnapshot
 {
@@ -36,7 +36,7 @@ internal sealed class TokenCapabilitySnapshot
     }
     internal static TokenCapabilitySnapshot Parse(IntPtr buffer,int bytes)
     {
-        if(!OperatingSystem.IsWindows() || !Environment.Is64BitProcess)throw new PlatformNotSupportedException("CapabilityX64LayoutRequired");
+        if(!OperatingSystem.IsWindows() || !Environment.Is64BitProcess || RuntimeInformation.ProcessArchitecture!=Architecture.X64)throw new PlatformNotSupportedException("CapabilityX64LayoutRequired");
         if(buffer==IntPtr.Zero || bytes is <4 or >65536)throw new InvalidDataException("CapabilityBufferInvalid");
         var count=unchecked((uint)Marshal.ReadInt32(buffer));
         if(count>64)throw new InvalidDataException("CapabilityCountExceedsBound");

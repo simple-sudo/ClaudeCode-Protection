@@ -178,7 +178,12 @@ internal static class WatchdogMemberPolicy
 {
     internal static void Verify(JobSnapshot before,OwnedMemberInspection[] inspected,JobSnapshot after,
         uint primaryPid,long primaryCreatedFileTime,string packageSid,string primaryImage,string consoleHostImage,bool requireLpac=false)
+        =>VerifyWithCapabilities(before,inspected,after,primaryPid,primaryCreatedFileTime,packageSid,primaryImage,consoleHostImage,requireLpac,LpacCapabilityProfile.None);
+    internal static void VerifyWithCapabilities(JobSnapshot before,OwnedMemberInspection[] inspected,JobSnapshot after,
+        uint primaryPid,long primaryCreatedFileTime,string packageSid,string primaryImage,string consoleHostImage,bool requireLpac,LpacCapabilityProfile capabilities)
     {
+        ArgumentNullException.ThrowIfNull(capabilities);
+        if(capabilities.IsInternetClientQualification && !requireLpac)throw WfpNative.Contract("NetworkQualificationRequiresLpacMemberChecks");
         if(before.JobId!=after.JobId || !before.ExpectedLimits || !after.ExpectedLimits ||
             before.ActiveBefore!=before.ActiveAfter || after.ActiveBefore!=after.ActiveAfter ||
             before.ActiveBefore is <1 or >2 || after.ActiveBefore!=before.ActiveBefore || primaryPid==0 || primaryCreatedFileTime<=0 ||
@@ -200,7 +205,7 @@ internal static class WatchdogMemberPolicy
                 (member.Pid!=primaryPid && member.CreatedFileTime<primaryCreatedFileTime) ||
                 member.Failures is null || member.Failures.Length!=0 ||
                 token is null || !token.IsAppContainer || requireLpac && (!token.LpacAccessCheckObserved || token.ApplicationPackageAccessMask!=2) || token.PackageSid!=packageSid ||
-                token.CapabilityCount!=0 || token.IntegritySid!="S-1-16-4096" ||
+                !capabilities.Matches(token.CapabilityCount,token.Capabilities) || token.IntegritySid!="S-1-16-4096" ||
                 string.IsNullOrWhiteSpace(member.ImagePath))
                 throw WfpNative.Contract("WatchdogMemberIdentityNotQualified");
 

@@ -27,6 +27,11 @@ internal sealed class SessionProxy : IDisposable
     private readonly ProxyChannelLease upstream;
     private readonly GatewayDestinationGuard destinations;
     private readonly string packageSid, sessionId;
+    private readonly LpacCapabilityProfile capabilityProfile;
+    // The retained base hash identifies the existing compiled endpoint/WFP
+    // policy. Bind the candidate identity separately, rather than pretending
+    // an internetClient token is the historical zero-capability identity.
+    internal string EffectivePolicySHA256 {get;}
     private readonly byte[] authorization;
     private readonly Task accept;
     private readonly TaskCompletionSource<(uint Pid,long CreatedFileTime)> fixedExchange=new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -43,8 +48,10 @@ internal sealed class SessionProxy : IDisposable
     private volatile bool disposed;
     internal string Secret { get; } = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
     internal string SessionId => sessionId;
-    internal SessionProxy(OwnedKernelJob job, ProxyChannelLease upstream, string packageSid, string sessionId)
+    internal SessionProxy(OwnedKernelJob job, ProxyChannelLease upstream, string packageSid, string sessionId,LpacCapabilityProfile? capabilities=null)
     {
+        capabilityProfile=capabilities??LpacCapabilityProfile.None;
+        EffectivePolicySHA256=Convert.ToHexString(SHA256.HashData(Encoding.ASCII.GetBytes("CPC-GATEWAY-EFFECTIVE-V1;"+PolicySHA256+";"+capabilityProfile.SHA256)));
         this.job = job; this.upstream = upstream; this.packageSid = packageSid; this.sessionId = Identifiers.Hex32(sessionId);
         authorization = Encoding.ASCII.GetBytes("Basic " + Convert.ToBase64String(Encoding.ASCII.GetBytes(sessionId + ":" + Secret)));
         listener.Server.ExclusiveAddressUse = true;
@@ -60,7 +67,8 @@ internal sealed class SessionProxy : IDisposable
     }
     internal void BindAdmission(ProtectedSession.Admission permit)
     {
-        if(!ReferenceEquals(permit.Gateway,this))throw WfpNative.Contract("GatewayAdmissionOwnerMismatch");
+        if(!ReferenceEquals(permit.Gateway,this) || !ReferenceEquals(permit.CapabilityProfile,capabilityProfile) ||
+            capabilityProfile.IsInternetClientQualification && !permit.IsFixedGatewayQualification)throw WfpNative.Contract("GatewayAdmissionOwnerOrCapabilitiesMismatch");
         permit.AssertCurrent();
         if(Interlocked.CompareExchange(ref admission,permit,null) is not null)throw WfpNative.Contract("GatewayAdmissionAlreadyBound");
     }
@@ -135,9 +143,9 @@ internal sealed class SessionProxy : IDisposable
                 phase="PEER";
                 if (client.Client.RemoteEndPoint is not IPEndPoint peer || !peer.Address.Equals(IPAddress.Loopback))
                     throw new InvalidDataException("SessionLoopbackPeerRequired");
-                using var process = AtomicChild.HoldSessionPeer(job, packageSid, peer.Port);
+                using var process = AtomicChild.HoldSessionPeer(job, packageSid, peer.Port,capabilityProfile);
                 AssertHealthy();AssertForwardingCurrent();
-                AtomicChild.AssertSessionPeer(job, process, packageSid, peer.Port);
+                AtomicChild.AssertSessionPeer(job, process, packageSid, peer.Port,capabilityProfile);
                 var permit=Volatile.Read(ref admission)??throw WfpNative.Contract("GatewayAdmissionMissing");
                 (uint Pid,long CreatedFileTime)? fixedPeer=null;
                 if(permit.IsFixedGatewayQualification)
@@ -151,7 +159,7 @@ internal sealed class SessionProxy : IDisposable
                 await stream.WriteAsync(Encoding.ASCII.GetBytes("HTTP/1.1 200 Connection Established\r\n\r\n"), deadline.Token);
                 phase="CLIENT_TLS";
                 using var tlsClient=await SessionTunnel.RequireTlsClientHelloAsync(stream,request.Host,AssertForwardingCurrent,deadline.Token);
-                AssertHealthy();AtomicChild.AssertSessionPeer(job,process,packageSid,peer.Port);AssertForwardingCurrent();
+                AssertHealthy();AtomicChild.AssertSessionPeer(job,process,packageSid,peer.Port,capabilityProfile);AssertForwardingCurrent();
                 phase="RESOLVER";
                 var resolutionStarted=Stopwatch.GetTimestamp();
                 var (resolution,responseAge)=await Resolve(request.Host,deadline.Token);
@@ -168,7 +176,7 @@ internal sealed class SessionProxy : IDisposable
                 // Close the literal upstream socket on revoke/deadline as
                 // well as passing the token to pending stream I/O.
                 using var closeUpstream=deadline.Token.UnsafeRegister(static stream=>((NetworkStream)stream!).Dispose(),remote);
-                AssertHealthy();AtomicChild.AssertSessionPeer(job,process,packageSid,peer.Port);AssertForwardingCurrent();
+                AssertHealthy();AtomicChild.AssertSessionPeer(job,process,packageSid,peer.Port,capabilityProfile);AssertForwardingCurrent();
                 Action<bool>? observeWrite=null;
                 if(fixedPeer is { } identityForReceipt)
                 {

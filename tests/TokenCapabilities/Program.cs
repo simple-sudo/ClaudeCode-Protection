@@ -30,6 +30,16 @@ finally{Marshal.FreeHGlobal(zero);}
 Reject(()=>TokenCapabilitySnapshot.Parse(IntPtr.Zero,4));
 var internet=new[]{(TokenCapabilitySnapshot.InternetClientSid,4u)};
 var exact=Fixture(internet);Check(exact.Count==1 && exact.IsExactInternetClient && !exact.IsEmpty);
+var none=LpacCapabilityProfile.None;var network=LpacCapabilityProfile.InternetClientQualification;
+Check(none.Matches(0,empty));Check(none.Matches(0,null));Check(!none.Matches(1,exact));Check(!none.Matches(0,exact));
+Check(network.Matches(1,exact));Check(!network.Matches(1,null));Check(!network.Matches(0,exact));Check(!network.Matches(1,empty));
+Check(!network.Matches(1,Fixture(new[]{("S-1-15-3-2",4u)})));Check(!network.Matches(1,Fixture(new[]{("S-1-15-3-1",7u)})));
+Check(none.SHA256!=network.SHA256 && none.SHA256.Length==64 && network.SHA256.Length==64);
+using(var attributes=none.AllocateAttributes()){Check(attributes.Count==0 && attributes.Pointer==IntPtr.Zero);}
+var native=network.AllocateAttributes();
+Check(native.Count==1 && native.Pointer!=IntPtr.Zero && Marshal.ReadInt32(native.Pointer,8)==4 && Marshal.ReadInt32(native.Pointer,12)==0);
+Check(new SecurityIdentifier(Marshal.ReadIntPtr(native.Pointer)).Value==TokenCapabilitySnapshot.InternetClientSid);
+native.Dispose();native.Dispose();var disposed=false;try{_=native.Pointer;}catch(ObjectDisposedException){disposed=true;}Check(disposed);
 var copy=exact.CopyEntries();copy[0]=new("S-1-15-3-2",4);Check(exact.IsExactInternetClient);
 Check(!Fixture(new[]{("S-1-15-3-2",4u)}).IsExactInternetClient);
 Check(!Fixture(new[]{("S-1-15-3-3",4u)}).IsExactInternetClient);

@@ -88,6 +88,7 @@ internal sealed record GatewayChildReport(int SchemaVersion,string SessionId,int
         }
         catch{return "SECURITY";}
     }
+    internal static bool KnownErrorKind(string? kind)=>kind is "REFUSED" or "SOCKET" or "SOCKET_STARTUP" or "SOCKET_CREATE" or "SOCKET_NT_CONTEXT" or "NATIVE" or "TLS" or "HTTP" or "TIMEOUT" or "ACCESS" or "CONTRACT" or "OTHER" or "INITIALIZATION" or "REGISTRY_INITIALIZATION" or "SECURITY" or "TIMEZONE_REGISTRY" or "REGISTRY_ACCESS" or "TZ_CATALOG_SEARCH" or "TZ_CATALOG_ENUMERATION" or "TZ_DEFINITION" or "TZ_DYNAMIC_RULES" or "TZ_ENUMERATED_DEFINITION" or "TZ_UTC_DEFINITION";
     internal static GatewayChildReport Parse(string raw,string expectedSessionId,uint expectedPid,uint actualExitCode)
     {
         if(raw.Length is <2 or >MaxCharacters)throw new InvalidDataException("GatewayFeedbackBounds");
@@ -98,7 +99,7 @@ internal sealed record GatewayChildReport(int SchemaVersion,string SessionId,int
         foreach(var e in errors.EnumerateArray())StrictJson.Fields(e,"Kind","Code");
         var r=JsonSerializer.Deserialize<GatewayChildReport>(raw)??throw new InvalidDataException("GatewayFeedbackMissing");
         if(r.SchemaVersion!=1 || r.SessionId!=Identifiers.Hex32(expectedSessionId) || expectedPid==0 || r.Pid<=0 || (uint)r.Pid!=expectedPid ||
-            (uint)r.ExitCode!=actualExitCode || r.Errors is null || r.Errors.Any(e=>e is null || e.Kind is not ("REFUSED" or "SOCKET" or "SOCKET_STARTUP" or "SOCKET_CREATE" or "SOCKET_NT_CONTEXT" or "NATIVE" or "TLS" or "HTTP" or "TIMEOUT" or "ACCESS" or "CONTRACT" or "OTHER" or "INITIALIZATION" or "REGISTRY_INITIALIZATION" or "SECURITY" or "TIMEZONE_REGISTRY" or "REGISTRY_ACCESS" or "TZ_CATALOG_SEARCH" or "TZ_CATALOG_ENUMERATION" or "TZ_DEFINITION" or "TZ_DYNAMIC_RULES" or "TZ_ENUMERATED_DEFINITION" or "TZ_UTC_DEFINITION")))
+            (uint)r.ExitCode!=actualExitCode || r.Errors is null || r.Errors.Any(e=>e is null || !KnownErrorKind(e.Kind)))
             throw new InvalidDataException("GatewayFeedbackOwnerOrErrorBinding");
         for(var i=0;i<r.Errors.Length;i++)
         {
@@ -111,7 +112,7 @@ internal sealed record GatewayChildReport(int SchemaVersion,string SessionId,int
         }
         var success=r.ExitCode==42 && r.Phase=="COMPLETE" && r.HttpStatus is >=200 and <400 && r.Errors.Length==0;
         var rejectedStatus=r.ExitCode==126 && r.Phase=="HTTPS" && r.HttpStatus is >=100 and <=599 && !(r.HttpStatus is >=200 and <400) && r.Errors.Length==0;
-        var failed=r.ExitCode==125 && (r.Phase is "ENVIRONMENT" or "IDENTITY" or "TIMEZONE_DEFINITION" or "TIMEZONE_PUBLIC_CACHE" or "TIMEZONE_LOCAL_BINDING" or "HTTPS" or "HTTPS_SETTINGS" or "HTTPS_TLS_POLICY" or "HTTPS_CLIENT" or "HTTPS_SEND" or "HTTPS_SOCKET_INITIALIZATION" or "HTTPS_SOCKET_CREATE" or "HTTPS_CONNECT" or "HTTPS_CONNECT_WRITE" or "HTTPS_CONNECT_REPLY") && r.HttpStatus is null && r.Errors.Length is >0 and <=4;
+        var failed=r.ExitCode==125 && (r.Phase is "ENVIRONMENT" or "IDENTITY" or "NETWORK_CONTENT_READS" or "NETWORK_CONTENT_REQUIRES_ANALYSIS" or "TIMEZONE_DEFINITION" or "TIMEZONE_PUBLIC_CACHE" or "TIMEZONE_LOCAL_BINDING" or "HTTPS" or "HTTPS_SETTINGS" or "HTTPS_TLS_POLICY" or "HTTPS_CLIENT" or "HTTPS_SEND" or "HTTPS_SOCKET_INITIALIZATION" or "HTTPS_SOCKET_CREATE" or "HTTPS_CONNECT" or "HTTPS_CONNECT_WRITE" or "HTTPS_CONNECT_REPLY") && r.HttpStatus is null && r.Errors.Length is >0 and <=4;
         if(!success && !rejectedStatus && !failed)throw new InvalidDataException("GatewayFeedbackOutcomeShape");
         return r;
     }

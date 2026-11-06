@@ -5,6 +5,14 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-06 最小网络能力成对比较源码
+
+INTEGRATED/BUILD(原owner创建→实际身份→监督/网关、固定零能力/单一能力比较及真实
+内容读取失败关闭切片)。48/54/30项普通检查、137既有网关回归、原LPAC检查通过；
+五候选工程BUILD0/0。VERIFIED(可信普通侧三API实际内容基准与SDK尾部对齐修复)，
+不是受限内容拒绝或网络可用证明。新capability赋予、安装、真实比较/HTTPS/故障
+恢复NOT_RUN。原正式启动延期；没有CAPABILITY_DELIVERED(受限网络)或整机验收。
+
 ## 2026-11-06 既存WFP读取及真实能力读取接入
 
 VERIFIED(7E0A0E47固定只读管理员查询/自有连接及enum正常关闭/Token保持)。指定历史
