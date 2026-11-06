@@ -11,6 +11,20 @@ var token=library.GetType("ProtectionLifecycle.GpuHostToken",true)!;var factsTyp
 var nonce=new string('a',32);var job=new string('b',32);var checks=0;
 object Call(Type type,string name,params object?[] values)=>type.GetMethod(name,hidden)!.Invoke(null,values)!;
 object Decode(JsonObject data,Type type)=>JsonSerializer.Deserialize(data.ToJsonString(),type)!;
+if(args.Length==1 && args[0]=="current-token")
+{
+    // Actual ordinary-current-token reader, without calling linked-token or
+    // any admin, creation, Job or GPU path. Never export raw identity fields.
+    var actual=Call(token,"Capture",identity.AccessToken);
+    if(!actual.Equals(Call(token,"Capture",identity.AccessToken)))throw new Exception("Current token facts changed during read");
+    var fields=JsonSerializer.SerializeToNode(actual)!.AsObject();
+    Console.WriteLine(JsonSerializer.Serialize(new{Scope="ACTUAL_ORDINARY_CURRENT_TOKEN_CAPTURE_ONLY",Passed=true,
+        Type=fields["Type"]!.GetValue<int>(),AppContainer=fields["AppContainer"]!.GetValue<int>(),Elevated=fields["Elevated"]!.GetValue<int>(),
+        ElevationType=fields["ElevationType"]!.GetValue<int>(),RestrictedSidCount=fields["RestrictedSidCount"]!.GetValue<int>(),
+        RawIdentityExported=false,LinkedTokenRead=false,TokenModified=false,JobCreated=false,NativeCudaExecuted=false}));
+    return;
+}
+if(args.Length!=0)throw new Exception("Only fixed current-token read or ordinary fixtures supported");
 JsonObject Facts(bool source)=>new(){["Type"]=1,["AppContainer"]=0,["Elevated"]=source?1:0,["ElevationType"]=source?2:3,["RestrictedSidCount"]=0,["UiAccess"]=0,
     ["SessionId"]=1,["UserSid"]="S-1-5-21-1-2-3-1001",["IntegritySid"]=source?"S-1-16-12288":"S-1-16-8192",["AuthenticationId"]="0011223344556677",["Administrator"]=source,["PrivilegesSHA256"]=new string('A',64)};
 void Check(bool value,string name){checks++;if(!value)throw new Exception("FAILED: "+name);}

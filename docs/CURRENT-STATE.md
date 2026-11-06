@@ -1,5 +1,32 @@
 # 当前状态与授权摘要
 
+2026-11-05本人批准review961FA311…后执行一次9bbbb更新/宿主GPU参考：原helper19500
+终态125，安装部分成功，15公开文件独立核验一致，现装9bbbb71f91ee4423bbb53fb96bb64479
+/ INACTIVE，manifest EFFDC350…。参考owner终态3，HostGpuLinkedOrdinaryTokenRequired、
+无符号码2148734209；未取得子进程身份、计算报告或调用帧，内部细分阶段UNKNOWN。
+新Job fbb24afc…的原intent/admission/completion绑定、准入闭合/零成员已核验，completion
+3EFDE8E4…；核验358F364C…、发现摘要6BC79E4F…。新原值留新受控更新目录，未读旧
+私有错误、旧rawJob/Stop或未释放结果。没有重跑、强停或自动恢复；本次许可已消耗。
+AV/BFE后续Running，公开Application在04:26:14–04:36:28Z无匹配AV事件，完整覆盖UNKNOWN。
+未取得创建后owner Token恢复证明，不将其标VERIFIED；源码无手动调整/管理员回退，
+没有设备ACL/代理/IPv6/AV修改、LPAC或Claude启动。f6和全部旧证据保持。
+
+普通1001只读复现明确源码缺陷：TokenLinkedToken空buffer长度查询返回false/24/8，
+旧通用Data仅接受122，会拒绝这条固定结构查询。原真实失败阶段过宽，不能据此追认唯一
+内部失败位置。已修为直接8字节结构/返回长度/原句柄所有权校验，未放宽可变buffer或
+身份/权限条件；源/普通/关联/创建Token拒绝分阶段。真实普通当前Token全量Capture
+通过（primary/medium/non-AC/非提升/limited/restricted0），未取关联句柄或修改Token。
+首次普通查询因仅QUERY句柄的成员资格读取失败，补足与原代码相同QUERY|DUPLICATE后
+成功；失败原本保留。原核验器Int32解析uint32失败，原文件保留，只改两处Int64解析
+再读同一已批准新输出，读取范围不扩大；没有重复系统操作。
+修正候选4588a6ffbdb840a89522df268edfdc2f已BUILD/20文件核验，manifest C5D1B76E…、
+库F75E6958…，尚未安装或提升实测。53 host、28协议/管道、28前驱及40摘要检查通过，
+6 src非生成0/0；证据work/gpu-host-owner-d1f927e-20261105/candidate-fixed-linked。
+SOURCE/BUILD/INTEGRATED及VERIFIED(普通只读/fixture、9bbbb安装与失败Job闭合)，
+仍无CAPABILITY_DELIVERED(普通受控GPU参考或受保护GPU)。下一目标是以修正后的原
+owner链取得真实GPU参考；再次安装/Token/Job/GPU必须新固定决定，不复活旧许可。
+AFD/Socket/HTTPS仍FAIL，完整L3/GUI/正式Claude/产品未验收。
+
 2026-11-05宿主GPU参考隔离源码已接入原owner：新增GpuHostToken、AtomicChild专用
 HostGpuReferenceChild及GpuHostReferenceQualification，管理线程不再同步调用CUDA。
 只复制当前owner自身关联普通Token；同用户/Windows session、medium非提升，复制/创建

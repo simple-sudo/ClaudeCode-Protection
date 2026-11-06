@@ -5,6 +5,33 @@
 历史页的“当前/待执行/暂停/DELIVERABLE”按段落日期及限定范围解释，不是今天的状态或操作许可。
 不在本页复制当前安装和授权摘要。
 
+## 2026-11-05 9bbbb真实资格失败闭合与固定Token结构修复
+
+review961FA311…经本人批准，原helper19500/125；9bbbb安装成功，15公开资产匹配，保持
+INACTIVE。原参考owner返回3，阶段HostGpuLinkedOrdinaryTokenRequired，uint32码2148734209，
+无已确认子进程身份/CUDA帧。新Job原记录绑定且准入闭合/零成员，completion SHA
+3EFDE8E4BF675A0EBE5AAEB9E569E5B1D57B4D048A059BDF3E16648344204040。
+核验358F364CAD26D24139C4AC53EB6B26236C54FB4CF93C3F24F0C933792C180C6E；
+发现摘要6BC79E4F565BC9A54BA2549A8C32B899328D3BEADEAA962058876D628D29D3BB。
+失败/原值保留新受控区，不读旧私有错误/Job/Stop/未释放结果，不自动重跑或恢复。
+原核验器uint32转Int32溢出，B88DA667原文件保持；8A21F867修正仅两个数值cast，继续
+已批准同一输出读取。该失败不算PASS或GPU能力；原owner属性恢复未取得完整证明。
+
+普通1001本机null-buffer查询：TokenLinkedToken(19)返回false/24/8，Elevation(20)为
+false/24/4；18为false/122/4。旧Data强制122导致固定结构查询拒绝，是可复现源码缺陷；
+宽泛旧失败阶段不能唯一追溯内部位置。修为固定8字节GetTokenInformation重载，成功
+返回后立即接管原handle并核对长度；保留全部身份/权限/创建门。失败阶段细分，防止
+把解析拒绝误判OS权限。实际普通当前Token Capture通过，未取得关联Token句柄或运行GPU。
+首次普通QUERY-only成员资格读取失败保留，按原代码QUERY|DUPLICATE修正后只读通过。
+
+修正包4588a6ffbdb840a89522df268edfdc2f：manifest
+C5D1B76E4CDC050033411625AEE119A6994BFE6A4235AA5F83EA440539FC7151；库
+F75E695861762EF7F2F7CE2C231CE0C2C9D34EAEB32C130ED57EF324DCF39ED7；stage
+7323286AED52D1A884EF59852B080939EDCD7F75E857A03365EBA1CE7600AC7B。
+8个payload/工具项目及Bootstrap BUILD0/0，53 host、28协议管道、28前驱、40摘要检查及
+原报告fixture通过，6 src非生成0/0；尚未安装/提升实测。SOURCE/BUILD/INTEGRATED，
+VERIFIED(普通只读/fixture及9bbbb安装/失败Job闭合)，不标GPU/隐私/整机交付。
+
 ## 2026-11-05 原owner的有限普通宿主GPU参考源码
 
 新增GpuHostToken、AtomicChild.HostGpuReferenceChild及GpuHostReferenceQualification；原

@@ -4,6 +4,13 @@
 VERIFIED(普通身份的策略及管道 fixture)。新的关联 Token / 原子 Job / CUDA 路径尚未实际运行。
 安装、运行与授权以 [CURRENT-STATE](CURRENT-STATE.md) 为准。
 
+9bbbb实际固定资格安装成功，但宿主参考失败，原新Job闭合/零成员已核验；未取得
+创建身份、CUDA或owner返回属性证据。普通查询发现TokenLinkedToken的零buffer请求
+实际返回ERROR_BAD_LENGTH(24)、长度8；旧通用读取器要求122，会提前拒绝。现已用
+固定8字节结构直接读取并精确接管成功返回的句柄，不扩大Token访问权或接受任意长度。
+SOURCE/BUILD及普通当前Token Capture通过；修正4588候选尚未安装/提升验证。原泛化
+失败阶段不能唯一回溯到具体分支，新代码区分source/normal/link/created等阶段。
+
 原 `GpuQualification.Run` 在管理 owner 线程同步执行 `HOST_CONTROL` CUDA；其后的受限子进程
 限时不能约束这段宿主调用。新实现把固定宿主参考交给同一安装 owner 持有的专用普通子进程，
 全部 CUDA 留在子进程；这是原资格链的宿主正控制，不是 Claude 执行器。

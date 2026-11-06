@@ -5,6 +5,15 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-05 9bbbb真实失败闭合与Token结构修复
+
+VERIFIED(本人批准的9bbbb INACTIVE更新、15公开资产及失败新Job原始闭合/零成员)。
+参考失败，未取得实际子进程身份/GPU调用及owner Token恢复证明，不能标运行能力通过。
+普通真实长度查询复现固定结构错误24/8；直接固定8字节读取已修，普通当前Token解析
+通过。修正4588候选SOURCE/BUILD/INTEGRATED，53/28/28/40策略检查和6src非生成0/0，
+未安装/提升实测；原系统操作不重试，旧许可已消耗。GPU/隐私/Claude/产品未验收。
+见[证据](STATUS.md#2026-11-05-9bbbb真实资格失败闭合与固定token结构修复)。
+
 ## 2026-11-05 有限普通宿主GPU参考源码
 
 SOURCE/BUILD/INTEGRATED(原owner GPU资格源码链)，VERIFIED(53项普通Token/停止绑定、
