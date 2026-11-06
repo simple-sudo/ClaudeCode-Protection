@@ -1,5 +1,37 @@
 # 当前状态与授权摘要
 
+2026-11-06本人批准65C92F35…固定操作后，原安装owner完成610b→c526未激活更新，
+manifest D3571092…；安装回执7EACCE3F…/Activation=INACTIVE。两臂真实执行后，
+零能力仍Socket10013/NTC0000022，精确internetClient候选成功创建并关闭未绑定
+IPv4/TCP endpoint。候选适配器sizing1702/无内容为UNKNOWN，TCP4/TCP6均5拒绝；
+三明确拒绝门未满足，原链在NETWORK_CONTENT_REQUIRES_ANALYSIS停止，未发HTTPS。
+两原owner回执均关闭准入、quarantine先于Job归零、停止失败0、31项租约恢复。
+
+外层原生操作器stage8/InvalidOperationException、TokenUnchanged=false，终态
+3B2B6D46…，整体FAIL保留。现有回执不能区分最后Safety/Token查询失败与实际权限
+字节变化，原因UNKNOWN，不据两臂闭合覆盖外层失败；未另读私有Job/Stop/错误。
+该许可已消耗，不重试/强停或自动恢复。受限endpoint仅此固定资格切片VERIFIED，
+HTTPS、完整L3、NVIDIA、正式Claude及整机仍未验收，没有受限网络交付声明。
+证据留work/network-capability-package-20261106-01/operation；冻结原审查/工件不改。
+
+同次实际普通身份、同候选库的三API基准42813025…已离线解码358AE876…：8适配器、
+149 IPv4/13 IPv6行；实际MAC/接口身份/配置地址/FlClash及TCP本地地址关联原值经
+可信研发审阅留本机，不等于受限泄露或运营商/位置/IPv6可达性证明。13:45:53–
+13:53:41Z公开Application0条、无匹配新AV且未触上限，AV/BFE Running，厂商覆盖UNKNOWN。
+
+已实际打开安装版c526保护中心，以独立WordCount样例完成选择→审阅→保存→编辑→
+再保存→重新导入；未保存编辑阻止准备，更新后的内容和输入指纹59ED84E0…重新导入
+一致，原四文件字节未改，窗口正常关闭。仅普通数据准备GUI切片实测；未运行项目、
+请求UAC或启动Claude。记录work/gui-usability-20261106-01，不推导受保护GUI执行。
+
+以下为此前阶段记录；其中候选NOT_RUN/未安装/待批准只描述当时，不覆盖上面的实测。
+
+外层诊断补强已新增tests/OwnerTokenAudit：固定只读自身身份，分别记录每个标量/
+privilege大小与回读状态、原始摘要、LUID/属性及差异；缺最终观察仍UNKNOWN，原始
+字节变化即使条目仅换序也不变成严格门通过。18项普通fixture与实际自身00/A5/5A
+预填缓冲查询通过，三次字段/原始摘要一致；BUILD0/0。只属普通身份诊断准备，未
+复现管理员stage8原因，未改/重跑冻结操作器或安装；work/owner-token-audit-20261106-01。
+
 2026-11-06从b363e42继续固定未激活候选包c5260b13d8d34ceea6d496c084836a89，manifest
 D3571092…；20项stage、14项payload、内嵌批准及bootstrap/payload相同管理程序集已
 普通核验。十工程Release离线BUILD0/0，49项精确610b前驱迁移筛选、前轮能力/回报/

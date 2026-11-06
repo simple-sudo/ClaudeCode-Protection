@@ -5,6 +5,37 @@
 历史页的“当前/待执行/暂停/DELIVERABLE”按段落日期及限定范围解释，不是今天的状态或操作许可。
 不在本页复制当前安装和授权摘要。
 
+## 2026-11-06 单一网络能力真实比较及普通GUI闭环
+
+新增OwnTokenAudit普通诊断源及BUILD0/0，18项检查含实际自身查询，00/A5/5A预填下
+原始权限摘要及字段一致；变长count/长度/重复LUID拒绝、缺观察UNKNOWN、身份变化、
+权限增删/属性变化和仅条目换序分别报告。无setter/linked/foreign token/PID输入，
+不授予准入、不替换旧严格摘要比较或解释管理员stage8失败；未接入冻结旧操作器。
+源字节、构建与普通结果留work/owner-token-audit-20261106-01。
+
+本人批准65C92F35BD7D01F6862CCAA9B74D5F0491BF82EEE26147E0AFC6D11E85809CC9
+后，原安装回执7EACCE3F…确认c526/D3571092…未激活更新。零能力对照端点10013/
+C0000022；仅S-1-15-3-1/属性4候选成功创建并关闭固定未绑定IPv4/TCP socket。
+两臂三IPHelper真实内容尝试分别为5/5/5与1702/5/5，无返回内容；1702仍UNKNOWN，
+不得算权限拒绝。后者在NETWORK_CONTENT_REQUIRES_ANALYSIS阻断HTTPS，未进行转发。
+两个原owner均确认准入关闭、quarantine先于Job零、停止失败0和31键恢复；四个固定
+回执按批准范围释放后复制到work/network-capability-package-20261106-01/operation。
+
+外层终态3B2B6D469E08B8CF5CD15F4072C2F5C8491A56A9E48B675342287937025ADF5D：
+stage8/InvalidOperationException/TokenUnchanged=false，整体FAIL。原schema缺最终
+Safety/Token成功与前后事实的分别记录，不能唯一判断实际Token漂移；未补读额外
+私有记录或重跑。原版本/失败及普通继续条件fixtures保留，不改写失败为成功。
+
+同候选普通侧真实基准42813025…三API返回20240/3588/740字节，离线解码358AE876…
+得到8适配器、149/13 TCP行；原MAC、接口身份、物理配置IPv6及FlClash/本地TCP关联
+在本机分析留存。可信基准不算受限暴露，未做运营商/位置/UU归因。公开Application
+13:45:53–13:53:41Z零记录、查询完整，AV/BFE Running，完整厂商覆盖UNKNOWN。
+
+安装版普通GUI实际完成独立WordCount项目选择、快照保存、编辑未保存阻断、更新
+审阅、另存及重新导入。输入4108ADDD…→59ED84E0…内容/指纹相符，原四文件逐字节
+未改，窗口正常关闭；记录work/gui-usability-20261106-01/result.json。没有项目代码
+运行/UAC/Claude，不替代受保护开发闭环或整机验收。
+
 ## 2026-11-06 未激活能力比较候选包准备
 
 候选c5260b13d8d34ceea6d496c084836a89，manifest

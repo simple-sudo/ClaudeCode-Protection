@@ -5,6 +5,18 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-06 真实能力比较与普通GUI任务准备
+
+VERIFIED(65C92F35固定未激活更新及两次原owner受限比较)：候选单一internetClient
+可创建并关闭固定未绑定IPv4/TCP端点，对照仍拒绝。候选适配器1702为UNKNOWN、两TCP
+表5拒绝，内容门阻止HTTPS。两臂原owner有序停止/Job零/31键恢复回执均明确；外层
+stage8自身最终检查FAIL，原因未唯一定位，整体不通过。无自动重试或额外私有读取。
+没有CAPABILITY_DELIVERED(受限网络)、完整L3或PRODUCT_DELIVERY_ACCEPTED。
+
+VERIFIED(安装c526普通GUI数据准备)：实际选择/保存/编辑/未保存阻断/另存/重导入
+内容和指纹一致，原源码未改，窗口关闭。仅此普通GUI切片，未运行受保护项目/Claude。
+同候选可信普通侧真实网络原值及跨来源审阅只作正控制，不当受限泄露或安全通过。
+
 ## 2026-11-06 未激活比较候选包
 
 BUILD/VERIFIED(普通20文件stage与内嵌批准核验、十工程Release构建、49项前驱筛选
