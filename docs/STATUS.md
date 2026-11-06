@@ -5,6 +5,24 @@
 历史页的“当前/待执行/暂停/DELIVERABLE”按段落日期及限定范围解释，不是今天的状态或操作许可。
 不在本页复制当前安装和授权摘要。
 
+## 2026-11-06 未激活能力比较候选包准备
+
+候选c5260b13d8d34ceea6d496c084836a89，manifest
+D35710928355BDDF12C4E07153A73A58FDB29E53F2533EE27D7DCE41EBC7F300。十工程Release
+隔离离线BUILD0/0，源/资源字节归档在work/network-capability-package-20261106-01，
+stage20文件按14资产catalog、内嵌批准及相同bootstrap/payload管理库核验。源码
+ApprovedPackage为构建后的精确生成资源，保留CRLF原字节；不改冻结清单/旧批准包。
+原当前610b公开包及14资产再次匹配2ACC0397…，未读取私有current，实际选择仍由原
+owner判断。补入该精确前驱到原未激活迁移筛选；49项正反筛选通过，全部原live门保持。
+
+固定原生操作器无任意程序/参数/路径/能力输入：新保护bootstrap根、原未激活更新、
+两个各一次命名比较臂、原句柄等待与有界结果；34项普通继续条件fixtures及实际普通
+身份早期拒绝通过。仅明确原owner关闭准入/quarantine先于Job零/31项注册表租约恢复
+才进入另一独立臂，预期工作负荷拒绝也保留原失败，不变成网络成功；其他异常不继续。
+操作器BUILD0/0，管理员目录seal/复制/安装/原生比较全部NOT_RUN，许可尚未申请。
+初始构建驱动PowerShell字节数组语法错误、操作器nullable编译错误、fixture反射
+转换/异常包裹错误均在普通阶段修正并保留；无系统操作或自动重试已失败的系统调用。
+
 ## 2026-11-06 原owner最小网络能力与真实内容比较候选
 
 在5da1af4基础上新增封闭LpacCapabilityProfile（None或精确internetClient），原
