@@ -5,6 +5,13 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-05 原owner有限失败检查源码
+
+SOURCE/BUILD/INTEGRATED(固定Broker命令)，VERIFIED(实际构建库的40项普通解析样本)。
+绑定单一终态记录并保留安装身份/路径门，不输出原私有内容或任何操作许可。六个src
+项目非生成检查0/0。未安装、未读真实终态；此前组合运行/私有reader失败原因仍UNKNOWN。
+不是产品能力交付或Socket/GPU/生命周期通过。见[证据](STATUS.md#2026-11-05-原安装owner有限失败检查源码)。
+
 ## 2026-11-05 AFD-only拒绝与生命周期协调源码
 
 VERIFIED(现装3e2原owner真实LPAC的5项固定访问均拒绝、原Token不变、11文件闭合导出)。

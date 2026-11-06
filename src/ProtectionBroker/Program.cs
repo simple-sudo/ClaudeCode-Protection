@@ -12,6 +12,11 @@ internal static class Program
             return ProtectionLifecycle.InstalledBroker.RunRestrictedProjectProbe(args.Skip(1).ToArray());
         if(args.Length==3 && args[0]=="resource-project")
             return ProtectionLifecycle.InstalledBroker.RunRestrictedProject(args.Skip(1).ToArray());
+        if(args.Length==3 && args[0]=="inspect-failed-caller-project")
+        {
+            try{var result=ProtectionLifecycle.InstalledBroker.InspectFailedCallerProject(args[1],args[2]);Console.WriteLine(result.Report);return result.ExitCode;}
+            catch(Exception ex){Console.Error.WriteLine("Failed project inspection not confirmed: "+ex.GetType().Name+"; code="+ex.HResult);return 125;}
+        }
         if(args.Length==1 && args[0]=="develop-bundled-project")
         {
             try{var result=ProtectionLifecycle.InstalledBroker.DevelopBundledProject();Console.WriteLine(result.Report);return result.ExitCode;}
@@ -68,6 +73,7 @@ internal static class Program
             Console.Error.WriteLine("Resource recovery: inspect-resource-recovery (read only); recover-unstarted-session-resources (explicit v2 creation with no process binding only).");
             Console.Error.WriteLine("Fixed OS manifest-read resource: inspect-manifest-read-access (read only); recover-manifest-read-access (exact original DACL, closed Job and quarantine required).");
             Console.Error.WriteLine("Installed data maintenance: process-workspace-data EXACT_INPUT_SHA256 (redirected bundle bytes); export-workspace-data SESSION EXACT_RESULT_SHA256 (raw bundle stdout). No project code execution or network grant.");
+            Console.Error.WriteLine("Installed failure inspection: inspect-failed-caller-project SESSION EXACT_INPUT_SHA256 (bounded terminal metadata only; no result release, recovery or launch authority).");
             return 64;
         }
         // The current artifact has not obtained bounded runtime/install

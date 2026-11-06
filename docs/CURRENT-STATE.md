@@ -1,5 +1,20 @@
 # 当前状态与授权摘要
 
+2026-11-05新增原InstalledBroker有限失败检查源码与固定CLI入口inspect-failed-caller-project，
+仅接受sessionId及输入SHA256，保留当前安装host、提升身份、protected state及无pending恢复
+门禁；只读同安装绑定的单份resource-session-after终态，最多128KiB。严格核对失败状态、
+调用项目scope及四项false权限字段，拒绝重复字段/错误绑定/过深或过大记录；只输出固定
+类型/阶段/数值码、原记录hash及最多16条失败摘要。Child缺失保留UNKNOWN；未知字符串
+不透传，不读取额外tool-error、rawJob/Stop文件或未释放结果；原终态内Job/Stop不导出。
+该摘要仅是历史终态报告，不证明当前OS状态，不授予启动/恢复/结果释放权。
+普通保护库/Broker及专用工具BUILD0错误0警告，40项对实际构建库的解析样本通过，六个
+src项目非生成检查0/0。首次BoundBytes类型错误构建保留，修正后另目录验证。证据位于
+work/failed-inspection-73dd759-20261105。SOURCE/BUILD/INTEGRATED(固定命令)及
+VERIFIED(普通解析fixture)，未安装、未读真实私有终态，不标CAPABILITY_DELIVERED。
+现装仍最后核验3e2/INACTIVE，AFD拒绝层及组合任务失败原因未知，Socket/HTTPS仍FAIL。
+下一步应结合原owner失败反馈准备可复核的inactive更新，实际执行须新具体决定；不得用
+未安装反射入口绕过已安装host门禁，也不得重跑已消耗reader或受限运行许可。
+
 2026-11-05 AFD-only资格已完成真实闭合：本人批准578D580A…/3DCC7FF6…，原owner会话
 ff3940c6120a49c19891d8a869bc02b0终态0，11文件/声明修改/原输入独立核验一致。真实
 LPAC显式打开Device目录遍历、AFD根READ_CONTROL|SYNCHRONIZE及endpoint三组访问掩码

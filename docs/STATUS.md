@@ -5,6 +5,17 @@
 历史页的“当前/待执行/暂停/DELIVERABLE”按段落日期及限定范围解释，不是今天的状态或操作许可。
 不在本页复制当前安装和授权摘要。
 
+## 2026-11-05 原安装owner有限失败检查源码
+
+新增FailedProjectInspection及InstalledBroker/ProtectionBroker固定命令接入；仅绑定会话/
+输入摘要读取一个128KiB内原owner终态，输出有限固定词汇/数值码及记录摘要；保留现装
+host、身份、state、恢复门。没有另建执行器、返回rawJob/Stop/私有工具输出或释放结果。
+源码见src/ProtectionLifecycle/FailedProjectInspection.cs；普通构建库/Broker和测试0/0，
+40项解析样本通过；全部六个src项目非生成检查0/0。首次构建的BoundBytes类型错误保留，
+修正后verification-r2独立构建。原始收据在work/failed-inspection-73dd759-20261105。
+SOURCE/BUILD/INTEGRATED(有限命令)，VERIFIED(普通解析)。未安装、未执行真实私有读取，
+不能定位6688组合失败或代替LPAC/网络/生命周期实测；不是CAPABILITY_DELIVERED。
+
 ## 2026-11-05 AFD-only真实访问结果及生命周期协调源码
 
 本人批准578D580AE93EE063827B51D6C662CD61F54D51190B5EC81DEA721273DC165909控制器与

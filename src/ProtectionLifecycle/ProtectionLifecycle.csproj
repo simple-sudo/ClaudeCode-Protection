@@ -19,6 +19,7 @@
     <Compile Include="OwnedObjectDefaultDaclPolicy.cs" />
     <Compile Include="NetworkContentSnapshot.cs" />
     <Compile Include="ProtectedLifecycleCoordinator.cs" />
+    <Compile Include="FailedProjectInspection.cs" />
     <Compile Include="RestrictingSidToken.cs" />
     <Compile Include="WinsockRegistryScope.cs" />
     <Compile Include="SessionWinsockReadAccess.cs" />

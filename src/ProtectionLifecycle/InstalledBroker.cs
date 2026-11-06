@@ -17,6 +17,16 @@ public static partial class InstalledBroker
     public static int RunRestrictedProject(string[] arguments)=>BundledProjectDevelopment.Run(arguments);
     public static int RunRestrictedProjectProbe(string[] arguments)=>BundledProjectDevelopment.RunProbe(arguments);
     public static (int ExitCode,string Report) DevelopBundledProject()=>WithCurrentInstallation(ProtectedSession.DevelopBundledProject);
+    public static (int ExitCode,string Report) InspectFailedCallerProject(string sessionId,string expectedInputSHA256)
+        =>WithCurrentInstallation((_,state,_)=>
+    {
+        var id=Identifiers.Hex32(sessionId);var input=Identifiers.Hash(expectedInputSHA256);
+        // Fixed protected leaf only. Never read tool-error, Job/Stop files,
+        // workspace results or caller paths, and never modify session state.
+        var record=state.Read("resource-session-after-"+id+".json",FailedProjectInspection.MaximumBytes);
+        var summary=FailedProjectInspection.Parse(record.Bytes,state.InstallationId,id,input);
+        state.AssertHeld();return(0,JsonSerializer.Serialize(summary));
+    });
     public static (int ExitCode,string Report) ProcessWorkspaceData(string expectedSHA256)
         =>WithCurrentInstallation((layout,state,version)=>
     {
