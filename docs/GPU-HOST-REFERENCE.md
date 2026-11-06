@@ -4,6 +4,26 @@
 VERIFIED(普通只读/fixture、9bbbb与4588安装及失败Job闭合)，GPU运行仍未通过。
 安装、运行与授权以 [CURRENT-STATE](CURRENT-STATE.md) 为准。
 
+## 2026-11-06 610b正常真实参考已验证
+
+经本人批准73AC9CC7…，安装/原daily/原资格owner/指定新记录reader全终态0。现装
+610b/INACTIVE，15公开资产核验一致；真实原普通用户/session的primary medium limited
+非管理员Token，由父属性在原Job内suspended创建，原seal/句柄/身份门通过。新管道
+LABEL-only设定回读及跨权限peer/nonce确认完成；实际新Token与原创建记录一致，
+管理owner前后Token事实相同，没有显式Token复制/分配/调整或权限启用。详尽原值已由可信研发核对，保留
+在新受控目录，不进入公开库或Claude工作区。
+
+RTX4060 Laptop / driver13030完成固定1KiB/256计算，16调用0、32帧、正确结果哈希，
+原模块/显存/context清理成功。原runtime会话时钟447ms观察quarantine后关闭原Job，
+Stop与原耐久零成员记录同快照，无失败。447ms不表示纯GPU时长；context总显存、
+驱动缓存、硬件挂起、异常终止/对端丢失故障均未实测，不能扩大本次证据范围。
+
+CAPABILITY_DELIVERED(固定可信普通宿主GPU参考与正常原Job闭合)，其用户入口为当前
+安装daily的`gpu-host-reference`，本人UAC，非正式Claude准入。原无caller资格、聚合
+GPU系统hold仍闭锁；该参考不获得LPAC或隐私证据。后续应在原owner复用此创建方，
+开展同身份受限CUDA及真实GPU标识路径对抗，而非直接给Claude普通GPU Token。
+独立核验F53CAE27…及详情hash/路径见[账本](STATUS.md#2026-11-06-610b真实普通父身份gpu参考正常闭合)。
+
 ## 2026-11-06 初始SACL与仅读标签的实际差异
 
 fa8d固定原生资格安装成功，但原daily/owner终态125、0x80070522/1314，没有请求编号/

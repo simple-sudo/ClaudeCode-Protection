@@ -5,6 +5,16 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-06 610b固定可信宿主GPU参考已交付
+
+CAPABILITY_DELIVERED(现装普通daily/可信owner的固定宿主GPU参考及正常原Job闭合)。
+经本人批准真实验证：15资产/INACTIVE、真实普通Token/父属性/原Job/suspended/seal/
+新LABEL-only报告管道、RTX4060 Laptop的1KiB/256计算、16成功调用/32帧/正确哈希、
+原模块/显存/context清理、quarantine先行/原Job耐久零成员以及原owner终态。独立核验
+F53CAE27…；原值留受控目录。不是受保护LPAC GPU、个体标识隔离、CUDA工具链兼容、
+硬件挂起/故障恢复或正式Claude/完整产品通过；旧失败不回填，旧hold不解锁。
+见[证据](STATUS.md#2026-11-06-610b真实普通父身份gpu参考正常闭合)。
+
 ## 2026-11-06 fa8d实际失败与标签修复
 
 VERIFIED(批准的fa8d INACTIVE安装/15公开资产、原daily与owner失败终态)；GPU未通过，

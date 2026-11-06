@@ -1,5 +1,32 @@
 # 当前状态与授权摘要
 
+2026-11-06本人批准73AC9CC7…后真实单次链已完整通过：原安装helper、普通daily、其
+持有资格owner及指定新记录reader均终态0。现装610b108c2bc54041b52c88adf0303122 /
+INACTIVE，manifest2ACC0397…，15公开安装资产逐项一致；原安装实时闭合/quarantine/
+无pending门通过，不据此回填旧fa8d失败。独立核验F53CAE27…通过，新私有详情8586AC47…
+保存在对应Program Files受控更新目录；工作区只留归一化核验与hash，没有原Token/GPU
+数据进入Git/CI/Claude。Codex已在批准范围直接核对实际原值；新report93A8F3CC…、
+creation77863CF8…、completion9E8CF6AA…，原三记录绑定/准入闭合/耐久零成员一致。
+
+真实创建身份primary、medium、limited、非管理员、non-AC、restricted0/UIAccess0，
+同原普通调用方用户/session，实际Token与原创建记录一致，提升owner前后事实未变。
+PARENT_PROCESS继承普通身份、原JOB_LIST/suspended/BA+SY seal/无句柄继承及新管道
+LABEL-only设定/回读/peerPID/nonce握手均走过真实链。RTX4060 Laptop、driver13030，
+1KiB/256元素，16调用均0、32帧齐全，结果hash4ADEB88C…，模块/显存/context清理
+调用成功。原runtime时钟447ms时先观察quarantine再关闭原Job；其Stop与耐久completion
+同一零成员快照，无失败。447ms是owner会话时钟，不是纯GPU耗时或性能基准；context
+总显存/驱动缓存未测，没有硬件挂起/故障注入证据。正常受限GPU仍未运行。
+
+CAPABILITY_DELIVERED(当前现装daily/owner的固定可信普通宿主GPU参考及原Job闭合)，
+VERIFIED(该正常场景真实身份/原子创建/报告/计算/退出链)。不是CAPABILITY_DELIVERED
+(受保护GPU)、GPU个体身份隔离、正式开发或PRODUCT_DELIVERY_ACCEPTED。旧无caller
+GPU资格和完整系统hold保持，权限不扩大，不启动LPAC/Claude；没有设备ACL、代理、
+IPv6、AV修改。AV/BFE Running，FlClash/Core进程同原观察，06:03:48–06:04:10Z公开
+Application无匹配AV事件，完整覆盖UNKNOWN；没有重跑/强停/恢复，本次许可已消耗。
+下一重点回到AFD实际拒绝层与受限Socket→强制网关HTTPS；GPU侧将已验证的原普通
+caller参考接入同owner的固定LPAC计算/真实身份字段对照，必须新限定资格，不解锁旧
+聚合入口或把宿主成功当LPAC通过。完整L3/工具链/GUI/正式Claude/整机验收仍未完成。
+
 2026-11-06本人批准B133379E…固定链后，原安装helper34688终态0，fa8d9abae6d64aeaa26539770c887ad2
 已核验15公开资产并保持INACTIVE，manifest92111D9F…。原普通daily2804及其持有提升
 owner终态125，返回HRESULT2147943714（0x80070522/Win32低位1314），RequestId/ChildPid

@@ -5,6 +5,31 @@
 历史页的“当前/待执行/暂停/DELIVERABLE”按段落日期及限定范围解释，不是今天的状态或操作许可。
 不在本页复制当前安装和授权摘要。
 
+## 2026-11-06 610b真实普通父身份GPU参考正常闭合
+
+本人批准73AC9CC7…，一次执行完毕，安装/daily/原资格owner/指定新记录reader全部终态0。
+610b INACTIVE及15公开安装资产独立核验一致，原安装实时所有适用门通过。实际primary/
+medium/limited/非管理员/non-AC/restricted0/UI0，原普通用户/session；原持有句柄、
+当前安装peer、父属性、原JOB_LIST/suspended/seal、无句柄继承、LABEL-only新管道及
+原PID/nonce报告握手完成。提升owner Token前后事实一致，实际子Token与原创建记录一致。
+Codex直接核对批准的新受控原值，原Token/设备/Job/Stop详情未复制入仓库。
+RTX4060 Laptop、driver13030，显式1KiB/256元素，16 API0、32帧，结果
+4ADEB88C463E46506A15EF3743B8E106C7554A7CE7427BE97E291713B95A4034；模块/分配/context
+清理返回0。原runtime会话447ms时quarantine观察→原Job闭合，Stop与耐久零成员
+快照一致，原记录绑定成立。不是纯GPU基准，context总资源/驱动缓存与挂起场景未测。
+
+核验F53CAE2747131C805E258C3E42DACDA76AF4C64632313A71ECDD221EF45836BB；
+新受控详情8586AC4765C3948A3A3DF886495EFA4827085447EAAE90552067526850086B44；
+原GPU report93A8F3CC096D241E6426F3074FF83268157F67D85ADD8116C19B690695C02804；
+creation77863CF8320AFAB5C1EBC4FC23ED7BBEE48B2ADEB0BB6DD363E333B700B4120E；
+completion9E8CF6AA1DD0BC4EBB7A8EBFF89500E8873D5E7DBEFA21CEAB1B38DCAE18C76A。
+证据work/gpu-parent-b50d02b-20261106/candidate-label-final/operation；原值仅对应
+Program Files受控目录。AV/BFE Running，FlClash/Core进程未变；06:03:48–06:04:10Z
+公开Application无匹配AV事件，完整覆盖UNKNOWN。没有额外重试/强停/恢复、设备ACL/
+代理/IPv6/AV变更、LPAC/Claude启动；许可消耗，旧失败/UNKNOWN原字节和语义保留。
+CAPABILITY_DELIVERED(现装原daily/owner的固定可信宿主GPU参考及正常原Job闭合)，
+VERIFIED(该限定真实场景)，不是受保护GPU、GPU身份隔离、工具链/故障/产品验收。
+
 ## 2026-11-06 fa8d实际早期失败与新报告管道标签修复
 
 本人批准B133379E…，原安装helper34688/0，15公开资产核验一致，fa8d INACTIVE；
