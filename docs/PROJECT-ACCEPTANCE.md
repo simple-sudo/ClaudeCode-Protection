@@ -5,6 +5,16 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-06 fa8d实际失败与标签修复
+
+VERIFIED(批准的fa8d INACTIVE安装/15公开资产、原daily与owner失败终态)；GPU未通过，
+0x80070522/1314无具体阶段，无绑定请求，Job闭合UNKNOWN，未执行后读。不能以两个
+进程已退出替代内核清理。普通新管道对照复现初始SACL失败，LABEL-only修复的medium
+回读及owner/DACL不变实测通过；schema2有限阶段源码接入，78策略/42前驱/28进度/
+40摘要检查，8项目+Bootstrap及6src0/0，原工作区IPC回归通过。610b候选未安装，
+提升/父属性/Job/GPU实测仍NOT_RUN；没有GPU/隐私/正式Claude/产品交付。
+见[证据](STATUS.md#2026-11-06-fa8d实际早期失败与新报告管道标签修复)。
+
 ## 2026-11-06 普通调用方父属性适配
 
 SOURCE/BUILD/INTEGRATED(原daily/安装owner/Job/runtime源码)。75策略检查、35前驱、

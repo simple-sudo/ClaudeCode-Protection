@@ -44,8 +44,8 @@ public static partial class InstalledBroker
         // neither computation success nor a reusable admission.
         if(result?.Complete==true && (!closed || failures.Count!=0))code=3;
         var complete=result?.Complete==true && closed && failures.Count==0;
-        var reply=new HostGpuReferenceReply(1,nonce,complete?HostGpuReferenceReply.Passed:HostGpuReferenceReply.Failed,code,result?.RequestId,
-            result?.ChildPid,complete,closed,failures.Take(32).Select(f=>f.Code).ToArray(),false,false,false);
+        var reply=new HostGpuReferenceReply(2,nonce,complete?HostGpuReferenceReply.Passed:HostGpuReferenceReply.Failed,code,result?.RequestId,
+            result?.ChildPid,complete,closed,failures.Take(32).Select(f=>f.Code).ToArray(),failures.Take(32).Select(f=>HostGpuReferenceReply.NormalizeStage(f.Stage)).ToArray(),false,false,false);
         var bytes=JsonSerializer.SerializeToUtf8Bytes(reply);_=HostGpuReferenceReply.Parse(bytes,nonce);
         WorkspacePipe.AssertPeer(channel,callerPid,false);
         using var timeout=new CancellationTokenSource(TimeSpan.FromSeconds(5));WorkspacePipe.Write(channel,bytes,4096,timeout.Token).GetAwaiter().GetResult();

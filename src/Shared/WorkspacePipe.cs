@@ -131,14 +131,49 @@ internal static class WorkspacePipe
         security.AddAccessRule(new PipeAccessRule(new SecurityIdentifier(WellKnownSidType.NetworkSid,null),PipeAccessRights.FullControl,AccessControlType.Deny));
         if(hostGpu)foreach(var package in new[]{"S-1-15-2-1","S-1-15-2-2"})
             security.AddAccessRule(new PipeAccessRule(new SecurityIdentifier(package),PipeAccessRights.FullControl,AccessControlType.Deny));
-        if(elevatedReport)security.SetSecurityDescriptorSddlForm("S:(ML;;NW;;;ME)",AccessControlSections.Audit);
         security.AddAccessRule(new PipeAccessRule(sid,PipeAccessRights.FullControl,AccessControlType.Allow));
         // Explicit same-user ACL permits the user's elevated token as well.
         // CurrentUserOnly would additionally impose elevation-specific checks.
         // No APP_PACKAGES/Everyone/Users grants; no remote or inherited access.
-        return NamedPipeServerStreamAcl.Create(pipeName,PipeDirection.InOut,1,PipeTransmissionMode.Byte,
-            PipeOptions.Asynchronous|PipeOptions.FirstPipeInstance,65536,65536,security,HandleInheritability.None);
+        NamedPipeServerStream server;
+        try{server=NamedPipeServerStreamAcl.Create(pipeName,PipeDirection.InOut,1,PipeTransmissionMode.Byte,
+            PipeOptions.Asynchronous|PipeOptions.FirstPipeInstance,65536,65536,security,HandleInheritability.None,elevatedReport?PipeAccessRights.TakeOwnership:0);}
+        catch(Exception error){if(elevatedReport)error.Data["Stage"]="HostGpuReportPipeCreate";throw;}
+        if(!elevatedReport)return server;
+        try{SetNewReportMediumLabel(server);return server;}
+        catch{server.Dispose();throw;}
     }
+    // Only called on the new server above, before a Job or child exists.
+    // LABEL_SECURITY_INFORMATION requires WRITE_OWNER, not the privilege
+    // needed to set an entire SACL in a creation descriptor. Never enable it.
+    private static void SetNewReportMediumLabel(NamedPipeServerStream server)
+    {
+        var before=server.GetAccessControl().GetSecurityDescriptorBinaryForm();
+        var label=new RawSecurityDescriptor("S:(ML;;NW;;;ME)").SystemAcl??throw new InvalidDataException("GPU report mandatory label missing");
+        var expected=new byte[label.BinaryLength];label.GetBinaryForm(expected,0);var value=Marshal.AllocHGlobal(expected.Length);
+        try
+        {
+            Marshal.Copy(expected,0,value,expected.Length);
+            var status=SetSecurityInfo(server.SafePipeHandle,6,0x10,IntPtr.Zero,IntPtr.Zero,IntPtr.Zero,value);
+            if(status!=0)throw PipeLabelError(status,"HostGpuReportPipeSetLabel");
+            status=GetSecurityInfo(server.SafePipeHandle,6,0x10,out _,out _,out _,out _,out var descriptor);
+            if(status!=0)throw PipeLabelError(status,"HostGpuReportPipeReadLabel");
+            try
+            {
+                var size=GetSecurityDescriptorLength(descriptor);if(size is <20 or >4096)throw new InvalidDataException("GPU report label descriptor bounds");
+                var bytes=new byte[checked((int)size)];Marshal.Copy(descriptor,bytes,0,bytes.Length);
+                var actual=new RawSecurityDescriptor(bytes,0).SystemAcl??throw new InvalidDataException("GPU report label not observed");
+                var observed=new byte[actual.BinaryLength];actual.GetBinaryForm(observed,0);
+                if(!observed.AsSpan().SequenceEqual(expected) || !server.GetAccessControl().GetSecurityDescriptorBinaryForm().AsSpan().SequenceEqual(before))
+                    throw new InvalidDataException("GPU report label or original owner/DACL differs");
+            }
+            finally{LocalFree(descriptor);}
+        }
+        catch(Exception error){error.Data["Stage"]??="HostGpuReportPipeLabel";throw;}
+        finally{Marshal.FreeHGlobal(value);}
+    }
+    private static Win32Exception PipeLabelError(uint status,string stage)
+    {var error=new Win32Exception(unchecked((int)status),"Set/read only new GPU report mandatory label");error.Data["Stage"]=stage;return error;}
     internal static void AssertPeer(PipeStream pipe,int expectedPid,bool server)
     {
         if(expectedPid<=0 || !pipe.IsConnected)throw new InvalidDataException("Connected workspace peer required");
@@ -170,4 +205,8 @@ internal static class WorkspacePipe
     [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
     [DllImport("kernel32.dll",SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)]
     private static extern bool GetNamedPipeServerProcessId(SafePipeHandle pipe,out uint pid);
+    [DllImport("advapi32.dll",ExactSpelling=true)]private static extern uint SetSecurityInfo(SafePipeHandle handle,int kind,uint information,IntPtr owner,IntPtr group,IntPtr dacl,IntPtr sacl);
+    [DllImport("advapi32.dll",ExactSpelling=true)]private static extern uint GetSecurityInfo(SafePipeHandle handle,int kind,uint information,out IntPtr owner,out IntPtr group,out IntPtr dacl,out IntPtr sacl,out IntPtr descriptor);
+    [DllImport("advapi32.dll",ExactSpelling=true)]private static extern uint GetSecurityDescriptorLength(IntPtr descriptor);
+    [DllImport("kernel32.dll",ExactSpelling=true)]private static extern IntPtr LocalFree(IntPtr memory);
 }

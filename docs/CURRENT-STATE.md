@@ -1,5 +1,32 @@
 # 当前状态与授权摘要
 
+2026-11-06本人批准B133379E…固定链后，原安装helper34688终态0，fa8d9abae6d64aeaa26539770c887ad2
+已核验15公开资产并保持INACTIVE，manifest92111D9F…。原普通daily2804及其持有提升
+owner终态125，返回HRESULT2147943714（0x80070522/Win32低位1314），RequestId/ChildPid
+均null，未确认计算。v1摘要未带具体阶段，不能唯一归因；没有绑定Job回执，Job闭合
+UNKNOWN，不能从缺输出/缺进程推断未创建或已清理。第三reader条件未满足，未触发，
+未读任何私有新/旧Job/Stop或未释放结果；本次整体单次许可已消耗。核验9DD7001A…、
+发现摘要B3424A30…保留在work/gpu-parent-b50d02b-20261106。AV/BFE Running，
+05:41:00–05:41:24Z公开Application无匹配AV事件，完整覆盖UNKNOWN；无重跑/强停/
+恢复、设备ACL/代理/IPv6/AV修改或LPAC/Claude启动。普通调用方/提升owner已终态，不等于
+内核对象清理证据。本次许可措辞“不查询Token”不能解释为无需实际身份核对：固定清单
+要求仅读实际Token事实，不读关联Token，不显式复制/分配/调整或启用权限；后续审批需明确该区分。
+
+普通1001新管道对照复现：只有DACL可创建，初始SACL带medium标签失败IOException/
+0x80070522；不是原owner失败唯一分支证明。改为先创建本次独占新管道、仅LABEL_SECURITY_INFORMATION
+设置标签，再精确回读medium并比较原owner/DACL字节，之后才允许Job/子进程创建。
+需要的WRITE_OWNER只在新管道句柄请求，不启用SeSecurity/其他权限，不改既有对象。
+新HostGpuReferenceReply schema2只传有限白名单阶段码及uint32错误码，无RequestId
+时也保留阶段，不透传任意owner文本。普通实际LABEL-only设置/回读及owner/DACL不变
+通过，首个对照工具因nullable声明编译失败未执行，原文件保留，r2完成对照。
+610b108c2bc54041b52c88adf0303122候选已BUILD/20文件核验，manifest2ACC0397…、库532A2763…、
+stage8EEDB482…。78/42/28/40策略检查，8项目+Bootstrap构建0/0，6src非生成0/0。
+最终库普通新管道7项实测与LABEL-only实测通过；原WorkspacePipe帧/回复回归通过，
+没有提升/父属性/Job/GPU实测。SOURCE/BUILD/INTEGRATED及VERIFIED(普通新管道/原安装与失败
+摘要)，无新增GPU运行或隐私产品能力。候选尚未安装，现装仍fa8d；下一固定资格须新
+决定且原live closed-admission/quarantine/no-pending门全保留，未知Job不能被清单放行。
+AFD/Socket/HTTPS仍FAIL，完整L3/GPU/GUI/正式Claude/整机验收未通过。
+
 2026-11-06父属性适配最终候选fa8d9abae6d64aeaa26539770c887ad2已构建/20文件核验：
 manifest92111D9F…，库325C53D1…，stage235C33F8…。此前未执行8ca1原字节保留，
 因GPU报告scope仍含旧LINKED名称而被替代；最终名称为TRUSTED_ORDINARY_HOST_GPU_REFERENCE_NOT_LPAC，

@@ -33,7 +33,7 @@ internal static class HostGpuReferenceProcessing
             await broker.WaitForExitAsync(receive.Token);if(broker.ExitCode!=reply.ExitCode)throw new IOException("GPU owner exit differs from bound reply");
             // Only the fixed support summary reaches stdout. Raw current Token,
             // GPU identity and original Job receipts stay in protected state.
-            return(reply.ExitCode,new{reply.Status,reply.RequestId,reply.ChildPid,reply.Complete,reply.OriginalJobClosed,reply.FailureCodes,
+            return(reply.ExitCode,new{reply.Status,reply.RequestId,reply.ChildPid,reply.Complete,reply.OriginalJobClosed,reply.FailureCodes,reply.FailureStages,
                 OriginalOwnerTerminal=true,ProtectedGpuVerified=false,PrivacyVerified=false,FormalAdmissionIssued=false,ClaudeLaunched=false,AutomaticRetry=false});
         }
         catch

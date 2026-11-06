@@ -4,6 +4,27 @@
 VERIFIED(普通只读/fixture、9bbbb与4588安装及失败Job闭合)，GPU运行仍未通过。
 安装、运行与授权以 [CURRENT-STATE](CURRENT-STATE.md) 为准。
 
+## 2026-11-06 初始SACL与仅读标签的实际差异
+
+fa8d固定原生资格安装成功，但原daily/owner终态125、0x80070522/1314，没有请求编号/
+具体阶段或Job回执，计算/创建未确认、Job闭合UNKNOWN。后读条件未满足，不读取私有
+历史或推断清理。普通新管道实际对照：DACL-only成功，初始SACL含medium标签失败，
+与错误吻合但不能唯一追认提升原失败位置。
+
+修复仅对本次新建报告管道调用SetSecurityInfo的LABEL_SECURITY_INFORMATION，句柄仅
+另请求WRITE_OWNER；不设置整份SACL或启用SeSecurity。GetSecurityInfo仅读标签，
+回读与固定medium/no-write-up ACL逐字节一致，同时原owner/DACL必须不变；新管道
+不合格则关闭原句柄并拒绝，发生在Job/子进程创建前。普通新建自有管道已经实测成功。
+提升身份跨权限尚未实测，不据普通结果推导通过。原APP/RAP拒绝、实际peer/nonce和
+Job/身份/停止门均保留。
+
+新schema2支持摘要附加最多32条、仅白名单阶段码，与uint32错误码长度一致；未知阶段
+固定OTHER_STAGE_OR_NOT_REPORTED。新管道创建/设标签/读标签异常在原捕获点附加有限
+阶段，未有RequestId也能返回，避免只报错误码。原值继续留可信侧，不透传任意文本。
+610b候选SOURCE/BUILD，78普通策略及原IPC回归通过，普通新管道/标签VERIFIED；未安装。
+机制依据：[LABEL只需WRITE_OWNER，SACL需ACCESS_SYSTEM_SECURITY](https://learn.microsoft.com/en-us/windows/win32/secauthz/security-information)、
+[SetSecurityInfo的标签与SACL区别](https://learn.microsoft.com/en-us/windows/win32/api/aclapi/nf-aclapi-setsecurityinfo)。
+
 ## 2026-11-06 当前安装普通调用方的父进程属性适配
 
 新增 `GpuReferenceCaller`、`GpuCallerCreation`、`GpuReferenceChannel`，接入原安装与

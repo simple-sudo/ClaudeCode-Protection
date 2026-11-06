@@ -13,6 +13,18 @@ var token=library.GetType("ProtectionLifecycle.GpuHostToken",true)!;var factsTyp
 var nonce=new string('a',32);var job=new string('b',32);var checks=0;
 object Call(Type type,string name,params object?[] values)=>type.GetMethod(name,hidden)!.Invoke(null,values)!;
 object Decode(JsonObject data,Type type)=>JsonSerializer.Deserialize(data.ToJsonString(),type)!;
+if(args.Length==1 && args[0]=="label")
+{
+    var pipes=library.GetType("ClaudeCodeProtection.Workspaces.WorkspacePipe",true)!;
+    var sd=new PipeSecurity();sd.SetOwner(identity.User!);sd.SetAccessRuleProtection(true,false);
+    sd.AddAccessRule(new PipeAccessRule(identity.User!,PipeAccessRights.FullControl,AccessControlType.Allow));
+    foreach(var package in new[]{"S-1-15-2-1","S-1-15-2-2"})sd.AddAccessRule(new PipeAccessRule(new SecurityIdentifier(package),PipeAccessRights.FullControl,AccessControlType.Deny));
+    using var own=NamedPipeServerStreamAcl.Create("CPC.Research.NewReportLabel."+Guid.NewGuid().ToString("N"),PipeDirection.InOut,1,
+        PipeTransmissionMode.Byte,PipeOptions.Asynchronous|PipeOptions.FirstPipeInstance,4096,4096,sd,HandleInheritability.None,PipeAccessRights.TakeOwnership);
+    Call(pipes,"SetNewReportMediumLabel",own);
+    Console.WriteLine(JsonSerializer.Serialize(new{Scope="ACTUAL_ORDINARY_NEW_OWN_PIPE_LABEL_ONLY_SET_AND_READBACK",Passed=true,
+        MediumLabelReadBack=true,OriginalOwnerAndDaclUnchanged=true,ExistingObjectModified=false,PrivilegeChanged=false,UacRequested=false,JobCreated=false,NativeCudaExecuted=false}));return;
+}
 if(args.Length==1 && args[0]=="pipe")
 {
     var pipes=library.GetType("ClaudeCodeProtection.Workspaces.WorkspacePipe",true)!;
@@ -48,7 +60,7 @@ if(args.Length==1 && args[0]=="current-token")
         RawIdentityExported=false,LinkedTokenRead=false,TokenModified=false,JobCreated=false,NativeCudaExecuted=false}));
     return;
 }
-if(args.Length!=0)throw new Exception("Only fixed current-token read, pipe or ordinary fixtures supported");
+if(args.Length!=0)throw new Exception("Only fixed current-token read, pipe, label or ordinary fixtures supported");
 JsonObject Facts(bool source)=>new(){["Type"]=1,["AppContainer"]=0,["Elevated"]=source?1:0,["ElevationType"]=source?2:3,["RestrictedSidCount"]=0,["UiAccess"]=0,
     ["SessionId"]=1,["UserSid"]="S-1-5-21-1-2-3-1001",["IntegritySid"]=source?"S-1-16-12288":"S-1-16-8192",["AuthenticationId"]="0011223344556677",["Administrator"]=source,["PrivilegesSHA256"]=new string('A',64)};
 void Check(bool value,string name){checks++;if(!value)throw new Exception("FAILED: "+name);}
@@ -118,16 +130,19 @@ Check((uint)bound.GetField("ProcessAccess",hidden)!.GetRawConstantValue()! == 0x
 try{_=InstalledBroker.QualifyHostGpuReferencePipe(1,nonce);throw new Exception("Ordinary entered elevated pipe qualifier");}
 catch(UnauthorizedAccessException){checks++;}
 var replyType=library.GetType("ClaudeCodeProtection.Workspaces.HostGpuReferenceReply",true)!;
-JsonObject Reply()=>new(){["SchemaVersion"]=1,["Nonce"]=nonce,["Status"]="BOUND_ORDINARY_HOST_GPU_REFERENCE_CLOSED",["ExitCode"]=0,["RequestId"]=job,["ChildPid"]=42,
-    ["Complete"]=true,["OriginalJobClosed"]=true,["FailureCodes"]=new JsonArray(),["ProtectedGpuVerified"]=false,["FormalAdmissionIssued"]=false,["ClaudeLaunched"]=false};
+JsonObject Reply()=>new(){["SchemaVersion"]=2,["Nonce"]=nonce,["Status"]="BOUND_ORDINARY_HOST_GPU_REFERENCE_CLOSED",["ExitCode"]=0,["RequestId"]=job,["ChildPid"]=42,
+    ["Complete"]=true,["OriginalJobClosed"]=true,["FailureCodes"]=new JsonArray(),["FailureStages"]=new JsonArray(),["ProtectedGpuVerified"]=false,["FormalAdmissionIssued"]=false,["ClaudeLaunched"]=false};
 object Parse(string json)=>Call(replyType,"Parse",System.Text.Encoding.UTF8.GetBytes(json),nonce);
 _=Parse(Reply().ToJsonString());checks++;
-foreach(var (field,value) in new (string,JsonNode?)[]{("SchemaVersion",JsonValue.Create(2)),("Nonce",JsonValue.Create(new string('c',32))),
+foreach(var (field,value) in new (string,JsonNode?)[]{("SchemaVersion",JsonValue.Create(1)),("Nonce",JsonValue.Create(new string('c',32))),
     ("ExitCode",JsonValue.Create(3)),("RequestId",null),("ChildPid",JsonValue.Create(0)),("Complete",JsonValue.Create(false)),("OriginalJobClosed",JsonValue.Create(false)),
     ("FailureCodes",new JsonArray(2148734209u)),("ProtectedGpuVerified",JsonValue.Create(true)),("FormalAdmissionIssued",JsonValue.Create(true)),("ClaudeLaunched",JsonValue.Create(true)),("Unexpected",JsonValue.Create(1))})
 {var changed=Reply();changed[field]=value;Refuse(()=>Parse(changed.ToJsonString()),"support reply "+field);}
 var failedReply=Reply();failedReply["ExitCode"]=3;failedReply["Complete"]=false;failedReply["Status"]="BOUND_ORDINARY_HOST_GPU_REFERENCE_NOT_CONFIRMED";
-failedReply["FailureCodes"]=new JsonArray(2148734209u);_=Parse(failedReply.ToJsonString());checks++;
-Refuse(()=>Parse(Reply().ToJsonString().Replace("\"SchemaVersion\":1","\"SchemaVersion\":1,\"SchemaVersion\":1")),"duplicate summary property");
+failedReply["FailureCodes"]=new JsonArray(2148734209u);failedReply["FailureStages"]=new JsonArray("HostGpuReportPipeCreate");_=Parse(failedReply.ToJsonString());checks++;
+var hostileStage=(JsonObject)failedReply.DeepClone();hostileStage["FailureStages"]=new JsonArray("untrusted raw owner text");Refuse(()=>Parse(hostileStage.ToJsonString()),"unknown stage text");
+hostileStage=(JsonObject)failedReply.DeepClone();hostileStage["FailureStages"]=new JsonArray();Refuse(()=>Parse(hostileStage.ToJsonString()),"stage and numeric error count differ");
+Check((string)Call(replyType,"NormalizeStage","untrusted raw owner text")=="OTHER_STAGE_OR_NOT_REPORTED","unrecognized stages do not expose raw text");
+Refuse(()=>Parse(Reply().ToJsonString().Replace("\"SchemaVersion\":2","\"SchemaVersion\":2,\"SchemaVersion\":2")),"duplicate summary property");
 Console.WriteLine(JsonSerializer.Serialize(new{Scope="ORDINARY_SYNTHETIC_HOST_GPU_TOKEN_ROLE_AND_STOP_BINDING",Checks=checks,Passed=true,
     RealLinkedTokenOpened=false,ProcessAsUserCalled=false,JobCreated=false,NativeCudaExecuted=false,Installed=false}));
