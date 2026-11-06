@@ -28,6 +28,7 @@ internal sealed class SessionProxy : IDisposable
     private readonly GatewayDestinationGuard destinations;
     private readonly string packageSid, sessionId;
     private readonly LpacCapabilityProfile capabilityProfile;
+    private readonly bool fixedNoContentHttpsCanary;
     // The retained base hash identifies the existing compiled endpoint/WFP
     // policy. Bind the candidate identity separately, rather than pretending
     // an internetClient token is the historical zero-capability identity.
@@ -48,10 +49,12 @@ internal sealed class SessionProxy : IDisposable
     private volatile bool disposed;
     internal string Secret { get; } = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
     internal string SessionId => sessionId;
-    internal SessionProxy(OwnedKernelJob job, ProxyChannelLease upstream, string packageSid, string sessionId,LpacCapabilityProfile? capabilities=null)
+    internal SessionProxy(OwnedKernelJob job, ProxyChannelLease upstream, string packageSid, string sessionId,LpacCapabilityProfile? capabilities=null,bool fixedNoContentHttpsCanary=false)
     {
         capabilityProfile=capabilities??LpacCapabilityProfile.None;
-        EffectivePolicySHA256=Convert.ToHexString(SHA256.HashData(Encoding.ASCII.GetBytes("CPC-GATEWAY-EFFECTIVE-V1;"+PolicySHA256+";"+capabilityProfile.SHA256)));
+        if(fixedNoContentHttpsCanary && !capabilityProfile.IsInternetClientQualification)throw WfpNative.Contract("NoContentHttpsGatewayRequiresFixedInternetClient");
+        this.fixedNoContentHttpsCanary=fixedNoContentHttpsCanary;
+        EffectivePolicySHA256=Convert.ToHexString(SHA256.HashData(Encoding.ASCII.GetBytes("CPC-GATEWAY-EFFECTIVE-V2;"+PolicySHA256+";"+capabilityProfile.SHA256+";fixed-no-content-https-canary="+fixedNoContentHttpsCanary)));
         this.job = job; this.upstream = upstream; this.packageSid = packageSid; this.sessionId = Identifiers.Hex32(sessionId);
         authorization = Encoding.ASCII.GetBytes("Basic " + Convert.ToBase64String(Encoding.ASCII.GetBytes(sessionId + ":" + Secret)));
         listener.Server.ExclusiveAddressUse = true;
@@ -67,7 +70,7 @@ internal sealed class SessionProxy : IDisposable
     }
     internal void BindAdmission(ProtectedSession.Admission permit)
     {
-        if(!ReferenceEquals(permit.Gateway,this) || !ReferenceEquals(permit.CapabilityProfile,capabilityProfile) ||
+        if(!ReferenceEquals(permit.Gateway,this) || !ReferenceEquals(permit.CapabilityProfile,capabilityProfile) || permit.FixedNoContentHttpsCanary!=fixedNoContentHttpsCanary ||
             capabilityProfile.IsInternetClientQualification && !permit.IsFixedGatewayQualification)throw WfpNative.Contract("GatewayAdmissionOwnerOrCapabilitiesMismatch");
         permit.AssertCurrent();
         if(Interlocked.CompareExchange(ref admission,permit,null) is not null)throw WfpNative.Contract("GatewayAdmissionAlreadyBound");

@@ -429,7 +429,7 @@ internal sealed partial class AtomicChild : IDisposable
             environment=Marshal.StringToHGlobalUni(environmentBlock);
             var startup=new StartupInfoEx{Basic=new(){Size=Marshal.SizeOf<StartupInfoEx>()},Attributes=attributes};
             if(report){startup.Basic.Flags=0x100;startup.Basic.Output=output;startup.Basic.Error=output;}
-            var command=new StringBuilder("\""+image+"\" "+(preparation?.CapabilityProfile.IsInternetClientQualification==true?
+            var command=new StringBuilder("\""+image+"\" "+(preparation?.FixedNoContentHttpsCanary==true?"no-content-https-canary-child":preparation?.CapabilityProfile.IsInternetClientQualification==true?
                 "internet-client-gateway-qualification-child":preparation?.CaptureCapabilityContent==true?"zero-capability-comparison-child":
                 preparation?.IsGatewayQualification==true?"gateway-qualification-child":"admission-child"));
             // The OS binds BOTH identity and Job before returning a suspended
@@ -576,9 +576,11 @@ internal sealed partial class AtomicChild : IDisposable
         =>RunGatewayQualificationCanaryCore(LpacCapabilityProfile.None,false);
     internal static int RunInternetClientGatewayQualificationCanary()
         =>RunGatewayQualificationCanaryCore(LpacCapabilityProfile.InternetClientQualification,true);
+    internal static int RunNoContentHttpsCanary()
+        =>RunGatewayQualificationCanaryCore(LpacCapabilityProfile.InternetClientQualification,true,true);
     internal static int RunZeroCapabilityComparisonCanary()
         =>RunGatewayQualificationCanaryCore(LpacCapabilityProfile.None,true);
-    private static int RunGatewayQualificationCanaryCore(LpacCapabilityProfile expectedCapabilities,bool captureCapabilityContent)
+    private static int RunGatewayQualificationCanaryCore(LpacCapabilityProfile expectedCapabilities,bool captureCapabilityContent,bool fixedNoContentHttpsCanary=false)
     {
         var phase="ENVIRONMENT";var id=Environment.GetEnvironmentVariable("CPC_SESSION_ID")??"";GatewayChildReport result;
         GatewayNetworkContent? networkContent=null;
@@ -606,7 +608,7 @@ internal sealed partial class AtomicChild : IDisposable
                     // no connect/bind/listen/IOCTL or external request. Continue
                     // the real reads even when endpoint creation is refused.
                     phase="NETWORK_CONTENT_READS";endpoint=GatewayCapabilityEndpoint.Observe();networkContent=GatewayCapabilityContent.Capture();
-                    if(!networkContent.AllThreeDenied)
+                    if(!(fixedNoContentHttpsCanary?networkContent.FixedNoContentHttpsCanaryEligible:networkContent.AllThreeDenied))
                     {
                         phase="NETWORK_CONTENT_REQUIRES_ANALYSIS";
                         throw new InvalidDataException("FixedNetworkCapabilityReadRequiresOwnerAnalysis");

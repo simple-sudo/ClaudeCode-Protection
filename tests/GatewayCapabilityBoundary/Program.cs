@@ -26,7 +26,7 @@ var internet=profiles.GetField("InternetClientQualification",nonpublic)!.GetValu
 Check(profiles.GetConstructors().Length==0);
 var session=T("ProtectedSession");Check((bool)session.GetProperty("SystemTestingBlocked",nonpublic)!.GetValue(null)!);
 var ctor=session.GetConstructors(BindingFlags.NonPublic|BindingFlags.Instance).Single();
-var arguments=new object?[]{null,null,null,false,false,false,false,true,false};
+var arguments=new object?[]{null,null,null,false,false,false,false,true,false,false};
 Reject(()=>{try{_=ctor.Invoke(arguments);}catch(TargetInvocationException e)when(e.InnerException is InvalidDataException cause){throw cause;}},"InternetClientRequiresFixedGatewayAndExactWinsockQualification");
 arguments[7]=false;arguments[8]=true;
 Reject(()=>{try{_=ctor.Invoke(arguments);}catch(TargetInvocationException e)when(e.InnerException is InvalidDataException cause){throw cause;}},"InternetClientRequiresFixedGatewayAndExactWinsockQualification");
@@ -35,6 +35,10 @@ Check(entry.GetParameters().Length==0);
 bool ordinaryDenied=false;try{Call(entry);}catch(UnauthorizedAccessException){ordinaryDenied=true;}Check(ordinaryDenied);
 entry=broker.GetMethod("QualifyZeroCapabilityComparisonGateway")!;Check(entry.GetParameters().Length==0);
 ordinaryDenied=false;try{Call(entry);}catch(UnauthorizedAccessException){ordinaryDenied=true;}Check(ordinaryDenied);
+entry=broker.GetMethod("QualifyNoContentHttpsCanary")!;Check(entry.GetParameters().Length==0);
+ordinaryDenied=false;try{Call(entry);}catch(UnauthorizedAccessException){ordinaryDenied=true;}Check(ordinaryDenied);
+arguments[8]=false;arguments[9]=true;
+Reject(()=>{try{_=ctor.Invoke(arguments);}catch(TargetInvocationException e)when(e.InnerException is InvalidDataException cause){throw cause;}},"NoContentHttpsCanaryRequiresFixedInternetClient");
 
 object Snapshot(string sid,uint attributes)
 {
@@ -80,6 +84,8 @@ try
     using var observed=JsonDocument.Parse(capture.ToString());Check(code==125 && observed.RootElement.GetProperty("Gateway").GetProperty("Phase").GetString()=="IDENTITY" && observed.RootElement.GetProperty("Network").ValueKind==JsonValueKind.Null);
     capture.GetStringBuilder().Clear();code=(int)Call(broker.GetMethod("RunZeroCapabilityComparisonCanary")!)!;
     using var zeroObserved=JsonDocument.Parse(capture.ToString());Check(code==125 && zeroObserved.RootElement.GetProperty("Gateway").GetProperty("Phase").GetString()=="IDENTITY" && zeroObserved.RootElement.GetProperty("Endpoint").ValueKind==JsonValueKind.Null);
+    capture.GetStringBuilder().Clear();code=(int)Call(broker.GetMethod("RunNoContentHttpsCanary")!)!;
+    using var functionObserved=JsonDocument.Parse(capture.ToString());Check(code==125 && functionObserved.RootElement.GetProperty("Gateway").GetProperty("Phase").GetString()=="IDENTITY" && functionObserved.RootElement.GetProperty("Network").ValueKind==JsonValueKind.Null);
 }
 finally{Console.SetOut(output);for(int i=0;i<names.Length;i++)Environment.SetEnvironmentVariable(names[i],saved[i]);}
 checks+=CapabilityContentCases.Run(library);

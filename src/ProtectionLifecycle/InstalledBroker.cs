@@ -209,11 +209,13 @@ public static partial class InstalledBroker
     public static (int ExitCode,string Report) QualifyWinsockProviderSessionGateway()=>WithCurrentInstallation(ProtectedSession.QualifyWinsockProviderSessionGateway);
     public static (int ExitCode,string Report) QualifyInternetClientSessionGateway()=>WithCurrentInstallation(ProtectedSession.QualifyInternetClientSessionGateway);
     public static (int ExitCode,string Report) QualifyZeroCapabilityComparisonGateway()=>WithCurrentInstallation(ProtectedSession.QualifyZeroCapabilityComparisonGateway);
+    public static (int ExitCode,string Report) QualifyNoContentHttpsCanary()=>WithCurrentInstallation(ProtectedSession.QualifyNoContentHttpsCanary);
     public static (int ExitCode,string Report) InspectWinsockReadAccess()=>WithCurrentInstallation((_,state,_)=>SessionWinsockReadAccess.Inspect(state),forManifestAccessRecovery:true);
     public static (int ExitCode,string Report) RecoverWinsockReadAccess()=>WithCurrentInstallation((_,state,_)=>SessionWinsockReadAccess.Recover(state),forManifestAccessRecovery:true);
     public static int RunGatewayQualificationCanary()=>AtomicChild.RunGatewayQualificationCanary();
     public static int RunInternetClientGatewayQualificationCanary()=>AtomicChild.RunInternetClientGatewayQualificationCanary();
     public static int RunZeroCapabilityComparisonCanary()=>AtomicChild.RunZeroCapabilityComparisonCanary();
+    public static int RunNoContentHttpsCanary()=>AtomicChild.RunNoContentHttpsCanary();
     public static int RunAdmissionCanary()
     {
         if(Environment.GetEnvironmentVariable("CPC_RESOURCE_PLAN") is not null)return AtomicChild.RunResourceCanary();

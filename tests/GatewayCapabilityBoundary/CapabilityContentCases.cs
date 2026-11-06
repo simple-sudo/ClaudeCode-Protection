@@ -7,9 +7,12 @@ internal static class CapabilityContentCases
     internal static int Run(Assembly library)
     {
         var method=library.GetType("ProtectionLifecycle.GatewayCapabilityChildReport",true)!.GetMethod("Parse",BindingFlags.NonPublic|BindingFlags.Static)!;
+        var purposeMethod=library.GetType("ProtectionLifecycle.GatewayCapabilityChildReport",true)!.GetMethod("ParseForPurpose",BindingFlags.NonPublic|BindingFlags.Static)!;
         int count=0;
         object Parse(JsonObject value,uint exit)
         {try{return method.Invoke(null,new object[]{value.ToJsonString(),new string('a',32),111u,exit,1000L})!;}catch(TargetInvocationException e)when(e.InnerException is not null){ExceptionDispatchInfo.Capture(e.InnerException).Throw();throw;}}
+        object ParsePurpose(JsonObject value,uint exit,bool purpose)
+        {try{return purposeMethod.Invoke(null,new object[]{value.ToJsonString(),new string('a',32),111u,exit,1000L,purpose})!;}catch(TargetInvocationException e)when(e.InnerException is not null){ExceptionDispatchInfo.Capture(e.InnerException).Throw();throw;}}
         JsonObject Denied()=>JsonNode.Parse("""
         {"SchemaVersion":1,"Gateway":{"SchemaVersion":1,"SessionId":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","Pid":111,"Phase":"COMPLETE","ExitCode":42,"HttpStatus":200,"Errors":[]},
         "Endpoint":{"Pid":111,"Phase":"SOCKET_CLOSED","Created":true,"OwnedHandleClosed":true,"Errors":[]},
@@ -44,6 +47,27 @@ internal static class CapabilityContentCases
         var socketFailure=Denied();socketFailure["Gateway"]=exposure["Gateway"]!.DeepClone();socketFailure["Gateway"]!["Phase"]="HTTPS_SOCKET_CREATE";
         socketFailure["Endpoint"]=JsonNode.Parse("{\"Pid\":111,\"Phase\":\"SOCKET_CREATE\",\"Created\":false,\"OwnedHandleClosed\":null,\"Errors\":[{\"Kind\":\"SOCKET_CREATE\",\"Code\":10013},{\"Kind\":\"SOCKET_NT_CONTEXT\",\"Code\":-1073741790}]}");
         Accept(socketFailure,125);
+        // Same wire observation has two owner-bound research purposes. The
+        // old privacy comparison still refuses a successful HEAD with 1702;
+        // only the distinct no-content fixed canary may consume it.
+        var unavailable=Denied();Row(unavailable)["SizeStatus"]=1702;
+        denied=false;try{Parse(unavailable,42);}catch(InvalidDataException){denied=true;}
+        if(!denied)throw new InvalidDataException("UnavailableAdapterBecamePrivacyDenial");count++;
+        denied=false;try{ParsePurpose(unavailable,42,false);}catch(InvalidDataException){denied=true;}
+        if(!denied)throw new InvalidDataException("DefaultPurposeRelaxed");count++;
+        _=ParsePurpose(unavailable,42,true);count++;
+        void RejectPurpose(Action<JsonObject> change)
+        {
+            var value=unavailable.DeepClone().AsObject();change(value);bool refused=false;
+            try{ParsePurpose(value,42,true);}catch(Exception error)when(error is InvalidDataException or System.Text.Json.JsonException or FormatException){refused=true;}
+            if(!refused)throw new InvalidDataException("UnexpectedContentCanaryAccepted");count++;
+        }
+        foreach(var status in new[]{0,87,111,122,1700,1701,1703,1722})RejectPurpose(v=>Row(v)["SizeStatus"]=status);
+        RejectPurpose(v=>Row(v,1)["SizeStatus"]=1702);RejectPurpose(v=>Row(v,2)["SizeStatus"]=1702);
+        RejectPurpose(v=>Row(v)["ReturnedBytes"]=4);RejectPurpose(v=>Row(v)["Role"]="other");
+        RejectPurpose(v=>{Row(v)["ErrorKind"]="InvalidDataException";Row(v)["ErrorCode"]=-1;});
+        RejectPurpose(v=>{var row=Row(v);row["SizeStatus"]=111;row["RequestedBytes"]=4;row["ReadStatus"]=0;row["ReturnedBytes"]=4;row["Content"]="AAAAAA==";row["NativeBase"]=4096;});
+        _=ParsePurpose(Denied(),42,true);count++;
         return count;
     }
 }

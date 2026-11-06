@@ -189,6 +189,11 @@ public static class BootstrapInstaller
             "D21A7D9F39A93E82087062EAD14F49329E7DBDD2743B2DC12DE98CAB6DC691F1"
         }; // Exact reviewed packages expose no launch/admission command.
         private static readonly string[] OneShotAdmissionManifests={
+            // Exact c526 predecessor. Both original comparison owners reported
+            // ordered closure and resource restoration, but the outer helper's
+            // final self-audit FAILED. Never infer live maintenance eligibility
+            // from those receipts: all original live gates still apply.
+            "D35710928355BDDF12C4E07153A73A58FDB29E53F2533EE27D7DCE41EBC7F300",
             // Exact 610b inactive predecessor. This adds no migration bypass:
             // current/owned manifest, all historical admissions/Job-zero,
             // loopback history and quarantine must still pass live checks.

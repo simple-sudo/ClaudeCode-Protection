@@ -77,7 +77,7 @@ internal static class Program
             }
             catch(Exception ex){Console.Error.WriteLine("Environment intent not confirmed: "+ex.GetType().Name+"; code="+ex.HResult);return 125;}
         }
-        if (args.Length != 1 || args[0] is not ("qualify-zero-capability-comparison-gateway" or "zero-capability-comparison-child" or "qualify-internet-client-session-gateway" or "internet-client-gateway-qualification-child" or "qualify-winsock-provider-session-gateway" or "qualify-winsock-transport-session-gateway" or "qualify-winsock-session-gateway" or "inspect-winsock-read-access" or "recover-winsock-read-access" or "inspect-timezone-read-access" or "recover-timezone-read-access" or "qualify-session-gateway" or "gateway-qualification-child" or "inspect-etw-provider-access" or "recover-etw-provider-access" or "inspect-manifest-read-access" or "recover-manifest-read-access" or "qualify-toolchain" or "recover-session-resources" or "inspect-resource-recovery" or "recover-unstarted-session-resources" or "qualify-resource-recovery" or "qualify-resources" or "migrate-session-network" or "inspect-session-environment" or "launch" or "session-synthetic" or "quarantine" or "inspect-runtime" or "inspect-wfp" or "qualify-wfp-objects" or "inspect-installed-fence" or "qualify-admission" or "qualify-network" or "qualify-gpu" or "qualify-watchdog" or "admission-child"))
+        if (args.Length != 1 || args[0] is not ("qualify-no-content-https-canary" or "no-content-https-canary-child" or "qualify-zero-capability-comparison-gateway" or "zero-capability-comparison-child" or "qualify-internet-client-session-gateway" or "internet-client-gateway-qualification-child" or "qualify-winsock-provider-session-gateway" or "qualify-winsock-transport-session-gateway" or "qualify-winsock-session-gateway" or "inspect-winsock-read-access" or "recover-winsock-read-access" or "inspect-timezone-read-access" or "recover-timezone-read-access" or "qualify-session-gateway" or "gateway-qualification-child" or "inspect-etw-provider-access" or "recover-etw-provider-access" or "inspect-manifest-read-access" or "recover-manifest-read-access" or "qualify-toolchain" or "recover-session-resources" or "inspect-resource-recovery" or "recover-unstarted-session-resources" or "qualify-resource-recovery" or "qualify-resources" or "migrate-session-network" or "inspect-session-environment" or "launch" or "session-synthetic" or "quarantine" or "inspect-runtime" or "inspect-wfp" or "qualify-wfp-objects" or "inspect-installed-fence" or "qualify-admission" or "qualify-network" or "qualify-gpu" or "qualify-watchdog" or "admission-child"))
         {
             Console.Error.WriteLine("ProtectionBroker inspect-runtime | inspect-wfp; inspect-installed-fence (installed read-only); quarantine | qualify-admission | qualify-network | qualify-gpu | qualify-watchdog (installed); qualify-wfp-objects (protected qualification host). Management requires existing elevation.");
             Console.Error.WriteLine("Installed intent management: inspect-session-environment | configure-session-environment EXPECTED_SHA_OR_none WINDOWS_TIMEZONE USER_LOCALE SYSTEM_LOCALE. This never changes Windows settings or grants launch.");
@@ -104,6 +104,7 @@ internal static class Program
         {
             if(args[0]=="gateway-qualification-child")return ProtectionLifecycle.InstalledBroker.RunGatewayQualificationCanary();
             if(args[0]=="internet-client-gateway-qualification-child")return ProtectionLifecycle.InstalledBroker.RunInternetClientGatewayQualificationCanary();
+            if(args[0]=="no-content-https-canary-child")return ProtectionLifecycle.InstalledBroker.RunNoContentHttpsCanary();
             if(args[0]=="zero-capability-comparison-child")return ProtectionLifecycle.InstalledBroker.RunZeroCapabilityComparisonCanary();
             if(args[0]=="admission-child")return ProtectionLifecycle.InstalledBroker.RunAdmissionCanary();
             var result = args[0] switch {
@@ -111,6 +112,7 @@ internal static class Program
                 "recover-timezone-read-access" => ProtectionLifecycle.InstalledBroker.RecoverTimeZoneReadAccess(),
                 "qualify-zero-capability-comparison-gateway" => ProtectionLifecycle.InstalledBroker.QualifyZeroCapabilityComparisonGateway(),
                 "qualify-internet-client-session-gateway" => ProtectionLifecycle.InstalledBroker.QualifyInternetClientSessionGateway(),
+                "qualify-no-content-https-canary" => ProtectionLifecycle.InstalledBroker.QualifyNoContentHttpsCanary(),
                 "qualify-winsock-provider-session-gateway" => ProtectionLifecycle.InstalledBroker.QualifyWinsockProviderSessionGateway(),
                 "qualify-winsock-transport-session-gateway" => ProtectionLifecycle.InstalledBroker.QualifyWinsockTransportSessionGateway(),
                 "qualify-winsock-session-gateway" => ProtectionLifecycle.InstalledBroker.QualifyWinsockSessionGateway(),

@@ -33,6 +33,15 @@ internal sealed record GatewayNetworkContent(int Pid,long StartedFileTime,long F
     // privacy acceptance. Unsupported/empty/error output is not a denial.
     internal bool AllThreeDenied=>Reads.Length==3 && Reads.All(r=>r.ErrorKind is null &&
         (r.SizeStatus==5 && r.ReadStatus is null || r.ReadStatus==5) && r.Content.Length==0);
+    // Separately selected finite research canary only. The observed adapter
+    // RPC_S_INVALID_BINDING is unavailable evidence, NEVER a privacy denial.
+    // No returned host bytes may accompany the fixed synthetic HEAD. The
+    // ordinary comparison and every formal/daily path keep their old gate.
+    internal bool FixedNoContentHttpsCanaryEligible=>AllThreeDenied ||
+        Reads.Length==3 && Reads.Select(r=>r.Role).SequenceEqual(GatewayCapabilityContent.Roles) &&
+        Reads.All(r=>r.ErrorKind is null && r.ErrorCode is null && r.Content.Length==0 && r.NativeBase==0 &&
+            r.ReadStatus is null && r.RequestedBytes==0 && r.ReturnedBytes==0) &&
+        Reads[0].SizeStatus==1702 && Reads[1].SizeStatus==5 && Reads[2].SizeStatus==5;
 }
 
 internal static class GatewayCapabilityContent
@@ -83,6 +92,8 @@ internal sealed record GatewayCapabilityChildReport(int SchemaVersion,GatewayChi
 {
     internal const int MaximumCharacters=300000;
     internal static GatewayCapabilityChildReport Parse(string raw,string session,uint pid,uint exit,long ownerCreatedFileTime)
+        =>ParseForPurpose(raw,session,pid,exit,ownerCreatedFileTime,false);
+    internal static GatewayCapabilityChildReport ParseForPurpose(string raw,string session,uint pid,uint exit,long ownerCreatedFileTime,bool fixedNoContentHttpsCanary)
     {
         if(raw.Length is <2 or >MaximumCharacters)throw new InvalidDataException("CapabilityFeedbackBounds");
         using var doc=JsonDocument.Parse(raw,new JsonDocumentOptions{MaxDepth=8});var root=doc.RootElement;
@@ -125,12 +136,13 @@ internal sealed record GatewayCapabilityChildReport(int SchemaVersion,GatewayChi
                     (r.ErrorKind is null)!=(r.ErrorCode is null))throw new InvalidDataException("CapabilityReadDataInvalid");
             }
         }
+        bool headEligible=network is not null && (fixedNoContentHttpsCanary?network.FixedNoContentHttpsCanaryEligible:network.AllThreeDenied);
         if(root.GetProperty("SchemaVersion").GetInt32()!=1 || network is null && gateway.Phase is not ("ENVIRONMENT" or "IDENTITY" or "NETWORK_CONTENT_READS") ||
             network is not null && endpoint is null ||
             gateway.Phase is "ENVIRONMENT" or "IDENTITY" && (network is not null || endpoint is not null) ||
-            gateway.Phase.StartsWith("HTTPS",StringComparison.Ordinal) && network?.AllThreeDenied!=true ||
-            gateway.Phase=="COMPLETE" && (network?.AllThreeDenied!=true || endpoint is not {Created:true,OwnedHandleClosed:true,Phase:"SOCKET_CLOSED"}) ||
-            gateway.Phase=="NETWORK_CONTENT_REQUIRES_ANALYSIS" && network?.AllThreeDenied!=false)
+            gateway.Phase.StartsWith("HTTPS",StringComparison.Ordinal) && !headEligible ||
+            gateway.Phase=="COMPLETE" && (!headEligible || endpoint is not {Created:true,OwnedHandleClosed:true,Phase:"SOCKET_CLOSED"}) ||
+            gateway.Phase=="NETWORK_CONTENT_REQUIRES_ANALYSIS" && (network is null || headEligible))
             throw new InvalidDataException("CapabilityFeedbackOutcomeInvalid");
         return new(1,gateway,endpoint,network);
     }

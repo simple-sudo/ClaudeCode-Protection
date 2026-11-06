@@ -32,6 +32,7 @@ internal sealed class ProtectedSession
     private readonly bool winsockProviderQualification;
     private readonly LpacCapabilityProfile capabilityProfile;
     private readonly bool capabilityReadComparison;
+    private readonly bool fixedNoContentHttpsCanary;
     private SessionWinsockReadAccess? winsockAccess;
     private const long GatewayQualificationLimitMs=30000;
     private readonly string id = Guid.NewGuid().ToString("N"), pointerSHA256;
@@ -55,12 +56,14 @@ internal sealed class ProtectedSession
     private GatewayCapabilityChildReport? gatewayCapabilityFeedback;
     private ProtectionRuntimeLease? runtime;
     private SessionResources? resources;
-    private ProtectedSession(FixedLayout layout,ProtectedState state,VerifiedVersion version,bool gatewayQualification=false,bool winsockQualification=false,bool winsockTransportQualification=false,bool winsockProviderQualification=false,bool internetClientQualification=false,bool capabilityReadComparison=false)
+    private ProtectedSession(FixedLayout layout,ProtectedState state,VerifiedVersion version,bool gatewayQualification=false,bool winsockQualification=false,bool winsockTransportQualification=false,bool winsockProviderQualification=false,bool internetClientQualification=false,bool capabilityReadComparison=false,bool fixedNoContentHttpsCanary=false)
     {
+        if(fixedNoContentHttpsCanary && !internetClientQualification)throw WfpNative.Contract("NoContentHttpsCanaryRequiresFixedInternetClient");
         if((internetClientQualification || capabilityReadComparison) && !(gatewayQualification && winsockQualification && winsockTransportQualification && winsockProviderQualification))
             throw WfpNative.Contract("InternetClientRequiresFixedGatewayAndExactWinsockQualification");
         capabilityProfile=internetClientQualification?LpacCapabilityProfile.InternetClientQualification:LpacCapabilityProfile.None;
         this.capabilityReadComparison=capabilityReadComparison || internetClientQualification;
+        this.fixedNoContentHttpsCanary=fixedNoContentHttpsCanary;
         if(winsockQualification && !gatewayQualification)throw WfpNative.Contract("WinsockLeaseRequiresFixedGatewayQualification");
         if(winsockTransportQualification && !winsockQualification)throw WfpNative.Contract("WinsockTransportRequiresFixedWinsockQualification");
         if(winsockProviderQualification && !winsockTransportQualification)throw WfpNative.Contract("WinsockProviderRequiresFixedTransportQualification");
@@ -498,6 +501,17 @@ internal sealed class ProtectedSession
         return new ProtectedSession(layout,state,version,gatewayQualification:true,winsockQualification:true,
             winsockTransportQualification:true,winsockProviderQualification:true,internetClientQualification:true).Execute();
     }
+    // Fixed synthetic target only. This separate research purpose accepts the
+    // already observed no-data RPC failure for functionality diagnosis, never
+    // as a privacy PASS or permission for caller code/Claude. Fresh artifact
+    // installation and a separately frozen native approval remain necessary.
+    internal static (int ExitCode,string Report) QualifyNoContentHttpsCanary(FixedLayout layout,ProtectedState state,VerifiedVersion version)
+    {
+        ProtectedState.RequireAdministrator();state.AssertHeld();version.AssertHeld(state);
+        SessionWinsockReadAccess.RequireCurrentRootControl();
+        return new ProtectedSession(layout,state,version,gatewayQualification:true,winsockQualification:true,
+            winsockTransportQualification:true,winsockProviderQualification:true,internetClientQualification:true,fixedNoContentHttpsCanary:true).Execute();
+    }
     internal static (int ExitCode,string Report) QualifyZeroCapabilityComparisonGateway(FixedLayout layout,ProtectedState state,VerifiedVersion version)
     {
         ProtectedState.RequireAdministrator();state.AssertHeld();version.AssertHeld(state);
@@ -565,6 +579,7 @@ internal sealed class ProtectedSession
         internal bool IsGatewayQualification=>owner.gatewayQualification;
         internal LpacCapabilityProfile CapabilityProfile=>owner.capabilityProfile;
         internal bool CaptureCapabilityContent=>owner.capabilityReadComparison;
+        internal bool FixedNoContentHttpsCanary=>owner.fixedNoContentHttpsCanary;
         internal string? PublicTimeZoneId {get;}
         internal PublicTimeZoneSnapshot? PublicTimeZone {get;}
         internal SessionProxy Gateway=>owner.gateway??throw WfpNative.Contract("SessionGatewayMissing");
@@ -623,6 +638,7 @@ internal sealed class ProtectedSession
         internal string SessionId=>owner.id;
         internal SessionProxy Gateway=>owner.gateway??throw WfpNative.Contract("SessionGatewayMissing");
         internal bool IsFixedGatewayQualification=>owner.gatewayQualification;
+        internal bool FixedNoContentHttpsCanary=>owner.fixedNoContentHttpsCanary;
         internal LpacCapabilityProfile CapabilityProfile=>owner.capabilityProfile;
         internal void AssertFixedGatewayRoot((uint Pid,long CreatedFileTime) peer)
         {
@@ -694,6 +710,7 @@ internal sealed class ProtectedSession
             Resources=ResourceScope,FixedGatewayQualification=owner.gatewayQualification,TimeZoneReadIntentSHA256=(string?)null,
             ExpectedCapabilitiesSHA256=owner.capabilityProfile.SHA256,
             CaptureCapabilityContent=owner.capabilityReadComparison,
+            FixedNoContentHttpsCanary=owner.fixedNoContentHttpsCanary,
             WinsockReadIntentSHA256=owner.winsockAccess?.IntentSHA256,
             PublicTimeZoneSnapshotSHA256=owner.preparation?.PublicTimeZone?.SHA256,EnvironmentIntentSHA256=owner.expectationsSHA256,FenceIntents=owner.fences.Select(f=>f.IntentSHA256).ToArray(),
             RequiredEnvironmentIds=StrictEnvironmentRequirements.Required.Select(def=>def.Id).ToArray()
@@ -713,7 +730,7 @@ internal sealed class ProtectedSession
             if(capabilityReadComparison)
             {
                 state.WriteNew("gateway-capability-content-"+id+".json",Encoding.UTF8.GetBytes(raw));
-                gatewayCapabilityFeedback=GatewayCapabilityChildReport.Parse(raw,id,child.Pid,childExitCode.Value,child.ExpectedCreatedFileTime);
+                gatewayCapabilityFeedback=GatewayCapabilityChildReport.ParseForPurpose(raw,id,child.Pid,childExitCode.Value,child.ExpectedCreatedFileTime,fixedNoContentHttpsCanary);
                 gatewayChildFeedback=gatewayCapabilityFeedback.Gateway;
             }
             else gatewayChildFeedback=GatewayChildReport.Parse(raw,id,child.Pid,childExitCode.Value);
@@ -739,7 +756,7 @@ internal sealed class ProtectedSession
             foreach(var fence in fences)if(!fence.Observe().FullQuarantineObserved)throw WfpNative.Contract("SessionInitialQuarantineMissing");
             profile=InstallationProfileLease.Create(state);job=OwnedKernelJob.CreateEmpty(state,version);
             using(var package=new InstallationPackageSid(state))sid=package.Value;
-            upstream=ProxyChannelLease.Open(state);gateway=new SessionProxy(job,upstream,sid,id,capabilityProfile);
+            upstream=ProxyChannelLease.Open(state);gateway=new SessionProxy(job,upstream,sid,id,capabilityProfile,fixedNoContentHttpsCanary);
             loopback=InstallationLoopbackLease.Enable(state,false);
             preparation=new Preparation(this);
             if(gatewayQualification)
@@ -861,6 +878,8 @@ internal sealed class ProtectedSession
         version.Package.ManifestHash,SessionId=id,NetworkPolicySHA256=SessionProxy.PolicySHA256,
         ExpectedCapabilityProfile=capabilityProfile.Id,ExpectedCapabilitiesSHA256=capabilityProfile.SHA256,
         CapabilityContentComparison=capabilityReadComparison,
+        FixedNoContentHttpsCanary=fixedNoContentHttpsCanary,
+        CapabilityContentPrivacyQualified=false,
         EffectiveGatewayPolicySHA256=gateway?.EffectivePolicySHA256,
         EnvironmentIntentSHA256=expectationsSHA256,EnvironmentIntentStatus=expectationsReason,Resources=ResourceScope,Status=status,
         Checks=environment.Select(e=>new {e.Id,e.Status,e.Reason,Required=true,
