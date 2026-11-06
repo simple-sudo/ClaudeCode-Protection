@@ -1,5 +1,20 @@
 # 当前状态与授权摘要
 
+2026-11-06批准7E0A0E47…一次只读既存WFP历史查询后，原固定进程终态0/stage8，
+自Token前后保持，终态5807D49C…；EngineOpen/Close、EnumCreate/Destroy均0。
+当前collect=1、keyword=0，编译固定约4秒历史窗首page0/零记录且穷尽；无选中filter/
+layer读取。空历史不定位原因、不证明此前无拒绝或未执行，不启用新采集或重试。
+新受控目录与终态保留本机，未启动新LPAC/Claude或改WFP/权限/代理/IPv6/AV；该具体
+许可已消耗。TCPIP1012正向检查层拒绝结论保持，最终组件/网络能力仍UNKNOWN。
+
+随后在原AtomicChild.ReadToken接入真实capability SID/属性有界读取，原所有零能力
+门保持；AdmissionToken序列化形状不变。单一internetClient精确比较仅为未来固定
+资格准备，无生产调用/授予路径。33项普通source-linked测试（含自身Token查询）、
+叶项目BUILD0/0及六产品工程非生成0诊断；非零实际Token/LPAC新读取及受限网络
+NOT_RUN，未安装新版本。实际SID/属性只留owner内部快照，不从GUI JSON取得。
+11:38:36–12:28:25Z公开Application共24条、无匹配新AV provider事件，查询完整且未
+触上限；AV/BFE Running，完整厂商日志覆盖仍UNKNOWN。未改服务或AV。
+
 2026-11-06 TCPIP真实检查层拒绝后，新增只读既存WFP诊断切片。普通研发及桌面人类
 身份EngineOpen0但collect/keyword GetOption均5、Close0；采集开关仍UNKNOWN，没有
 开启采集。21项普通身份/路径/时窗筛选、25项SDK结构断言通过；只读项目及固定入口

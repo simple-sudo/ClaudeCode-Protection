@@ -124,7 +124,13 @@ internal sealed record AtomicJobCompletion(int SchemaVersion,string Installation
     }
 }
 
-internal sealed record AdmissionToken(bool IsAppContainer,string? PackageSid,int CapabilityCount,string IntegritySid,bool LpacAccessCheckObserved,uint ApplicationPackageAccessMask);
+internal sealed record AdmissionToken(bool IsAppContainer,string? PackageSid,int CapabilityCount,string IntegritySid,bool LpacAccessCheckObserved,uint ApplicationPackageAccessMask)
+{
+    // Held native observation, not caller JSON. Preserve the existing public
+    // evidence schema while retaining exact SIDs/attributes for owner checks.
+    [System.Text.Json.Serialization.JsonIgnore]
+    internal TokenCapabilitySnapshot? Capabilities {get;init;}
+}
 internal sealed record ResourceBootstrapFailure(int SchemaVersion,string Scope,string Phase,string Type,int Code,string? NativeStage);
 internal sealed record OwnedMemberInspection(uint Pid,bool MembershipConfirmed,long? CreatedFileTime,string? ImagePath,AdmissionToken? Token,WfpErrorEvidence[] Failures);
 
@@ -872,14 +878,17 @@ internal sealed partial class AtomicChild : IDisposable
         {
             var container=Read(29,p=>Marshal.ReadInt32(p)!=0);
             var sid=Read(31,p=>{var s=Marshal.ReadIntPtr(p);return s==IntPtr.Zero?null:new SecurityIdentifier(s).Value;});
-            var count=Read(30,Marshal.ReadInt32);
+            // Read actual capability SIDs/attributes within the bounded native
+            // buffer. Count alone must not become a future singleton-profile
+            // identity check. Existing consumers still reject all nonzero sets.
+            var capabilities=TokenCapabilitySnapshot.Read(token.DangerousGetHandle());
             var integrity=Read(25,p=>new SecurityIdentifier(Marshal.ReadIntPtr(p)).Value);
             // Class46's zero-buffer query returned ERROR_INVALID_PARAMETER in
             // the preserved own-token qualification. Do not infer false or a
             // positive permit from that failure. Check the actual access
             // semantic using documented AccessCheck + a query-only duplicate.
             var packageAccess=observePackageAccess?ProbeApplicationPackageAccess(token):0u; // 0 = NOT_OBSERVED, never a grant.
-            return new(container,sid,count,integrity,container && packageAccess==2,packageAccess);
+            return new(container,sid,capabilities.Count,integrity,container && packageAccess==2,packageAccess){Capabilities=capabilities};
             T Read<T>(int type,Func<IntPtr,T> consume)
             {
                 _=GetTokenInformation(token,type,IntPtr.Zero,0,out var size);

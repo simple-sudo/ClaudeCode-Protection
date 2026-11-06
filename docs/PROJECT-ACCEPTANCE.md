@@ -5,6 +5,14 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-06 既存WFP读取及真实能力读取接入
+
+VERIFIED(7E0A0E47固定只读管理员查询/自有连接及enum正常关闭/Token保持)。指定历史
+返回零记录，具体拒绝规则/历史完整性UNKNOWN，不新增网络能力或隐私通过。
+INTEGRATED(原AtomicChild.ReadToken有界实际capability SID/属性查询)；原零能力门
+保持，未来singleton精确谓词无生产调用。普通合成非零/实际自身零cap与非生成检查
+不能推导新LPAC/网络实测、产品BUILD或安装交付。正式Claude及产品仍未验收。
+
 ## 2026-11-06 既存WFP只读诊断准备
 
 SOURCE/BUILD/VERIFIED(21项普通身份路径时窗筛选、25项本机SDK结构编译断言)。普通

@@ -75,7 +75,19 @@ setter/subscription/新trace或受限启动入口；历史查询只保留固定�
 程序路径同时匹配的classify/capability drop，再按匹配记录ID读取当前filter/layer。
 历史事件无PID/TID，绑定不能升级成精确actor证明；当前filter即使存在也不独立证明
 历史对象未替换，缺记录/采集关闭/淘汰均保留UNKNOWN。21项普通筛选检查、25项本机
-SDK x64结构断言及BUILD通过；新的管理员读取尚NOT_RUN，须另有固定具体人类决定。
+SDK x64结构断言及BUILD通过；准备时新的管理员读取NOT_RUN，后续真实结果见下。
+
+7E0A0E47…后续只读实测成功，原进程终态0、自Token保持，Engine及自有enum开/关均0，
+终态5807D49C…。系统collect1/keyword0；指定原调用前后各2秒历史窗首page返回0项，
+枚举穷尽，没有选中事件或filter/layer读取。没有启用采集/新受限任务或改策略。
+历史可保留范围不能据此追认完整，具体组件仍UNKNOWN。本方向不再自动重复空历史
+或启用新捕获填补；下一步是评估最小网络能力与原强制边界的配合。
+
+原AtomicChild能力读取已接入实际SID/属性解析，而非仅取TOKEN_GROUPS首count；
+现有所有准入门仍要求零能力。新增精确internetClient singleton谓词没有生产调用，
+不增加私网/服务端/registryRead/身份/加密能力，不提供任何实际授予或配置入口。
+未来固定候选须绑定原挂起身份/Job/持久quarantine并保持真实P0对照；count1不构成
+身份匹配，更不能把普通自身query或合成SID测试算受限网络成功。
 
 网络capability是候选机制而非已证明根因。微软[AppContainer启动说明](https://learn.microsoft.com/en-us/windows/win32/secauthz/implementing-an-appcontainer)
 将网络访问与具体capability关联；[Chromium设计](https://chromium.googlesource.com/chromium/src/+/HEAD/docs/design/sandbox.md)

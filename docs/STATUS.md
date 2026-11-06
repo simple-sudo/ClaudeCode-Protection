@@ -5,6 +5,28 @@
 历史页的“当前/待执行/暂停/DELIVERABLE”按段落日期及限定范围解释，不是今天的状态或操作许可。
 不在本页复制当前安装和授权摘要。
 
+## 2026-11-06 既存WFP历史读取与精确能力核验接入
+
+本人批准7E0A0E4704DF7E5A374944BD34E1FF65352FF2802577520905A5C4A823E73B33后，
+固定单次读取12:19:52.6826401–12:19:52.7543849Z完成，原进程句柄终态0/stage8、
+身份权限保持、受控终态
+5807D49CF5EEA078A678A4C59F8C27CB006B3C98FA92B3930B0F6F262482AC20。
+EngineOpen/Close0、collect/keyword查询0且值1/0、EnumCreate/Destroy0。固定原调用
+前后各2秒历史窗口Enum2首page0、返回0条/穷尽，无filter/layer读取。历史覆盖仍
+UNKNOWN，不能以零记录推翻TCPIP正向拒绝或声称具体策略不存在。证据在原任务
+wfp-history-candidate及新受控Program Files根，许可消耗，不自动重试/启用采集。
+没有新受限任务、Claude、Token/WFP/设备权限、代理、IPv6、AV变更。
+
+后续普通开发在原AtomicChild.ReadToken接入TokenCapabilitySnapshot，按有界实际
+SID/属性解析TOKEN_GROUPS再提供count，序列化AdmissionToken形状及所有count0
+门保持。未来singleton候选必须是S-1-15-3-1/属性4，非数量1就通过；目前无调用或
+授予路径。源已接入，实际新LPAC/非零Token和网络NOT_RUN。33项普通检查（含自身
+token只读）及叶BUILD0/0，内部快照不由GUI JSON反序列化。普通叶构建/自身token
+读取证据在work/lpac-network-profile-20261106-01，六产品工程非生成0诊断，
+不算产品BUILD/安装资格，也不修改旧Build/Assert及原实测工件。
+11:38:36–12:28:25Z公开Application provider元数据24条、无匹配AV，未触257上限且
+无查询错误；AV/BFE Running。厂商完整日志仍UNKNOWN，无AV/服务变化。
+
 ## 2026-11-06 既存WFP诊断只读源码
 
 TCPIP1012检查层拒绝后，普通研发及同桌面人类身份均实测EngineOpen0、两项GetOption

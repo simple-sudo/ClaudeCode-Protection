@@ -16,6 +16,7 @@
     <Compile Include="WorkspaceDataChannel.cs;WorkspaceCallerLifetime.cs;../Shared/WorkspacePipe.cs;../Shared/WorkspaceStopControl.cs" />
     <Compile Include="../Shared/WindowsDirectoryNames.cs" />
     <Compile Include="AtomicAdmission.cs" />
+    <Compile Include="TokenCapabilitySnapshot.cs" />
     <Compile Include="OwnedObjectDefaultDaclPolicy.cs" />
     <Compile Include="NetworkContentSnapshot.cs" />
     <Compile Include="ProtectedLifecycleCoordinator.cs" />
