@@ -5,6 +5,15 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-06 真实LPAC三调用与传输完成路径关联
+
+VERIFIED(原owner闭合结果释放/实际身份保持/自身伪句柄读取/有限AFD事件逐调用关联)。
+有效请求实际到达分配成功及TL创建完成拒绝，参数负标记分别命中；最终拒绝组件和
+Socket/HTTPS仍未通过。留存事件4条是正向证据，16MiB/261buffer绕卷风险不支持
+完整覆盖或缺分支证明。普通UTC/映射修复及73检查BUILD0/0不升级原生范围。
+没有PRODUCT_DELIVERY_ACCEPTED或完整L3/正式Claude通过。
+见[证据](STATUS.md#2026-11-06-原lpac调用与afd传输完成事件真实关联)。
+
 ## 2026-11-06 观察器真实闭合及原项目运行失败
 
 VERIFIED(93B193D4固定研发观察器真实seal/采集/自有Stop0/Token保持)，采集循环

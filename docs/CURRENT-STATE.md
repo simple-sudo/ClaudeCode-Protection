@@ -1,5 +1,24 @@
 # 当前状态与授权摘要
 
+2026-11-06本人批准5D5CD38F…后，新观察器与原owner三请求完整完成。原owner会话
+952f9d52…正常闭合后释放11文件，输入5DB5E7AF…、结果CC92D106…、独立核验
+EF51C3DD…。实际LPAC/mask2/cap0/low、权限及128字节默认DACL前后完全相同，自身
+pseudo handle创建时间读取成功；未OpenProcess/改Token/设备权限/联网或启动Claude。
+新trace自身Stop0/Token保持，终态0A22D481…，ETL BA20FCB7…原位保留。
+
+实际4事件绑定原封存ToolPid/header+payload PID/TID/逐次时窗：有效请求1006/status0
+后1013/exit1/C0000022；family35为1003/D，flags2为1001/D。匹配afd.sys/PDB将1013
+定位AfdCompleteTLEndpCreate（RVA54C0），1006为endpoint分配成功。拒绝已收敛至
+传输层端点创建完成路径，最终组件仍UNKNOWN。1983记录中1982为AFD1000、其他AFD
+ID0，过滤请求在该留存范围与观察一致；261buffers可能绕卷，完整覆盖仍UNKNOWN，
+不能从缺事件证明分支不存在。只读UTC解析纠错及状态映射保留全部冻结原版本与失败。
+73项普通检查、四项目BUILD0/0；新的TCPIP事件定义仅只读，未启用新采集或扩cap。
+11:00:15–11:21:40Z公开Application1项、无匹配AV事件，AV/BFE Running，完整厂商
+覆盖UNKNOWN。work仅元数据观察5.277GiB/PARTIAL/跳过8项，最大项仍旧调试与资格材料；
+本轮保留全部，不开启清理或重建旧实验。本次整体许可已消耗，无重试/强停/另行恢复/
+额外私有Job或Stop读取；Socket/HTTPS、
+完整L3、正式Claude及产品仍未验收。详见[传输层诊断](AFD-TRANSPORT-CREATE-DIAGNOSIS-20261106.md)。
+
 2026-11-06本人批准93B193D4…后，原观察器真实完成10:42:12.904–10:43:43.333Z
 固定采集，原句柄终态0、自己的trace/GUID停止0、Token/权限前后一致、前后full2/
 elevated1/非AC/无冒充；终态24CB3A6D…，原程序集EA1D86C2…、源8840D827…。新目录

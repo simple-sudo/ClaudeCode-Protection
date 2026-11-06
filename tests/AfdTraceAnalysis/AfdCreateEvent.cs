@@ -57,7 +57,8 @@ internal sealed record AfdCreateEvent(long FileTime,uint HeaderPid,uint HeaderTi
 }
 
 internal sealed record AfdRequestWindow(string Role,uint ActorPid,long ActorCreatedFileTime,uint ThreadId,long StartedFileTime,long FinishedFileTime,uint NativeStatus);
-internal sealed record AfdRequestCorrelation(string Role,int MatchingEvents,uint[] ObservedLocations,string[] MappedStages,
+internal sealed record AfdEventObservation(long FileTime,uint EnterExit,uint Location,uint Status,uint AddressFamily,uint SocketType,uint Protocol);
+internal sealed record AfdRequestCorrelation(string Role,int MatchingEvents,uint[] ObservedLocations,string[] MappedStages,AfdEventObservation[] Observations,
     bool ReturnStatusObserved,bool ExpectedEarlyMarkerObserved,string Interpretation)
 {
     internal bool NetworkAdmission=>false;
@@ -83,18 +84,30 @@ internal static class AfdCreateCorrelation
             var locations=matching.Select(e=>e.Location).Distinct().Order().ToArray();
             int marker=i==1?1003:i==2?1001:-1;
             return new AfdRequestCorrelation(r.Role,matching.Length,locations,locations.Select(Stage).ToArray(),
+                matching.Select(e=>new AfdEventObservation(e.FileTime,e.EnterExit,e.Location,e.Status,e.AddressFamily,e.SocketType,e.Protocol)).ToArray(),
                 matching.Any(e=>e.Status==r.NativeStatus),marker!=-1 && matching.Any(e=>e.Location==marker && e.Status==0xc000000d),
                 matching.Length==0?"UNKNOWN_NO_MATCHING_EVENT_NOT_PROOF_OF_NO_EXECUTION":"OBSERVED_CALL_WINDOW_LOCATION_NOT_UNIQUE_ROOT_CAUSE");
         }).ToArray();
     }
     private static string Stage(uint location)=>location switch {
-        1001=>"PacketFlagsFailure",1003=>"FamilyTypeProtocolFailure",1009=>"CreatorSecurityCaptureFailure",
+        1001=>"PacketFlagsFailure",1003=>"FamilyTypeProtocolFailure",1006=>"EndpointAllocated",1009=>"CreatorSecurityCaptureFailure",
         1010=>"CreatorSecurityCaptureOrMissingDescriptor",1011=>"TransportCreateFailure",1012=>"AfdCreateSuccessTail",
+        1013=>"TransportLayerEndpointCreateCompleted",
         _=>"UNKNOWN_LOCATION"};
 }
 
 public static class AfdAnalysisBridge
 {
+    // ConvertFrom-Json may already have produced a DateTime. Re-parsing that
+    // object as a culture-formatted string loses Kind and fractional ticks.
+    public static long UtcFileTime(DateTime value)
+        =>value.Kind==DateTimeKind.Utc?value.ToFileTimeUtc():throw new InvalidDataException("UtcDateTimeKindRequired");
+    public static long UtcFileTime(string value)
+    {
+        if(value.Length is <20 or >28 || !value.EndsWith('Z'))throw new InvalidDataException("OriginalIsoUtcTimestampRequired");
+        var parsed=JsonSerializer.Deserialize<DateTime>(JsonSerializer.Serialize(value));
+        return UtcFileTime(parsed);
+    }
     // Ordinary trusted decoder only. Inputs are data; no path, process, ETW
     // control or activation operation is exposed by this bridge.
     public static string Analyze(string windowsJson,string[] eventXml)

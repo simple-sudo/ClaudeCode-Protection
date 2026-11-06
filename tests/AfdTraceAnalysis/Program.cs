@@ -13,6 +13,13 @@ void Check(bool condition,string reason){if(!condition)throw new InvalidDataExce
 void Reject(Action action,string reason)
 {try{action();}catch(Exception error)when(error is InvalidDataException or OverflowException or System.Xml.XmlException){passed++;return;}throw new InvalidDataException(reason);}
 long created=DateTime.Parse("2026-11-06T12:00:00Z",CultureInfo.InvariantCulture,DateTimeStyles.AdjustToUniversal).ToFileTimeUtc();
+var iso="2026-11-06T11:01:45.2442188Z";
+var utc=DateTime.Parse(iso,CultureInfo.InvariantCulture,DateTimeStyles.RoundtripKind);
+Check(AfdAnalysisBridge.UtcFileTime(iso)==AfdAnalysisBridge.UtcFileTime(utc) && DateTime.FromFileTimeUtc(AfdAnalysisBridge.UtcFileTime(utc)).ToString("o")==iso,"JSON UTC string/object preserve exact ticks without local-time reparse");
+Reject(()=>AfdAnalysisBridge.UtcFileTime(DateTime.SpecifyKind(utc,DateTimeKind.Unspecified)),"ambiguous DateTime not treated as UTC");
+Reject(()=>AfdAnalysisBridge.UtcFileTime(DateTime.SpecifyKind(utc,DateTimeKind.Local)),"local DateTime not silently accepted as UTC");
+Reject(()=>AfdAnalysisBridge.UtcFileTime("2026-11-06T11:01:45"),"unqualified timestamp string refused");
+Reject(()=>AfdAnalysisBridge.UtcFileTime("2026-11-06T12:01:45+01:00"),"offset string cannot replace original UTC");
 string Xml(uint location=1009,uint status=0xc0000022,uint pid=101,uint tid=201,long? at=null)
 {
     var time=DateTime.FromFileTimeUtc(at??created+150).ToString("o",CultureInfo.InvariantCulture);
@@ -49,6 +56,11 @@ var result=AfdCreateCorrelation.Correlate(windows,rows);
 Check(result[0].MatchingEvents==1 && result[0].MappedStages.SequenceEqual(new[]{"CreatorSecurityCaptureFailure"}) && result[0].ReturnStatusObserved,"valid request location/status scoped correlation");
 Check(result[1].ExpectedEarlyMarkerObserved && result[2].ExpectedEarlyMarkerObserved,"both independent markers");
 Check(result.All(r=>!r.NetworkAdmission),"correlation never grants admission");
+var completed=AfdCreateCorrelation.Correlate(windows,new[]{parsed with {Location=1006,Status=0},parsed with {Location=1013,EnterExit=1}})[0];
+Check(completed.MappedStages.SequenceEqual(new[]{"EndpointAllocated","TransportLayerEndpointCreateCompleted"}) &&
+    completed.Observations[0].Status==0 && completed.Observations[1].Status==0xc0000022 && completed.Observations[1].EnterExit==1,
+    "retained allocated/success then transport-completion/denied observations do not conflate stage with outcome");
+Check(!JsonSerializer.Serialize(completed).Contains("FFFFD000",StringComparison.Ordinal),"expanded observations still omit kernel pointers");
 foreach(var altered in new[]{parsed with {HeaderPid=102},parsed with {PayloadPid=102},parsed with {HeaderTid=202},parsed with {FileTime=created+250}})
     Check(AfdCreateCorrelation.Correlate(windows,new[]{altered})[0].MatchingEvents==0,"foreign actor/thread or time excluded");
 var empty=AfdCreateCorrelation.Correlate(windows,Array.Empty<AfdCreateEvent>());

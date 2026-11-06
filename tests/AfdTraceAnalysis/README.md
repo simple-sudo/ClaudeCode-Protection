@@ -23,6 +23,14 @@ not proof of a unique failure cause. No event is UNKNOWN, never proof that a
 branch did not execute. Trace loss/wrap and original-owner result/actor binding
 must be checked separately by the trusted fixed reader.
 
+Matched-image mappings include1006 (endpoint allocated) and1013
+(AfdCompleteTLEndpCreate). The latter logs completion status for success OR
+failure; retain EnterExit/status/time rather than labelling the location alone
+as denial. Real observed0→C0000022 is a scoped transport-completion finding,
+not a unique root cause. UTC conversion accepts an already-UTC DateTime or the
+original ISO-Z string, preserving fractional ticks; local/unspecified time is
+refused. Do not culture-format and reparse PowerShell JSON DateTime objects.
+
 The timed probe uses the original NativeBoundary request bytes and access masks;
 the older matrices/schema remain unchanged. These additions do not qualify
 Socket/HTTPS, privacy L3, an installed native lifecycle or official Claude.

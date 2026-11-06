@@ -5,6 +5,28 @@
 历史页的“当前/待执行/暂停/DELIVERABLE”按段落日期及限定范围解释，不是今天的状态或操作许可。
 不在本页复制当前安装和授权摘要。
 
+## 2026-11-06 原LPAC调用与AFD传输完成事件真实关联
+
+本人批准5D5CD38FFB228FD5D578F1663B4DD092E0AEAFB71C1FF5773DB661AD2F41ECC4，
+冻结链/全部失败在work/afd-call-correlation-20261106-01/candidate-r4。原owner正常
+闭合释放11文件，输入5DB5E7AFA64F2571B2BE5FEE57BEBB54E37880E84139756F1D7F4E1F910BCBA3，
+结果CC92D10662B9B4A54B4F9AA1CB64A94310B764BE6585B4C2B565E80721B24EC1，核验
+EF51C3DD80EEFB63D6087C46DD599064EE7401C143E5744B6954EC1AF4063A68。原真实LPAC
+Token/cap0/低完整性/权限/DACL128前后一致；自身伪句柄创建时间成功，没有OpenProcess。
+
+观察器终态0/原自有Stop0/Token一致，终态0A22D481…；ETL BA20FCB7…实际1983记录、
+1982 AFD1000/其他AFD ID0；actor4条同时绑定原ToolPid/header+payload PID/TID/单次
+时窗。有效请求1006/0→1013/exit1/C0000022，两个负标记1003/D与1001/D。独立关联
+391D7E91CD15FBB6E0756147B28E4C70EB8292A2C507C7C4DFFF47AE6A59C5CF。
+匹配镜像/PDB的RVA54C0/54F0支持1013为TL完成而非唯一失败层；1006在成功分配后。
+16MiB/261buffers有绕卷可能，loss三项0不代表完整覆盖，最终TCPIP/WFP等拒绝层UNKNOWN。
+
+普通身份门先拒绝不同执行用户，随后用原普通桌面身份读取；没有改门。只读UTC二次
+解析错误修正保持原身份/哈希/时窗；原冻结reader及两个纠错版本、初次替换失败和
+明确INVALID的临时Passed4保留。严格4项UTC检查及版本化C#回归通过。最终73项普通
+检查/四项目BUILD0/0；未新增捕获、权限写入或私有Job/Stop读取。所有系统许可消耗，
+Socket/HTTPS/完整L3/正式Claude未通过。机制与后续候选见[传输层诊断](AFD-TRANSPORT-CREATE-DIAGNOSIS-20261106.md)。
+
 ## 2026-11-06 真实AFD采集闭合、项目Run失败与后续修复
 
 本人批准93B193D4271F621425043ADA8BCBD9649B18E12A5AE4B3261F48F19BF79C5B8A；
