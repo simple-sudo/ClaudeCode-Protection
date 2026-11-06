@@ -7,6 +7,27 @@
 
 ## 2026-11-06 AFD解析前后固定负对照与标签参考
 
+后续本人批准D09AABDE604EC47CC5FE1A64F80DDD660CB98AE8F8385FA6197004AFCFF91051，
+入口56862649…/输入41C0DAB6…在现装610b原owner下单次完成。ordinary daily终态0，
+会话e18b7482…，原owner闭合后11文件绑定释放；结果
+7AE4D8E7190E4052EFD90A3001E14A2E53E490FA7656E6E3139A8E229A6E22F5，独立核验
+3B2EF20A31D6BCA26D028ECAB848C60678EE3C088EA118B561711EB041BEB2C6，归一化
+F0B5595B6D8511CDE42359723F5C4AE4890B26B7A13B809A059DBD0DC08A8CCA。
+实际有效输入C0000022、family35/flags2各C000000D；失败IO_STATUS不当成功使用。
+Codex核对真实Token原值：LPAC/package mask2/cap0/low/两项权限/默认DACL128字节
+前后完全一致。原owner seal、Job/隐私门/既有WFP门与闭合后结果释放链通过，不曾额外
+读取私有Job/Stop。原值保留candidate/verified-retained-content及外部新返回bundle。
+没有联网/IOCTL/CUDA/Claude、安装或设备权限变化，无重试/强停/额外私有错误读取或
+另行恢复，许可已消耗。AV/BFE Running；06:30:12–06:30:36Z Application无匹配AV事件，
+完整覆盖UNKNOWN。VERIFIED(固定LPAC状态差异/身份保持/正常闭合)，没有新增Socket
+产品能力；拒绝组件仍UNKNOWN，不是完整L3或网络PASS。
+
+同窗口既有三个公开网络日志仅4项临时profile防火墙规则建立/删除，WFP Operational及
+FirewallDiagnostics无匹配记录，不证明无WFP拒绝；原XML2F235BA3…留本地。只读本机
+AFD96事件定义8A9126D3…：event1000含EnterExit/Location/Process/Endpoint/AF/type/
+protocol/ProcessId/Status，keyword4、level4；Location可与固定镜像调用点进行后续
+有限关联，尚未启用跟踪或实测关联，不用元数据冒充采集证明。
+
 tests/AfdDispatchBoundary复用NativeBoundary新增三固定请求；原五项矩阵保持请求不变，
 失败输出句柄不再认领，失败IO_STATUS_BLOCK标UNDEFINED_ON_FAILURE。两项目隔离
 SDK8.0.422构建0/0；首次CS8604修复记录保留。本人普通1001实测原endpoint成功，

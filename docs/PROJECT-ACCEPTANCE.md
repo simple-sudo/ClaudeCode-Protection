@@ -5,6 +5,14 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-06 AFD解析差异真实验证，Socket仍未交付
+
+SOURCE/BUILD/VERIFIED(固定普通及原owner真实LPAC三项对照、身份保持、原闭合结果释放)。
+有效IPv4/TCP在LPAC仍C0000022，family35/flags2为C000000D，原用户参考0/D/D；
+帮助收敛有效创建路径，不证明唯一拒绝分支。独立核验3B2EF20A…，原值本地保留。
+没有CAPABILITY_DELIVERED(Socket/HTTPS)、完整L3或PRODUCT_DELIVERY_ACCEPTED。
+见[证据](STATUS.md#2026-11-06-afd解析前后固定负对照与标签参考)。
+
 ## 2026-11-06 610b固定可信宿主GPU参考已交付
 
 CAPABILITY_DELIVERED(现装普通daily/可信owner的固定宿主GPU参考及正常原Job闭合)。

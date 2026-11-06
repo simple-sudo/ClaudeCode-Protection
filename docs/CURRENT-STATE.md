@@ -1,5 +1,23 @@
 # 当前状态与授权摘要
 
+2026-11-06本人批准D09AABDE…后，现装610b原owner/LPAC三项解析对照真实完成。
+普通daily终态0；原owner正常闭合后才释放11文件，输入41C0DAB6…、结果7AE4D8E7…，
+独立核验3B2EF20A…、归一化F0B5595B…。会话e18b7482…：有效IPv4/TCP请求C0000022，
+family35与flags2均C000000D，与普通用户两负对照一致；全部请求无有效遗留句柄。
+实际LPAC/package mask2/cap0/low、自身权限和128字节默认DACL前后完全相同，原owner
+seal、原Job/隐私/WFP门及闭合后结果释放链通过。未另读私有Job/Stop，不能把契约释放
+写成新的独立内核WFP/Job全量观测。没有Token/设备ACL/capability写入、网络/IOCTL/CUDA/
+Claude或安装；现装仍610b/INACTIVE。AV/BFE Running，运行窗口公开Application无匹配
+AV事件，完整覆盖UNKNOWN。本次许可已消耗，无重试/强停/额外私有读取或另行恢复。
+
+VERIFIED(原owner真实LPAC固定解析状态差异/身份不变/正常闭合结果释放)，不是Socket或
+产品能力交付。结果支持有效创建路径与早期参数拒绝分开继续定位，不能唯一归因内核
+拒绝层。既有公开网络日志仅有临时profile规则建立/删除4记录，无分类拒绝证据。只读
+AFD本机96事件定义发现event1000带Location/Status/ProcessId；匹配代码调用点可区分
+creator SD、transport create等分支，尚未启用跟踪/实测此关联。下一步先固定该事件与
+分支的解码合同，再准备原owner的有限采集资格；不继续盲测同类输入，不扩大设备授权。
+AFD/Socket/HTTPS仍FAIL，完整L3、受限GPU、GUI、正式Claude、整机验收未完成。
+
 2026-11-06从ea119d5回到AFD拒绝层定位。新增tests/AfdDispatchBoundary固定三项解析
 对照，复用原NativeBoundary；修正原生失败时认领输出句柄/把IO_STATUS_BLOCK默认0
 当有效输出的问题。原五项矩阵请求不变，历史失败不回填。新对照及原DeviceBoundary
@@ -11,7 +29,7 @@ AFD返回S:AI，三对象owner/DACL前后字节一致，句柄关闭，记录C5C
 标签不等于低完整性可写。匹配驱动离线分支显示两标记在本路径的endpoint分配前拒绝；
 内部AfdPerformSecurityCheck使用admin描述符并保存布尔标志，不能据函数名认定本次
 创建失败点。以上只有SOURCE/BUILD/VERIFIED(普通固定参考/离线分支)，不是新产品能力。
-新原owner/真实LPAC对照NOT_RUN，尚无本轮具体执行批准；拟复用现装610b，不安装。
+此段为准备时证据；随后真实LPAC对照见上段，不回改原普通参考与失败记录。
 现装610b/INACTIVE及全部既有隔离边界不变，AFD/Socket/HTTPS仍FAIL；完整L3及最终产品
 未通过。下一步固定三个相同请求在原LPAC的返回差异，不重复已失败默认DACL候选或
 扩大capability/设备权限，不把负对照差异当内核调用跟踪。
