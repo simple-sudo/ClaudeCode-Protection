@@ -5,6 +5,14 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-05 原owner失败摘要实际可用
+
+VERIFIED(经本人批准原owner inactive更新、15公开安装文件及指定真实历史终态摘要)。
+CAPABILITY_DELIVERED(现装owner对6688指定历史失败终态的有界摘要查询)。实际报告项目
+工具等待超时，内部CUDA阶段仍UNKNOWN；原未释放结果未读，未重跑工作负载。新版真实
+受限失败回传及全部正式产品条件仍未验收，PRODUCT_DELIVERY_NOT_ACCEPTED。
+见[证据](STATUS.md#2026-11-05-原owner失败反馈inactive更新及真实失败摘要)。
+
 ## 2026-11-05 原owner失败反馈inactive候选
 
 f6ab7b19候选的产品载荷/Bootstrap普通BUILD0/0；20文件及嵌入清单独立匹配，14项前驱

@@ -1,5 +1,28 @@
 # 当前状态与授权摘要
 
+2026-11-05本人明确批准修正入口2CBCD5BD…/review3B19E574…后，原句柄helper5448终态0，
+现装已独立核验为f6ab7b19178e4226bf0b6bcdf1ef744a / INACTIVE，manifest仍E6F10C41…，
+15个公开安装文件与原固定清单逐项一致。原更新owner报告全部适用closed-admission/
+原Job闭合及WFP absent/quarantine门完成；没有新建Job、WFP变更或Claude启动。新安装
+目录、版本文件和原安装选择/事务记录按批准范围更新；此前资源Token/设备ACL/capability、
+IPv6及代理未改。AV/BFE前后Running，FlClash及Core PID相同；没有观察到新AV事件，
+完整AV告警覆盖仍UNKNOWN。原3e2及全部失败证据保留，无自动重试、强停或恢复。
+原0B6B9E96入口在执行前发现预检回执重名，未发起UAC或安装；另存r2，仅分开预检/
+执行回执名，保留原工件/原路径，本人单独确认后才执行。两次普通预检分别保留。
+
+新现装Broker已实际读取唯一批准的66887384…绑定历史终态并返回有界摘要：ChildExit3，
+ReportedChild为TimeoutException，FailureCode=-2146233083，WAIT_PROJECT_COMPILER，
+ToolExit=null，固定类别ProjectCompilerWaitTimeout。结合现行原代码，这表示父进程未在
+10秒内观察项目编译/执行工具退出；不定位工具内部具体调用，也不能唯一归因CUDA或
+称为崩溃证明。历史终态hash D442F831…；新摘要3AD7C879…，安装/摘要核验DC2AA0B1…，
+在work/owner-feedback-update-9cfb1b7-20261105/operation。没有读取tool-error、rawJob/
+Stop文件或未释放结果，原终态内Job/Stop未导出；没有重跑原组合/reader/AFD-only任务。
+本次许可已消耗。CAPABILITY_DELIVERED(现装owner对该指定历史失败终态的有界摘要查询)
+仅为支持能力；原daily/GUI新失败回传已安装，但新版真实受限失败回传尚未验证。Socket/
+HTTPS仍FAIL，完整L3/GPU/生命周期/官方Claude未通过，PRODUCT_DELIVERY_NOT_ACCEPTED。
+下一重点是AFD实际拒绝层与工具内CUDA阶段区分；不把超时解释为权限拒绝或唯一CUDA原因，
+不直接放大capability、改全机设备ACL或释放任何安全门。
+
 2026-11-05原owner失败反馈候选f6ab7b19178e4226bf0b6bcdf1ef744a已完成普通构建/固定，
 尚未安装。包摘要E6F10C4174CE36061EE19EAE4A6F9155560DF2C9582A6552404A1534E915F1F8，
 保护库C9F4EE37A015D8CFC7B340100C66603AFB8F3A3BF9BCC076FFA9A9B149B6C9E7。

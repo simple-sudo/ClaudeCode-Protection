@@ -5,6 +5,25 @@
 历史页的“当前/待执行/暂停/DELIVERABLE”按段落日期及限定范围解释，不是今天的状态或操作许可。
 不在本页复制当前安装和授权摘要。
 
+## 2026-11-05 原owner失败反馈inactive更新及真实失败摘要
+
+本人批准原入口后，执行前发现其预检/执行回执重名；原入口未运行、未触发UAC，工件和
+原回执保留。修正版仅分开两份固定回执名，普通预检通过；本人另明确批准
+2CBCD5BD9C35791CBAA986EFA1FD432E7196D8C2B86AC2DA493230F298B684C7入口及
+3B19E57478D4AD2F9DE3F66A4F2D9A90897F68367AC22018D534C35D06C79184固定review后执行。
+原helper5448终态0，原owner更新f6ab7b19178e4226bf0b6bcdf1ef744a为INACTIVE并保持全部
+适用admission/Job/quarantine/recovery门。独立核验15个公开安装文件及指定回执成功，
+verified-installed.json SHA256 DC2AA0B10B8E269D38EF8C5161713A585650905EB0072AC446BDF3CA9A0C0457。
+新现装Broker实际读取66887384…绑定终态，输出WAIT_PROJECT_COMPILER、TimeoutException、
+-2146233083、ToolExit=null及ProjectCompilerWaitTimeout；报告ChildExit3。终态摘要
+SHA256 D442F831E0A0E28B0B2F82320D9FDA5E4862BAD67F8162457D2CB3CF6B685D42，
+导出摘要文件3AD7C879FAD2A527A289D10D43BA9740F9CBE0B7BDFE35241A01899FA1630EA2。
+只证实父进程的10秒工具等待超时，不定位工具内CUDA/API或证明崩溃。没有重跑工作负载、
+读取原tool-error/rawJob/Stop文件或未释放结果；Token/设备ACL/cap/WFP/IPv6/代理未改。
+证据work/owner-feedback-update-9cfb1b7-20261105/operation，本次许可消耗。
+CAPABILITY_DELIVERED(现装owner的指定历史失败终态有界摘要查询)，不等于真实新失败回传、
+网络/GPU/隐私/生命周期通过或完整交付。
+
 ## 2026-11-05 原owner失败反馈inactive候选
 
 候选f6ab7b19178e4226bf0b6bcdf1ef744a，manifest E6F10C4174CE36061EE19EAE4A6F9155560DF2C9582A6552404A1534E915F1F8，
