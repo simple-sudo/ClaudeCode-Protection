@@ -1,14 +1,23 @@
 # 原 owner 的有限宿主 GPU 参考
 
-2026-11-05：SOURCE / BUILD / INTEGRATED(原 GPU 资格源码链)，
-VERIFIED(普通身份的策略及管道 fixture)。新的关联 Token / 原子 Job / CUDA 路径尚未实际运行。
+2026-11-05：SOURCE / BUILD / INTEGRATED(原 GPU 资格源码链及后续源码hold)，
+VERIFIED(普通只读/fixture、9bbbb与4588安装及失败Job闭合)，GPU运行仍未通过。
 安装、运行与授权以 [CURRENT-STATE](CURRENT-STATE.md) 为准。
+
+4588实际资格仍拒绝HostGpuNormalTokenRoleMismatch，未得到创建身份/CUDA帧，新原Job
+已闭合/零成员。普通自身linked读取实际是Type2/Identification1的full Token，只有
+查询/关闭；这是limited→full方向，不能追认失败owner实际拒绝的字段。
+[ZwDuplicateToken](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-zwduplicatetoken)
+规定转primary需要Impersonation或Delegation。当前路线不放宽primary要求或增加TCB，
+源码在新Job前hold，尚未安装；停止继续生成同路线候选。原普通GUI/Broker创建方必须
+绑定真实普通身份和持有句柄，通过原owner的固定目标/原Job/suspended/seal验证后运行；
+此适配仍DESIGN，没有Explorer脱离Job的启动或通用Token/PID/命令入口。
 
 9bbbb实际固定资格安装成功，但宿主参考失败，原新Job闭合/零成员已核验；未取得
 创建身份、CUDA或owner返回属性证据。普通查询发现TokenLinkedToken的零buffer请求
 实际返回ERROR_BAD_LENGTH(24)、长度8；旧通用读取器要求122，会提前拒绝。现已用
 固定8字节结构直接读取并精确接管成功返回的句柄，不扩大Token访问权或接受任意长度。
-SOURCE/BUILD及普通当前Token Capture通过；修正4588候选尚未安装/提升验证。原泛化
+SOURCE/BUILD及普通当前Token Capture通过；该修正随后在4588提升资格中仍被角色门拒绝，见上。原泛化
 失败阶段不能唯一回溯到具体分支，新代码区分source/normal/link/created等阶段。
 
 原 `GpuQualification.Run` 在管理 owner 线程同步执行 `HOST_CONTROL` CUDA；其后的受限子进程
@@ -42,7 +51,7 @@ LPAC 阶段；本次固定资格只考虑宿主参考，不运行 LPAC、AFD、�
 53 项普通策略断言覆盖 full/limited/created 角色、关联登录语义、权限漂移、普通调用者拒绝、
 报告与原停止绑定，以及 host/LPAC 证据不能交叉授信。另复用 28 项协议/真实普通管道 fixture、
 21 项前驱选择和 40 项失败摘要检查。它们不证明 Windows 实际创建成功或真实故障恢复。
-新候选 `9bbbb71f91ee4423bbb53fb96bb64479` 的完整构建和固定清单保留于
+首个关联Token候选 `9bbbb71f91ee4423bbb53fb96bb64479` 的完整构建和固定清单保留于
 `work/gpu-host-owner-d1f927e-20261105/candidate-auth-model`；之前错误要求同一 LSA 登录标识的
 未执行候选 `9b8d062318ee49f98993830be68a2f03` 原字节保留，已被替代，不准据其运行。
 

@@ -5,6 +5,29 @@
 历史页的“当前/待执行/暂停/DELIVERABLE”按段落日期及限定范围解释，不是今天的状态或操作许可。
 不在本页复制当前安装和授权摘要。
 
+## 2026-11-05 4588真实拒绝闭合与普通创建方缺口收敛
+
+本人批准852A4520…，原helper15692/125，4588安装成功、15公开资产匹配、INACTIVE；
+参考owner/3，HostGpuNormalTokenRoleMismatch、uint32 2148734209，无确认子进程身份/CUDA帧。
+新Job闭合/零成员且原intent/admission/completion绑定，completion
+6A66C630BAF4A8C8C9E8858A77D70DE5A748306F5BE7773B6297CBB4B9B77763。
+核验9AAA534531E930D204D0A66D33B884C89E70838F3788919B0882C781760B43DB；
+发现摘要0FD821B8193DCB1A162F1C53AA94AD9279FD52629AD84A200A86FBDEEE354B0E。
+仅指定新原值/记录范围，没有旧私有读取、重试或额外恢复；许可消耗。安全公开观察r2：
+AV/BFE Running、FlClash/Core PID不变、04:40:09–04:49:02Z无匹配Application AV记录，
+完整AV覆盖UNKNOWN。首份日期二次转换产生无效窗口，原字节保留，不能用其0事件结论。
+
+普通1001自身linked查询实际Type2/Identification1、Elevated1/Full2、non-AC/UI0，
+metadata SHA959552358742037ACE2E2F9B9782476CC99636793AC418B1EC056B2E3E1768CE。
+仅查询/关闭，未复制/分配/模拟或调权；这是反方向实测，不当作失败owner完整角色字段。
+Microsoft ZwDuplicateToken文档明确转primary要求Impersonation/Delegation，不能接受
+identification或增加TCB来掩盖创建链缺口。停止同路线候选。原型源码Run入口增加
+HostGpuRequiresBoundOrdinaryCreationOwner，在新Job/准入/Token操作前拒绝；尚未安装。
+保护库/Broker/专用测试BUILD0/0、54策略检查通过、6src非生成0/0，工件在
+work/gpu-host-owner-d1f927e-20261105/post-native-creation-hold。
+后续绑定原普通GUI/Broker创建方与提升owner，复用原Job/持有句柄/seal/停止；适配未实现，
+不引入任意PID/Token/目标，不靠Explorer脱离Job启动。没有新增CAPABILITY_DELIVERED(GPU)。
+
 ## 2026-11-05 9bbbb真实资格失败闭合与固定Token结构修复
 
 review961FA311…经本人批准，原helper19500/125；9bbbb安装成功，15公开资产匹配，保持

@@ -13,6 +13,10 @@ internal sealed record GpuHostReferenceResult(string RequestId,string? JobId,uin
 internal static class GpuHostReferenceQualification
 {
     internal const string Scope="TRUSTED_LINKED_ORDINARY_HOST_GPU_REFERENCE_NOT_LPAC";
+    // The admin owner's queried linked token can be identification-only.
+    // Never accept it as a primary token or acquire TCB to make this route
+    // work. A held, authenticated ordinary creation owner is not integrated.
+    internal static void RequireQualifiedCreationPath()=>throw WfpNative.Contract("HostGpuRequiresBoundOrdinaryCreationOwner");
     internal static bool Qualified(GpuChildReport child,string nonce,uint pid,uint exit,bool progressComplete,RuntimeStop? stop,string jobId)
         =>pid>0 && child.SchemaVersion==1 && child.Pid==pid && child.Nonce==nonce && child.Scope==Scope && exit==0 && progressComplete &&
           GpuQualification.Qualified(child) && stop?.ConfirmsClosedHostGpu(nonce,jobId)==true;
@@ -35,6 +39,7 @@ internal static class GpuHostReferenceQualification
     }
     internal static GpuHostReferenceResult Run(ProtectedState state,VerifiedVersion version,FixedLayout layout,IReadOnlyList<PersistentFence> fences)
     {
+        RequireQualifiedCreationPath(); // Before any new Job/admission/token operation.
         state.AssertHeld();version.AssertHeld(state);LifecycleRecovery.AssertNoPending(state);InstallationLoopbackLease.AssertClosedHistory(state);
         foreach(var intent in OwnedJobIntent.ReadAll(state))if(AtomicJobCompletion.ReadClosed(state,intent) is null)throw WfpNative.Contract("HostGpuRequiresPriorAdmissionsClosed");
         var id=Guid.NewGuid().ToString("N");var plan=new GpuProbePlan(id,1);var progress=new GpuCallProgressReader(id,true);

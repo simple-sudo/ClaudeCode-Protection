@@ -1,5 +1,27 @@
 # 当前状态与授权摘要
 
+2026-11-05本人批准修正review852A4520…后单次执行：原helper15692终态125，4588a6ffbdb840a89522df268edfdc2f
+安装成功并独立核验15公开文件，现装 / INACTIVE，manifest C5D1B76E…。参考owner返回3，
+HostGpuNormalTokenRoleMismatch、uint32码2148734209；没有已确认子进程身份/CUDA帧。
+新Job 0e4f9eb3…准入闭合/零成员且三份原记录绑定核验通过，completion 6A66C630…；
+核验9AAA5345…、发现摘要0FD821B8…保存在work/gpu-host-owner-d1f927e-20261105。
+本次许可已消耗，不重试/强停/恢复，不读旧私有错误或未释放结果。设备ACL/代理/IPv6/
+AV未改，LPAC与Claude未启动；owner创建后Token恢复仍未取得证明。AV/BFE Running，
+FlClash/Core PID保持14248/25588；04:40:09–04:49:02Z公开Application无匹配AV事件，
+完整覆盖UNKNOWN。首次公开观察二次转换日期产生无效窗口，原文件保留不使用，以r2为准。
+
+普通1001另做自身关联Token元数据只读查询并关闭句柄，实际Type2、Identification1、
+Elevated1/Full2、non-AC/UIAccess0，没有复制、分配、模拟或权限调整；原值95955235…。
+这是limited→full方向，不能冒充失败提升owner所取limited Token的实际字段。结合
+Windows对identification→primary转换的限制，停止继续生成相同linked创建路线的候选，
+不放宽primary条件、不增加TCB/SYSTEM。源码新增HostGpuRequiresBoundOrdinaryCreationOwner
+在新Job/Token操作前拒绝；保护库/Broker/测试BUILD0/0，54普通策略通过，6src非生成0/0。
+此hold尚未安装；C5D固定包和全部原失败字节保留。SOURCE/BUILD/INTEGRATED(源码hold)，
+VERIFIED(4588安装/失败Job闭合/普通只读)，无新增GPU运行能力或隐私/产品验收。
+下一实现必须在原GUI/普通Broker与提升owner之间绑定真正普通创建身份、原句柄和原Job，
+固定目标且suspended/JOB_LIST创建，owner核验后resume，不能借Explorer启动未受控进程
+或开放任意PID/Token/命令入口。该适配尚未实现；与AFD实际拒绝层定位并列推进。
+
 2026-11-05本人批准review961FA311…后执行一次9bbbb更新/宿主GPU参考：原helper19500
 终态125，安装部分成功，15公开文件独立核验一致，现装9bbbb71f91ee4423bbb53fb96bb64479
 / INACTIVE，manifest EFFDC350…。参考owner终态3，HostGpuLinkedOrdinaryTokenRequired、

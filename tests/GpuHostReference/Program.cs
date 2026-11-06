@@ -60,6 +60,7 @@ catch(UnauthorizedAccessException){checks++;}
 
 var gpu=library.GetType("ProtectionLifecycle.GpuQualification",true)!;
 var host=library.GetType("ProtectionLifecycle.GpuHostReferenceQualification",true)!;
+Refuse(()=>Call(host,"RequireQualifiedCreationPath"),"unqualified linked-token creation path is held before a new Job");
 var reportType=library.GetType("ProtectionLifecycle.GpuChildReport",true)!;var stopType=library.GetType("ProtectionLifecycle.RuntimeStop",true)!;
 var hash=(string)gpu.GetProperty("ExpectedHash",hidden)!.GetValue(null)!;
 var stages=new[]{"cuInit","cuDriverGetVersion","cuDeviceGetCount","cuDeviceGet","cuDeviceGetName","cuCtxCreate_v2","cuMemAlloc_v2","cuMemcpyHtoD_v2",
