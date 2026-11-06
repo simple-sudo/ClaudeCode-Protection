@@ -189,6 +189,7 @@ public static class BootstrapInstaller
             "D21A7D9F39A93E82087062EAD14F49329E7DBDD2743B2DC12DE98CAB6DC691F1"
         }; // Exact reviewed packages expose no launch/admission command.
         private static readonly string[] OneShotAdmissionManifests={
+            "849A2BFC1D9F08D1B581BD5C79EDBF1575048F5D20B3145D6297B10E1CF80C8F", // 3e2 exact installed public package; all live admission/Job/quarantine/recovery gates still required. Not an execution approval.
             "6CDC07DC3CEDEC82D6CCA5B2F705471DC79C9EE99CCB519BB89FBFEDCCF04053", // 0f1 socket10022; original Job closed/zero and all28 registry objects independently restored; live gates remain.
             "F5754A429380192B3A77D4F90B95D19F1A49DA51D5FBDBAE8436895D200DA605", // d00 socket10022; original Job closed/zero and all28 registry objects restored; live gates remain.
             "F0F03EDE10E1247B788F298BC877A1B8EAF7EFF9773B8D667F93EEC30EB940EC", // a149 socket creation refused; original Job closed/zero and all25 registry objects restored; live gates remain.

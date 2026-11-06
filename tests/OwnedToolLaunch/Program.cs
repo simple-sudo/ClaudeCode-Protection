@@ -244,8 +244,6 @@ if(args[0]=="inactive-transition")
 {
     var lease=library.GetType("ProtectionLifecycle.BootstrapInstaller",true)!
         .GetNestedType("PinnedInactiveUpdateLease",BindingFlags.NonPublic)!;
-    const string actualRelease="979ca94af3744760b356678a31f2eb66";
-    const string actualManifest="3CE38FBC1D5ECB5FB8292B1107992C4E3BC4DE487AB7BF45AE4B37DCA64489D1";
     // The replacement is a fixture selection, not an approved package or
     // installed transition. This executes only the real pure selection guard.
     var replacementRelease=new string('a',32);var replacementManifest=new string('A',64);
@@ -256,14 +254,19 @@ if(args[0]=="inactive-transition")
         var refused=false;try{check();}catch(InvalidOperationException error)when(error.Message=="Only pinned reviewed inactive packages can migrate"){refused=true;}
         Require(refused,"inactive selection must refuse changed, unknown or same-package transitions");
     }
-    Check(actualRelease,actualManifest,actualRelease,actualManifest,replacementRelease,replacementManifest);
-    Deny(()=>Check(replacementRelease,actualManifest,actualRelease,actualManifest,replacementRelease,replacementManifest));
-    Deny(()=>Check(actualRelease,replacementManifest,actualRelease,actualManifest,replacementRelease,replacementManifest));
-    Deny(()=>Check(actualRelease,actualManifest,actualRelease,actualManifest,actualRelease,replacementManifest));
-    Deny(()=>Check(actualRelease,actualManifest,actualRelease,actualManifest,replacementRelease,actualManifest));
-    Deny(()=>Check(actualRelease,replacementManifest,actualRelease,replacementManifest,replacementRelease,new string('B',64)));
-    Deny(()=>Check(actualRelease,actualManifest.ToLowerInvariant(),actualRelease,actualManifest.ToLowerInvariant(),replacementRelease,replacementManifest));
-    Console.WriteLine($"PASS actual installed{actualRelease[..8]} exact pinned inactive selection and six current/prior/next/unknown/case drift refusals; pure production guard only, not live Job closure, maintenance, installation or UAC");return 0;
+    foreach(var (actualRelease,actualManifest) in new[]{
+        ("979ca94af3744760b356678a31f2eb66","3CE38FBC1D5ECB5FB8292B1107992C4E3BC4DE487AB7BF45AE4B37DCA64489D1"),
+        ("3e2e1cc777e54ac6b4123edfce65773e","849A2BFC1D9F08D1B581BD5C79EDBF1575048F5D20B3145D6297B10E1CF80C8F")})
+    {
+        Check(actualRelease,actualManifest,actualRelease,actualManifest,replacementRelease,replacementManifest);
+        Deny(()=>Check(replacementRelease,actualManifest,actualRelease,actualManifest,replacementRelease,replacementManifest));
+        Deny(()=>Check(actualRelease,replacementManifest,actualRelease,actualManifest,replacementRelease,replacementManifest));
+        Deny(()=>Check(actualRelease,actualManifest,actualRelease,actualManifest,actualRelease,replacementManifest));
+        Deny(()=>Check(actualRelease,actualManifest,actualRelease,actualManifest,replacementRelease,actualManifest));
+        Deny(()=>Check(actualRelease,replacementManifest,actualRelease,replacementManifest,replacementRelease,new string('B',64)));
+        Deny(()=>Check(actualRelease,actualManifest.ToLowerInvariant(),actualRelease,actualManifest.ToLowerInvariant(),replacementRelease,replacementManifest));
+    }
+    Console.WriteLine("PASS 14 pure inactive-transition checks for historical 979c and exact 3e2 predecessor; not live Job closure, maintenance, installation or UAC");return 0;
 }
 if(args[0]=="etw-token-access")
 {

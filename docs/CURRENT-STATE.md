@@ -1,5 +1,22 @@
 # 当前状态与授权摘要
 
+2026-11-05原owner失败反馈候选f6ab7b19178e4226bf0b6bcdf1ef744a已完成普通构建/固定，
+尚未安装。包摘要E6F10C4174CE36061EE19EAE4A6F9155560DF2C9582A6552404A1534E915F1F8，
+保护库C9F4EE37A015D8CFC7B340100C66603AFB8F3A3BF9BCC076FFA9A9B149B6C9E7。
+更新器仅补充精确3e2前驱摘要，仍强制现装绑定、closed admission、全部原Job闭合、WFP
+absent/quarantine及无pending恢复；不授予新版运行许可或改变原安全门。普通daily/GUI/
+Broker/保护库/Bootstrap和两套有限测试工具构建均0错误0警告，138个唯一载荷源/资源输入。
+14项纯前驱选择检查、40项实际构建库的失败摘要解析样本通过；六个src项目非生成0/0。
+20个stage文件、14项产品资产、Bootstrap嵌入完整清单及两份同字节保护库独立核验通过。
+现行包清单按原CRLF字节固定，git cr-at-eol显式检查通过，不改全局配置或冻结内容。
+新能力仍为SOURCE/BUILD/INTEGRATED及VERIFIED(普通样本/工件)，不标CAPABILITY_DELIVERED。
+work/owner-feedback-update-9cfb1b7-20261105保留构建、差异及单次操作准备；计划仅更新为
+INACTIVE后由新现装Broker读取66887384…一份128KiB内绑定终态，输出有限摘要，不读
+tool-error、rawJob/Stop文件或未释放结果。旧reader/组合实验不重跑；新操作执行前须
+普通预检及适用的具体人类决定，本人确认UAC。失败不自动重试、强停或恢复。此前所有
+单次许可已消耗。本轮没有系统变更；最近安装观察仍3e2/INACTIVE，Socket/HTTPS仍FAIL，
+AFD实际拒绝层、组合任务失败原因、受限GPU及完整隐私/生命周期/Claude验收仍未通过。
+
 2026-11-05新增原InstalledBroker有限失败检查源码与固定CLI入口inspect-failed-caller-project，
 仅接受sessionId及输入SHA256，保留当前安装host、提升身份、protected state及无pending恢复
 门禁；只读同安装绑定的单份resource-session-after终态，最多128KiB。严格核对失败状态、
