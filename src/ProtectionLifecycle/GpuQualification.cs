@@ -108,12 +108,13 @@ internal static class GpuQualification
         var plans=FencePlan.ReadAll(state);if(plans.Count==0)throw WfpNative.Contract("GpuRequiresQuarantine");
         var fences=new List<PersistentFence>();var failures=new List<Exception>();
         var id=Guid.NewGuid().ToString("N");var plan=new GpuProbePlan(id,1);
-        GpuChildReport? baseline=null,observed=null;RuntimeStop? stopped=null;uint? exit=null;string? jobId=null;
+        GpuChildReport? baseline=null,observed=null;GpuHostReferenceResult? hostReference=null;RuntimeStop? stopped=null;uint? exit=null;string? jobId=null;
         var progress=new GpuCallProgressReader(id,true);
         try
         {
             foreach(var fence in plans)fences.Add(PersistentFence.OpenExisting(state,fence.Data.FenceId));
-            AssertQuarantine();baseline=Compute(plan,"HOST_CONTROL");
+            AssertQuarantine();hostReference=GpuHostReferenceQualification.Run(state,version,layout,fences);
+            if(!hostReference.Complete || hostReference.Child is null)throw WfpNative.Contract("GpuBoundedHostControlNotQualified");baseline=hostReference.Child;
             state.WriteNew("gpu-host-"+id+".json",JsonSerializer.SerializeToUtf8Bytes(baseline));
             if(!Qualified(baseline))throw WfpNative.Contract("GpuHostControlNotQualified");
             using var profile=InstallationProfileLease.Create(state);using var job=OwnedKernelJob.CreateEmpty(state,version);jobId=job.JobId;
@@ -170,7 +171,7 @@ internal static class GpuQualification
         var closed=jobId is not null && stopped?.ConfirmsClosedGpu(id,jobId)==true;
         var complete=failures.Count==0 && observed is not null && closed;
         var report=JsonSerializer.Serialize(new {SchemaVersion=1,state.InstallationId,RequestId=id,version.Package.Release,JobId=jobId,
-            Status=complete?"BOUNDED_CUDA_KERNEL_IN_LPAC_OBSERVED":"ISOLATED_GPU_NOT_CONFIRMED",Host=baseline,Child=observed,ChildExit=exit,
+            Status=complete?"BOUNDED_CUDA_KERNEL_IN_LPAC_OBSERVED":"ISOLATED_GPU_NOT_CONFIRMED",Host=baseline,HostReference=hostReference,Child=observed,ChildExit=exit,
             OneShotAdmissionClosedAndMembersZero=closed,StopObservation=stopped,Failures=failures.SelectMany(WfpNative.Describe).ToArray(),
             LastReportedCall=progress.Snapshot(),CallProgressEvidence="BOUND_CHILD_SELF_REPORT_NOT_EXECUTION_PRIVACY_CLEANUP_OR_ADMISSION_PROOF",
             NetworkOpened=false,PyTorchQualified=false,OtherProcessGpuMemoryIsolationQualified=false,HostResourceIsolationQualified=false,ClaudeLaunched=false});

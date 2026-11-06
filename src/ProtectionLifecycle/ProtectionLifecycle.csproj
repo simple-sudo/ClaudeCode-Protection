@@ -26,6 +26,7 @@
     <Compile Include="ProxyChannel.cs;NetworkQualification.cs" />
     <Compile Include="GpuQualification.cs" />
     <Compile Include="GpuCallProgress.cs" />
+    <Compile Include="GpuHostToken.cs;GpuHostReference.cs;GpuHostReferenceQualification.cs" />
     <Compile Include="GpuIdentityObservation.cs" />
     <Compile Include="ProcessLocalRevocation.cs" />
     <Compile Include="ProtectionRuntimeLease.cs" />

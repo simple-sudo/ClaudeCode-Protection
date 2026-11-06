@@ -10,12 +10,15 @@ internal sealed record RuntimeStop(string SessionId,string Reason,bool Admission
 {
     internal const string ResourceTerminalReason="OFFLINE_RESOURCE_QUALIFICATION_TERMINAL";
     internal const string GpuTerminalReason="FIXED_GPU_QUALIFICATION_TERMINAL";
+    internal const string HostGpuTerminalReason="FIXED_HOST_GPU_REFERENCE_TERMINAL";
 
     internal bool ConfirmsClosedResources(string sessionId,string jobId) =>
         Reason==ResourceTerminalReason && ConfirmsClosedJob(sessionId,jobId);
 
     internal bool ConfirmsClosedGpu(string sessionId,string jobId) =>
         Reason==GpuTerminalReason && ConfirmsClosedJob(sessionId,jobId);
+    internal bool ConfirmsClosedHostGpu(string sessionId,string jobId) =>
+        Reason==HostGpuTerminalReason && ConfirmsClosedJob(sessionId,jobId);
 
     private bool ConfirmsClosedJob(string sessionId,string jobId) =>
         SessionId==sessionId && AdmissionClosed && QuarantineObservedBeforeStop &&
@@ -62,12 +65,18 @@ internal sealed class ProtectionRuntimeLease
         child.AssertGpuRuntimeOwner(state,version,job);
         return new(state,version,job,fences,null,null,null,null,null,Identifiers.Hex32(sessionId));
     }
+    internal static ProtectionRuntimeLease ForHostGpuReference(ProtectedState state,VerifiedVersion version,OwnedKernelJob job,
+        IReadOnlyList<PersistentFence> fences,AtomicChild.HostGpuReferenceChild child,string sessionId)
+    {
+        child.AssertOwner(state,version,job);
+        return new(state,version,job,fences,null,null,null,null,null,Identifiers.Hex32(sessionId),true);
+    }
     internal ProtectionRuntimeLease(ProtectedState state,VerifiedVersion version,OwnedKernelJob job,IReadOnlyList<PersistentFence> fences,ProxyChannelLease? proxy,
         SessionProxy? gateway=null,ProtectedSession.Preparation? preparation=null,ProtectedSession.ResourceQualification? resources=null,Action? assertCaller=null)
         :this(state,version,job,fences,proxy,gateway,preparation,resources,assertCaller,null){}
 
     private ProtectionRuntimeLease(ProtectedState state,VerifiedVersion version,OwnedKernelJob job,IReadOnlyList<PersistentFence> fences,ProxyChannelLease? proxy,
-        SessionProxy? gateway,ProtectedSession.Preparation? preparation,ProtectedSession.ResourceQualification? resources,Action? assertCaller,string? gpuSessionId)
+        SessionProxy? gateway,ProtectedSession.Preparation? preparation,ProtectedSession.ResourceQualification? resources,Action? assertCaller,string? gpuSessionId,bool hostGpuReference=false)
     {
         this.state=state;this.version=version;this.job=job;this.fences=fences;this.proxy=proxy;
         fixedGpu=gpuSessionId is not null;
@@ -89,7 +98,7 @@ internal sealed class ProtectionRuntimeLease
         AssertHealthy();
         state.WriteNew("session-open-"+id+".json",JsonSerializer.SerializeToUtf8Bytes(new {SchemaVersion=1,state.InstallationId,SessionId=id,job.JobId,
             version.Package.Release,version.Package.ManifestHash,CurrentPointerSHA256=pointerSHA256,StartupDeadlineMs=deadlineMs,
-            Scope=fixedGpu?"FIXED_OFFLINE_GPU_NO_FORWARDING_NO_FORMAL_PERMIT":resources is not null?"FIXED_OFFLINE_RESOURCES_NO_FORWARDING_NO_FORMAL_PERMIT":gateway is null?"SINGLE_ATOMIC_JOB_COMPILED_PROXY":"QUARANTINED_SUSPENDED_SESSION_STARTUP",
+            Scope=hostGpuReference?"FIXED_ORDINARY_HOST_GPU_REFERENCE_NO_FORMAL_PERMIT":fixedGpu?"FIXED_OFFLINE_GPU_NO_FORWARDING_NO_FORMAL_PERMIT":resources is not null?"FIXED_OFFLINE_RESOURCES_NO_FORWARDING_NO_FORMAL_PERMIT":gateway is null?"SINGLE_ATOMIC_JOB_COMPILED_PROXY":"QUARANTINED_SUSPENDED_SESSION_STARTUP",
             FormalSessionResumeAuthorized=false,AdmissionReusable=false,
             SessionBindingSHA256=(string?)null,AtUtc=DateTime.UtcNow.ToString("o")}));
     }

@@ -130,7 +130,7 @@ internal sealed record OwnedMemberInspection(uint Pid,bool MembershipConfirmed,l
 
 // No supplied executable/arguments/PID/token. First consumer is the installed
 // broker's own finite canary. Production Claude admission remains deferred.
-internal sealed class AtomicChild : IDisposable
+internal sealed partial class AtomicChild : IDisposable
 {
     private readonly ProtectedState state;
     private readonly VerifiedVersion version;

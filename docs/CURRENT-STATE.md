@@ -1,5 +1,26 @@
 # 当前状态与授权摘要
 
+2026-11-05宿主GPU参考隔离源码已接入原owner：新增GpuHostToken、AtomicChild专用
+HostGpuReferenceChild及GpuHostReferenceQualification，管理线程不再同步调用CUDA。
+只复制当前owner自身关联普通Token；同用户/Windows session、medium非提升，复制/创建
+保持该普通Token的LSA标识及权限，创建前后核对owner有效身份与权限字节。UAC关联
+full/limited的LSA标识允许不同；错误要求相同的9b8d候选未执行、保留且已替代。
+原JOB_LIST/suspended/seal/持有句柄/安装/全quarantine门继续适用，原runtime租约30秒，
+先quarantine再闭合原Job；没有任意目标、管理员回退或新LPAC授信。原GPU系统hold未解锁。
+保护库/Broker/daily/GUI/Bootstrap及4工具构建0错误0警告；53项普通Token角色/闭合绑定、
+28协议管道fixture、21前驱选择、40失败摘要及原GPU报告检查通过。没有执行新关联
+Token、CreateProcessAsUser、Job或CUDA路径。SOURCE/BUILD/INTEGRATED(原GPU资格源码链)，
+VERIFIED(普通策略/fixture)，无新增CAPABILITY_DELIVERED(受保护GPU)或隐私通过。
+固定20文件候选9bbbb71f91ee4423bbb53fb96bb64479，manifest EFFDC350…、库58762674…；
+证据在work/gpu-host-owner-d1f927e-20261105/candidate-auth-model。尚未安装，现装仍最近
+核验f6ab7b19/INACTIVE。拟固定一次inactive更新及有限普通宿主参考的具体操作，必须先
+普通预检并取得新决定，由本人确认UAC；此前所有单次许可已消耗。新原值只留新受控
+输出；只读本次新Job三份绑定记录核验闭合，不读取旧私有错误/未释放结果。观察超时
+保留原句柄并标UNKNOWN，不强停提升owner、不重试或另行恢复。
+AFD/Socket/HTTPS仍FAIL；新建关联Token路径、受保护GPU/完整L3/GUI启停/官方Claude
+均未通过。下一实测目标是确认管理owner可在不执行CUDA的情况下持有并闭合普通GPU
+参考，再定位受限GPU内部阶段；AFD实际拒绝层仍是网络主阻塞。机制见GPU-HOST-REFERENCE。
+
 2026-11-05独立推进GPU：新增GpuCallProgress并接入原AtomicChild GPU输出/原GpuQualification
 读取链。固定16 API、最多32个进入/返回/异常帧；PID/nonce在resume前绑定，单帧512、
 最终报告16384、全流32768字符，有序/去重/限定字段；缺终态时保留最后有效报告的调用

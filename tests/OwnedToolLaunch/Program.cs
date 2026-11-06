@@ -256,7 +256,8 @@ if(args[0]=="inactive-transition")
     }
     foreach(var (actualRelease,actualManifest) in new[]{
         ("979ca94af3744760b356678a31f2eb66","3CE38FBC1D5ECB5FB8292B1107992C4E3BC4DE487AB7BF45AE4B37DCA64489D1"),
-        ("3e2e1cc777e54ac6b4123edfce65773e","849A2BFC1D9F08D1B581BD5C79EDBF1575048F5D20B3145D6297B10E1CF80C8F")})
+        ("3e2e1cc777e54ac6b4123edfce65773e","849A2BFC1D9F08D1B581BD5C79EDBF1575048F5D20B3145D6297B10E1CF80C8F"),
+        ("f6ab7b19178e4226bf0b6bcdf1ef744a","E6F10C4174CE36061EE19EAE4A6F9155560DF2C9582A6552404A1534E915F1F8")})
     {
         Check(actualRelease,actualManifest,actualRelease,actualManifest,replacementRelease,replacementManifest);
         Deny(()=>Check(replacementRelease,actualManifest,actualRelease,actualManifest,replacementRelease,replacementManifest));
@@ -266,7 +267,7 @@ if(args[0]=="inactive-transition")
         Deny(()=>Check(actualRelease,replacementManifest,actualRelease,replacementManifest,replacementRelease,new string('B',64)));
         Deny(()=>Check(actualRelease,actualManifest.ToLowerInvariant(),actualRelease,actualManifest.ToLowerInvariant(),replacementRelease,replacementManifest));
     }
-    Console.WriteLine("PASS 14 pure inactive-transition checks for historical 979c and exact 3e2 predecessor; not live Job closure, maintenance, installation or UAC");return 0;
+    Console.WriteLine("PASS 21 pure inactive-transition checks for historical 979c, exact 3e2 and exact f6ab predecessors; not live Job closure, maintenance, installation or UAC");return 0;
 }
 if(args[0]=="etw-token-access")
 {

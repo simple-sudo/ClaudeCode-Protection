@@ -5,6 +5,15 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-05 有限普通宿主GPU参考源码
+
+SOURCE/BUILD/INTEGRATED(原owner GPU资格源码链)，VERIFIED(53项普通Token/停止绑定、
+28协议管道及配套策略fixture)。固定普通关联Token子进程替代管理线程同步CUDA；原Job/
+quarantine停止、LPAC区分及系统hold保持。新候选9bbbb…尚未安装，关联Token复制/
+分配、实际创建、Job闭合和CUDA未执行；无新增CAPABILITY_DELIVERED(受保护GPU)。
+硬件挂起的绝对墙钟退出仍无证明，正式隐私/Claude/产品验收未完成。
+见[证据](STATUS.md#2026-11-05-原owner的有限普通宿主gpu参考源码)。
+
 ## 2026-11-05 GPU调用进度及普通真实计算
 
 SOURCE/BUILD/INTEGRATED(原GPU资格源码链)，VERIFIED(普通协议与真实宿主1KiB/256元素

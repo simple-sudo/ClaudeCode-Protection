@@ -5,6 +5,23 @@
 历史页的“当前/待执行/暂停/DELIVERABLE”按段落日期及限定范围解释，不是今天的状态或操作许可。
 不在本页复制当前安装和授权摘要。
 
+## 2026-11-05 原owner的有限普通宿主GPU参考源码
+
+新增GpuHostToken、AtomicChild.HostGpuReferenceChild及GpuHostReferenceQualification；原
+GpuQualification不再在管理线程同步执行HOST_CONTROL。自身关联普通Token、固定已安装
+子命令、原JOB_LIST/suspended/seal/持有句柄与原runtime停止链，host/LPAC类型及报告分开。
+UAC关联LSA登录可不同；普通Token复制/创建保持其实际标识和权限，owner返回属性必须一致。
+原系统GPU hold不变。机制和已知硬件挂起边界见[专题](GPU-HOST-REFERENCE.md)。
+保护库/Broker/daily/GUI/Bootstrap及4工具BUILD0/0；53策略、28协议/普通管道、21前驱、
+40失败摘要及原GPU报告检查通过。源码/普通fixture不证明新的关联Token、原子创建、Job
+或CUDA运行；本阶段没有新系统实验。20文件候选9bbbb71f91ee4423bbb53fb96bb64479：
+manifest EFFDC3506DD376AA2601BE6C62505586C9C154E76EC4B838D007F73491069BE5，
+库587626746BB06AA15641BCD635AA6E683E156DE9AE6DC252D8230421A138DA05，
+stage核验89C15B090167309879625E32E26DBC00D0AFB6D30A67F0B5A231D2B79D254173。
+证据work/gpu-host-owner-d1f927e-20261105/candidate-auth-model；错误同LSA模型的旧9b8d
+未执行候选保留且被替代。SOURCE/BUILD/INTEGRATED，VERIFIED(普通策略/fixture)，
+未新增实际受保护产品能力；不标受保护GPU、隐私或整机验收。
+
 ## 2026-11-05 原GPU逐调用进度及宿主真实计算
 
 新增GpuCallProgress，接入AtomicChild/GpuQualification原输出管道；固定16调用/32帧、
