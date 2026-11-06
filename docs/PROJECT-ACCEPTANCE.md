@@ -5,6 +5,13 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-06 AFD逐次调用关联准备
+
+SOURCE/BUILD/VERIFIED(35项普通L1事件解析/调用关联fixture)，四项目隔离BUILD0/0。
+真实ETW采集、原owner新actor/逐次时窗与分支定位NOT_RUN。原有Socket/HTTPS FAIL
+及完整L3/生命周期/正式Claude验收缺口保留；没有新增产品运行能力交付。
+见[证据](STATUS.md#2026-11-06-逐次afd事件关联源码与普通验证)。
+
 ## 2026-11-06 AFD解析差异真实验证，Socket仍未交付
 
 SOURCE/BUILD/VERIFIED(固定普通及原owner真实LPAC三项对照、身份保持、原闭合结果释放)。

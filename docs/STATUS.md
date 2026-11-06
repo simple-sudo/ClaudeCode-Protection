@@ -5,6 +5,21 @@
 历史页的“当前/待执行/暂停/DELIVERABLE”按段落日期及限定范围解释，不是今天的状态或操作许可。
 不在本页复制当前安装和授权摘要。
 
+## 2026-11-06 逐次AFD事件关联源码与普通验证
+
+tests/DeviceBoundary新增单独的ReadTimedDispatchMarkers，原请求字节/权限及原矩阵输出
+保持；用GetSystemTimePreciseAsFileTime与实际线程ID记录各次同步调用。新增独立
+tests/AfdTraceAnalysis：固定provider/event1000/version0/九字段、数值宽度与UTC时间
+严格解析，禁止DTD，kernel pointer不进入投影。关联须同actor/header PID/TID及各次
+非重叠时窗；未知位置/缺事件均不授予网络资格或唯一根因结论。
+
+四项目隔离BUILD0警告/0错误；35项普通L1检查通过（外来PID/TID/时窗、重复/越界/
+恶意XML、两个参数负标记、缺事件UNKNOWN等）。新探针四源/163引用非生成0诊断。
+证据work/afd-call-correlation-20261106-01，构建参数组合与fixture插值编译失败日志
+保留；没有执行新AFD/native probe/trace/受限任务。SOURCE/BUILD/VERIFIED(L1解析与
+关联fixture)，不是新的Socket/HTTPS/L3或完整生命周期能力交付。联合实验新清单准备
+中，旧未定稿草稿未运行；执行仍需固定review及新的具体人类决定。
+
 ## 2026-11-06 AFD解析前后固定负对照与标签参考
 
 本阶段按用户要求提交后暂停。观察器最终SOURCE/BUILD及普通实际守卫验证完成：

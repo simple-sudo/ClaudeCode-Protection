@@ -12,6 +12,12 @@ internal static class NativeBoundary
 {
     internal sealed record Row(string Role,string Path,uint DesiredAccess,string Status,string IoStatus,bool HandleValid,
         bool? Inheritable,bool HandleClosed,string? ManagedError,int? ManagedErrorCode);
+    internal sealed record TimedRow(long StartedFileTime,long FinishedFileTime,uint ThreadId,Row Result);
+    [DllImport("kernel32.dll",ExactSpelling=true),DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
+    private static extern uint GetCurrentThreadId();
+    [DllImport("kernel32.dll",ExactSpelling=true),DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
+    private static extern void GetSystemTimePreciseAsFileTime(out long value);
+    internal static long PreciseFileTime(){GetSystemTimePreciseAsFileTime(out var value);return value;}
     [StructLayout(LayoutKind.Sequential)] private struct UnicodeString {internal ushort Length,MaximumLength;internal IntPtr Buffer;}
     [StructLayout(LayoutKind.Sequential)] private struct Attributes {internal uint Length;internal IntPtr Root,Name;internal uint Flags;internal IntPtr Security,Qos;}
     [StructLayout(LayoutKind.Sequential)] private struct IoStatus {internal IntPtr Status;internal UIntPtr Information;}
@@ -36,6 +42,21 @@ internal static class NativeBoundary
         return new[]{Open("valid-ipv4-tcp-control",@"\Device\Afd\Endpoint",0xc0140000,2),
             Open("invalid-family-35-marker",@"\Device\Afd\Endpoint",0xc0140000,2,35),
             Open("invalid-flags-2-marker",@"\Device\Afd\Endpoint",0xc0140000,2,2,2)};
+    }
+    // New qualification input only; the original matrices and their historical
+    // output schema stay unchanged. Time each synchronous request separately so
+    // an ETW event cannot be attributed merely to a reused PID or broad window.
+    internal static TimedRow[] ReadTimedDispatchMarkers()
+    {
+        if(!Environment.Is64BitProcess || Marshal.SizeOf<Attributes>()!=48)throw new PlatformNotSupportedException("Fixed x64 ABI required");
+        TimedRow ReadOne(string role,int family,uint flags)
+        {
+            var thread=GetCurrentThreadId();var start=PreciseFileTime();
+            var row=Open(role,@"\Device\Afd\Endpoint",0xc0140000,2,family,flags);
+            return new(start,PreciseFileTime(),thread,row);
+        }
+        return new[]{ReadOne("valid-ipv4-tcp-control",2,0x01000000),ReadOne("invalid-family-35-marker",35,0x01000000),
+            ReadOne("invalid-flags-2-marker",2,2)};
     }
     private static Row Open(string role,string path,uint access,int kind,int family=2,uint packetFlags=0x01000000)
     {
