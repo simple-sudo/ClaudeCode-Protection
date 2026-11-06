@@ -1,0 +1,207 @@
+using System.Diagnostics;
+using System.Diagnostics.Eventing.Reader;
+using System.IO;
+using System.Runtime.InteropServices;
+using System.Security.AccessControl;
+using System.Security.Cryptography;
+using System.Security.Principal;
+using System.Text;
+using System.Text.Json;
+
+[assembly:DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
+
+// Trusted diagnostic observer only. No child creation, arbitrary arguments,
+// host ACL updates, WFP setters, capability/Token adjustment or retry API.
+internal static class Program
+{
+    internal const string Root=@"C:\Program Files\ClaudeCodeProtection-AfdObserver-e0b95a8-20261106-01";
+    private const string Name="Cpc.AfdCreate.e0b95a8.20261106.01";
+    private static string Human=string.Empty;
+    private static readonly Guid Provider=new("e53c6823-7bb8-44bb-90dc-3f86090d48a6");
+    private static readonly Guid Session=new("426ef2b7-7538-448b-b54e-5fd4d9cba26d");
+    private const string DriverHash="F93639BB027E19DF5460C6D2BC69DB08139AF5D716743AC88BA15E581934DD76";
+    private const int DurationSeconds=90;
+    private static string Sddl=>"O:BAG:BAD:P(D;OICI;FA;;;S-1-15-2-1)(D;OICI;FA;;;S-1-15-2-2)(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)(A;OICI;GRGX;;;"+Human+")";
+
+    private static int Main(string[] args)
+    {
+        if(args.Length==1 && args[0]=="--inspect")
+        {
+            Layout();
+            Console.WriteLine(JsonSerializer.Serialize(new {Scope="AFD_OBSERVER_LAYOUT_ONLY_NO_CAPTURE",PropertiesBytes=Marshal.SizeOf<Properties>(),
+                PropertiesFileOffset=Marshal.OffsetOf<Properties>(nameof(Properties.FileOffset)).ToInt32(),MaximumSeconds=DurationSeconds,
+                MaximumFileMiB=16,Keyword=4,Level=4,Provider,FreshRootExists=Directory.Exists(Root),TraceStarted=false}));return 0;
+        }
+        if(args.Length!=1 || args[0]!="--run-fixed")return 125;
+        using var identity=WindowsIdentity.GetCurrent();
+        if(identity.User is null || !new WindowsPrincipal(identity).IsInRole(WindowsBuiltInRole.Administrator))
+        {Console.WriteLine("FIXED_OBSERVER_REQUIRES_REVIEWED_HUMAN_UAC");return 125;}
+        Human=identity.User.Value;
+        Layout();
+        var stage="inputs";uint? native=null,stopCode=null;bool created=false,started=false,ownStopped=false,tokenUnchanged=false;
+        ulong handle=0;IntPtr memory=IntPtr.Zero;Properties? final=null;
+        var beginning=DateTime.UtcNow;string? failure=null;int? failureCode=null;string? before=null;
+        FileStream? driver=null;
+        try
+        {
+            RequireFreshRoot();
+            driver=File.Open(@"C:\Windows\System32\drivers\afd.sys",FileMode.Open,FileAccess.Read,FileShare.Read);
+            if(Convert.ToHexString(SHA256.HashData(driver))!=DriverHash)throw new InvalidOperationException("DriverChanged");
+            before=TokenFacts(identity);
+            Safety(beginning);
+            stage="create-owned-directory";
+            var descriptor=new RawSecurityDescriptor(Sddl);var bytes=new byte[descriptor.BinaryLength];descriptor.GetBinaryForm(bytes,0);
+            var security=Marshal.AllocHGlobal(bytes.Length);
+            try
+            {
+                Marshal.Copy(bytes,0,security,bytes.Length);var attributes=new SecurityAttributes{Length=24,Descriptor=security};
+                if(!CreateDirectory(Root,ref attributes)){native=checked((uint)Marshal.GetLastWin32Error());throw new InvalidOperationException("AtomicFreshDirectoryCreationFailed");}
+                created=true;
+            }
+            finally{Marshal.FreeHGlobal(security);}
+            var observed=FileSystemAclExtensions.GetAccessControl(new DirectoryInfo(Root),AccessControlSections.Owner|AccessControlSections.Group|AccessControlSections.Access);
+            var expected=new RawSecurityDescriptor(Sddl);var actual=new RawSecurityDescriptor(observed.GetSecurityDescriptorBinaryForm(),0);
+            if(!observed.AreAccessRulesProtected || actual.Owner?.Value!=expected.Owner?.Value || actual.Group?.Value!=expected.Group?.Value ||
+                !AclBytes(actual).AsSpan().SequenceEqual(AclBytes(expected)))throw new InvalidOperationException("FreshDirectorySealDiffers");
+            stage="start-new-trace";
+            memory=Allocate();native=StartTrace(out handle,Name,memory);
+            if(native!=0)throw new InvalidOperationException("StartRejectedNoAdoption");started=true;
+            AssertOwn(handle,memory);
+            stage="enable-fixed-provider";
+            var provider=Provider;
+            // Keyword4 is the manifest's endpoint/operation diagnostic stream.
+            // Other process metadata may occur; this is not packet capture and
+            // no claim of provider-side PID/event filtering is made.
+            native=EnableTraceEx2(handle,ref provider,1,4,4,0,1000,IntPtr.Zero);
+            if(native!=0)throw new InvalidOperationException("EnableRejected");
+            WriteNew("ready.json",new {Scope="FIXED_AFD_KEYWORD4_OBSERVER_READY",Session,Provider,Name,StartedUtc=DateTime.UtcNow,
+                DurationSeconds,MaxFileMiB=16,OwnerSidSHA256=Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(Human))),NoTargetProcessControl=true,NoPacketCaptureRequested=true});
+            stage="observe";
+            var watch=Stopwatch.StartNew();
+            while(watch.ElapsedMilliseconds<DurationSeconds*1000)
+            {Safety(beginning);Thread.Sleep(1000);}
+        }
+        catch(Exception error){failure=error.GetType().Name;failureCode=error.HResult;}
+        finally
+        {
+            if(started)
+            {
+                try
+                {
+                    AssertOwn(handle,memory);stopCode=ControlTrace(handle,null,memory,1);
+                    if(stopCode==0){ownStopped=true;final=Marshal.PtrToStructure<Properties>(memory);}
+                }
+                catch(Exception error){failure??=error.GetType().Name;failureCode??=error.HResult;}
+            }
+            if(memory!=IntPtr.Zero)Marshal.FreeHGlobal(memory);
+            try{using var current=WindowsIdentity.GetCurrent();tokenUnchanged=before is not null && current.User?.Value==Human && before==TokenFacts(current);}
+            catch(Exception error){failure??=error.GetType().Name;failureCode??=error.HResult;}
+            driver?.Dispose();
+            if(created)
+            {
+                try
+                {
+                    var file=Path.Combine(Root,"afd.etl");string? hash=null;long? length=null;
+                    if(ownStopped && File.Exists(file))
+                    {using var etl=File.Open(file,FileMode.Open,FileAccess.Read,FileShare.Read);length=etl.Length;hash=Convert.ToHexString(SHA256.HashData(etl));}
+                    WriteNew("terminal.json",new {Scope="FIXED_AFD_OBSERVER_TERMINAL_NOT_NETWORK_OR_PRIVACY_PASS",Stage=stage,NativeCode=native,StopCode=stopCode,
+                        Failure=failure,FailureCode=failureCode,Started=started,OwnStopped=ownStopped,TokenUnchanged=tokenUnchanged,Session,Provider,
+                        OwnerSidSHA256=Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(Human))),
+                        StartedUtc=beginning,EndedUtc=DateTime.UtcNow,Statistics=final is null ? null : new {final.Value.EventsLost,final.Value.BuffersWritten,final.Value.LogBuffersLost,final.Value.RealTimeBuffersLost},ETLSHA256=hash,ETLBytes=length,
+                        CircularMayHaveOverwritten=final is null || (ulong)final.Value.BuffersWritten*64*1024>=16*1024*1024,
+                        KernelBranchCorrelationVerified=false,TargetJobClosed=false,NetworkAdmission=false,NoAutomaticRetry=true});
+                }
+                catch(Exception error){failure??=error.GetType().Name;failureCode??=error.HResult;}
+            }
+        }
+        Console.WriteLine(JsonSerializer.Serialize(new {Scope="FIXED_AFD_OBSERVER_RESULT",Stage=stage,NativeCode=native,StopCode=stopCode,
+            Failure=failure,FailureCode=failureCode,Started=started,OwnStopped=ownStopped,TokenUnchanged=tokenUnchanged}));
+        return failure is null && ownStopped && tokenUnchanged ? 0 : 125;
+    }
+    private static byte[] AclBytes(RawSecurityDescriptor sd)
+    {var acl=sd.DiscretionaryAcl??throw new InvalidDataException("DaclMissing");var b=new byte[acl.BinaryLength];acl.GetBinaryForm(b,0);return b;}
+    private static void WriteNew(string name,object value)
+    {using var f=new FileStream(Path.Combine(Root,name),FileMode.CreateNew,FileAccess.Write,FileShare.Read);f.Write(JsonSerializer.SerializeToUtf8Bytes(value,new JsonSerializerOptions{IncludeFields=true}));f.Flush(true);}
+    private static void RequireFreshRoot()
+    {
+        try{_ = File.GetAttributes(Root);throw new InvalidOperationException("FreshRootRequired");}
+        catch(FileNotFoundException){}
+        catch(DirectoryNotFoundException){}
+        for(var parent=Directory.GetParent(Root);parent is not null;parent=parent.Parent)
+            if((File.GetAttributes(parent.FullName)&FileAttributes.ReparsePoint)!=0)throw new InvalidOperationException("RedirectedParentRejected");
+    }
+    private static string TokenFacts(WindowsIdentity identity)
+    {
+        byte[] Read(int kind)
+        {
+            if(GetTokenInformation(identity.Token,kind,IntPtr.Zero,0,out var size) || Marshal.GetLastWin32Error()!=122 || size is <4 or >65536)
+                throw new InvalidOperationException("TokenSizeUnavailable");
+            var p=Marshal.AllocHGlobal(size);
+            try{if(!GetTokenInformation(identity.Token,kind,p,size,out var used) || used!=size)throw new InvalidOperationException("TokenReadUnavailable");
+                var b=new byte[size];Marshal.Copy(p,b,0,size);return b;}
+            finally{Marshal.FreeHGlobal(p);}
+        }
+        using var impersonating=WindowsIdentity.GetCurrent(true);
+        if(impersonating is not null || BitConverter.ToUInt32(Read(29))!=0 || BitConverter.ToUInt32(Read(18))!=2 || BitConverter.ToUInt32(Read(20))!=1)
+            throw new InvalidOperationException("FullHumanTokenWithoutImpersonationRequired");
+        return Convert.ToHexString(SHA256.HashData(Read(3)))+":"+Convert.ToHexString(Read(18))+":"+Convert.ToHexString(Read(20));
+    }
+    private static void Safety(DateTime beginning)
+    {
+        foreach(var name in new[]{"BFE","AVP21.26"})
+        {
+            var manager=OpenSCManager(null,null,1);if(manager==IntPtr.Zero)throw new InvalidOperationException("ServiceManagerUnavailable");
+            try
+            {
+                var service=OpenService(manager,name,4);if(service==IntPtr.Zero)throw new InvalidOperationException("ServiceUnavailable");
+                try{if(!QueryServiceStatusEx(service,0,out var status,36,out _) || status.State!=4)throw new InvalidOperationException("SafetyServiceNotRunning");}
+                finally{CloseServiceHandle(service);}
+            }
+            finally{CloseServiceHandle(manager);}
+        }
+        var query="*[System[TimeCreated[@SystemTime >= '"+beginning.ToString("o")+"']]]";
+        using var reader=new EventLogReader(new EventLogQuery("Application",PathType.LogName,query){ReverseDirection=true});
+        for(int i=0;i<256;i++)
+        {
+            using var item=reader.ReadEvent();if(item is null)return;
+            var provider=item.ProviderName??"";
+            if(provider.Contains("kaspersky",StringComparison.OrdinalIgnoreCase) || provider.Contains("avp",StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException("NewAvObservationStopCapture");
+        }
+        throw new InvalidOperationException("PublicAvWindowCoverageUnknown");
+    }
+    private static void AssertOwn(ulong handle,IntPtr memory)
+    {
+        Initialize(memory);var code=ControlTrace(handle,null,memory,0);
+        if(code!=0 || Marshal.PtrToStructure<Properties>(memory).Wnode.Guid!=Session)throw new InvalidOperationException("OwnTraceNotConfirmedNoStop");
+    }
+    private static IntPtr Allocate()
+    {var p=Marshal.AllocHGlobal(8192);try{Initialize(p);return p;}catch{Marshal.FreeHGlobal(p);throw;}}
+    private static void Initialize(IntPtr p)
+    {
+        Marshal.Copy(new byte[8192],0,p,8192);
+        var file=Encoding.Unicode.GetBytes(Path.Combine(Root,"afd.etl")+"\0");var name=Encoding.Unicode.GetBytes(Name+"\0");
+        var props=new Properties{Wnode=new(){BufferSize=8192,Guid=Session,ClientContext=1,Flags=0x20000},BufferSize=64,MinimumBuffers=8,MaximumBuffers=16,
+            MaximumFileSize=16,LogFileMode=2,FlushTimer=1,LoggerOffset=120,FileOffset=checked((uint)(120+name.Length))};
+        Marshal.StructureToPtr(props,p,false);Marshal.Copy(name,0,IntPtr.Add(p,120),name.Length);Marshal.Copy(file,0,IntPtr.Add(p,(int)props.FileOffset),file.Length);
+    }
+    private static void Layout()
+    {if(!Environment.Is64BitProcess || Marshal.SizeOf<SecurityAttributes>()!=24 || Marshal.SizeOf<Wnode>()!=48 || Marshal.SizeOf<Properties>()!=120 || Marshal.OffsetOf<Properties>(nameof(Properties.FileOffset)).ToInt32()!=112 || Marshal.OffsetOf<Properties>(nameof(Properties.LoggerOffset)).ToInt32()!=116)throw new PlatformNotSupportedException("FixedX64EtwAbiRequired");}
+    [StructLayout(LayoutKind.Sequential)] private struct SecurityAttributes {public uint Length;public IntPtr Descriptor;public int Inherit;}
+    [StructLayout(LayoutKind.Sequential)] internal struct Wnode
+    {public uint BufferSize,ProviderId;public ulong HistoricalContext,TimeStamp;public Guid Guid;public uint ClientContext,Flags;}
+    [StructLayout(LayoutKind.Sequential)] internal struct Properties
+    {public Wnode Wnode;public uint BufferSize,MinimumBuffers,MaximumBuffers,MaximumFileSize,LogFileMode,FlushTimer,EnableFlags;public int AgeLimit;
+        public uint NumberOfBuffers,FreeBuffers,EventsLost,BuffersWritten,LogBuffersLost,RealTimeBuffersLost;public IntPtr LoggerThreadId;public uint FileOffset,LoggerOffset;}
+    [StructLayout(LayoutKind.Sequential)] private struct ServiceStatus
+    {public uint Type,State,Accepted,Win32Exit,ServiceExit,CheckPoint,WaitHint,Pid,Flags;}
+    [DllImport("advapi32.dll",EntryPoint="StartTraceW",CharSet=CharSet.Unicode,ExactSpelling=true)] private static extern uint StartTrace(out ulong handle,string name,IntPtr properties);
+    [DllImport("advapi32.dll",EntryPoint="ControlTraceW",CharSet=CharSet.Unicode,ExactSpelling=true)] private static extern uint ControlTrace(ulong handle,string? name,IntPtr properties,uint code);
+    [DllImport("advapi32.dll",ExactSpelling=true)] private static extern uint EnableTraceEx2(ulong handle,ref Guid provider,uint code,byte level,ulong any,ulong all,uint timeout,IntPtr parameters);
+    [DllImport("advapi32.dll",ExactSpelling=true,SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)] private static extern bool GetTokenInformation(IntPtr token,int kind,IntPtr buffer,int length,out int needed);
+    [DllImport("advapi32.dll",EntryPoint="OpenSCManagerW",CharSet=CharSet.Unicode,ExactSpelling=true,SetLastError=true)] private static extern IntPtr OpenSCManager(string? machine,string? database,uint access);
+    [DllImport("advapi32.dll",EntryPoint="OpenServiceW",CharSet=CharSet.Unicode,ExactSpelling=true,SetLastError=true)] private static extern IntPtr OpenService(IntPtr manager,string name,uint access);
+    [DllImport("advapi32.dll",ExactSpelling=true,SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)] private static extern bool QueryServiceStatusEx(IntPtr service,int kind,out ServiceStatus status,uint size,out uint needed);
+    [DllImport("advapi32.dll",ExactSpelling=true)] [return:MarshalAs(UnmanagedType.Bool)] private static extern bool CloseServiceHandle(IntPtr handle);
+    [DllImport("kernel32.dll",EntryPoint="CreateDirectoryW",CharSet=CharSet.Unicode,ExactSpelling=true,SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)] private static extern bool CreateDirectory(string path,ref SecurityAttributes attributes);
+}

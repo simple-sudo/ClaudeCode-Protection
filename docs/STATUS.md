@@ -28,6 +28,12 @@ AFD96事件定义8A9126D3…：event1000含EnterExit/Location/Process/Endpoint/A
 protocol/ProcessId/Status，keyword4、level4；Location可与固定镜像调用点进行后续
 有限关联，尚未启用跟踪或实测关联，不用元数据冒充采集证明。
 
+新增tests/AfdCreateTrace为固定观察器源码：没有目标进程创建/控制、WFP setter、设备
+ACL或Token调整接口；只管理新trace及新受控目录。隔离构建0/0，首次26条System.IO
+缺失错误修复保留；当前普通1003及本人1001结构/普通请求拒绝实际通过，目录未创建。
+SOURCE/BUILD/VERIFIED(普通结构与拒绝)，高权限trace/目录seal/采集/停止/事件关联均
+NOT_RUN，不构成Socket或产品交付。机制见tests/AfdCreateTrace/README.md。
+
 tests/AfdDispatchBoundary复用NativeBoundary新增三固定请求；原五项矩阵保持请求不变，
 失败输出句柄不再认领，失败IO_STATUS_BLOCK标UNDEFINED_ON_FAILURE。两项目隔离
 SDK8.0.422构建0/0；首次CS8604修复记录保留。本人普通1001实测原endpoint成功，

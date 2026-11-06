@@ -18,6 +18,13 @@ creator SD、transport create等分支，尚未启用跟踪/实测此关联。�
 分支的解码合同，再准备原owner的有限采集资格；不继续盲测同类输入，不扩大设备授权。
 AFD/Socket/HTTPS仍FAIL，完整L3、受限GPU、GUI、正式Claude、整机验收未完成。
 
+后续tests/AfdCreateTrace有限观察器已SOURCE/BUILD，隔离构建0/0；首次缺System.IO导致
+26条编译错误已修复并保留。普通1003及本人1001实际结构检查120字节、file offset112，
+普通采集请求在创建前拒绝，受控目录不存在。只允许固定AFD keyword4的目标90秒/16MiB
+采集，检查新目录seal、自己的trace句柄/GUID、Token前后及AV/BFE；失败只可停止自有
+trace，不控制原LPAC/Job。没有启动trace/UAC或读取新ETL，真实权限/采集/停止仍NOT_RUN，
+不能算新增产品能力，下一固定联合资格尚待准备和具体决定。
+
 2026-11-06从ea119d5回到AFD拒绝层定位。新增tests/AfdDispatchBoundary固定三项解析
 对照，复用原NativeBoundary；修正原生失败时认领输出句柄/把IO_STATUS_BLOCK默认0
 当有效输出的问题。原五项矩阵请求不变，历史失败不回填。新对照及原DeviceBoundary
