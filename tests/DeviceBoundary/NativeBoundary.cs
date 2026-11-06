@@ -27,7 +27,17 @@ internal static class NativeBoundary
             Open("endpoint-zero-rights",@"\Device\Afd\Endpoint",0,2),Open("endpoint-read-write-sync",@"\Device\Afd\Endpoint",0xc0100000,2),
             Open("endpoint-original-access",@"\Device\Afd\Endpoint",0xc0140000,2)};
     }
-    private static Row Open(string role,string path,uint access,int kind)
+    // Fixed parser markers for the matched AFD image. A difference is evidence
+    // about how far a request may have progressed, never a kernel execution trace
+    // or permission to grant access. Keep the original five-row matrix unchanged.
+    internal static Row[] ReadDispatchMarkers()
+    {
+        if(!Environment.Is64BitProcess || Marshal.SizeOf<Attributes>()!=48)throw new PlatformNotSupportedException("Fixed x64 ABI required");
+        return new[]{Open("valid-ipv4-tcp-control",@"\Device\Afd\Endpoint",0xc0140000,2),
+            Open("invalid-family-35-marker",@"\Device\Afd\Endpoint",0xc0140000,2,35),
+            Open("invalid-flags-2-marker",@"\Device\Afd\Endpoint",0xc0140000,2,2,2)};
+    }
+    private static Row Open(string role,string path,uint access,int kind,int family=2,uint packetFlags=0x01000000)
     {
         var text=Marshal.StringToHGlobalUni(path);var name=IntPtr.Zero;SafeFileHandle? owned=null;
         int? managedCode=null;string? error=null;string status="NOT_RUN",ioStatus="NOT_RUN";bool valid=false;bool? inherits=null;
@@ -41,12 +51,15 @@ internal static class NativeBoundary
             else
             {
                 var ea=new byte[57];ea[5]=15;ea[6]=30;Encoding.ASCII.GetBytes("AfdOpenPacketXX").CopyTo(ea,8);
-                BitConverter.GetBytes(0x01000000u).CopyTo(ea,24);BitConverter.GetBytes(2).CopyTo(ea,32);BitConverter.GetBytes(1).CopyTo(ea,36);BitConverter.GetBytes(6).CopyTo(ea,40);
+                BitConverter.GetBytes(packetFlags).CopyTo(ea,24);BitConverter.GetBytes(family).CopyTo(ea,32);BitConverter.GetBytes(1).CopyTo(ea,36);BitConverter.GetBytes(6).CopyTo(ea,40);
                 code=NtCreateFile(out handle,access,ref attrs,out io,IntPtr.Zero,0,3,3,0,ea,(uint)ea.Length);
             }
-            owned=new SafeFileHandle(handle,true);status=Hex(code);ioStatus=kind==0?"NOT_APPLICABLE":Hex(unchecked((int)io.Status.ToInt64()));
-            valid=code==0 && !owned.IsInvalid;
-            if(valid){if(GetHandleInformation(owned,out var flags))inherits=(flags&1)!=0;else{error="HandleFlagsUnknown";managedCode=Marshal.GetLastWin32Error();}}
+            status=Hex(code);ioStatus=kind==0?"NOT_APPLICABLE":code<0?"UNDEFINED_ON_FAILURE":Hex(unchecked((int)io.Status.ToInt64()));
+            // Output handles/IO_STATUS_BLOCK are not proof of valid output when
+            // the direct NT return failed. Never adopt a failure output handle.
+            if(code>=0)owned=new SafeFileHandle(handle,true);
+            valid=owned is not null && !owned.IsInvalid;
+            if(valid && owned is not null){if(GetHandleInformation(owned,out var flags))inherits=(flags&1)!=0;else{error="HandleFlagsUnknown";managedCode=Marshal.GetLastWin32Error();}}
         }
         catch(Exception ex) when(ex is DllNotFoundException or EntryPointNotFoundException or ArgumentException)
         {error=ex.GetType().Name;managedCode=ex.HResult;}
