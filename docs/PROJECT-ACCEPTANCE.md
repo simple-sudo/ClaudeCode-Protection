@@ -5,6 +5,13 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-07 固定受限 Schannel 复测
+
+VERIFIED(实际 41fb→34543d35 未激活更新，受限端点、到达获取凭据句柄、原
+owner 有序隔离、Job 归零、31 项恢复、操作器 Token 一致)。FAIL(固定 TLS
+0x80090305)。无 HTTP 通过或双向转发。适配器 1702 无内容仍 UNKNOWN，完整
+L3、官方 CLI、产品交付均未验收。[实测](SCHANNEL-FAILURE-BOUNDARY-20261107.md)
+
 ## 2026-11-07 精确未激活迁移
 
 INTEGRATED / BUILD(安装锁内精确前驱和目标，普通迁移筛选 76 项，候选 20 文件

@@ -40,4 +40,24 @@ Win32Exception。完成枚举但找不到指定包的路径另抛 NotSupportedEx
 新候选 `34543d3518ae46d8a1452738b8c4ce85` / `6975AF49…` 只允许
 `41fb` / `1B092FE1…` 迁移。五个产品项目构建通过，清单、迁移绑定及管理
 程序集双份已核对，76 项普通夹具覆盖其他已列前驱、目标漂移及异常元数据。
-新版本安装及受限 TLS 复测仍待一次具体决定。
+
+## 2026-11-07 实际受限复测
+
+本人批准 `4029A8C7…` 后，原 owner 完成 `41fb` → `34543d35` 的一次
+未激活更新。安装回执为 INACTIVE。原自研 worker 恢复执行，实际创建和关闭
+IPv4/TCP 端点。适配器和 TCP4/TCP6 读取为 `1702/5/5`，均无返回内容，
+适配器仍 UNKNOWN。
+
+客户端走到 `HTTPS_TLS_HANDSHAKE` 并以 `TLS_SCHANNEL_ACQUIRE` /
+`0x80090305` 失败，子进程退出 125。网关停在 `CLIENT_TLS` 并报告
+`0x80070026`，原记录保留 `SessionGatewayStoppedExpiredOrFailed`。
+没有 HTTP 状态或双向转发证据。本次已定位到凭据句柄获取调用，SSPI 内部
+拒绝原因仍 UNKNOWN。[Microsoft Schannel 获取凭据接口](https://learn.microsoft.com/en-us/windows/win32/secauthn/acquirecredentialshandle--schannel)
+
+原 owner 撤销准入，先确认隔离再确认 Job 为零，停止错误为零，31 项 Winsock
+租约已恢复。操作器十个自身 Token 检查点与初始原始权限摘要一致，最终安全检查
+通过，外层退出 0 表示观测和关闭已核验。TLS 工作负荷仍 FAIL。只读核对三份
+获批回执，同一安装、会话、Job、worker 和状态绑定一致。13:16:21–13:16:35Z
+公开 Application 窗口零项，BFE/AV Running，完整厂商覆盖 UNKNOWN。
+实际许可已消耗。证据在本机 `work/schannel-boundary-20261107-01/operation-exact-predecessor-once`，
+派生核验 SHA-256 `EA2C9EC8…`。L3、HTTP、正式 CLI 和整机验收仍待完成。

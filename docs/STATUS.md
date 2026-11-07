@@ -5,6 +5,16 @@
 历史页的“当前/待执行/暂停/DELIVERABLE”按段落日期及限定范围解释，不是今天的状态或操作许可。
 不在本页复制当前安装和授权摘要。
 
+## 2026-11-07 精确未激活迁移与受限 Schannel 获取句柄失败
+
+4029A8C7… 一次操作实际完成。外层原始句柄退出 0，三回执按包、会话、Job 和
+worker 绑定核对。原 owner 41fb→34543d35 INACTIVE，受限 endpoint 已创建并关闭；
+1702/5/5 无内容。HTTPS_TLS_HANDSHAKE 的 TLS_SCHANNEL_ACQUIRE 返回
+0x80090305，网关 CLIENT_TLS 收 0x80070026，HTTP、双向转发和 SSPI 内部拒绝原因
+未确认。保留原 SessionGatewayStoppedExpiredOrFailed 与子进程 125。隔离先于
+Job 归零、31 项恢复、原所有者停止无错误、操作器十个权限检查点及最终安全检查
+通过。实际证据留本机，许可已消耗。[实测](SCHANNEL-FAILURE-BOUNDARY-20261107.md)
+
 ## 2026-11-07 未激活更新前绑定精确前驱
 
 原 owner 在安装锁内核对内嵌的前驱和目标版本及清单摘要，早于打开前驱、安装写入
