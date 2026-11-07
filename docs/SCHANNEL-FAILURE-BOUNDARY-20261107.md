@@ -119,3 +119,27 @@ TLS 路径，保持同一身份、原认证网关及原网络规则。官方 CLI
 逐字节重放。错误 SNI 的 1535 字节被拒绝。该对照没有创建 socket 或完成握手。
 证据在同一工作目录的 `ordinary-openssl-clienthello`。应用 TLS 在受限身份的首次
 真实握手还需要固定资产、原 owner 监督及独立操作审查。
+
+## 独立应用 TLS 对照
+
+保护库增加有界的 OpenSSL x64 内存 BIO 传输。客户端显式持有单一 DER 信任锚，
+核验 SAN，禁止通配符、CN 回退和重新协商。最低 TLS 1.2，最高 TLS 1.3。传输只使用
+调用方持有的模块和字节流，既不打开 socket，也不加载默认信任文件或 OpenSSL 配置。
+接收与发送各限制 128 KiB，失败后不能继续发送应用数据。暂未接入实际网关连接，
+正式 TLS 的离线吊销、信任链与认证策略未变。
+[OpenSSL 信任验证](https://docs.openssl.org/3.5/man3/SSL_CTX_set_verify/)
+[OpenSSL 主机名验证](https://docs.openssl.org/3.5/man3/SSL_set1_host/)
+
+普通对照只在内存中生成临时 CA 和服务端证书，固定的 3.5.7 运行库逐一核对长度及
+SHA-256。客户端实际握手首段先走生产网关解析和重放，两端才完成 TLS 握手及加密的
+请求和响应。错 SAN 返回验证错误 62，未知信任锚返回 20，提前 EOF 也未放行应用数据。
+早期 Schannel 服务端夹具超时，补观测得到 `0x8009030E` 和不支持临时密钥，换成
+OpenSSL 内存对端后通过。初次超时和诊断保留。Git 所带 3.2 已结束公开支持，本阶段
+采用本机 3.5.7 仅作普通离线输入。真实 LPAC 前须由原 owner 持有固定、受支持、
+不可替换的运行库，尚未把普通用户目录中的 DLL 纳入产品安装包。
+[OpenSSL 支持周期](https://mirror.openssl-library.org/roadmap/index.html)
+
+Lifecycle、Broker、Bootstrap 和 OwnedToolLaunch Release BUILD0/0。七个已有普通
+回归入口通过，涵盖网关回报与资格、Schannel 原生及首段对照、未激活迁移、GPU 回报
+和离线证书策略。证据留在本机 `work/openssl-transport-20261107-01`。
+真实 LPAC、真实代理转发、真实上游、官方 CLI 与 L3 均未在本阶段执行。

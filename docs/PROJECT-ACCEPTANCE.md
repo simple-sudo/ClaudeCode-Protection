@@ -5,6 +5,13 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-07 独立应用 TLS 内存闭环
+
+BUILD(保护库 OpenSSL 传输)。VERIFIED(普通身份、精确 OpenSSL 3.5.7、生产网关
+首段校验和重放、内存真实握手及双向加密数据、三类失败关闭)。原 owner 对新运行库
+的持有、LPAC 下的 TLS、真实网关上游、L3 和整机验收仍未完成。
+[证据](SCHANNEL-FAILURE-BOUNDARY-20261107.md#独立应用-tls-对照)
+
 ## 2026-11-07 全隔离 Schannel 原生实测
 
 VERIFIED(实际未激活更新、全隔离低完整性 LPAC 五项调用、原所有者有序关闭、Job
