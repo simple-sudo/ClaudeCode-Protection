@@ -57,6 +57,31 @@ internal static class GatewayFeedbackCases
             Refuse(failure,42);
             Refuse(Result(phase,125,200,new System.Security.Authentication.AuthenticationException()),125);
         }
+        var runtime=typeof(System.Net.Security.SslStream).Assembly;
+        var sspi=runtime.GetType("System.Net.SSPIWrapper",true)!;
+        var pal=runtime.GetType("System.Net.Security.SslStreamPal",true)!;
+        const BindingFlags staticMethods=BindingFlags.Static|BindingFlags.NonPublic|BindingFlags.Public;
+        Check(Call("SchannelFrame",sspi.GetMethod("EnumerateSecurityPackages",staticMethods),true) is "TLS_SCHANNEL_ENUMERATE");
+        Check(Call("SchannelFrame",sspi.GetMethod("GetVerifyPackageInfo",staticMethods),false) is "TLS_SCHANNEL_PACKAGE_MISSING");
+        Check(Call("SchannelFrame",pal.GetMethod("AcquireCredentialsHandleSchCredentials",staticMethods),true) is "TLS_SCHANNEL_ACQUIRE");
+        Check(Call("SchannelFrame",pal.GetMethod("AcquireCredentialsHandleSchannelCred",staticMethods),true) is "TLS_SCHANNEL_ACQUIRE");
+        Check(Call("SchannelFrame",pal.GetMethod("VerifyPackageInfo",staticMethods),true) is null);
+        Check(Call("SchannelFrame",pal.GetMethod("InitializeSecurityContext",staticMethods),true) is null);
+        Check(Call("SchannelFrame",type.GetMethod("Result",staticMethods),true) is null);
+        Check(Call("SchannelFrame",null,true) is null);
+        const int packageStatus=unchecked((int)0x80090305);
+        var ambiguous=Result("HTTPS_TLS_HANDSHAKE",125,error:new System.ComponentModel.Win32Exception(packageStatus,"private-fixture"));
+        Accept(ambiguous,125);
+        Check(JsonNode.Parse(ambiguous)!["Errors"]![0]!["Kind"]!.GetValue<string>()=="NATIVE");
+        Check(!ambiguous.Contains("private-fixture",StringComparison.Ordinal));
+        foreach(var kind in new[]{"TLS_SCHANNEL_ENUMERATE","TLS_SCHANNEL_PACKAGE_MISSING","TLS_SCHANNEL_ACQUIRE"})
+        {
+            var categorized=JsonNode.Parse(ambiguous)!;
+            categorized["Errors"]![0]!["Kind"]=kind;
+            Accept(categorized.ToJsonString(),125);
+            categorized["Phase"]="HTTPS_HTTP_EXCHANGE";Refuse(categorized.ToJsonString(),125);
+            categorized["Phase"]="HTTPS_TLS_HANDSHAKE";categorized["Errors"]![0]!["Code"]=0;Refuse(categorized.ToJsonString(),125);
+        }
         var startupCode=Result("HTTPS_SOCKET_CREATE",125,error:new SocketException(10107));
         Accept(startupCode,125);
         Check(JsonNode.Parse(startupCode)!["Errors"]![0]!["Kind"]!.GetValue<string>()=="SOCKET"); // Code alone is not startup evidence.

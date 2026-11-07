@@ -5,6 +5,13 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-07 Schannel 失败边界
+
+INTEGRATED / BUILD(固定 TLS 回报分类及未激活候选)。VERIFIED(普通 Windows
+实际 Schannel 首段生成与释放，真实 .NET 缺包异常回报，内存 ClientHello 解析)。
+原 41fb LPAC TLS FAIL 不回填；新候选实际安装、受限复测、真实内容 L3、
+HTTP、官方 CLI 和整机交付均未验收。[证据边界](SCHANNEL-FAILURE-BOUNDARY-20261107.md)
+
 ## 2026-11-07 架构整理
 
 INTEGRATED / BUILD(六个产品项目)。VERIFIED(普通 55 个测试入口，含隐私 v5

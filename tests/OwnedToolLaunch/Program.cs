@@ -8,7 +8,7 @@ using System.Text.Json;
 using System.Runtime.InteropServices;
 using Microsoft.Win32.SafeHandles;
 
-if(args.Length!=1 || args[0] is not ("winsock-provider-policy" or "winsock-provider-metadata" or "gateway-socket-create" or "winsock-transport-policy" or "winsock-transport-metadata" or "winsock-lease-policy" or "winsock-registry-metadata" or "winsock-registry-scope" or "restricting-sid-boundary" or "gpu-report-policy" or "privacy-probe-closure" or "privacy-probe-exit-child" or "timezone-snapshot" or "timezone-policy" or "timezone-metadata" or "gateway-feedback" or "gateway-tls-client-hello" or "gateway-qualification-boundary" or "policy" or "messages" or "handle-transfer" or "fault-mode" or "fault-mode-read" or "partial-output" or "hosted-policy" or "etw-policy" or "tls-transport-policy" or "etw-token-access" or "inactive-transition" or "project-policy" or "project-build" or "privacy-native" or "caller-project-build" or "caller-project-policy" or "self-control-open" or "caller-data-build" or "caller-compile-failure" or "caller-run-failure" or "caller-test-failure" or "caller-output-failure" or "caller-failure-owner" or "control-file-gate" or "caller-multi-edit-build" or "workspace-caller-lifetime" or "workspace-caller-lifetime-child" or "maintenance-identity" or "reset-settings-file" or "resource-release"))return 125;
+if(args.Length!=1 || args[0] is not ("winsock-provider-policy" or "winsock-provider-metadata" or "gateway-socket-create" or "winsock-transport-policy" or "winsock-transport-metadata" or "winsock-lease-policy" or "winsock-registry-metadata" or "winsock-registry-scope" or "restricting-sid-boundary" or "gpu-report-policy" or "privacy-probe-closure" or "privacy-probe-exit-child" or "timezone-snapshot" or "timezone-policy" or "timezone-metadata" or "gateway-feedback" or "gateway-tls-client-hello" or "gateway-schannel-native" or "gateway-qualification-boundary" or "policy" or "messages" or "handle-transfer" or "fault-mode" or "fault-mode-read" or "partial-output" or "hosted-policy" or "etw-policy" or "tls-transport-policy" or "etw-token-access" or "inactive-transition" or "project-policy" or "project-build" or "privacy-native" or "caller-project-build" or "caller-project-policy" or "self-control-open" or "caller-data-build" or "caller-compile-failure" or "caller-run-failure" or "caller-test-failure" or "caller-output-failure" or "caller-failure-owner" or "control-file-gate" or "caller-multi-edit-build" or "workspace-caller-lifetime" or "workspace-caller-lifetime-child" or "maintenance-identity" or "reset-settings-file" or "resource-release"))return 125;
 try
 {
 using var identity=WindowsIdentity.GetCurrent();
@@ -26,6 +26,7 @@ if(args[0]=="timezone-snapshot"){TimeZoneReadCases.RunSnapshot(library);return 0
 if(args[0]=="restricting-sid-boundary"){RestrictingSidCases.Run(library);return 0;}
 if(args[0]=="gateway-socket-create"){GatewayFeedbackCases.RunSocketCreate(library);return 0;}
 if(args[0]=="gateway-feedback"){GatewayFeedbackCases.Run(library);return 0;}
+if(args[0]=="gateway-schannel-native")return SchannelNativeBoundaryCases.Run(library);
 if(args[0]=="gateway-tls-client-hello"){GatewayFeedbackCases.VerifyOrdinaryClientHello(library);return 0;}
 if(args[0]=="gateway-qualification-boundary"){GatewayQualificationBoundaryCases.Run(library);return 0;}
 if(args[0]=="reset-settings-file"){ResetSettingsFileCases.Run(library);return 0;}
@@ -278,6 +279,7 @@ if(args[0]=="inactive-transition")
         Require(refused,"inactive selection must refuse changed, unknown or same-package transitions");
     }
         foreach(var (actualRelease,actualManifest) in new[]{
+        ("41fb2ae4d89843df91c5d08f6a12eec3","1B092FE1579CE80ABBECE8DE26D846DDE271E4D58E6926730608CDCC3DDCD17F"),
         ("c5260b13d8d34ceea6d496c084836a89","D35710928355BDDF12C4E07153A73A58FDB29E53F2533EE27D7DCE41EBC7F300"),
         ("610b108c2bc54041b52c88adf0303122","2ACC0397D4585791A7C6F258DB8C7A626E10D990B9D17FF04B43564055BA4C5D"),
         ("979ca94af3744760b356678a31f2eb66","3CE38FBC1D5ECB5FB8292B1107992C4E3BC4DE487AB7BF45AE4B37DCA64489D1"),
@@ -295,7 +297,7 @@ if(args[0]=="inactive-transition")
         Deny(()=>Check(actualRelease,replacementManifest,actualRelease,replacementManifest,replacementRelease,new string('B',64)));
         Deny(()=>Check(actualRelease,actualManifest.ToLowerInvariant(),actualRelease,actualManifest.ToLowerInvariant(),replacementRelease,replacementManifest));
     }
-    Console.WriteLine("PASS 56 pure inactive-transition checks including exact c526 predecessor; not live Job closure, maintenance, installation or UAC");return 0;
+    Console.WriteLine("PASS 63 pure inactive-transition checks including exact 41fb predecessor; not live Job closure, maintenance, installation or UAC");return 0;
 }
 if(args[0]=="etw-token-access")
 {

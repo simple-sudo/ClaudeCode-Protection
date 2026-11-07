@@ -1,14 +1,15 @@
 # 官方 Claude CLI 首轮离线资格
 
-2026-11-07，用户允许以未登录的官方 CLI 为兼容性实验对象，先做不需要登录、
-认证和模型推理的隔离测试。当前为 DESIGN / NOT_RUN。现有包、普通探针和
-正式会话权限分别按其原有范围核验。
+2026-11-07 最新交接将本方案保留为将来的阶段性验收合同。日常开发与系统实验
+使用自研载荷，官方 CLI 执行逐次审批。当前为 DESIGN / NOT_RUN。此前离线
+未登录测试安排已被替代。
 
 ## 已核对的输入与当前阻塞
 
-- 只读核对本机 Claude CLI 2.1.296.0，260489376 字节，Windows 验签状态
-  Valid，签名者为 Anthropic, PBC。完整 SHA-256 及签名记录保存在本机
-  `work/architecture-20261107-01/claude-image-observation.json`。
+- 重新安装后只读核对本机 Claude CLI 2.1.319.0，344807072 字节，Windows 验签
+  状态 Valid，签名者 Anthropic, PBC。摘要匹配最新交接，记录保存在本机
+  `work/schannel-boundary-20261107-01/claude-image-observation.json`。
+  较早版本的签名观察仍保留在原架构工作目录。
 - 原子创建链目前只启动现装清单的固定 Broker 镜像。CLI 超过当前 v1 清单
   单项 128 MiB 上限，也位于普通用户可写的安装路径。首轮必须有单独固定、
   可持有的只读镜像。可以评估复用 Git/PowerShell 固定外部工具资产的思路，

@@ -14,20 +14,23 @@ internal sealed record GatewayChildReport(int SchemaVersion,string SessionId,int
     internal const int MaxCharacters=4096;
     internal static GatewayChildReport Result(string sessionId,string phase,int exitCode,int? status=null,Exception? failure=null)
     {
-        var errors=Describe(failure).ToList();
+        var errors=DescribeCore(failure,phase=="HTTPS_TLS_HANDSHAKE").ToList();
         if(exitCode==125 && errors.Count==0)errors.Add(new("REFUSED",125));
         // Invalid environment text is never echoed, including on input refusal.
         var id=sessionId.Length==32 && sessionId.All(c=>c is >= '0' and <= '9' or >= 'a' and <= 'f')?sessionId:"";
         return new(1,id,Environment.ProcessId,phase,exitCode,status,errors.ToArray());
     }
-    internal static GatewayChildError[] Describe(Exception? failure)
+    internal static GatewayChildError[] Describe(Exception? failure)=>DescribeCore(failure,false);
+    private static GatewayChildError[] DescribeCore(Exception? failure,bool classifySchannel)
     {
         var errors=new List<GatewayChildError>();
         for(var ex=failure;ex is not null && errors.Count<4;ex=ex.InnerException)
         {
             var captured=ex as SessionProxy.FixedSocketCreationException;
             var includeContext=captured is not null && errors.Count<3;
-            errors.Add(new(includeContext?"SOCKET_CREATE":Kind(ex),ex is Win32Exception native?native.NativeErrorCode:ex.HResult));
+            var code=ex is Win32Exception native?native.NativeErrorCode:ex.HResult;
+            var schannel=classifySchannel && code<0?SchannelFailureKind(ex):null;
+            errors.Add(new(includeContext?"SOCKET_CREATE":schannel??Kind(ex),code));
             if(includeContext)errors.Add(new("SOCKET_NT_CONTEXT",captured!.LastNtStatus));
         }
         return errors.ToArray();
@@ -57,6 +60,38 @@ internal sealed record GatewayChildReport(int SchemaVersion,string SessionId,int
     private static bool SocketStartupFrame(System.Reflection.MethodBase? method)=>
         method?.DeclaringType is Type type && type.Assembly==typeof(Socket).Assembly && type.FullName=="Interop+Winsock" &&
         (method.Name=="EnsureInitialized" || method.Name.StartsWith("<EnsureInitialized>g__Initialize|",StringComparison.Ordinal));
+    private static string? SchannelFailureKind(Exception error)
+    {
+        if(error is not (Win32Exception or NotSupportedException))return null;
+        try
+        {
+            var trace=new System.Diagnostics.StackTrace(error,false);
+            if(trace.FrameCount is <1 or >64)return null;
+            for(var i=0;i<trace.FrameCount;i++)
+            {
+                var kind=SchannelFrame(trace.GetFrame(i)?.GetMethod(),error is Win32Exception);
+                if(kind is not null)return kind;
+            }
+        }
+        catch{ /* Retain the original failure when the stack is unavailable. */ }
+        return null;
+    }
+    private static string? SchannelFrame(System.Reflection.MethodBase? method,bool native)
+    {
+        // Exact .NET Windows runtime call sites. Codes and messages alone
+        // cannot identify the failing step.
+        if(method?.DeclaringType is not Type type || type.Assembly!=typeof(System.Net.Security.SslStream).Assembly)return null;
+        return (type.FullName,method.Name,native) switch {
+            ("System.Net.SSPIWrapper","EnumerateSecurityPackages",true)=>"TLS_SCHANNEL_ENUMERATE",
+            ("System.Net.SSPIWrapper","GetVerifyPackageInfo",false)=>"TLS_SCHANNEL_PACKAGE_MISSING",
+            ("System.Net.Security.SslStreamPal","VerifyPackageInfo",false)=>"TLS_SCHANNEL_PACKAGE_MISSING",
+            ("System.Net.SSPIWrapper","AcquireCredentialsHandle",true)=>"TLS_SCHANNEL_ACQUIRE",
+            ("System.Net.Security.SslStreamPal","AcquireCredentialsHandleSchCredentials",true)=>"TLS_SCHANNEL_ACQUIRE",
+            ("System.Net.Security.SslStreamPal","AcquireCredentialsHandleSchannelCred",true)=>"TLS_SCHANNEL_ACQUIRE",
+            _=>null
+        };
+    }
+    private static bool SchannelKind(string? kind)=>kind is "TLS_SCHANNEL_ENUMERATE" or "TLS_SCHANNEL_PACKAGE_MISSING" or "TLS_SCHANNEL_ACQUIRE";
     private static string SecurityKind(System.Security.SecurityException error)
     {
         // Only report fixed runtime call-site categories. Never export frame
@@ -99,11 +134,13 @@ internal sealed record GatewayChildReport(int SchemaVersion,string SessionId,int
         foreach(var e in errors.EnumerateArray())StrictJson.Fields(e,"Kind","Code");
         var r=JsonSerializer.Deserialize<GatewayChildReport>(raw)??throw new InvalidDataException("GatewayFeedbackMissing");
         if(r.SchemaVersion!=1 || r.SessionId!=Identifiers.Hex32(expectedSessionId) || expectedPid==0 || r.Pid<=0 || (uint)r.Pid!=expectedPid ||
-            (uint)r.ExitCode!=actualExitCode || r.Errors is null || r.Errors.Any(e=>e is null || !KnownErrorKind(e.Kind)))
+            (uint)r.ExitCode!=actualExitCode || r.Errors is null || r.Errors.Any(e=>e is null || !(KnownErrorKind(e.Kind) || SchannelKind(e.Kind))))
             throw new InvalidDataException("GatewayFeedbackOwnerOrErrorBinding");
         for(var i=0;i<r.Errors.Length;i++)
         {
             var kind=r.Errors[i].Kind;
+            if(SchannelKind(kind) && (r.Phase!="HTTPS_TLS_HANDSHAKE" || r.ExitCode!=125 || r.Errors[i].Code>=0))
+                throw new InvalidDataException("GatewayFeedbackSchannelPhaseBinding");
             if(kind is not ("SOCKET_CREATE" or "SOCKET_NT_CONTEXT"))continue;
             if(r.ExitCode!=125 || r.Phase!="HTTPS_SOCKET_CREATE" ||
                 (kind=="SOCKET_CREATE" && (r.Errors[i].Code<=0 || i+1>=r.Errors.Length || r.Errors[i+1].Kind!="SOCKET_NT_CONTEXT")) ||
