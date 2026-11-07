@@ -5,6 +5,34 @@
 历史页的“当前/待执行/暂停/DELIVERABLE”按段落日期及限定范围解释，不是今天的状态或操作许可。
 不在本页复制当前安装和授权摘要。
 
+## 2026-11-06 现装41fb到达网关TLS阶段
+
+135387A2…审查逾期未执行，续接以新根、期限及工件重新固定9B63092B…；同一公开
+Application窗口用EventLogReader查provider元数据，绕开消息格式化资源错误，读取
+失败、无provider或超界仍阻止执行。重新BUILD0/0，35项闭合、22项Token fixture与
+普通提前拒绝通过后取得一次批准。
+
+原受限worker真实创建并关闭IPv4/TCP端点。三项内容观察1702/5/5，均无返回字节。
+原认证网关达到CLIENT_TLS，0x80070026；客户端HTTPS_CONNECT_REPLY旧标记停在
+已进入TLS的路径，报告TLS与原生0x80090305。Windows定义该值为
+[SEC_E_SECPKG_NOT_FOUND](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-erref/705fb797-2175-4a90-b5a3-3918024b10b8)。
+无有效ClientHello通过、HTTP状态或双向写证据。原owner失败
+SessionGatewayStoppedExpiredOrFailed与原停止报告同时留存。
+
+在本机work/no-content-https-canary-20261106-01/operation-native-observation-renewed，
+获批的终态98B01550…及canary回执ADDBEBC7…绑定同一运行。原报告准入关闭、
+隔离先于Job归零、停止无失败、31键恢复，经保留回执离线核对一致。外层要求
+SessionSyntheticWorkloadFailed作为预期退出分支，本次stage4/FAIL及
+OriginalOwnerClosed=false原样保留。自身权限摘要一致仅到BEFORE_CANARY，
+最终Token和Safety检查未到达。独立公开Application后查1条、0匹配、BFE/AV运行，
+厂商覆盖仍UNKNOWN。许可已消耗，未重装、重试或另读私有证据。
+
+随后区分CONNECT回复、TLS握手及HTTP交换，四工程Release BUILD0/0，116项回报、
+27网关资格、76能力边界及TLS策略通过。真实内存对照初次并入通用测试，隔离开发
+命令身份在Schannel获取凭据返回0x8009030E。将对照分到独立入口后，普通桌面身份
+通过，生产网关解析并逐字节重放真实ClientHello，内存EOF结束。无连接或服务器
+握手。新工件未安装，普通验证材料见work/tls-client-phase-20261106-01。
+
 ## 2026-11-06 更新成功后自身调试权限变化真实定位
 
 本人批准502A49DA…一次操作，原安装回执370989DA5C5A9AA21951761A3EE8E6D6F886AA05347E559DE7E449CE0C0AF09E

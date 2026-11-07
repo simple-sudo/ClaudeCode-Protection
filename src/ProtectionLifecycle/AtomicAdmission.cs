@@ -645,12 +645,20 @@ internal sealed partial class AtomicChild : IDisposable
         phase?.Invoke("HTTPS_SETTINGS");
         var tunnelConsumed=0;
         using var handler=new SocketsHttpHandler {UseProxy=false,AllowAutoRedirect=false,UseCookies=false,
-            ConnectCallback=(context,cancel)=>
+            ConnectCallback=async (context,cancel)=>
             {
                 if(context.DnsEndPoint.Host!=SessionProxy.Target || context.DnsEndPoint.Port!=443)throw WfpNative.Contract("FixedSessionHttpTargetRefused");
                 SessionProxy.ConsumeFixedTunnelAttempt(ref tunnelConsumed);
-                return SessionProxy.OpenFixedClientTunnel(sessionId,sessionSecret,cancel,phase);
+                var tunnel=await SessionProxy.OpenFixedClientTunnel(sessionId,sessionSecret,cancel,phase).ConfigureAwait(false);
+                phase?.Invoke("HTTPS_TLS_HANDSHAKE");
+                return tunnel;
             }};
+        if(phase is not null)
+            handler.PlaintextStreamFilter=(context,_)=>
+            {
+                phase("HTTPS_HTTP_EXCHANGE");
+                return ValueTask.FromResult(context.PlaintextStream);
+            };
         phase?.Invoke("HTTPS_TLS_POLICY");handler.SslOptions=SessionProxy.OfflineTls();
         phase?.Invoke("HTTPS_CLIENT");
         using var client=new HttpClient(handler){Timeout=TimeSpan.FromSeconds(10)};

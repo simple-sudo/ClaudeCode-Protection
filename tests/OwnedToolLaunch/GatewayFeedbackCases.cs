@@ -50,6 +50,13 @@ internal static class GatewayFeedbackCases
         var oversized=false;try{Read(Encoding.UTF8.GetBytes(new string('x',4097)));}catch(InvalidDataException){oversized=true;}Check(oversized);
         var invalidUtf8=false;try{Read(new byte[]{255});}catch(DecoderFallbackException){invalidUtf8=true;}Check(invalidUtf8);
         foreach(var phase in new[]{"TIMEZONE_DEFINITION","TIMEZONE_PUBLIC_CACHE","TIMEZONE_LOCAL_BINDING","HTTPS_SETTINGS","HTTPS_TLS_POLICY","HTTPS_CLIENT","HTTPS_SEND","HTTPS_SOCKET_INITIALIZATION","HTTPS_SOCKET_CREATE","HTTPS_CONNECT","HTTPS_CONNECT_WRITE","HTTPS_CONNECT_REPLY"})Accept(Result(phase,125,error:new System.Security.SecurityException("private-fixture")),125);
+        foreach(var phase in new[]{"HTTPS_TLS_HANDSHAKE","HTTPS_HTTP_EXCHANGE"})
+        {
+            var failure=Result(phase,125,error:new System.Security.Authentication.AuthenticationException("private-fixture"));
+            Accept(failure,125);
+            Refuse(failure,42);
+            Refuse(Result(phase,125,200,new System.Security.Authentication.AuthenticationException()),125);
+        }
         var startupCode=Result("HTTPS_SOCKET_CREATE",125,error:new SocketException(10107));
         Accept(startupCode,125);
         Check(JsonNode.Parse(startupCode)!["Errors"]![0]!["Kind"]!.GetValue<string>()=="SOCKET"); // Code alone is not startup evidence.
@@ -126,6 +133,65 @@ internal static class GatewayFeedbackCases
         ProxyCall("InitializeFixedClientSockets");Check(initialized.GetValue(null) is 1);
         Console.WriteLine($"PASS {count} fixed gateway feedback checks and actual pinned-runtime process-local Winsock initialization/reuse; no exception messages, paths, tokens or raw output; diagnostic only. No socket creation/connections, UAC, child process, protected state, Job or WFP operation.");
     }
+
+    // Real Schannel client initialization with an in-memory transport that
+    // returns EOF. The ordinary comparison can reach ClientHello without
+    // making a connection or requiring any server certificate.
+    internal static void VerifyOrdinaryClientHello(Assembly library)
+    {
+        var proxy=library.GetType("ProtectionLifecycle.SessionProxy",true)!;
+        var tls=(System.Net.Security.SslClientAuthenticationOptions)proxy
+            .GetMethod("OfflineTls",BindingFlags.Static|BindingFlags.NonPublic)!.Invoke(null,null)!;
+        tls.TargetHost="www.microsoft.com";
+        tls.ApplicationProtocols=[System.Net.Security.SslApplicationProtocol.Http11];
+        using var wire=new ClientHelloCapture();
+        using var ssl=new System.Net.Security.SslStream(wire,leaveInnerStreamOpen:true);
+        try
+        {
+            ssl.AuthenticateAsClient(tls);
+            throw new InvalidOperationException("TLS authenticated without a server");
+        }
+        catch(IOException) when(wire.CapturedBytes>0) { }
+
+        var original=wire.ToArray();
+        using var input=new MemoryStream(original,writable:false);
+        var parse=library.GetType("ClaudeCodeProtection.Security.SessionTunnel",true)!
+            .GetMethod("RequireTlsClientHelloAsync",BindingFlags.Static|BindingFlags.NonPublic)!;
+        var task=(Task<Stream>)parse.Invoke(null,[input,tls.TargetHost,(Action)(()=>{}),CancellationToken.None])!;
+        using var replay=task.GetAwaiter().GetResult();
+        var received=new byte[wire.CapturedBytes];
+        replay.ReadExactly(received);
+        if(!received.AsSpan().SequenceEqual(original) || input.Position!=input.Length || replay.ReadByte()!=-1)
+            throw new InvalidOperationException("Ordinary ClientHello replay differs");
+        Console.WriteLine("PASS ordinary Schannel emitted ClientHello accepted by the production gateway parser over memory; deliberate EOF, no socket or server handshake.");
+    }
+
+    private sealed class ClientHelloCapture : Stream
+    {
+        private readonly MemoryStream captured=new();
+        internal int CapturedBytes=>checked((int)captured.Length);
+        internal byte[] ToArray()=>captured.ToArray();
+        public override bool CanRead=>true;
+        public override bool CanWrite=>true;
+        public override bool CanSeek=>false;
+        public override long Length=>throw new NotSupportedException();
+        public override long Position { get=>throw new NotSupportedException();set=>throw new NotSupportedException(); }
+        public override int Read(byte[] buffer,int offset,int count)=>0;
+        public override void Write(byte[] buffer,int offset,int count)
+        {
+            if(count>32768-captured.Length)throw new InvalidDataException("Ordinary ClientHello exceeds gateway bound");
+            captured.Write(buffer,offset,count);
+        }
+        public override void Flush() { }
+        public override long Seek(long offset,SeekOrigin origin)=>throw new NotSupportedException();
+        public override void SetLength(long value)=>throw new NotSupportedException();
+        protected override void Dispose(bool disposing)
+        {
+            if(disposing)captured.Dispose();
+            base.Dispose(disposing);
+        }
+    }
+
     [System.Runtime.InteropServices.DllImport("kernel32.dll",SetLastError=true,ExactSpelling=true)]
     [System.Runtime.InteropServices.DefaultDllImportSearchPaths(System.Runtime.InteropServices.DllImportSearchPath.System32)]
     [return:System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.Bool)]

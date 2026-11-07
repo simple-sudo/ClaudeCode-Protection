@@ -5,6 +5,14 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-06 固定受限探针到达TLS
+
+VERIFIED(9B63092B现装41fb受限端点与认证网关CLIENT_TLS阶段、原owner回报中的有序
+隔离/Job归零及31键恢复)。TLS 0x80090305，网关读初始握手遇EOF，HTTP与双向转发
+未证实。外层stage4 FAIL，最终Token检查未到达。适配器1702仍UNKNOWN。
+INTEGRATED/BUILD(新增TLS/HTTP阶段回报)，普通桌面内存ClientHello经生产网关解析
+与重放通过。新版本受限TLS、隐私/网络交付与整机验收未完成。
+
 ## 2026-11-06 固定更新后真实自身权限变化
 
 VERIFIED(502A49DA固定未激活更新至41fb、逐检查点真实Token读取与拒绝继续)：

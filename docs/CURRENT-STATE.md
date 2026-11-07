@@ -1,5 +1,25 @@
 # 当前状态与授权摘要
 
+2026-11-06纽约时间晚间，批准9B63092B…后，现装41fb原owner固定探针完成一次实际
+尝试。上份135387A2…审查逾期且未执行，新审查重新固定期限、证据目录及工件。
+原受限worker恢复执行，创建并关闭IPv4/TCP端点。精确1702/5/5均无内容，继续至
+认证网关的CLIENT_TLS。客户端返回0x80090305（SEC_E_SECPKG_NOT_FOUND），网关
+在读ClientHello时返回0x80070026（EOF），没有HTTP状态或双向转发证据。适配器
+仍UNKNOWN，TLS原生失败点尚未唯一定位。
+
+原会话回报显示先关闭准入和隔离，再确认Job为零，31键租约恢复，停止无失败。
+外层把实际网关故障判为非预期工作负荷失败，stage4整体FAIL及OriginalOwnerClosed=false
+原样保留。复核仅用两份获批回执，关闭字段与原会话和Job绑定一致。操作器到受限
+探针启动前自身权限原始摘要一致，末次权限检查未到达。许可已消耗，无重试、
+额外私有读取、安装或Claude启动。现装最近安装观察仍41fb/INACTIVE。
+证据在work/no-content-https-canary-20261106-01/operation-native-observation-renewed。
+
+随后源码分别记录CONNECT回复、TLS握手及HTTP交换阶段，旧回报仍可解析。四工程
+Release BUILD0/0，116回报、27网关资格、76能力边界和离线TLS策略通过。初次将
+Schannel真实对照并入回报测试时，隔离开发命令身份以0x8009030E失败，现分为独立
+普通桌面对照，已实测生成ClientHello并通过生产网关解析及逐字节重放。用内存EOF
+结束，范围仅到ClientHello。新源码未安装，受限TLS、完整L3和整机交付待验证。
+
 2026-11-06本人批准502A49DA…后，原固定更新完成c526→41fb未激活迁移，manifest
 1B092FE1…；安装回执370989DA…。操作器在TOKEN_INSTALLED/stage4因真实权限属性
 变化停止：已有LUID20/SeDebugPrivilege由0变2，无新增/删除项。此前五个检查点完整、
