@@ -5,6 +5,13 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-07 全隔离 Schannel 获取对照
+
+INTEGRATED / BUILD(固定原 owner 对照、精确未激活候选)。VERIFIED(普通 Windows
+实际包查询、四种固定凭据配置的获取和释放、候选原样管理库普通回归)。受限身份
+实测与候选安装 NOT_RUN。TLS 握手、HTTP、双向转发、L3 与整机交付未验收。
+[证据](SCHANNEL-FAILURE-BOUNDARY-20261107.md#全隔离获取凭据对照)
+
 ## 2026-11-07 固定受限 Schannel 复测
 
 VERIFIED(实际 41fb→34543d35 未激活更新，受限端点、到达获取凭据句柄、原

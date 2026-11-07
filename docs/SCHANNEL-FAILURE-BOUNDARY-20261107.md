@@ -61,3 +61,29 @@ IPv4/TCP 端点。适配器和 TCP4/TCP6 读取为 `1702/5/5`，均无返回内�
 公开 Application 窗口零项，BFE/AV Running，完整厂商覆盖 UNKNOWN。
 实际许可已消耗。证据在本机 `work/schannel-boundary-20261107-01/operation-exact-predecessor-once`，
 派生核验 SHA-256 `EA2C9EC8…`。L3、HTTP、正式 CLI 和整机验收仍待完成。
+
+## 全隔离获取凭据对照
+
+同一 13:16:21–13:16:35Z 窗口的公开 System 日志没有匹配的 Schannel 事件。
+SSPI 内部拒绝仍 UNKNOWN。新对照由原安装 owner 持有当前版本与状态锁，要求既有
+准入、原 Job 和回环记录闭合、全部原有 fence 已全隔离。创建及恢复使用原 Job 与
+LPAC profile，挂起时查原句柄、实际令牌和隔离。停止时发现原 fence 漂移可由原
+owner 重申隔离，之后核验 Job 归零。子进程只接受固定的低完整性 LPAC 身份和
+internetClient 单能力，使用私有运行目录。活动时限为 12 秒。仅继承有界回报管道。
+
+固定调用为查询 Unified Security Protocol 包、按网关参数的 v5、去掉附加标志的 v5、
+指定 TLS 1.2 的 v5 和同样指定 TLS 1.2 的 v4。无客户端证书、目标、握手、网关、
+回环例外或 Winsock 租约。报告按会话、进程 ID 和原句柄创建时间绑定，保存原始
+状态、释放状态和调用时间。原生返回失败且未产生对象时可以形成完整对照观测；
+有对象时必须确认释放。网关参数取自本机 .NET 8.0.28 所用的 Windows 客户端路径。
+旧 v4 路径仅用来区分参数代际。任何结果均不改变生产 TLS 策略或扩大权限。
+[Schannel 获取凭据接口](https://learn.microsoft.com/en-us/windows/win32/secauthn/acquirecredentialshandle--schannel)
+[.NET 8.0.28 客户端实现](https://github.com/dotnet/runtime/blob/v8.0.28/src/libraries/System.Net.Security/src/System/Net/Security/SslStreamPal.Windows.cs)
+
+普通 Windows 实际五项调用与五项释放均为 0。以候选管理库原样执行 9 个普通
+回归入口，含 18 项新对照、83 项迁移、136 项网关回报、27 项网关资格、89 项
+网关能力、LPAC 资格与固定 GPU 相关回报。五产品 Release BUILD0/0。候选
+`68a0d109ae244dc298c1482d7aa0b432` / `7011F015638626416B00B222C817AE1749A258C9C7EA5EDB3D91DFCC6104DCF2`
+只允许 `34543d35` / `6975AF49…` 迁移，20 文件、内嵌清单、内嵌迁移和管理库双份
+核验通过。证据位于本机 `work/schannel-acquisition-20261107-01`。
+本阶段没有安装或执行新受限对照。实测需要一份新的精确操作审查。

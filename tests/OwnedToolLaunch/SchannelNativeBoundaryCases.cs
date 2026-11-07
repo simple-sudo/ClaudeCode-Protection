@@ -1,6 +1,8 @@
 using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Runtime.ExceptionServices;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 
 // Ordinary process-local control. No client certificate, peer input,
 // transport, continued handshake, token export or product entry point.
@@ -8,6 +10,72 @@ internal static class SchannelNativeBoundaryCases
 {
     private const string Package="Microsoft Unified Security Protocol Provider";
     private const int ContinueNeeded=0x00090312;
+
+    internal static void RunAcquisition(Assembly library)
+    {
+        const BindingFlags statics=BindingFlags.Static|BindingFlags.NonPublic;
+        var acquisition=library.GetType("ProtectionLifecycle.SchannelAcquisition",true)!;
+        var atomic=library.GetType("ProtectionLifecycle.AtomicChild",true)!;
+        var installed=library.GetType("ProtectionLifecycle.InstalledBroker",true)!;
+        var session=new string('a',32);
+        long before=DateTime.UtcNow.ToFileTimeUtc();
+        int checks=0;
+        object Call(MethodInfo method,params object?[] args)
+        {
+            try{return method.Invoke(null,args)!;}
+            catch(TargetInvocationException error)when(error.InnerException is not null)
+            {ExceptionDispatchInfo.Capture(error.InnerException).Throw();throw;}
+        }
+        void Check(bool accepted)
+        {if(!accepted)throw new InvalidDataException("Schannel acquisition check failed");checks++;}
+        void Refuse(Action action)
+        {
+            try{action();}
+            catch(InvalidDataException){checks++;return;}
+            throw new InvalidDataException("Invalid Schannel evidence accepted");
+        }
+        object Parse(string raw)=>Call(acquisition.GetMethod("Parse",statics)!,raw,session,(uint)Environment.ProcessId,before);
+        var sample=Call(acquisition.GetMethod("Observe",statics)!,session);
+        var raw=JsonSerializer.Serialize(sample,acquisition);
+        var parsed=Parse(raw);
+        var complete=(bool)acquisition.GetProperty("Complete",BindingFlags.Instance|BindingFlags.NonPublic)!.GetValue(parsed)!;
+        var native=JsonNode.Parse(raw)!.AsObject();
+        // Preserve actual status, including any host-side failure.
+        Console.WriteLine(raw);
+        Check(complete && native["Calls"]!.AsArray().Count==5);
+        Check(native["Calls"]!.AsArray().All(c=>c!["Status"]!.GetValue<int>()==0 && c["ReleaseStatus"]!.GetValue<int>()==0));
+        foreach(var change in new Action<JsonObject>[]{
+            r=>r["Pid"]=Environment.ProcessId+1,r=>r["SessionId"]=new string('b',32),r=>r["Tid"]=0,r=>r["SchemaVersion"]=2,
+            r=>r["Calls"]!.AsArray().RemoveAt(4),r=>r["Calls"]![0]!["Role"]="OTHER",
+            r=>r["Calls"]![0]!["StartedFileTime"]=before-1,r=>r["Calls"]![0]!["EndedFileTime"]=before-1,
+            r=>r["Calls"]![0]!["ReleaseStatus"]=null,r=>r["Calls"]![0]!["ReleaseStatus"]=5})
+        {
+            var wrong=native.DeepClone().AsObject();change(wrong);
+            Refuse(()=>Parse(wrong.ToJsonString()));
+        }
+        var partial=native.DeepClone().AsObject();
+        while(partial["Calls"]!.AsArray().Count>1)partial["Calls"]!.AsArray().RemoveAt(1);
+        partial["Calls"]![0]!["ReleaseStatus"]=5;
+        Check(!(bool)acquisition.GetProperty("Complete",BindingFlags.Instance|BindingFlags.NonPublic)!.GetValue(Parse(partial.ToJsonString()))!);
+        Refuse(()=>Parse(raw.Insert(1,"\"SchemaVersion\":1,")));
+        var profile=library.GetType("ProtectionLifecycle.LpacCapabilityProfile",true)!;
+        Check(ReferenceEquals(Call(atomic.GetMethod("FixedCapabilities",statics)!,true),profile.GetField("InternetClientQualification",statics)!.GetValue(null)));
+        Check(ReferenceEquals(Call(atomic.GetMethod("FixedCapabilities",statics)!,false),profile.GetField("None",statics)!.GetValue(null)));
+        try
+        {
+            _=Call(installed.GetMethod("QualifySchannelAcquisition")!);
+            throw new InvalidOperationException("Ordinary owner unexpectedly accepted");
+        }
+        catch(UnauthorizedAccessException){checks++;}
+        var previous=Environment.GetEnvironmentVariable("CPC_SCHANNEL_SESSION");
+        try
+        {
+            Environment.SetEnvironmentVariable("CPC_SCHANNEL_SESSION",session);
+            Refuse(()=>Call(installed.GetMethod("RunSchannelAcquisitionChild")!));
+        }
+        finally{Environment.SetEnvironmentVariable("CPC_SCHANNEL_SESSION",previous);}
+        Console.WriteLine($"PASS {checks} Schannel acquisition checks, actual ordinary SSPI calls and fixed owner/worker refusal. No LPAC or transport.");
+    }
 
     internal static int Run(Assembly library)
     {

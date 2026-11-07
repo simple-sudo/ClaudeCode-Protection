@@ -224,6 +224,9 @@ public static class BootstrapInstaller
             "D21A7D9F39A93E82087062EAD14F49329E7DBDD2743B2DC12DE98CAB6DC691F1"
         }; // Exact reviewed packages expose no launch/admission command.
         private static readonly string[] OneShotAdmissionManifests={
+            // The exact 34543d35 predecessor reported a closed one-shot
+            // diagnostic. The inactive update still proves each live gate.
+            "6975AF499A5FBF4FA557050EBAE169AFC6BA06D74AFE9B554E12FC37B6057471",
             // Exact 41fb predecessor. The TLS workload and outer audit
             // failed. The original stop receipt is not live authority:
             // every admission, Job, loopback, quarantine and recovery gate
