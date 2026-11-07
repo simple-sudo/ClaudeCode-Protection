@@ -12,6 +12,7 @@ on:
       - 'src/ClaudeProtection/ClaudeProtection.csproj'
       - 'src/Shared/**'
       - 'src/ProtectionCenter/PreflightDisplay.cs'
+      - 'src/ProtectionLifecycle/GatewayDestinationGuard.cs'
       - 'tests/PolicySmoke/**'
   workflow_dispatch:
 

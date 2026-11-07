@@ -8,7 +8,7 @@ using System.Text.Json;
 using System.Runtime.InteropServices;
 using Microsoft.Win32.SafeHandles;
 
-if(args.Length!=1 || args[0] is not ("winsock-provider-policy" or "winsock-provider-metadata" or "gateway-socket-create" or "winsock-transport-policy" or "winsock-transport-metadata" or "winsock-lease-policy" or "winsock-registry-metadata" or "winsock-registry-scope" or "restricting-sid-boundary" or "gpu-report-policy" or "privacy-probe-closure" or "privacy-probe-exit-child" or "timezone-snapshot" or "timezone-policy" or "timezone-metadata" or "gateway-feedback" or "gateway-tls-client-hello" or "gateway-qualification-boundary" or "policy" or "messages" or "handle-transfer" or "fault-mode" or "fault-mode-read" or "partial-output" or "hosted-policy" or "etw-policy" or "tls-transport-policy" or "etw-token-access" or "inactive-transition" or "project-policy" or "project-build" or "privacy-native" or "caller-project-build" or "caller-project-policy" or "self-control-open" or "caller-data-build" or "caller-compile-failure" or "caller-run-failure" or "caller-test-failure" or "caller-output-failure" or "caller-failure-owner" or "control-file-gate" or "caller-multi-edit-build" or "workspace-caller-lifetime" or "workspace-caller-lifetime-child" or "maintenance-identity" or "reset-settings-file"))return 125;
+if(args.Length!=1 || args[0] is not ("winsock-provider-policy" or "winsock-provider-metadata" or "gateway-socket-create" or "winsock-transport-policy" or "winsock-transport-metadata" or "winsock-lease-policy" or "winsock-registry-metadata" or "winsock-registry-scope" or "restricting-sid-boundary" or "gpu-report-policy" or "privacy-probe-closure" or "privacy-probe-exit-child" or "timezone-snapshot" or "timezone-policy" or "timezone-metadata" or "gateway-feedback" or "gateway-tls-client-hello" or "gateway-qualification-boundary" or "policy" or "messages" or "handle-transfer" or "fault-mode" or "fault-mode-read" or "partial-output" or "hosted-policy" or "etw-policy" or "tls-transport-policy" or "etw-token-access" or "inactive-transition" or "project-policy" or "project-build" or "privacy-native" or "caller-project-build" or "caller-project-policy" or "self-control-open" or "caller-data-build" or "caller-compile-failure" or "caller-run-failure" or "caller-test-failure" or "caller-output-failure" or "caller-failure-owner" or "control-file-gate" or "caller-multi-edit-build" or "workspace-caller-lifetime" or "workspace-caller-lifetime-child" or "maintenance-identity" or "reset-settings-file" or "resource-release"))return 125;
 try
 {
 using var identity=WindowsIdentity.GetCurrent();
@@ -75,17 +75,18 @@ if(args[0]=="gpu-report-policy")
 if(args[0]=="self-control-open")
 {
     var probe=library.GetType("ProtectionLifecycle.HostPrivacyProbe",true)!;
+    var contract=library.GetType("ClaudeCodeProtection.Workspaces.HostPrivacyContract",true)!;
+    var inventory=((System.Collections.IEnumerable)contract.GetProperty("Checks",BindingFlags.NonPublic|BindingFlags.Static)!.GetValue(null)!).Cast<object>().ToArray();
     for(var index=14;index<23;index++)
     {
-        Call(probe,"RequireOwnerTarget","",Environment.ProcessId,Environment.ProcessId,index);
-        Require((int)Call(probe,"OwnerAccessOpen",Environment.ProcessId,index)! ==0,"ordinary self maintenance minimal-right positive control "+index);
+        Call(probe,"RequireOwnerTarget","",Environment.ProcessId,Environment.ProcessId);
+        Require((int)Call(probe,"ProcessAccessOpen",Environment.ProcessId,inventory[index])! ==0,"ordinary self maintenance minimal-right positive control "+index);
     }
-    Refuse(()=>Call(probe,"RequireOwnerTarget","",Environment.ProcessId+1,Environment.ProcessId,15),"ProtectionOwnerTargetBindingDiffers");
-    Refuse(()=>Call(probe,"RequireOwnerTarget","supplied-host-path",Environment.ProcessId,Environment.ProcessId,15),"ProtectionOwnerTargetBindingDiffers");
-    Refuse(()=>Call(probe,"RequireOwnerTarget","",0,0,15),"ProtectionOwnerTargetBindingDiffers");
-    Refuse(()=>Call(probe,"OwnerAccessOpen",0,15),"ProtectionOwnerProcessRequired");
-    var unknownOwnerRight=false;try{Call(probe,"OwnerAccessOpen",Environment.ProcessId,23);}catch(InvalidDataException){unknownOwnerRight=true;}
-    Require(unknownOwnerRight,"undefined right rejected before native open");
+    Refuse(()=>Call(probe,"RequireOwnerTarget","",Environment.ProcessId+1,Environment.ProcessId),"ProtectionOwnerTargetBindingDiffers");
+    Refuse(()=>Call(probe,"RequireOwnerTarget","supplied-host-path",Environment.ProcessId,Environment.ProcessId),"ProtectionOwnerTargetBindingDiffers");
+    Refuse(()=>Call(probe,"RequireOwnerTarget","",0,0),"ProtectionOwnerTargetBindingDiffers");
+    Refuse(()=>Call(probe,"ProcessAccessOpen",0,inventory[15]),"HostPrivacyProcessRequired");
+    Refuse(()=>Call(probe,"ProcessAccessOpen",Environment.ProcessId,inventory[23]),"HostPrivacyProcessRequired");
     Console.WriteLine("PASS nine minimal process-right opens on this own ordinary test process; owner binding, foreign PID/path/identity, zero PID and undefined right checked. Handles closed unused; no process memory read/write, termination, suspension, injection, duplication, ACL change, host target, UAC, Broker/Job or LPAC test");return 0;
 }
 if(args[0] is "caller-project-build" or "caller-project-policy" or "caller-data-build" or "caller-multi-edit-build")
@@ -161,20 +162,41 @@ if(args[0] is "caller-project-build" or "caller-project-policy" or "caller-data-
     }
     Console.WriteLine("PASS ordinary reviewed CallerWordCount: explicit manifest, three source files, exact edit, pinned Roslyn compile, entry words=3, three tests, ten-file snapshot/verification/extraction; no PowerShell/MSBuild/project imports/network/LPAC/Job/UAC/real host probes; fixture="+fixture);return 0;
 }
+if(args[0]=="resource-release")
+{
+    var resourceType=library.GetType("ProtectionLifecycle.SessionResources",true)!;
+    var calls=new List<int>();
+    var first=new IOException("first fixture release failure");
+    var last=new InvalidOperationException("last fixture release failure");
+    var leases=new IDisposable?[]{
+        new FixtureRelease(()=>{calls.Add(1);throw first;}),
+        null,
+        new FixtureRelease(()=>calls.Add(2)),
+        new FixtureRelease(()=>{calls.Add(3);throw last;})
+    };
+    var failures=(List<Exception>)Call(resourceType,"Release",(object)leases)!;
+    Require(calls.SequenceEqual(new[]{1,2,3}) && failures.SequenceEqual(new Exception[]{first,last}),
+        "all owned releases run in order and both original failures survive");
+    Console.WriteLine("PASS resource release failure fixture: remaining owned releases and errors preserved; no installed resources, Job or ACL change");
+    return 0;
+}
 if(args[0]=="privacy-native")
 {
     var probe=library.GetType("ProtectionLifecycle.HostPrivacyProbe",true)!;
+    var contract=library.GetType("ClaudeCodeProtection.Workspaces.HostPrivacyContract",true)!;
+    var inventory=((System.Collections.IEnumerable)contract.GetProperty("Checks",BindingFlags.NonPublic|BindingFlags.Static)!.GetValue(null)!).Cast<object>().ToArray();
+    var access=(uint)inventory[0].GetType().GetProperty("Access")!.GetValue(inventory[0])!;
     var folder=Path.Combine(AppContext.BaseDirectory,"privacy-own-file-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(folder);
     var path=Path.Combine(folder,"non-secret.txt");File.WriteAllText(path,"OWN_NON_SECRET_NATIVE_READ_OPEN_FIXTURE");
     var before=File.ReadAllBytes(path);var identityBefore=(string)Call(probe,"FileIdentity",path)!;
-    Require((int)Call(probe,"FileReadOpen",path)! ==0,"own allowed FILE_READ_DATA open");
+    Require((int)Call(probe,"FileAccessOpen",path,access)! ==0,"own allowed FILE_READ_DATA open");
     var acl=new FileInfo(path).GetAccessControl();var original=acl.GetSecurityDescriptorBinaryForm();
     File.WriteAllBytes(Path.Combine(folder,"original-security.bin"),original);
     try
     {
         acl.AddAccessRule(new System.Security.AccessControl.FileSystemAccessRule(identity.User!,System.Security.AccessControl.FileSystemRights.ReadData,System.Security.AccessControl.AccessControlType.Deny));
         new FileInfo(path).SetAccessControl(acl);
-        Require((int)Call(probe,"FileReadOpen",path)! ==5,"exact own ReadData deny observed");
+        Require((int)Call(probe,"FileAccessOpen",path,access)! ==5,"exact own ReadData deny observed");
         Require((string)Call(probe,"FileIdentity",path)! ==identityBefore,"metadata positive control still succeeds while ReadData denied");
     }
     finally
@@ -183,8 +205,8 @@ if(args[0]=="privacy-native")
     }
     Require(new FileInfo(path).GetAccessControl().GetSecurityDescriptorBinaryForm().AsSpan().SequenceEqual(original),"own fixture DACL restored exactly");
     Require(File.ReadAllBytes(path).AsSpan().SequenceEqual(before),"no fixture content changed by native opens");
-    Require((int)Call(probe,"FileReadOpen",Path.Combine(folder,"absent.txt"))! ==2,"absence stays actual native error, never denial");
-    Require((int)Call(probe,"ProcessReadOpen",Environment.ProcessId)! ==0,"own process VM_READ handle only, no memory read");
+    Require((int)Call(probe,"FileAccessOpen",Path.Combine(folder,"absent.txt"),access)! ==2,"absence stays actual native error, never denial");
+    Require((int)Call(probe,"ProcessAccessOpen",Environment.ProcessId,inventory[11])! ==0,"own process VM_READ handle only, no memory read");
     using(var self=Process.GetCurrentProcess())Require((bool)Call(probe,"ProcessAlive",self.SafeHandle)!,"actual own wait object alive, not exit-code259 inference");
     Console.WriteLine("PASS actual native own-file read-data allow/deny, metadata-only positive control, absence2, exact own DACL restoration and unchanged bytes; own VM_READ handle only. No real host target/key/process, content/memory read, UAC, product or LPAC qualification");return 0;
 }
@@ -531,4 +553,9 @@ Console.WriteLine("PASS production bounded report-pipe parser separates tool req
 catch(Exception error)
 {
     Console.Error.WriteLine(error);return 3;
+}
+
+file sealed class FixtureRelease(Action release) : IDisposable
+{
+    public void Dispose()=>release();
 }

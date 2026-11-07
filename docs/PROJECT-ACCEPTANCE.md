@@ -5,6 +5,14 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-07 架构整理
+
+INTEGRATED / BUILD(六个产品项目)。VERIFIED(普通 55 个测试入口，含隐私 v5
+策略摘要、188 项所有者门、89 项网关能力边界、控制文件 ACL 对照、恢复日志
+夹具和普通工作区编辑及编译恢复)。签名 CLI 仅确认静态身份。
+真实 CLI 启动、LPAC 工作区访问、默认拒绝通信与安全退出为 NOT_RUN，完整交付未验收。
+证据范围见[架构与回归边界](ARCHITECTURE-MAINTENANCE-20261107.md)。
+
 ## 2026-11-06 固定受限探针到达TLS
 
 VERIFIED(9B63092B现装41fb受限端点与认证网关CLIENT_TLS阶段、原owner回报中的有序

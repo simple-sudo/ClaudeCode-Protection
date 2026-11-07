@@ -21,8 +21,8 @@ static async Task Refuse(Func<Task> operation,string reason)
 }
 static HostPrivacySummary Privacy()
 {
-    HostPrivacyCase[] Cases()=>HostPrivacyContract.Roles.Select((role,i)=>new HostPrivacyCase(role,HostPrivacyContract.Kind(i),"ACCESS_DENIED",5)).ToArray();
-    return new(HostPrivacyContract.PolicySHA256,new string('F',64),new string('a',32),111,222,Cases(),Enumerable.Range(0,HostPrivacyContract.CompilerCaseCount).Select(i=>{var c=HostPrivacyContract.CompilerCase(i);return new HostPrivacyCase(c.Role,c.Kind,"ACCESS_DENIED",5);}).ToArray()){ProbePid=333,ProbeCases=Cases()};
+    HostPrivacyCase[] Cases()=>HostPrivacyContract.Checks.Select(check=>check.Observe(5)).ToArray();
+    return new(HostPrivacyContract.PolicySHA256,new string('F',64),new string('a',32),111,222,Cases(),HostPrivacyContract.CompilerChecks.Select(check=>check.Observe(5)).ToArray()){ProbePid=333,ProbeCases=Cases()};
 }
 if(args[0]=="privacy-contract")
 {
@@ -40,27 +40,27 @@ if(args[0]=="privacy-contract")
     Require(!HostPrivacyContract.Satisfied(partial),"root-only failure observation is not complete protection");
     foreach(var tool in new[]{false,true})
     {
-        for(var i=14;i<HostPrivacyContract.Roles.Length;i++)
+        for(var i=14;i<HostPrivacyContract.Checks.Count;i++)
         {
-            var exposed=Privacy();(tool?exposed.ProbeCases:exposed.RootCases)[i]=new(HostPrivacyContract.Roles[i],HostPrivacyContract.Kind(i),"OPENED",0);
+            var exposed=Privacy();(tool?exposed.ProbeCases:exposed.RootCases)[i]=new(HostPrivacyContract.Checks[i].Role,HostPrivacyContract.Checks[i].Kind,"OPENED",0);
             Reject(exposed,"each individual owner-control exposure refuses authenticated result");
         }
-        foreach(var replacement in new[]{new HostPrivacyCase(HostPrivacyContract.Roles[0],HostPrivacyContract.Kind(0),"OPENED",0),
-            new HostPrivacyCase(HostPrivacyContract.Roles[0],HostPrivacyContract.Kind(0),"UNKNOWN",2),
-            new HostPrivacyCase(HostPrivacyContract.Roles[0],HostPrivacyContract.Kind(0),"UNKNOWN",32)})
+        foreach(var replacement in new[]{new HostPrivacyCase(HostPrivacyContract.Checks[0].Role,HostPrivacyContract.Checks[0].Kind,"OPENED",0),
+            new HostPrivacyCase(HostPrivacyContract.Checks[0].Role,HostPrivacyContract.Checks[0].Kind,"UNKNOWN",2),
+            new HostPrivacyCase(HostPrivacyContract.Checks[0].Role,HostPrivacyContract.Checks[0].Kind,"UNKNOWN",32)})
         {
             var value=Privacy();(tool?value.ProbeCases:value.RootCases)[0]=replacement;
             HostPrivacyContract.Validate(value,session,false);Require(!HostPrivacyContract.Satisfied(value),"exposure/absence/sharing refusal remains failure evidence");
             Reject(value,"exposure or unobserved denial cannot release project");
         }
         var wrong=Privacy();(tool?wrong.ProbeCases:wrong.RootCases)[0]=new("C:\\private","file-read-data-open","ACCESS_DENIED",5);Reject(wrong,"no host paths or unknown roles in summary",false);
-        wrong=Privacy();(tool?wrong.ProbeCases:wrong.RootCases)[0]=new(HostPrivacyContract.Roles[0],HostPrivacyContract.Kind(0),"ACCESS_DENIED",2);Reject(wrong,"file absence cannot be renamed denial",false);
+        wrong=Privacy();(tool?wrong.ProbeCases:wrong.RootCases)[0]=new(HostPrivacyContract.Checks[0].Role,HostPrivacyContract.Checks[0].Kind,"ACCESS_DENIED",2);Reject(wrong,"file absence cannot be renamed denial",false);
     }
     var fields=JsonSerializer.Serialize(good).Replace("\"RootPid\":111","\"RootPid\":111,\"RootPid\":111",StringComparison.Ordinal);
     Reject(good with {ProbePid=null,ProbeCases=Array.Empty<HostPrivacyCase>()},"missing independent probe");
     Reject(good with {ProbePid=good.ToolPid},"probe cannot masquerade as compiler");
     Reject(good with {ToolCases=good.ProbeCases},"old full-host tool inventory is not compiler control evidence");
-    for(var i=0;i<HostPrivacyContract.CompilerCaseCount;i++)
+    for(var i=0;i<HostPrivacyContract.CompilerChecks.Count;i++)
     {
         var value=Privacy();value.ToolCases[i]=value.ToolCases[i] with {Status="OPENED",Error=0};
         Reject(value,"compiler exposure cannot succeed");

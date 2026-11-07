@@ -10,7 +10,7 @@
   <ItemGroup>
     <Compile Include="Program.cs" />
     <Compile Include="../PolicySmoke/DirectoryNamePageCases.cs" Link="DirectoryNamePageCases.cs" />
-    <Compile Include="../../src/ProtectionLifecycle/DirectoryNamePage.cs" Link="DirectoryNamePage.cs" />
+    <Compile Include="../../src/Shared/DirectoryNamePage.cs" Link="DirectoryNamePage.cs" />
     <ProjectReference Include="../../src/ProtectionLifecycle/ProtectionLifecycle.csproj" />
   </ItemGroup>
 </Project>

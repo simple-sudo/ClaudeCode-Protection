@@ -41,15 +41,16 @@ internal sealed partial class HostPrivacyProbe
         if((info.Attributes&0x410)!=0x10)throw WfpNative.Contract("ResetFileOrdinaryParentRequired");
         return info.Volume.ToString("X8")+info.IndexHigh.ToString("X8")+info.IndexLow.ToString("X8");
     }
-    private static void RequireMissingTarget(int index,int depth)
+    private static void RequireMissingTarget(bool allowMissing,int depth)
     {
-        if(depth!=0 && (index!=ClaudeCodeProtection.Workspaces.HostPrivacyContract.ResetSettingsIndex || depth is not (1 or 2)))
+        if(depth!=0 && (!allowMissing || depth is not (1 or 2)))
             throw WfpNative.Contract("ResetFileOptionalTargetDiffers");
     }
-    private static void AssertFileStateCurrent(Target target,int index)
+    private static void AssertFileStateCurrent(Target target)
     {
-        RequireMissingTarget(index,target.MissingParentDepth);
-        var observed=ObserveFileState(target.Path,index==ClaudeCodeProtection.Workspaces.HostPrivacyContract.ResetSettingsIndex);
+        var allowMissing=target.Check.AllowsOwnerObservedAbsence;
+        RequireMissingTarget(allowMissing,target.MissingParentDepth);
+        var observed=ObserveFileState(target.Path,allowMissing);
         if(observed.Identity!=target.Identity || observed.MissingParentDepth!=target.MissingParentDepth)
             throw WfpNative.Contract("HostPrivacyFileStateChanged");
     }

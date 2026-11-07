@@ -10,18 +10,20 @@ internal sealed partial class HostPrivacyProbe
 {
     // The original installed owner derives all three paths. No source root,
     // caller path, arbitrary maintenance target or content read is accepted.
-    private static string ControlFilePath(string programFiles,string release,int index)
+    private static string ControlFilePath(string programFiles,string release,HostPrivacyCheck check)
     {
-        _=HostPrivacyContract.ControlFileAccess(index);release=Identifiers.Hex32(release);
-        return WindowsPathSeal.Child(programFiles,index switch {
-            >=23 and <=26=>"ClaudeCodeProtection-State/installation.json",
-            >=27 and <=29=>"ClaudeCodeProtection-State/current.json",
-            _=>"ClaudeCodeProtection/versions/"+release+"/bin/admin/ProtectionLifecycle.dll"});
+        release=Identifiers.Hex32(release);
+        return WindowsPathSeal.Child(programFiles,check.Target switch {
+            HostPrivacyTarget.InstallationRecord=>"ClaudeCodeProtection-State/installation.json",
+            HostPrivacyTarget.VersionSelection=>"ClaudeCodeProtection-State/current.json",
+            HostPrivacyTarget.RuntimeImage=>"ClaudeCodeProtection/versions/"+release+"/bin/admin/ProtectionLifecycle.dll",
+            _=>throw WfpNative.Contract("ProtectionControlFileTargetRequired")
+        });
     }
-    private static void RequireControlFileTarget(string path,int pid,string programFiles,string release,int index)
+    private static void RequireControlFileTarget(string path,int pid,string programFiles,string release,HostPrivacyCheck check)
     {
         if(pid!=0 ||
-            !string.Equals(path,ControlFilePath(programFiles,release,index),StringComparison.OrdinalIgnoreCase))
+            !string.Equals(path,ControlFilePath(programFiles,release,check),StringComparison.OrdinalIgnoreCase))
             throw WfpNative.Contract("ProtectionControlFileTargetBindingDiffers");
     }
     private static (Target[] Targets,List<SafeFileHandle> Handles) CaptureControlFiles(string release)
@@ -30,30 +32,23 @@ internal sealed partial class HostPrivacyProbe
         var files=new Dictionary<string,SafeFileHandle>(StringComparer.OrdinalIgnoreCase);var handles=new List<SafeFileHandle>();var targets=new List<Target>();
         try
         {
-            for(var i=HostPrivacyContract.ControlFileStart;i<HostPrivacyContract.Roles.Length;i++)
+            foreach(var check in HostPrivacyContract.Checks.Where(check=>check.TargetKind==HostPrivacyTargetKind.ControlFile))
             {
-                var path=ControlFilePath(programFiles,release,i);
+                var path=ControlFilePath(programFiles,release,check);
                 if(!files.TryGetValue(path,out var handle))
                 {
                     handle=WindowsPathSeal.Open(path,false,false);handles.Add(handle);files.Add(path,handle);
-                    WindowsPathSeal.AssertAcl(handle,i==HostPrivacyContract.ControlFileStart);
+                    WindowsPathSeal.AssertAcl(handle,check.Target==HostPrivacyTarget.InstallationRecord);
                 }
                 // A write-data open could be refused by the existing owner's
                 // immutable read share. Check the trusted token's actual DACL
                 // access separately; a sharing violation is never a denial.
-                AssertControlFileMaintenanceAccess(handle,HostPrivacyContract.ControlFileAccess(i));
-                targets.Add(new(HostPrivacyContract.Roles[i],HostPrivacyContract.Kind(i),path,0,FileIdentity(path)));
+                AssertControlFileMaintenanceAccess(handle,check.Access);
+                targets.Add(new(check,path,0,FileIdentity(path)));
             }
             return(targets.ToArray(),handles);
         }
         catch{foreach(var handle in handles)handle.Dispose();throw;}
-    }
-    private static int ControlFileOpen(string path,int index)
-    {
-        using var handle=CreateFile(path,HostPrivacyContract.ControlFileAccess(index),7,IntPtr.Zero,3,0x40200000,IntPtr.Zero);
-        // OPEN_EXISTING, no read/write/truncate/security operation. Close even
-        // an unexpectedly granted handle without using its requested right.
-        return handle.IsInvalid?Marshal.GetLastWin32Error():0;
     }
     private static void AssertControlFileMaintenanceAccess(SafeFileHandle file,uint access)
     {

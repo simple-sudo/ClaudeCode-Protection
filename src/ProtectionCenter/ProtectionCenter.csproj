@@ -13,11 +13,11 @@
     <Compile Include="App.cs;BackendClient.cs;PreflightDisplay.cs;WorkspaceResultSession.cs;ProjectTaskWindow.cs;ProjectEditQueue.cs" />
     <Compile Include="CallerProjectSession.cs;../Shared/CSharpProjectTask.cs;../Shared/HostPrivacyContract.cs;../Shared/ProjectFailure.cs;../Shared/WorkspaceStopControl.cs" />
     <Compile Include="../Shared/ProjectWorkerFeedback.cs" />
-    <Compile Include="../ClaudeProtection/WorkspaceInstalledHost.cs" Link="WorkspaceInstalledHost.cs" />
+    <Compile Include="../Shared/WorkspaceInstalledHost.cs;../Shared/PackageAssetCatalog.cs" />
     <Compile Include="../Shared/WorkspaceBundle.cs" Link="WorkspaceBundle.cs" />
     <Compile Include="../Shared/WorkspaceFiles.cs" Link="WorkspaceFiles.cs" />
     <Compile Include="../Shared/WindowsDirectoryNames.cs" Link="WindowsDirectoryNames.cs" />
-    <Compile Include="../ProtectionLifecycle/DirectoryNamePage.cs" Link="DirectoryNamePage.cs" />
+    <Compile Include="../Shared/DirectoryNamePage.cs" Link="DirectoryNamePage.cs" />
     <Compile Include="../Shared/UserDataPaths.cs" Link="UserDataPaths.cs" />
     <Compile Include="../Shared/StrictEnvironmentRequirements.cs" Link="StrictEnvironmentRequirements.cs" />
   </ItemGroup>

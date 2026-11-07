@@ -11,6 +11,7 @@ on:
       - 'src/ClaudeProtection.Engineering/**'
       - 'src/ProtectionCenter/**'
       - 'src/ProtectionBootstrap/**'
+      - 'samples/TextSummary/**'
   workflow_dispatch:
 
 permissions:

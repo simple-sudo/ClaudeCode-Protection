@@ -14,7 +14,7 @@ namespace ProtectionLifecycle;
 // secret bytes/value reads, permission changes, process-memory reads or stop.
 internal sealed partial class HostPrivacyProbe : IDisposable
 {
-    private sealed record Target(string Role,string Kind,string Path,int Pid,string? Identity,int MissingParentDepth=0);
+    private sealed record Target(HostPrivacyCheck Check,string Path,int Pid,string? Identity,int MissingParentDepth=0);
     private sealed record Plan(string SessionId,string InstallationId,string Release,Target[] Targets);
     private sealed record RestrictedTarget(string Role,string Kind,string Path,int Pid,bool OwnerObservedAbsent);
     private sealed record RestrictedPlan(int SchemaVersion,string SessionId,string InstallationId,string Release,RestrictedTarget[] Targets);
@@ -37,11 +37,11 @@ internal sealed partial class HostPrivacyProbe : IDisposable
         this.plan=plan;this.processes=processes;
         // Object IDs and absence anchors are positive-control data. Only the
         // trusted owner needs them; the fixed probe requests one minimal open.
-        var targets=plan.Targets.Select((target,index)=>new RestrictedTarget(target.Role,target.Kind,
-            index is >=11 and <HostPrivacyContract.HostResourceCount?"":target.Path,target.Pid,target.MissingParentDepth!=0)).ToArray();
+        var targets=plan.Targets.Select(target=>new RestrictedTarget(target.Check.Role,target.Check.Kind,
+            target.Check.TargetKind==HostPrivacyTargetKind.HostProcess?"":target.Path,target.Pid,target.MissingParentDepth!=0)).ToArray();
         bytes=JsonSerializer.SerializeToUtf8Bytes(new RestrictedPlan(3,plan.SessionId,plan.InstallationId,plan.Release,targets));
         if(bytes.Length>16384)throw WfpNative.Contract("HostPrivacyPlanBounds");
-        execution=new(plan.SessionId,SHA256,plan.Targets[HostPrivacyContract.ResetSettingsIndex].MissingParentDepth!=0);
+        execution=new(plan.SessionId,SHA256,plan.Targets.Single(target=>target.Check.AllowsOwnerObservedAbsence).MissingParentDepth!=0);
     }
     internal static HostPrivacyProbe Capture(string session,string installation,string release)
     {
@@ -60,20 +60,39 @@ internal sealed partial class HostPrivacyProbe : IDisposable
         var roaming=Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
         var local=Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
         var common=Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
-        var paths=new[]{Path.Combine(roaming,"com.follow","clash","config.json"),Path.Combine(roaming,"com.follow","clash","config.yaml"),
-            Path.Combine(roaming,"com.follow","clash","shared_preferences.json"),Path.Combine(local,"GameViewer","setting.ini"),
-            Path.Combine(local,"GameViewer","configures_info.ini"),Path.Combine(common,"Netease","GameViewer","user_info.ini"),
-            Path.Combine(common,"Netease","GameViewer","remote_assist_code.ini"),Path.Combine(profile,".claude","settings.json"),Path.Combine(profile,".gitconfig"),
-            @"SOFTWARE\Microsoft\Cryptography",sid+@"\Software\Microsoft\Windows\CurrentVersion\Internet Settings",
-            @"E:\program\FlClash\FlClash.exe",@"E:\program\FlClash\FlClashCore.exe",@"E:\program\uu\GameViewer\GameViewerService.exe"};
+        string HostPath(HostPrivacyTarget target)=>target switch {
+            HostPrivacyTarget.FlClashJson=>Path.Combine(roaming,"com.follow","clash","config.json"),
+            HostPrivacyTarget.FlClashYaml=>Path.Combine(roaming,"com.follow","clash","config.yaml"),
+            HostPrivacyTarget.FlClashPreferences=>Path.Combine(roaming,"com.follow","clash","shared_preferences.json"),
+            HostPrivacyTarget.UuUserSettings=>Path.Combine(local,"GameViewer","setting.ini"),
+            HostPrivacyTarget.UuUserConfigures=>Path.Combine(local,"GameViewer","configures_info.ini"),
+            HostPrivacyTarget.UuSystemUser=>Path.Combine(common,"Netease","GameViewer","user_info.ini"),
+            HostPrivacyTarget.UuSystemAssist=>Path.Combine(common,"Netease","GameViewer","remote_assist_code.ini"),
+            HostPrivacyTarget.ClaudeSettings=>Path.Combine(profile,".claude","settings.json"),
+            HostPrivacyTarget.GitConfig=>Path.Combine(profile,".gitconfig"),
+            HostPrivacyTarget.MachineRegistry=>@"SOFTWARE\Microsoft\Cryptography",
+            HostPrivacyTarget.UserRegistry=>sid+@"\Software\Microsoft\Windows\CurrentVersion\Internet Settings",
+            HostPrivacyTarget.FlClashUi=>@"E:\program\FlClash\FlClash.exe",
+            HostPrivacyTarget.FlClashCore=>@"E:\program\FlClash\FlClashCore.exe",
+            HostPrivacyTarget.UuService=>@"E:\program\uu\GameViewer\GameViewerService.exe",
+            _=>throw WfpNative.Contract("HostPrivacyFixedPathRequired")
+        };
         var held=new List<SafeProcessHandle>();
         try
         {
-            var targets=paths.Select((path,i)=>
+            var targets=HostPrivacyContract.Checks.Where(check=>check.TargetKind is HostPrivacyTargetKind.HostFile or
+                HostPrivacyTargetKind.MachineRegistry or HostPrivacyTargetKind.UserRegistry or HostPrivacyTargetKind.HostProcess).Select(check=>
             {
+                var path=HostPath(check.Target);
                 var pid=0;string? identity=null;var missingParentDepth=0;
-                if(i<9){path=WindowsPathSeal.Canonical(path);var observed=ObserveFileState(path,i==HostPrivacyContract.ResetSettingsIndex);identity=observed.Identity;missingParentDepth=observed.MissingParentDepth;}
-                else if(i<11)PositiveRegistry(i==9,path);
+                if(check.TargetKind==HostPrivacyTargetKind.HostFile)
+                {
+                    path=WindowsPathSeal.Canonical(path);
+                    var observed=ObserveFileState(path,check.AllowsOwnerObservedAbsence);
+                    identity=observed.Identity;missingParentDepth=observed.MissingParentDepth;
+                }
+                else if(check.TargetKind is HostPrivacyTargetKind.MachineRegistry or HostPrivacyTargetKind.UserRegistry)
+                    PositiveRegistry(check,path);
                 else
                 {
                     var candidates=Process.GetProcessesByName(Path.GetFileNameWithoutExtension(path));
@@ -90,7 +109,7 @@ internal sealed partial class HostPrivacyProbe : IDisposable
                     }
                     finally{foreach(var process in candidates)process.Dispose();}
                 }
-                return new Target(HostPrivacyContract.Roles[i],HostPrivacyContract.Kind(i),path,pid,identity,missingParentDepth);
+                return new Target(check,path,pid,identity,missingParentDepth);
             }).ToList();
             // The original installed owner selects ONLY itself, never a
             // caller PID or a process-name discovery. Keep an independent
@@ -98,17 +117,19 @@ internal sealed partial class HostPrivacyProbe : IDisposable
             var owner=OpenProcess(0x101000,false,checked((uint)Environment.ProcessId));
             if(owner.IsInvalid){owner.Dispose();throw new Win32Exception(Marshal.GetLastWin32Error(),"Protection owner metadata");}
             held.Add(owner);
-            for(var i=HostPrivacyContract.HostResourceCount;i<HostPrivacyContract.OwnerProcessEnd;i++)
+            foreach(var check in HostPrivacyContract.Checks.Where(check=>check.TargetKind==HostPrivacyTargetKind.OwnerProcess))
             {
-                var error=OwnerAccessOpen(Environment.ProcessId,i);
+                var error=ProcessAccessOpen(Environment.ProcessId,check);
                 if(error!=0)throw new Win32Exception(error,"Protection owner maintenance positive control");
-                targets.Add(new(HostPrivacyContract.Roles[i],HostPrivacyContract.Kind(i),"",Environment.ProcessId,null));
+                targets.Add(new(check,"",Environment.ProcessId,null));
             }
             var controls=CaptureControlFiles(release);
             try
             {
                 targets.AddRange(controls.Targets);
-                var result=new HostPrivacyProbe(new(Identifiers.Hex32(session),Identifiers.Hex32(installation),Identifiers.Hex32(release),targets.ToArray()),held);
+                var byCheck=targets.ToDictionary(target=>target.Check);
+                var ordered=HostPrivacyContract.Checks.Select(check=>byCheck[check]).ToArray();
+                var result=new HostPrivacyProbe(new(Identifiers.Hex32(session),Identifiers.Hex32(installation),Identifiers.Hex32(release),ordered),held);
                 result.controlFiles.AddRange(controls.Handles);result.AssertTargetsCurrent();return result;
             }
             catch{foreach(var file in controls.Handles)file.Dispose();throw;}
@@ -133,10 +154,16 @@ internal sealed partial class HostPrivacyProbe : IDisposable
     }
     private void AssertTargetsCurrent()
     {
-        for(var i=0;i<9;i++)AssertFileStateCurrent(plan.Targets[i],i);
-        for(var i=HostPrivacyContract.ControlFileStart;i<plan.Targets.Length;i++)
-            if(FileIdentity(plan.Targets[i].Path)!=plan.Targets[i].Identity)throw WfpNative.Contract("ProtectionControlFileIdentityChanged");
-        PositiveRegistry(true,plan.Targets[9].Path);PositiveRegistry(false,plan.Targets[10].Path);
+        foreach(var target in plan.Targets)
+            switch(target.Check.TargetKind)
+            {
+                case HostPrivacyTargetKind.HostFile: AssertFileStateCurrent(target);break;
+                case HostPrivacyTargetKind.ControlFile:
+                    if(FileIdentity(target.Path)!=target.Identity)throw WfpNative.Contract("ProtectionControlFileIdentityChanged");
+                    break;
+                case HostPrivacyTargetKind.MachineRegistry:
+                case HostPrivacyTargetKind.UserRegistry: PositiveRegistry(target.Check,target.Path);break;
+            }
         foreach(var handle in processes)if(!ProcessAlive(handle))throw WfpNative.Contract("HostPrivacyTargetProcessExited");
     }
     private HostPrivacyObservation ReadObservation(string workspace,string actor,int expectedPid)
@@ -237,7 +264,7 @@ internal sealed partial class HostPrivacyProbe : IDisposable
         catch(ExactPathAbsentException ex)when(ex.NativeErrorCode==2 && string.Equals(ex.FailedPath,path,StringComparison.OrdinalIgnoreCase))
         {}
     }
-    private void AssertResetTargetCurrent()=>AssertFileStateCurrent(plan.Targets[HostPrivacyContract.ResetSettingsIndex],HostPrivacyContract.ResetSettingsIndex);
+    private void AssertResetTargetCurrent()=>AssertFileStateCurrent(plan.Targets.Single(target=>target.Check.AllowsOwnerObservedAbsence));
     internal void AssertGitCreationAllowed()
     {if(execution.ToolCreationAuthorized)throw WfpNative.Contract("ProjectGitCreationPhaseAlreadyClosed");}
     internal HostPrivacySummary ReadClosed(string workspace,int rootPid,int? toolPid)
@@ -270,26 +297,44 @@ internal sealed partial class HostPrivacyProbe : IDisposable
         HostPrivacyContract.Fields(root,"SchemaVersion","SessionId","InstallationId","Release","Targets");
         foreach(var t in root.GetProperty("Targets").EnumerateArray())HostPrivacyContract.Fields(t,"Role","Kind","Path","Pid","OwnerObservedAbsent");
         var plan=JsonSerializer.Deserialize<RestrictedPlan>(bytes)??throw WfpNative.Contract("HostPrivacyPlanMissing");
-        if(plan.SchemaVersion!=3 || plan.SessionId!=resource.Nonce || plan.InstallationId!=resource.InstallationId || plan.Release!=resource.Release || plan.Targets?.Length!=HostPrivacyContract.Roles.Length)
+        if(plan.SchemaVersion!=3 || plan.SessionId!=resource.Nonce || plan.InstallationId!=resource.InstallationId || plan.Release!=resource.Release || plan.Targets?.Length!=HostPrivacyContract.Checks.Count)
             throw WfpNative.Contract("HostPrivacyPlanContextDiffers");
         var observations=plan.Targets.Select((target,i)=>
         {
-            if(target.Role!=HostPrivacyContract.Roles[i] || target.Kind!=HostPrivacyContract.Kind(i) ||
-                target.OwnerObservedAbsent && i!=HostPrivacyContract.ResetSettingsIndex ||
-                i<11 && (target.Path is not {Length:>=1 and <=1024} || target.Path.Contains('\0') || target.Pid!=0) ||
-                i is >=11 and <HostPrivacyContract.HostResourceCount && (target.Path!="" || target.Pid<=0))
+            var check=HostPrivacyContract.Checks[i];
+            if(target is null || target.Role!=check.Role || target.Kind!=check.Kind ||
+                target.OwnerObservedAbsent && !check.AllowsOwnerObservedAbsence)
                 throw WfpNative.Contract("HostPrivacyTargetContractDiffers");
-            if(i>=HostPrivacyContract.ControlFileStart)RequireControlFileTarget(target.Path,target.Pid,resource.ProgramFilesRoot,resource.Release,i);
-            else if(i>=HostPrivacyContract.HostResourceCount)RequireOwnerTarget(target.Path,target.Pid,resource.BrokerPid,i);
-            var error=i>=HostPrivacyContract.ControlFileStart?ControlFileOpen(target.Path,i):i>=HostPrivacyContract.HostResourceCount?OwnerAccessOpen(target.Pid,i):
-                i<9?FileReadOpen(target.Path):i<11?RegistryReadOpen(i==9,target.Path):ProcessReadOpen(target.Pid);
-            return i<9?HostPrivacyContract.FileObservation(i,target.OwnerObservedAbsent,error):
-                new HostPrivacyCase(target.Role,target.Kind,error==5?"ACCESS_DENIED":error==0?"OPENED":"UNKNOWN",error);
+            int error;
+            switch(check.TargetKind)
+            {
+                case HostPrivacyTargetKind.HostFile:
+                case HostPrivacyTargetKind.MachineRegistry:
+                case HostPrivacyTargetKind.UserRegistry:
+                    if(target.Path is not {Length:>=1 and <=1024} || target.Path.Contains('\0') || target.Pid!=0)
+                        throw WfpNative.Contract("HostPrivacyTargetContractDiffers");
+                    error=check.TargetKind==HostPrivacyTargetKind.HostFile?FileAccessOpen(target.Path,check.Access):RegistryReadOpen(check,target.Path);
+                    break;
+                case HostPrivacyTargetKind.HostProcess:
+                    if(target.Path!="" || target.Pid<=0)throw WfpNative.Contract("HostPrivacyTargetContractDiffers");
+                    error=ProcessAccessOpen(target.Pid,check);
+                    break;
+                case HostPrivacyTargetKind.OwnerProcess:
+                    RequireOwnerTarget(target.Path,target.Pid,resource.BrokerPid);
+                    error=ProcessAccessOpen(target.Pid,check);
+                    break;
+                case HostPrivacyTargetKind.ControlFile:
+                    RequireControlFileTarget(target.Path,target.Pid,resource.ProgramFilesRoot,resource.Release,check);
+                    error=FileAccessOpen(target.Path,check.Access);
+                    break;
+                default: throw WfpNative.Contract("HostPrivacyTargetContractDiffers");
+            }
+            return check.Observe(error,target.OwnerObservedAbsent);
         }).ToArray();
         var report=new HostPrivacyObservation(1,resource.Nonce,resource.HostPrivacySHA256,Environment.ProcessId,observations);
         var data=JsonSerializer.SerializeToUtf8Bytes(report);
         using(var output=new FileStream(ReportPath(workspace,actor),FileMode.CreateNew,FileAccess.Write,FileShare.None)){output.Write(data);output.Flush(true);}
-        return HostPrivacyContract.CasesSatisfied(observations,plan.Targets[HostPrivacyContract.ResetSettingsIndex].OwnerObservedAbsent);
+        return HostPrivacyContract.CasesSatisfied(observations,plan.Targets.Any(target=>target.OwnerObservedAbsent));
     }
     private static string PlanPath(string workspace)=>WindowsPathSeal.Child(workspace,"host-privacy-plan.json");
     // The compiler never opens/deserializes the private target plan. These
@@ -300,13 +345,12 @@ internal sealed partial class HostPrivacyProbe : IDisposable
         if(!resource.DevelopProject || resource.HostPrivacySHA256 is null || rootPid<=0 || rootPid==Environment.ProcessId || rootPid==resource.BrokerPid)
             throw WfpNative.Contract("CompilerRootBindingRequired");
         AssertPlanAbsent(workspace);
-        var observations=Enumerable.Range(0,HostPrivacyContract.CompilerCaseCount).Select(i=>
-        {
-            var c=HostPrivacyContract.CompilerCase(i);var source=i<19?i+HostPrivacyContract.HostResourceCount:i-19+HostPrivacyContract.HostResourceCount;
-            var error=i is >=9 and <19?ControlFileOpen(ControlFilePath(resource.ProgramFilesRoot,resource.Release,source),source):
-                OwnerAccessOpen(i<9?resource.BrokerPid:rootPid,source);
-            return new HostPrivacyCase(c.Role,c.Kind,error==5?"ACCESS_DENIED":error==0?"OPENED":"UNKNOWN",error);
-        }).ToArray();
+        var observations=HostPrivacyContract.CompilerChecks.Select(check=>check.Observe(check.TargetKind switch {
+            HostPrivacyTargetKind.ControlFile=>FileAccessOpen(ControlFilePath(resource.ProgramFilesRoot,resource.Release,check),check.Access),
+            HostPrivacyTargetKind.OwnerProcess=>ProcessAccessOpen(resource.BrokerPid,check),
+            HostPrivacyTargetKind.RootProcess=>ProcessAccessOpen(rootPid,check),
+            _=>throw WfpNative.Contract("CompilerPrivacyTargetDiffers")
+        })).ToArray();
         HostPrivacyContract.ValidateCompilerCases(observations);
         var report=new HostPrivacyObservation(1,resource.Nonce,resource.HostPrivacySHA256,Environment.ProcessId,observations);
         // Any result other than explicit access denied refuses execution. A
@@ -338,29 +382,34 @@ internal sealed partial class HostPrivacyProbe : IDisposable
         return size!=0?0:Marshal.GetLastWin32Error();
     }
     private static string ReportPath(string workspace,string actor)=>WindowsPathSeal.Child(workspace,"host-privacy-"+actor+".json");
-    // Request only FILE_READ_DATA, asynchronously: no denial caused solely by
-    // extra GENERIC_READ/READ_CONTROL/SYNCHRONIZE rights can become a PASS.
-    private static int FileReadOpen(string path)
-    {using var handle=CreateFile(path,1,7,IntPtr.Zero,3,0x40200000,IntPtr.Zero);return handle.IsInvalid?Marshal.GetLastWin32Error():0;}
-    private static int RegistryReadOpen(bool machine,string path)
-    {var error=RegOpenKeyEx(new IntPtr(machine?unchecked((int)0x80000002):unchecked((int)0x80000003)),path,0,0x101,out var key);key?.Dispose();return error;}
-    private static void PositiveRegistry(bool machine,string path)
-    {var error=RegistryReadOpen(machine,path);if(error!=0)throw new Win32Exception(error,"Host privacy key positive control");}
-    private static int ProcessReadOpen(int pid)
-    {using var handle=OpenProcess(0x10,false,checked((uint)pid));return handle.IsInvalid?Marshal.GetLastWin32Error():0;}
-    private static int OwnerAccessOpen(int pid,int index)
+    // OPEN_EXISTING and one minimal access right. Close even an
+    // unexpectedly granted handle without using the requested right.
+    private static int FileAccessOpen(string path,uint access)
     {
-        var access=HostPrivacyContract.OwnerAccess(index);
-        if(pid<=0)throw WfpNative.Contract("ProtectionOwnerProcessRequired");
-        // Close immediately. Never use the acquired right, even on exposure.
-        using var handle=OpenProcess(access,false,checked((uint)pid));
+        using var handle=CreateFile(path,access,7,IntPtr.Zero,3,0x40200000,IntPtr.Zero);
         return handle.IsInvalid?Marshal.GetLastWin32Error():0;
     }
-    private static void RequireOwnerTarget(string path,int pid,int ownerPid,int index)
+    private static int RegistryReadOpen(HostPrivacyCheck check,string path)
     {
-        _=HostPrivacyContract.OwnerAccess(index);
-        if(path!="" || ownerPid<=0 || pid!=ownerPid)
-            throw WfpNative.Contract("ProtectionOwnerTargetBindingDiffers");
+        var hive=check.TargetKind switch {
+            HostPrivacyTargetKind.MachineRegistry=>unchecked((int)0x80000002),
+            HostPrivacyTargetKind.UserRegistry=>unchecked((int)0x80000003),
+            _=>throw WfpNative.Contract("HostPrivacyRegistryTargetDiffers")
+        };
+        var error=RegOpenKeyEx(new IntPtr(hive),path,0,check.Access,out var key);key?.Dispose();return error;
+    }
+    private static void PositiveRegistry(HostPrivacyCheck check,string path)
+    {var error=RegistryReadOpen(check,path);if(error!=0)throw new Win32Exception(error,"Host privacy key positive control");}
+    private static int ProcessAccessOpen(int pid,HostPrivacyCheck check)
+    {
+        if(pid<=0 || check.TargetKind is not (HostPrivacyTargetKind.HostProcess or HostPrivacyTargetKind.OwnerProcess or HostPrivacyTargetKind.RootProcess))
+            throw WfpNative.Contract("HostPrivacyProcessRequired");
+        using var handle=OpenProcess(check.Access,false,checked((uint)pid));
+        return handle.IsInvalid?Marshal.GetLastWin32Error():0;
+    }
+    private static void RequireOwnerTarget(string path,int pid,int ownerPid)
+    {
+        if(path!="" || ownerPid<=0 || pid!=ownerPid)throw WfpNative.Contract("ProtectionOwnerTargetBindingDiffers");
     }
     private static bool ProcessAlive(SafeProcessHandle process)=>WaitForSingleObject(process,0)==258;
     private static string FileIdentity(string path)

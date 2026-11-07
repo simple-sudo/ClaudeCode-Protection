@@ -19,7 +19,6 @@ if(args.Length==1 && args[0]=="directory-name-pages")
 }
 ProtectionLifecycle.DirectoryNamePageCases.Run();
 LoopbackTcpTableCases.Run();
-ProtectionLifecycle.ProfileRecoveryCases.Run();
 var sample=new List<Check>();
 foreach(var name in new[]{
     "proxy-listener","proxy-owner-path","system-proxy-baseline","user-proxy-settings",
@@ -222,4 +221,4 @@ Refuse(()=>FenceMigrationSelection.Decide(priorImage,nextImage,"invalid",nextIma
 
 await SessionTunnelCases.RunAsync();
 await TlsClientHelloCases.RunAsync();
-Console.WriteLine("PolicySmoke: bounded policy, journal-reader and in-memory duplex cases passed. No product entry point, native mutation or network request was executed; profile-reader cases inspect the current Windows identity.");
+Console.WriteLine("PolicySmoke: bounded policy, directory parser and in-memory duplex cases passed. No product entry point, Windows identity query or network request was executed.");

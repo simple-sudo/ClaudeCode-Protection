@@ -29,9 +29,9 @@ internal static class ProjectWorkerFeedbackCases
         Require(!ProjectWorkerFeedback.IsKind("ProjectCompilerWaitTimeout_PRIVATE"));
         Require(!JsonSerializer.Serialize(Read(Child())).Contains("SECRET",StringComparison.Ordinal));
 
-        HostPrivacyCase[] Cases()=>HostPrivacyContract.Roles.Select((role,i)=>new HostPrivacyCase(role,HostPrivacyContract.Kind(i),"ACCESS_DENIED",5)).ToArray();
+        HostPrivacyCase[] Cases()=>HostPrivacyContract.Checks.Select(check=>check.Observe(5)).ToArray();
         var privacy=new HostPrivacySummary(HostPrivacyContract.PolicySHA256,new string('F',64),session,111,222,Cases(),
-            Enumerable.Range(0,HostPrivacyContract.CompilerCaseCount).Select(i=>{var c=HostPrivacyContract.CompilerCase(i);return new HostPrivacyCase(c.Role,c.Kind,"ACCESS_DENIED",5);}).ToArray())
+            HostPrivacyContract.CompilerChecks.Select(check=>check.Observe(5)).ToArray())
             {ProbePid=333,ProbeCases=Cases()};
         JsonObject Reply()=>JsonSerializer.SerializeToNode(new {SchemaVersion=6,Scope=WorkspacePipe.CallerProjectScope,HostPrivacy=privacy,OwnerSealedBeforeCode=true,
             ExitCode=3,SessionId=session,BaseSHA256=hash,ResultSHA256=(string?)null,Status="CALLER_CSHARP_PROJECT_NOT_CONFIRMED",

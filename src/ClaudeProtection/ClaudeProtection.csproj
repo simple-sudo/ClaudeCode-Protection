@@ -15,7 +15,7 @@
     <Compile Include="../Shared/ProxyDestinationPolicy.cs" Link="ProxyDestinationPolicy.cs" />
     <Compile Include="../Shared/StrictEnvironmentRequirements.cs" Link="StrictEnvironmentRequirements.cs" />
     <Compile Include="../Shared/WorkspaceBundle.cs;../Shared/WorkspaceFiles.cs" />
-    <Compile Include="WorkspaceProcessing.cs;WorkspaceInstalledHost.cs;../Shared/WorkspacePipe.cs;../Shared/WorkspaceStopControl.cs" />
+    <Compile Include="WorkspaceProcessing.cs;../Shared/WorkspaceInstalledHost.cs;../Shared/PackageAssetCatalog.cs;../Shared/WorkspacePipe.cs;../Shared/WorkspaceStopControl.cs" />
     <Compile Include="HostGpuReferenceProcessing.cs;../Shared/HostGpuReferenceReply.cs" />
     <Compile Include="../Shared/TextSummarySource.cs" />
     <Compile Include="../Shared/CSharpProjectTask.cs" />
@@ -25,7 +25,7 @@
     <EmbeddedResource Include="../../samples/TextSummary/TextSummary.cs" LogicalName="ClaudeCodeProtection.TextSummary.TextSummary.cs" />
     <EmbeddedResource Include="../../samples/TextSummary/ProjectTests.cs" LogicalName="ClaudeCodeProtection.TextSummary.ProjectTests.cs" />
     <EmbeddedResource Include="../../samples/TextSummary/README.md" LogicalName="ClaudeCodeProtection.TextSummary.README.md" />
-    <Compile Include="../Shared/WindowsDirectoryNames.cs;../ProtectionLifecycle/DirectoryNamePage.cs" />
+    <Compile Include="../Shared/WindowsDirectoryNames.cs;../Shared/DirectoryNamePage.cs" />
     <None Include="../../scripts/Read-Environment.ps1" Link="Read-Environment.ps1" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

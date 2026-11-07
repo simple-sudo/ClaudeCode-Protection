@@ -3,6 +3,7 @@ using System.Security.Cryptography;
 using System.Security.Principal;
 using System.Text.Json;
 using ClaudeCodeProtection.Workspaces;
+using ProtectionLifecycle;
 
 namespace ClaudeProtection;
 
@@ -13,12 +14,8 @@ internal sealed class WorkspaceInstalledHost : IDisposable
     private readonly WorkspaceFiles.HeldPaths paths=new();
     private static readonly string[] Trusted={"S-1-5-18","S-1-5-32-544",
         ((SecurityIdentifier)new NTAccount("NT SERVICE","TrustedInstaller").Translate(typeof(SecurityIdentifier))).Value};
-    private static readonly (string Asset,string Relative)[] Required={
-        ("daily-exe","bin/current/ClaudeProtection.exe"),("daily-dll","bin/current/ClaudeProtection.dll"),
-        ("daily-deps","bin/current/ClaudeProtection.deps.json"),("daily-runtime","bin/current/ClaudeProtection.runtimeconfig.json"),
-        ("broker-exe","bin/admin/ProtectionBroker.exe"),("broker-dll","bin/admin/ProtectionBroker.dll"),
-        ("broker-deps","bin/admin/ProtectionBroker.deps.json"),("broker-runtime","bin/admin/ProtectionBroker.runtimeconfig.json"),
-        ("broker-lifecycle","bin/admin/ProtectionLifecycle.dll")};
+    private static readonly AssetSpec[] Required=PackageAssetCatalog.Catalog
+        .Where(asset=>asset.VerifyBeforeElevation).ToArray();
     internal WorkspaceInstalledHost(string root)
     {
         try
@@ -31,20 +28,22 @@ internal sealed class WorkspaceInstalledHost : IDisposable
                     Check(directory.GetAccessControl(),directory.FullName.Equals(folder,StringComparison.OrdinalIgnoreCase));
             }
             var manifest=paths.ReadFile(Path.Combine(root,"package.json"));Check(manifest.GetAccessControl(),true);
-            if(manifest.Length is <1 or >65536)throw new InvalidDataException("Installed manifest size refused");
+            if(manifest.Length is <1 or >PackageAssetCatalog.MaxManifestBytes)throw new InvalidDataException("Installed manifest size refused");
             var bytes=new byte[(int)manifest.Length];manifest.ReadExactly(bytes);
             using var doc=JsonDocument.Parse(bytes);var r=doc.RootElement;
             if(r.GetProperty("SchemaVersion").GetInt32()!=1 || r.GetProperty("Scope").GetString()!="UNACTIVATED_PRODUCT" ||
                 r.GetProperty("Release").GetString()!=Path.GetFileName(root))throw new InvalidDataException("Installed manifest location differs");
             var files=r.GetProperty("Files").EnumerateArray().ToArray();
-            if(files.Length!=14 || files.Select(f=>f.GetProperty("Asset").GetString()).Distinct(StringComparer.Ordinal).Count()!=14)
+            if(files.Length!=PackageAssetCatalog.Catalog.Count ||
+                !files.Select(f=>f.GetProperty("Asset").GetString()).ToHashSet(StringComparer.Ordinal)
+                    .SetEquals(PackageAssetCatalog.Catalog.Select(asset=>asset.Id)))
                 throw new InvalidDataException("Ambiguous installed asset catalog");
             foreach(var asset in Required)
             {
-                var matches=files.Where(f=>f.GetProperty("Asset").GetString()==asset.Asset).ToArray();
+                var matches=files.Where(f=>f.GetProperty("Asset").GetString()==asset.Id).ToArray();
                 if(matches.Length!=1)throw new InvalidDataException("Installed executable asset missing");
-                var file=paths.ReadFile(Path.Combine(root,asset.Relative.Replace('/','\\')));Check(file.GetAccessControl(),true);
-                if(file.Length is <1 or >128*1024*1024 || file.Length!=matches[0].GetProperty("Length").GetInt64() ||
+                var file=paths.ReadFile(Path.Combine(root,asset.Path.Replace('/','\\')));Check(file.GetAccessControl(),true);
+                if(file.Length is <1 or >PackageAssetCatalog.MaxAssetBytes || file.Length!=matches[0].GetProperty("Length").GetInt64() ||
                     Convert.ToHexString(SHA256.HashData(file))!=matches[0].GetProperty("SHA256").GetString())
                     throw new InvalidDataException("Installed executable bytes differ");
             }

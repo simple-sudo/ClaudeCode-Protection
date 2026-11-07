@@ -172,11 +172,23 @@ public static partial class InstalledBroker
     private static (int ExitCode,string Report) WithCurrentInstallation(Func<FixedLayout,ProtectedState,VerifiedVersion,(int ExitCode,string Report)> operation,bool forNetworkMigration=false,bool forManifestAccessRecovery=false)
     {
         ProtectedState.RequireAdministrator();var layout=FixedLayout.FromWindows();using var state=ProtectedState.OpenExisting(layout);
-        var current=CurrentPointer.Parse(state.Read("current.json",4096),state.InstallationId);
-        using var version=VerifiedVersion.Open(layout,state,current.Release);
-        if(version.Package.ManifestHash!=current.ManifestSHA256)throw WfpNative.Contract("InstalledPointerManifestMismatch");
-        AssertInstalledHost(layout,state,version);LifecycleRecovery.AssertNoPending(state,forNetworkMigration:forNetworkMigration,forManifestAccessRecovery:forManifestAccessRecovery);
+        using var version=OpenVerifiedCurrentInstallation(layout,state,out _);
+        LifecycleRecovery.AssertNoPending(state,forNetworkMigration:forNetworkMigration,forManifestAccessRecovery:forManifestAccessRecovery);
         return operation(layout,state,version);
+    }
+    // Authentication of the current installation is common to maintenance and
+    // execution. Pending-operation checks remain with each operation.
+    private static VerifiedVersion OpenVerifiedCurrentInstallation(FixedLayout layout,ProtectedState state,out CurrentPointer current)
+    {
+        current=CurrentPointer.Parse(state.Read("current.json",4096),state.InstallationId);
+        var version=VerifiedVersion.Open(layout,state,current.Release);
+        try
+        {
+            if(version.Package.ManifestHash!=current.ManifestSHA256)throw WfpNative.Contract("InstalledPointerManifestMismatch");
+            AssertInstalledHost(layout,state,version);
+            return version;
+        }
+        catch{version.Dispose();throw;}
     }
     // The sole production development-session entry. It deliberately has no
     // target/script/report input and no fallback to a qualification command.
@@ -186,10 +198,7 @@ public static partial class InstalledBroker
     {
         ProtectedState.RequireAdministrator();var layout=FixedLayout.FromWindows();
         using var state=ProtectedState.OpenExisting(layout);
-        var current=CurrentPointer.Parse(state.Read("current.json",4096),state.InstallationId);
-        using var version=VerifiedVersion.Open(layout,state,current.Release);
-        if(version.Package.ManifestHash!=current.ManifestSHA256)throw WfpNative.Contract("InstalledPointerManifestMismatch");
-        AssertInstalledHost(layout,state,version);
+        using var version=OpenVerifiedCurrentInstallation(layout,state,out _);
         return ProtectedSession.Request(layout,state,version,false);
     }
 
@@ -197,10 +206,8 @@ public static partial class InstalledBroker
     {
         ProtectedSession.AssertSystemTestingAllowed();
         ProtectedState.RequireAdministrator();var layout=FixedLayout.FromWindows();using var state=ProtectedState.OpenExisting(layout);
-        var current=CurrentPointer.Parse(state.Read("current.json",4096),state.InstallationId);
-        using var version=VerifiedVersion.Open(layout,state,current.Release);
-        if(version.Package.ManifestHash!=current.ManifestSHA256)throw WfpNative.Contract("InstalledPointerManifestMismatch");
-        AssertInstalledHost(layout,state,version);return ProtectedSession.Request(layout,state,version,true);
+        using var version=OpenVerifiedCurrentInstallation(layout,state,out _);
+        return ProtectedSession.Request(layout,state,version,true);
     }
 
     public static (int ExitCode,string Report) QualifySessionGateway()=>WithCurrentInstallation(ProtectedSession.QualifySessionGateway);
@@ -237,37 +244,30 @@ public static partial class InstalledBroker
     {
         ProtectedSession.AssertSystemTestingAllowed();
         ProtectedState.RequireAdministrator();var layout=FixedLayout.FromWindows();using var state=ProtectedState.OpenExisting(layout);
-        var current=CurrentPointer.Parse(state.Read("current.json",4096),state.InstallationId);using var version=VerifiedVersion.Open(layout,state,current.Release);
-        if(version.Package.ManifestHash!=current.ManifestSHA256)throw WfpNative.Contract("InstalledPointerManifestMismatch");
-        AssertInstalledHost(layout,state,version);return WatchdogQualification.Run(layout,state,version);
+        using var version=OpenVerifiedCurrentInstallation(layout,state,out _);
+        return WatchdogQualification.Run(layout,state,version);
     }
     public static (int ExitCode,string Report) QualifyGpu()
     {
         ProtectedSession.AssertSystemTestingAllowed();
         ProtectedState.RequireAdministrator();var layout=FixedLayout.FromWindows();using var state=ProtectedState.OpenExisting(layout);
-        var current=CurrentPointer.Parse(state.Read("current.json",4096),state.InstallationId);using var version=VerifiedVersion.Open(layout,state,current.Release);
-        if(version.Package.ManifestHash!=current.ManifestSHA256)throw WfpNative.Contract("InstalledPointerManifestMismatch");
-        AssertInstalledHost(layout,state,version);return GpuQualification.Run(layout,state,version);
+        using var version=OpenVerifiedCurrentInstallation(layout,state,out _);
+        return GpuQualification.Run(layout,state,version);
     }
     public static (int ExitCode,string Report) QualifyNetwork()
     {
         ProtectedSession.AssertSystemTestingAllowed();
         ProtectedState.RequireAdministrator();var layout=FixedLayout.FromWindows();
         using var state=ProtectedState.OpenExisting(layout);
-        var current=CurrentPointer.Parse(state.Read("current.json",4096),state.InstallationId);
-        using var version=VerifiedVersion.Open(layout,state,current.Release);
-        if(version.Package.ManifestHash!=current.ManifestSHA256)throw WfpNative.Contract("InstalledPointerManifestMismatch");
-        AssertInstalledHost(layout,state,version);return NetworkQualification.Run(layout,state,version);
+        using var version=OpenVerifiedCurrentInstallation(layout,state,out _);
+        return NetworkQualification.Run(layout,state,version);
     }
 
     public static (int ExitCode,string Report) InspectInstalledFence()
     {
         ProtectedState.RequireAdministrator();var layout=FixedLayout.FromWindows();
         using var state=ProtectedState.OpenExisting(layout);
-        var current=CurrentPointer.Parse(state.Read("current.json",4096),state.InstallationId);
-        using var version=VerifiedVersion.Open(layout,state,current.Release);
-        if(version.Package.ManifestHash!=current.ManifestSHA256)throw WfpNative.Contract("InstalledPointerManifestMismatch");
-        AssertInstalledHost(layout,state,version);
+        using var version=OpenVerifiedCurrentInstallation(layout,state,out _);
         var observations=new List<FenceObservation>();
         foreach(var plan in FencePlan.ReadAll(state))
         {using var owner=PersistentFence.OpenExisting(state,plan.Data.FenceId);observations.Add(owner.Observe());}
@@ -281,10 +281,8 @@ public static partial class InstalledBroker
         ProtectedSession.AssertSystemTestingAllowed();
         ProtectedState.RequireAdministrator();var layout=FixedLayout.FromWindows();
         using var state=ProtectedState.OpenExisting(layout);
-        var current=CurrentPointer.Parse(state.Read("current.json",4096),state.InstallationId);
-        using var version=VerifiedVersion.Open(layout,state,current.Release);
-        if(version.Package.ManifestHash!=current.ManifestSHA256)throw WfpNative.Contract("InstalledPointerManifestMismatch");
-        AssertInstalledHost(layout,state,version);LifecycleRecovery.AssertNoPending(state);
+        using var version=OpenVerifiedCurrentInstallation(layout,state,out var current);
+        LifecycleRecovery.AssertNoPending(state);
         var plans=FencePlan.ReadAll(state);if(plans.Count==0)throw WfpNative.Contract("AtomicQualificationRequiresQuarantine");
         foreach(var plan in plans)
         {using var fence=PersistentFence.OpenExisting(state,plan.Data.FenceId);if(!fence.Observe().FullQuarantineObserved)throw WfpNative.Contract("AtomicQualificationRequiresCompleteQuarantine");}

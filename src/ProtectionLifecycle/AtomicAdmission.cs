@@ -429,9 +429,7 @@ internal sealed partial class AtomicChild : IDisposable
             environment=Marshal.StringToHGlobalUni(environmentBlock);
             var startup=new StartupInfoEx{Basic=new(){Size=Marshal.SizeOf<StartupInfoEx>()},Attributes=attributes};
             if(report){startup.Basic.Flags=0x100;startup.Basic.Output=output;startup.Basic.Error=output;}
-            var command=new StringBuilder("\""+image+"\" "+(preparation?.FixedNoContentHttpsCanary==true?"no-content-https-canary-child":preparation?.CapabilityProfile.IsInternetClientQualification==true?
-                "internet-client-gateway-qualification-child":preparation?.CaptureCapabilityContent==true?"zero-capability-comparison-child":
-                preparation?.IsGatewayQualification==true?"gateway-qualification-child":"admission-child"));
+            var command=new StringBuilder("\""+image+"\" "+(preparation?.ChildCommand??"admission-child"));
             // The OS binds BOTH identity and Job before returning a suspended
             // initial thread. Only the explicit qualification report handle
             // may be inherited; no breakaway permission is enabled.

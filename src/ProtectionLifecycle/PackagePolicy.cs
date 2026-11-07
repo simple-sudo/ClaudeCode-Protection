@@ -3,7 +3,6 @@ using System.Text.Json;
 
 namespace ProtectionLifecycle;
 
-internal sealed record AssetSpec(string Id, string Path);
 internal sealed record PayloadFile(AssetSpec Asset, long Length, string SHA256);
 internal sealed class ReviewedPackage
 {
@@ -49,25 +48,10 @@ internal static class PackagePolicy
     private static readonly HashSet<string> RetiredIncidentArtifacts=new(StringComparer.Ordinal) {
         "10C687554CDF8BBA56D2680784850F1F7C321D17F339FC1E41EB3F2C885010E6"
     };
-    internal const int MaxManifestBytes = 64 * 1024;
-    internal const long MaxAssetBytes = 128L * 1024 * 1024;
+    internal const int MaxManifestBytes = PackageAssetCatalog.MaxManifestBytes;
+    internal const long MaxAssetBytes = PackageAssetCatalog.MaxAssetBytes;
     internal const long MaxPackageBytes = 256L * 1024 * 1024;
-    internal static readonly IReadOnlyList<AssetSpec> Catalog = Array.AsReadOnly(new[] {
-        new AssetSpec("daily-exe", "bin/current/ClaudeProtection.exe"),
-        new AssetSpec("daily-dll", "bin/current/ClaudeProtection.dll"),
-        new AssetSpec("daily-deps", "bin/current/ClaudeProtection.deps.json"),
-        new AssetSpec("daily-runtime", "bin/current/ClaudeProtection.runtimeconfig.json"),
-        new AssetSpec("daily-reader", "bin/current/Read-Environment.ps1"),
-        new AssetSpec("center-exe", "bin/center/ProtectionCenter.exe"),
-        new AssetSpec("center-dll", "bin/center/ProtectionCenter.dll"),
-        new AssetSpec("center-deps", "bin/center/ProtectionCenter.deps.json"),
-        new AssetSpec("center-runtime", "bin/center/ProtectionCenter.runtimeconfig.json"),
-        new AssetSpec("broker-exe", "bin/admin/ProtectionBroker.exe"),
-        new AssetSpec("broker-dll", "bin/admin/ProtectionBroker.dll"),
-        new AssetSpec("broker-deps", "bin/admin/ProtectionBroker.deps.json"),
-        new AssetSpec("broker-runtime", "bin/admin/ProtectionBroker.runtimeconfig.json"),
-        new AssetSpec("broker-lifecycle", "bin/admin/ProtectionLifecycle.dll")
-    });
+    internal static IReadOnlyList<AssetSpec> Catalog => PackageAssetCatalog.Catalog;
 
     internal static (string Release,string ManifestHash,IReadOnlyList<PayloadFile> Files) ValidateOwned(ReadOnlyMemory<byte> raw,OwnedReleaseReceipt receipt)
     {

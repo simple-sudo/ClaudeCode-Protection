@@ -11,6 +11,6 @@
     <!-- Exact production data transfer only. No Broker/Job/WFP or launch. -->
     <Compile Include="Program.cs" />
     <Compile Include="../../src/Shared/WorkspaceBundle.cs;../../src/Shared/WorkspaceFiles.cs" />
-    <Compile Include="../../src/Shared/WindowsDirectoryNames.cs;../../src/ProtectionLifecycle/DirectoryNamePage.cs" />
+    <Compile Include="../../src/Shared/WindowsDirectoryNames.cs;../../src/Shared/DirectoryNamePage.cs" />
   </ItemGroup>
 </Project>

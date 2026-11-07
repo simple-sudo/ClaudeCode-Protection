@@ -77,37 +77,39 @@ internal static class Program
             }
             catch(Exception ex){Console.Error.WriteLine("Environment intent not confirmed: "+ex.GetType().Name+"; code="+ex.HResult);return 125;}
         }
-        if (args.Length != 1 || args[0] is not ("qualify-no-content-https-canary" or "no-content-https-canary-child" or "qualify-zero-capability-comparison-gateway" or "zero-capability-comparison-child" or "qualify-internet-client-session-gateway" or "internet-client-gateway-qualification-child" or "qualify-winsock-provider-session-gateway" or "qualify-winsock-transport-session-gateway" or "qualify-winsock-session-gateway" or "inspect-winsock-read-access" or "recover-winsock-read-access" or "inspect-timezone-read-access" or "recover-timezone-read-access" or "qualify-session-gateway" or "gateway-qualification-child" or "inspect-etw-provider-access" or "recover-etw-provider-access" or "inspect-manifest-read-access" or "recover-manifest-read-access" or "qualify-toolchain" or "recover-session-resources" or "inspect-resource-recovery" or "recover-unstarted-session-resources" or "qualify-resource-recovery" or "qualify-resources" or "migrate-session-network" or "inspect-session-environment" or "launch" or "session-synthetic" or "quarantine" or "inspect-runtime" or "inspect-wfp" or "qualify-wfp-objects" or "inspect-installed-fence" or "qualify-admission" or "qualify-network" or "qualify-gpu" or "qualify-watchdog" or "admission-child"))
-        {
-            Console.Error.WriteLine("ProtectionBroker inspect-runtime | inspect-wfp; inspect-installed-fence (installed read-only); quarantine | qualify-admission | qualify-network | qualify-gpu | qualify-watchdog (installed); qualify-wfp-objects (protected qualification host). Management requires existing elevation.");
-            Console.Error.WriteLine("Installed intent management: inspect-session-environment | configure-session-environment EXPECTED_SHA_OR_none WINDOWS_TIMEZONE USER_LOCALE SYSTEM_LOCALE. This never changes Windows settings or grants launch.");
-            Console.Error.WriteLine("Installed inactive network maintenance: migrate-session-network (closed admissions, full quarantine; no launch permission).");
-            Console.Error.WriteLine("Installed bounded qualification: qualify-resources (fixed offline workspace/PowerShell/denial fixture only; no formal launch or network grant).");
-            Console.Error.WriteLine("Installed resource recovery: recover-session-resources; qualify-resource-recovery (fixed closed-Job cleanup checkpoint only; no forced crash).");
-            Console.Error.WriteLine("Installed toolchain qualification: qualify-toolchain (fixed reviewed Git; offline init/add/commit in a fresh task workspace only).");
-            Console.Error.WriteLine("Resource recovery: inspect-resource-recovery (read only); recover-unstarted-session-resources (explicit v2 creation with no process binding only).");
-            Console.Error.WriteLine("Fixed OS manifest-read resource: inspect-manifest-read-access (read only); recover-manifest-read-access (exact original DACL, closed Job and quarantine required).");
-            Console.Error.WriteLine("Installed data maintenance: process-workspace-data EXACT_INPUT_SHA256 (redirected bundle bytes); export-workspace-data SESSION EXACT_RESULT_SHA256 (raw bundle stdout). No project code execution or network grant.");
-            Console.Error.WriteLine("Installed failure inspection: inspect-failed-caller-project SESSION EXACT_INPUT_SHA256 (bounded terminal metadata only; no result release, recovery or launch authority).");
-            Console.Error.WriteLine("Installed host GPU reference: qualify-host-gpu-reference (one fixed ordinary linked-token child, original bounded Job; no protected workload or session grant).");
-            return 64;
-        }
+        var exitCode=args.Length==1?RunFixedCommand(args[0]):null;
+        if(exitCode is not null)return exitCode.Value;
+        Console.Error.WriteLine("ProtectionBroker inspect-runtime | inspect-wfp; inspect-installed-fence (installed read-only); quarantine | qualify-admission | qualify-network | qualify-gpu | qualify-watchdog (installed); qualify-wfp-objects (protected qualification host). Management requires existing elevation.");
+        Console.Error.WriteLine("Installed intent management: inspect-session-environment | configure-session-environment EXPECTED_SHA_OR_none WINDOWS_TIMEZONE USER_LOCALE SYSTEM_LOCALE. This never changes Windows settings or grants launch.");
+        Console.Error.WriteLine("Installed inactive network maintenance: migrate-session-network (closed admissions, full quarantine; no launch permission).");
+        Console.Error.WriteLine("Installed bounded qualification: qualify-resources (fixed offline workspace/PowerShell/denial fixture only; no formal launch or network grant).");
+        Console.Error.WriteLine("Installed resource recovery: recover-session-resources; qualify-resource-recovery (fixed closed-Job cleanup checkpoint only; no forced crash).");
+        Console.Error.WriteLine("Installed toolchain qualification: qualify-toolchain (fixed reviewed Git; offline init/add/commit in a fresh task workspace only).");
+        Console.Error.WriteLine("Resource recovery: inspect-resource-recovery (read only); recover-unstarted-session-resources (explicit v2 creation with no process binding only).");
+        Console.Error.WriteLine("Fixed OS manifest-read resource: inspect-manifest-read-access (read only); recover-manifest-read-access (exact original DACL, closed Job and quarantine required).");
+        Console.Error.WriteLine("Installed data maintenance: process-workspace-data EXACT_INPUT_SHA256 (redirected bundle bytes); export-workspace-data SESSION EXACT_RESULT_SHA256 (raw bundle stdout). No project code execution or network grant.");
+        Console.Error.WriteLine("Installed failure inspection: inspect-failed-caller-project SESSION EXACT_INPUT_SHA256 (bounded terminal metadata only; no result release, recovery or launch authority).");
+        Console.Error.WriteLine("Installed host GPU reference: qualify-host-gpu-reference (one fixed ordinary linked-token child, original bounded Job; no protected workload or session grant).");
+        return 64;
+    }
+    private static int? RunFixedCommand(string command)
+    {
         // The current artifact has not obtained bounded runtime/install
         // clearance. Authorization to perform qualification is not clearance
         // for an arbitrary invocation or a session permit.
-        if (args[0] is "migrate-session-network" or "session-synthetic" or "qualify-wfp-objects" or "qualify-admission" or "qualify-network" or "qualify-gpu" or "qualify-watchdog")
+        if (command is "migrate-session-network" or "session-synthetic" or "qualify-wfp-objects" or "qualify-admission" or "qualify-network" or "qualify-gpu" or "qualify-watchdog")
         {
             Console.Error.WriteLine("SYSTEM_ARTIFACT_NOT_QUALIFIED: bounded runtime/install clearance is required. No system operation was started.");
             return 125;
         }
         try
         {
-            if(args[0]=="gateway-qualification-child")return ProtectionLifecycle.InstalledBroker.RunGatewayQualificationCanary();
-            if(args[0]=="internet-client-gateway-qualification-child")return ProtectionLifecycle.InstalledBroker.RunInternetClientGatewayQualificationCanary();
-            if(args[0]=="no-content-https-canary-child")return ProtectionLifecycle.InstalledBroker.RunNoContentHttpsCanary();
-            if(args[0]=="zero-capability-comparison-child")return ProtectionLifecycle.InstalledBroker.RunZeroCapabilityComparisonCanary();
-            if(args[0]=="admission-child")return ProtectionLifecycle.InstalledBroker.RunAdmissionCanary();
-            var result = args[0] switch {
+            if(command=="gateway-qualification-child")return ProtectionLifecycle.InstalledBroker.RunGatewayQualificationCanary();
+            if(command=="internet-client-gateway-qualification-child")return ProtectionLifecycle.InstalledBroker.RunInternetClientGatewayQualificationCanary();
+            if(command=="no-content-https-canary-child")return ProtectionLifecycle.InstalledBroker.RunNoContentHttpsCanary();
+            if(command=="zero-capability-comparison-child")return ProtectionLifecycle.InstalledBroker.RunZeroCapabilityComparisonCanary();
+            if(command=="admission-child")return ProtectionLifecycle.InstalledBroker.RunAdmissionCanary();
+            (int ExitCode,string Report)? result = command switch {
                 "inspect-timezone-read-access" => ProtectionLifecycle.InstalledBroker.InspectTimeZoneReadAccess(),
                 "recover-timezone-read-access" => ProtectionLifecycle.InstalledBroker.RecoverTimeZoneReadAccess(),
                 "qualify-zero-capability-comparison-gateway" => ProtectionLifecycle.InstalledBroker.QualifyZeroCapabilityComparisonGateway(),
@@ -141,10 +143,12 @@ internal static class Program
                 "qualify-network" => ProtectionLifecycle.InstalledBroker.QualifyNetwork(),
                 "qualify-gpu" => ProtectionLifecycle.InstalledBroker.QualifyGpu(),
                 "qualify-watchdog" => ProtectionLifecycle.InstalledBroker.QualifyWatchdog(),
-                _ => ProtectionLifecycle.InstalledBroker.Quarantine()
+                "quarantine" => ProtectionLifecycle.InstalledBroker.Quarantine(),
+                _ => null
             };
-            Console.WriteLine(result.Report);
-            return result.ExitCode;
+            if(result is not { } completed)return null;
+            Console.WriteLine(completed.Report);
+            return completed.ExitCode;
         }
         catch (Exception ex)
         {

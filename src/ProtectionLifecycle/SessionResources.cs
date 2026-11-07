@@ -49,8 +49,13 @@ internal sealed record ResourceProbePlan(int SchemaVersion,string Nonce,string I
     internal string PowerShellLaunchImage=>ExpectedChildImage;
     // Explicit workspace bytes authorize fixed Git data processing only.
     // General tool qualification must still prove PowerShell and compilation.
-    internal bool RequiresPowerShell=>!DevelopProject && WorkspaceInputSHA256 is null;
-    internal bool RequiresCompilerTool=>RequiresPowerShell || DevelopProject;
+    internal static (bool PowerShell,bool Compiler) ToolRequirements(bool developProject,bool hasWorkspaceInput)
+    {
+        var powerShell=!developProject && !hasWorkspaceInput;
+        return (powerShell,powerShell || developProject);
+    }
+    internal bool RequiresPowerShell=>ToolRequirements(DevelopProject,WorkspaceInputSHA256 is not null).PowerShell;
+    internal bool RequiresCompilerTool=>ToolRequirements(DevelopProject,WorkspaceInputSHA256 is not null).Compiler;
     internal string Workspace(string sid)=>GitAssetSetSHA256 is null?WindowsPathSeal.Child(SessionResources.ProfileFolder(sid),"workspace-"+Nonce):WindowsPathSeal.Child(ProgramFilesRoot,"ClaudeCodeProtection-Task-"+Nonce);
     internal byte[] Input=>Encoding.UTF8.GetBytes("CPC-RESOURCE:"+Nonce);
     // Same data transfer contract as daily workspace-pack, without importing
@@ -159,7 +164,12 @@ internal sealed class SessionResources : IDisposable
             _=state.Read("resource-fixture-"+nonce+".json",4096);
             return new(state,directory,input,tool,plan,git,projectInput,allPackagesFixture,privacy);
         }
-        catch{privacy?.Dispose();allPackagesFixture?.Dispose();projectInput?.Dispose();git?.Dispose();input?.Dispose();directory?.Dispose();tool?.Dispose();throw;}
+        catch(Exception error)
+        {
+            var cleanup=Release(privacy,allPackagesFixture,projectInput,git,input,directory,tool);
+            if(cleanup.Count!=0){cleanup.Insert(0,error);throw new AggregateException(cleanup);}
+            throw;
+        }
     }
     internal void AssertHeld()
     {
@@ -505,7 +515,20 @@ internal sealed class SessionResources : IDisposable
         using var file=File.OpenRead(path);if(file.Length is <1 or >1024)throw WfpNative.Contract("ResourceFixtureBounds");
         var data=new byte[checked((int)file.Length)];file.ReadExactly(data);return data;
     }
-    public void Dispose(){privacy?.Dispose();allPackagesFixture.Dispose();projectInput?.Dispose();git?.Dispose();input.Dispose();folder.Dispose();tool?.Dispose();}
+    public void Dispose()
+    {
+        var failures=Release(privacy,allPackagesFixture,projectInput,git,input,folder,tool);
+        if(failures.Count!=0)throw new AggregateException(failures);
+    }
+    // A failed release does not suppress the remaining owned releases or the
+    // original preparation error. Journal recovery still belongs to the owner.
+    private static List<Exception> Release(params IDisposable?[] held)
+    {
+        var failures=new List<Exception>();
+        foreach(var item in held)
+            try{item?.Dispose();}catch(Exception error){failures.Add(error);}
+        return failures;
+    }
     private static string AllPackagesFixtureSddl(string human)=>"O:BAG:SYD:P(A;;FA;;;SY)(A;;FA;;;BA)(A;;0x00120089;;;"+new SecurityIdentifier(human).Value+")(A;;0x00120089;;;S-1-15-2-1)";
     private static FileStream CreateAllPackagesFixture(string path,string human,byte[] content)
     {

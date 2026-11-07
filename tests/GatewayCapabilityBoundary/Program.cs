@@ -25,11 +25,28 @@ var profiles=T("LpacCapabilityProfile");var none=profiles.GetField("None",nonpub
 var internet=profiles.GetField("InternetClientQualification",nonpublic)!.GetValue(null)!;
 Check(profiles.GetConstructors().Length==0);
 var session=T("ProtectedSession");Check((bool)session.GetProperty("SystemTestingBlocked",nonpublic)!.GetValue(null)!);
-var ctor=session.GetConstructors(BindingFlags.NonPublic|BindingFlags.Instance).Single();
-var arguments=new object?[]{null,null,null,false,false,false,false,true,false,false};
-Reject(()=>{try{_=ctor.Invoke(arguments);}catch(TargetInvocationException e)when(e.InnerException is InvalidDataException cause){throw cause;}},"InternetClientRequiresFixedGatewayAndExactWinsockQualification");
-arguments[7]=false;arguments[8]=true;
-Reject(()=>{try{_=ctor.Invoke(arguments);}catch(TargetInvocationException e)when(e.InnerException is InvalidDataException cause){throw cause;}},"InternetClientRequiresFixedGatewayAndExactWinsockQualification");
+var gatewayMode=session.GetNestedType("GatewayMode",BindingFlags.NonPublic)!;
+var configuration=session.GetNestedType("GatewayQualification",BindingFlags.NonPublic)!;
+var select=configuration.GetMethod("For",nonpublic)!;
+Check(Call(select,Enum.Parse(gatewayMode,"None")) is null);
+foreach(var (mode,winsock,capability,content,noContent) in new[] {
+    ("Basic","None",none,false,false),("Winsock","Catalog",none,false,false),
+    ("Transport","Transport",none,false,false),("Provider","Provider",none,false,false),
+    ("InternetClient","Provider",internet,true,false),("ZeroCapabilityComparison","Provider",none,true,false),
+    ("NoContentHttps","Provider",internet,true,true)})
+{
+    var plan=Call(select,Enum.Parse(gatewayMode,mode))!;
+    object? Read(string property)=>configuration.GetProperty(property)!.GetValue(plan);
+    Check(Read("Winsock")!.ToString()==winsock && ReferenceEquals(Read("Capabilities"),capability) &&
+        Equals(Read("CaptureContent"),content) && Equals(Read("NoContentHttps"),noContent));
+    Check(Equals(Read("ChildCommand"),mode switch {
+        "InternetClient"=>"internet-client-gateway-qualification-child",
+        "ZeroCapabilityComparison"=>"zero-capability-comparison-child",
+        "NoContentHttps"=>"no-content-https-canary-child",
+        _=>"gateway-qualification-child"
+    }));
+}
+Reject(()=>Call(select,Enum.ToObject(gatewayMode,int.MaxValue)),"UnknownFixedGatewayMode");
 var broker=T("InstalledBroker");var entry=broker.GetMethod("QualifyInternetClientSessionGateway")!;
 Check(entry.GetParameters().Length==0);
 bool ordinaryDenied=false;try{Call(entry);}catch(UnauthorizedAccessException){ordinaryDenied=true;}Check(ordinaryDenied);
@@ -37,8 +54,6 @@ entry=broker.GetMethod("QualifyZeroCapabilityComparisonGateway")!;Check(entry.Ge
 ordinaryDenied=false;try{Call(entry);}catch(UnauthorizedAccessException){ordinaryDenied=true;}Check(ordinaryDenied);
 entry=broker.GetMethod("QualifyNoContentHttpsCanary")!;Check(entry.GetParameters().Length==0);
 ordinaryDenied=false;try{Call(entry);}catch(UnauthorizedAccessException){ordinaryDenied=true;}Check(ordinaryDenied);
-arguments[8]=false;arguments[9]=true;
-Reject(()=>{try{_=ctor.Invoke(arguments);}catch(TargetInvocationException e)when(e.InnerException is InvalidDataException cause){throw cause;}},"NoContentHttpsCanaryRequiresFixedInternetClient");
 
 object Snapshot(string sid,uint attributes)
 {

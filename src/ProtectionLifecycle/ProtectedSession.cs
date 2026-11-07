@@ -26,13 +26,27 @@ internal sealed class ProtectedSession
     private readonly VerifiedVersion version;
     // Chosen only by the compiled fixed gateway operation, never by data,
     // environment, persisted evidence or a formal-launch caller.
-    private readonly bool gatewayQualification;
-    private readonly bool winsockQualification;
-    private readonly bool winsockTransportQualification;
-    private readonly bool winsockProviderQualification;
-    private readonly LpacCapabilityProfile capabilityProfile;
-    private readonly bool capabilityReadComparison;
-    private readonly bool fixedNoContentHttpsCanary;
+    private enum GatewayMode { None, Basic, Winsock, Transport, Provider, InternetClient, ZeroCapabilityComparison, NoContentHttps }
+    private enum WinsockScope { None, Catalog, Transport, Provider }
+    private sealed record GatewayQualification(WinsockScope Winsock,LpacCapabilityProfile Capabilities,bool CaptureContent,bool NoContentHttps,string ChildCommand)
+    {
+        internal static GatewayQualification? For(GatewayMode mode)=>mode switch {
+            GatewayMode.None=>null,
+            GatewayMode.Basic=>new(WinsockScope.None,LpacCapabilityProfile.None,false,false,"gateway-qualification-child"),
+            GatewayMode.Winsock=>new(WinsockScope.Catalog,LpacCapabilityProfile.None,false,false,"gateway-qualification-child"),
+            GatewayMode.Transport=>new(WinsockScope.Transport,LpacCapabilityProfile.None,false,false,"gateway-qualification-child"),
+            GatewayMode.Provider=>new(WinsockScope.Provider,LpacCapabilityProfile.None,false,false,"gateway-qualification-child"),
+            GatewayMode.InternetClient=>new(WinsockScope.Provider,LpacCapabilityProfile.InternetClientQualification,true,false,"internet-client-gateway-qualification-child"),
+            GatewayMode.ZeroCapabilityComparison=>new(WinsockScope.Provider,LpacCapabilityProfile.None,true,false,"zero-capability-comparison-child"),
+            GatewayMode.NoContentHttps=>new(WinsockScope.Provider,LpacCapabilityProfile.InternetClientQualification,true,true,"no-content-https-canary-child"),
+            _=>throw WfpNative.Contract("UnknownFixedGatewayMode")
+        };
+    }
+    private readonly GatewayQualification? qualification;
+    private bool IsGatewayQualification=>qualification is not null;
+    private LpacCapabilityProfile CapabilityProfile=>qualification?.Capabilities??LpacCapabilityProfile.None;
+    private bool CaptureCapabilityContent=>qualification?.CaptureContent==true;
+    private bool FixedNoContentHttpsCanary=>qualification?.NoContentHttps==true;
     private SessionWinsockReadAccess? winsockAccess;
     private const long GatewayQualificationLimitMs=30000;
     private readonly string id = Guid.NewGuid().ToString("N"), pointerSHA256;
@@ -56,21 +70,10 @@ internal sealed class ProtectedSession
     private GatewayCapabilityChildReport? gatewayCapabilityFeedback;
     private ProtectionRuntimeLease? runtime;
     private SessionResources? resources;
-    private ProtectedSession(FixedLayout layout,ProtectedState state,VerifiedVersion version,bool gatewayQualification=false,bool winsockQualification=false,bool winsockTransportQualification=false,bool winsockProviderQualification=false,bool internetClientQualification=false,bool capabilityReadComparison=false,bool fixedNoContentHttpsCanary=false)
+    private ProtectedSession(FixedLayout layout,ProtectedState state,VerifiedVersion version,GatewayMode gatewayMode=GatewayMode.None)
     {
-        if(fixedNoContentHttpsCanary && !internetClientQualification)throw WfpNative.Contract("NoContentHttpsCanaryRequiresFixedInternetClient");
-        if((internetClientQualification || capabilityReadComparison) && !(gatewayQualification && winsockQualification && winsockTransportQualification && winsockProviderQualification))
-            throw WfpNative.Contract("InternetClientRequiresFixedGatewayAndExactWinsockQualification");
-        capabilityProfile=internetClientQualification?LpacCapabilityProfile.InternetClientQualification:LpacCapabilityProfile.None;
-        this.capabilityReadComparison=capabilityReadComparison || internetClientQualification;
-        this.fixedNoContentHttpsCanary=fixedNoContentHttpsCanary;
-        if(winsockQualification && !gatewayQualification)throw WfpNative.Contract("WinsockLeaseRequiresFixedGatewayQualification");
-        if(winsockTransportQualification && !winsockQualification)throw WfpNative.Contract("WinsockTransportRequiresFixedWinsockQualification");
-        if(winsockProviderQualification && !winsockTransportQualification)throw WfpNative.Contract("WinsockProviderRequiresFixedTransportQualification");
-        this.winsockProviderQualification=winsockProviderQualification;
-        this.winsockTransportQualification=winsockTransportQualification;
-        this.winsockQualification=winsockQualification;
-        this.layout=layout;this.state=state;this.version=version;this.gatewayQualification=gatewayQualification;
+        qualification=GatewayQualification.For(gatewayMode);
+        this.layout=layout;this.state=state;this.version=version;
         pointerSHA256=state.Read("current.json",4096).SHA256;
         (expectations,expectationsSHA256,expectationsReason)=ReadExpectations();
         environment=MissingEnvironment();
@@ -179,7 +182,7 @@ internal sealed class ProtectedSession
     private (int ExitCode,string Report) ExecuteResourceQualification(bool deferCleanup=false,bool includeGit=false,byte[]? workspaceInput=null,bool developProject=false,bool callerProject=false,Action? assertCaller=null)
     {
         InstallationProfileLease? profile=null;AtomicChild? child=null;
-        var powerShellRequired=!developProject && workspaceInput is null;var compilerRequired=powerShellRequired || developProject;
+        var (powerShellRequired,compilerRequired)=ResourceProbePlan.ToolRequirements(developProject,workspaceInput is not null);
         System.IO.Pipes.AnonymousPipeServerStream? pipe=null;StreamReader? reader=null;
         ResourceQualification? permit=null;ResourceChildReport? observed=null;Task<uint>? exited=null;Task<string>? text=null;
         ResourceBootstrapFailure? bootstrapFailure=null;
@@ -469,63 +472,34 @@ internal sealed class ProtectedSession
     // cannot accept projects, tools, targets or serialized permits. It uses the
     // same suspended creation, admission, forwarding and stop owners.
     internal static (int ExitCode,string Report) QualifySessionGateway(FixedLayout layout,ProtectedState state,VerifiedVersion version)
-    {
-        ProtectedState.RequireAdministrator();state.AssertHeld();version.AssertHeld(state);
-        return new ProtectedSession(layout,state,version,gatewayQualification:true).Execute();
-    }
+        =>QualifyGateway(layout,state,version,GatewayMode.Basic);
     internal static (int ExitCode,string Report) QualifyWinsockSessionGateway(FixedLayout layout,ProtectedState state,VerifiedVersion version)
-    {
-        ProtectedState.RequireAdministrator();state.AssertHeld();version.AssertHeld(state);
-        SessionWinsockReadAccess.RequireCurrentRootControl();
-        return new ProtectedSession(layout,state,version,gatewayQualification:true,winsockQualification:true).Execute();
-    }
+        =>QualifyGateway(layout,state,version,GatewayMode.Winsock);
     internal static (int ExitCode,string Report) QualifyWinsockTransportSessionGateway(FixedLayout layout,ProtectedState state,VerifiedVersion version)
-    {
-        ProtectedState.RequireAdministrator();state.AssertHeld();version.AssertHeld(state);
-        SessionWinsockReadAccess.RequireCurrentRootControl();
-        return new ProtectedSession(layout,state,version,gatewayQualification:true,winsockQualification:true,winsockTransportQualification:true).Execute();
-    }
+        =>QualifyGateway(layout,state,version,GatewayMode.Transport);
     internal static (int ExitCode,string Report) QualifyWinsockProviderSessionGateway(FixedLayout layout,ProtectedState state,VerifiedVersion version)
-    {
-        ProtectedState.RequireAdministrator();state.AssertHeld();version.AssertHeld(state);
-        SessionWinsockReadAccess.RequireCurrentRootControl();
-        return new ProtectedSession(layout,state,version,gatewayQualification:true,winsockQualification:true,
-            winsockTransportQualification:true,winsockProviderQualification:true).Execute();
-    }
-    // Finite candidate only; no daily/GUI/formal launch selection. A separately
-    // frozen build/install/native qualification must select this new command.
+        =>QualifyGateway(layout,state,version,GatewayMode.Provider);
     internal static (int ExitCode,string Report) QualifyInternetClientSessionGateway(FixedLayout layout,ProtectedState state,VerifiedVersion version)
-    {
-        ProtectedState.RequireAdministrator();state.AssertHeld();version.AssertHeld(state);
-        SessionWinsockReadAccess.RequireCurrentRootControl();
-        return new ProtectedSession(layout,state,version,gatewayQualification:true,winsockQualification:true,
-            winsockTransportQualification:true,winsockProviderQualification:true,internetClientQualification:true).Execute();
-    }
-    // Fixed synthetic target only. This separate research purpose accepts the
-    // already observed no-data RPC failure for functionality diagnosis, never
-    // as a privacy PASS or permission for caller code/Claude. Fresh artifact
-    // installation and a separately frozen native approval remain necessary.
+        =>QualifyGateway(layout,state,version,GatewayMode.InternetClient);
     internal static (int ExitCode,string Report) QualifyNoContentHttpsCanary(FixedLayout layout,ProtectedState state,VerifiedVersion version)
-    {
-        ProtectedState.RequireAdministrator();state.AssertHeld();version.AssertHeld(state);
-        SessionWinsockReadAccess.RequireCurrentRootControl();
-        return new ProtectedSession(layout,state,version,gatewayQualification:true,winsockQualification:true,
-            winsockTransportQualification:true,winsockProviderQualification:true,internetClientQualification:true,fixedNoContentHttpsCanary:true).Execute();
-    }
+        =>QualifyGateway(layout,state,version,GatewayMode.NoContentHttps);
     internal static (int ExitCode,string Report) QualifyZeroCapabilityComparisonGateway(FixedLayout layout,ProtectedState state,VerifiedVersion version)
+        =>QualifyGateway(layout,state,version,GatewayMode.ZeroCapabilityComparison);
+    private static (int ExitCode,string Report) QualifyGateway(FixedLayout layout,ProtectedState state,VerifiedVersion version,GatewayMode mode)
     {
         ProtectedState.RequireAdministrator();state.AssertHeld();version.AssertHeld(state);
-        SessionWinsockReadAccess.RequireCurrentRootControl();
-        return new ProtectedSession(layout,state,version,gatewayQualification:true,winsockQualification:true,
-            winsockTransportQualification:true,winsockProviderQualification:true,capabilityReadComparison:true).Execute();
+        var owner=new ProtectedSession(layout,state,version,mode);
+        if(owner.qualification is null)throw WfpNative.Contract("FixedGatewayQualificationRequired");
+        if(owner.qualification.Winsock!=WinsockScope.None)SessionWinsockReadAccess.RequireCurrentRootControl();
+        return owner.Execute();
     }
-    private bool CurrentWorkloadEvidenceEligible()=>gatewayQualification?
+    private bool CurrentWorkloadEvidenceEligible()=>IsGatewayQualification?
         clock.ElapsedMilliseconds>=0 && clock.ElapsedMilliseconds<GatewayQualificationLimitMs:
         !SystemTestingBlocked && EnvironmentEligible() && SystemSecurityEligible();
     private void AssertQualificationBinding(bool quarantine)
     {
         state.AssertHeld();version.AssertHeld(state);
-        if(!gatewayQualification || !CurrentWorkloadEvidenceEligible() || resources is not null ||
+        if(!IsGatewayQualification || !CurrentWorkloadEvidenceEligible() || resources is not null ||
             state.Read("current.json",4096).SHA256!=pointerSHA256 || job is null || gateway is null || sid is null ||
             gateway.SessionId!=id || fences.Count==0 || fences.Any(f=>!f.IsSessionChannel || quarantine && !f.Observe().FullQuarantineObserved))
             throw WfpNative.Contract("FixedGatewayQualificationExpiredOrBindingDrift");
@@ -536,8 +510,8 @@ internal sealed class ProtectedSession
     }
     private bool PreparationEnvironmentEligible()=>expectations is not null && environment.Where(e=>e.Id is "host-timezone" or "host-locale")
         .Count(e=>e.Status=="PASS" && clock.ElapsedMilliseconds-e.ObservedMs<e.ValidForMs)==2;
-    private bool EnvironmentEligible()=>environment.Count==14 &&
-        environment.Select(e=>e.Id).Distinct(StringComparer.Ordinal).Count()==14 &&
+    private bool EnvironmentEligible()=>environment.Count==StrictEnvironmentRequirements.Required.Count &&
+        environment.Select(e=>e.Id).Distinct(StringComparer.Ordinal).Count()==environment.Count &&
         StrictEnvironmentRequirements.Required.All(def=>environment.Any(e=>e.Id==def.Id)) &&
         environment.All(e=>e.Status=="PASS" && e.ValidForMs is >0 and <=120000 &&
             clock.ElapsedMilliseconds>=e.ObservedMs && clock.ElapsedMilliseconds-e.ObservedMs<e.ValidForMs);
@@ -546,7 +520,7 @@ internal sealed class ProtectedSession
             clock.ElapsedMilliseconds>=e.ObservedMs && clock.ElapsedMilliseconds-e.ObservedMs<e.ValidForMs);
     private void AssertCurrent()
     {
-        if(gatewayQualification){AssertQualificationBinding(quarantine:false);return;}
+        if(IsGatewayQualification){AssertQualificationBinding(quarantine:false);return;}
         RefreshEnvironment();
         if(SystemTestingBlocked || !EnvironmentEligible() || !SystemSecurityEligible())throw WfpNative.Contract("SessionEvidenceExpiredUnknownOrBlocked");
         state.AssertHeld();version.AssertHeld(state);
@@ -558,7 +532,7 @@ internal sealed class ProtectedSession
     }
     private void AssertPreparedCurrent(bool force=false)
     {
-        if(gatewayQualification){AssertQualificationBinding(quarantine:true);return;}
+        if(IsGatewayQualification){AssertQualificationBinding(quarantine:true);return;}
         AssertSystemTestingAllowed();RefreshEnvironment(force);
         state.AssertHeld();version.AssertHeld(state);
         if(!PreparationEnvironmentEligible() || state.Read("current.json",4096).SHA256!=pointerSHA256 ||
@@ -576,10 +550,10 @@ internal sealed class ProtectedSession
         private AtomicChild? child;
         private int phase;
         internal string SessionId=>owner.id;
-        internal bool IsGatewayQualification=>owner.gatewayQualification;
-        internal LpacCapabilityProfile CapabilityProfile=>owner.capabilityProfile;
-        internal bool CaptureCapabilityContent=>owner.capabilityReadComparison;
-        internal bool FixedNoContentHttpsCanary=>owner.fixedNoContentHttpsCanary;
+        internal bool IsGatewayQualification=>owner.IsGatewayQualification;
+        internal LpacCapabilityProfile CapabilityProfile=>owner.CapabilityProfile;
+        internal string ChildCommand=>owner.qualification?.ChildCommand??"admission-child";
+        internal bool FixedNoContentHttpsCanary=>owner.FixedNoContentHttpsCanary;
         internal string? PublicTimeZoneId {get;}
         internal PublicTimeZoneSnapshot? PublicTimeZone {get;}
         internal SessionProxy Gateway=>owner.gateway??throw WfpNative.Contract("SessionGatewayMissing");
@@ -588,7 +562,7 @@ internal sealed class ProtectedSession
         internal Preparation(ProtectedSession owner)
         {
             this.owner=owner;owner.AssertPreparedCurrent(true);
-            if(owner.gatewayQualification)
+            if(owner.IsGatewayQualification)
             {
                 PublicTimeZone=PublicTimeZoneSnapshot.Capture(owner.id);
                 PublicTimeZoneId=PublicTimeZone.TimeZoneId;
@@ -637,9 +611,9 @@ internal sealed class ProtectedSession
         private int phase; // 0 issued, 2 resume consumed, 3 revoked; creation uses Preparation
         internal string SessionId=>owner.id;
         internal SessionProxy Gateway=>owner.gateway??throw WfpNative.Contract("SessionGatewayMissing");
-        internal bool IsFixedGatewayQualification=>owner.gatewayQualification;
-        internal bool FixedNoContentHttpsCanary=>owner.fixedNoContentHttpsCanary;
-        internal LpacCapabilityProfile CapabilityProfile=>owner.capabilityProfile;
+        internal bool IsFixedGatewayQualification=>owner.IsGatewayQualification;
+        internal bool FixedNoContentHttpsCanary=>owner.FixedNoContentHttpsCanary;
+        internal LpacCapabilityProfile CapabilityProfile=>owner.CapabilityProfile;
         internal void AssertFixedGatewayRoot((uint Pid,long CreatedFileTime) peer)
         {
             var root=primary;
@@ -691,7 +665,7 @@ internal sealed class ProtectedSession
                 var before=owner.job!.Observe();
                 AtomicChild.InspectMembers(owner.job,before,members=>WatchdogMemberPolicy.VerifyWithCapabilities(before,members,owner.job.Observe(),
                     primary.Pid,primary.ExpectedCreatedFileTime,owner.sid!,primary.ExpectedImagePath,
-                    Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System),"conhost.exe"),requireLpac:true,capabilities:owner.capabilityProfile));
+                    Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System),"conhost.exe"),requireLpac:true,capabilities:owner.CapabilityProfile));
             }
         }
         internal void AssertRuntimeObjects(OwnedKernelJob exactJob,VerifiedVersion exactVersion,IReadOnlyList<PersistentFence> exactFences)
@@ -707,10 +681,10 @@ internal sealed class ProtectedSession
             owner.state.InstallationId,owner.version.Package.Release,owner.version.Package.ManifestHash,owner.pointerSHA256,
             SessionId=owner.id,JobId=owner.job!.JobId,AppContainerSid=owner.sid,NetworkPolicySHA256=SessionProxy.PolicySHA256,
             RootPid=owner.preparation?.RootPid,RootCreatedFileTime=owner.preparation?.RootCreatedFileTime,
-            Resources=ResourceScope,FixedGatewayQualification=owner.gatewayQualification,TimeZoneReadIntentSHA256=(string?)null,
-            ExpectedCapabilitiesSHA256=owner.capabilityProfile.SHA256,
-            CaptureCapabilityContent=owner.capabilityReadComparison,
-            FixedNoContentHttpsCanary=owner.fixedNoContentHttpsCanary,
+            Resources=ResourceScope,FixedGatewayQualification=owner.IsGatewayQualification,TimeZoneReadIntentSHA256=(string?)null,
+            ExpectedCapabilitiesSHA256=owner.CapabilityProfile.SHA256,
+            CaptureCapabilityContent=owner.CaptureCapabilityContent,
+            FixedNoContentHttpsCanary=owner.FixedNoContentHttpsCanary,
             WinsockReadIntentSHA256=owner.winsockAccess?.IntentSHA256,
             PublicTimeZoneSnapshotSHA256=owner.preparation?.PublicTimeZone?.SHA256,EnvironmentIntentSHA256=owner.expectationsSHA256,FenceIntents=owner.fences.Select(f=>f.IntentSHA256).ToArray(),
             RequiredEnvironmentIds=StrictEnvironmentRequirements.Required.Select(def=>def.Id).ToArray()
@@ -724,13 +698,13 @@ internal sealed class ProtectedSession
         System.IO.Pipes.AnonymousPipeServerStream? feedbackPipe=null;StreamReader? feedbackReader=null;Task<string>? feedbackText=null;bool feedbackReadAttempted=false;
         void ReadFixedFeedback()
         {
-            if(!gatewayQualification || feedbackReadAttempted || child is null || childExitCode is null || feedbackText is null)return;
+            if(!IsGatewayQualification || feedbackReadAttempted || child is null || childExitCode is null || feedbackText is null)return;
             feedbackReadAttempted=true;
             var raw=feedbackText.WaitAsync(TimeSpan.FromSeconds(1)).GetAwaiter().GetResult();
-            if(capabilityReadComparison)
+            if(CaptureCapabilityContent)
             {
                 state.WriteNew("gateway-capability-content-"+id+".json",Encoding.UTF8.GetBytes(raw));
-                gatewayCapabilityFeedback=GatewayCapabilityChildReport.ParseForPurpose(raw,id,child.Pid,childExitCode.Value,child.ExpectedCreatedFileTime,fixedNoContentHttpsCanary);
+                gatewayCapabilityFeedback=GatewayCapabilityChildReport.ParseForPurpose(raw,id,child.Pid,childExitCode.Value,child.ExpectedCreatedFileTime,FixedNoContentHttpsCanary);
                 gatewayChildFeedback=gatewayCapabilityFeedback.Gateway;
             }
             else gatewayChildFeedback=GatewayChildReport.Parse(raw,id,child.Pid,childExitCode.Value);
@@ -745,7 +719,7 @@ internal sealed class ProtectedSession
                 EnvironmentIntentSHA256=expectationsSHA256,NetworkPolicySHA256=SessionProxy.PolicySHA256,
                 Scope="FIXED_INSTALLED_CANARY_CREATED_SUSPENDED_ONLY",ResumeAuthorized=false
             }));
-            if(gatewayQualification)PrepareQualificationGatewayPolicy();
+            if(IsGatewayQualification)PrepareQualificationGatewayPolicy();
             var plans=FencePlan.ReadAll(state);
             // Legacy 7890 barriers are retained for recovery, never silently
             // adopted as gateway policy or removed to make a launch succeed.
@@ -756,20 +730,22 @@ internal sealed class ProtectedSession
             foreach(var fence in fences)if(!fence.Observe().FullQuarantineObserved)throw WfpNative.Contract("SessionInitialQuarantineMissing");
             profile=InstallationProfileLease.Create(state);job=OwnedKernelJob.CreateEmpty(state,version);
             using(var package=new InstallationPackageSid(state))sid=package.Value;
-            upstream=ProxyChannelLease.Open(state);gateway=new SessionProxy(job,upstream,sid,id,capabilityProfile,fixedNoContentHttpsCanary);
+            upstream=ProxyChannelLease.Open(state);gateway=new SessionProxy(job,upstream,sid,id,CapabilityProfile,FixedNoContentHttpsCanary);
             loopback=InstallationLoopbackLease.Enable(state,false);
             preparation=new Preparation(this);
-            if(gatewayQualification)
+            if(IsGatewayQualification)
             {
                 feedbackPipe=new(System.IO.Pipes.PipeDirection.In,HandleInheritability.Inheritable);
                 feedbackReader=new StreamReader(feedbackPipe,new UTF8Encoding(false,true),false,1024,true);
-                feedbackText=capabilityReadComparison?GatewayCapabilityChildReport.ReadBounded(feedbackReader):GatewayChildReport.ReadBounded(feedbackReader);
+                feedbackText=CaptureCapabilityContent?GatewayCapabilityChildReport.ReadBounded(feedbackReader):GatewayChildReport.ReadBounded(feedbackReader);
             }
             child=AtomicChild.CreateSession(layout,state,version,job,profile,preparation,feedbackPipe?.ClientSafePipeHandle.DangerousGetHandle()??IntPtr.Zero);
             feedbackPipe?.DisposeLocalCopyOfClientHandle();
-            if(winsockQualification)
+            if(qualification is {Winsock: not WinsockScope.None} fixedGateway)
             {
-                winsockAccess=SessionWinsockReadAccess.Prepare(state,version,job,id,winsockTransportQualification,winsockProviderQualification);
+                var scope=fixedGateway.Winsock;
+                winsockAccess=SessionWinsockReadAccess.Prepare(state,version,job,id,
+                    scope is WinsockScope.Transport or WinsockScope.Provider,scope==WinsockScope.Provider);
                 winsockAccess.Apply();
             }
             // Calendar compatibility remains process-local. Only the distinct
@@ -782,9 +758,9 @@ internal sealed class ProtectedSession
             state.WriteNew("protected-session-intent-"+id+".json",JsonSerializer.SerializeToUtf8Bytes(new {
                 SchemaVersion=1,SessionId=id,state.InstallationId,version.Package.Release,version.Package.ManifestHash,
                 job.JobId,AppContainerSid=sid,admission.BindingSHA256,NetworkPolicySHA256=SessionProxy.PolicySHA256,
-                ExpectedCapabilityProfile=capabilityProfile.Id,ExpectedCapabilitiesSHA256=capabilityProfile.SHA256,
+                ExpectedCapabilityProfile=CapabilityProfile.Id,ExpectedCapabilitiesSHA256=CapabilityProfile.SHA256,
                 Resources=ResourceScope,Reusable=false,FixedWorkloadPermitIssued=true,FormalAdmissionIssued=false,
-                Scope=gatewayQualification?"FIXED_GATEWAY_QUALIFICATION_NO_FORMAL_LAUNCH":"FIXED_OWNED_SYNTHETIC_USING_PRODUCTION_SESSION_OWNER"
+                Scope=IsGatewayQualification?"FIXED_GATEWAY_QUALIFICATION_NO_FORMAL_LAUNCH":"FIXED_OWNED_SYNTHETIC_USING_PRODUCTION_SESSION_OWNER"
             }));
             foreach(var fence in fences)_=fence.OpenSessionGateway(gateway);
             runtime.AttachAdmission(admission);
@@ -795,7 +771,7 @@ internal sealed class ProtectedSession
             childExitCode=exited.GetAwaiter().GetResult();
             ReadFixedFeedback();
             if(childExitCode!=42)throw WfpNative.Contract("SessionSyntheticWorkloadFailed");
-            if(gatewayQualification)
+            if(IsGatewayQualification)
             {
                 if(gatewayChildFeedback is not {Phase:"COMPLETE",HttpStatus:>=200 and <400})throw WfpNative.Contract("FixedGatewayTerminalFeedbackMissing");
                 gateway.RequireFixedExchange(child.Pid,child.ExpectedCreatedFileTime);
@@ -840,7 +816,7 @@ internal sealed class ProtectedSession
                 catch(Exception ex){if(resumed && !feedbackReadAttempted)errors.Add(ex);}
         }
         var success=completed && zero?.ObservedZero==true && errors.Count==0;
-        var report=Report(success?(gatewayQualification?"FIXED_GATEWAY_QUALIFICATION_CLOSED":"FIXED_SYNTHETIC_SESSION_CLOSED"):"PROTECTED_SESSION_NOT_CONFIRMED",resumed,zero,
+        var report=Report(success?(IsGatewayQualification?"FIXED_GATEWAY_QUALIFICATION_CLOSED":"FIXED_SYNTHETIC_SESSION_CLOSED"):"PROTECTED_SESSION_NOT_CONFIRMED",resumed,zero,
             errors.SelectMany(WfpNative.Describe).ToArray(),stopObservation,profile?.ProcessCreationAttempted==true,child is not null,childExitCode,child?.ResumeAttempted==true,fixedExchangeObserved);
         state.WriteNew("protected-session-result-"+id+".json",Encoding.UTF8.GetBytes(report));
         return(success?0:3,report);
@@ -866,7 +842,7 @@ internal sealed class ProtectedSession
     }
     private void AssertPreparation()
     {
-        if(gatewayQualification?!CurrentWorkloadEvidenceEligible():SystemTestingBlocked || !PreparationEnvironmentEligible())
+        if(IsGatewayQualification?!CurrentWorkloadEvidenceEligible():SystemTestingBlocked || !PreparationEnvironmentEligible())
             throw WfpNative.Contract("SessionPreparationNotAuthorized");
         state.AssertHeld();version.AssertHeld(state);LifecycleRecovery.AssertNoPending(state);InstallationLoopbackLease.AssertClosedHistory(state);
         foreach(var intent in OwnedJobIntent.ReadAll(state))
@@ -874,11 +850,11 @@ internal sealed class ProtectedSession
     }
     private string Report(string status,bool resumed,JobSnapshot? final,WfpErrorEvidence[] failures,RuntimeStop? stopObservation=null,
         bool creationAttempted=false,bool created=false,uint? childExitCode=null,bool resumeAttempted=false,bool fixedExchangeObserved=false)=>JsonSerializer.Serialize(new {
-        SchemaVersion=1,Scope=gatewayQualification?"INSTALLED_FIXED_GATEWAY_QUALIFICATION":"INSTALLED_BROKER_PROTECTED_SESSION",state.InstallationId,version.Package.Release,
+        SchemaVersion=1,Scope=IsGatewayQualification?"INSTALLED_FIXED_GATEWAY_QUALIFICATION":"INSTALLED_BROKER_PROTECTED_SESSION",state.InstallationId,version.Package.Release,
         version.Package.ManifestHash,SessionId=id,NetworkPolicySHA256=SessionProxy.PolicySHA256,
-        ExpectedCapabilityProfile=capabilityProfile.Id,ExpectedCapabilitiesSHA256=capabilityProfile.SHA256,
-        CapabilityContentComparison=capabilityReadComparison,
-        FixedNoContentHttpsCanary=fixedNoContentHttpsCanary,
+        ExpectedCapabilityProfile=CapabilityProfile.Id,ExpectedCapabilitiesSHA256=CapabilityProfile.SHA256,
+        CapabilityContentComparison=CaptureCapabilityContent,
+        FixedNoContentHttpsCanary=FixedNoContentHttpsCanary,
         CapabilityContentPrivacyQualified=false,
         EffectiveGatewayPolicySHA256=gateway?.EffectivePolicySHA256,
         EnvironmentIntentSHA256=expectationsSHA256,EnvironmentIntentStatus=expectationsReason,Resources=ResourceScope,Status=status,
@@ -892,7 +868,7 @@ internal sealed class ProtectedSession
         ProcessCreationAttempted=creationAttempted,ProcessCreatedConfirmed=created,ProcessCreationOutcomeUnknown=creationAttempted && !created,
         ResumeAttempted=resumeAttempted,ResumeOutcomeUnknown=resumeAttempted && !resumed,
         ProcessResumed=resumed,ChildExitCode=childExitCode,FinalJob=final,Failures=failures,StopObservation=stopObservation,LaunchAuthorized=false,ClaudeLaunched=false,
-        FixedGatewayQualification=gatewayQualification,FormalAdmissionIssued=false,
+        FixedGatewayQualification=IsGatewayQualification,FormalAdmissionIssued=false,
         GatewayChildFeedback=gatewayChildFeedback,GatewayFailure=gateway?.FailureFeedback,GatewayChildFeedbackUsedForAdmission=false,
         CapabilityContentEvidence=gatewayCapabilityFeedback,
         FixedGatewayRootBidirectionalWriteObserved=fixedExchangeObserved,

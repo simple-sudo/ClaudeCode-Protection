@@ -71,8 +71,8 @@ internal static class ProjectFlowCases
             (CSharpProjectTask.Outputs[2],"1"u8.ToArray()),(CSharpProjectTask.Outputs[3],Array.Empty<byte>()),(CSharpProjectTask.Outputs[4],Array.Empty<byte>())};
         var resultBytes=WorkspaceBundle.Create(task.ModifiedFiles().Select(f=>(f.Path,f.Content)).Concat(outputs),session.InputSHA256).Serialize();
         WorkspaceFiles.WriteBundleNew(run.ResultPath,resultBytes);
-        var id=new string('b',32);HostPrivacyCase[] Cases()=>HostPrivacyContract.Roles.Select((r,i)=>new HostPrivacyCase(r,HostPrivacyContract.Kind(i),"ACCESS_DENIED",5)).ToArray();
-        var privacy=new HostPrivacySummary(HostPrivacyContract.PolicySHA256,new string('F',64),id,111,222,Cases(),Enumerable.Range(0,HostPrivacyContract.CompilerCaseCount).Select(i=>{var c=HostPrivacyContract.CompilerCase(i);return new HostPrivacyCase(c.Role,c.Kind,"ACCESS_DENIED",5);}).ToArray()){ProbePid=333,ProbeCases=Cases()};
+        var id=new string('b',32);HostPrivacyCase[] Cases()=>HostPrivacyContract.Checks.Select(check=>check.Observe(5)).ToArray();
+        var privacy=new HostPrivacySummary(HostPrivacyContract.PolicySHA256,new string('F',64),id,111,222,Cases(),HostPrivacyContract.CompilerChecks.Select(check=>check.Observe(5)).ToArray()){ProbePid=333,ProbeCases=Cases()};
         string Reply()=>JsonSerializer.Serialize(new{Status="CALLER_CSHARP_PROJECT_RESULT_RECEIVED",SessionId=id,BaseSHA256=session.InputSHA256,
             ResultSHA256=WorkspaceBundle.Hash(resultBytes),FileCount=8,Changes=WorkspaceBundle.Compare(input,resultBytes),OriginalProjectModified=false,ProjectCodeExecuted=true,
             HostPrivacy=privacy,OwnerSealedBeforeCode=true,FormalAdmissionIssued=false,NetworkOpened=false,UACAutoConfirmed=false});
@@ -80,7 +80,7 @@ internal static class ProjectFlowCases
         Require(session.DescribePrivacy(response).Contains("94") && !session.DescribePrivacy(response).Contains("缺失"),"all-present success describes actual denial count");
         var presentPrivacy=privacy;
         var absentRoot=Cases();var absentTool=Cases();
-        absentRoot[7]=HostPrivacyContract.FileObservation(7,true,2);absentTool[7]=HostPrivacyContract.FileObservation(7,true,5);
+        absentRoot[7]=HostPrivacyContract.Checks[7].Observe(2,true);absentTool[7]=HostPrivacyContract.Checks[7].Observe(5,true);
         privacy=privacy with {RootCases=absentRoot,ProbeCases=absentTool};
         var resetResponse=new BackendResult(0,Reply(),"");_=session.AcceptResult(run,resetResponse);checks++;
         var resetText=session.DescribePrivacy(resetResponse);
