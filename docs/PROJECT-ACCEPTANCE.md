@@ -5,6 +5,11 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-07 精确未激活迁移
+
+INTEGRATED / BUILD(安装锁内精确前驱和目标，普通迁移筛选 76 项，候选 20 文件
+和两份内嵌资源核对)。实际更新、原 owner 关闭、受限 TLS 复测和整机仍 NOT_RUN。
+
 ## 2026-11-07 Schannel 失败边界
 
 INTEGRATED / BUILD(固定 TLS 回报分类及未激活候选)。VERIFIED(普通 Windows

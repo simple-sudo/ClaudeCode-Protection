@@ -11,6 +11,6 @@
   <ItemGroup>
     <Compile Include="Program.cs" />
     <ProjectReference Include="../ProtectionLifecycle/ProtectionLifecycle.csproj" />
-    <EmbeddedResource Include="ApprovedPackage.json" />
+    <EmbeddedResource Include="ApprovedPackage.json;InactiveUpdateTransition.json" />
   </ItemGroup>
 </Project>

@@ -4,6 +4,32 @@ using System.Text.Json;
 
 namespace ProtectionLifecycle;
 
+// The version allowlist establishes eligibility. The embedded contract
+// selects the only pair this bootstrap may update.
+internal sealed record InactiveUpdateTransition(string PriorRelease,string PriorManifestSHA256,string NextRelease,string NextManifestSHA256)
+{
+    internal static InactiveUpdateTransition Read(Stream stream)
+    {
+        if(stream.Length is <1 or >4096)throw new InvalidDataException("Inactive transition approval bounds refused");
+        using var json=JsonDocument.Parse(stream,new JsonDocumentOptions{MaxDepth=2});
+        var root=json.RootElement;
+        StrictJson.Fields(root,"SchemaVersion","PriorRelease","PriorManifestSHA256","NextRelease","NextManifestSHA256");
+        if(root.GetProperty("SchemaVersion").GetInt32()!=1)throw new InvalidDataException("Inactive transition approval schema refused");
+        var transition=new InactiveUpdateTransition(Identifiers.Hex32(StrictJson.Text(root,"PriorRelease")),
+            Identifiers.Hash(StrictJson.Text(root,"PriorManifestSHA256")),Identifiers.Hex32(StrictJson.Text(root,"NextRelease")),
+            Identifiers.Hash(StrictJson.Text(root,"NextManifestSHA256")));
+        if(transition.PriorRelease==transition.NextRelease || transition.PriorManifestSHA256==transition.NextManifestSHA256)
+            throw new InvalidDataException("Inactive transition approval must change the package");
+        return transition;
+    }
+    internal void Require(string currentRelease,string currentManifest,string nextRelease,string nextManifest)
+    {
+        if(currentRelease!=PriorRelease || currentManifest!=PriorManifestSHA256 ||
+            nextRelease!=NextRelease || nextManifest!=NextManifestSHA256)
+            throw new InvalidDataException("Current and next packages differ from the embedded inactive transition");
+    }
+}
+
 // Only a separately byte-pinned bootstrap staged by the human-approved UAC
 // helper may enter this path. This check is defense in depth AFTER loading:
 // protected placement alone is not initial code-authentication or AV clearance.
@@ -74,6 +100,13 @@ internal sealed class BootstrapApproval : IDisposable
         catch{result.Dispose();throw;}
     }
     private static bool Same(string? a,string b)=>a is not null && string.Equals(WindowsPathSeal.Canonical(a),WindowsPathSeal.Canonical(b),StringComparison.OrdinalIgnoreCase);
+    internal InactiveUpdateTransition ReadInactiveTransition()
+    {
+        AssertHeld();
+        using var resource=Assembly.GetEntryAssembly()?.GetManifestResourceStream("ProtectionBootstrap.InactiveUpdateTransition.json")
+            ??throw new InvalidDataException("Embedded inactive transition missing");
+        return InactiveUpdateTransition.Read(resource);
+    }
     private PathLease HoldDirectory(string path){var lease=WindowsPathSeal.LockDirectory(path,PathPolicy.Protected);directories.Add(lease);return lease;}
     private FileStream HoldFile(string parent,string leaf)
     {
@@ -163,6 +196,8 @@ public static class BootstrapInstaller
         observeStage?.Invoke("INSTALLATION_STATE");
         using var state=ProtectedState.OpenExisting(layout);
         var current=CurrentPointer.Parse(state.Read("current.json",4096),state.InstallationId);
+        observeStage?.Invoke("EXACT_INACTIVE_TRANSITION");
+        approval.ReadInactiveTransition().Require(current.Release,current.ManifestSHA256,package.Release,package.ManifestHash);
         observeStage?.Invoke("CURRENT_VERSION");
         using var prior=VerifiedVersion.Open(layout,state,current.Release);
         observeStage?.Invoke("PINNED_TRANSITION");

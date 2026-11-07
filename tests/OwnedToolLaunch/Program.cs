@@ -5,6 +5,7 @@ using System.Security.Principal;
 using System.Security.AccessControl;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Runtime.InteropServices;
 using Microsoft.Win32.SafeHandles;
 
@@ -297,7 +298,50 @@ if(args[0]=="inactive-transition")
         Deny(()=>Check(actualRelease,replacementManifest,actualRelease,replacementManifest,replacementRelease,new string('B',64)));
         Deny(()=>Check(actualRelease,actualManifest.ToLowerInvariant(),actualRelease,actualManifest.ToLowerInvariant(),replacementRelease,replacementManifest));
     }
-    Console.WriteLine("PASS 63 pure inactive-transition checks including exact 41fb predecessor; not live Job closure, maintenance, installation or UAC");return 0;
+    var transition=library.GetType("ProtectionLifecycle.InactiveUpdateTransition",true)!;
+    const string expectedPrior="41fb2ae4d89843df91c5d08f6a12eec3";
+    const string expectedPriorHash="1B092FE1579CE80ABBECE8DE26D846DDE271E4D58E6926730608CDCC3DDCD17F";
+    var record=new JsonObject {
+        ["SchemaVersion"]=1,["PriorRelease"]=expectedPrior,["PriorManifestSHA256"]=expectedPriorHash,
+        ["NextRelease"]=replacementRelease,["NextManifestSHA256"]=replacementManifest
+    };
+    object ParseTransition(string text)
+    {
+        using var bytes=new MemoryStream(Encoding.UTF8.GetBytes(text));
+        return Call(transition,"Read",bytes)!;
+    }
+    void DenyExact(Action action)
+    {
+        try{action();}
+        catch(InvalidDataException){return;}
+        throw new InvalidDataException("Out-of-scope embedded transition accepted");
+    }
+    var binding=ParseTransition(record.ToJsonString());
+    void RequirePair(string release,string hash,string nextRelease,string nextHash)
+    {
+        try
+        {
+            _=transition.GetMethod("Require",BindingFlags.Instance|BindingFlags.NonPublic)!
+                .Invoke(binding,new object[]{release,hash,nextRelease,nextHash});
+        }
+        catch(TargetInvocationException error)when(error.InnerException is InvalidDataException cause)
+        {ExceptionDispatchInfo.Capture(cause).Throw();}
+    }
+    RequirePair(expectedPrior,expectedPriorHash,replacementRelease,replacementManifest);
+    DenyExact(()=>RequirePair("c5260b13d8d34ceea6d496c084836a89","D35710928355BDDF12C4E07153A73A58FDB29E53F2533EE27D7DCE41EBC7F300",replacementRelease,replacementManifest));
+    DenyExact(()=>RequirePair(expectedPrior,replacementManifest,replacementRelease,replacementManifest));
+    DenyExact(()=>RequirePair(expectedPrior,expectedPriorHash,new string('c',32),replacementManifest));
+    DenyExact(()=>RequirePair(expectedPrior,expectedPriorHash,replacementRelease,new string('C',64)));
+    DenyExact(()=>ParseTransition(new string(' ',4097)));
+    DenyExact(()=>ParseTransition(record.ToJsonString().Insert(1,"\"SchemaVersion\":1,")));
+    foreach(var (field,value) in new (string,JsonNode?)[]{
+        ("SchemaVersion",2),("PriorRelease",replacementRelease),("NextManifestSHA256",expectedPriorHash),
+        ("PriorManifestSHA256",expectedPriorHash.ToLowerInvariant()),("Unreviewed",true),("NextRelease",null)})
+    {
+        var bad=record.DeepClone().AsObject();bad[field]=value;
+        DenyExact(()=>ParseTransition(bad.ToJsonString()));
+    }
+    Console.WriteLine("PASS 76 inactive-transition checks including exact embedded pair and alternate pinned predecessor refusal; fixture only");return 0;
 }
 if(args[0]=="etw-token-access")
 {
