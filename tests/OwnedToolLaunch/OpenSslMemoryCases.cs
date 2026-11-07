@@ -1,187 +1,110 @@
+using System.Collections;
 using System.Reflection;
-using System.Runtime.InteropServices;
+using System.Runtime.ExceptionServices;
 using System.Security.Cryptography;
-using System.Security.Cryptography.X509Certificates;
-using System.Threading.Channels;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 
 internal static class OpenSslMemoryCases
 {
-    // This is just an in-memory SNI. The trust root is generated for this
-    // test and is never installed or used to contact that host.
-    private const string Host="www.microsoft.com";
-    private const string CryptoHash="CA9E9C0400B0DA1A242670262CC45CF71389E8CA08519281C68E7BB960FEAC16";
-    private const string SslHash="3A5DAF9BB851619EECFF5E492906E66279882934F32C603415B181C7A55CED2E";
-    private const BindingFlags Instance=BindingFlags.Instance|BindingFlags.NonPublic;
-
-    internal static async Task Run(Assembly library)
+    private const BindingFlags Static=BindingFlags.Static|BindingFlags.NonPublic;
+    private const BindingFlags Instance=BindingFlags.Instance|BindingFlags.NonPublic|BindingFlags.Public;
+    internal static Task Run(Assembly library)
     {
-        var type=library.GetType("ProtectionLifecycle.OpenSslMemoryConnection",true)!;
-        var fixturePeer=type.GetMethod("CreateOfflineFixturePeer",BindingFlags.Static|BindingFlags.NonPublic)!;
-        var gatewayParser=library.GetType("ClaudeCodeProtection.Security.SessionTunnel",true)!
-            .GetMethod("RequireTlsClientHelloAsync",BindingFlags.Static|BindingFlags.NonPublic)!;
-        var dir=Path.Combine(AppContext.BaseDirectory,"native");
-        using var crypto=new OrdinaryModule(dir,"libcrypto-3-x64.dll",7986688,CryptoHash);
-        using var ssl=new OrdinaryModule(dir,"libssl-3-x64.dll",1581568,SslHash);
-        using var caKey=RSA.Create(2048);
-        using var ca=CreateCa(caKey,"CN=Fixed local TLS test root");
-        using var wrongCaKey=RSA.Create(2048);
-        using var wrongCa=CreateCa(wrongCaKey,"CN=Independent local TLS test root");
-        using var key=RSA.Create(2048);
-        var request=new CertificateRequest("CN=deliberate-mismatch.invalid",key,HashAlgorithmName.SHA256,RSASignaturePadding.Pkcs1);
-        var san=new SubjectAlternativeNameBuilder();
-        san.AddDnsName(Host);request.CertificateExtensions.Add(san.Build());
-        request.CertificateExtensions.Add(new X509BasicConstraintsExtension(false,false,0,true));
-        request.CertificateExtensions.Add(new X509KeyUsageExtension(X509KeyUsageFlags.DigitalSignature,true));
-        var now=DateTimeOffset.UtcNow;
-        using var issued=request.Create(ca,now.AddMinutes(-5),now.AddHours(1),RandomNumberGenerator.GetBytes(16));
-        var serverKey=key.ExportPkcs8PrivateKey();
+        var type=library.GetType("ProtectionLifecycle.OpenSslOfflineWitness",true)!;
+        var installed=library.GetType("ProtectionLifecycle.InstalledBroker",true)!;
+        var id=new string('a',32);var before=DateTime.UtcNow.ToFileTimeUtc();
+        int checks=0;
+        void Check(bool value){if(!value)throw new InvalidDataException("Offline OpenSSL check failed");checks++;}
+        void Reject<T>(Action action) where T:Exception
+        {
+            try{action();}
+            catch(T){checks++;return;}
+            throw new InvalidDataException("Invalid offline TLS input accepted");
+        }
+        var observed=Call(type.GetMethod("Observe",Static)!,id,true)!;
+        var raw=JsonSerializer.Serialize(observed,type);
+        Console.WriteLine(raw);
+        var parse=type.GetMethod("Parse",Static)!;
+        object Read(string data,uint exit)=>Call(parse,data,id,(uint)Environment.ProcessId,before,exit)!;
+        bool Complete(object result)=>(bool)type.GetProperty("Complete",Instance)!.GetValue(result)!;
+        Check(Complete(Read(raw,0)));
+        Reject<InvalidDataException>(()=>Read(raw,3));
+        Reject<InvalidDataException>(()=>Read(raw.Insert(1,"\"SchemaVersion\":1,"),0));
+        var valid=JsonNode.Parse(raw)!.AsObject();
+        foreach(var (field,value) in new (string,JsonNode?)[]{
+            ("Pid",Environment.ProcessId+1),("SchemaVersion",2),("SessionId",new string('b',32)),("StartedFileTime",before-1),
+            ("WrongNameError",0),("UnknownRootError",null),("EofDenied",false),("FailureStage","WRONG_NAME"),("Unreviewed",true)})
+        {
+            var invalid=valid.DeepClone().AsObject();invalid[field]=value;
+            Reject<InvalidDataException>(()=>Read(invalid.ToJsonString(),0));
+        }
+        var failure=valid.DeepClone().AsObject();
+        failure["FailureStage"]="UNKNOWN_ROOT";failure["ErrorCode"]=31;failure["UnknownRootError"]=null;failure["EofDenied"]=false;
+        Check(!Complete(Read(failure.ToJsonString(),3)));
+        Reject<InvalidDataException>(()=>Read(failure.ToJsonString(),0));
+        Reject<UnauthorizedAccessException>(()=>Call(installed.GetMethod("QualifyOpenSslOffline")!));
+        var env="CPC_OPENSSL_OFFLINE_SESSION";var old=Environment.GetEnvironmentVariable(env);
         try
         {
-            await Exchange(Host,ca.RawData,null);
-            await Exchange("deliberate-mismatch.invalid",ca.RawData,62); // CN must not substitute for SAN.
-            await Exchange(Host,wrongCa.RawData,20);
-            await CheckEarlyEof(ca.RawData);
+            Environment.SetEnvironmentVariable(env,id);
+            Reject<InvalidDataException>(()=>Call(installed.GetMethod("RunOpenSslOfflineChild")!));
         }
-        finally{CryptographicOperations.ZeroMemory(serverKey);}
-        Console.WriteLine("PASS ordinary exact OpenSSL Windows modules: real TLS through production gateway ClientHello replay, encrypted request/reply, wrong trust anchor and SAN rejected, early EOF fails closed. Memory only.");
+        finally{Environment.SetEnvironmentVariable(env,old);}
 
-        IDisposable CreateClient(Stream wire,string host,byte[] anchor)
-            =>(IDisposable)Activator.CreateInstance(type,Instance,null,[ssl.Handle,crypto.Handle,wire,host,anchor],null)!;
-        Task Invoke(IDisposable actor,string name,params object[] args)=>(Task)type.GetMethod(name,Instance)!.Invoke(actor,args)!;
-
-        async Task Exchange(string host,byte[] anchor,int? expectedVerificationError)
+        var policy=library.GetType("ProtectionLifecycle.PackagePolicy",true)!;
+        var catalog=library.GetType("ProtectionLifecycle.PackageAssetCatalog",true)!;
+        var versions=catalog.GetMethod("ForSchema",Static)!;
+        var assetIds=new HashSet<string>(StringComparer.Ordinal);
+        JsonArray Assets(int schema,string label)
         {
-            var outgoing=Channel.CreateUnbounded<byte[]>();var incoming=Channel.CreateUnbounded<byte[]>();
-            using var clientWire=new MemoryWire(incoming.Reader,outgoing.Writer);
-            using var serverWire=new MemoryWire(outgoing.Reader,incoming.Writer);
-            using var timeout=new CancellationTokenSource(TimeSpan.FromSeconds(8));
-            using var client=CreateClient(clientWire,host,anchor);
-            var server=Serve();
-            try
+            var result=new JsonArray();
+            foreach(var asset in (IEnumerable)Call(versions,schema)!)
             {
-                await Invoke(client,"AuthenticateAsync",timeout.Token);
-                if(expectedVerificationError is not null)throw new InvalidDataException("Bad TLS identity was accepted");
-                await Invoke(client,"WriteAsync",new byte[]{19,43,71},timeout.Token);
-                var response=new byte[3];
-                int read=await (Task<int>)Invoke(client,"ReadAsync",response,timeout.Token);
-                if(read!=3 || !response.AsSpan().SequenceEqual(new byte[]{89,53,11}))
-                    throw new InvalidDataException("Encrypted application reply differs");
-                await server;
+                object? Field(string name)=>asset!.GetType().GetProperty(name,Instance)!.GetValue(asset);
+                result.Add(new JsonObject {[label]=(string)Field("Id")!,["Length"]=(long?)Field("FixedLength")??1L,
+                    ["SHA256"]=(string?)Field("FixedSHA256")??new string('A',64)});
             }
-            catch(IOException error) when(expectedVerificationError is not null && error.GetType().FullName=="ProtectionLifecycle.OpenSslFailure")
-            {
-                timeout.Cancel();
-                try{await server;}catch(Exception e)when(e is OperationCanceledException or IOException){}
-                if((int?)error.GetType().GetProperty("NativeError",Instance)!.GetValue(error)!=1 ||
-                    (int?)error.GetType().GetProperty("VerificationError",Instance)!.GetValue(error)!=expectedVerificationError)
-                    throw new InvalidDataException("TLS rejection did not identify the expected certificate error",error);
-            }
-            catch
-            {
-                timeout.Cancel();
-                if(server.IsFaulted)await server;
-                throw;
-            }
-            async Task Serve()
-            {
-                try
-                {
-                    var parsed=expectedVerificationError is null?
-                        await (Task<Stream>)gatewayParser.Invoke(null,[serverWire,Host,(Action)(()=>{}),timeout.Token])!:null;
-                    using var replay=parsed;
-                    using var peer=(IDisposable)fixturePeer.Invoke(null,[ssl.Handle,crypto.Handle,replay??serverWire,issued.RawData,serverKey])!;
-                    await Invoke(peer,"AuthenticateAsync",timeout.Token);
-                    var request=new byte[3];
-                    var count=await (Task<int>)Invoke(peer,"ReadAsync",request,timeout.Token);
-                    if(count!=3 || !request.AsSpan().SequenceEqual(new byte[]{19,43,71}))
-                        throw new InvalidDataException("Encrypted application request differs");
-                    await Invoke(peer,"WriteAsync",new byte[]{89,53,11},timeout.Token);
-                }
-                catch(Exception failure){serverWire.Complete(failure);throw;}
-            }
+            return result;
         }
-
-        async Task CheckEarlyEof(byte[] anchor)
+        var pinned=policy.GetMethod("ParsePinned",Static)!;
+        object ParseManifest(int schema,JsonArray assets)
         {
-            var outgoing=Channel.CreateUnbounded<byte[]>();var incoming=Channel.CreateUnbounded<byte[]>();
-            incoming.Writer.Complete();
-            using var wire=new MemoryWire(incoming.Reader,outgoing.Writer);
-            using var client=CreateClient(wire,Host,anchor);
-            using var timeout=new CancellationTokenSource(TimeSpan.FromSeconds(2));
-            try
-            {
-                await Invoke(client,"AuthenticateAsync",timeout.Token);
-                throw new InvalidDataException("Truncated TLS stream authenticated");
-            }
-            catch(EndOfStreamException){}
-            try
-            {
-                await Invoke(client,"WriteAsync",new byte[]{19,43,71},timeout.Token);
-            }
-            catch(InvalidOperationException){return;}
-            throw new InvalidDataException("Application data was accepted after failed authentication");
+            var bytes=JsonSerializer.SerializeToUtf8Bytes(new JsonObject {
+                ["SchemaVersion"]=schema,["Scope"]="UNACTIVATED_PRODUCT",["Release"]=id,["Files"]=assets.DeepClone()
+            });
+            return Call(pinned,new ReadOnlyMemory<byte>(bytes),Convert.ToHexString(SHA256.HashData(bytes)))!;
         }
+        var v1=Assets(1,"Asset");var v2=Assets(2,"Asset");
+        Check(v1.Count==14 && v2.Count==16 && v1.All(a=>assetIds.Add(a!["Asset"]!.GetValue<string>())) &&
+            v2.Take(v1.Count).All(a=>assetIds.Contains(a!["Asset"]!.GetValue<string>())));
+        _=ParseManifest(1,v1);_=ParseManifest(2,v2);checks+=2;
+        Reject<InvalidDataException>(()=>ParseManifest(1,v2));
+        Reject<InvalidDataException>(()=>ParseManifest(2,v1));
+        Reject<InvalidDataException>(()=>ParseManifest(3,v2));
+        var changed=v2.DeepClone().AsArray();changed[15]!["SHA256"]=new string('B',64);
+        Reject<InvalidDataException>(()=>ParseManifest(2,changed));
+        changed=v2.DeepClone().AsArray();changed[15]!["Length"]=10;
+        Reject<InvalidDataException>(()=>ParseManifest(2,changed));
+        changed=v2.DeepClone().AsArray();changed[15]=changed[14]!.DeepClone();
+        Reject<InvalidDataException>(()=>ParseManifest(2,changed));
+        var stage=policy.GetMethod("ParseInventory",Static)!;
+        void ReadStage(JsonArray files,int schema)
+        {
+            using var document=JsonDocument.Parse(files.ToJsonString());
+            _=Call(stage,document.RootElement,schema,"Id");
+        }
+        ReadStage(Assets(1,"Id"),1);ReadStage(Assets(2,"Id"),2);checks+=2;
+        Reject<InvalidDataException>(()=>ReadStage(Assets(2,"Id"),1));
+        Reject<InvalidDataException>(()=>ReadStage(v2,2));
+        Console.WriteLine($"PASS {checks} fixed OpenSSL and package compatibility checks. Real TLS and gateway replay in ordinary memory only.");
+        return Task.CompletedTask;
     }
 
-    private static X509Certificate2 CreateCa(RSA key,string subject)
+    private static object? Call(MethodInfo method,params object[] args)
     {
-        var request=new CertificateRequest(subject,key,HashAlgorithmName.SHA256,RSASignaturePadding.Pkcs1);
-        request.CertificateExtensions.Add(new X509BasicConstraintsExtension(true,false,0,true));
-        request.CertificateExtensions.Add(new X509KeyUsageExtension(X509KeyUsageFlags.KeyCertSign,true));
-        var now=DateTimeOffset.UtcNow;
-        return request.CreateSelfSigned(now.AddHours(-1),now.AddHours(2));
+        try{return method.Invoke(null,args);}
+        catch(TargetInvocationException error)when(error.InnerException is not null)
+        {ExceptionDispatchInfo.Capture(error.InnerException).Throw();throw;}
     }
-    private sealed class MemoryWire(ChannelReader<byte[]> reader,ChannelWriter<byte[]> writer) : Stream
-    {
-        private ReadOnlyMemory<byte> pending;
-        public override bool CanRead=>true;
-        public override bool CanSeek=>false;
-        public override bool CanWrite=>true;
-        public override long Length=>throw new NotSupportedException();
-        public override long Position {get=>throw new NotSupportedException();set=>throw new NotSupportedException();}
-        public override void Flush(){}
-        public override long Seek(long offset,SeekOrigin origin)=>throw new NotSupportedException();
-        public override void SetLength(long value)=>throw new NotSupportedException();
-        public override int Read(byte[] b,int o,int n)=>throw new NotSupportedException();
-        public override void Write(byte[] b,int o,int n)=>throw new NotSupportedException();
-        public override async ValueTask<int> ReadAsync(Memory<byte> data,CancellationToken cancel=default)
-        {
-            if(pending.IsEmpty)
-            {
-                if(!await reader.WaitToReadAsync(cancel))return 0;
-                pending=await reader.ReadAsync(cancel);
-            }
-            var count=Math.Min(data.Length,pending.Length);
-            pending[..count].CopyTo(data);pending=pending[count..];
-            return count;
-        }
-        public override ValueTask WriteAsync(ReadOnlyMemory<byte> data,CancellationToken cancel=default)
-            =>writer.WriteAsync(data.ToArray(),cancel);
-        internal void Complete(Exception failure)=>writer.TryComplete(failure);
-    }
-
-    private sealed class OrdinaryModule : IDisposable
-    {
-        private readonly FileStream file;
-        internal IntPtr Handle {get;}
-        internal OrdinaryModule(string dir,string leaf,long length,string hash)
-        {
-            var path=Path.Combine(dir,leaf);
-            if(GetModuleHandle(leaf)!=IntPtr.Zero)throw new InvalidDataException("Unexpected already loaded fixture module");
-            file=File.Open(path,FileMode.Open,FileAccess.Read,FileShare.Read);
-            try
-            {
-                if(file.Length!=length || Convert.ToHexString(SHA256.HashData(file))!=hash)
-                    throw new InvalidDataException("Ordinary test module digest differs");
-                Handle=LoadLibrary(path,IntPtr.Zero,0x900); // exact DLL load directory and System32
-                if(Handle==IntPtr.Zero)throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error());
-            }
-            catch{file.Dispose();throw;}
-        }
-        public void Dispose(){NativeLibrary.Free(Handle);file.Dispose();}
-    }
-    [DllImport("kernel32.dll",EntryPoint="LoadLibraryExW",SetLastError=true,CharSet=CharSet.Unicode)]
-    private static extern IntPtr LoadLibrary(string path,IntPtr reserved,uint flags);
-    [DllImport("kernel32.dll",EntryPoint="GetModuleHandleW",CharSet=CharSet.Unicode)]
-    private static extern IntPtr GetModuleHandle(string name);
 }

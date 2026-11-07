@@ -224,6 +224,9 @@ public static class BootstrapInstaller
             "D21A7D9F39A93E82087062EAD14F49329E7DBDD2743B2DC12DE98CAB6DC691F1"
         }; // Exact reviewed packages expose no launch/admission command.
         private static readonly string[] OneShotAdmissionManifests={
+            // Exact 68a0d109 closed offline diagnostic. Live job, fence and
+            // recovery gates are still required for any inactive update.
+            "7011F015638626416B00B222C817AE1749A258C9C7EA5EDB3D91DFCC6104DCF2",
             // The exact 34543d35 predecessor reported a closed one-shot
             // diagnostic. The inactive update still proves each live gate.
             "6975AF499A5FBF4FA557050EBAE169AFC6BA06D74AFE9B554E12FC37B6057471",

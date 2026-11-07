@@ -11,7 +11,11 @@ internal sealed record RuntimeStop(string SessionId,string Reason,bool Admission
     internal const string ResourceTerminalReason="OFFLINE_RESOURCE_QUALIFICATION_TERMINAL";
     internal const string GpuTerminalReason="FIXED_GPU_QUALIFICATION_TERMINAL";
     internal const string HostGpuTerminalReason="FIXED_HOST_GPU_REFERENCE_TERMINAL";
-    internal const string SchannelTerminalReason="FIXED_OFFLINE_SCHANNEL_ACQUISITION_TERMINAL";
+    internal static string OfflineTlsTerminalReason(OfflineTlsProbe probe)=>probe switch {
+        OfflineTlsProbe.Schannel=>"FIXED_OFFLINE_SCHANNEL_ACQUISITION_TERMINAL",
+        OfflineTlsProbe.OpenSsl=>"FIXED_OFFLINE_OPENSSL_EXCHANGE_TERMINAL",
+        _=>throw WfpNative.Contract("UnknownOfflineTlsProbe")
+    };
 
     internal bool ConfirmsClosedResources(string sessionId,string jobId) =>
         Reason==ResourceTerminalReason && ConfirmsClosedJob(sessionId,jobId);
@@ -20,8 +24,8 @@ internal sealed record RuntimeStop(string SessionId,string Reason,bool Admission
         Reason==GpuTerminalReason && ConfirmsClosedJob(sessionId,jobId);
     internal bool ConfirmsClosedHostGpu(string sessionId,string jobId) =>
         Reason==HostGpuTerminalReason && ConfirmsClosedJob(sessionId,jobId);
-    internal bool ConfirmsClosedSchannel(string sessionId,string jobId) =>
-        Reason==SchannelTerminalReason && ConfirmsClosedJob(sessionId,jobId);
+    internal bool ConfirmsClosedOfflineTls(OfflineTlsProbe probe,string sessionId,string jobId) =>
+        Reason==OfflineTlsTerminalReason(probe) && ConfirmsClosedJob(sessionId,jobId);
 
     private bool ConfirmsClosedJob(string sessionId,string jobId) =>
         SessionId==sessionId && AdmissionClosed && QuarantineObservedBeforeStop &&
@@ -51,7 +55,7 @@ internal sealed class ProtectionRuntimeLease
     private readonly ProxyChannelLease? proxy;
     private readonly ProtectedSession.ResourceQualification? resources;
     private readonly SessionProxy? gateway;
-    private enum FixedOffline { None, Gpu, HostGpuReference, Schannel }
+    private enum FixedOffline { None, Gpu, HostGpuReference, Schannel, OpenSsl }
     private readonly FixedOffline fixedOffline;
     private ProtectedSession.Admission? admission;
     private readonly ProtectedSession.Preparation? preparation;
@@ -75,11 +79,15 @@ internal sealed class ProtectionRuntimeLease
         child.AssertOwner(state,version,job);
         return new(state,version,job,fences,null,null,null,null,assertCaller,Identifiers.Hex32(sessionId),FixedOffline.HostGpuReference);
     }
-    internal static ProtectionRuntimeLease ForFixedSchannel(ProtectedState state,VerifiedVersion version,OwnedKernelJob job,
-        IReadOnlyList<PersistentFence> fences,AtomicChild child,string sessionId)
+    internal static ProtectionRuntimeLease ForFixedOfflineTls(ProtectedState state,VerifiedVersion version,OwnedKernelJob job,
+        IReadOnlyList<PersistentFence> fences,AtomicChild child,string sessionId,OfflineTlsProbe probe)
     {
-        child.AssertSchannelRuntimeOwner(state,version,job);
-        return new(state,version,job,fences,null,null,null,null,null,Identifiers.Hex32(sessionId),FixedOffline.Schannel);
+        child.AssertOfflineTlsRuntimeOwner(state,version,job,probe);
+        var mode=probe switch {
+            OfflineTlsProbe.Schannel=>FixedOffline.Schannel,OfflineTlsProbe.OpenSsl=>FixedOffline.OpenSsl,
+            _=>throw WfpNative.Contract("UnknownOfflineTlsProbe")
+        };
+        return new(state,version,job,fences,null,null,null,null,null,Identifiers.Hex32(sessionId),mode);
     }
     internal ProtectionRuntimeLease(ProtectedState state,VerifiedVersion version,OwnedKernelJob job,IReadOnlyList<PersistentFence> fences,ProxyChannelLease? proxy,
         SessionProxy? gateway=null,ProtectedSession.Preparation? preparation=null,ProtectedSession.ResourceQualification? resources=null,Action? assertCaller=null)
@@ -113,6 +121,7 @@ internal sealed class ProtectionRuntimeLease
                 FixedOffline.Gpu=>"FIXED_OFFLINE_GPU_NO_FORWARDING_NO_FORMAL_PERMIT",
                 FixedOffline.HostGpuReference=>"FIXED_ORDINARY_HOST_GPU_REFERENCE_NO_FORMAL_PERMIT",
                 FixedOffline.Schannel=>"FIXED_OFFLINE_SCHANNEL_NO_FORWARDING_NO_FORMAL_PERMIT",
+                FixedOffline.OpenSsl=>"FIXED_OFFLINE_OPENSSL_NO_FORWARDING_NO_FORMAL_PERMIT",
                 _=>resources is not null?"FIXED_OFFLINE_RESOURCES_NO_FORWARDING_NO_FORMAL_PERMIT":gateway is null?"SINGLE_ATOMIC_JOB_COMPILED_PROXY":"QUARANTINED_SUSPENDED_SESSION_STARTUP"
             },
             FormalSessionResumeAuthorized=false,AdmissionReusable=false,

@@ -27,30 +27,13 @@ internal sealed class CleanupIntent
         {
             if(leaf.Length!=50)throw new InvalidDataException("Unexpected stage intent name");
             var operation=Identifiers.Hex32(leaf.Substring(13,32));
-            var raw=state.Read(leaf,32768);using var doc=JsonDocument.Parse(raw.Bytes,new JsonDocumentOptions{MaxDepth=6});var root=doc.RootElement;
-            StrictJson.Fields(root,"SchemaVersion","InstallationId","OperationId","Release","ManifestSHA256","Assets");
-            var release=Identifiers.Hex32(StrictJson.Text(root,"Release"));
-            if(root.GetProperty("SchemaVersion").GetInt32()!=1 || StrictJson.Text(root,"InstallationId")!=state.InstallationId || StrictJson.Text(root,"OperationId")!=operation)
-                throw new InvalidDataException("Foreign stage intent");
-            using(var plan=JsonDocument.Parse(state.Read("plan-"+operation+".json",16384).Bytes))
-                if(StrictJson.Text(plan.RootElement,"Operation") is not ("install" or "update"))throw new InvalidDataException("Non-staging intent refused");
-            var journal=LifecycleJournal.Read(state,operation);
-            if(journal.Operation is not ("install" or "update") || journal.Target!=release)throw new InvalidDataException("Intent is not owned by a staging operation");
-            var array=root.GetProperty("Assets");if(array.GetArrayLength()!=PackagePolicy.Catalog.Count)throw new InvalidDataException("Incomplete intent catalog");
-            var files=new List<PayloadFile>();var seen=new HashSet<string>(StringComparer.Ordinal);long total=0;
-            foreach(var entry in array.EnumerateArray())
+            var scope=CreationIdentity.ReadScope(state,operation);
+            var intent=new CleanupIntent(scope.Release,scope.ManifestSHA256,scope.IntentSHA256,scope.Files);
+            if(!result.TryAdd(scope.Release,intent))
             {
-                StrictJson.Fields(entry,"Id","Length","SHA256");var id=StrictJson.Text(entry,"Id");
-                var spec=PackagePolicy.Catalog.SingleOrDefault(s=>s.Id==id)??throw new InvalidDataException("Unknown intent asset");
-                if(!seen.Add(id))throw new InvalidDataException("Duplicate intent asset");var length=entry.GetProperty("Length").GetInt64();
-                if(length is <1 or >PackagePolicy.MaxAssetBytes || (total=checked(total+length))>PackagePolicy.MaxPackageBytes)throw new InvalidDataException("Intent asset size refused");
-                files.Add(new(spec,length,Identifiers.Hash(StrictJson.Text(entry,"SHA256"))));
-            }
-            var intent=new CleanupIntent(release,Identifiers.Hash(StrictJson.Text(root,"ManifestSHA256")),raw.SHA256,files.AsReadOnly());
-            if(!result.TryAdd(release,intent))
-            {
-                var prior=result[release];
-                if(prior.ManifestSHA256!=intent.ManifestSHA256 || prior.Files.Any(f=>!intent.Files.Any(g=>g.Asset.Id==f.Asset.Id && g.Length==f.Length && g.SHA256==f.SHA256)))
+                var prior=result[scope.Release];
+                if(prior.ManifestSHA256!=intent.ManifestSHA256 || prior.Files.Count!=intent.Files.Count ||
+                    prior.Files.Any(f=>!intent.Files.Contains(f)))
                     throw new InvalidDataException("Conflicting release intents refused");
                 // A failed repeat of CREATE_NEW can leave an identical intent.
                 // Agreeing scopes may share cleanup authority; choose a stable
@@ -244,18 +227,17 @@ internal sealed class RemovalInventory
             var intentHash=Identifiers.Hash(StrictJson.Text(p,"IntentSHA256"));
             if(StrictJson.Text(p,"Release")!=release || !intent.MatchesEvidence(intentHash))throw new InvalidDataException("Removal page intent differs");
             var dirs=p.GetProperty("Directories").EnumerateArray().Select(n=>ReadDirectory(n,new[]{"release","bin","current","center","admin"})??throw new InvalidDataException()).ToArray();
-            var roles=PackagePolicy.Catalog.Select(a=>a.Id).Concat(new[]{"version-marker","package-manifest"}).ToArray();
+            var roles=intent.Files.Select(f=>f.Asset.Id).Concat(new[]{"version-marker","package-manifest"}).ToArray();
             var files=p.GetProperty("Files").EnumerateArray().Select(n=>ReadEntry(n,roles)??throw new InvalidDataException()).ToArray();
             if(dirs.Length>5 || files.Length>roles.Length || dirs.Select(d=>d.Role).Distinct(StringComparer.Ordinal).Count()!=dirs.Length || files.Select(f=>f.Role).Distinct(StringComparer.Ordinal).Count()!=files.Length ||
                 !dirs.Any(d=>d.Role=="release"))throw new InvalidDataException("Removal page structure differs");
             foreach(var dir in dirs)if((dir.Role is "current" or "center" or "admin") && !dirs.Any(d=>d.Role=="bin"))throw new InvalidDataException("Missing captured parent directory");
             foreach(var file in files)
             {
-                var asset=PackagePolicy.Catalog.SingleOrDefault(a=>a.Id==file.Role);
-                if(asset is not null)
+                var expected=intent.Files.SingleOrDefault(f=>f.Asset.Id==file.Role);
+                if(expected is not null)
                 {
-                    var expected=intent.Files.Single(f=>f.Asset.Id==file.Role);
-                    var parent=Path.GetFileName(Path.GetDirectoryName(asset.Path.Replace('/','\\'))!);
+                    var parent=Path.GetFileName(Path.GetDirectoryName(expected.Asset.Path.Replace('/','\\'))!);
                     if(!dirs.Any(d=>d.Role==parent) || (file.ByteState==PendingFileAuthority.ExpectedBytes && (file.Length!=expected.Length || file.SHA256!=expected.SHA256)))throw new InvalidDataException("Removal asset differs from authorized intent");
                 }
                 else if(file.Role=="package-manifest" && file.ByteState==PendingFileAuthority.ExpectedBytes && file.SHA256!=intent.ManifestSHA256)throw new InvalidDataException("Removal manifest differs from intent");
@@ -298,9 +280,9 @@ internal sealed class RemovalInventory
             foreach(var role in new[]{"current","center","admin"})
             {
                 using var parent=TryDirectory(WindowsPathSeal.Child(bin.Path,role));if(parent is null)continue;MatchDirectory(parent,page.Directories.SingleOrDefault(d=>d.Role==role));
-                var files=page.Files.Where(f=>PackagePolicy.Catalog.Any(a=>a.Id==f.Role && a.Path.StartsWith("bin/"+role+"/",StringComparison.Ordinal))).ToArray();
-                CheckChildren(parent,files.Select(f=>Path.GetFileName(PackagePolicy.Catalog.Single(a=>a.Id==f.Role).Path)));
-                foreach(var file in files)MatchFile(state,parent,file,Path.GetFileName(PackagePolicy.Catalog.Single(a=>a.Id==file.Role).Path),page.Release);
+                var files=page.Files.Where(f=>FileRelative(f.Role).StartsWith("bin/"+role+"/",StringComparison.Ordinal)).ToArray();
+                CheckChildren(parent,files.Select(f=>Path.GetFileName(FileRelative(f.Role))));
+                foreach(var file in files)MatchFile(state,parent,file,Path.GetFileName(FileRelative(file.Role)),page.Release);
             }
         }
     }
@@ -367,7 +349,7 @@ internal sealed class RemovalInventory
     }
     private void RecordAttempt(string attempt,string? release,string role,string status,string? failure,int? code=null)
     {state.WriteNew("remove-step-"+root.OperationId+"-"+attempt+"-"+status.ToLowerInvariant().Replace('_','-')+".json",JsonSerializer.SerializeToUtf8Bytes(new {SchemaVersion=1,InstallationId=state.InstallationId,OperationId=root.OperationId,InventorySHA256=SHA256,Release=release,Role=role,Status=status,FailureType=failure,FailureCode=code,AtUtc=DateTime.UtcNow.ToString("o")}));}
-    private static string FileRelative(string role)=>role=="version-marker"?"version.json":role=="package-manifest"?"package.json":PackagePolicy.Catalog.Single(a=>a.Id==role).Path;
+    private static string FileRelative(string role)=>role=="version-marker"?"version.json":role=="package-manifest"?"package.json":PackageAssetCatalog.KnownAssets.Single(a=>a.Id==role).Path;
     private static string DirRelative(string role)=>role switch{"release"=>"","bin"=>"bin","current"=>"bin/current","center"=>"bin/center","admin"=>"bin/admin",_=>throw new InvalidDataException("Unknown directory role")};
     private static void MatchDirectory(PathLease actual,RemovalDirectory? expected)
     {if(expected is null || actual.ObjectIdentity()!=expected.Identity || actual.ReadCreationTag().Sid!=expected.CreationTag)throw new InvalidDataException("New/replaced/retagged directory refused");}

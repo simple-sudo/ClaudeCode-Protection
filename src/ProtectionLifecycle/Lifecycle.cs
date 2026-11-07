@@ -141,7 +141,7 @@ internal sealed class LifecycleTransaction
             throw new InvalidOperationException("Staging is not owned by this planned transaction");
         runtime.AssertLaunchAdmissionClosed();runtime.AssertNoOwnedProcesses();state.AssertHeld();
         state.WriteNew("stage-intent-"+Id+".json",JsonSerializer.SerializeToUtf8Bytes(new {
-            SchemaVersion=1,InstallationId=state.InstallationId,OperationId=Id,Release=package.Release,
+            package.SchemaVersion,InstallationId=state.InstallationId,OperationId=Id,Release=package.Release,
             ManifestSHA256=package.ManifestHash,Assets=package.Files.Select(f=>new {f.Asset.Id,f.Length,f.SHA256})
         }));
     }

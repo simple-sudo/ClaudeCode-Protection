@@ -143,3 +143,36 @@ Lifecycle、Broker、Bootstrap 和 OwnedToolLaunch Release BUILD0/0。七个已�
 回归入口通过，涵盖网关回报与资格、Schannel 原生及首段对照、未激活迁移、GPU 回报
 和离线证书策略。证据留在本机 `work/openssl-transport-20261107-01`。
 真实 LPAC、真实代理转发、真实上游、官方 CLI 与 L3 均未在本阶段执行。
+
+## 固定运行库和全隔离对照
+
+候选从 [Python 3.14.10 x64 发布包](https://www.python.org/downloads/release/python-31410/)
+提取 OpenSSL 3.5.9 的两份 DLL。下载包 SHA-256 与发布页及
+[发布清单](https://www.python.org/ftp/python/3.14.10/python-3.14.10-embed-amd64.zip.spdx.json)
+相同，两份 Authenticode 签名均为 Valid，签名者是 Python Software Foundation。
+不安装或运行 Python。3.5.7 的先前候选和普通离线证据原样保留。3.5.9 包含
+[OpenSSL 3.5 系列安全修复](https://mirror.openssl-library.org/news/openssl-3.5-notes/)。
+本阶段资产只用于固定的内存对照。
+
+包 v1 仍只认原 14 项。v2 精确接纳额外两份 DLL 的角色、路径、长度和摘要。
+安装前、安装后和恢复按各版本的资产清单核验。恢复清单仍以原所有者的安装记录、
+日志和创建标记为依据。原 owner 持有两份 DLL 和安装目录的锁，子进程再次核验
+字节，只能从固定 Broker 目录装载，对系统依赖只搜索 System32。没有新增注册表、
+用户目录或网络权限。
+
+OpenSSL 对照与 Schannel 对照共用原 Job、全隔离、挂起时验证和退出顺序。原
+owner 必须核验旧准入和回环记录闭合，使用同一低完整性 LPAC 单一能力身份。
+子进程不接收目标或证书参数，使用临时内存证书及单一受信根，无网关、回环例外、
+Winsock 租约、socket 或外部对端。回报绑定会话、原进程 PID、创建时间和退出码。
+离线交换完成与原所有者关闭分别记录，故障回报不得视作交换通过。
+
+五产品 Release BUILD0/0。候选
+`d8be9fe79b8a40cfb812b7304c5d857d` /
+`9A8B7310B33E1DC3CF81CC75D0E460B9C9DB8ED0FD8B74C9B34E74F403E487CB`
+只接受 `68a0d109` 及其 `7011F015…` 清单为前驱。22 项候选工件和 145 项构建
+输入在回归前后一致，包含内嵌清单、精确迁移和双份管理库。原样管理库和 DLL
+通过 29 项 OpenSSL 与清单检查、90 项迁移及其他普通回归。内存握手、双向交换、
+错名 62、未知根 20、握手提前 EOF 拒绝已实测。另有普通恢复和 103 项生命周期
+夹具，未调用原生受保护后端。证据位于本机 `work/openssl-owner-20261107-01`。
+候选安装、低完整性 LPAC 装载及关闭仍 NOT_RUN，需要单独的固定操作审查。
+本阶段没有执行官方 CLI 或真实网络对照。

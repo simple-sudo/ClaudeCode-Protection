@@ -5,6 +5,14 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-07 固定 OpenSSL 运行库和原 owner 对照
+
+INTEGRATED / BUILD(v1/v2 资产与恢复清单、原 owner 离线入口)。VERIFIED(普通身份、
+原样 3.5.9 DLL、内存真实握手和双向加密交换、生产网关首段重放、失败关闭及相关
+夹具回归)。候选安装、低完整性 LPAC 加载和关闭仍 NOT_RUN。真实上游、真实内容
+L3、官方 CLI 和整机未验收。
+[证据](SCHANNEL-FAILURE-BOUNDARY-20261107.md#固定运行库和全隔离对照)
+
 ## 2026-11-07 独立应用 TLS 内存闭环
 
 BUILD(保护库 OpenSSL 传输)。VERIFIED(普通身份、精确 OpenSSL 3.5.7、生产网关

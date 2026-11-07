@@ -217,14 +217,18 @@ public static partial class InstalledBroker
     public static (int ExitCode,string Report) QualifyInternetClientSessionGateway()=>WithCurrentInstallation(ProtectedSession.QualifyInternetClientSessionGateway);
     public static (int ExitCode,string Report) QualifyZeroCapabilityComparisonGateway()=>WithCurrentInstallation(ProtectedSession.QualifyZeroCapabilityComparisonGateway);
     public static (int ExitCode,string Report) QualifyNoContentHttpsCanary()=>WithCurrentInstallation(ProtectedSession.QualifyNoContentHttpsCanary);
-    public static (int ExitCode,string Report) QualifySchannelAcquisition()=>WithCurrentInstallation(SchannelQualification.Run);
+    public static (int ExitCode,string Report) QualifySchannelAcquisition()
+        =>WithCurrentInstallation((layout,state,version)=>OfflineTlsQualification.Run(layout,state,version,OfflineTlsProbe.Schannel));
+    public static (int ExitCode,string Report) QualifyOpenSslOffline()
+        =>WithCurrentInstallation((layout,state,version)=>OfflineTlsQualification.Run(layout,state,version,OfflineTlsProbe.OpenSsl));
     public static (int ExitCode,string Report) InspectWinsockReadAccess()=>WithCurrentInstallation((_,state,_)=>SessionWinsockReadAccess.Inspect(state),forManifestAccessRecovery:true);
     public static (int ExitCode,string Report) RecoverWinsockReadAccess()=>WithCurrentInstallation((_,state,_)=>SessionWinsockReadAccess.Recover(state),forManifestAccessRecovery:true);
     public static int RunGatewayQualificationCanary()=>AtomicChild.RunGatewayQualificationCanary();
     public static int RunInternetClientGatewayQualificationCanary()=>AtomicChild.RunInternetClientGatewayQualificationCanary();
     public static int RunZeroCapabilityComparisonCanary()=>AtomicChild.RunZeroCapabilityComparisonCanary();
     public static int RunNoContentHttpsCanary()=>AtomicChild.RunNoContentHttpsCanary();
-    public static int RunSchannelAcquisitionChild()=>AtomicChild.RunSchannelAcquisitionChild();
+    public static int RunSchannelAcquisitionChild()=>AtomicChild.RunOfflineTlsChild(OfflineTlsProbe.Schannel);
+    public static int RunOpenSslOfflineChild()=>AtomicChild.RunOfflineTlsChild(OfflineTlsProbe.OpenSsl);
     public static int RunAdmissionCanary()
     {
         if(Environment.GetEnvironmentVariable("CPC_RESOURCE_PLAN") is not null)return AtomicChild.RunResourceCanary();

@@ -14,8 +14,6 @@ internal sealed class WorkspaceInstalledHost : IDisposable
     private readonly WorkspaceFiles.HeldPaths paths=new();
     private static readonly string[] Trusted={"S-1-5-18","S-1-5-32-544",
         ((SecurityIdentifier)new NTAccount("NT SERVICE","TrustedInstaller").Translate(typeof(SecurityIdentifier))).Value};
-    private static readonly AssetSpec[] Required=PackageAssetCatalog.Catalog
-        .Where(asset=>asset.VerifyBeforeElevation).ToArray();
     internal WorkspaceInstalledHost(string root)
     {
         try
@@ -31,20 +29,22 @@ internal sealed class WorkspaceInstalledHost : IDisposable
             if(manifest.Length is <1 or >PackageAssetCatalog.MaxManifestBytes)throw new InvalidDataException("Installed manifest size refused");
             var bytes=new byte[(int)manifest.Length];manifest.ReadExactly(bytes);
             using var doc=JsonDocument.Parse(bytes);var r=doc.RootElement;
-            if(r.GetProperty("SchemaVersion").GetInt32()!=1 || r.GetProperty("Scope").GetString()!="UNACTIVATED_PRODUCT" ||
+            var catalog=PackageAssetCatalog.ForSchema(r.GetProperty("SchemaVersion").GetInt32());
+            if(r.GetProperty("Scope").GetString()!="UNACTIVATED_PRODUCT" ||
                 r.GetProperty("Release").GetString()!=Path.GetFileName(root))throw new InvalidDataException("Installed manifest location differs");
             var files=r.GetProperty("Files").EnumerateArray().ToArray();
-            if(files.Length!=PackageAssetCatalog.Catalog.Count ||
+            if(files.Length!=catalog.Count ||
                 !files.Select(f=>f.GetProperty("Asset").GetString()).ToHashSet(StringComparer.Ordinal)
-                    .SetEquals(PackageAssetCatalog.Catalog.Select(asset=>asset.Id)))
+                    .SetEquals(catalog.Select(asset=>asset.Id)))
                 throw new InvalidDataException("Ambiguous installed asset catalog");
-            foreach(var asset in Required)
+            foreach(var asset in catalog.Where(asset=>asset.VerifyBeforeElevation))
             {
                 var matches=files.Where(f=>f.GetProperty("Asset").GetString()==asset.Id).ToArray();
                 if(matches.Length!=1)throw new InvalidDataException("Installed executable asset missing");
                 var file=paths.ReadFile(Path.Combine(root,asset.Path.Replace('/','\\')));Check(file.GetAccessControl(),true);
-                if(file.Length is <1 or >PackageAssetCatalog.MaxAssetBytes || file.Length!=matches[0].GetProperty("Length").GetInt64() ||
-                    Convert.ToHexString(SHA256.HashData(file))!=matches[0].GetProperty("SHA256").GetString())
+                var sha256=matches[0].GetProperty("SHA256").GetString();
+                if(!asset.Matches(file.Length,sha256) || file.Length!=matches[0].GetProperty("Length").GetInt64() ||
+                    Convert.ToHexString(SHA256.HashData(file))!=sha256)
                     throw new InvalidDataException("Installed executable bytes differ");
             }
         }

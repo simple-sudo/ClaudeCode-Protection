@@ -108,6 +108,7 @@ internal static class Program
             if(command=="internet-client-gateway-qualification-child")return ProtectionLifecycle.InstalledBroker.RunInternetClientGatewayQualificationCanary();
             if(command=="no-content-https-canary-child")return ProtectionLifecycle.InstalledBroker.RunNoContentHttpsCanary();
             if(command=="schannel-acquisition-child")return ProtectionLifecycle.InstalledBroker.RunSchannelAcquisitionChild();
+            if(command=="openssl-offline-child")return ProtectionLifecycle.InstalledBroker.RunOpenSslOfflineChild();
             if(command=="zero-capability-comparison-child")return ProtectionLifecycle.InstalledBroker.RunZeroCapabilityComparisonCanary();
             if(command=="admission-child")return ProtectionLifecycle.InstalledBroker.RunAdmissionCanary();
             (int ExitCode,string Report)? result = command switch {
@@ -117,6 +118,7 @@ internal static class Program
                 "qualify-internet-client-session-gateway" => ProtectionLifecycle.InstalledBroker.QualifyInternetClientSessionGateway(),
                 "qualify-no-content-https-canary" => ProtectionLifecycle.InstalledBroker.QualifyNoContentHttpsCanary(),
                 "qualify-schannel-acquisition" => ProtectionLifecycle.InstalledBroker.QualifySchannelAcquisition(),
+                "qualify-openssl-offline" => ProtectionLifecycle.InstalledBroker.QualifyOpenSslOffline(),
                 "qualify-winsock-provider-session-gateway" => ProtectionLifecycle.InstalledBroker.QualifyWinsockProviderSessionGateway(),
                 "qualify-winsock-transport-session-gateway" => ProtectionLifecycle.InstalledBroker.QualifyWinsockTransportSessionGateway(),
                 "qualify-winsock-session-gateway" => ProtectionLifecycle.InstalledBroker.QualifyWinsockSessionGateway(),

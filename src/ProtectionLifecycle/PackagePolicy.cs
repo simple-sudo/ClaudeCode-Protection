@@ -6,12 +6,13 @@ namespace ProtectionLifecycle;
 internal sealed record PayloadFile(AssetSpec Asset, long Length, string SHA256);
 internal sealed class ReviewedPackage
 {
+    internal int SchemaVersion { get; }
     internal string Release { get; }
     internal string ManifestHash { get; }
     internal IReadOnlyList<PayloadFile> Files { get; }
     internal ReadOnlyMemory<byte> ManifestBytes { get; }
-    private ReviewedPackage(string release, string hash, IReadOnlyList<PayloadFile> files, byte[] frozen)
-    { Release = release; ManifestHash = hash; Files = files; ManifestBytes = frozen; }
+    private ReviewedPackage(int schema, string release, string hash, IReadOnlyList<PayloadFile> files, byte[] frozen)
+    { SchemaVersion=schema; Release = release; ManifestHash = hash; Files = files; ManifestBytes = frozen; }
     internal static ReviewedPackage FromBootstrap(BootstrapApproval approval)
     {
         approval.AssertHeld();
@@ -19,7 +20,7 @@ internal sealed class ReviewedPackage
         if (raw.Length is < 1 or > PackagePolicy.MaxManifestBytes) throw new InvalidDataException("Manifest size refused");
         var frozen = raw.ToArray(); // Hash and parse the same privately captured bytes.
         var validated = PackagePolicy.ParsePinned(frozen, approval.ManifestHash);
-        return new(validated.Release, validated.ManifestHash, validated.Files, frozen);
+        return new(validated.SchemaVersion, validated.Release, validated.ManifestHash, validated.Files, frozen);
     }
     internal void AssertSameManifest(ReadOnlyMemory<byte> raw)
     {
@@ -33,7 +34,7 @@ internal sealed class ReviewedPackage
         if(raw.Length is <1 or >PackagePolicy.MaxManifestBytes) throw new InvalidDataException("Stored manifest size refused");
         var frozen=raw.ToArray();
         var data=PackagePolicy.ValidateOwned(frozen,receipt);
-        return new(data.Release,data.ManifestHash,data.Files,frozen);
+        return new(data.SchemaVersion,data.Release,data.ManifestHash,data.Files,frozen);
     }
 }
 
@@ -51,16 +52,14 @@ internal static class PackagePolicy
     internal const int MaxManifestBytes = PackageAssetCatalog.MaxManifestBytes;
     internal const long MaxAssetBytes = PackageAssetCatalog.MaxAssetBytes;
     internal const long MaxPackageBytes = 256L * 1024 * 1024;
-    internal static IReadOnlyList<AssetSpec> Catalog => PackageAssetCatalog.Catalog;
-
-    internal static (string Release,string ManifestHash,IReadOnlyList<PayloadFile> Files) ValidateOwned(ReadOnlyMemory<byte> raw,OwnedReleaseReceipt receipt)
+    internal static (string Release,string ManifestHash,IReadOnlyList<PayloadFile> Files,int SchemaVersion) ValidateOwned(ReadOnlyMemory<byte> raw,OwnedReleaseReceipt receipt)
     {
         var parsed=ParsePinned(raw,receipt.ManifestSHA256);
         if(parsed.Release!=receipt.Release) throw new InvalidDataException("Stored manifest belongs to another release");
         return parsed;
     }
 
-    internal static (string Release, string ManifestHash, IReadOnlyList<PayloadFile> Files) ParsePinned(ReadOnlyMemory<byte> raw, string trustedDigest)
+    internal static (string Release,string ManifestHash,IReadOnlyList<PayloadFile> Files,int SchemaVersion) ParsePinned(ReadOnlyMemory<byte> raw, string trustedDigest)
     {
         _ = Identifiers.Hash(trustedDigest);
         if (raw.Length is < 1 or > MaxManifestBytes) throw new InvalidDataException("Manifest size refused");
@@ -70,29 +69,35 @@ internal static class PackagePolicy
         using var doc = JsonDocument.Parse(raw, new JsonDocumentOptions { MaxDepth = 8 });
         var root = doc.RootElement;
         StrictJson.Fields(root, "SchemaVersion", "Scope", "Release", "Files");
-        if (root.GetProperty("SchemaVersion").GetInt32() != 1 ||
-            root.GetProperty("Scope").GetString() != "UNACTIVATED_PRODUCT") throw new InvalidDataException("Manifest scope/schema refused");
+        var schema=root.GetProperty("SchemaVersion").GetInt32();
+        if (root.GetProperty("Scope").GetString() != "UNACTIVATED_PRODUCT") throw new InvalidDataException("Manifest scope refused");
         var release = Identifiers.Hex32(StrictJson.Text(root, "Release"));
-        var array = root.GetProperty("Files");
-        if (array.ValueKind != JsonValueKind.Array || array.GetArrayLength() != Catalog.Count) throw new InvalidDataException("Exact asset set required");
+        var files=ParseInventory(root.GetProperty("Files"),schema,"Asset");
+        if(files.Any(file=>RetiredIncidentArtifacts.Contains(file.SHA256)))
+            throw new InvalidDataException("Retired incident artifact cannot be installed or restored");
+        return (release,digest,files,schema);
+    }
+    internal static IReadOnlyList<PayloadFile> ParseInventory(JsonElement array,int schema,string identifier)
+    {
+        var catalog=PackageAssetCatalog.ForSchema(schema);
+        if (array.ValueKind != JsonValueKind.Array || array.GetArrayLength() != catalog.Count) throw new InvalidDataException("Exact asset set required");
         var files = new List<PayloadFile>();
         var seen = new HashSet<string>(StringComparer.Ordinal);
         long total = 0;
         foreach (var entry in array.EnumerateArray())
         {
-            StrictJson.Fields(entry, "Asset", "Length", "SHA256");
-            var id = StrictJson.Text(entry, "Asset");
-            var spec = Catalog.SingleOrDefault(s => s.Id == id) ?? throw new InvalidDataException("Unknown asset identifier");
+            StrictJson.Fields(entry,identifier,"Length","SHA256");
+            var id = StrictJson.Text(entry,identifier);
+            var spec = catalog.SingleOrDefault(s => s.Id == id) ?? throw new InvalidDataException("Unknown asset identifier");
             if (!seen.Add(id)) throw new InvalidDataException("Duplicate asset");
             var size = entry.GetProperty("Length").GetInt64();
-            if (size is < 1 or > MaxAssetBytes) throw new InvalidDataException("Payload size refused");
+            var assetHash=Identifiers.Hash(StrictJson.Text(entry,"SHA256"));
+            if(!spec.Matches(size,assetHash))throw new InvalidDataException("Asset bytes outside reviewed policy");
             total = checked(total + size);
             if (total > MaxPackageBytes) throw new InvalidDataException("Package size refused");
-            var assetHash=Identifiers.Hash(StrictJson.Text(entry,"SHA256"));
-            if(RetiredIncidentArtifacts.Contains(assetHash))throw new InvalidDataException("Retired incident artifact cannot be installed or restored");
             files.Add(new(spec,size,assetHash));
         }
-        return (release, digest, files.AsReadOnly());
+        return files.AsReadOnly();
     }
 }
 

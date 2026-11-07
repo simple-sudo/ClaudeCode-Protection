@@ -66,9 +66,9 @@ internal static class CompletionReceiptRecovery
     internal static IReadOnlyList<CompletionRecoveryItem> ReobserveOperation(ProtectedState state,string operation,ILifecycleRuntimeLease runtime)
     {
         state.AssertHeld();runtime.AssertLaunchAdmissionClosed();runtime.AssertNoOwnedProcesses();
-        operation=Identifiers.Hex32(operation);_=CreationIdentity.ReadScope(state,operation);
+        operation=Identifiers.Hex32(operation);var scope=CreationIdentity.ReadScope(state,operation);
         var roles=new[]{CreationRole.CodeMarker,CreationRole.VersionMarker,CreationRole.PackageManifest}
-            .Concat(PackagePolicy.Catalog.Select(a=>CreationTag.AssetRole(a.Id))).ToArray();
+            .Concat(scope.Files.Select(f=>CreationTag.AssetRole(f.Asset.Id))).ToArray();
         var results=new List<CompletionRecoveryItem>();
         var activeRole="not-started";
         try
