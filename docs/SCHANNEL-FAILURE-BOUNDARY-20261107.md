@@ -87,3 +87,35 @@ internetClient 单能力，使用私有运行目录。活动时限为 12 秒。�
 只允许 `34543d35` / `6975AF49…` 迁移，20 文件、内嵌清单、内嵌迁移和管理库双份
 核验通过。证据位于本机 `work/schannel-acquisition-20261107-01`。
 本阶段没有安装或执行新受限对照。实测需要一份新的精确操作审查。
+
+## 全隔离实测
+
+2026-11-07 13:42:25–13:42:39Z，本人批准 `D0E68D2C…`，按锁定的 56 项输入
+运行一次。原 owner 完成 `34543d35` → `68a0d109` 未激活更新，回执 INACTIVE。
+真实低完整性 LPAC 的 `QUERY_UNISP`、`ACQUIRE_GATEWAY_V5`、`ACQUIRE_MINIMAL_V5`、
+`ACQUIRE_TLS12_V5` 和 `ACQUIRE_TLS12_V4` 均返回 `0x80090305`。所有调用都没有返回
+对象。子进程 0 表示对照记录完整。最早失败出现在凭据配置应用前的包查询阶段，
+修改 v4/v5、附加标志或 TLS 1.2 参数在此对照中均未改变结果。此证据没有区分
+Windows 内部的包可见性、初始化或身份拒绝机制。
+[Microsoft 包查询接口](https://learn.microsoft.com/en-us/windows/win32/api/sspi/nf-sspi-querysecuritypackageinfow)
+
+原 owner 确认准入关闭、隔离、原 Job 零成员，停止错误 0。隔离与 Job 停止刻度均
+为 178 ms，原 owner 顺序按同一停止回报核对。操作器十个原始权限观察一致，最终
+安全检查通过。无网关、Winsock 租约、TLS 握手、HTTP 或官方 CLI。只读核对三份获批
+回执，派生记录 SHA-256 `88F9F97C1A112B4E6771C444FD1EEB5124EFB8FE3E383FC08890DD4C3EEC65B4`。
+同一公开日志窗 Application 一条，无匹配 AV 事件，System 无 Schannel 事件，BFE/AV
+Running，完整厂商覆盖 UNKNOWN。许可已消耗，证据留本机
+`work/schannel-acquisition-20261107-01/operation-offline-acquisition-once`。
+
+随后普通身份实测 UNISP 和 `Schannel` 两个名称均返回 `0x004107B3`，含
+`APPCONTAINER_PASSTHROUGH`，不含 `RESTRICTED_TOKENS`。`Negotiate` 普通对照
+为 `0x00883BB3`。三个包查询及释放均返回 0。标志是普通进程可见元数据，不能据此
+确定 LPAC 的内部拒绝原因或授予认证能力。先用固定自研对照验证独立于 Schannel 的
+TLS 路径，保持同一身份、原认证网关及原网络规则。官方 CLI 使用哪条实际 TLS 路径
+仍需阶段性原生资格。[Microsoft 包属性](https://learn.microsoft.com/en-us/windows/win32/api/sspi/ns-sspi-secpkginfoa)
+
+普通对照以本机 OpenSSL 3.5.7 在内存中生成实际 ClientHello。使用候选包中原样管理库
+的生产网关解析器，含 TLS 1.3 提议的 1539 字节及仅 TLS 1.2 的 206 字节均被接受并
+逐字节重放。错误 SNI 的 1535 字节被拒绝。该对照没有创建 socket 或完成握手。
+证据在同一工作目录的 `ordinary-openssl-clienthello`。应用 TLS 在受限身份的首次
+真实握手还需要固定资产、原 owner 监督及独立操作审查。

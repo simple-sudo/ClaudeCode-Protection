@@ -10,6 +10,10 @@
   状态 Valid，签名者 Anthropic, PBC。摘要匹配最新交接，记录保存在本机
   `work/schannel-boundary-20261107-01/claude-image-observation.json`。
   较早版本的签名观察仍保留在原架构工作目录。
+- 对相同摘要的文件只读持有并检查 PE，确认 x64 原生控制台映像。声明的直接导入含
+  `fwpuclnt`、`wtsapi32`；延迟导入含 `IPHLPAPI`、`WS2_32`、`WSOCK32`、`CRYPT32`。
+  后续运行观察应覆盖这些接口的实际加载和调用。静态导入不证明读取、联网或 TLS 实现。
+  两份静态记录留本机 `work/schannel-acquisition-20261107-01`，未运行官方映像。
 - 原子创建链目前只启动现装清单的固定 Broker 镜像。CLI 超过当前 v1 清单
   单项 128 MiB 上限，也位于普通用户可写的安装路径。首轮必须有单独固定、
   可持有的只读镜像。可以评估复用 Git/PowerShell 固定外部工具资产的思路，

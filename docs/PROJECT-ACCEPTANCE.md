@@ -5,6 +5,14 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-07 全隔离 Schannel 原生实测
+
+VERIFIED(实际未激活更新、全隔离低完整性 LPAC 五项调用、原所有者有序关闭、Job
+归零、操作器自身权限一致)。FAIL(包查询及四种凭据取得均 `0x80090305`)。
+VERIFIED(普通 OpenSSL 实际首段、生产网关内存重放及错误 SNI 拒绝)。Windows 内部
+原因 UNKNOWN，TLS 握手、HTTP、真实内容 L3、官方 CLI 和产品未验收。
+[实测](SCHANNEL-FAILURE-BOUNDARY-20261107.md#全隔离实测)
+
 ## 2026-11-07 全隔离 Schannel 获取对照
 
 INTEGRATED / BUILD(固定原 owner 对照、精确未激活候选)。VERIFIED(普通 Windows
