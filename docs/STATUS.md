@@ -5,6 +5,12 @@
 历史页的“当前/待执行/暂停/DELIVERABLE”按段落日期及限定范围解释，不是今天的状态或操作许可。
 不在本页复制当前安装和授权摘要。
 
+## 2026-11-08 固定 SCM 创建者和 profile 关闭
+
+固定服务入口、profile 所有权、挂起创建和关闭消息已编入产品，普通 Windows
+拒绝非 SCM 调用。受限运行链待实测。
+[机制与范围](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#固定-scm-创建者和-profile-关闭)
+
 ## 2026-11-08 LocalService 侧反向交接
 
 固定服务身份、反向管道权限与 Job 绑定已编入保护库。普通实测定位管道权限

@@ -17,11 +17,13 @@ internal sealed class SessionZeroCreatorChannel : IDisposable
     private const uint RequestMagic=0x31504343,ReplyMagic=0x31524343; // CCP1, CCR1.
     private const int NonceSize=16,ReplySize=44;
     internal const int RequestSize=60;
+    internal const string ServicePrefix="CpcSessionCreator.";
     private readonly OwnedKernelJob job;
     private readonly NamedPipeServerStream pipe;
     private int consumed;
+    private byte[]? cleanupNonce;
     internal string PipeName=>NameForJob(job.JobId);
-    internal static string NameForJob(string jobId)=>"CpcSessionCreator."+Identifiers.Hex32(jobId);
+    internal static string NameForJob(string jobId)=>ServicePrefix+Identifiers.Hex32(jobId);
 
     internal SessionZeroCreatorChannel(OwnedKernelJob job)
     {
@@ -80,9 +82,20 @@ internal sealed class SessionZeroCreatorChannel : IDisposable
         {
             AssertQuarantine(state);
             job.AssertCreatorSealedBeforeResume();
+            cleanupNonce=nonce;
             return root;
         }
         catch{root.Dispose();throw;}
+    }
+
+    internal (OfflineConsoleOutput Output,OfflineConsoleOutput Error) CloseCreatorProfile(ProtectedState state)
+    {
+        job.AssertCreatorProfileCleanupAllowed(state);
+        AssertQuarantine(state);
+        var nonce=Interlocked.Exchange(ref cleanupNonce,null)??throw WfpNative.Contract("CreatorProfileCleanupChannelUnavailable");
+        using var deadline=new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        pipe.WriteAsync(SessionZeroCreatorTerminal.CloseFrame(nonce).AsMemory(),deadline.Token).AsTask().GetAwaiter().GetResult();
+        return SessionZeroCreatorTerminal.ReadReceipt(pipe,nonce,deadline.Token);
     }
 
     private static void AssertQuarantine(ProtectedState state)

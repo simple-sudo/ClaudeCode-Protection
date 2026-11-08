@@ -68,8 +68,31 @@ internal sealed class SessionZeroCreatorClient : IDisposable
         if(Interlocked.Exchange(ref completed,1)!=0)throw WfpNative.Contract("CreatorCompletionAlreadySent");
         assignment.Dispose();
         var frame=SessionZeroCreatorChannel.CreateReply(Request,SessionZeroCreatorChannel.ObserveCreatedRoot(process,thread));
+        thread.Dispose();
         using var deadline=new CancellationTokenSource(TimeSpan.FromSeconds(5));
         pipe.WriteAsync(frame.AsMemory(),deadline.Token).AsTask().GetAwaiter().GetResult();
+    }
+
+    internal static void RunOfflineCreator(string jobId)
+    {
+        using var client=Connect(jobId);
+        using var profile=SessionZeroCreatorProfile.Create(client);
+        using var streams=new OfflineConsoleStreams();
+        var root=AtomicChild.CreateSessionZeroOfflineConsole(client,profile,streams);
+        using var process=root.Process;
+        using var thread=root.Thread;
+        var capture=streams.ReadAfterCreate();
+        client.CompleteCreation(process,thread);
+        using var deadline=new CancellationTokenSource(TimeSpan.FromSeconds(35));
+        var close=new byte[SessionZeroCreatorTerminal.CloseSize];
+        client.pipe.ReadExactlyAsync(close.AsMemory(),deadline.Token).AsTask().GetAwaiter().GetResult();
+        SessionZeroCreatorTerminal.AssertCloseFrame(close,client.Request.Nonce);
+        if(WaitForSingleObject(process,0)!=0)throw WfpNative.Contract("CreatorProfileChildNotTerminal");
+        profile.CleanupAfterOwnerStop();
+        var output=capture.Output.WaitAsync(deadline.Token).GetAwaiter().GetResult();
+        var error=capture.Error.WaitAsync(deadline.Token).GetAwaiter().GetResult();
+        client.pipe.WriteAsync(SessionZeroCreatorTerminal.CreateReceipt(client.Request.Nonce,output,error).AsMemory(),deadline.Token)
+            .AsTask().GetAwaiter().GetResult();
     }
 
     internal static SecurityIdentifier VerifyCurrentService(string name)
@@ -125,4 +148,5 @@ internal sealed class SessionZeroCreatorClient : IDisposable
     [DllImport("kernel32.dll",SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)] private static extern bool GetNamedPipeServerProcessId(SafePipeHandle pipe,out uint pid);
     [DllImport("kernel32.dll",SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)] private static extern bool GetNamedPipeServerSessionId(SafePipeHandle pipe,out uint session);
     [DllImport("advapi32.dll",ExactSpelling=true)] [return:MarshalAs(UnmanagedType.Bool)] private static extern bool IsTokenRestricted(SafeAccessTokenHandle token);
+    [DllImport("kernel32.dll",ExactSpelling=true)] private static extern uint WaitForSingleObject(SafeProcessHandle process,uint milliseconds);
 }

@@ -265,6 +265,7 @@ internal static class CreatorJobCases
         Task.WhenAll(server.ReadExactlyAsync(receivedReply.AsMemory(),transfer).AsTask(),wrapped.WriteAsync(incoming.AsMemory(),transfer).AsTask()).GetAwaiter().GetResult();
         Check(receivedReply.SequenceEqual(incoming));
         Console.WriteLine($"PASS {count-prior} creator client checks; reciprocal actual pipe peer and descriptor, fixed request/reply, account and service group refusals. No service, handoff, elevation or WFP.");
+        CreatorLifecycleCases.Run(library);
     }
 
     [StructLayout(LayoutKind.Sequential)] private struct SecurityAttributes {internal int Length;internal IntPtr Descriptor;internal int Inherit;}

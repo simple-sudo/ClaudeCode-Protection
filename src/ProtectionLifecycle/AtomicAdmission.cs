@@ -372,6 +372,75 @@ internal sealed partial class AtomicChild : IDisposable
     internal static AtomicChild CreateOfflineConsoleQualification(FixedLayout layout,ProtectedState state,VerifiedVersion version,
         OwnedKernelJob job,InstallationProfileLease profile,string sessionId,PathLease workspace,OfflineConsoleStorage storage,OfflineConsoleStreams streams)
         =>CreateCore(layout,state,version,job,profile,null,IntPtr.Zero,null,null,null,console:(streams,Identifiers.Hex32(sessionId),workspace,storage));
+    internal static (SafeProcessHandle Process,SafeWaitHandle Thread) CreateSessionZeroOfflineConsole(SessionZeroCreatorClient client,
+        SessionZeroCreatorProfile profile,OfflineConsoleStreams streams)
+    {
+        if(!Environment.Is64BitProcess || Marshal.SizeOf<StartupInfoEx>()!=112 || Marshal.SizeOf<SecurityCapabilities>()!=24)
+            throw new PlatformNotSupportedException("Creator startup requires the declared x64 layout");
+        var image=ResolveSessionZeroImage(FixedLayout.FromWindows(),Environment.ProcessPath);
+        using var imageParent=WindowsPathSeal.LockDirectory(Path.GetDirectoryName(image)!,PathPolicy.Protected);
+        using var heldImage=WindowsPathSeal.Open(image,false,true);
+        WindowsPathSeal.AssertAcl(heldImage,true);
+        var session=client.Request.JobId;
+        using var workspace=WindowsPathSeal.LockDirectory(SessionTaskWorkspace.PathFor(session),PathPolicy.Source);
+        var env=new SortedDictionary<string,string>(StringComparer.OrdinalIgnoreCase);
+        var windows=Environment.GetFolderPath(Environment.SpecialFolder.Windows);
+        if(string.IsNullOrEmpty(windows))throw WfpNative.Contract("CreatorWindowsPathMissing");
+        env["SystemRoot"]=env["windir"]=WindowsPathSeal.Canonical(windows);
+        env["PATH"]=WindowsPathSeal.Child(windows,"System32")+";"+windows;
+        env["DOTNET_ROOT"]=WindowsPathSeal.Child(Path.GetDirectoryName(workspace.Path)!,"dotnet");
+        env["DOTNET_ROLL_FORWARD"]="LatestPatch";
+        OfflineConsoleQualification.BindEnvironment(env,workspace.Path,profile.Package.Name,session);
+        using var channels=streams.PrepareCreationAttributes();
+        using var seal=new KernelJobSeal.SessionObjectDescriptor(localService:true);
+        var processSecurity=seal.Attributes;var threadSecurity=seal.Attributes;
+        var attributes=IntPtr.Zero;var values=IntPtr.Zero;var environment=IntPtr.Zero;
+        var initialized=false;var assignmentHeld=false;
+        try
+        {
+            client.Assignment.DangerousAddRef(ref assignmentHeld);
+            nuint size=0;_=InitializeProcThreadAttributeList(IntPtr.Zero,5,0,ref size);
+            if(size is 0 or >65536)throw Error("CreatorAttributeListSize");
+            attributes=Marshal.AllocHGlobal(checked((int)size));
+            if(!InitializeProcThreadAttributeList(attributes,5,0,ref size))throw Error("CreatorInitializeAttributes");
+            initialized=true;
+            var capabilitySize=Marshal.SizeOf<SecurityCapabilities>();
+            values=Marshal.AllocHGlobal(capabilitySize+IntPtr.Size+sizeof(uint));
+            Marshal.StructureToPtr(new SecurityCapabilities{Sid=profile.Package.Pointer},values,false);
+            var jobList=IntPtr.Add(values,capabilitySize);Marshal.WriteIntPtr(jobList,client.Assignment.DangerousGetHandle());
+            var policy=IntPtr.Add(jobList,IntPtr.Size);Marshal.WriteInt32(policy,1);
+            Bind(0x20009,values,(nuint)capabilitySize);
+            Bind(0x2000d,jobList,(nuint)IntPtr.Size);
+            Bind(0x2000f,policy,sizeof(uint));
+            channels.Bind(attributes);
+            var std=channels.Channels;
+            var startup=new StartupInfoEx{Basic=new(){Size=Marshal.SizeOf<StartupInfoEx>(),Flags=0x100,Input=std.Input,Output=std.Output,Error=std.Error},Attributes=attributes};
+            environment=Marshal.StringToHGlobalUni(string.Join('\0',env.Select(p=>p.Key+"="+p.Value))+"\0\0");
+            var command=new StringBuilder("\""+image+"\" "+OfflineConsoleQualification.ChildCommand);
+            if(!CreateSealedProcess(image,command,ref processSecurity,ref threadSecurity,true,0x00080404u|OfflineConsoleStreams.DetachedCreationFlag,
+                environment,workspace.Path,ref startup,out var created))throw Error("CreatorAtomicCreateSuspendedOfflineConsole");
+            return(new(created.Process,true),new(created.Thread,true));
+        }
+        finally
+        {
+            if(initialized)DeleteProcThreadAttributeList(attributes);
+            Marshal.FreeHGlobal(attributes);Marshal.FreeHGlobal(values);Marshal.FreeHGlobal(environment);
+            if(assignmentHeld)client.Assignment.DangerousRelease();
+        }
+        void Bind(int attribute,IntPtr value,nuint length)
+        {
+            if(!UpdateProcThreadAttribute(attributes,0,(IntPtr)attribute,value,length,IntPtr.Zero,IntPtr.Zero))throw Error("CreatorBindAtomicAttribute");
+        }
+    }
+    internal static string ResolveSessionZeroImage(FixedLayout layout,string? processImage)
+    {
+        if(processImage is null)throw WfpNative.Contract("CreatorImageMissing");
+        var actual=WindowsPathSeal.Canonical(processImage);
+        var release=Path.GetFileName(Path.GetDirectoryName(Path.GetDirectoryName(Path.GetDirectoryName(actual))))??"";
+        var expected=WindowsPathSeal.Child(layout.Version(Identifiers.Hex32(release)),"bin/admin/ProtectionBroker.exe");
+        if(!string.Equals(actual,expected,StringComparison.OrdinalIgnoreCase))throw WfpNative.Contract("CreatorImageMustBeInstalledBroker");
+        return expected;
+    }
     internal static AtomicChild CreateResourceQualification(FixedLayout layout,ProtectedState state,VerifiedVersion version,OwnedKernelJob job,
         InstallationProfileLease profile,ProtectedSession.ResourceQualification permit,IntPtr output)
     {

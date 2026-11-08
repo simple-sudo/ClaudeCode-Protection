@@ -1,5 +1,12 @@
 # 当前状态与授权摘要
 
+2026-11-08 新增固定 SCM 创建者、LocalService profile 和挂起自研离线载荷源码。
+清理须原 Broker 核实 Job 关闭和 WFP 全隔离，服务另核对原子进程终态及实际
+profile 归属。五产品 Release 与 13 个普通回归入口通过，含非 SCM 调用的
+真实拒绝。原 Broker 的服务登记、独立工作区与恢复运行链尚待接入。候选未安装，
+宿主 SID 真实复验待执行。
+[创建和关闭机制](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#固定-scm-创建者和-profile-关闭)。
+
 2026-11-08 新增 LocalService 侧反向交接。源码核对固定服务令牌、Broker 管道
 和确切 Job，释放分配句柄后才发送完成回执。普通 Windows 实测管道权限读取、
 双方 PID/会话回读和固定消息往返。五产品 Release 和 13 个普通回归入口通过。

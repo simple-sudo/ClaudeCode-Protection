@@ -13,6 +13,7 @@ namespace ProtectionLifecycle;
 // development build. Neither diagnostic opens the installed mutation path.
 public static partial class InstalledBroker
 {
+    public static int RunSessionZeroOfflineCreatorService()=>SessionZeroCreatorService.Dispatch();
     public static int RunHostGpuReferenceChild()=>GpuHostReferenceQualification.RunChild();
     public static (int ExitCode,string Report) QualifyHostGpuReference()=>WithCurrentInstallation(GpuHostReferenceQualification.RunInstalled);
     public static int RunRestrictedPowerShell(string[] arguments)=>RestrictedPowerShellHost.Run(arguments);

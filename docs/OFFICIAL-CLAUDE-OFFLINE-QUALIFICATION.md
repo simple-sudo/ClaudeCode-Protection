@@ -695,3 +695,29 @@ AppContainer、无写限制、确切启用的服务 SID，以及仅允许遍历�
 五产品 Release 及 13 个普通回归入口通过。固定 SCM 入口、服务身份实机核验、
 profile 创建和精确回收及挂起进程创建仍待接入。候选未安装，本轮未启动服务、
 恢复受限线程、改变 WFP 或执行官方 CLI。
+
+### 固定 SCM 创建者和 profile 关闭
+
+已编入固定 SCM 入口，直接以普通进程调用时由 Windows 拒绝。服务启动参数只接受
+与 Job ID 对应的固定服务名，自查 LocalService 令牌和安装目录中的 Broker
+映像后才发布就绪。服务进程权限仅向 SYSTEM 保留完整访问，向提升管理员授予
+查询和等待，并撤销共享 LocalService 所有者隐含的 DACL 写权限。
+[Windows 服务入口](https://learn.microsoft.com/en-us/windows/win32/services/service-entry-point)
+
+通过原 Broker 交接后，服务仅在自己的固定 LocalService profile 根建立与安装
+绑定的 AppContainer。先确认存储和映射均缺席，创建后核对派生 SID、实际映射
+和目录身份。自研离线载荷沿用原三管道，原子创建同时绑定低完整性零能力 LPAC、
+原 Job 和禁止子进程策略。服务关闭分配和初始线程句柄后发送创建回执，正式恢复
+仍由原 Broker 控制。
+
+Broker 只有确认原 Job 准入已关闭、成员为零、分配权已撤销、WFP 已全隔离，才
+发送绑定本次交接的清理请求。服务独立确认自己持有的子进程已终止，复核原目录
+身份和无重解析点的树后清理，并分别确认目录和映射消失。清理回执带有各最多
+4096 字节的独立标准输出与错误输出。超时、替换或部分完成保留为未知，不自动
+重试或认领现有 profile。
+[Windows 当前用户 profile 创建](https://learn.microsoft.com/en-us/windows/win32/api/userenv/nf-userenv-createappcontainerprofile) ·
+[Windows 当前用户 profile 清理](https://learn.microsoft.com/en-us/windows/win32/api/userenv/nf-userenv-deleteappcontainerprofile)
+
+本次仅构建及普通验证，含 Windows 对非 SCM 调用的真实拒绝。原 Broker 仍须接入
+具体 SCM 服务登记与回收、独立工作区所有权和新根进程的运行监督。候选未安装，
+未实际启动服务、创建 profile、挂起或恢复受限载荷，官方 CLI 未执行。

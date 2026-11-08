@@ -144,6 +144,13 @@ internal sealed class OwnedKernelJob : IDisposable
         if(!creatorReleaseConfirmed || admissionClosed)throw WfpNative.Contract("SessionZeroCreatorReleaseUnconfirmed");
         AssertExclusiveCreatorJob();
     }
+    internal void AssertCreatorProfileCleanupAllowed(ProtectedState exactState)
+    {
+        if(!ReferenceEquals(state,exactState) || intent.CreatorServiceSid is null || !creatorReleaseConfirmed || !admissionClosed ||
+            AtomicJobCompletion.ReadClosed(state,intent) is null)throw WfpNative.Contract("CreatorProfileCleanupNeedsClosedAdmission");
+        AssertExclusiveCreatorJob();
+        if(!Observe().ObservedZero)throw WfpNative.Contract("CreatorProfileCleanupNeedsOriginalJobZero");
+    }
     private void AssertExclusiveCreatorJob()
     {
         if(KernelJobSeal.AssertJobDescriptor(KernelJobSeal.ReadJobDescriptor(handle,true),intent))

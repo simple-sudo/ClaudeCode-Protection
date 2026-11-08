@@ -38,9 +38,10 @@ internal static class KernelJobSeal
         private const string LocalServiceSid="S-1-5-19",OwnerRightsSid="S-1-3-4";
         private const int ImplicitOwnerRights=0x000c0000; // READ_CONTROL | WRITE_DAC.
         private IntPtr value;
-        internal SessionObjectDescriptor()
+        internal SessionObjectDescriptor(bool localService=false)
         {
-            if(!ConvertStringSecurityDescriptorToSecurityDescriptor("O:BAD:P(A;;0x001fffff;;;SY)(A;;0x001fffff;;;BA)",1,out value,out _))
+            var sddl=(localService?"O:S-1-5-19D:P(D;;0x000c0000;;;S-1-3-4)":"O:BAD:P")+"(A;;0x001fffff;;;SY)(A;;0x001fffff;;;BA)";
+            if(!ConvertStringSecurityDescriptorToSecurityDescriptor(sddl,1,out value,out _))
                 throw Error("CreateSuspendedSessionObjectDescriptor");
         }
         internal SecurityAttributes Attributes=>value==IntPtr.Zero?throw new ObjectDisposedException(nameof(SessionObjectDescriptor)):
@@ -116,7 +117,7 @@ internal static class KernelJobSeal
     }
     internal static RawSecurityDescriptor ReadCreatorPipeDescriptor(SafePipeHandle handle)
         =>ReadOwnerDacl(handle,pipeMayOmitLength:true);
-    private static RawSecurityDescriptor ReadOwnerDacl(SafeHandle handle,bool pipeMayOmitLength=false)
+    internal static RawSecurityDescriptor ReadOwnerDacl(SafeHandle handle,bool pipeMayOmitLength=false)
     {
         if(handle.IsClosed || handle.IsInvalid)throw new InvalidOperationException("Held security object required");
         var sized=GetKernelObjectSecurity(handle,1|4,null,0,out var needed);

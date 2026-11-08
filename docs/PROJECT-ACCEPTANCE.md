@@ -5,6 +5,13 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-08 固定 SCM 创建者和 profile 关闭
+
+INTEGRATED / BUILD(固定 SCM 入口、独立 profile、原子挂起与清理回执)。VERIFIED
+(普通 Windows 非 SCM 拒绝、固定路径和权限、关闭与有界输出协议反例)。
+生产服务、profile、受限挂起和恢复、SID 内容复验及官方 Claude Code NOT_RUN。
+[机制与范围](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#固定-scm-创建者和-profile-关闭)
+
 ## 2026-11-08 LocalService 侧反向交接
 
 INTEGRATED / BUILD(服务客户端与固定双向协议)。FAIL(普通管道的 `GetSecurityInfo`
