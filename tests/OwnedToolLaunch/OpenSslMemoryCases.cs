@@ -77,6 +77,7 @@ internal static class OpenSslMemoryCases
             throw new InvalidDataException("Unbound installed image accepted");
         }
         Reject<UnauthorizedAccessException>(()=>Call(installed.GetMethod("QualifyOpenSslOffline")!));
+        Reject<UnauthorizedAccessException>(()=>Call(installed.GetMethod("QualifyFixedOpenSslHead")!));
         var env="CPC_OPENSSL_OFFLINE_SESSION";var old=Environment.GetEnvironmentVariable(env);
         try
         {
@@ -108,22 +109,26 @@ internal static class OpenSslMemoryCases
             });
             return Call(pinned,new ReadOnlyMemory<byte>(bytes),Convert.ToHexString(SHA256.HashData(bytes)))!;
         }
-        var v1=Assets(1,"Asset");var v2=Assets(2,"Asset");var v3=Assets(3,"Asset");
-        Check(v1.Count==14 && v2.Count==16 && v3.Count==16 && v1.All(a=>assetIds.Add(a!["Asset"]!.GetValue<string>())) &&
+        var v1=Assets(1,"Asset");var v2=Assets(2,"Asset");var v3=Assets(3,"Asset");var v4=Assets(4,"Asset");
+        Check(v1.Count==14 && v2.Count==16 && v3.Count==16 && v4.Count==20 && v1.All(a=>assetIds.Add(a!["Asset"]!.GetValue<string>())) &&
             v2.Take(v1.Count).All(a=>assetIds.Contains(a!["Asset"]!.GetValue<string>())) &&
             v3.Take(v1.Count).All(a=>assetIds.Contains(a!["Asset"]!.GetValue<string>())));
-        _=ParseManifest(1,v1);_=ParseManifest(2,v2);_=ParseManifest(3,v3);checks+=3;
+        _=ParseManifest(1,v1);_=ParseManifest(2,v2);_=ParseManifest(3,v3);_=ParseManifest(4,v4);checks+=4;
         Reject<InvalidDataException>(()=>ParseManifest(1,v2));
         Reject<InvalidDataException>(()=>ParseManifest(2,v1));
         Reject<InvalidDataException>(()=>ParseManifest(3,v2));
         Reject<InvalidDataException>(()=>ParseManifest(2,v3));
         Reject<InvalidDataException>(()=>ParseManifest(4,v3));
+        Reject<InvalidDataException>(()=>ParseManifest(3,v4));
+        Reject<InvalidDataException>(()=>ParseManifest(5,v4));
         var changed=v2.DeepClone().AsArray();changed[15]!["SHA256"]=new string('B',64);
         Reject<InvalidDataException>(()=>ParseManifest(2,changed));
         changed=v2.DeepClone().AsArray();changed[15]!["Length"]=10;
         Reject<InvalidDataException>(()=>ParseManifest(2,changed));
         changed=v2.DeepClone().AsArray();changed[15]=changed[14]!.DeepClone();
         Reject<InvalidDataException>(()=>ParseManifest(2,changed));
+        changed=v4.DeepClone().AsArray();changed[19]!["SHA256"]=new string('B',64);
+        Reject<InvalidDataException>(()=>ParseManifest(4,changed));
         var stage=policy.GetMethod("ParseInventory",Static)!;
         void ReadStage(JsonArray files,int schema)
         {
@@ -131,9 +136,36 @@ internal static class OpenSslMemoryCases
             _=Call(stage,document.RootElement,schema,"Id");
         }
         ReadStage(Assets(1,"Id"),1);ReadStage(Assets(2,"Id"),2);ReadStage(Assets(3,"Id"),3);checks+=3;
+        ReadStage(Assets(4,"Id"),4);checks++;
         Reject<InvalidDataException>(()=>ReadStage(Assets(2,"Id"),1));
         Reject<InvalidDataException>(()=>ReadStage(Assets(2,"Id"),3));
         Reject<InvalidDataException>(()=>ReadStage(v2,2));
+        Reject<InvalidDataException>(()=>ReadStage(Assets(3,"Id"),4));
+
+        var trust=library.GetType("ProtectionLifecycle.FixedOpenSslHeadTrust",true)!;
+        var trustRead=trust.GetMethod("Read",Static)!;
+        var trustDir=Path.Combine(AppContext.BaseDirectory,"native");
+        var inWindow=new DateTimeOffset(2026,11,8,2,0,0,TimeSpan.Zero);
+        var trusted=Call(trustRead,trustDir,inWindow)!;
+        Check(((byte[])trust.GetProperty("Root",Instance)!.GetValue(trusted)!).Length==914 &&
+            ((IReadOnlyList<byte[]>)trust.GetProperty("Crls",Instance)!.GetValue(trusted)!).Count==3);
+        Reject<InvalidDataException>(()=>Call(trustRead,trustDir,new DateTimeOffset(2026,11,7,22,13,7,TimeSpan.Zero)));
+        Reject<InvalidDataException>(()=>Call(trustRead,trustDir,new DateTimeOffset(2026,11,15,22,32,38,TimeSpan.Zero)));
+        Reject<InvalidDataException>(()=>Call(trustRead,Path.Combine(trustDir,"tampered"),inWindow));
+
+        var gateway=library.GetType("ProtectionLifecycle.GatewayChildReport",true)!;
+        var tlsFailure=library.GetType("ProtectionLifecycle.OpenSslFailure",true)!;
+        var nativeFailure=Activator.CreateInstance(tlsFailure,Instance,null,new object[]{"HANDSHAKE",1,23},null)!;
+        var gatewayResult=Call(gateway.GetMethod("Result",Static)!,id,"HTTPS_TLS_HANDSHAKE",125,Type.Missing,nativeFailure)!;
+        var gatewayRaw=JsonSerializer.Serialize(gatewayResult,gateway);
+        object ReadGateway(string json)=>Call(gateway.GetMethod("Parse",Static)!,json,id,(uint)Environment.ProcessId,125u)!;
+        var errors=JsonNode.Parse(gatewayRaw)!["Errors"]!.AsArray();
+        Check(errors.Count==2 && errors[0]!["Kind"]!.GetValue<string>()=="TLS_OPENSSL" &&
+            errors[1]!["Kind"]!.GetValue<string>()=="TLS_OPENSSL_VERIFY" && errors[1]!["Code"]!.GetValue<int>()==23);
+        _=ReadGateway(gatewayRaw);checks++;
+        Reject<InvalidDataException>(()=>ReadGateway(gatewayRaw.Replace("HTTPS_TLS_HANDSHAKE","HTTPS_HTTP_EXCHANGE",StringComparison.Ordinal)));
+        Reject<InvalidDataException>(()=>ReadGateway(gatewayRaw.Replace("\"Code\":1,","\"Code\":2,",StringComparison.Ordinal)
+            .Replace("\"Code\":1}","\"Code\":2}",StringComparison.Ordinal)));
         Console.WriteLine($"PASS {checks} fixed OpenSSL and package compatibility checks. Real TLS and gateway replay in ordinary memory only.");
         return Task.CompletedTask;
     }

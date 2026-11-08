@@ -5,6 +5,12 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-07 固定 OpenSSL HEAD 代理入口
+
+INTEGRATED / BUILD(原安装所有者、包 v4 证书材料和固定代理探针)。
+VERIFIED(候选字节、普通身份文件摘要及期限拒绝、内存 TLS 和既有网关回归)。
+该候选安装、真实代理 TLS、L3 和官方 CLI NOT_RUN。
+
 ## 2026-11-07 固定 HTTPS 的真实公开吊销输入
 
 VERIFIED(普通身份公开证书摘要、三份 CRL 的签名、签发者和观察时的有效期)。

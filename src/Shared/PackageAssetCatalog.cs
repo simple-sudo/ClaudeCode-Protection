@@ -19,7 +19,10 @@ internal static class PackageAssetCatalog
     internal const long MaxAssetBytes = 128L * 1024 * 1024;
     internal const string OpenSslCryptoId="broker-openssl-crypto",OpenSslLibraryId="broker-openssl-ssl";
     internal const int OpenSslWindowsEntropySchema=3;
+    internal const int FixedHeadTrustSchema=4;
     internal const string OpenSslWindowsCryptoId="broker-openssl-windows-crypto",OpenSslWindowsLibraryId="broker-openssl-windows-ssl";
+    internal const string HeadRootId="broker-fixed-head-root",HeadLeafCrlId="broker-fixed-head-leaf-crl",
+        HeadIssuerCrlId="broker-fixed-head-issuer-crl",HeadRootCrlId="broker-fixed-head-root-crl";
     internal static readonly IReadOnlyList<AssetSpec> Catalog = Array.AsReadOnly(new[] {
         new AssetSpec("daily-exe", "bin/current/ClaudeProtection.exe") {VerifyBeforeElevation=true},
         new AssetSpec("daily-dll", "bin/current/ClaudeProtection.dll") {VerifyBeforeElevation=true},
@@ -54,11 +57,26 @@ internal static class PackageAssetCatalog
         }
     });
     private static readonly IReadOnlyList<AssetSpec> WithWindowsEntropy=Array.AsReadOnly(Catalog.Concat(WindowsEntropyModules).ToArray());
+    internal static readonly IReadOnlyList<AssetSpec> FixedHeadTrustAssets=Array.AsReadOnly(new[] {
+        new AssetSpec(HeadRootId,"bin/admin/digicert-root.der") {
+            VerifyBeforeElevation=true,FixedLength=914,FixedSHA256="CB3CCBB76031E5E0138F8DD39A23F9DE47FFC35E43C1144CEA27D46A5AB1CB5F"
+        },
+        new AssetSpec(HeadLeafCrlId,"bin/admin/microsoft-leaf-list.crl") {
+            VerifyBeforeElevation=true,FixedLength=34768,FixedSHA256="2019420D136F8781274551A56C89A1F6A608163D71D2432B9F118367EBA1BF50"
+        },
+        new AssetSpec(HeadIssuerCrlId,"bin/admin/microsoft-issuer-list.crl") {
+            VerifyBeforeElevation=true,FixedLength=1032,FixedSHA256="A809A98B205F19E3732FDC4365B739E2648AC4BB6972899C05578727329F4836"
+        },
+        new AssetSpec(HeadRootCrlId,"bin/admin/digicert-root-list.crl") {
+            VerifyBeforeElevation=true,FixedLength=2102,FixedSHA256="D596D979A40B291B906DDD62E083AF21EAEED34A6BB9C744CF563E9E2E1CBA0B"
+        }
+    });
+    private static readonly IReadOnlyList<AssetSpec> WithFixedHeadTrust=Array.AsReadOnly(WithWindowsEntropy.Concat(FixedHeadTrustAssets).ToArray());
     internal static IReadOnlyList<AssetSpec> ForSchema(int schema)=>schema switch {
-        1=>Catalog,2=>WithOfflineOpenSsl,OpenSslWindowsEntropySchema=>WithWindowsEntropy,
+        1=>Catalog,2=>WithOfflineOpenSsl,OpenSslWindowsEntropySchema=>WithWindowsEntropy,FixedHeadTrustSchema=>WithFixedHeadTrust,
         _=>throw new InvalidDataException("Unknown installed package schema")
     };
     // Map a previously authorized role to a path. Release authorization
     // always uses the exact inventory selected by ForSchema.
-    internal static IReadOnlyList<AssetSpec> KnownAssets {get;}=Array.AsReadOnly(WithOfflineOpenSsl.Concat(WindowsEntropyModules).ToArray());
+    internal static IReadOnlyList<AssetSpec> KnownAssets {get;}=Array.AsReadOnly(WithOfflineOpenSsl.Concat(WindowsEntropyModules).Concat(FixedHeadTrustAssets).ToArray());
 }

@@ -26,9 +26,10 @@ internal sealed class ProtectedSession
     private readonly VerifiedVersion version;
     // Chosen only by the compiled fixed gateway operation, never by data,
     // environment, persisted evidence or a formal-launch caller.
-    private enum GatewayMode { None, Basic, Winsock, Transport, Provider, InternetClient, ZeroCapabilityComparison, NoContentHttps }
+    private enum GatewayMode { None, Basic, Winsock, Transport, Provider, InternetClient, ZeroCapabilityComparison, NoContentHttps, OpenSslHead }
     private enum WinsockScope { None, Catalog, Transport, Provider }
-    private sealed record GatewayQualification(WinsockScope Winsock,LpacCapabilityProfile Capabilities,bool CaptureContent,bool NoContentHttps,string ChildCommand)
+    private sealed record GatewayQualification(WinsockScope Winsock,LpacCapabilityProfile Capabilities,bool CaptureContent,bool NoContentHttps,
+        string ChildCommand,bool UsesFixedOpenSslHead=false)
     {
         internal static GatewayQualification? For(GatewayMode mode)=>mode switch {
             GatewayMode.None=>null,
@@ -39,6 +40,7 @@ internal sealed class ProtectedSession
             GatewayMode.InternetClient=>new(WinsockScope.Provider,LpacCapabilityProfile.InternetClientQualification,true,false,"internet-client-gateway-qualification-child"),
             GatewayMode.ZeroCapabilityComparison=>new(WinsockScope.Provider,LpacCapabilityProfile.None,true,false,"zero-capability-comparison-child"),
             GatewayMode.NoContentHttps=>new(WinsockScope.Provider,LpacCapabilityProfile.InternetClientQualification,true,true,"no-content-https-canary-child"),
+            GatewayMode.OpenSslHead=>new(WinsockScope.Provider,LpacCapabilityProfile.InternetClientQualification,true,true,"fixed-openssl-head-child",true),
             _=>throw WfpNative.Contract("UnknownFixedGatewayMode")
         };
     }
@@ -47,6 +49,7 @@ internal sealed class ProtectedSession
     private LpacCapabilityProfile CapabilityProfile=>qualification?.Capabilities??LpacCapabilityProfile.None;
     private bool CaptureCapabilityContent=>qualification?.CaptureContent==true;
     private bool FixedNoContentHttpsCanary=>qualification?.NoContentHttps==true;
+    private bool UsesFixedOpenSslHead=>qualification?.UsesFixedOpenSslHead==true;
     private SessionWinsockReadAccess? winsockAccess;
     private const long GatewayQualificationLimitMs=30000;
     private readonly string id = Guid.NewGuid().ToString("N"), pointerSHA256;
@@ -483,6 +486,8 @@ internal sealed class ProtectedSession
         =>QualifyGateway(layout,state,version,GatewayMode.InternetClient);
     internal static (int ExitCode,string Report) QualifyNoContentHttpsCanary(FixedLayout layout,ProtectedState state,VerifiedVersion version)
         =>QualifyGateway(layout,state,version,GatewayMode.NoContentHttps);
+    internal static (int ExitCode,string Report) QualifyFixedOpenSslHead(FixedLayout layout,ProtectedState state,VerifiedVersion version)
+        =>QualifyGateway(layout,state,version,GatewayMode.OpenSslHead);
     internal static (int ExitCode,string Report) QualifyZeroCapabilityComparisonGateway(FixedLayout layout,ProtectedState state,VerifiedVersion version)
         =>QualifyGateway(layout,state,version,GatewayMode.ZeroCapabilityComparison);
     private static (int ExitCode,string Report) QualifyGateway(FixedLayout layout,ProtectedState state,VerifiedVersion version,GatewayMode mode)
@@ -490,6 +495,7 @@ internal sealed class ProtectedSession
         ProtectedState.RequireAdministrator();state.AssertHeld();version.AssertHeld(state);
         var owner=new ProtectedSession(layout,state,version,mode);
         if(owner.qualification is null)throw WfpNative.Contract("FixedGatewayQualificationRequired");
+        if(owner.UsesFixedOpenSslHead)FixedOpenSslHeadTrust.AssertOwnedPackage(version.Package);
         if(owner.qualification.Winsock!=WinsockScope.None)SessionWinsockReadAccess.RequireCurrentRootControl();
         return owner.Execute();
     }
@@ -505,6 +511,7 @@ internal sealed class ProtectedSession
             throw WfpNative.Contract("FixedGatewayQualificationExpiredOrBindingDrift");
         if(preparation?.RootPid is not null)
             (preparation.PublicTimeZone??throw WfpNative.Contract("TimeZoneResourceNotPrepared")).AssertCurrent();
+        if(UsesFixedOpenSslHead)FixedOpenSslHeadTrust.RequireCurrent(DateTimeOffset.UtcNow);
         winsockAccess?.AssertHeld();
         gateway.AssertHealthy();
     }
@@ -554,6 +561,7 @@ internal sealed class ProtectedSession
         internal LpacCapabilityProfile CapabilityProfile=>owner.CapabilityProfile;
         internal string ChildCommand=>owner.qualification?.ChildCommand??"admission-child";
         internal bool FixedNoContentHttpsCanary=>owner.FixedNoContentHttpsCanary;
+        internal bool UsesFixedOpenSslHead=>owner.UsesFixedOpenSslHead;
         internal string? PublicTimeZoneId {get;}
         internal PublicTimeZoneSnapshot? PublicTimeZone {get;}
         internal SessionProxy Gateway=>owner.gateway??throw WfpNative.Contract("SessionGatewayMissing");
@@ -685,6 +693,7 @@ internal sealed class ProtectedSession
             ExpectedCapabilitiesSHA256=owner.CapabilityProfile.SHA256,
             CaptureCapabilityContent=owner.CaptureCapabilityContent,
             FixedNoContentHttpsCanary=owner.FixedNoContentHttpsCanary,
+            FixedOpenSslHead=owner.UsesFixedOpenSslHead,
             WinsockReadIntentSHA256=owner.winsockAccess?.IntentSHA256,
             PublicTimeZoneSnapshotSHA256=owner.preparation?.PublicTimeZone?.SHA256,EnvironmentIntentSHA256=owner.expectationsSHA256,FenceIntents=owner.fences.Select(f=>f.IntentSHA256).ToArray(),
             RequiredEnvironmentIds=StrictEnvironmentRequirements.Required.Select(def=>def.Id).ToArray()
@@ -855,6 +864,7 @@ internal sealed class ProtectedSession
         ExpectedCapabilityProfile=CapabilityProfile.Id,ExpectedCapabilitiesSHA256=CapabilityProfile.SHA256,
         CapabilityContentComparison=CaptureCapabilityContent,
         FixedNoContentHttpsCanary=FixedNoContentHttpsCanary,
+        FixedOpenSslHead=UsesFixedOpenSslHead,
         CapabilityContentPrivacyQualified=false,
         EffectiveGatewayPolicySHA256=gateway?.EffectivePolicySHA256,
         EnvironmentIntentSHA256=expectationsSHA256,EnvironmentIntentStatus=expectationsReason,Resources=ResourceScope,Status=status,

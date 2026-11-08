@@ -21,15 +21,22 @@ internal sealed record GatewayChildReport(int SchemaVersion,string SessionId,int
         return new(1,id,Environment.ProcessId,phase,exitCode,status,errors.ToArray());
     }
     internal static GatewayChildError[] Describe(Exception? failure)=>DescribeCore(failure,false);
-    private static GatewayChildError[] DescribeCore(Exception? failure,bool classifySchannel)
+    private static GatewayChildError[] DescribeCore(Exception? failure,bool classifyHandshake)
     {
         var errors=new List<GatewayChildError>();
         for(var ex=failure;ex is not null && errors.Count<4;ex=ex.InnerException)
         {
+            if(classifyHandshake && ex is OpenSslFailure {NativeError: >0 and <=16} tls)
+            {
+                errors.Add(new("TLS_OPENSSL",tls.NativeError.Value));
+                if(errors.Count<4 && tls.NativeError==1 && tls.VerificationError is >0 and <=255)
+                    errors.Add(new("TLS_OPENSSL_VERIFY",tls.VerificationError.Value));
+                continue;
+            }
             var captured=ex as SessionProxy.FixedSocketCreationException;
             var includeContext=captured is not null && errors.Count<3;
             var code=ex is Win32Exception native?native.NativeErrorCode:ex.HResult;
-            var schannel=classifySchannel && code<0?SchannelFailureKind(ex):null;
+            var schannel=classifyHandshake && code<0?SchannelFailureKind(ex):null;
             errors.Add(new(includeContext?"SOCKET_CREATE":schannel??Kind(ex),code));
             if(includeContext)errors.Add(new("SOCKET_NT_CONTEXT",captured!.LastNtStatus));
         }
@@ -134,13 +141,22 @@ internal sealed record GatewayChildReport(int SchemaVersion,string SessionId,int
         foreach(var e in errors.EnumerateArray())StrictJson.Fields(e,"Kind","Code");
         var r=JsonSerializer.Deserialize<GatewayChildReport>(raw)??throw new InvalidDataException("GatewayFeedbackMissing");
         if(r.SchemaVersion!=1 || r.SessionId!=Identifiers.Hex32(expectedSessionId) || expectedPid==0 || r.Pid<=0 || (uint)r.Pid!=expectedPid ||
-            (uint)r.ExitCode!=actualExitCode || r.Errors is null || r.Errors.Any(e=>e is null || !(KnownErrorKind(e.Kind) || SchannelKind(e.Kind))))
+            (uint)r.ExitCode!=actualExitCode || r.Errors is null || r.Errors.Any(e=>e is null ||
+                !(KnownErrorKind(e.Kind) || SchannelKind(e.Kind) || e.Kind is "TLS_OPENSSL" or "TLS_OPENSSL_VERIFY")))
             throw new InvalidDataException("GatewayFeedbackOwnerOrErrorBinding");
         for(var i=0;i<r.Errors.Length;i++)
         {
             var kind=r.Errors[i].Kind;
             if(SchannelKind(kind) && (r.Phase!="HTTPS_TLS_HANDSHAKE" || r.ExitCode!=125 || r.Errors[i].Code>=0))
                 throw new InvalidDataException("GatewayFeedbackSchannelPhaseBinding");
+            if(kind is "TLS_OPENSSL" or "TLS_OPENSSL_VERIFY")
+            {
+                var code=r.Errors[i].Code;
+                if(r.Phase!="HTTPS_TLS_HANDSHAKE" || r.ExitCode!=125 ||
+                    (kind=="TLS_OPENSSL"?code is <1 or >16:
+                        code is <1 or >255 || i==0 || r.Errors[i-1] is not {Kind:"TLS_OPENSSL",Code:1}))
+                    throw new InvalidDataException("GatewayFeedbackOpenSslPhaseBinding");
+            }
             if(kind is not ("SOCKET_CREATE" or "SOCKET_NT_CONTEXT"))continue;
             if(r.ExitCode!=125 || r.Phase!="HTTPS_SOCKET_CREATE" ||
                 (kind=="SOCKET_CREATE" && (r.Errors[i].Code<=0 || i+1>=r.Errors.Length || r.Errors[i+1].Kind!="SOCKET_NT_CONTEXT")) ||

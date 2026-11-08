@@ -427,6 +427,7 @@ internal sealed partial class AtomicChild : IDisposable
                 // owned profile, never the host user profile or inherited temp.
                 SetPrivateRuntimeDirectories(env,profile.WorkspaceRoot());
                 env["CPC_SESSION_ID"]=preparation.SessionId;env["CPC_SESSION_SECRET"]=preparation.Gateway.Secret;
+                if(preparation.UsesFixedOpenSslHead)env[OpenSslModuleLease.ReleaseVariable]=version.Package.Release;
                 if(preparation.IsGatewayQualification)
                 {
                     // The fixed qualifier may resolve only the public definition
@@ -634,9 +635,12 @@ internal sealed partial class AtomicChild : IDisposable
         =>RunGatewayQualificationCanaryCore(LpacCapabilityProfile.InternetClientQualification,true);
     internal static int RunNoContentHttpsCanary()
         =>RunGatewayQualificationCanaryCore(LpacCapabilityProfile.InternetClientQualification,true,true);
+    internal static int RunFixedOpenSslHeadCanary()
+        =>RunGatewayQualificationCanaryCore(LpacCapabilityProfile.InternetClientQualification,true,true,useOpenSsl:true);
     internal static int RunZeroCapabilityComparisonCanary()
         =>RunGatewayQualificationCanaryCore(LpacCapabilityProfile.None,true);
-    private static int RunGatewayQualificationCanaryCore(LpacCapabilityProfile expectedCapabilities,bool captureCapabilityContent,bool fixedNoContentHttpsCanary=false)
+    private static int RunGatewayQualificationCanaryCore(LpacCapabilityProfile expectedCapabilities,bool captureCapabilityContent,
+        bool fixedNoContentHttpsCanary=false,bool useOpenSsl=false)
     {
         var phase="ENVIRONMENT";var id=Environment.GetEnvironmentVariable("CPC_SESSION_ID")??"";GatewayChildReport result;
         GatewayNetworkContent? networkContent=null;
@@ -650,6 +654,15 @@ internal sealed partial class AtomicChild : IDisposable
             if(id.Length==0 || secret is null || new[]{"CPC_RESOURCE_PLAN","CPC_NETWORK_PLAN","CPC_GPU_PLAN"}.Any(name=>Environment.GetEnvironmentVariable(name) is not null))
                 throw new InvalidDataException("FixedGatewayEnvironmentRefused");
             _=Identifiers.Hex32(id);_=Identifiers.Hash(secret);
+            var openSslRelease=Environment.GetEnvironmentVariable(OpenSslModuleLease.ReleaseVariable);
+            if(useOpenSsl)
+            {
+                _=Identifiers.Hex32(openSslRelease??"");
+                if(new[]{"OPENSSL_CONF","OPENSSL_MODULES","SSL_CERT_FILE","SSL_CERT_DIR"}
+                    .Any(name=>Environment.GetEnvironmentVariable(name) is not null))
+                    throw new InvalidDataException("FixedOpenSslEnvironmentRefused");
+            }
+            else if(openSslRelease is not null)throw new InvalidDataException("UnrelatedOpenSslReleaseBindingRefused");
             // As in the verified resource worker, query basic self identity
             // without token duplication. The original Broker checks the exact
             // held LPAC before resume and on every admitted member inspection.
@@ -688,13 +701,25 @@ internal sealed partial class AtomicChild : IDisposable
                 // definition's default rules do not override local settings.
                 if(localZone.Id!=publicTimeZone)
                     throw new InvalidDataException("FixedGatewayLocalTimeZoneDefinitionDiffers");
-                phase="HTTPS_SETTINGS";var status=RunFixedSessionHead(id,secret,p=>phase=p);
+                phase="HTTPS_SETTINGS";
+                var status=useOpenSsl?RunFixedOpenSslHead(id,secret,openSslRelease!,p=>phase=p).GetAwaiter().GetResult():
+                    RunFixedSessionHead(id,secret,p=>phase=p);
                 result=GatewayChildReport.Result(id,status is >=200 and <400?"COMPLETE":"HTTPS",status is >=200 and <400?42:126,status);
             }
         }
         catch(Exception ex){result=GatewayChildReport.Result(id,phase,125,failure:ex);}
         Console.WriteLine(captureCapabilityContent?
             JsonSerializer.Serialize(new GatewayCapabilityChildReport(1,result,endpoint,networkContent)):JsonSerializer.Serialize(result));return result.ExitCode;
+    }
+    private static async Task<int> RunFixedOpenSslHead(string sessionId,string sessionSecret,string release,Action<string> phase)
+    {
+        phase("HTTPS_TLS_POLICY");
+        var trust=FixedOpenSslHeadTrust.ForWorker(release);
+        using var modules=OpenSslModuleLease.OpenForInstalledWorker(release);
+        using var deadline=new CancellationTokenSource(TimeSpan.FromSeconds(15));
+        using var tunnel=await SessionProxy.OpenFixedClientTunnel(sessionId,sessionSecret,deadline.Token,phase).ConfigureAwait(false);
+        FixedOpenSslHeadTrust.RequireCurrent(DateTimeOffset.UtcNow);
+        return await FixedOpenSslHead.SendAsync(modules,tunnel,trust.Root,trust.Crls,deadline.Token,phase).ConfigureAwait(false);
     }
     private static int RunFixedSessionHead(string sessionId,string sessionSecret,Action<string>? phase=null)
     {

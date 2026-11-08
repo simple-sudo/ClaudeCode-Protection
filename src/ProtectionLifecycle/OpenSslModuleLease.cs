@@ -29,7 +29,7 @@ internal sealed class OpenSslModuleLease : IDisposable
     }
     internal static void AssertOwnedPackage(ReviewedPackage package)
     {
-        if(package.SchemaVersion!=Schema || !Has(Crypto) || !Has(Ssl))
+        if(package.SchemaVersion is not (Schema or PackageAssetCatalog.FixedHeadTrustSchema) || !Has(Crypto) || !Has(Ssl))
             throw WfpNative.Contract("OpenSslRequiresExactWindowsEntropyAssets");
 
         bool Has(AssetSpec spec)=>package.Files.Any(file=>file.Asset==spec && spec.Matches(file.Length,file.SHA256));
@@ -38,7 +38,9 @@ internal sealed class OpenSslModuleLease : IDisposable
     internal static bool IsReportedStage(string? stage)=>stage is "MODULE_IMAGE" ||
         (stage is not null && stage.Split('_') is ["MODULE","CRYPTO" or "SSL","PRELOADED" or "READ" or "DIGEST" or "LOAD" or "MAPPED" or "CLEANUP"]);
     internal static OpenSslModuleLease OpenForInstalledWorker(string release)
-        =>new(InstalledDirectory(release,AppContext.BaseDirectory,Environment.ProcessPath,typeof(OpenSslModuleLease).Assembly.Location));
+        =>new(WorkerDirectory(release));
+    internal static string WorkerDirectory(string release)
+        =>InstalledDirectory(release,AppContext.BaseDirectory,Environment.ProcessPath,typeof(OpenSslModuleLease).Assembly.Location);
 
     // The owner derives and locks the path from FixedLayout and checks the
     // suspended image through its kernel handle before resume. The child needs
