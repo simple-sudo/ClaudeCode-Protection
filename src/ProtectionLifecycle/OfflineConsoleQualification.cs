@@ -40,10 +40,19 @@ internal static class OfflineConsoleQualification
         var programFiles=Path.GetDirectoryName(workspace)??throw WfpNative.Contract("OfflineConsoleProgramFilesMissing");
         if(!string.Equals(workspace,SessionTaskWorkspace.PathFor(session,programFiles),StringComparison.OrdinalIgnoreCase) ||
             ForbiddenVariables.Any(environment.ContainsKey))throw WfpNative.Contract("OfflineConsoleParentEnvironmentDiffers");
+        // CreateProcess appends Packages/<moniker>/AC to this input for a
+        // security-capabilities child. Bind the input to the already held
+        // profile ancestry and still require the exact projected output.
+        var package=Path.GetDirectoryName(localData);
+        var packages=package is null?null:Path.GetDirectoryName(package);
+        var nativeBase=packages is null?null:Path.GetDirectoryName(packages);
+        if(!string.Equals(Path.GetFileName(localData),"AC",StringComparison.OrdinalIgnoreCase) ||
+            !string.Equals(Path.GetFileName(packages),"Packages",StringComparison.OrdinalIgnoreCase) || nativeBase is null)
+            throw WfpNative.Contract("OfflineConsoleNativeProjectionBaseDiffers");
         environment["ProgramFiles"]=programFiles;
         environment[SessionVariable]=session;
         environment[LocalDataVariable]=localData;
-        environment["LOCALAPPDATA"]=localData;
+        environment["LOCALAPPDATA"]=nativeBase;
         environment["TEMP"]=environment["TMP"]=WindowsPathSeal.Child(localData,"Temp");
         foreach(var (name,_) in WorkspaceVariables)environment[name]=workspace;
     }

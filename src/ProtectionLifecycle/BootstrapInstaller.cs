@@ -224,6 +224,9 @@ public static class BootstrapInstaller
             "D21A7D9F39A93E82087062EAD14F49329E7DBDD2743B2DC12DE98CAB6DC691F1"
         }; // Exact reviewed packages expose no launch/admission command.
         private static readonly string[] OneShotAdmissionManifests={
+            // Exact ae721f11 closed its Job and recovered its workspace after
+            // privately recording the Windows projection mismatch.
+            "FD7141C1CF4B5E5FFFB722B0C2D3D07C020A8E56C855E7293000E0F0D52509E5",
             // Exact b27432ac held its AppContainer folders and closed its Job
             // and workspace after the restricted TEMP comparison failed.
             "6AE8DDB45D6034B6A39597676D9E46BF5BFD4833C4FFBCEA88AF045BFA8B3A71",

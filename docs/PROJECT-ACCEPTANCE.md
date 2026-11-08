@@ -5,6 +5,13 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-08 AppContainer 环境原值对照
+
+VERIFIED(版本 `ae721f11` 受限原值与原所有者路径的真实对照，以及原 Job
+有序闭合)。FAIL(预期路径重复附加、原值含宿主用户目录)。修正版仅 BUILD
+及普通回归，受限复验 NOT_RUN。
+[证据与范围](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#原值回读与重复后缀)
+
 ## 2026-11-08 已持有 AppContainer 目录的受限检查
 
 VERIFIED(版本 `b27432ac` 未激活安装、原所有者目录持有、低完整性 LPAC 恢复
