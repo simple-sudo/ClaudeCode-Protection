@@ -265,10 +265,23 @@ internal sealed partial class AtomicChild : IDisposable
             !job.ContainsProcess(process) || GetProcessId(process)!=Pid)throw WfpNative.Contract("SuspendedSessionRootJobMismatch");
         var path=new StringBuilder(32768);uint length=(uint)path.Capacity;
         if(!QueryFullProcessImageName(process,0,path,ref length))throw Error("ReadSuspendedSessionImage");
-        var token=ReadToken(process);
+        var requireIndependentUser=sessionPreparation is {IsGatewayQualification:false};
+        var token=ReadTokenSnapshot(process,true,requireIndependentUser,out var actualUser);
         if(!string.Equals(WindowsPathSeal.Canonical(path.ToString()),image,StringComparison.OrdinalIgnoreCase) ||
             !token.IsAppContainer || !token.LpacAccessCheckObserved || token.PackageSid!=packageSid || !CapabilityProfile.Matches(token.CapabilityCount,token.Capabilities) || token.IntegritySid!="S-1-16-4096")
             throw WfpNative.Contract("SuspendedSessionRootImageOrTokenMismatch");
+        if(requireIndependentUser)
+        {
+            using var host=WindowsIdentity.GetCurrent(TokenAccessLevels.Query);
+            AssertIndependentSessionUser(actualUser,host.User);
+        }
+    }
+    internal static void AssertIndependentSessionUser(SecurityIdentifier? actual,SecurityIdentifier? host)
+    {
+        // A different account on the same host can still disclose its machine
+        // account domain. This creation route currently qualifies LocalService only.
+        if(actual is null || host is null || actual.Equals(host) || !actual.IsWellKnown(WellKnownSidType.LocalServiceSid))
+            throw WfpNative.Contract("FormalSessionRequiresIndependentLocalServiceUser");
     }
     internal static SafeProcessHandle HoldSessionPeer(OwnedKernelJob job,string sid,int sourcePort,LpacCapabilityProfile? capabilities=null)
     {

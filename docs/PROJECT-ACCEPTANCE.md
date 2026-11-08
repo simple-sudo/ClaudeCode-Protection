@@ -5,6 +5,13 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-08 Session 0 交接的原服务绑定失败
+
+FAIL(原服务绑定，未发开始信号)。VERIFIED(服务等待超时、登记和暂存回收)。
+INTEGRATED / BUILD / VERIFIED(普通正式会话主令牌用户门禁反例)。Session 0
+交接、受限自研恢复和官方 Claude NOT_RUN。
+[证据范围](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#session-0-交接的原服务绑定失败)
+
 ## 2026-11-08 挂起进程交接前置检查
 
 INTEGRATED / BUILD / VERIFIED(普通 Windows 原 Job 分配权限和进程/线程对应检查)。

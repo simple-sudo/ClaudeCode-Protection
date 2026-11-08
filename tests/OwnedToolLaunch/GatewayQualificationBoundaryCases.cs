@@ -1,5 +1,6 @@
 using System.Reflection;
 using System.Runtime.ExceptionServices;
+using System.Security.Principal;
 
 internal static class GatewayQualificationBoundaryCases
 {
@@ -70,6 +71,22 @@ internal static class GatewayQualificationBoundaryCases
         }
         finally{for(var i=0;i<names.Length;i++)Environment.SetEnvironmentVariable(names[i],saved[i]);}
         var atomic=library.GetType("ProtectionLifecycle.AtomicChild",true)!;
+        var independent=atomic.GetMethod("AssertIndependentSessionUser",BindingFlags.Static|BindingFlags.NonPublic)!;
+        using(var owner=WindowsIdentity.GetCurrent(TokenAccessLevels.Query))
+        {
+            var host=owner.User??throw new InvalidDataException("Ordinary test token user is missing");
+            var localService=new SecurityIdentifier(WellKnownSidType.LocalServiceSid,null);
+            _=independent.Invoke(null,[localService,host]);Check(true);
+            foreach(var pair in new (SecurityIdentifier? Actual,SecurityIdentifier? Host)[]{
+                (host,host),(null,host),(localService,null),(localService,localService),
+                (new(WellKnownSidType.NetworkServiceSid,null),host),(new("S-1-5-21-1-2-3-1001"),host)})
+            {
+                var refused=false;
+                try{_=independent.Invoke(null,[pair.Actual,pair.Host]);}
+                catch(TargetInvocationException error) when(error.InnerException is InvalidDataException){refused=true;}
+                Check(refused);
+            }
+        }
         var map=atomic.GetMethod("SetPrivateRuntimeDirectories",BindingFlags.Static|BindingFlags.NonPublic)!;
         var env=new SortedDictionary<string,string>(StringComparer.OrdinalIgnoreCase){["PATH"]="fixed-system-path",["HTTP_PROXY"]="fixed-session-endpoint",["LOCALAPPDATA"]="host-value-must-be-replaced"};
         const string owned=@"C:\fixed-nonexistent-container-fixture";
