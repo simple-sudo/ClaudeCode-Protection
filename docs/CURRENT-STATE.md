@@ -1,5 +1,12 @@
 # 当前状态与授权摘要
 
+2026-11-08 获批 LocalService 双角色对照验证准备者能创建并持有新 profile。
+写受限启动者核对映像、目录及 profile 映射后，挂起 `CreateProcessW` 返回 5，
+原 Job 无成员。两服务原进程终态、profile 存储与映射缺席、服务及暂存回收均
+已验证。下一对照验证同一独立账户的可信最小特权创建者能否建立低完整性 LPAC。
+宿主 SID 修复及官方 CLI 未验证。本次许可已消耗。
+[双角色实测](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#localservice-双角色的挂起创建拒绝)。
+
 2026-11-08 Broker 接入 FlClash 路由快照拒绝检查。真实普通侧快照仍显示
 全局选择链的 `COMPATIBLE` 空组后备，候选解析器判为可达直连。普通侧只
 核对两个监听者的 PID 一致，进程句柄查询被拒。五产品 Release 构建和

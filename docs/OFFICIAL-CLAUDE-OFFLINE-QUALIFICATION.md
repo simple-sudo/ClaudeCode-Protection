@@ -476,3 +476,25 @@ LPAC `CreateProcessW`。因此本次将拒绝定位到 profile 注册 API，排�
 下一候选保持执行者的 SCM 写限制，先由固定可信准备角色创建并持有同一
 LocalService 账户下的 profile，再交由受限角色尝试原子创建。受限角色仍必须
 通过独立身份、LPAC、Job、句柄和闭合检查。此分离方案尚未执行。
+
+### LocalService 双角色的挂起创建拒绝
+
+06:25（纽约时间），一次批准 `90BBA7F3…` 后，在 `b6618ea` 基线上执行固定
+25 项输入的对照。原控制器持有两个实际服务的独立原进程句柄。LocalService
+准备者使用启用的服务 SID、无 SCM 写限制、仅遍历特权，成功创建并持有新
+profile，校验包 SID 和存储映射后发布就绪。启动者使用不同的写受限服务 SID，
+通过固定映像、工作目录、原 profile 映射与持有目录的检查。
+
+该启动者调用一次 `CreateProcessW`，设置挂起、零能力 LPAC、原 Job、三管道
+及子进程限制，返回 5。回执阶段 19 对应启动者的创建调用。原 Job 零活动、
+零累计成员。准备者在原所有者确认启动者终止后删除它创建的 profile，回读
+存储根和映射 API 缺席。两个服务原进程终态、两登记及暂存缺席通过，普通侧
+再次核对两登记及暂存不存在。回执 SHA-256
+`2F8CB3331E17A39593A90C1EE6828877B166D106921439F0566F5149B5F7E19E`。
+原材料保留在 `work/identity-creation-20261108-01/split-profile-candidate/`。
+
+这验证了准备与执行分离能解决 profile 注册步骤，但写受限 LocalService 的
+LPAC 创建仍失败。下一对照由可信的独立 LocalService 最小特权创建者持有
+profile 和原 Job，保留实际子进程的低完整性 LPAC、零能力及子进程限制。
+以此区分 SCM 写限制与 Session 0 / LocalService 的其他创建限制。具体内部
+拒绝对象仍 UNKNOWN，未运行实际载荷或官方 CLI。本次许可已消耗。

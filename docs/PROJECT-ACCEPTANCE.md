@@ -5,6 +5,14 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-08 LocalService 双角色的挂起创建拒绝
+
+VERIFIED(独立 LocalService 准备者创建、持有并删除 profile，写受限启动者核对
+映像、目录与已注册 profile，原 Job 零成员，两原服务句柄终态与资产回收)。
+FAIL(写受限角色在已注册 profile 下调用挂起 `CreateProcessW` 返回 5)。
+实际受限子进程未创建，宿主 SID 暴露仍 FAIL，官方 CLI NOT_RUN。
+[实测范围](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#localservice-双角色的挂起创建拒绝)
+
 ## 2026-11-08 代理路由快照拒绝检查
 
 INTEGRATED / BUILD / VERIFIED(普通侧真实回环快照及候选解析结果、普通反例)。
