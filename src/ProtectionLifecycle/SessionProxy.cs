@@ -64,7 +64,8 @@ internal sealed class SessionProxy : IDisposable
         this.fixedResolverTrust=fixedResolverTrust;
         var effective="CPC-GATEWAY-EFFECTIVE-V3;"+PolicySHA256+";"+capabilityProfile.SHA256+
             ";resolver-freshness=authenticated-request-stream;fixed-no-content-https-canary="+fixedNoContentHttpsCanary;
-        if(fixedResolverTrust is not null)effective+=";fixed-openssl-head-resolver-explicit-offline-revocation";
+        if(fixedResolverTrust is not null)effective+=";fixed-openssl-head-resolver-explicit-offline-revocation;request=HEAD "+
+            FixedOpenSslHead.RequestPath+";client="+FixedOpenSslHead.UserAgent;
         EffectivePolicySHA256=Convert.ToHexString(SHA256.HashData(Encoding.ASCII.GetBytes(effective)));
         this.job = job; this.upstream = upstream; this.packageSid = packageSid; this.sessionId = Identifiers.Hex32(sessionId);
         authorization = Encoding.ASCII.GetBytes("Basic " + Convert.ToBase64String(Encoding.ASCII.GetBytes(sessionId + ":" + Secret)));

@@ -571,3 +571,38 @@ HEAD 仍在已认证 TLS 上只写一次。最终头之后同批可见的额外�
 五产品 Release BUILD0/0，29 项工件、156 项输入复核一致，十个普通入口
 通过。19 项内存 HEAD/TLS 对照含四种尾部，82 项回报与清单对照包含旧版、
 缺字段、错阶段和超界。候选实测 NOT_RUN。
+
+## 根路径拒绝及非直连证据
+
+2026-11-08 02:26:46–02:27:07Z，本人批准 `CFADBFAD…`，按 96 项冻结输入
+从 `a8d6e45c` 未激活更新到 `3bd091e1` 并执行一次。Cloudflare 和目标 TLS
+验证通过，目标隧道 CONNECT 200，TTL 18 秒、Age 0、耗时 306 ms。原网关按
+同一受限根身份确认双向写入。固定 `HEAD /` 对端最终状态 403，头后同批
+204 字节，分类 Other。仍拒绝并退出 125，`HttpStatus` 为空。状态和尾部边界
+属于实测，403 的具体原因和尾部内容 UNKNOWN。此前通用错误仍保留原结论。
+
+原所有者确认先隔离再 Job 归零，两刻度均 2956 ms，31 项 Winsock 租约恢复，
+停止错误 0。十处令牌观测一致。三份回执独立核验摘要
+`893D31D3B14251178CBDB6D8CDF24BA21B81C4BFC341D198C7CEA9A134450159`，
+证据保存在 `operation-head-tail-once`，本次批准已消耗。
+
+2026-11-08 02:33:35Z，可信普通身份只向原本机控制器 `127.0.0.1:9090` 发
+四次 GET。监听所有者在前后与 FlClashCore 匹配，配置字节前后摘要相同。
+控制器接受无凭据读取，运行模式 global，混合端口 7890。GLOBAL 是 Selector，
+成员含 DIRECT。其当前选中的是有两个成员的 Fallback，当前叶子为 VLESS。
+两个组都报告空组后备 COMPATIBLE，当前选中组成员未见 DIRECT/COMPATIBLE。
+节点名、地址及原始配置未写入回执。回执摘要
+`200AAA63E83E87CEEF209C73C42C30A59A5ABB3555568D1834F31D64E80340C3`。
+按 [Mihomo 内置策略](https://wiki.metacubex.one/en/config/proxies/built-in/) 和
+[组后备定义](https://wiki.metacubex.one/en/config/proxy-groups/)，COMPATIBLE
+与 DIRECT 等效。该运行配置无法证明逐连接非直连，也无法锁住后续选择。
+此读取不发起外部请求，无法判定先前单连接实际出站或受限身份的管理面访问能力。
+
+同主机后续对照固定为 `HEAD /robots.txt`，仅发送恒定探针 User-Agent，
+不使用账号。原 403 与异常尾部判定保持。有效网关策略和原所有者回执绑定新路径。
+候选 `c2f8de06e10b440db58ee30bd84a900d`，清单
+`1263803D13DC73C4C9043BEC7CD278F944AE03B52056DC6CC68F84A29FDA68B7`，
+迁移 `527ED1F0F8E3A8062F0654687A851E387D823B38BE8E0F25268AB84F45FDC212`。
+五产品 Release BUILD0/0，29 项工件、156 项输入和十个普通回归入口通过。
+真实候选执行 NOT_RUN，待明确新的固定外部操作及其路由边界。
+公开路径来源 [Microsoft robots.txt](https://www.microsoft.com/robots.txt)。

@@ -285,6 +285,7 @@ if(args[0]=="inactive-transition")
         Require(refused,"inactive selection must refuse changed, unknown or same-package transitions");
     }
         foreach(var (actualRelease,actualManifest) in new[]{
+        ("3bd091e1e73441e6a31c1fa804d17e77","ED20BA5A45C5B27B0A1E182CA24D22DBB24FA61E0DFF6AE00279C1FFD0F3A7BB"),
         ("a8d6e45c8ac0456fb44dfa2ac306515c","1E9893FD015B8EA5B7A12C022523737DCD0BF8B6E7A4D4696B86EF45097FAD00"),
         ("f91e053868124246bac0c15420be6991","F5C221D98A181FDBE08E640199695F84BE9FE163764DE11E285786C9F0EE497F"),
         ("a2f84433f7a14413ae063735d9450533","16487610E4C34A06F3823890983A9F8577B6857FE9A637CA3B005AA9B41F796C"),
@@ -358,7 +359,7 @@ if(args[0]=="inactive-transition")
         var bad=record.DeepClone().AsObject();bad[field]=value;
         DenyExact(()=>ParseTransition(bad.ToJsonString()));
     }
-    Console.WriteLine("PASS 160 inactive-transition checks including exact embedded pair and alternate pinned predecessor refusal; fixture only");return 0;
+    Console.WriteLine("PASS 167 inactive-transition checks including exact embedded pair and alternate pinned predecessor refusal; fixture only");return 0;
 }
 if(args[0]=="etw-token-access")
 {

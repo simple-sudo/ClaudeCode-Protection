@@ -5,6 +5,13 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-07 根路径拒绝及 FlClash 生效选择链
+
+VERIFIED(单次真实目标 TLS、双向转发和 403 响应的有界观察，原所有者闭合)。
+FAIL(根路径应用请求与 HEAD 帧约束)。VERIFIED(可信普通身份本机控制器读取、
+生效选择链有直连等效后备)。单连接出站 UNKNOWN，受限控制器读取 NOT_RUN。
+INTEGRATED / BUILD(同主机公开路径对照)，候选实测 NOT_RUN。
+
 ## 2026-11-07 固定 HEAD 额外字节回执
 
 INTEGRATED / BUILD(最终头后异常的有界观测、独立的原网关双向转发回执)。

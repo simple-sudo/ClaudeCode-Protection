@@ -149,7 +149,8 @@ internal sealed record OpenSslOfflineWitness(int SchemaVersion,string SessionId,
                 var request=new byte[1024];
                 var count=await peer.ReadAsync(request,deadline.Token);
                 applicationRead++;
-                if(!request.AsSpan(0,count).SequenceEqual("HEAD / HTTP/1.1\r\nHost: www.microsoft.com\r\nConnection: close\r\n\r\n"u8))
+                if(!request.AsSpan(0,count).SequenceEqual(
+                    "HEAD /robots.txt HTTP/1.1\r\nHost: www.microsoft.com\r\nUser-Agent: ClaudeCode-Protection/1.0\r\nConnection: close\r\n\r\n"u8))
                     throw new InvalidDataException("Fixed HEAD request bytes differ");
                 for(var offset=0;offset<reply.Length;offset+=replyFragmentBytes)
                     await peer.WriteAsync(reply.AsSpan(offset,Math.Min(replyFragmentBytes,reply.Length-offset)).ToArray(),deadline.Token);

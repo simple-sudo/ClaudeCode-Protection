@@ -6,8 +6,10 @@ namespace ProtectionLifecycle;
 // This does not acquire a tunnel or fetch any certificate material.
 internal static class FixedOpenSslHead
 {
+    internal const string RequestPath="/robots.txt";
+    internal const string UserAgent="ClaudeCode-Protection/1.0";
     private static readonly byte[] Request=Encoding.ASCII.GetBytes(
-        "HEAD / HTTP/1.1\r\nHost: "+SessionProxy.Target+"\r\nConnection: close\r\n\r\n");
+        "HEAD "+RequestPath+" HTTP/1.1\r\nHost: "+SessionProxy.Target+"\r\nUser-Agent: "+UserAgent+"\r\nConnection: close\r\n\r\n");
 
     internal static async Task<int> SendAsync(OpenSslModuleLease modules,Stream tunnel,byte[] root,
         IReadOnlyList<byte[]> crls,CancellationToken cancel,Action<string>? phase=null)

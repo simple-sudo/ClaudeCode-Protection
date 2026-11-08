@@ -875,6 +875,7 @@ internal sealed class ProtectedSession
         CapabilityContentComparison=CaptureCapabilityContent,
         FixedNoContentHttpsCanary=FixedNoContentHttpsCanary,
         FixedOpenSslHead=UsesFixedOpenSslHead,
+        FixedOpenSslHeadRequestPath=UsesFixedOpenSslHead?FixedOpenSslHead.RequestPath:null,
         CapabilityContentPrivacyQualified=false,
         EffectiveGatewayPolicySHA256=gateway?.EffectivePolicySHA256,
         EnvironmentIntentSHA256=expectationsSHA256,EnvironmentIntentStatus=expectationsReason,Resources=ResourceScope,Status=status,
