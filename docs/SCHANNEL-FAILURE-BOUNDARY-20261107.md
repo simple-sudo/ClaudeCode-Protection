@@ -287,3 +287,23 @@ PE 导入复核确认新 libcrypto 导入 `BCryptGenRandom`，未导入旧版
 和三项拒绝均通过。真实低完整性 LPAC 对 Windows 系统熵源的验证仍 NOT_RUN。
 证据位于本机同一工作目录的 `windows-entropy-exact-candidate` 及
 `windows-entropy-exact-tests`。
+
+## 受限内存 TLS 实测
+
+2026-11-08 01:04:03–01:04:18Z，本人批准 `6BCB8C1F…`，按冻结的 67 项输入
+执行一次。原所有者完成 `8ad9a646` → `afb95ad1` 未激活更新，公开清单
+`EEE8E79F…` 复核一致。全隔离低完整性 LPAC 使用新固定运行库生成密钥、通过生产
+网关的内存首段解析及重放，完成实际 TLS 内存握手和双向加密数据交换。错名返回
+62，未知根返回 20，握手提前 EOF 未放行应用数据。子进程退出 0。
+
+原所有者确认撤销准入、全隔离和原 Job 零成员，隔离和 Job 停止刻度均为 205 ms。
+停止错误为 0，操作器十处自身权限观测一致。独立核对三份获批回执，派生 SHA-256
+`0BF483419140FDD73981DF2C8B2D159A62BF5C8D6D224067F8484E046CC2C726`。
+公开 Application 时间窗零项，BFE 和 AV Running，完整厂商覆盖 UNKNOWN。
+证据在本机 `work/openssl-owner-20261107-01/operation-windows-entropy-once`，
+本次许可已消耗。
+
+本次握手全部在内存，未开 socket 或实际网关，未应用 Winsock 租约，未执行官方
+CLI。该次成功验证了 Windows 系统熵源构建在受限身份中的应用 TLS 能力。旧运行库
+具体系统调用失败原因仍 UNKNOWN。外部代理转发、生产信任与吊销策略、真实内容
+L3 和整机验收分别保留。

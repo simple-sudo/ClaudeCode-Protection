@@ -5,6 +5,13 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-07 受限内存 TLS 交换闭合
+
+VERIFIED(精确未激活更新、真实低完整性 LPAC 全隔离下固定 DLL 和内存 TLS 双向
+交换、错名/未知根/EOF 拒绝、原所有者有序关闭及原 Job 归零)。此实验未触及
+外部网关转发或生产证书策略。真实内容 L3、官方 CLI 和整机未验收。
+[实测](SCHANNEL-FAILURE-BOUNDARY-20261107.md#受限内存-tls-实测)
+
 ## 2026-11-07 OpenSSL Windows 系统熵源候选
 
 INTEGRATED / BUILD(系统随机接口与固定资产包 v3)。VERIFIED(PE 导入、普通身份
