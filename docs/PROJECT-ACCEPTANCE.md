@@ -5,6 +5,12 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-08 固定自研离线控制台闭合通过
+
+VERIFIED(版本 `49c54e70` 未激活安装、低完整性零能力 LPAC 的精确目录、
+stdin EOF、双输出、工作区写读、子进程拒绝及有序关闭)。官方 CLI 执行 NOT_RUN。
+[受限闭环证据](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#受限闭环复验)
+
 ## 2026-11-08 AppContainer 环境原值对照
 
 VERIFIED(版本 `ae721f11` 受限原值与原所有者路径的真实对照，以及原 Job
