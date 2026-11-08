@@ -18,7 +18,9 @@ internal static class OfflineConsoleNativeCases
     {
         var broker=library.GetType("ProtectionLifecycle.InstalledBroker",true)!;
         Refuse<UnauthorizedAccessException>(()=>Call(broker.GetMethod("QualifyOfflineConsole")!,null));
-        Refuse<InvalidDataException>(()=>Call(broker.GetMethod("RunOfflineConsoleChild")!,null));
+        var atomic=library.GetType("ProtectionLifecycle.AtomicChild",true)!;
+        Refuse<InvalidDataException>(()=>Call(atomic.GetMethod("AssertOfflineConsoleWorkerIdentity",Static)!,null));
+        VerifyFailureMetadata(library);
         var type=library.GetType("ProtectionLifecycle.OfflineConsoleStreams",true)!;
         var read=type.GetMethod("ReadBounded",Static)!;
         foreach(var length in new[]{0,4096})
@@ -30,6 +32,24 @@ internal static class OfflineConsoleNativeCases
         RunChild(library,type,false);
         RunChild(library,type,true);
         Console.WriteLine("PASS native ordinary three-handle inheritance, stdin EOF, distinct output, overflow, excluded handle and child-creation refusal. LPAC and WFP not executed.");
+    }
+
+    private static void VerifyFailureMetadata(Assembly library)
+    {
+        var owner=library.GetType("ProtectionLifecycle.OfflineConsoleQualification",true)!;
+        var output=library.GetType("ProtectionLifecycle.OfflineConsoleOutput",true)!;
+        var parse=owner.GetMethod("ParseChildFailure",Static)!;
+        const string known="CPC_OFFLINE_CONSOLE_FAILURE|Workspace|ACCESS|-2147024891\n";
+        object? Parse(string message,uint exit=125,bool overflow=false)=>
+            Call(parse,null,exit,Activator.CreateInstance(output,Encoding.ASCII.GetBytes(message),overflow));
+        var result=Parse(known)!;
+        Require(result.GetType().GetProperty("Stage")!.GetValue(result) as string=="Workspace");
+        Require((int)result.GetType().GetProperty("Code")!.GetValue(result)! == -2147024891);
+        Require(Parse(known,0) is null && Parse(known,overflow:true) is null);
+        Require(Parse(known.Replace("Workspace","4",StringComparison.Ordinal)) is null);
+        Require(Parse(known.Replace("ACCESS","unreviewed",StringComparison.Ordinal)) is null);
+        Require(Parse(known.Replace("-2147024891","+12",StringComparison.Ordinal)) is null);
+        Require(Parse(known+"private extra") is null);
     }
 
     private static void RunChild(Assembly library,Type type,bool flood)

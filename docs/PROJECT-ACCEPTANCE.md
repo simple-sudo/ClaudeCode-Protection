@@ -5,6 +5,13 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-08 受限离线控制台实测
+
+VERIFIED(版本 `5f2cc24f` 未激活安装、固定资产私有受众、低完整性零能力
+LPAC 恢复执行、原 Job 隔离先行闭合和工作区回收)。FAIL(载荷退出 125，
+双输出和工作区功能未达标)。官方 CLI 执行 NOT_RUN。
+[限定结果](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#修正版实际安装和受限执行)
+
 ## 2026-11-07 固定离线控制台首次更新拒绝
 
 FAIL(候选 `4b303b84` 的前序版本门禁)。VERIFIED(原所有者退出、纯校验重放)。

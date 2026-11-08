@@ -1,7 +1,9 @@
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Globalization;
 using System.Security.Cryptography;
 using System.Security.Principal;
+using System.Text;
 using System.Text.Json;
 
 namespace ProtectionLifecycle;
@@ -15,12 +17,35 @@ internal static class OfflineConsoleQualification
     private static ReadOnlySpan<byte> ExpectedOutput=>"CPC_OFFLINE_CONSOLE_STDOUT\n"u8;
     private static ReadOnlySpan<byte> ExpectedError=>"CPC_OFFLINE_CONSOLE_STDERR\n"u8;
     private static ReadOnlySpan<byte> ExpectedFile=>"CPC_OFFLINE_CONSOLE_WORKSPACE\n"u8;
+    private enum ChildStage { Identity, Environment, Streams, InputEof, Workspace, Descendant, Output }
+    private sealed record ChildFailure(string Stage,string Kind,int Code);
 
     internal static int RunChild()
     {
+        var stage=ChildStage.Identity;
+        try{return RunCheckedChild(ref stage);}
+        catch(Exception error) when(error is not OutOfMemoryException)
+        {
+            var kind=error switch {
+                Win32Exception=>"WIN32",WfpFailure=>"NATIVE",InvalidDataException=>"CONTRACT",
+                UnauthorizedAccessException=>"ACCESS",IOException=>"IO",_=>"OTHER"
+            };
+            var code=error is Win32Exception win32?win32.NativeErrorCode:error.HResult;
+            using var stderr=Console.OpenStandardError();
+            stderr.Write(Encoding.ASCII.GetBytes(FormattableString.Invariant($"CPC_OFFLINE_CONSOLE_FAILURE|{stage}|{kind}|{code}\n")));
+            return 125;
+        }
+    }
+
+    private static int RunCheckedChild(ref ChildStage stage)
+    {
         AtomicChild.AssertOfflineConsoleWorkerIdentity();
+        stage=ChildStage.Environment;
         var session=Identifiers.Hex32(Environment.GetEnvironmentVariable(SessionVariable)??"");
-        var workspace=SessionTaskWorkspace.PathFor(session);
+        // Use the canonical Program Files root chosen by the original owner.
+        // The restricted process need not query the shell's known folders.
+        var programFiles=Environment.GetEnvironmentVariable("ProgramFiles")??throw WfpNative.Contract("OfflineConsoleProgramFilesMissing");
+        var workspace=SessionTaskWorkspace.PathFor(session,programFiles);
         if(!string.Equals(Environment.CurrentDirectory,workspace,StringComparison.OrdinalIgnoreCase) ||
             new[]{"TEMP","TMP","LOCALAPPDATA","USERPROFILE","HOME","XDG_CONFIG_HOME","CLAUDE_CONFIG_DIR","APPDATA"}.Any(
                 name=>Environment.GetEnvironmentVariable(name)!=workspace) ||
@@ -28,12 +53,16 @@ internal static class OfflineConsoleQualification
                 "HTTP_PROXY","HTTPS_PROXY","ALL_PROXY","ANTHROPIC_API_KEY","CLAUDE_CODE_OAUTH_TOKEN"}.Any(
                 name=>Environment.GetEnvironmentVariable(name) is not null))
             throw WfpNative.Contract("OfflineConsoleChildEnvironmentDiffers");
+        stage=ChildStage.Streams;
         if(!Console.IsInputRedirected || !Console.IsOutputRedirected || !Console.IsErrorRedirected)
             throw WfpNative.Contract("OfflineConsoleRedirectionMissing");
+        stage=ChildStage.InputEof;
         using(var stdin=Console.OpenStandardInput())
             if(stdin.ReadByte()!=-1)throw WfpNative.Contract("OfflineConsoleInputMustBeEof");
+        stage=ChildStage.Workspace;
         using(var file=new FileStream(WindowsPathSeal.Child(workspace,OutputLeaf),FileMode.CreateNew,FileAccess.Write,FileShare.None))
         {file.Write(ExpectedFile);file.Flush(true);}
+        stage=ChildStage.Descendant;
         // This inert same-image invocation exists only as a negative control.
         // If the policy fails, the original owner stops its exact Job.
         var start=new ProcessStartInfo(Environment.ProcessPath??throw WfpNative.Contract("OfflineConsoleImageMissing")){
@@ -46,6 +75,7 @@ internal static class OfflineConsoleQualification
             throw WfpNative.Contract("OfflineConsoleDescendantNotBlocked");
         }
         catch(Win32Exception denied)when(denied.NativeErrorCode==367){}
+        stage=ChildStage.Output;
         using(var stdout=Console.OpenStandardOutput())stdout.Write(ExpectedOutput);
         using(var stderr=Console.OpenStandardError())stderr.Write(ExpectedError);
         return 0;
@@ -153,11 +183,12 @@ internal static class OfflineConsoleQualification
             ExpectedOutput.SequenceEqual(stdout.Bytes) && ExpectedError.SequenceEqual(stderr.Bytes);
         var closed=jobId is not null && stopped?.ConfirmsClosedOfflineConsole(id,jobId)==true;
         var complete=failures.Count==0 && closed && workspaceClosed && singleProcess && workspaceMatched && matched && exit==0 && resumed;
+        var childFailure=ParseChildFailure(exit,stderr);
         var report=JsonSerializer.Serialize(new {
             SchemaVersion=1,Scope="INSTALLED_FIXED_OFFLINE_CONSOLE",state.InstallationId,SessionId=id,JobId=jobId,
             version.Package.Release,version.Package.ManifestHash,Status=complete?"OFFLINE_CONSOLE_CLOSED":"OFFLINE_CONSOLE_NOT_CONFIRMED",
             ProcessResumed=resumed,ChildExit=exit,SingleProcessEverAdmitted=singleProcess,WorkspaceMatched=workspaceMatched,WorkspaceClosed=workspaceClosed,
-            Output=Summarize(stdout),Error=Summarize(stderr),StreamsMatched=matched,OriginalOwnerClosed=closed,StopObservation=stopped,
+            Output=Summarize(stdout),Error=Summarize(stderr),ChildFailure=childFailure,StreamsMatched=matched,OriginalOwnerClosed=closed,StopObservation=stopped,
             Failures=failures.SelectMany(WfpNative.Describe).ToArray(),GatewayOpened=false,NetworkQualified=false,
             LaunchAuthorized=false,FormalAdmissionIssued=false,ClaudeLaunched=false
         });
@@ -169,6 +200,19 @@ internal static class OfflineConsoleQualification
             if(fences.Count!=plans.Count || fences.Any(f=>!f.Observe().FullQuarantineObserved))
                 throw WfpNative.Contract("OfflineConsoleFullQuarantineRequired");
         }
+    }
+
+    private static ChildFailure? ParseChildFailure(uint? exit,OfflineConsoleOutput? output)
+    {
+        if(exit!=125 || output is not {Overflow:false,Bytes.Length:>0 and <=96} ||
+            output.Bytes[^1]!=(byte)'\n')return null;
+        var parts=Encoding.ASCII.GetString(output.Bytes.AsSpan(0,output.Bytes.Length-1)).Split('|');
+        if(parts is not ["CPC_OFFLINE_CONSOLE_FAILURE",var name,var kind,var number] ||
+            !Enum.TryParse<ChildStage>(name,out var stage) || stage.ToString()!=name ||
+            kind is not ("WIN32" or "NATIVE" or "CONTRACT" or "ACCESS" or "IO" or "OTHER") ||
+            !int.TryParse(number,NumberStyles.AllowLeadingSign,CultureInfo.InvariantCulture,out var code) ||
+            number!=code.ToString(CultureInfo.InvariantCulture))return null;
+        return new(name,kind,code);
     }
 
     private static object? Summarize(OfflineConsoleOutput? output)=>output is null?null:new {

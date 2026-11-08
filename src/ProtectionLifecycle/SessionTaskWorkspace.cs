@@ -13,7 +13,8 @@ internal sealed record TaskWorkspaceIntent(int SchemaVersion,string Installation
 // This owner is called ONLY through the existing profile/closed-Job cleanup.
 internal static class SessionTaskWorkspace
 {
-    internal static string PathFor(string session)=>WindowsPathSeal.Child(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
+    internal static string PathFor(string session)=>PathFor(session,Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles));
+    internal static string PathFor(string session,string programFiles)=>WindowsPathSeal.Child(programFiles,
         "ClaudeCodeProtection-Task-"+Identifiers.Hex32(session));
     private static string IntentLeaf(string profile)=>"task-workspace-intent-"+Identifiers.Hex32(profile)+".json";
     private static string CreatedLeaf(string profile)=>"task-workspace-created-"+Identifiers.Hex32(profile)+".json";
