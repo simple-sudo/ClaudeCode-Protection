@@ -72,6 +72,30 @@ internal sealed class InstallationProfileLease : IDisposable
         using var package=new InstallationPackageSid(state);AssertPackage(package);
         return SessionResources.ProfileFolder(package.Value);
     }
+    internal PathLease HoldConsoleLocalData()
+    {
+        state.AssertHeld();
+        if(disposed || storage is not {Control:false} record || jobId is not null)
+            throw WfpNative.Contract("OfflineConsoleProfileUnavailable");
+        var directory=WindowsPathSeal.LockDirectory(record.StorageRoot,PathPolicy.Source);
+        try
+        {
+            if(directory.ObjectIdentity()!=record.StorageIdentity)
+                throw WfpNative.Contract("OfflineConsoleProfileStorageReplaced");
+            return WindowsPathSeal.LockDirectory(WindowsPathSeal.Child(directory.Path,"AC"),PathPolicy.Source);
+        }
+        finally{directory.Dispose();}
+    }
+    internal void AssertConsoleLocalData(PathLease localData)
+    {
+        state.AssertHeld();localData.AssertHeld();
+        if(disposed || storage is not {Control:false} record || jobId is not null ||
+            localData.Path!=WindowsPathSeal.Child(record.StorageRoot,"AC"))
+            throw WfpNative.Contract("OfflineConsoleProfileBindingDiffers");
+        using var root=WindowsPathSeal.Open(record.StorageRoot,true,false);
+        if(WindowsPathSeal.Identity(root)!=record.StorageIdentity)
+            throw WfpNative.Contract("OfflineConsoleProfileStorageReplaced");
+    }
     internal void AfterOwnedJobZero(JobSnapshot snapshot)
     {
         state.AssertHeld();if(snapshot.JobId!=jobId || !snapshot.ExpectedLimits || !snapshot.ObservedZero ||
@@ -333,8 +357,8 @@ internal sealed partial class AtomicChild : IDisposable
         OwnedKernelJob job,InstallationProfileLease profile,string sessionId,IntPtr output,OfflineTlsProbe probe)
         =>CreateCore(layout,state,version,job,profile,null,output,null,null,null,(probe,Identifiers.Hex32(sessionId)));
     internal static AtomicChild CreateOfflineConsoleQualification(FixedLayout layout,ProtectedState state,VerifiedVersion version,
-        OwnedKernelJob job,InstallationProfileLease profile,string sessionId,PathLease workspace,OfflineConsoleStreams streams)
-        =>CreateCore(layout,state,version,job,profile,null,IntPtr.Zero,null,null,null,console:(streams,Identifiers.Hex32(sessionId),workspace));
+        OwnedKernelJob job,InstallationProfileLease profile,string sessionId,PathLease workspace,PathLease localData,OfflineConsoleStreams streams)
+        =>CreateCore(layout,state,version,job,profile,null,IntPtr.Zero,null,null,null,console:(streams,Identifiers.Hex32(sessionId),workspace,localData));
     internal static AtomicChild CreateResourceQualification(FixedLayout layout,ProtectedState state,VerifiedVersion version,OwnedKernelJob job,
         InstallationProfileLease profile,ProtectedSession.ResourceQualification permit,IntPtr output)
     {
@@ -350,7 +374,7 @@ internal sealed partial class AtomicChild : IDisposable
     }
     private static AtomicChild CreateCore(FixedLayout layout,ProtectedState state,VerifiedVersion version,OwnedKernelJob job,InstallationProfileLease profile,
         NetworkProbePlan? network,IntPtr output,GpuProbePlan? gpu,ProtectedSession.Preparation? preparation,ProtectedSession.ResourceQualification? resources,
-        (OfflineTlsProbe Probe,string Session)? tls=null,(OfflineConsoleStreams Streams,string Session,PathLease Workspace)? console=null)
+        (OfflineTlsProbe Probe,string Session)? tls=null,(OfflineConsoleStreams Streams,string Session,PathLease Workspace,PathLease LocalData)? console=null)
     {
         ProtectedState.RequireAdministrator();state.AssertHeld();version.AssertHeld(state);
         preparation?.BeforeCreate(job,version);
@@ -368,6 +392,7 @@ internal sealed partial class AtomicChild : IDisposable
             if(tls is not null || preparation is not null || resources is not null || network is not null || gpu is not null || output!=IntPtr.Zero)
                 throw WfpNative.Contract("OfflineConsoleCannotBorrowOtherAuthority");
             fixedConsole.Workspace.AssertHeld();
+            profile.AssertConsoleLocalData(fixedConsole.LocalData);
             if(fixedConsole.Workspace.Path!=SessionTaskWorkspace.PathFor(fixedConsole.Session))
                 throw WfpNative.Contract("OfflineConsoleWorkspaceMismatch");
         }
@@ -446,7 +471,7 @@ internal sealed partial class AtomicChild : IDisposable
                 if(offline.Probe==OfflineTlsProbe.OpenSsl)env[OpenSslModuleLease.ReleaseVariable]=version.Package.Release;
             }
             if(console is { } offlineConsoleSetup)
-                OfflineConsoleQualification.BindEnvironment(env,offlineConsoleSetup.Workspace.Path,offlineConsoleSetup.Session);
+                OfflineConsoleQualification.BindEnvironment(env,offlineConsoleSetup.Workspace.Path,offlineConsoleSetup.LocalData.Path,offlineConsoleSetup.Session);
             if(preparation is not null)
             {
                 // Creation requires LOCALAPPDATA; use the original freshly

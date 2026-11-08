@@ -155,3 +155,29 @@ LPAC 自研根通过身份自检，在环境校验退出 125。收到 `Environme
 工作目录、各隔离目录字段和禁止变量。普通回执只包含失败分类和错误码。
 五产品 Release BUILD0/0，17 个普通入口、30 项工件、159 项源输入通过。
 未激活迁移只接受刚闭合的 `1805e4fb`。候选实际安装与受限执行 NOT_RUN。
+
+### Windows 临时目录映射
+
+2026-11-08 00:59（纽约时间），`8B2BDA1D…` 用于 `aa0123db` 未激活更新
+与一次自研载荷实测。可信所有者核验私有官方映像。受限根通过身份、会话绑定、
+工作区路径与当前目录检查，随后拒绝了 `TEMP`，返回
+`Temp / CONTRACT / -2146233087`。本次回执未取得实际路径，工作区和双输出
+功能仍未达标。原所有者确认全隔离、累计一名 Job 成员、清零、零停止错误及
+工作区回收。三份限定回执的派生摘要
+`AEFD450C5B83717ACBDE1C96411E4CAB16DD765544CE32852225BB95679B03D3`。
+许可已消耗，无外部请求，官方 CLI 未运行。
+
+Microsoft 说明 AppContainer 的 `LOCALAPPDATA` 指向该包的 `AC`，`TEMP`
+和 `TMP` 由 Windows 重定向到其子目录 `Temp`。固定自研启动沿用原 profile
+创建回执，在原所有者侧重新核对目录身份，持有确切的 `AC` 和 `Temp`。
+子进程只接受这两个精确路径，其他配置和工作目录仍指向新任务工作区。
+任一目录无法持有或路径不符即失败关闭。该自研模式验证目录权限和兼容性。
+Windows 投影的路径可能含宿主用户名或安装标识，正式 CLI 所见内容和跨来源
+关联仍须独立验收。
+[Microsoft AppContainer 文档](https://learn.microsoft.com/en-us/windows/win32/secauthz/implementing-an-appcontainer)
+
+候选 `b27432ace8cf42a4925f05e2d24b6484`，清单
+`6AE8DDB45D6034B6A39597676D9E46BF5BFD4833C4FFBCEA88AF045BFA8B3A71`。
+迁移摘要 `A5993AF81A0D9EE5F9DEF4D2FDA6075AC02F5DACA3504165B84A0289791239C7`，
+仅接受 `aa0123db`。五产品 Release BUILD0/0、17 个普通入口、30 项工件
+和 159 项源输入通过。未安装，受限映射和完整载荷资格待验证。

@@ -13,18 +13,19 @@ namespace ProtectionLifecycle;
 internal static class OfflineConsoleQualification
 {
     internal const string ChildCommand="offline-console-qualification-child",SessionVariable="CPC_OFFLINE_CONSOLE_SESSION";
+    private const string LocalDataVariable="CPC_OFFLINE_CONSOLE_LOCALDATA";
     private const string DescendantCommand="offline-console-denial-target",OutputLeaf="offline-console-output.txt";
     private static ReadOnlySpan<byte> ExpectedOutput=>"CPC_OFFLINE_CONSOLE_STDOUT\n"u8;
     private static ReadOnlySpan<byte> ExpectedError=>"CPC_OFFLINE_CONSOLE_STDERR\n"u8;
     private static ReadOnlySpan<byte> ExpectedFile=>"CPC_OFFLINE_CONSOLE_WORKSPACE\n"u8;
     private enum ChildStage
     {
-        Identity, Environment, SessionId, ProgramFiles, WorkspacePath, CurrentDirectory, Temp, Tmp,
+        Identity, SessionId, ProgramFiles, WorkspacePath, ProfilePath, CurrentDirectory, Temp, Tmp,
         LocalAppData, UserProfile, Home, XdgConfigHome, ClaudeConfigDir, AppData, UnexpectedAuthority,
         Streams, InputEof, Workspace, Descendant, Output
     }
     private static readonly (string Name,ChildStage Stage)[] WorkspaceVariables=[
-        ("TEMP",ChildStage.Temp),("TMP",ChildStage.Tmp),("LOCALAPPDATA",ChildStage.LocalAppData),("USERPROFILE",ChildStage.UserProfile),
+        ("USERPROFILE",ChildStage.UserProfile),
         ("HOME",ChildStage.Home),("XDG_CONFIG_HOME",ChildStage.XdgConfigHome),("CLAUDE_CONFIG_DIR",ChildStage.ClaudeConfigDir),
         ("APPDATA",ChildStage.AppData)
     ];
@@ -34,13 +35,16 @@ internal static class OfflineConsoleQualification
     ];
     private sealed record ChildFailure(string Stage,string Kind,int Code);
 
-    internal static void BindEnvironment(IDictionary<string,string> environment,string workspace,string session)
+    internal static void BindEnvironment(IDictionary<string,string> environment,string workspace,string localData,string session)
     {
         var programFiles=Path.GetDirectoryName(workspace)??throw WfpNative.Contract("OfflineConsoleProgramFilesMissing");
         if(!string.Equals(workspace,SessionTaskWorkspace.PathFor(session,programFiles),StringComparison.OrdinalIgnoreCase) ||
             ForbiddenVariables.Any(environment.ContainsKey))throw WfpNative.Contract("OfflineConsoleParentEnvironmentDiffers");
         environment["ProgramFiles"]=programFiles;
         environment[SessionVariable]=session;
+        environment[LocalDataVariable]=localData;
+        environment["LOCALAPPDATA"]=localData;
+        environment["TEMP"]=environment["TMP"]=WindowsPathSeal.Child(localData,"Temp");
         foreach(var (name,_) in WorkspaceVariables)environment[name]=workspace;
     }
 
@@ -72,8 +76,11 @@ internal static class OfflineConsoleQualification
         var programFiles=Environment.GetEnvironmentVariable("ProgramFiles")??throw WfpNative.Contract("OfflineConsoleProgramFilesMissing");
         stage=ChildStage.WorkspacePath;
         var workspace=SessionTaskWorkspace.PathFor(session,programFiles);
+        stage=ChildStage.ProfilePath;
+        var localData=Environment.GetEnvironmentVariable(LocalDataVariable)??throw WfpNative.Contract("OfflineConsoleProfilePathMissing");
+        var temp=WindowsPathSeal.Child(localData,"Temp");
         stage=ChildStage.CurrentDirectory;
-        if(FindEnvironmentMismatch(workspace,Environment.CurrentDirectory,Environment.GetEnvironmentVariable) is { } mismatch)
+        if(FindEnvironmentMismatch(workspace,localData,temp,Environment.CurrentDirectory,Environment.GetEnvironmentVariable) is { } mismatch)
         {
             stage=mismatch;
             throw WfpNative.Contract("OfflineConsoleChildEnvironmentDiffers");
@@ -106,9 +113,14 @@ internal static class OfflineConsoleQualification
         return 0;
     }
 
-    private static ChildStage? FindEnvironmentMismatch(string workspace,string currentDirectory,Func<string,string?> get)
+    private static ChildStage? FindEnvironmentMismatch(string workspace,string localData,string temp,string currentDirectory,Func<string,string?> get)
     {
         if(!string.Equals(currentDirectory,workspace,StringComparison.OrdinalIgnoreCase))return ChildStage.CurrentDirectory;
+        // CreateProcess projects these three fields into the AppContainer.
+        // Accept only the concrete root and child held by the trusted owner.
+        if(!string.Equals(get("TEMP"),temp,StringComparison.OrdinalIgnoreCase))return ChildStage.Temp;
+        if(!string.Equals(get("TMP"),temp,StringComparison.OrdinalIgnoreCase))return ChildStage.Tmp;
+        if(!string.Equals(get("LOCALAPPDATA"),localData,StringComparison.OrdinalIgnoreCase))return ChildStage.LocalAppData;
         foreach(var (name,stage) in WorkspaceVariables)
             if(!string.Equals(get(name),workspace,StringComparison.OrdinalIgnoreCase))return stage;
         return ForbiddenVariables.Any(name=>get(name) is not null)?ChildStage.UnexpectedAuthority:null;
@@ -137,6 +149,7 @@ internal static class OfflineConsoleQualification
             foreach(var plan in plans)fences.Add(PersistentFence.OpenExisting(state,plan.Data.FenceId));
             AssertQuarantine();
             using(var profile=InstallationProfileLease.Create(state))
+            using(var localData=profile.HoldConsoleLocalData())
             using(var workspace=SessionResources.CreateOwnedTaskDirectory(state,profile,id))
             using(var streams=new OfflineConsoleStreams())
             {
@@ -145,11 +158,13 @@ internal static class OfflineConsoleQualification
                 jobId=job.JobId;
                 AtomicChild? child=null;
                 ProtectionRuntimeLease? runtime=null;
+                PathLease? temp=null;
                 (Task<OfflineConsoleOutput> Output,Task<OfflineConsoleOutput> Error)? capture=null;
                 try
                 {
-                    child=AtomicChild.CreateOfflineConsoleQualification(layout,state,version,job,profile,id,workspace,streams);
+                    child=AtomicChild.CreateOfflineConsoleQualification(layout,state,version,job,profile,id,workspace,localData,streams);
                     capture=streams.ReadAfterCreate();
+                    temp=WindowsPathSeal.LockDirectory(WindowsPathSeal.Child(localData.Path,"Temp"),PathPolicy.Source);
                     runtime=ProtectionRuntimeLease.ForFixedOfflineConsole(state,version,job,fences,child,id);
                     runtime.Activate(10000);
                     _=child.ResumeQuarantined();resumed=true;
@@ -187,6 +202,7 @@ internal static class OfflineConsoleQualification
                     }
                     catch(Exception error){failures.Add(error);}
                     child?.Dispose();
+                    temp?.Dispose();
                 }
                 if(capture is { } readers)
                 {

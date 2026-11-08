@@ -61,22 +61,29 @@ internal static class OfflineConsoleNativeCases
         var session=new string('a',32);
         var parent=Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
         var workspace=Path.Combine(parent,"ClaudeCodeProtection-Task-"+session);
+        var localData=Path.Combine(parent,"profile-fixture","AC");
+        var temp=Path.Combine(localData,"Temp");
         var env=new Dictionary<string,string>(StringComparer.OrdinalIgnoreCase);
-        _=Call(bind,null,env,workspace,session);
-        Require(env.Count==10 && env["ProgramFiles"]==parent && env["CPC_OFFLINE_CONSOLE_SESSION"]==session);
-        string? Diagnose(string cwd)=>Call(verify,null,workspace,cwd,(Func<string,string?>)(name=>env.GetValueOrDefault(name)))?.ToString();
+        _=Call(bind,null,env,workspace,localData,session);
+        Require(env.Count==11 && env["ProgramFiles"]==parent && env["CPC_OFFLINE_CONSOLE_SESSION"]==session &&
+            env["TEMP"]==temp && env["TMP"]==temp && env["LOCALAPPDATA"]==localData);
+        string? Diagnose(string cwd)=>Call(verify,null,workspace,localData,temp,cwd,(Func<string,string?>)(name=>env.GetValueOrDefault(name)))?.ToString();
         Require(Diagnose(workspace.ToUpperInvariant()) is null);
         Require(Diagnose(parent)=="CurrentDirectory");
         foreach(var (name,expected) in new[]{("TEMP","Temp"),("TMP","Tmp"),("LOCALAPPDATA","LocalAppData"),("USERPROFILE","UserProfile"),
             ("HOME","Home"),("XDG_CONFIG_HOME","XdgConfigHome"),("CLAUDE_CONFIG_DIR","ClaudeConfigDir"),("APPDATA","AppData")})
         {
+            var original=env[name];
             Require(env.Remove(name) && Diagnose(workspace)==expected);
-            env.Add(name,workspace);
+            env.Add(name,original);
         }
+        env["TEMP"]=Path.Combine(parent,"HostTemp");
+        Require(Diagnose(workspace)=="Temp");
+        env["TEMP"]=temp;
         env["HTTP_PROXY"]="unused";
         Require(Diagnose(workspace)=="UnexpectedAuthority");
-        Refuse<InvalidDataException>(()=>Call(bind,null,env,workspace,session));
-        Refuse<InvalidDataException>(()=>Call(bind,null,new Dictionary<string,string>(),parent,session));
+        Refuse<InvalidDataException>(()=>Call(bind,null,env,workspace,localData,session));
+        Refuse<InvalidDataException>(()=>Call(bind,null,new Dictionary<string,string>(),parent,localData,session));
     }
 
     private static void RunChild(Assembly library,Type type,bool flood)
