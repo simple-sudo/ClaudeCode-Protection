@@ -27,9 +27,11 @@ internal sealed class SessionZeroCreatorProfile : IDisposable
         PathLease? parent=null;
         try
         {
-            parent=SessionProfileRecovery.PrepareFreshStorage(package.Name);
-            AssertMappingAbsent(package.Value);
+            parent=WindowsPathSeal.LockCreatorProfileParent(WindowsPathSeal.Child(local,"Packages"));
             var storage=WindowsPathSeal.Child(parent.Path,package.Name);
+            try{using var existing=WindowsPathSeal.Open(storage,true,false);throw WfpNative.Contract("CreatorProfileStorageAlreadyPresent");}
+            catch(ExactPathAbsentException error)when(string.Equals(error.FailedPath,storage,StringComparison.OrdinalIgnoreCase)){}
+            AssertMappingAbsent(package.Value);
             var status=CreateAppContainerProfile(package.Name,"ClaudeCodeProtection offline qualification",
                 "Fixed LocalService offline Broker workload",IntPtr.Zero,0,out var created);
             try

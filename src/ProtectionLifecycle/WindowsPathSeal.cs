@@ -57,12 +57,14 @@ internal static class WindowsPathSeal
         return result;
     }
     internal static SafeFileHandle Open(string path, bool directory, bool readData, bool writable = false)
+        =>OpenBound(path,directory,readData,writable,shareWrite:false);
+    private static SafeFileHandle OpenBound(string path,bool directory,bool readData,bool writable,bool shareWrite)
     {
         var access = ReadControl | ReadAttributes | (readData ? 0x80000000u : 0u) | (writable ? 0x40000000u : 0u);
-        // No SHARE_DELETE and no SHARE_WRITE. Sharing does not protect security
-        // metadata; ACL/owner checks below are independently required.
+        // Never share deletion. Only the fixed creator profile parent shares
+        // writes. ACL/owner checks are independently required.
         var canonical=Canonical(path);
-        var handle=CreateFile(canonical,access,1,IntPtr.Zero,3,OpenReparse|(directory?BackupSemantics:0),IntPtr.Zero);
+        var handle=CreateFile(canonical,access,shareWrite?3u:1u,IntPtr.Zero,3,OpenReparse|(directory?BackupSemantics:0),IntPtr.Zero);
         if(handle.IsInvalid)
         {
             var error=Error("OpenBoundPath");handle.Dispose();
@@ -262,6 +264,12 @@ internal static class WindowsPathSeal
         }
     }
     internal static PathLease LockDirectory(string path, PathPolicy policy)
+        =>LockDirectoryCore(path,policy,shareFinalWrite:false);
+    // CreateAppContainerProfile writes under the held Packages directory.
+    // Keep it non-deletable without excluding the OS writer.
+    internal static PathLease LockCreatorProfileParent(string path)
+        =>LockDirectoryCore(path,PathPolicy.Source,shareFinalWrite:true);
+    private static PathLease LockDirectoryCore(string path,PathPolicy policy,bool shareFinalWrite)
     {
         path = Canonical(path);
         var lease = new PathLease(path, policy);
@@ -272,9 +280,10 @@ internal static class WindowsPathSeal
             foreach (var part in path[3..].Split('\\', StringSplitOptions.RemoveEmptyEntries)) { current = Path.Combine(current, part); prefixes.Add(current); }
             foreach (var prefix in prefixes)
             {
-                var handle = Open(prefix, true, false); lease.Add(handle);
+                var last=string.Equals(prefix,path,StringComparison.OrdinalIgnoreCase);
+                var handle=OpenBound(prefix,true,false,false,shareWrite:shareFinalWrite && last);lease.Add(handle);
                 if(policy!=PathPolicy.Source)
-                {var last=string.Equals(prefix,path,StringComparison.OrdinalIgnoreCase);AssertAcl(handle,policy==PathPolicy.Protected && last,policy==PathPolicy.CreationParent && last);}
+                    AssertAcl(handle,policy==PathPolicy.Protected && last,policy==PathPolicy.CreationParent && last);
             }
             return lease;
         }

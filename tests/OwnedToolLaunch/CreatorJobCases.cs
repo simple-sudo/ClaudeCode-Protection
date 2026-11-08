@@ -236,6 +236,23 @@ internal static class CreatorJobCases
         Refused(()=>parseRequest.Invoke(null,[outgoing,legacyId,12u,7u]));
         Refused(()=>parseRequest.Invoke(null,[outgoing,jobId,13u,7u]));
         Refused(()=>parseRequest.Invoke(null,[outgoing,jobId,12u,8u]));
+        var createFailure=channel.GetMethod("CreateFailure",methods)!;
+        var failureStage=channel.GetNestedType("CreationFailure",BindingFlags.NonPublic)!;
+        foreach(var (stageName,native) in new[]{("Profile",0x80070005u),("AtomicCreate",5u),("Streams",32u)})
+        {
+            var fault=(byte[])createFailure.Invoke(null,[decoded,Enum.Parse(failureStage,stageName),native])!;
+            Check(fault.Length==44 && fault.AsSpan(0,4).SequenceEqual("CCF1"u8));
+            var exact=false;
+            try{_=reply.Invoke(null,[fault,nonce,20u,40L]);}
+            catch(TargetInvocationException error) when(error.InnerException is IOException remote &&
+                remote.GetType().GetProperty("Stage",BindingFlags.Instance|BindingFlags.NonPublic)!.GetValue(remote) is string observed &&
+                observed=="CreatorService"+stageName && unchecked((uint)remote.HResult)==native){exact=true;}
+            Check(exact);
+            fault[28]=1;
+            Refused(()=>reply.Invoke(null,[fault,nonce,20u,40L]));
+        }
+        Refused(()=>createFailure.Invoke(null,[decoded,Enum.ToObject(failureStage,0u),5u]));
+        Refused(()=>createFailure.Invoke(null,[decoded,Enum.ToObject(failureStage,1u),0u]));
         var assertGroups=serviceClient.GetMethod("AssertCreatorGroups",methods)!;
         void ServiceGroups((string,uint)[] groups,(string,uint)[] restricting)=>_=assertGroups.Invoke(null,[groups,restricting,creatorSid]);
         ServiceGroups([(creatorSid,4),("S-1-5-32-544",0x10)],[]);Check(true);

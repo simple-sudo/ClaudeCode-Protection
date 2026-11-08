@@ -14,7 +14,7 @@ namespace ProtectionLifecycle;
 // This channel can never start a service or resume the returned thread.
 internal sealed class SessionZeroCreatorChannel : IDisposable
 {
-    private const uint RequestMagic=0x31504343,ReplyMagic=0x31524343; // CCP1, CCR1.
+    private const uint RequestMagic=0x31504343,ReplyMagic=0x31524343,FailureMagic=0x31464343; // CCP1, CCR1, CCF1.
     private const int NonceSize=16,ReplySize=44;
     internal const int RequestSize=60;
     internal const string ServicePrefix="CpcSessionCreator.";
@@ -75,8 +75,17 @@ internal sealed class SessionZeroCreatorChannel : IDisposable
         pipe.WriteAsync(request.AsMemory(),cancellation).AsTask().GetAwaiter().GetResult();
         var reply=new byte[ReplySize];
         pipe.ReadExactlyAsync(reply.AsMemory(),cancellation).AsTask().GetAwaiter().GetResult();
+        Reply report;
+        try{report=ParseReply(reply,nonce,servicePid,serviceCreated);}
+        catch(WfpFailure failure)
+        {
+            // This single-instance channel was already bound before request.
+            // A nonce-bound failure may be the service's final write.
+            try{job.ConfirmSessionZeroCreatorReleased();}
+            catch(Exception revocation){throw new AggregateException("Creator failure and assignment release both unconfirmed",failure,revocation);}
+            throw;
+        }
         _=AssertServicePeer(pipe.SafePipeHandle,service,ownerSession);
-        var report=ParseReply(reply,nonce,servicePid,serviceCreated);
         // A completed reply promises the fixed service has returned from
         // CreateProcess and closed its assignment handle. Read the DACL and
         // actual handle count before inspecting any returned process IDs.
@@ -154,6 +163,18 @@ internal sealed class SessionZeroCreatorChannel : IDisposable
     }
 
     internal readonly record struct Reply(uint Pid,uint Tid,long ProcessCreated,long ThreadCreated);
+    internal enum CreationFailure : uint { Profile=1, AtomicCreate=2, Streams=3 }
+    internal static byte[] CreateFailure(Request request,CreationFailure stage,uint code)
+    {
+        if(request.Nonce.Length!=NonceSize || !Enum.IsDefined(stage) || code==0)
+            throw WfpNative.Contract("CreatorFailureFrameInvalid");
+        var frame=new byte[ReplySize];
+        BinaryPrimitives.WriteUInt32LittleEndian(frame,FailureMagic);
+        request.Nonce.CopyTo(frame,4);
+        BinaryPrimitives.WriteUInt32LittleEndian(frame.AsSpan(20),(uint)stage);
+        BinaryPrimitives.WriteUInt32LittleEndian(frame.AsSpan(24),code);
+        return frame;
+    }
     internal static Reply ObserveCreatedRoot(SafeProcessHandle process,SafeWaitHandle thread)
     {
         var pid=GetProcessId(process);
@@ -178,8 +199,18 @@ internal sealed class SessionZeroCreatorChannel : IDisposable
     internal static Reply ParseReply(byte[] frame,byte[] nonce,uint creatorPid,long creatorCreated)
     {
         if(frame.Length!=ReplySize || nonce.Length!=NonceSize || creatorPid==0 || creatorCreated<=0 ||
-            BinaryPrimitives.ReadUInt32LittleEndian(frame)!=ReplyMagic || !CryptographicOperations.FixedTimeEquals(frame.AsSpan(4,NonceSize),nonce))
+            !CryptographicOperations.FixedTimeEquals(frame.AsSpan(4,NonceSize),nonce))
             throw WfpNative.Contract("CreatorReplyBindingMismatch");
+        var magic=BinaryPrimitives.ReadUInt32LittleEndian(frame);
+        if(magic==FailureMagic)
+        {
+            var stage=(CreationFailure)BinaryPrimitives.ReadUInt32LittleEndian(frame.AsSpan(20));
+            var code=BinaryPrimitives.ReadUInt32LittleEndian(frame.AsSpan(24));
+            if(!Enum.IsDefined(stage) || code==0 || frame.AsSpan(28).ContainsAnyExcept((byte)0))
+                throw WfpNative.Contract("CreatorFailureFrameInvalid");
+            throw new WfpFailure("CreatorService"+stage,code);
+        }
+        if(magic!=ReplyMagic)throw WfpNative.Contract("CreatorReplyBindingMismatch");
         var pid=BinaryPrimitives.ReadUInt32LittleEndian(frame.AsSpan(20));
         var tid=BinaryPrimitives.ReadUInt32LittleEndian(frame.AsSpan(24));
         var processCreated=BinaryPrimitives.ReadInt64LittleEndian(frame.AsSpan(28));
