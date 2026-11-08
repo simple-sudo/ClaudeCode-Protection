@@ -21,7 +21,7 @@
     <Compile Include="OpenSslOfflineWitness.cs;OpenSslOfflineIdentity.cs;OpenSslOfflineCrlFixture.cs;OpenSslModuleLease.cs" />
     <Compile Include="TokenCapabilitySnapshot.cs" />
     <Compile Include="LpacCapabilityProfile.cs" />
-    <Compile Include="GatewayCapabilityContent.cs" />
+    <Compile Include="GatewayCapabilityContent.cs;LocalManagementBoundary.cs" />
     <Compile Include="OwnedObjectDefaultDaclPolicy.cs" />
     <Compile Include="NetworkContentSnapshot.cs" />
     <Compile Include="ProtectedLifecycleCoordinator.cs" />

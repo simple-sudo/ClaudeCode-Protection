@@ -62,12 +62,20 @@ internal sealed class ProxyChannelLease : IDisposable
     // Pin the accepted server-side socket, not just whichever process happens
     // to own the listener when checked. No CONNECT data may precede this check.
     // An uncertain/closed connection is refused; there is no listener fallback.
-    internal void AssertConnectedPeer(Socket socket)
+    internal void AssertConnectedPeer(Socket socket)=>AssertConnectedPeer(socket,CompiledFencePolicy.ProxyPort);
+    internal void AssertControllerPeer(Socket socket)=>AssertConnectedPeer(socket,LocalManagementBoundary.ControllerPort);
+    internal void AssertControllerListener()
+    {
+        AssertHealthy();
+        if(ReadLoopbackOwner(LocalManagementBoundary.ControllerPort,null)!=pid)
+            throw WfpNative.Contract("LocalControllerListenerOwnerDrift");
+    }
+    private void AssertConnectedPeer(Socket socket,int port)
     {
         AssertHealthy();
         if(socket.LocalEndPoint is not IPEndPoint local || !local.Address.Equals(IPAddress.Loopback) ||
             socket.RemoteEndPoint is not IPEndPoint remote || !remote.Address.Equals(IPAddress.Loopback) ||
-            remote.Port!=CompiledFencePolicy.ProxyPort || ReadLoopbackOwner(remote.Port,local.Port)!=pid)
+            remote.Port!=port || ReadLoopbackOwner(remote.Port,local.Port)!=pid)
             throw WfpNative.Contract("ProxyConnectedPeerIdentityMismatch");
         AssertHealthy();
     }

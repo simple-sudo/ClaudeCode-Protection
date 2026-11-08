@@ -29,6 +29,7 @@ internal sealed class SessionProxy : IDisposable
     private readonly string packageSid, sessionId;
     private readonly LpacCapabilityProfile capabilityProfile;
     private readonly bool fixedNoContentHttpsCanary;
+    private readonly bool localManagementBoundary;
     private readonly FixedResolverTrust? fixedResolverTrust;
     private ResolverTlsEvidence? resolverTlsEvidence;
     private UpstreamTunnelEvidence? upstreamTunnelEvidence;
@@ -41,6 +42,7 @@ internal sealed class SessionProxy : IDisposable
     private readonly byte[] authorization;
     private readonly Task accept;
     private readonly TaskCompletionSource<(uint Pid,long CreatedFileTime)> fixedExchange=new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private readonly TaskCompletionSource<(uint Pid,long CreatedFileTime)> localAcknowledged=new(TaskCreationOptions.RunContinuationsAsynchronously);
     private sealed record GatewayFailure(Exception Cause,string Phase);
     private GatewayFailure? failure;
     internal GatewayFailureFeedback? FailureFeedback
@@ -55,17 +57,22 @@ internal sealed class SessionProxy : IDisposable
     internal string Secret { get; } = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
     internal string SessionId => sessionId;
     internal SessionProxy(OwnedKernelJob job, ProxyChannelLease upstream, string packageSid, string sessionId,
-        LpacCapabilityProfile? capabilities=null,bool fixedNoContentHttpsCanary=false,FixedResolverTrust? fixedResolverTrust=null)
+        LpacCapabilityProfile? capabilities=null,bool fixedNoContentHttpsCanary=false,FixedResolverTrust? fixedResolverTrust=null,
+        bool localManagementBoundary=false)
     {
         capabilityProfile=capabilities??LpacCapabilityProfile.None;
         if(fixedNoContentHttpsCanary && !capabilityProfile.IsInternetClientQualification)throw WfpNative.Contract("NoContentHttpsGatewayRequiresFixedInternetClient");
         if(fixedResolverTrust is not null && !fixedNoContentHttpsCanary)throw WfpNative.Contract("ResolverTlsTrustRequiresFixedHead");
+        if(localManagementBoundary && (!capabilityProfile.IsInternetClientQualification || fixedNoContentHttpsCanary))
+            throw WfpNative.Contract("LocalManagementGatewayPlanDiffers");
         this.fixedNoContentHttpsCanary=fixedNoContentHttpsCanary;
+        this.localManagementBoundary=localManagementBoundary;
         this.fixedResolverTrust=fixedResolverTrust;
         var effective="CPC-GATEWAY-EFFECTIVE-V3;"+PolicySHA256+";"+capabilityProfile.SHA256+
             ";resolver-freshness=authenticated-request-stream;fixed-no-content-https-canary="+fixedNoContentHttpsCanary;
         if(fixedResolverTrust is not null)effective+=";fixed-openssl-head-resolver-explicit-offline-revocation;request=HEAD "+
             FixedOpenSslHead.RequestPath+";client="+FixedOpenSslHead.UserAgent;
+        if(localManagementBoundary)effective+=";fixed-local-management-boundary;relay=never";
         EffectivePolicySHA256=Convert.ToHexString(SHA256.HashData(Encoding.ASCII.GetBytes(effective)));
         this.job = job; this.upstream = upstream; this.packageSid = packageSid; this.sessionId = Identifiers.Hex32(sessionId);
         authorization = Encoding.ASCII.GetBytes("Basic " + Convert.ToBase64String(Encoding.ASCII.GetBytes(sessionId + ":" + Secret)));
@@ -84,6 +91,7 @@ internal sealed class SessionProxy : IDisposable
     {
         if(!ReferenceEquals(permit.Gateway,this) || !ReferenceEquals(permit.CapabilityProfile,capabilityProfile) || permit.FixedNoContentHttpsCanary!=fixedNoContentHttpsCanary ||
             permit.UsesFixedOpenSslHead!=(fixedResolverTrust is not null) ||
+            permit.IsLocalManagementBoundary!=localManagementBoundary ||
             capabilityProfile.IsInternetClientQualification && !permit.IsFixedGatewayQualification)throw WfpNative.Contract("GatewayAdmissionOwnerOrCapabilitiesMismatch");
         permit.AssertCurrent();
         if(Interlocked.CompareExchange(ref admission,permit,null) is not null)throw WfpNative.Contract("GatewayAdmissionAlreadyBound");
@@ -102,6 +110,12 @@ internal sealed class SessionProxy : IDisposable
     }
     internal bool FixedExchangeObserved(uint pid,long createdFileTime)
         =>fixedExchange.Task.IsCompletedSuccessfully && fixedExchange.Task.Result==(pid,createdFileTime);
+    internal void RequireLocalAcknowledgement(uint pid,long createdFileTime)
+    {
+        if(!localManagementBoundary ||
+            localAcknowledged.Task.WaitAsync(TimeSpan.FromMilliseconds(500)).GetAwaiter().GetResult()!=(pid,createdFileTime))
+            throw WfpNative.Contract("LocalGatewayAcknowledgementOwnerDiffers");
+    }
     private void AssertForwardingCurrent()
     {
         (Volatile.Read(ref admission)??throw WfpNative.Contract("GatewayAdmissionMissing")).AssertForwardingCurrent();
@@ -175,6 +189,12 @@ internal sealed class SessionProxy : IDisposable
                 }
                 AssertForwardingCurrent();
                 await stream.WriteAsync(Encoding.ASCII.GetBytes("HTTP/1.1 200 Connection Established\r\n\r\n"), deadline.Token);
+                if(localManagementBoundary)
+                {
+                    if(fixedPeer is not { } localPeer || !localAcknowledged.TrySetResult(localPeer))
+                        throw WfpNative.Contract("LocalGatewayAcknowledgementOwnerMissing");
+                    return;
+                }
                 phase="CLIENT_TLS";
                 using var tlsClient=await SessionTunnel.RequireTlsClientHelloAsync(stream,request.Host,AssertForwardingCurrent,deadline.Token);
                 AssertHealthy();AtomicChild.AssertSessionPeer(job,process,packageSid,peer.Port,capabilityProfile);AssertForwardingCurrent();
@@ -286,6 +306,7 @@ internal sealed class SessionProxy : IDisposable
     private async Task<NetworkStream> OpenTunnel(IPAddress ip,CancellationToken token,Action? assertFreshResolution=null,
         UpstreamTunnelAttempt? attempt=null)
     {
+        if(localManagementBoundary)throw WfpNative.Contract("LocalGatewayCannotRelay");
         void Step(UpstreamTunnelStep next){if(attempt is not null)attempt.Step=next;}
         Step(UpstreamTunnelStep.AddressPolicy);
         if (ip.AddressFamily != AddressFamily.InterNetwork || !ProxyDestinationPolicy.IsPublicAddressCandidate(ip))

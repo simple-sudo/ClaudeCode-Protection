@@ -218,6 +218,7 @@ public static partial class InstalledBroker
     public static (int ExitCode,string Report) QualifyZeroCapabilityComparisonGateway()=>WithCurrentInstallation(ProtectedSession.QualifyZeroCapabilityComparisonGateway);
     public static (int ExitCode,string Report) QualifyNoContentHttpsCanary()=>WithCurrentInstallation(ProtectedSession.QualifyNoContentHttpsCanary);
     public static (int ExitCode,string Report) QualifyFixedOpenSslHead()=>WithCurrentInstallation(ProtectedSession.QualifyFixedOpenSslHead);
+    public static (int ExitCode,string Report) QualifyLocalManagementBoundary()=>WithCurrentInstallation(ProtectedSession.QualifyLocalManagementBoundary);
     public static (int ExitCode,string Report) QualifySchannelAcquisition()
         =>WithCurrentInstallation((layout,state,version)=>OfflineTlsQualification.Run(layout,state,version,OfflineTlsProbe.Schannel));
     public static (int ExitCode,string Report) QualifyOpenSslOffline()
@@ -229,6 +230,7 @@ public static partial class InstalledBroker
     public static int RunZeroCapabilityComparisonCanary()=>AtomicChild.RunZeroCapabilityComparisonCanary();
     public static int RunNoContentHttpsCanary()=>AtomicChild.RunNoContentHttpsCanary();
     public static int RunFixedOpenSslHeadCanary()=>AtomicChild.RunFixedOpenSslHeadCanary();
+    public static int RunLocalManagementBoundaryCanary()=>AtomicChild.RunLocalManagementBoundaryCanary();
     public static int RunSchannelAcquisitionChild()=>AtomicChild.RunOfflineTlsChild(OfflineTlsProbe.Schannel);
     public static int RunOpenSslOfflineChild()=>AtomicChild.RunOfflineTlsChild(OfflineTlsProbe.OpenSsl);
     public static int RunAdmissionCanary()

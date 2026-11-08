@@ -639,8 +639,10 @@ internal sealed partial class AtomicChild : IDisposable
         =>RunGatewayQualificationCanaryCore(LpacCapabilityProfile.InternetClientQualification,true,true,useOpenSsl:true);
     internal static int RunZeroCapabilityComparisonCanary()
         =>RunGatewayQualificationCanaryCore(LpacCapabilityProfile.None,true);
+    internal static int RunLocalManagementBoundaryCanary()
+        =>RunGatewayQualificationCanaryCore(LpacCapabilityProfile.InternetClientQualification,false,localManagementBoundary:true);
     private static int RunGatewayQualificationCanaryCore(LpacCapabilityProfile expectedCapabilities,bool captureCapabilityContent,
-        bool fixedNoContentHttpsCanary=false,bool useOpenSsl=false)
+        bool fixedNoContentHttpsCanary=false,bool useOpenSsl=false,bool localManagementBoundary=false)
     {
         var phase="ENVIRONMENT";var id=Environment.GetEnvironmentVariable("CPC_SESSION_ID")??"";GatewayChildReport result;
         GatewayNetworkContent? networkContent=null;
@@ -671,6 +673,13 @@ internal sealed partial class AtomicChild : IDisposable
                 result=GatewayChildReport.Result(id,phase,125);
             else
             {
+                if(localManagementBoundary)
+                {
+                    phase="SOCKET_INITIALIZATION";
+                    var local=LocalManagementBoundary.RunWorker(id,secret).GetAwaiter().GetResult();
+                    Console.WriteLine(JsonSerializer.Serialize(local));
+                    return local.ExitCode;
+                }
                 if(captureCapabilityContent)
                 {
                     // One unbound socket is created and immediately closed;
@@ -708,6 +717,12 @@ internal sealed partial class AtomicChild : IDisposable
             }
         }
         catch(Exception ex){result=GatewayChildReport.Result(id,phase,125,failure:ex);}
+        if(localManagementBoundary)
+        {
+            Console.WriteLine(JsonSerializer.Serialize(new LocalManagementBoundaryReport(1,result.SessionId,result.Pid,result.Phase,
+                result.ExitCode,result.Errors[0].Code,[])));
+            return result.ExitCode;
+        }
         Console.WriteLine(captureCapabilityContent?
             JsonSerializer.Serialize(new GatewayCapabilityChildReport(1,result,endpoint,networkContent)):JsonSerializer.Serialize(result));return result.ExitCode;
     }

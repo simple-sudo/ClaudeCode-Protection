@@ -108,6 +108,7 @@ internal static class Program
             if(command=="internet-client-gateway-qualification-child")return ProtectionLifecycle.InstalledBroker.RunInternetClientGatewayQualificationCanary();
             if(command=="no-content-https-canary-child")return ProtectionLifecycle.InstalledBroker.RunNoContentHttpsCanary();
             if(command=="fixed-openssl-head-child")return ProtectionLifecycle.InstalledBroker.RunFixedOpenSslHeadCanary();
+            if(command=="local-management-boundary-child")return ProtectionLifecycle.InstalledBroker.RunLocalManagementBoundaryCanary();
             if(command=="schannel-acquisition-child")return ProtectionLifecycle.InstalledBroker.RunSchannelAcquisitionChild();
             if(command=="openssl-offline-child")return ProtectionLifecycle.InstalledBroker.RunOpenSslOfflineChild();
             if(command=="zero-capability-comparison-child")return ProtectionLifecycle.InstalledBroker.RunZeroCapabilityComparisonCanary();
@@ -119,6 +120,7 @@ internal static class Program
                 "qualify-internet-client-session-gateway" => ProtectionLifecycle.InstalledBroker.QualifyInternetClientSessionGateway(),
                 "qualify-no-content-https-canary" => ProtectionLifecycle.InstalledBroker.QualifyNoContentHttpsCanary(),
                 "qualify-fixed-openssl-head" => ProtectionLifecycle.InstalledBroker.QualifyFixedOpenSslHead(),
+                "qualify-local-management-boundary" => ProtectionLifecycle.InstalledBroker.QualifyLocalManagementBoundary(),
                 "qualify-schannel-acquisition" => ProtectionLifecycle.InstalledBroker.QualifySchannelAcquisition(),
                 "qualify-openssl-offline" => ProtectionLifecycle.InstalledBroker.QualifyOpenSslOffline(),
                 "qualify-winsock-provider-session-gateway" => ProtectionLifecycle.InstalledBroker.QualifyWinsockProviderSessionGateway(),

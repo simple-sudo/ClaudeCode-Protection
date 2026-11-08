@@ -16,7 +16,7 @@ internal static class GatewayQualificationBoundaryCases
             var defaultCulture=System.Globalization.CultureInfo.DefaultThreadCurrentCulture;var defaultUi=System.Globalization.CultureInfo.DefaultThreadCurrentUICulture;
             try
             {
-                if(method=="RunGatewayQualificationCanary")Console.SetOut(new StringWriter());
+                if(method is "RunGatewayQualificationCanary" or "RunLocalManagementBoundaryCanary")Console.SetOut(new StringWriter());
                 return broker.GetMethod(method,BindingFlags.Public|BindingFlags.Static)!.Invoke(null,null);
             }
             catch(TargetInvocationException ex)when(ex.InnerException is not null){ExceptionDispatchInfo.Capture(ex.InnerException).Throw();throw;}
@@ -45,7 +45,8 @@ internal static class GatewayQualificationBoundaryCases
         // Ordinary callers must be rejected by the common administrator gate,
         // before opening protected state or creating native runtime objects.
         var denied=false;try{Call("QualifySessionGateway");}catch(UnauthorizedAccessException){denied=true;}Check(denied);
-        var names=new[]{"CPC_SESSION_ID","CPC_SESSION_SECRET","CPC_RESOURCE_PLAN","CPC_NETWORK_PLAN","CPC_GPU_PLAN"};
+        denied=false;try{Call("QualifyLocalManagementBoundary");}catch(UnauthorizedAccessException){denied=true;}Check(denied);
+        var names=new[]{"CPC_SESSION_ID","CPC_SESSION_SECRET","CPC_RESOURCE_PLAN","CPC_NETWORK_PLAN","CPC_GPU_PLAN","CPC_PUBLIC_TIMEZONE_ID"};
         var saved=names.Select(Environment.GetEnvironmentVariable).ToArray();
         try
         {
@@ -54,9 +55,11 @@ internal static class GatewayQualificationBoundaryCases
             Environment.SetEnvironmentVariable(names[0],new string('a',32));
             Check((int)Call("RunGatewayQualificationCanary")! ==125);
             Environment.SetEnvironmentVariable(names[1],new string('B',64));
+            Environment.SetEnvironmentVariable("CPC_PUBLIC_TIMEZONE_ID","Eastern Standard Time");
             // Well-shaped environment strings cannot manufacture a real LPAC.
             Check((int)Call("RunGatewayQualificationCanary")! ==125);
-            foreach(var name in names.Skip(2))
+            Check((int)Call("RunLocalManagementBoundaryCanary")! ==125);
+            foreach(var name in names.Skip(2).Take(3))
             {
                 Environment.SetEnvironmentVariable(name,"{}");
                 Check((int)Call("RunGatewayQualificationCanary")! ==125);
