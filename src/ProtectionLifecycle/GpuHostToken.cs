@@ -87,9 +87,11 @@ internal sealed class GpuHostToken : IDisposable
         var facts=MaintenanceIdentity.ReadFacts(token);
         using var identity=new WindowsIdentity(token.DangerousGetHandle());
         var statistics=Data(token,10);if(statistics.Length!=56)throw Refuse("HostGpuTokenStatisticsLength");
-        return new(facts.Type,facts.AppContainer,facts.Elevated,Number(token,18),facts.RestrictedSidCount,Number(token,26),Number(token,12),
+        return new(facts.Type,facts.AppContainer,facts.Elevated,Number(WindowsTokenInformation.Dword.ElevationType),
+            facts.RestrictedSidCount,Number(WindowsTokenInformation.Dword.UiAccess),Number(WindowsTokenInformation.Dword.SessionId),
             identity.User?.Value??throw Refuse(),Sid(token,25),Convert.ToHexString(statistics.AsSpan(8,8)),
             new WindowsPrincipal(identity).IsInRole(WindowsBuiltInRole.Administrator),Convert.ToHexString(SHA256.HashData(Data(token,3))));
+        int Number(WindowsTokenInformation.Dword field)=>WindowsTokenInformation.Read(token,field,"HostGpuTokenQueryOrDuplicate");
     }
     private static string Sid(SafeAccessTokenHandle token,int kind)
     {
@@ -104,8 +106,6 @@ internal sealed class GpuHostToken : IDisposable
         }
         finally{Marshal.FreeHGlobal(buffer);}
     }
-    private static int Number(SafeAccessTokenHandle token,int kind)
-    {var bytes=Data(token,kind);return bytes.Length==4?BitConverter.ToInt32(bytes):throw Refuse();}
     private static byte[] Data(SafeAccessTokenHandle token,int kind)
     {
         if(GetTokenInformation(token,kind,IntPtr.Zero,0,out var size) || Marshal.GetLastWin32Error()!=122 || size is <4 or >65536)throw Refuse();

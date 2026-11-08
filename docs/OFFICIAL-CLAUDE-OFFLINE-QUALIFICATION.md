@@ -305,3 +305,45 @@ Windows 用户配置文件目录、物理 DNS 主机名及本机 64 位注册表
 原所有者确认先隔离后停止、单累计成员、Job 清零和任务树回收。回读派生摘要
 `B4E18F45BEB21676AD49F727AF3FD14A0AEEFDBBB5D20B85910026C2BD459E07`。
 许可已消耗，本次无外部请求或官方 CLI 执行。
+
+### 独立主令牌前置实验
+
+普通本地账户的 [SID] 仍包含本机账户域，单独新建一个本地账户不能阻止跨会话
+或设备关联。此切片只尝试以提升后的原安装所有者调用 [LogonUserW]，取得
+Windows 内置 LocalService 的独立主令牌。它不创建进程、不变更系统权限，
+不建立账户或服务，也不把令牌或 SID 输出到报告。
+
+| 已用许可 | 原进程终态 | 结论 |
+| --- | --- | --- |
+| `EDE27C12…` | 阶段 1，数字错误 13，无超时 | 停在原所有者令牌校验，未调用本机登录；三项特权未观察。 |
+| `836A33C8…` | 阶段 2，Windows 错误 5，无超时 | 原所有者令牌校验通过。一次固定 LocalService 登录被拒，未取得源令牌，未创建降权令牌。 |
+
+两份回执原件保留。SHA-256 分别为
+`00CEF9AB397870D3CE5FD4702AD8ECCB4BA98DDA0C07C2187738ACA8D2FA82AB`、
+`237F8BC81819BDB6D1D19916BAD171B9EBF9F3D64E0D4935AF5B439E52E8EEA7`。
+修正版观测到原所有者令牌中的 `SeAssignPrimaryTokenPrivilege`、
+`SeIncreaseQuotaPrivilege`、`SeImpersonatePrivilege` 均存在，当时仅第三项
+启用。这不是不同主身份的进程创建证据。错误 5 的系统内部原因未取证。
+两次均未重试、未安装、未运行受限载荷或官方 CLI，程序未主动联网。
+
+同机普通侧复现 `TokenElevation` 的空缓冲区探测返回 24；直接读取四字节
+成功。产品将维护身份、GPU 参考、原子准入及限制 SID 校验中的固定字段统一
+用明确的四字节布局读取；可变 SID、组和特权的既有大小检查保持独立。
+五产品 Release 无警告、无错误。12 个普通回归入口通过，覆盖原所有者门禁、
+同进程限制 SID、GPU 令牌、原子准入自身令牌、能力缓冲区及离线控制台和探针
+闭合。探针闭合测试首次用应用宿主调用时被测试自身的固定运行时检查拒绝；
+按既有要求从固定 .NET 8.0.28 宿主调用后通过，首次日志保留。
+新代码未安装，也未用于受保护会话。
+
+若改用 Windows 服务控制管理器，系统本身支持以 [LocalService] 启动服务，
+但该账户由多个服务共享。只能先验证有独立服务 SID、受限特权、精确固定映像
+和原所有者可证明恢复的创建组件。Windows 的 [CreateProcessAsUserW] 不允许
+跨会话继承句柄；若服务侧负责创建，管道的继承端与创建者和载荷应在同一
+Windows 会话，GUI 仍走原所有者验证的本地协议。新路线仍须保持 WFP 隔离、
+Job、低完整性 LPAC、确切令牌及继承句柄在放行前全部校验。以上是设计约束，
+尚未创建服务或执行此路线。已观测的宿主 SID 暴露继续为 FAIL。
+
+[LogonUserW]: https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-logonuserw
+[SID]: https://learn.microsoft.com/en-us/windows-server/identity/ad-ds/manage/understand-security-identifiers
+[LocalService]: https://learn.microsoft.com/en-us/windows/win32/services/localservice-account
+[CreateProcessAsUserW]: https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-createprocessasuserw

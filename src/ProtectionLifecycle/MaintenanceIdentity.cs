@@ -24,13 +24,10 @@ internal static class MaintenanceIdentity
             throw new UnauthorizedAccessException("An unrestricted elevated primary administrator token is required; no automatic elevation");
     }
     internal static TokenFacts ReadFacts(SafeAccessTokenHandle token)
-        =>new(ReadInt(token,8),ReadInt(token,29),ReadInt(token,20),ReadRestrictedSidCount(token));
-    private static int ReadInt(SafeAccessTokenHandle token,int kind)
     {
-        var bytes=new byte[sizeof(int)];
-        if(!GetTokenInformation(token,kind,bytes,bytes.Length,out var returned))throw Error();
-        if(returned!=bytes.Length)throw new InvalidDataException("Maintenance token information length differs");
-        return BitConverter.ToInt32(bytes);
+        return new(Read(WindowsTokenInformation.Dword.Type),Read(WindowsTokenInformation.Dword.IsAppContainer),
+            Read(WindowsTokenInformation.Dword.Elevation),ReadRestrictedSidCount(token));
+        int Read(WindowsTokenInformation.Dword field)=>WindowsTokenInformation.Read(token,field,"MaintenanceReadTokenInformation");
     }
     private static int ReadRestrictedSidCount(SafeAccessTokenHandle token)
     {

@@ -5,6 +5,15 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-08 独立主令牌前置实验
+
+FAIL(首次原所有者令牌阶段拒绝，未调用登录)。
+VERIFIED(修正版读取提升后原所有者的三项创建相关特权)。
+FAIL(同机固定 LocalService 服务登录被拒，未取得源或降权令牌)。
+INTEGRATED / BUILD(统一固定长度令牌字段) / VERIFIED(12 个普通回归入口)。
+不同主身份的受限进程创建及保护闭合 NOT_RUN，原宿主 SID 暴露仍为 FAIL。
+[结果及范围](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#独立主令牌前置实验)
+
 ## 2026-11-08 固定离线任务内目录投影
 
 INTEGRATED / BUILD(任务树、低完整性目录、严格投影及实际临时文件正控制)。

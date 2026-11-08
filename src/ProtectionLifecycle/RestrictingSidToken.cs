@@ -26,9 +26,8 @@ internal sealed class RestrictingSidToken : IDisposable
             throw Error("RestrictingTokenOpenOwnProcess");
         using (source)
         {
-            using (var appContainer = TokenData.Read(source, 29))
-                if (appContainer.Length != 4 || Marshal.ReadInt32(appContainer.Pointer) != 0)
-                    throw Refuse("RestrictingTokenSourceMustBeHostOwner");
+            if (WindowsTokenInformation.Read(source, WindowsTokenInformation.Dword.IsAppContainer, "RestrictingTokenInformation") != 0)
+                throw Refuse("RestrictingTokenSourceMustBeHostOwner");
             // CreateRestrictedToken intersects an existing restricting list.
             // Refuse such a source instead of silently changing this contract.
             if (ReadGroups(source, 11).Count != 0 || IsTokenRestricted(source))

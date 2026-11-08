@@ -1073,7 +1073,7 @@ internal sealed partial class AtomicChild : IDisposable
         if(!OpenProcessToken(process,observePackageAccess?8u|2u:8u,out var token))throw Error("AtomicOpenCreatedToken");
         using(token)
         {
-            var container=Read(29,p=>Marshal.ReadInt32(p)!=0);
+            var container=WindowsTokenInformation.Read(token,WindowsTokenInformation.Dword.IsAppContainer,"AtomicReadTokenInformation")!=0;
             var sid=Read(31,p=>{var s=Marshal.ReadIntPtr(p);return s==IntPtr.Zero?null:new SecurityIdentifier(s).Value;});
             // Read actual capability SIDs/attributes within the bounded native
             // buffer. Count alone must not become a future singleton-profile
