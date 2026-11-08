@@ -674,3 +674,24 @@ SID。Broker 从同一管道读取对端 PID 和会话，与所持进程及已�
 错误随机值或对象标识、实际管道 PID 和会话回读及普通会话拒绝。此候选未安装。
 固定 SCM 服务入口、服务端创建及 profile 生命周期、跨会话控制台和原监督链
 尚未连接，本轮没有运行真实服务、恢复受限线程或执行官方 CLI。
+
+### LocalService 侧的反向交接
+
+固定服务客户端先核对自身主令牌。要求 Session 0、LocalService、非提升、非
+AppContainer、无写限制、确切启用的服务 SID，以及仅允许遍历特权。宿主账户
+域组、启用的管理员组和额外限制 SID 均拒绝。客户端打开派生的本机管道，
+核对管理员所有者和三条精确授权，再从内核读回 Broker 的 PID 和会话并与
+固定请求交叉核验。Job 名只由安装和 Job ID 重建。服务仅以分配和读取
+描述符权限打开 Job，复核创建标记、确切服务授权和完整性标签。完成回执
+从实际进程和线程句柄读取，关闭本侧分配句柄后才能发送。
+
+普通 Windows 对照中，`GetSecurityInfo` 在同步和异步客户端句柄上都返回 87。
+`GetKernelObjectSecurity` 两者均成功读回正确所有者和 DACL，但成功调用的
+长度输出为 0。源码按预查询长度分配缓冲区，只在成功且实际解析为同长的
+自相对描述符时接受这个管道结果，然后核对精确权限。普通测试用实际异步
+管道完成双方 PID/会话回读和固定消息往返。
+[Windows 内核对象权限读取](https://learn.microsoft.com/en-us/windows/win32/api/securitybaseapi/nf-securitybaseapi-getkernelobjectsecurity)
+
+五产品 Release 及 13 个普通回归入口通过。固定 SCM 入口、服务身份实机核验、
+profile 创建和精确回收及挂起进程创建仍待接入。候选未安装，本轮未启动服务、
+恢复受限线程、改变 WFP 或执行官方 CLI。

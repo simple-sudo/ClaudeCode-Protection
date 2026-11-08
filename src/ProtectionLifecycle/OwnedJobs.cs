@@ -14,7 +14,8 @@ internal sealed record OwnedJobIntent(int SchemaVersion,string InstallationId,st
     private const string AtomicBinding="ATOMIC_JOB_LIST_REQUIRED",PrivateScope="JOB_MEMBERS_ONLY",CreatorScope="SESSION_ZERO_CREATOR_JOB_MEMBERS_ONLY";
     internal static string Leaf(string id)=>"job-intent-"+Identifiers.Hex32(id)+".json";
     internal string Alias=>"CPCJob."+Identifiers.Hex32(InstallationId)+"."+Identifiers.Hex32(JobId);
-    internal string Name=>CreatorServiceSid is null?Alias+"\\Session":@"Global\CPCSessionJob."+Identifiers.Hex32(InstallationId)+"."+Identifiers.Hex32(JobId);
+    internal string Name=>CreatorServiceSid is null?Alias+"\\Session":CreatorJobName(InstallationId,JobId);
+    internal static string CreatorJobName(string installationId,string jobId)=>@"Global\CPCSessionJob."+Identifiers.Hex32(installationId)+"."+Identifiers.Hex32(jobId);
     internal CreationTag Tag=>CreationTag.For(CreationRole.OwnedJob,JobId);
     internal static OwnedJobIntent ForNewJob(string installationId,string release,string manifest,string? creatorServiceSid)
     {

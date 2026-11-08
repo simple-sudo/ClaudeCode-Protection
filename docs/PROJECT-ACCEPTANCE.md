@@ -5,6 +5,13 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-08 LocalService 侧反向交接
+
+INTEGRATED / BUILD(服务客户端与固定双向协议)。FAIL(普通管道的 `GetSecurityInfo`
+返回 87)。VERIFIED(原句柄替代读取、普通实际对端核验和双向消息、令牌/组与权限
+反例)。固定 SCM 入口、生产 LocalService、受限恢复及官方 Claude Code NOT_RUN。
+[机制与范围](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#localservice-侧的反向交接)
+
 ## 2026-11-08 原 Broker 的 Session 0 本机交接
 
 INTEGRATED / BUILD(Broker 交接接收端及原 Job 撤销和 WFP 复核调用)。

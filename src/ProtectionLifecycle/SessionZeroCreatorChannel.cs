@@ -16,10 +16,12 @@ internal sealed class SessionZeroCreatorChannel : IDisposable
 {
     private const uint RequestMagic=0x31504343,ReplyMagic=0x31524343; // CCP1, CCR1.
     private const int NonceSize=16,ReplySize=44;
+    internal const int RequestSize=60;
     private readonly OwnedKernelJob job;
     private readonly NamedPipeServerStream pipe;
     private int consumed;
-    internal string PipeName=>"CpcSessionCreator."+job.JobId;
+    internal string PipeName=>NameForJob(job.JobId);
+    internal static string NameForJob(string jobId)=>"CpcSessionCreator."+Identifiers.Hex32(jobId);
 
     internal SessionZeroCreatorChannel(OwnedKernelJob job)
     {
@@ -112,7 +114,7 @@ internal sealed class SessionZeroCreatorChannel : IDisposable
     internal static byte[] CreateRequest(byte[] nonce,string installId,string jobId,uint ownerPid,uint ownerSession)
     {
         if(nonce.Length!=NonceSize || ownerPid==0 || ownerSession==0)throw WfpNative.Contract("CreatorRequestIdentityInvalid");
-        var request=new byte[60];
+        var request=new byte[RequestSize];
         BinaryPrimitives.WriteUInt32LittleEndian(request,RequestMagic);
         BinaryPrimitives.WriteUInt32LittleEndian(request.AsSpan(4),ownerPid);
         BinaryPrimitives.WriteUInt32LittleEndian(request.AsSpan(8),ownerSession);
@@ -122,7 +124,38 @@ internal sealed class SessionZeroCreatorChannel : IDisposable
         return request;
     }
 
+    internal sealed record Request(string InstallationId,string JobId,byte[] Nonce);
+    internal static Request ParseRequest(byte[] frame,string fixedJobId,uint serverPid,uint serverSession)
+    {
+        if(frame.Length!=RequestSize || serverPid==0 || serverSession==0 || BinaryPrimitives.ReadUInt32LittleEndian(frame)!=RequestMagic ||
+            BinaryPrimitives.ReadUInt32LittleEndian(frame.AsSpan(4))!=serverPid || BinaryPrimitives.ReadUInt32LittleEndian(frame.AsSpan(8))!=serverSession ||
+            !frame.AsSpan(44,16).SequenceEqual(Convert.FromHexString(Identifiers.Hex32(fixedJobId))))
+            throw WfpNative.Contract("CreatorRequestBindingMismatch");
+        return new(Convert.ToHexString(frame.AsSpan(28,16)).ToLowerInvariant(),fixedJobId,frame.AsSpan(12,NonceSize).ToArray());
+    }
+
     internal readonly record struct Reply(uint Pid,uint Tid,long ProcessCreated,long ThreadCreated);
+    internal static Reply ObserveCreatedRoot(SafeProcessHandle process,SafeWaitHandle thread)
+    {
+        var pid=GetProcessId(process);
+        var tid=GetThreadId(thread);
+        AtomicChild.AssertHeldInitialThread(process,thread,pid,tid);
+        if(!GetThreadTimes(thread,out var threadCreated,out _,out _,out _))throw Error("ReadCreatorChildThreadTime");
+        return new(pid,tid,ProcessCreated(process),threadCreated);
+    }
+    internal static byte[] CreateReply(Request request,Reply report)
+    {
+        if(request.Nonce.Length!=NonceSize || report.Pid==0 || report.Tid==0 || report.ProcessCreated<=0 || report.ThreadCreated<report.ProcessCreated)
+            throw WfpNative.Contract("CreatorReplyObjectIdentityInvalid");
+        var frame=new byte[ReplySize];
+        BinaryPrimitives.WriteUInt32LittleEndian(frame,ReplyMagic);
+        request.Nonce.CopyTo(frame,4);
+        BinaryPrimitives.WriteUInt32LittleEndian(frame.AsSpan(20),report.Pid);
+        BinaryPrimitives.WriteUInt32LittleEndian(frame.AsSpan(24),report.Tid);
+        BinaryPrimitives.WriteInt64LittleEndian(frame.AsSpan(28),report.ProcessCreated);
+        BinaryPrimitives.WriteInt64LittleEndian(frame.AsSpan(36),report.ThreadCreated);
+        return frame;
+    }
     internal static Reply ParseReply(byte[] frame,byte[] nonce,uint creatorPid,long creatorCreated)
     {
         if(frame.Length!=ReplySize || nonce.Length!=NonceSize || creatorPid==0 || creatorCreated<=0 ||
@@ -199,6 +232,7 @@ internal sealed class SessionZeroCreatorChannel : IDisposable
     [DllImport("kernel32.dll",SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)] private static extern bool GetNamedPipeClientSessionId(SafePipeHandle pipe,out uint session);
     [DllImport("kernel32.dll",SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)] private static extern bool ProcessIdToSessionId(uint pid,out uint session);
     [DllImport("kernel32.dll",SetLastError=true)] private static extern uint GetProcessId(SafeProcessHandle process);
+    [DllImport("kernel32.dll",SetLastError=true)] private static extern uint GetThreadId(SafeWaitHandle thread);
     [DllImport("kernel32.dll")] private static extern uint WaitForSingleObject(SafeProcessHandle process,uint milliseconds);
     [DllImport("kernel32.dll",SetLastError=true)] private static extern SafeProcessHandle OpenProcess(uint access,[MarshalAs(UnmanagedType.Bool)]bool inherit,uint pid);
     [DllImport("kernel32.dll",SetLastError=true)] private static extern SafeWaitHandle OpenThread(uint access,[MarshalAs(UnmanagedType.Bool)]bool inherit,uint tid);

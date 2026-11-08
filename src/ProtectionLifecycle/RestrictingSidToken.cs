@@ -55,6 +55,11 @@ internal sealed class RestrictingSidToken : IDisposable
             if (AdministrativeGroups.Contains(group.Sid, StringComparer.Ordinal) &&
                 ((group.Attributes & 0x10) == 0 || (group.Attributes & 0x6) != 0))
                 throw Refuse("RestrictingTokenAdministrativeGroupEnabled");
+        AssertTraverseOnly(token,allowDisabledOther:true);
+    }
+
+    internal static void AssertTraverseOnly(SafeAccessTokenHandle token,bool allowDisabledOther=false)
+    {
         if (!LookupPrivilegeValue(null, "SeChangeNotifyPrivilege", out var traverse))
             throw Error("RestrictingTokenTraversePrivilege");
         using var privileges = TokenData.Read(token, 3);
@@ -65,7 +70,7 @@ internal sealed class RestrictingSidToken : IDisposable
             var low = unchecked((uint)Marshal.ReadInt32(entry));
             var high = Marshal.ReadInt32(entry, 4);
             var attributes = unchecked((uint)Marshal.ReadInt32(entry, 8));
-            if ((attributes & 2) != 0 && (low != traverse.Low || high != traverse.High))
+            if ((!allowDisabledOther || (attributes & 2) != 0) && (low != traverse.Low || high != traverse.High))
                 throw Refuse("RestrictingTokenUnexpectedPrivilege");
         }
     }
@@ -116,7 +121,7 @@ internal sealed class RestrictingSidToken : IDisposable
         }
     }
 
-    private static List<(string Sid, uint Attributes)> ReadGroups(SafeAccessTokenHandle handle, int kind)
+    internal static List<(string Sid, uint Attributes)> ReadGroups(SafeAccessTokenHandle handle, int kind)
     {
         using var data = TokenData.Read(handle, kind);
         var count = data.Count(8, 16);

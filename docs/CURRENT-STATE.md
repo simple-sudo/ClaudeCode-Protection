@@ -1,5 +1,11 @@
 # 当前状态与授权摘要
 
+2026-11-08 新增 LocalService 侧反向交接。源码核对固定服务令牌、Broker 管道
+和确切 Job，释放分配句柄后才发送完成回执。普通 Windows 实测管道权限读取、
+双方 PID/会话回读和固定消息往返。五产品 Release 和 13 个普通回归入口通过。
+固定 SCM 入口、profile 与原子创建仍待接入。候选未安装，宿主 SID 真实复验待执行。
+[服务侧机制与实测](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#localservice-侧的反向交接)。
+
 2026-11-08 原 Broker 新增 Session 0 本机交接的接收端。固定管道核验原服务
 进程及会话，前后回读 WFP 全隔离，经撤销分配权后持有并核验实际挂起对象。
 五产品 Release 及 13 个普通回归入口通过，含实际普通管道回读和普通会话

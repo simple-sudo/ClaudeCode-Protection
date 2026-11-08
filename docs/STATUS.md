@@ -5,6 +5,12 @@
 历史页的“当前/待执行/暂停/DELIVERABLE”按段落日期及限定范围解释，不是今天的状态或操作许可。
 不在本页复制当前安装和授权摘要。
 
+## 2026-11-08 LocalService 侧反向交接
+
+固定服务身份、反向管道权限与 Job 绑定已编入保护库。普通实测定位管道权限
+读取差异，并完成双向固定消息往返。
+[机制与范围](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#localservice-侧的反向交接)
+
 ## 2026-11-08 原 Broker 的 Session 0 本机交接
 
 接入固定管道、对端核验、前后全隔离回读与挂起根检查。普通 Windows 实测

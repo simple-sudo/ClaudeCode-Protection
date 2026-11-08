@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Runtime.InteropServices;
 using System.Security.AccessControl;
 using System.Security.Principal;
+using Microsoft.Win32.SafeHandles;
 
 namespace ProtectionLifecycle;
 
@@ -12,7 +13,7 @@ internal static class KernelJobSeal
 {
     internal const int OwnerRights=0x0002000f; // READ_CONTROL, ASSIGN, SET, QUERY, TERMINATE.
     internal const int CreatorJobOwnerRights=OwnerRights|0x00040000; // Also WRITE_DAC for the one-shot grant.
-    private const int CreatorRights=0x00020001; // READ_CONTROL and ASSIGN_PROCESS.
+    internal const int CreatorRights=0x00020001; // READ_CONTROL and ASSIGN_PROCESS.
     private const string SystemSid="S-1-5-18",AdminsSid="S-1-5-32-544";
     internal sealed class Descriptor : IDisposable
     {
@@ -45,16 +46,7 @@ internal static class KernelJobSeal
         internal SecurityAttributes Attributes=>value==IntPtr.Zero?throw new ObjectDisposedException(nameof(SessionObjectDescriptor)):
             new(){Length=Marshal.SizeOf<SecurityAttributes>(),Descriptor=value,Inherit=0};
         internal static void AssertSeal(SafeHandle handle,bool localService=false)
-        {
-            if(handle.IsClosed || handle.IsInvalid)throw new InvalidOperationException("Held session object required");
-            var sized=GetKernelObjectSecurity(handle,1|4,null,0,out var needed);
-            var error=Marshal.GetLastWin32Error();
-            if(sized || error!=122 || needed is <20 or >65536)throw new InvalidDataException("SessionObjectDescriptorSizeUnconfirmed");
-            var bytes=new byte[checked((int)needed)];
-            if(!GetKernelObjectSecurity(handle,1|4,bytes,needed,out var actual))throw Error("ReadSuspendedSessionObjectDescriptor");
-            if(actual!=needed)throw new InvalidDataException("SessionObjectDescriptorChanged");
-            AssertDescriptor(new RawSecurityDescriptor(bytes,0),localService);
-        }
+            =>AssertDescriptor(ReadOwnerDacl(handle),localService);
         internal static void AssertDescriptor(RawSecurityDescriptor descriptor,bool localService)
         {
             var acl=descriptor.DiscretionaryAcl;
@@ -122,12 +114,37 @@ internal static class KernelJobSeal
         }
         finally{if(descriptor!=IntPtr.Zero)LocalFree(descriptor);}
     }
-    internal static bool AssertJobDescriptor(RawSecurityDescriptor security,OwnedJobIntent expected)
+    internal static RawSecurityDescriptor ReadCreatorPipeDescriptor(SafePipeHandle handle)
+        =>ReadOwnerDacl(handle,pipeMayOmitLength:true);
+    private static RawSecurityDescriptor ReadOwnerDacl(SafeHandle handle,bool pipeMayOmitLength=false)
     {
-        var ownerMask=expected.CreatorServiceSid is null?OwnerRights:CreatorJobOwnerRights;
-        var required=new Dictionary<string,int>(StringComparer.Ordinal){{SystemSid,ownerMask},{AdminsSid,ownerMask},{expected.Tag.Sid,0x20000}};
+        if(handle.IsClosed || handle.IsInvalid)throw new InvalidOperationException("Held security object required");
+        var sized=GetKernelObjectSecurity(handle,1|4,null,0,out var needed);
+        var error=Marshal.GetLastWin32Error();
+        if(sized || error!=122 || needed is <20 or >65536)throw new InvalidDataException("OwnerDaclSizeUnconfirmed");
+        var bytes=new byte[checked((int)needed)];
+        if(!GetKernelObjectSecurity(handle,1|4,bytes,needed,out var actual))throw Error("ReadOwnerDacl");
+        if(actual!=needed && !(pipeMayOmitLength && actual==0))throw new InvalidDataException("ObjectDescriptorChanged");
+        var descriptor=new RawSecurityDescriptor(bytes,0);
+        // Pipe endpoints can leave the output length zero on a successful
+        // read. Require a complete, self-relative descriptor of the queried size.
+        if(pipeMayOmitLength && (descriptor.BinaryLength!=needed || (descriptor.ControlFlags&ControlFlags.SelfRelative)==0))
+            throw new InvalidDataException("CreatorPipeDescriptorSizeMismatch");
+        return descriptor;
+    }
+    internal static bool AssertJobDescriptor(RawSecurityDescriptor security,OwnedJobIntent expected)
+        =>CheckJobDescriptor(security,expected.Tag,expected.CreatorServiceSid);
+    internal static void AssertGrantedCreatorJob(SafeJobHandle handle,string jobId,string creatorSid)
+    {
+        if(!CheckJobDescriptor(ReadJobDescriptor(handle,true),CreationTag.For(CreationRole.OwnedJob,jobId),creatorSid))
+            throw WfpNative.Contract("CreatorJobGrantMissing");
+    }
+    private static bool CheckJobDescriptor(RawSecurityDescriptor security,CreationTag tag,string? creatorSid)
+    {
+        var ownerMask=creatorSid is null?OwnerRights:CreatorJobOwnerRights;
+        var required=new Dictionary<string,int>(StringComparer.Ordinal){{SystemSid,ownerMask},{AdminsSid,ownerMask},{tag.Sid,0x20000}};
         var granted=false;
-        if(expected.CreatorServiceSid is { } creator)
+        if(creatorSid is { } creator)
         {
             granted=security.DiscretionaryAcl?.Count==4;
             if(granted)required.Add(creator,CreatorRights);

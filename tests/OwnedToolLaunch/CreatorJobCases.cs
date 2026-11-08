@@ -208,12 +208,13 @@ internal static class CreatorJobCases
         Refused(()=>reply.Invoke(null,[incoming.Concat(new byte[1]).ToArray(),nonce,20u,40L]));
         Refused(()=>reply.Invoke(null,[incoming,nonce,21u,40L]));
         using var self=Process.GetCurrentProcess();
-        var pipeName="CpcCreatorFixture."+Guid.NewGuid().ToString("N");
+        var serviceClient=library.GetType("ProtectionLifecycle.SessionZeroCreatorClient",true)!;
+        var pipeId=Guid.NewGuid().ToString("N");
+        var pipeName=(string)channel.GetMethod("NameForJob",methods)!.Invoke(null,[pipeId])!;
         using var server=new NamedPipeServerStream(pipeName,PipeDirection.InOut,1,PipeTransmissionMode.Byte,PipeOptions.Asynchronous|PipeOptions.CurrentUserOnly);
-        using var client=new NamedPipeClientStream(".",pipeName,PipeDirection.InOut,PipeOptions.Asynchronous);
         using var timeout=new CancellationTokenSource(TimeSpan.FromSeconds(3));
         var connected=server.WaitForConnectionAsync(timeout.Token);
-        client.ConnectAsync(timeout.Token).GetAwaiter().GetResult();
+        using var client=(SafePipeHandle)serviceClient.GetMethod("OpenOwnerPipeHandle",methods)!.Invoke(null,[pipeId])!;
         connected.GetAwaiter().GetResult();
         var peer=((uint Pid,uint Session))channel.GetMethod("ReadClientPeer",methods)!.Invoke(null,[server.SafePipeHandle])!;
         Check(peer.Pid==(uint)self.Id && peer.Session==(uint)self.SessionId);
@@ -222,6 +223,48 @@ internal static class CreatorJobCases
         Check(peer.Session!=0);
         Refused(()=>channel.GetMethod("AssertServicePeer",methods)!.Invoke(null,[server.SafePipeHandle,self.SafeHandle,peer.Session]));
         Console.WriteLine($"PASS {count-prior} creator channel checks; request/reply binding and actual ordinary pipe PID/session refusal. No service, handoff, elevation or WFP.");
+        prior=count;
+        var serverPeer=((uint Pid,uint Session))serviceClient.GetMethod("ReadServerPeer",methods)!.Invoke(null,[client])!;
+        Check(serverPeer==peer);
+        var parseRequest=channel.GetMethod("ParseRequest",methods)!;
+        var decoded=parseRequest.Invoke(null,[outgoing,jobId,12u,7u])!;
+        Check((string?)decoded.GetType().GetProperty("InstallationId")!.GetValue(decoded)==install);
+        Check((string?)decoded.GetType().GetProperty("JobId")!.GetValue(decoded)==jobId);
+        Check(((byte[])decoded.GetType().GetProperty("Nonce")!.GetValue(decoded)!).SequenceEqual(nonce));
+        Check(((byte[])channel.GetMethod("CreateReply",methods)!.Invoke(null,[decoded,report])!).SequenceEqual(incoming));
+        Refused(()=>parseRequest.Invoke(null,[outgoing[..59],jobId,12u,7u]));
+        Refused(()=>parseRequest.Invoke(null,[outgoing,legacyId,12u,7u]));
+        Refused(()=>parseRequest.Invoke(null,[outgoing,jobId,13u,7u]));
+        Refused(()=>parseRequest.Invoke(null,[outgoing,jobId,12u,8u]));
+        var assertGroups=serviceClient.GetMethod("AssertCreatorGroups",methods)!;
+        void ServiceGroups((string,uint)[] groups,(string,uint)[] restricting)=>_=assertGroups.Invoke(null,[groups,restricting,creatorSid]);
+        ServiceGroups([(creatorSid,4),("S-1-5-32-544",0x10)],[]);Check(true);
+        Refused(()=>ServiceGroups([(creatorSid,0)],[]));
+        Refused(()=>ServiceGroups([(creatorSid,0x14)],[]));
+        Refused(()=>ServiceGroups([(creatorSid,4),("S-1-5-32-544",4)],[]));
+        Refused(()=>ServiceGroups([(creatorSid,4),("S-1-5-21-1-2-3-1001",0x10)],[]));
+        Refused(()=>ServiceGroups([(creatorSid,4)],[(creatorSid,4)]));
+        var assertPipe=serviceClient.GetMethod("AssertOwnerPipe",methods)!;
+        var service=new SecurityIdentifier(creatorSid);
+        var expectedPipe=$"O:BAG:SYD:P(A;;FA;;;SY)(A;;FA;;;BA)(A;;0x00120083;;;{creatorSid})";
+        _=assertPipe.Invoke(null,[new RawSecurityDescriptor(expectedPipe),service]);Check(true);
+        foreach(var foreign in new[]{expectedPipe.Replace("0x00120083","0x00120087",StringComparison.Ordinal),
+            expectedPipe.Replace("D:P","D:",StringComparison.Ordinal),expectedPipe.Replace("O:BA","O:SY",StringComparison.Ordinal)})
+            Refused(()=>assertPipe.Invoke(null,[new RawSecurityDescriptor(foreign),service]));
+        var actualPipe=(RawSecurityDescriptor)seal.GetMethod("ReadCreatorPipeDescriptor",methods)!.Invoke(null,[client])!;
+        Check(actualPipe.Owner is { } pipeOwner && user.Equals(pipeOwner));
+        Refused(()=>assertPipe.Invoke(null,[actualPipe,service]));
+        Refused(()=>serviceClient.GetMethod("VerifyCurrentService",methods)!.Invoke(null,[pipeName]));
+        using var wrapped=new NamedPipeClientStream(PipeDirection.InOut,true,true,client);
+        using var transferDeadline=new CancellationTokenSource(TimeSpan.FromSeconds(3));
+        var transfer=transferDeadline.Token;
+        var received=new byte[outgoing.Length];
+        Task.WhenAll(wrapped.ReadExactlyAsync(received.AsMemory(),transfer).AsTask(),server.WriteAsync(outgoing.AsMemory(),transfer).AsTask()).GetAwaiter().GetResult();
+        Check(received.SequenceEqual(outgoing));
+        var receivedReply=new byte[incoming.Length];
+        Task.WhenAll(server.ReadExactlyAsync(receivedReply.AsMemory(),transfer).AsTask(),wrapped.WriteAsync(incoming.AsMemory(),transfer).AsTask()).GetAwaiter().GetResult();
+        Check(receivedReply.SequenceEqual(incoming));
+        Console.WriteLine($"PASS {count-prior} creator client checks; reciprocal actual pipe peer and descriptor, fixed request/reply, account and service group refusals. No service, handoff, elevation or WFP.");
     }
 
     [StructLayout(LayoutKind.Sequential)] private struct SecurityAttributes {internal int Length;internal IntPtr Descriptor;internal int Inherit;}
