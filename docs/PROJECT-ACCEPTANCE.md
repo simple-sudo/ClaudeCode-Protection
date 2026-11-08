@@ -5,6 +5,11 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-07 固定 HTTPS 的真实公开吊销输入
+
+VERIFIED(普通身份公开证书摘要、三份 CRL 的签名、签发者和观察时的有效期)。
+实际代理对端的证书、CRL 适用性及受限 HTTPS 尚未验证。
+
 ## 2026-11-07 固定 HEAD 的离线吊销验证
 
 INTEGRATED / BUILD(OpenSSL 内存吊销验证及固定 HEAD 传输)。VERIFIED(普通身份

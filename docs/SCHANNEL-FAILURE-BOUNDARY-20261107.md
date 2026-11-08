@@ -328,3 +328,23 @@ OwnedToolLaunch Release BUILD0/0。首次在同一测试进程重复装载的拒
 的真实根证书与新鲜签名 CRL，将它们用于实际代理连接上的服务器证书。该连接的
 验证失败应保留原网络撤销和 Job 关闭路径。现有包摘要、网关命令及实际安装无
 更新，本次未发送真实外部请求。
+
+## 真实公开吊销输入
+
+2026-11-08 01:14Z，普通 Windows 从 CA 的发布端点获取历史固定 Microsoft
+资格链的三个签发证书和三份公开 CRL。三个签发证书的 DER 摘要与既定根和
+签发者一致。两份 Microsoft CRL 通过其固定 HTTPS 发布路径取得。DigiCert
+CRL 的 HTTPS 取件失败，原结果保留。随后从已知 HTTP 发布路径取得该签名对象，
+只用已固定的 DigiCert 根公钥验证该对象，不把 HTTP 取件视作服务器身份凭证。
+[DigiCert 根指纹](https://knowledge.digicert.com/general-information/digicert-trusted-root-authority-certificates)
+[Microsoft 公开 CA 库](https://www.microsoft.com/pkiops/docs/repository.htm)
+
+独立 DER 检查核对三份 CRL 的发行者名称、RSA 签名及有签名覆盖的
+`thisUpdate/nextUpdate`。三份在观察时均有效，Microsoft 叶证书分区最先于
+2026-11-15 22:33:08Z 到期。证据在本机
+`work/openssl-owner-20261107-01/fixed-head-public-trust-inputs`。
+该材料只对适用的真实链有效，当前没有观测受限连接的实际证书、签发路径和分区。
+
+固定实验应在受限执行前由原所有者锁定输入摘要、用途及有效期，不在受限环境
+接受任意文件、信任根或下载地址。实际证书链不匹配、CRL 不适用或过期均关闭
+连接。以后生产策略的刷新和完整授权按独立合同验收，不能以固定探针代替。
