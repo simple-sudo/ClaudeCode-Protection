@@ -8,8 +8,11 @@
 ## 2026-11-08 固定离线任务内目录投影
 
 INTEGRATED / BUILD(任务树、低完整性目录、严格投影及实际临时文件正控制)。
-VERIFIED(普通路径契约、越界反例与相关回归)。受限执行 NOT_RUN。
-[候选和范围](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#任务内目录投影)
+VERIFIED(普通路径契约、越界反例与相关回归)。
+VERIFIED(`e2309d71` 未激活安装，真实零能力低完整性 LPAC 的三个任务内
+投影、临时文件及工作区正控制、空输入、独立双输出、子进程拒绝、有序关闭和回收)。
+官方 CLI 执行 NOT_RUN。
+[实测和范围](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#任务内目录投影)
 
 ## 2026-11-08 固定自研离线控制台闭合通过
 
