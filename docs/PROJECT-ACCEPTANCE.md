@@ -5,6 +5,15 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-08 LocalService 修正版原子创建
+
+BUILD / VERIFIED(六项普通检查)。
+VERIFIED(真实 LocalService 主令牌自查、原所有者实际进程句柄绑定和退出，
+临时服务登记及暂存目录回收)。
+FAIL(一次固定挂起原子创建返回 5)。受限子进程、Job 绑定和句柄继承
+未取得可核验证据，正式 Claude 启动 NOT_RUN。
+[实测及范围](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#修正版原所有者绑定与原子创建结果)
+
 ## 2026-11-08 临时 LocalService 与原所有者绑定
 
 VERIFIED(新建固定服务、配置回读、一次 SCM 启动与服务等待超时)。
