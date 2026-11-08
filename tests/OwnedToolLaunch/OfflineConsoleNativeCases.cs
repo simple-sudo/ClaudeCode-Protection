@@ -6,6 +6,8 @@ using System.Runtime.CompilerServices;
 using System.Runtime.ExceptionServices;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using Microsoft.Win32.SafeHandles;
 
 internal static class OfflineConsoleNativeCases
@@ -23,6 +25,7 @@ internal static class OfflineConsoleNativeCases
         VerifyFailureMetadata(library);
         VerifyWorkspaceEnvironment(library);
         VerifyProjectionEvidence(library);
+        VerifyHostIdentityEvidence(library);
         var type=library.GetType("ProtectionLifecycle.OfflineConsoleStreams",true)!;
         var read=type.GetMethod("ReadBounded",Static)!;
         foreach(var length in new[]{0,4096})
@@ -117,6 +120,49 @@ internal static class OfflineConsoleNativeCases
             (@"C:\Task","TASK_WORKSPACE"),(@"C:\Host\Temp\","HOST_DEFAULT"),(@"C:\Unknown","OTHER")
         })
             Require((string?)Call(classify,null,actual,@"C:\Profile\AC\Temp",@"C:\Task",@"C:\Host\Temp")==expected);
+    }
+
+    private static void VerifyHostIdentityEvidence(Assembly library)
+    {
+        var type=library.GetType("ProtectionLifecycle.OfflineConsoleHostIdentity",true)!;
+        var reading=library.GetType("ProtectionLifecycle.OfflineConsoleIdentityRead",true)!;
+        var parse=type.GetMethod("Parse",Static)!;
+        var compare=type.GetMethod("Compare",Static)!;
+        var session=new string('c',32);
+        var reference=Call(type.GetMethod("Capture",Static)!,null,session)!;
+        var captured=JsonSerializer.SerializeToUtf8Bytes(reference,type);
+        _=Call(parse,null,captured,session,(uint)Environment.ProcessId);
+        using(var document=JsonDocument.Parse(captured))
+        {
+            var root=document.RootElement;
+            foreach(var field in new[]{"TokenUser","LogonName","ProfileDirectory","ComputerName","MachineGuid"})
+                Require(root.GetProperty(field).GetProperty("Error").GetInt32()==0 &&
+                    root.GetProperty(field).GetProperty("Value").GetString() is {Length:>0});
+            using var identity=System.Security.Principal.WindowsIdentity.GetCurrent();
+            Require(root.GetProperty("TokenUser").GetProperty("Value").GetString()==identity.User?.Value);
+        }
+        Refuse<InvalidDataException>(()=>Call(parse,null,captured,session,0u));
+        Refuse<InvalidDataException>(()=>Call(parse,null,captured,new string('d',32),(uint)Environment.ProcessId));
+        Refuse<InvalidDataException>(()=>Call(parse,null,new byte[32769],session,(uint)Environment.ProcessId));
+        void Deny(Action<JsonObject> change)
+        {
+            var sample=JsonNode.Parse(captured)!.AsObject();
+            change(sample);
+            Refuse<InvalidDataException>(()=>Call(parse,null,JsonSerializer.SerializeToUtf8Bytes(sample),session,(uint)Environment.ProcessId));
+        }
+        Deny(sample=>sample["MachineGuid"]!["Error"]=5);
+        Deny(sample=>sample["ProfileDirectory"]!["Value"]=new string('x',1024));
+        Deny(sample=>sample["ComputerName"]!["Value"]="a\0b");
+        Deny(sample=>sample["LogonName"]!["Extra"]=true);
+        Deny(sample=>sample.Remove("TokenUser"));
+        object Reading(int error,string? value)=>Activator.CreateInstance(reading,error,value)!;
+        var host=Reading(0,"Owner");
+        foreach(var (actor,expected) in new[]{
+            (Reading(0,"owner"),"MATCHES_HOST"),(Reading(0,"other"),"DIFFERS_FROM_HOST"),
+            (Reading(5,null),"DENIED"),(Reading(2,null),"UNAVAILABLE")})
+            Require((string?)Call(compare,null,actor,host)==expected);
+        Require((string?)Call(compare,null,host,Reading(5,null))=="REFERENCE_UNAVAILABLE");
+        Console.WriteLine("PASS five actual ordinary identity reads and bounded identity evidence controls. Restricted identity not executed.");
     }
 
     private static void RunChild(Assembly library,Type type,bool flood)

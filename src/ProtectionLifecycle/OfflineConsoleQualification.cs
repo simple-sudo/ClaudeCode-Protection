@@ -24,7 +24,7 @@ internal static class OfflineConsoleQualification
     {
         Identity, SessionId, ProgramFiles, WorkspacePath, ProfilePath, CurrentDirectory, Temp, Tmp,
         LocalAppData, UserProfile, Home, XdgConfigHome, ClaudeConfigDir, AppData, UnexpectedAuthority,
-        Streams, InputEof, Workspace, TempFile, Descendant, Output
+        Streams, InputEof, Workspace, TempFile, Descendant, HostIdentity, Output
     }
     private static readonly (string Name,ChildStage Stage)[] WorkspaceVariables=[
         ("USERPROFILE",ChildStage.UserProfile),
@@ -121,6 +121,8 @@ internal static class OfflineConsoleQualification
             throw WfpNative.Contract("OfflineConsoleDescendantNotBlocked");
         }
         catch(Win32Exception denied)when(denied.NativeErrorCode==367){}
+        stage=ChildStage.HostIdentity;
+        OfflineConsoleHostIdentity.Capture(session).Write(workspace);
         stage=ChildStage.Output;
         using(var stdout=Console.OpenStandardOutput())stdout.Write(ExpectedOutput);
         using(var stderr=Console.OpenStandardError())stderr.Write(ExpectedError);
@@ -159,10 +161,12 @@ internal static class OfflineConsoleQualification
         RuntimeStop? stopped=null;
         OfflineConsoleOutput? stdout=null,stderr=null;
         object? environmentProjection=null;
+        OfflineConsoleHostIdentitySummary? hostIdentity=null;
         try
         {
             foreach(var plan in plans)fences.Add(PersistentFence.OpenExisting(state,plan.Data.FenceId));
             AssertQuarantine();
+            var hostIdentityReference=OfflineConsoleHostIdentity.Capture(id);
             using(var profile=InstallationProfileLease.Create(state))
             using(var workspace=SessionResources.CreateOwnedTaskDirectory(state,profile,id))
             using(var storage=OfflineConsoleStorage.Create(state,workspace))
@@ -251,6 +255,7 @@ internal static class OfflineConsoleQualification
                 {
                     AssertWorkspace(workspace,state);
                     storage.AssertHeld(workspace);
+                    hostIdentity=OfflineConsoleHostIdentity.Read(workspace.Path,id,childPid).Seal(state,version,job.JobId,hostIdentityReference);
                     workspaceMatched=ReadFixedFile(workspace.Path,OutputLeaf,ExpectedFile);
                     tempMatched=ReadFixedFile(storage.View.Temp,TempLeaf,ExpectedTempFile);
                 }
@@ -266,7 +271,8 @@ internal static class OfflineConsoleQualification
         var matched=stdout is {Overflow:false} && stderr is {Overflow:false} &&
             ExpectedOutput.SequenceEqual(stdout.Bytes) && ExpectedError.SequenceEqual(stderr.Bytes);
         var closed=jobId is not null && stopped?.ConfirmsClosedOfflineConsole(id,jobId)==true;
-        var complete=failures.Count==0 && closed && workspaceClosed && singleProcess && workspaceMatched && tempMatched && matched && exit==0 && resumed;
+        var complete=failures.Count==0 && closed && workspaceClosed && singleProcess && workspaceMatched && tempMatched &&
+            hostIdentity is not null && matched && exit==0 && resumed;
         var childFailure=ParseChildFailure(exit,stderr);
         var report=JsonSerializer.Serialize(new {
             SchemaVersion=1,Scope="INSTALLED_FIXED_OFFLINE_CONSOLE",state.InstallationId,SessionId=id,JobId=jobId,
@@ -274,6 +280,7 @@ internal static class OfflineConsoleQualification
             ProcessResumed=resumed,ChildExit=exit,SingleProcessEverAdmitted=singleProcess,WorkspaceMatched=workspaceMatched,
             TaskTempMatched=tempMatched,WorkspaceClosed=workspaceClosed,
             Output=Summarize(stdout),Error=Summarize(stderr),ChildFailure=childFailure,EnvironmentProjection=environmentProjection,
+            HostIdentityObservation=hostIdentity,HostIdentityQualified=false,
             StreamsMatched=matched,OriginalOwnerClosed=closed,StopObservation=stopped,
             Failures=failures.SelectMany(WfpNative.Describe).ToArray(),GatewayOpened=false,NetworkQualified=false,
             LaunchAuthorized=false,FormalAdmissionIssued=false,ClaudeLaunched=false

@@ -14,6 +14,13 @@ VERIFIED(`e2309d71` 未激活安装，真实零能力低完整性 LPAC 的三个
 官方 CLI 执行 NOT_RUN。
 [实测和范围](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#任务内目录投影)
 
+## 2026-11-08 固定离线 Windows 身份内容对照
+
+INTEGRATED / BUILD(固定身份 API 与注册表取值、原所有者私有封存、仅关系回执)。
+VERIFIED(五个真实普通侧取值、报告约束及相关普通回归)。受限执行和官方 CLI
+执行 NOT_RUN。
+[对照范围](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#windows-身份内容对照)
+
 ## 2026-11-08 固定自研离线控制台闭合通过
 
 VERIFIED(版本 `49c54e70` 未激活安装、低完整性零能力 LPAC 的精确目录、

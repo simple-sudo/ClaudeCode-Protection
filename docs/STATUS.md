@@ -11,6 +11,11 @@
 精确路径校验，原所有者核对临时文件字节及整树回收。
 [实测证据](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#任务内目录投影)
 
+## 2026-11-08 固定离线 Windows 身份内容对照
+
+在既有固定离线链上接入五项真实 Windows 身份读取、双侧内容比较与原值封存。
+[候选与验证范围](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#windows-身份内容对照)
+
 ## 2026-11-08 固定自研离线控制台闭合通过
 
 修正创建基路径后，真实零能力 LPAC 完成离线控制台固定测试并有序关闭。
