@@ -5,6 +5,12 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-07 解析器应答时效
+
+VERIFIED(实测短 TTL 目标隧道在 CONNECT 前拒绝、原所有者闭合)。
+INTEGRATED / BUILD(认证后计时)。VERIFIED(真实 .NET 内存 TLS/HTTP 顺序及
+一秒 TTL 策略边界)。该候选受限代理及最终 HTTP NOT_RUN。
+
 ## 2026-11-07 目标 TLS 实测及 HEAD 响应兼容
 
 VERIFIED(单次真实受限目标隧道、Microsoft TLS 身份与离线吊销、原所有者闭合)。

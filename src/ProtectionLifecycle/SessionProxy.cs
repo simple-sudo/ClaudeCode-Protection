@@ -62,7 +62,8 @@ internal sealed class SessionProxy : IDisposable
         if(fixedResolverTrust is not null && !fixedNoContentHttpsCanary)throw WfpNative.Contract("ResolverTlsTrustRequiresFixedHead");
         this.fixedNoContentHttpsCanary=fixedNoContentHttpsCanary;
         this.fixedResolverTrust=fixedResolverTrust;
-        var effective="CPC-GATEWAY-EFFECTIVE-V2;"+PolicySHA256+";"+capabilityProfile.SHA256+";fixed-no-content-https-canary="+fixedNoContentHttpsCanary;
+        var effective="CPC-GATEWAY-EFFECTIVE-V3;"+PolicySHA256+";"+capabilityProfile.SHA256+
+            ";resolver-freshness=authenticated-request-stream;fixed-no-content-https-canary="+fixedNoContentHttpsCanary;
         if(fixedResolverTrust is not null)effective+=";fixed-openssl-head-resolver-explicit-offline-revocation";
         EffectivePolicySHA256=Convert.ToHexString(SHA256.HashData(Encoding.ASCII.GetBytes(effective)));
         this.job = job; this.upstream = upstream; this.packageSid = packageSid; this.sessionId = Identifiers.Hex32(sessionId);
@@ -175,9 +176,8 @@ internal sealed class SessionProxy : IDisposable
                 using var tlsClient=await SessionTunnel.RequireTlsClientHelloAsync(stream,request.Host,AssertForwardingCurrent,deadline.Token);
                 AssertHealthy();AtomicChild.AssertSessionPeer(job,process,packageSid,peer.Port,capabilityProfile);AssertForwardingCurrent();
                 phase="RESOLVER";
-                var resolutionStarted=Stopwatch.GetTimestamp();
-                var (resolution,responseAge)=await Resolve(request.Host,deadline.Token);
-                void AssertFreshResolution()=>resolution.RequireFresh(responseAge,Stopwatch.GetElapsedTime(resolutionStarted));
+                var (resolution,responseAge,requestStarted)=await Resolve(request.Host,deadline.Token);
+                void AssertFreshResolution()=>resolution.RequireFresh(responseAge,Stopwatch.GetElapsedTime(requestStarted));
                 var addresses=resolution.Addresses;var chosen=addresses[0];
                 if(!ProxyDestinationPolicy.AuthorizePinnedHttps(request.Host,443,addresses,chosen).Allowed)
                     throw new InvalidDataException("SessionResolvedDestinationRefused");
@@ -187,7 +187,7 @@ internal sealed class SessionProxy : IDisposable
                     // The target consumes the authenticated resolver result.
                     // Observe the exact gate without giving it recovery authority.
                     var attempt=fixedResolverTrust is null?null:
-                        new UpstreamTunnelAttempt(resolution.MinimumTtlSeconds,(int)responseAge.TotalSeconds,resolutionStarted);
+                        new UpstreamTunnelAttempt(resolution.MinimumTtlSeconds,(int)responseAge.TotalSeconds,requestStarted);
                     phase="UPSTREAM";
                     try
                     {
@@ -223,7 +223,7 @@ internal sealed class SessionProxy : IDisposable
             { if (authenticated && !stop.IsCancellationRequested) Fail(ex,phase); }
         }
     }
-    private async Task<(ProxyDestinationPolicy.Resolution Resolution,TimeSpan ResponseAge)> Resolve(string host, CancellationToken token)
+    private async Task<(ProxyDestinationPolicy.Resolution Resolution,TimeSpan ResponseAge,long RequestStarted)> Resolve(string host, CancellationToken token)
     {
         var resolverTunnelConsumed=0;
         var tls=OfflineTls();
@@ -245,10 +245,15 @@ internal sealed class SessionProxy : IDisposable
             }
             return observation.Accepted;
         };
+        using var message = new HttpRequestMessage(HttpMethod.Get, "https://"+ResolverTlsEvidence.Host+"/dns-query?name=" + Uri.EscapeDataString(host) + "&type=A") {
+            Version=HttpVersion.Version11,VersionPolicy=HttpVersionPolicy.RequestVersionExact
+        };
+        var timing=new ResolverRequestTiming(message);
         using var handler = new SocketsHttpHandler {
             UseProxy = false, AllowAutoRedirect = false, UseCookies = false, Credentials = null,
             MaxConnectionsPerServer = 1, MaxResponseHeadersLength = 8,
             SslOptions = tls,
+            PlaintextStreamFilter=timing.OnAuthenticatedStream,
             ConnectCallback = async (context, cancel) => {
                 if (context.DnsEndPoint.Host != ResolverTlsEvidence.Host || context.DnsEndPoint.Port != 443)
                     throw new InvalidDataException("UnapprovedResolverTransport");
@@ -257,9 +262,6 @@ internal sealed class SessionProxy : IDisposable
             }
         };
         using var client = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(5), MaxResponseContentBufferSize = 65536 };
-        using var message = new HttpRequestMessage(HttpMethod.Get, "https://"+ResolverTlsEvidence.Host+"/dns-query?name=" + Uri.EscapeDataString(host) + "&type=A") {
-            Version=HttpVersion.Version11,VersionPolicy=HttpVersionPolicy.RequestVersionExact
-        };
         message.Headers.Accept.ParseAdd("application/dns-json");
         message.Headers.CacheControl=new System.Net.Http.Headers.CacheControlHeaderValue{NoCache=true};
         using var response = await client.SendAsync(message, token);
@@ -272,7 +274,7 @@ internal sealed class SessionProxy : IDisposable
                 System.Globalization.CultureInfo.InvariantCulture,out var seconds))throw new InvalidDataException("ResolverResponseAgeRefused");
             responseAge=TimeSpan.FromSeconds(seconds);
         }
-        return (ProxyDestinationPolicy.ParseResolution(host,await response.Content.ReadAsByteArrayAsync(token)),responseAge);
+        return (ProxyDestinationPolicy.ParseResolution(host,await response.Content.ReadAsByteArrayAsync(token)),responseAge,timing.StartedAt);
     }
     internal static void ConsumeFixedTunnelAttempt(ref int consumed)
     {

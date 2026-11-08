@@ -224,6 +224,9 @@ public static class BootstrapInstaller
             "D21A7D9F39A93E82087062EAD14F49329E7DBDD2743B2DC12DE98CAB6DC691F1"
         }; // Exact reviewed packages expose no launch/admission command.
         private static readonly string[] OneShotAdmissionManifests={
+            // Exact f91e0538 closed and restored the session after the
+            // DNS freshness gate rejected a short-lived answer.
+            "F5C221D98A181FDBE08E640199695F84BE9FE163764DE11E285786C9F0EE497F",
             // Exact a2f84433 authenticated the target TLS peer and closed
             // the session after the application exchange failed.
             "16487610E4C34A06F3823890983A9F8577B6857FE9A637CA3B005AA9B41F796C",

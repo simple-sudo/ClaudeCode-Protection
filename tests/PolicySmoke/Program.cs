@@ -177,6 +177,10 @@ static void RunResolverPolicy()
     Refuse(()=>parsed.RequireFresh(TimeSpan.FromSeconds(1),TimeSpan.FromSeconds(1)),"Age plus elapsed expires at TTL");
     Refuse(()=>parsed.RequireFresh(TimeSpan.FromSeconds(3),TimeSpan.Zero),"stale HTTP resolver response refused immediately");
     Refuse(()=>parsed.RequireFresh(TimeSpan.Zero,TimeSpan.FromSeconds(2)),"elapsed lookup and tunnel preparation expire answer");
+    var oneSecond=ProxyDestinationPolicy.ParseResolution("www.microsoft.com",DnsBytes(doh.Replace("\"TTL\":30","\"TTL\":1")));
+    oneSecond.RequireFresh(TimeSpan.Zero,TimeSpan.FromMilliseconds(250));
+    Refuse(()=>oneSecond.RequireFresh(TimeSpan.Zero,TimeSpan.FromMilliseconds(1250)),"one-second answer expires after authenticated request");
+    Refuse(()=>oneSecond.RequireFresh(TimeSpan.FromSeconds(1),TimeSpan.Zero),"one-second cached answer expires even before target connect");
     foreach(var literal in new[]{"1.1.257","001.1.1.1","0x01010101"})
         Refuse(()=>ProxyDestinationPolicy.ParseResolution("www.microsoft.com",DnsBytes(doh.Replace("1.1.1.1",literal))),"noncanonical IPv4 answer refused");
     Refuse(()=>ProxyDestinationPolicy.ParseResolution("www.microsoft.com",DnsBytes(doh.Replace("\"TTL\":30","\"TTL\":2147483648"))),"overrange TTL refused");

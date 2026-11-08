@@ -509,3 +509,29 @@ Windows 仍报告离线吊销材料不足，包内两份签名 CRL 的独立整�
 五产品 Release BUILD0/0，29 项工件和 155 项构建输入前后核对。九个普通
 回归入口通过。16 项内存 TLS 对照覆盖 103、跨片段 100/403、头部边界、
 禁止升级、非法字段、附带字节和既有吊销拒绝。真实候选执行 NOT_RUN。
+
+## 解析器应答时效
+
+2026-11-08 02:10:05–02:10:24Z，本人批准 `65273659…`，按 96 项冻结输入从
+`a2f84433` 未激活更新到 `f91e0538` 并执行一次。Cloudflare 验证通过，
+目标报告 `FreshnessBeforeConnect`，最小 TTL 1 秒、Age 0、旧起点耗时
+1259 ms。目标 CONNECT 未发，HEAD 解析未运行。原所有者关闭准入、隔离并
+核验 Job 归零，两个刻度均为 1577 ms。31 项 Winsock 恢复，停止错误为 0。
+三份回执独立核验摘要 `31DD28FD170EA5BE19BAED6FC0638073900E6EDC6C78815D78E5B39E0644BF84`。
+本次批准已消耗。首份同版本审查因控制器路径自检拒绝，未启动、未申请批准，
+原冻结件仍保留。
+
+DNS 应答时效起点现在绑定于该次请求的认证后 HTTP/1.1 流。时间戳只写一次，
+拒绝错请求、未加密、缺起点或重复回调。仍扣除 HTTP Age 和从请求开始到目标
+隧道各检查点的全部单调时间，过期继续拒绝。旧版本的 ElapsedMs 以解析器
+建连前为起点。新有效网关策略摘要标记变更，既有 WFP 基础策略仍可识别。
+依据 [.NET 8.0.28 HTTP 连接实现](https://raw.githubusercontent.com/dotnet/runtime/v8.0.28/src/libraries/System.Net.Http/src/System/Net/Http/SocketsHttpHandler/HttpConnectionPool.cs)
+和 [DoH 缓存时效](https://www.rfc-editor.org/rfc/rfc8484.html#section-5.1)。
+
+候选 `a8d6e45c8ac0456fb44dfa2ac306515c`，清单
+`1E9893FD015B8EA5B7A12C022523737DCD0BF8B6E7A4D4696B86EF45097FAD00`，
+迁移 `6E9981CC787B7330906440E4DE686C6399BC34DFF5959111612464CE0C84FFBA`。
+五产品 Release BUILD0/0，29 项工件、156 项构建输入前后一致。十个普通入口
+和 PolicySmoke 通过。实际 .NET HTTP/Schannel 在内存流中验证认证、时间戳、
+请求的顺序及绑定拒绝。首轮普通服务器因 Schannel 拒绝临时私钥失败。改用
+释放时清理的普通用户密钥导入后通过，证书未加入信任库。候选受限代理 NOT_RUN。

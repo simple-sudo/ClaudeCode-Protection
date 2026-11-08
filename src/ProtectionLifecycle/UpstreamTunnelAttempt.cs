@@ -15,7 +15,7 @@ internal sealed record UpstreamTunnelEvidence(string Step,int? ConnectStatus,int
 
 // Held only by the original owner for the fixed qualification connection.
 // The receipt contains no endpoint, response text, credential, or permission.
-internal sealed class UpstreamTunnelAttempt(int minimumTtlSeconds,int responseAgeSeconds,long resolutionStarted)
+internal sealed class UpstreamTunnelAttempt(int minimumTtlSeconds,int responseAgeSeconds,long requestStarted)
 {
     private int? status;
     internal UpstreamTunnelStep Step {get;set;}=UpstreamTunnelStep.AdmissionBeforeTunnel;
@@ -23,7 +23,7 @@ internal sealed class UpstreamTunnelAttempt(int minimumTtlSeconds,int responseAg
     internal void RecordStatus(int? value)=>status=value;
 
     internal UpstreamTunnelEvidence Capture()=>new(Step.ToString(),status,minimumTtlSeconds,responseAgeSeconds,
-        (long)Stopwatch.GetElapsedTime(resolutionStarted).TotalMilliseconds,Step==UpstreamTunnelStep.TunnelReady);
+        (long)Stopwatch.GetElapsedTime(requestStarted).TotalMilliseconds,Step==UpstreamTunnelStep.TunnelReady);
 
     // Preserve the original exact HTTP/1.x 200 rule. Numeric rejection codes
     // are useful to the owner, while the peer's status text stays private.
