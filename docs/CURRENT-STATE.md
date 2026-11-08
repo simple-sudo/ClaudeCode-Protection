@@ -1,5 +1,13 @@
 # 当前状态与授权摘要
 
+2026-11-08 可信 LocalService 创建者对照的公共 SCM 完成码确认实际建立了
+独立 LocalService 主身份、低完整性零能力 LPAC 的挂起子进程。服务校验原 Job、
+子进程限制、三管道白名单及回收后才发出该码。控制器即时回收回读失败保留。
+独立核对服务已移除，另经批准精确回收唯一暂存映像和目录。两次许可均已消耗。
+下一步在原 Broker/WFP 边界内恢复自研载荷，验证正常功能及宿主 SID 真实内容。
+本次从未恢复子进程，产品尚未接入独立身份，官方 CLI 未执行。
+[创建与恢复实测](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#可信-localservice-创建者的挂起-lpac-通过)。
+
 2026-11-08 获批 LocalService 双角色对照验证准备者能创建并持有新 profile。
 写受限启动者核对映像、目录及 profile 映射后，挂起 `CreateProcessW` 返回 5，
 原 Job 无成员。两服务原进程终态、profile 存储与映射缺席、服务及暂存回收均

@@ -5,6 +5,12 @@
 历史页的“当前/待执行/暂停/DELIVERABLE”按段落日期及限定范围解释，不是今天的状态或操作许可。
 不在本页复制当前安装和授权摘要。
 
+## 2026-11-08 可信 LocalService 创建者与精确恢复
+
+可信创建者从独立账户取得挂起低完整性零能力 LPAC，原 Job 与 profile 闭合。
+外层即时回读失败，后续证实服务缺席并单独精确回收暂存。
+[实机结果](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#可信-localservice-创建者的挂起-lpac-通过)
+
 ## 2026-11-08 LocalService 双角色的挂起创建拒绝
 
 同账户准备者成功注册 profile。保留 SCM 写限制的启动者通过前置校验，但

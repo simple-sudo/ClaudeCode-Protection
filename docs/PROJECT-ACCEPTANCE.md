@@ -5,6 +5,14 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-08 可信 LocalService 创建者与精确恢复
+
+VERIFIED(独立 LocalService 低完整性零能力 LPAC 的挂起原子创建、实际令牌与
+Job/管道核验、原 Job 清零和 profile 回收，由本次公共 SCM 完成码核对)。
+FAIL(外层控制器即时服务与暂存回收回读)。VERIFIED(随后服务缺席和另一次
+获批原暂存精确回收)。子进程未恢复，正式产品接入、宿主 SID 复验及官方 CLI NOT_RUN。
+[实测范围](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#可信-localservice-创建者的挂起-lpac-通过)
+
 ## 2026-11-08 LocalService 双角色的挂起创建拒绝
 
 VERIFIED(独立 LocalService 准备者创建、持有并删除 profile，写受限启动者核对
