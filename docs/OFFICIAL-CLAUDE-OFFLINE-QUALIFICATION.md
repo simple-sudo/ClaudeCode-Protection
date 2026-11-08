@@ -595,3 +595,32 @@ Job。该限制的 Windows 语义见 [Owner Rights SID](https://learn.microsoft.
 现代 Windows 按第一个成员关联会话。此实验使用单独的测试 Job，不改生产 Job
 命名空间与恢复机制。构建和普通检查已通过，真实交接待新具体许可。
 [Windows Job 对象创建契约](https://github.com/MicrosoftDocs/sdk-api/blob/docs/sdk-api-src/content/jobapi2/nf-jobapi2-createjobobjectw.md)
+
+### 具名 Job 与管道权限对照
+
+07:13（纽约时间），一次许可 `5AD5F207…` 后，原所有者绑定并允许本次服务
+开始。服务在管道打开或描述符读取阶段返回 5，回执阶段 22，未进入 profile
+或 Job 交接。服务原进程、登记和暂存回收通过。独立复核服务返回 1060、
+暂存缺席。回执 SHA-256 `954A8220D77CB69DDC5BFA48E9B4A718CD64F0D1D2CA812E92FF3C630FA3E334`。
+
+普通同账户对照保持客户端请求和其余权限相同，仅给服务端 ACL 的客户端条目
+增加 `FILE_READ_ATTRIBUTES`。同步和异步管道在旧 ACL 下均于 `CreateFileW`
+返回 5，补齐后打开、描述符读取和服务端 PID 回读均通过。原始结果摘要
+`509965689F448CD3BBB90BB96DC45A14532AE57887CBFC341A7F256E8AB9B01E`。
+该前置要求也见 [.NET 命名管道权限实现注释](https://source.dot.net/System.IO.Pipes/System/IO/Pipes/PipeAccessRights.cs.html)。
+
+07:17，经一次许可 `2E532FF9…` 的修正版通过管道打开、描述符和 profile
+创建及持有，随后在服务阶段 2 返回 5，公开回执阶段 10。该阶段含对端会话
+查询、请求帧、具名 Job 打开与权限核对、三管道及创建属性设置，无法归因到
+单个调用。尚未到达 `CreateProcessW`。服务从已绑定的原句柄确认终止，并
+完成 profile 回收、登记和暂存清理。独立普通复核服务 1060、暂存缺席。
+回执 SHA-256 `C12FC4C50C7930AE6A351E3168D407D561D6F1E5C3FC55E9F863D2C9CCD57AD2`。
+
+新候选从连接本身读取 Windows 对端会话，与已绑定进程 PID 和请求帧交叉核验，
+不再要求服务按 PID 查询原所有者进程。原 API 的进程查询权限要求是一个候选
+解释，仍待实机确认。新版分别记录对端、读帧、Job 打开、安全描述符、权限
+边界及原子创建属性阶段。原生和控制器构建及六项普通检查通过，未固定新的
+操作许可。前两次许可均已消耗。材料保留在 `work/independent-creator-handoff-20261108-01/`。
+本轮没有恢复自研线程、安装产品、改变 WFP 或运行官方 CLI。
+[进程会话查询权限](https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-processidtosessionid)
+[管道对端查询](https://learn.microsoft.com/en-us/windows/win32/ipc/pipe-functions)

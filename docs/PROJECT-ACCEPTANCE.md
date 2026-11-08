@@ -5,6 +5,13 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-08 具名 Job 与管道权限对照
+
+FAIL(首候选管道阶段错误 5、补齐读取属性后交接前置阶段错误 5)。
+VERIFIED(同账户管道权限前后对照、修正版真实管道和 profile 准备与回收、
+两次登记和暂存闭合)。跨会话 Job 成员验证、受限载荷恢复及官方 CLI NOT_RUN。
+[证据](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#具名-job-与管道权限对照)
+
 ## 2026-11-08 Session 0 服务复制权限实机对照
 
 VERIFIED(原服务观察句柄绑定与终止、服务登记和暂存回收)。
