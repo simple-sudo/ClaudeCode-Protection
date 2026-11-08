@@ -22,7 +22,8 @@ internal static class OpenSslMemoryCases
             catch(T){checks++;return;}
             throw new InvalidDataException("Invalid offline TLS input accepted");
         }
-        var observed=Call(type.GetMethod("Observe",Static)!,id,true)!;
+        var observe=type.GetMethod("Observe",Static)!;
+        var observed=Call(observe,id,true,Type.Missing)!;
         var raw=JsonSerializer.Serialize(observed,type);
         Console.WriteLine(raw);
         var parse=type.GetMethod("Parse",Static)!;
@@ -33,7 +34,7 @@ internal static class OpenSslMemoryCases
         Reject<InvalidDataException>(()=>Read(raw.Insert(1,"\"SchemaVersion\":1,"),0));
         var valid=JsonNode.Parse(raw)!.AsObject();
         foreach(var (field,value) in new (string,JsonNode?)[]{
-            ("Pid",Environment.ProcessId+1),("SchemaVersion",2),("SessionId",new string('b',32)),("StartedFileTime",before-1),
+            ("Pid",Environment.ProcessId+1),("SchemaVersion",3),("SessionId",new string('b',32)),("StartedFileTime",before-1),
             ("WrongNameError",0),("UnknownRootError",null),("EofDenied",false),("FailureStage","WRONG_NAME"),("Unreviewed",true)})
         {
             var invalid=valid.DeepClone().AsObject();invalid[field]=value;
@@ -43,6 +44,34 @@ internal static class OpenSslMemoryCases
         failure["FailureStage"]="UNKNOWN_ROOT";failure["ErrorCode"]=31;failure["UnknownRootError"]=null;failure["EofDenied"]=false;
         Check(!Complete(Read(failure.ToJsonString(),3)));
         Reject<InvalidDataException>(()=>Read(failure.ToJsonString(),0));
+        var wrongImage=JsonNode.Parse(JsonSerializer.Serialize(Call(observe,id,false,id),type))!.AsObject();
+        Check(wrongImage["SchemaVersion"]!.GetValue<int>()==2 &&
+            wrongImage["FailureStage"]!.GetValue<string>()=="MODULE_IMAGE" && !Complete(Read(wrongImage.ToJsonString(),3)));
+        var historical=wrongImage.DeepClone().AsObject();historical["SchemaVersion"]=1;
+        Reject<InvalidDataException>(()=>Read(historical.ToJsonString(),3));
+        historical["FailureStage"]="MODULES";
+        Check(!Complete(Read(historical.ToJsonString(),3)));
+        wrongImage["FailureStage"]="MODULE_SSL_LOAD";
+        Check(!Complete(Read(wrongImage.ToJsonString(),3)));
+        wrongImage["FailureStage"]="MODULE_UNKNOWN_LOAD";
+        Reject<InvalidDataException>(()=>Read(wrongImage.ToJsonString(),3));
+
+        var lease=library.GetType("ProtectionLifecycle.OpenSslModuleLease",true)!;
+        var moduleError=library.GetType("ProtectionLifecycle.OpenSslModuleException",true)!;
+        var directory=lease.GetMethod("InstalledDirectory",Static)!;
+        var admin=@"D:\Windows Applications\ClaudeCodeProtection\versions\"+id+@"\bin\admin";
+        var image=Path.Combine(admin,"ProtectionBroker.exe");var managed=Path.Combine(admin,"ProtectionLifecycle.dll");
+        Check((string?)Call(directory,id,admin+"\\",image,managed)==admin);
+        foreach(var inputs in new (string Release,string Base,string Image,string Managed)[]{
+            (new string('b',32),admin,image,managed),(id,admin,image,@"C:\Elsewhere\ProtectionLifecycle.dll"),
+            (id,admin,Path.Combine(admin,"Unreviewed.exe"),managed),(id,admin.Replace(@"Applications\",@"Applications\..\"),image,managed),
+            (id,@"\\host\share"+admin[2..],image,managed)})
+        {
+            try{_=Call(directory,inputs.Release,inputs.Base,inputs.Image,inputs.Managed);}
+            catch(Exception error)when(error.GetType()==moduleError &&
+                (string?)moduleError.GetProperty("Stage",Instance)!.GetValue(error)=="MODULE_IMAGE"){checks++;continue;}
+            throw new InvalidDataException("Unbound installed image accepted");
+        }
         Reject<UnauthorizedAccessException>(()=>Call(installed.GetMethod("QualifyOpenSslOffline")!));
         var env="CPC_OPENSSL_OFFLINE_SESSION";var old=Environment.GetEnvironmentVariable(env);
         try

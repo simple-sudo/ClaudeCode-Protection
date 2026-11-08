@@ -15,13 +15,13 @@ internal sealed record OpenSslOfflineWitness(int SchemaVersion,string SessionId,
     internal bool Complete=>ExchangeVerified && WrongNameError==62 && UnknownRootError==20 && EofDenied &&
         FailureStage is null && ErrorCode is null;
 
-    internal static OpenSslOfflineWitness Observe(string session,bool ordinaryFixture=false)
+    internal static OpenSslOfflineWitness Observe(string session,bool ordinaryFixture=false,string? release=null)
     {
         var start=DateTime.UtcNow.ToFileTimeUtc();var stage="MODULES";
         var exchanged=false;var eof=false;int? wrongName=null,wrongRoot=null;
         try
         {
-            using var modules=ordinaryFixture?OpenSslModuleLease.OpenForOrdinaryFixture():OpenSslModuleLease.OpenForInstalledWorker();
+            using var modules=ordinaryFixture?OpenSslModuleLease.OpenForOrdinaryFixture():OpenSslModuleLease.OpenForInstalledWorker(release??"");
             stage="FIXTURE";
             using var rootKey=RSA.Create(2048);
             using var root=MakeRoot(rootKey,"CN=Fixed local TLS test root");
@@ -48,13 +48,17 @@ internal sealed record OpenSslOfflineWitness(int SchemaVersion,string SessionId,
             finally{CryptographicOperations.ZeroMemory(privateKey);}
             stage="MODULE_RELEASE";
         }
+        catch(OpenSslModuleException error)when(stage=="MODULES")
+        {
+            return Result(error.Stage,error.ErrorCode);
+        }
         catch(Exception error)
         {
             return Result(stage,error is System.ComponentModel.Win32Exception native?native.NativeErrorCode:error.HResult);
         }
         return Result(null,null);
 
-        OpenSslOfflineWitness Result(string? failure,int? error)=>new(1,Identifiers.Hex32(session),Environment.ProcessId,start,
+        OpenSslOfflineWitness Result(string? failure,int? error)=>new(2,Identifiers.Hex32(session),Environment.ProcessId,start,
             DateTime.UtcNow.ToFileTimeUtc(),exchanged,wrongName,wrongRoot,eof,failure,error);
     }
 
@@ -65,7 +69,7 @@ internal sealed record OpenSslOfflineWitness(int SchemaVersion,string SessionId,
         StrictJson.Fields(json.RootElement,"SchemaVersion","SessionId","Pid","StartedFileTime","EndedFileTime","ExchangeVerified",
             "WrongNameError","UnknownRootError","EofDenied","FailureStage","ErrorCode");
         var report=json.RootElement.Deserialize<OpenSslOfflineWitness>()??throw new InvalidDataException("Offline TLS report absent");
-        if(report.SchemaVersion!=1 || report.SessionId!=Identifiers.Hex32(session) || report.Pid<=0 || (uint)report.Pid!=pid ||
+        if(report.SchemaVersion is not (1 or 2) || report.SessionId!=Identifiers.Hex32(session) || report.Pid<=0 || (uint)report.Pid!=pid ||
             createdFileTime<=0 || report.StartedFileTime<createdFileTime || report.EndedFileTime<report.StartedFileTime ||
             report.EndedFileTime-createdFileTime>TimeSpan.FromSeconds(30).Ticks)
             throw new InvalidDataException("Offline TLS report actor differs");
@@ -74,7 +78,7 @@ internal sealed record OpenSslOfflineWitness(int SchemaVersion,string SessionId,
             if(exit!=0)throw new InvalidDataException("Offline TLS completion exit differs");
             return report;
         }
-        var stage=Array.IndexOf(Stages,report.FailureStage);
+        var stage=report.SchemaVersion==2 && OpenSslModuleLease.IsReportedStage(report.FailureStage)?0:Array.IndexOf(Stages,report.FailureStage);
         if(exit!=3 || stage<0 || report.ErrorCode is null || report.ExchangeVerified!=(stage>2) ||
             report.WrongNameError!=(stage>3?62:(int?)null) || report.UnknownRootError!=(stage>4?20:(int?)null) ||
             report.EofDenied!=(stage>5))

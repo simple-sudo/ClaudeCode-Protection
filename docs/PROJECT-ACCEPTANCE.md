@@ -5,6 +5,19 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-07 受限 OpenSSL 映像绑定和分段回报
+
+INTEGRATED / BUILD(发布版本、映像绑定和分段回报)。VERIFIED(普通身份的原样
+候选管理库、OpenSSL 内存握手及失败对照、路径绑定与历史回报兼容夹具)。
+新候选受限装载及退出 NOT_RUN。
+
+## 2026-11-07 低完整性 LPAC 的首次 OpenSSL 装载实测
+
+VERIFIED(实际未激活更新、原所有者的全隔离 LPAC 创建与关闭、原 Job 归零)。
+FAIL(受限子进程在 `MODULES / 0x80131501` 退出 3)。具体加载步骤 UNKNOWN。
+受限握手、外部 TLS、真实内容 L3、官方 CLI 和整机未验收。
+[实测记录](SCHANNEL-FAILURE-BOUNDARY-20261107.md#首次全隔离装载实测)
+
 ## 2026-11-07 固定 OpenSSL 运行库和原 owner 对照
 
 INTEGRATED / BUILD(v1/v2 资产与恢复清单、原 owner 离线入口)。VERIFIED(普通身份、

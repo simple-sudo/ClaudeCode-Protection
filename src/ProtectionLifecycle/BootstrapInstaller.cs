@@ -224,6 +224,9 @@ public static class BootstrapInstaller
             "D21A7D9F39A93E82087062EAD14F49329E7DBDD2743B2DC12DE98CAB6DC691F1"
         }; // Exact reviewed packages expose no launch/admission command.
         private static readonly string[] OneShotAdmissionManifests={
+            // Exact d8be9fe7 produced a closed offline Job with an
+            // unsuccessful module check. This never qualifies TLS.
+            "9A8B7310B33E1DC3CF81CC75D0E460B9C9DB8ED0FD8B74C9B34E74F403E487CB",
             // Exact 68a0d109 closed offline diagnostic. Live job, fence and
             // recovery gates are still required for any inactive update.
             "7011F015638626416B00B222C817AE1749A258C9C7EA5EDB3D91DFCC6104DCF2",

@@ -419,6 +419,7 @@ internal sealed partial class AtomicChild : IDisposable
             {
                 SetPrivateRuntimeDirectories(env,profile.WorkspaceRoot());
                 env[OfflineTlsQualification.SessionVariable(offline.Probe)]=offline.Session;
+                if(offline.Probe==OfflineTlsProbe.OpenSsl)env[OpenSslModuleLease.ReleaseVariable]=version.Package.Release;
             }
             if(preparation is not null)
             {
@@ -592,10 +593,12 @@ internal sealed partial class AtomicChild : IDisposable
             throw WfpNative.Contract("OfflineTlsWorkerIdentityRefused");
         if(probe==OfflineTlsProbe.Schannel)
         {
+            if(Environment.GetEnvironmentVariable(OpenSslModuleLease.ReleaseVariable) is not null)
+                throw WfpNative.Contract("SchannelWorkerCannotBorrowOpenSslBinding");
             Console.WriteLine(JsonSerializer.Serialize(SchannelAcquisition.Observe(id)));
             return 0;
         }
-        var witness=OpenSslOfflineWitness.Observe(id);
+        var witness=OpenSslOfflineWitness.Observe(id,release:Environment.GetEnvironmentVariable(OpenSslModuleLease.ReleaseVariable));
         Console.WriteLine(JsonSerializer.Serialize(witness));
         return witness.Complete?0:3;
     }
