@@ -11,6 +11,7 @@
     <Compile Include="RestrictingSidCases.cs" />
     <Compile Include="OfficialClaudePackageCases.cs" />
     <Compile Include="OfflineConsoleNativeCases.cs" />
+    <Compile Include="CreatorJobCases.cs" />
     <EmbeddedResource Include="../../src/ProtectionBootstrap/ApprovedPackage.json" LogicalName="Candidate.ApprovedPackage.json" />
     <EmbeddedResource Include="../../src/ProtectionBootstrap/InactiveUpdateTransition.json" LogicalName="Candidate.InactiveUpdateTransition.json" />
     <Compile Include="WinsockRegistryScopeCases.cs" />

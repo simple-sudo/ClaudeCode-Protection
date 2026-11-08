@@ -1,24 +1,54 @@
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using System.Security.Principal;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.Win32.SafeHandles;
 
 namespace ProtectionLifecycle;
 
-internal sealed record OwnedJobIntent(int SchemaVersion,string InstallationId,string JobId,string Release,string ManifestSHA256,string Binding,string Scope)
+internal sealed record OwnedJobIntent(int SchemaVersion,string InstallationId,string JobId,string Release,string ManifestSHA256,string Binding,string Scope,
+    [property:JsonIgnore(Condition=JsonIgnoreCondition.WhenWritingNull)] string? CreatorServiceSid=null)
 {
+    private const string AtomicBinding="ATOMIC_JOB_LIST_REQUIRED",PrivateScope="JOB_MEMBERS_ONLY",CreatorScope="SESSION_ZERO_CREATOR_JOB_MEMBERS_ONLY";
     internal static string Leaf(string id)=>"job-intent-"+Identifiers.Hex32(id)+".json";
     internal string Alias=>"CPCJob."+Identifiers.Hex32(InstallationId)+"."+Identifiers.Hex32(JobId);
-    internal string Name=>Alias+"\\Session";
+    internal string Name=>CreatorServiceSid is null?Alias+"\\Session":@"Global\CPCSessionJob."+Identifiers.Hex32(InstallationId)+"."+Identifiers.Hex32(JobId);
     internal CreationTag Tag=>CreationTag.For(CreationRole.OwnedJob,JobId);
+    internal static OwnedJobIntent ForNewJob(string installationId,string release,string manifest,string? creatorServiceSid)
+    {
+        if(creatorServiceSid is not null)AssertCreatorSid(creatorServiceSid);
+        return new(creatorServiceSid is null?2:3,installationId,Guid.NewGuid().ToString("N"),release,manifest,AtomicBinding,
+            creatorServiceSid is null?PrivateScope:CreatorScope,creatorServiceSid);
+    }
     internal static OwnedJobIntent Read(ProtectedState state,string id)
     {
-        state.AssertHeld();id=Identifiers.Hex32(id);using var doc=JsonDocument.Parse(state.Read(Leaf(id),8192).Bytes,new JsonDocumentOptions{MaxDepth=4});var r=doc.RootElement;
-        StrictJson.Fields(r,"SchemaVersion","InstallationId","JobId","Release","ManifestSHA256","Binding","Scope");
-        if(r.GetProperty("SchemaVersion").GetInt32()!=2 || StrictJson.Text(r,"InstallationId")!=state.InstallationId || StrictJson.Text(r,"JobId")!=id ||
-            StrictJson.Text(r,"Binding")!="ATOMIC_JOB_LIST_REQUIRED" || StrictJson.Text(r,"Scope")!="JOB_MEMBERS_ONLY")throw new InvalidDataException("Foreign job intent or unsupported binding");
-        return new(2,state.InstallationId,id,Identifiers.Hex32(StrictJson.Text(r,"Release")),Identifiers.Hash(StrictJson.Text(r,"ManifestSHA256")),"ATOMIC_JOB_LIST_REQUIRED","JOB_MEMBERS_ONLY");
+        state.AssertHeld();id=Identifiers.Hex32(id);using var doc=JsonDocument.Parse(state.Read(Leaf(id),8192).Bytes,new JsonDocumentOptions{MaxDepth=4});
+        return Parse(doc.RootElement,state.InstallationId,id);
+    }
+    internal static OwnedJobIntent Parse(JsonElement r,string installationId,string id)
+    {
+        var schema=r.GetProperty("SchemaVersion").GetInt32();
+        string[] fields=["SchemaVersion","InstallationId","JobId","Release","ManifestSHA256","Binding","Scope"];
+        if(schema is not (2 or 3))throw new InvalidDataException("Unsupported job intent schema");
+        StrictJson.Fields(r,schema==3?[..fields,"CreatorServiceSid"]:fields);
+        var scope=schema==3?CreatorScope:PrivateScope;
+        if(StrictJson.Text(r,"InstallationId")!=installationId || StrictJson.Text(r,"JobId")!=id ||
+            StrictJson.Text(r,"Binding")!=AtomicBinding || StrictJson.Text(r,"Scope")!=scope)throw new InvalidDataException("Foreign job intent or unsupported binding");
+        var creator=schema==3?StrictJson.Text(r,"CreatorServiceSid"):null;
+        if(creator is not null)AssertCreatorSid(creator);
+        return new(schema,installationId,id,Identifiers.Hex32(StrictJson.Text(r,"Release")),Identifiers.Hash(StrictJson.Text(r,"ManifestSHA256")),AtomicBinding,scope,creator);
+    }
+    private static void AssertCreatorSid(string sid)
+    {
+        // Service-specific SID only. Reject the shared LocalService and the
+        // all-services group, as well as our own synthetic creation tag space.
+        var segments=sid.Split('-');
+        if(!sid.StartsWith("S-1-5-80-",StringComparison.Ordinal) || segments.Length!=9 ||
+            !segments.Skip(4).All(s=>uint.TryParse(s,System.Globalization.NumberStyles.None,System.Globalization.CultureInfo.InvariantCulture,out var value) &&
+                s==value.ToString(System.Globalization.CultureInfo.InvariantCulture)) || CreationTag.TryParse(sid) is not null)
+            throw new InvalidDataException("Exact creator service SID required");
     }
     internal static IReadOnlyList<OwnedJobIntent> ReadAll(ProtectedState state)
     {
@@ -67,7 +97,7 @@ internal sealed class OwnedKernelJob : IDisposable
     private readonly ProtectedState state;
     private readonly OwnedJobIntent intent;
     private readonly SafeJobHandle handle;
-    private readonly PrivateJobNamespace jobNamespace;
+    private readonly PrivateJobNamespace? jobNamespace;
     private bool disposed;
     private bool admissionClaimed,admissionClosed;
     internal string JobId=>intent.JobId;
@@ -80,6 +110,18 @@ internal sealed class OwnedKernelJob : IDisposable
     }
     internal SafeJobHandle ReserveAtomicAdmission(VerifiedVersion version)
     {
+        if(intent.CreatorServiceSid is not null)throw WfpNative.Contract("SessionZeroJobRequiresBoundCreator");
+        ReserveAdmission(version);return handle;
+    }
+    internal string ReserveSessionZeroAdmission(VerifiedVersion version,SecurityIdentifier exactCreatorSid)
+    {
+        if(intent.CreatorServiceSid is null || intent.CreatorServiceSid!=exactCreatorSid.Value)throw WfpNative.Contract("SessionZeroJobCreatorMismatch");
+        AssertHeld();AssertCreatorProof(state,intent);
+        if(Accounting().TotalProcesses!=0)throw WfpNative.Contract("SessionZeroJobAlreadyHadAMember");
+        ReserveAdmission(version);return intent.Name;
+    }
+    private void ReserveAdmission(VerifiedVersion version)
+    {
         AssertHeld();version.AssertHeld(state);
         if(admissionClaimed || admissionClosed || intent.Release!=version.Package.Release || intent.ManifestSHA256!=version.Package.ManifestHash)
             throw new InvalidOperationException("One-shot job admission is unavailable");
@@ -87,7 +129,7 @@ internal sealed class OwnedKernelJob : IDisposable
         state.WriteNew("job-admission-"+intent.JobId+".json",JsonSerializer.SerializeToUtf8Bytes(new {
             SchemaVersion=1,state.InstallationId,intent.JobId,intent.Release,intent.ManifestSHA256,Binding="ATOMIC_JOB_LIST_AT_CREATION",Reusable=false
         }));
-        admissionClaimed=true;return handle;
+        admissionClaimed=true;
     }
     internal JobSnapshot CloseAtomicAdmissionAndStop()
     {
@@ -98,16 +140,22 @@ internal sealed class OwnedKernelJob : IDisposable
             intent.Release,intent.ManifestSHA256,admission.SHA256,"ADMISSION_CLOSED_MEMBERS_ZERO_OBSERVED",snapshot)));
         return snapshot;
     }
-    private OwnedKernelJob(ProtectedState state,OwnedJobIntent intent,SafeJobHandle handle,PrivateJobNamespace jobNamespace)
+    private OwnedKernelJob(ProtectedState state,OwnedJobIntent intent,SafeJobHandle handle,PrivateJobNamespace? jobNamespace)
     {this.state=state;this.intent=intent;this.handle=handle;this.jobNamespace=jobNamespace;}
 
     internal static OwnedKernelJob CreateEmpty(ProtectedState state,VerifiedVersion version)
+        =>CreateEmpty(state,version,null);
+    // Only the fixed SCM owner may select this scope after verifying its
+    // exact service SID. This does not start or authenticate a creator.
+    internal static OwnedKernelJob CreateForSessionZero(ProtectedState state,VerifiedVersion version,SecurityIdentifier verifiedCreatorSid)
+        =>CreateEmpty(state,version,verifiedCreatorSid.Value);
+    private static OwnedKernelJob CreateEmpty(ProtectedState state,VerifiedVersion version,string? creatorServiceSid)
     {
         ProtectedState.RequireAdministrator();state.AssertHeld();version.AssertHeld(state);LifecycleRecovery.AssertNoPending(state);
         var current=CurrentPointer.Parse(state.Read("current.json",4096),state.InstallationId);
         if(current.Release!=version.Package.Release || current.ManifestSHA256!=version.Package.ManifestHash)throw new InvalidDataException("Job version differs from the verified current version");
         if(OwnedJobIntent.ReadAll(state).Count>=1024)throw new InvalidDataException("Job inventory full");
-        var intent=new OwnedJobIntent(2,state.InstallationId,Guid.NewGuid().ToString("N"),version.Package.Release,version.Package.ManifestHash,"ATOMIC_JOB_LIST_REQUIRED","JOB_MEMBERS_ONLY");
+        var intent=OwnedJobIntent.ForNewJob(state.InstallationId,version.Package.Release,version.Package.ManifestHash,creatorServiceSid);
         state.WriteNew(OwnedJobIntent.Leaf(intent.JobId),JsonSerializer.SerializeToUtf8Bytes(intent)); // Before kernel creation.
         OwnedKernelJob? owner=null;
         try
@@ -117,6 +165,8 @@ internal sealed class OwnedKernelJob : IDisposable
             if(!SetInformationJobObject(owner.handle,9,ref limits,(uint)Marshal.SizeOf<ExtendedLimits>()))throw Error("SetOwnedJobLimits");
             var observed=owner.Observe();
             if(!observed.ExpectedLimits || !observed.ObservedZero)throw new InvalidDataException("New job is not empty with the required limits");
+            if(intent.CreatorServiceSid is not null)
+                state.WriteNew(CreatorProofLeaf(intent),JsonSerializer.SerializeToUtf8Bytes(new {SchemaVersion=1,IntentSHA256=IntentHash(state,intent)}));
             owner.Record("CREATED_EMPTY_OBSERVED",observed);return owner;
         }
         catch(Exception ex)
@@ -129,28 +179,61 @@ internal sealed class OwnedKernelJob : IDisposable
     }
     private static OwnedKernelJob CreateNative(ProtectedState state,OwnedJobIntent intent)
     {
-        using var descriptor=new KernelJobSeal.Descriptor(intent.Tag);var attributes=descriptor.Attributes;
-        PrivateJobNamespace? jobNamespace=PrivateJobNamespace.CreateNew(state,intent);SafeJobHandle? created=null;
+        using var descriptor=new KernelJobSeal.Descriptor(intent);var attributes=descriptor.Attributes;
+        PrivateJobNamespace? jobNamespace=intent.CreatorServiceSid is null?PrivateJobNamespace.CreateNew(state,intent):null;SafeJobHandle? created=null;
         try
         {
-            created=CreateJobObject(ref attributes,intent.Name);var error=Marshal.GetLastWin32Error();
-            if(created.IsInvalid)throw new Win32Exception(error,"CreateOwnedJob");
-            if(error==183)
+            if(intent.CreatorServiceSid is not null)created=CreateFreshSessionZeroJob(intent,attributes.Descriptor);
+            else
             {
-                // No global-name fallback or preexisting namespace adoption.
-                var collision=new Win32Exception(error,"Existing named job refused");
-                try{state.WriteNew("job-collision-"+intent.JobId+".json",JsonSerializer.SerializeToUtf8Bytes(new {SchemaVersion=1,InstallationId=state.InstallationId,intent.JobId,Status="EXISTING_OBJECT_REFUSED"}));}
-                catch(Exception log){throw new AggregateException("Job collision and refusal recording both failed",collision,log);}throw collision;
+                created=CreateJobObject(ref attributes,intent.Name);var error=Marshal.GetLastWin32Error();
+                if(created.IsInvalid)throw new Win32Exception(error,"CreateOwnedJob");
+                if(error==183)
+                {
+                    // The private namespace is held and has no public fallback.
+                    var collision=new Win32Exception(error,"Existing named job refused");
+                    try{state.WriteNew("job-collision-"+intent.JobId+".json",JsonSerializer.SerializeToUtf8Bytes(new {SchemaVersion=1,InstallationId=state.InstallationId,intent.JobId,Status="EXISTING_OBJECT_REFUSED"}));}
+                    catch(Exception log){throw new AggregateException("Job collision and refusal recording both failed",collision,log);}throw collision;
+                }
             }
             var owner=new OwnedKernelJob(state,intent,created,jobNamespace);created=null;jobNamespace=null;return owner;
         }
         finally{try{created?.Dispose();}finally{jobNamespace?.Dispose();}}
+    }
+    // Global names can be preempted. Creating without OBJ_OPENIF never
+    // acquires an existing handle whose eventual close might kill its members.
+    internal static SafeJobHandle CreateFreshSessionZeroJob(OwnedJobIntent intent,IntPtr descriptor)
+    {
+        if(!Environment.Is64BitProcess || Marshal.SizeOf<NativeUnicodeString>()!=16 || Marshal.SizeOf<NativeObjectAttributes>()!=48 ||
+            intent.CreatorServiceSid is null || descriptor==IntPtr.Zero)
+            throw new InvalidOperationException("Named creator Job requires the x64 layout and a sealed Session 0 intent");
+        var name=@"\BaseNamedObjects\"+intent.Name["Global\\".Length..];
+        var nameBuffer=Marshal.StringToHGlobalUni(name);
+        var nativeName=IntPtr.Zero;
+        try
+        {
+            var length=checked((ushort)(name.Length*sizeof(char)));
+            nativeName=Marshal.AllocHGlobal(Marshal.SizeOf<NativeUnicodeString>());
+            Marshal.StructureToPtr(new NativeUnicodeString{Length=length,MaximumLength=checked((ushort)(length+sizeof(char))),Buffer=nameBuffer},nativeName,false);
+            var attributes=new NativeObjectAttributes{Length=Marshal.SizeOf<NativeObjectAttributes>(),Name=nativeName,SecurityDescriptor=descriptor};
+            var status=NtCreateJobObject(out var created,KernelJobSeal.OwnerRights,ref attributes);
+            if(status==0 && created is {IsInvalid:false})return created;
+            created?.Dispose();
+            if(status==0)throw WfpNative.Contract("FreshSessionZeroJobHandleMissing");
+            var failure=new Win32Exception(unchecked((int)RtlNtStatusToDosError(status)),"CreateFreshSessionZeroJob");
+            failure.Data["NTSTATUS"]=status;
+            throw failure;
+        }
+        finally{Marshal.FreeHGlobal(nativeName);Marshal.FreeHGlobal(nameBuffer);}
     }
 
     internal static OwnedKernelJob? OpenExisting(ProtectedState state,OwnedJobIntent supplied)
     {
         ProtectedState.RequireAdministrator();state.AssertHeld();var intent=OwnedJobIntent.Read(state,supplied.JobId);
         if(intent!=supplied)throw new InvalidDataException("Job intent changed or belongs to another installation");
+        // A durable creation record cannot authenticate the current global
+        // object. Closed admissions are handled by the ledger before this call.
+        if(intent.CreatorServiceSid is not null)throw WfpNative.Contract("SessionZeroJobRecoveryRequiresOriginalOwnerProof");
         // Recovery gets query/terminate/READ_CONTROL, never assignment or setting.
         PrivateJobNamespace? jobNamespace=PrivateJobNamespace.OpenExisting(state,intent);SafeJobHandle? opened=null;
         try
@@ -162,15 +245,28 @@ internal sealed class OwnedKernelJob : IDisposable
                 throw new Win32Exception(error,"OpenOwnedJob");
             }
             if(state.ReadOptional("job-collision-"+intent.JobId+".json") is not null)throw new InvalidDataException("A rejected creation cannot authorize adoption");
-            KernelJobSeal.AssertOwned(opened,intent.Tag);
+            KernelJobSeal.AssertOwned(opened,intent);
             var owner=new OwnedKernelJob(state,intent,opened,jobNamespace);opened=null;jobNamespace=null;return owner;
         }
         finally{try{opened?.Dispose();}finally{jobNamespace?.Dispose();}}
     }
+    private static string CreatorProofLeaf(OwnedJobIntent intent)=>"job-creator-confirmed-"+intent.JobId+".json";
+    private static string IntentHash(ProtectedState state,OwnedJobIntent intent)=>state.Read(OwnedJobIntent.Leaf(intent.JobId),8192).SHA256;
+    private static void AssertCreatorProof(ProtectedState state,OwnedJobIntent intent)
+    {
+        using var doc=JsonDocument.Parse(state.Read(CreatorProofLeaf(intent),4096).Bytes,new JsonDocumentOptions{MaxDepth=2});
+        ValidateCreatorProof(doc.RootElement,IntentHash(state,intent));
+    }
+    internal static void ValidateCreatorProof(JsonElement proof,string intentHash)
+    {
+        StrictJson.Fields(proof,"SchemaVersion","IntentSHA256");
+        if(proof.GetProperty("SchemaVersion").GetInt32()!=1 || StrictJson.Text(proof,"IntentSHA256")!=intentHash)
+            throw new InvalidDataException("Session zero job creation unconfirmed");
+    }
     private void AssertHeld()
     {
         if(disposed || handle.IsClosed || handle.IsInvalid)throw new ObjectDisposedException(nameof(OwnedKernelJob));
-        state.AssertHeld();jobNamespace.AssertHeld();KernelJobSeal.AssertOwned(handle,intent.Tag);
+        state.AssertHeld();jobNamespace?.AssertHeld();KernelJobSeal.AssertOwned(handle,intent);
     }
     internal JobSnapshot Observe()
     {
@@ -242,12 +338,16 @@ internal sealed class OwnedKernelJob : IDisposable
     {state.WriteNew("job-observed-"+intent.JobId+"-"+(attempt??Guid.NewGuid().ToString("N"))+"-"+Guid.NewGuid().ToString("N")+".json",JsonSerializer.SerializeToUtf8Bytes(new {
         SchemaVersion=1,InstallationId=state.InstallationId,intent.JobId,Status=status,Snapshot=snapshot,Scope="JOB_MEMBERS_ONLY",AdmissionOrNetworkQualified=false
     }));}
-    public void Dispose(){if(disposed)return;disposed=true;try{handle.Dispose();}finally{jobNamespace.Dispose();}} // Closing is not a zero-process observation.
+    public void Dispose(){if(disposed)return;disposed=true;try{handle.Dispose();}finally{jobNamespace?.Dispose();}} // Closing is not a zero-process observation.
     private static Win32Exception Error(string stage){var result=new Win32Exception(Marshal.GetLastWin32Error());result.Data["Stage"]=stage;return result;}
     [StructLayout(LayoutKind.Sequential)] private struct BasicLimits {public long ProcessTime,JobTime;public uint LimitFlags;public UIntPtr MinWorkingSet,MaxWorkingSet;public uint ActiveProcessLimit;public UIntPtr Affinity;public uint PriorityClass,SchedulingClass;}
     [StructLayout(LayoutKind.Sequential)] private struct IoCounters {public ulong ReadOps,WriteOps,OtherOps,ReadBytes,WriteBytes,OtherBytes;}
     [StructLayout(LayoutKind.Sequential)] private struct ExtendedLimits {public BasicLimits Basic;public IoCounters Io;public UIntPtr ProcessMemory,JobMemory,PeakProcessMemory,PeakJobMemory;}
     [StructLayout(LayoutKind.Sequential)] private struct BasicAccounting {public long User,Kernel,PeriodUser,PeriodKernel;public uint PageFaults,TotalProcesses,ActiveProcesses,TerminatedProcesses;}
+    [StructLayout(LayoutKind.Sequential)] private struct NativeUnicodeString {internal ushort Length,MaximumLength;internal IntPtr Buffer;}
+    [StructLayout(LayoutKind.Sequential)] private struct NativeObjectAttributes {internal int Length;internal IntPtr Root,Name;internal uint Attributes;internal IntPtr SecurityDescriptor,SecurityQualityOfService;}
+    [DllImport("ntdll.dll",ExactSpelling=true)] private static extern int NtCreateJobObject(out SafeJobHandle handle,int access,ref NativeObjectAttributes attributes);
+    [DllImport("ntdll.dll",ExactSpelling=true)] private static extern uint RtlNtStatusToDosError(int status);
     [DllImport("kernel32.dll",EntryPoint="CreateJobObjectW",CharSet=CharSet.Unicode,SetLastError=true)] private static extern SafeJobHandle CreateJobObject(ref KernelJobSeal.SecurityAttributes attributes,string name);
     [DllImport("kernel32.dll",EntryPoint="OpenJobObjectW",CharSet=CharSet.Unicode,SetLastError=true)] private static extern SafeJobHandle OpenJobObject(uint access,[MarshalAs(UnmanagedType.Bool)] bool inherit,string name);
     [DllImport("kernel32.dll",SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)] private static extern bool SetInformationJobObject(SafeJobHandle handle,int info,ref ExtendedLimits limits,uint size);

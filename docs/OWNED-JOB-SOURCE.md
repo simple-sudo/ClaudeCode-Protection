@@ -3,6 +3,27 @@
 > 文档效力（2026-11-02）：Job/进程归属专题。按原版本和场景解释实测，不把树状名称或进程缺席作为权限/闭合证明。自我保护覆盖派生工具与控制面，仍须实际对象权限及鉴权依据。
 > 最新状态/授权只见[CURRENT-STATE](CURRENT-STATE.md)，正式目标与术语见[SECURITY-REQUIREMENTS](SECURITY-REQUIREMENTS.md)。以下旧状态与操作许可不自动延续。
 
+## 2026-11-08 Session 0 创建者 Job
+
+原 `OwnedKernelJob` 新增独立创建者范围。旧 schema 2 仍使用管理员私有命名空间。
+新 schema 3 在受保护登记中绑定安装、版本、Job ID 和经可信侧核验的确切服务
+SID。Job 名由安装和 Job ID 生成。内核描述符保留原所有者和创建标记，并只向
+该服务 SID 额外授予 `READ_CONTROL | JOB_OBJECT_ASSIGN_PROCESS`，使用中完整性
+禁止向上写标签。通用 LocalService、全体服务和合成创建标记不能作为创建者 SID。
+
+新范围用 `NtCreateJobObject` 创建跨会话名字，不设 `OBJ_OPENIF`，使重名直接
+失败。由原所有者回读精确描述符、限制及空成员后，才将绑定原登记哈希的创建
+凭据写入保护状态。分配前还要复核凭据、服务 SID、当前版本与累计成员为零，
+并持久化一次性准入。关闭后的原 Job 证明继续沿用原账本。未闭合且失去原句柄
+时锁闭恢复，保留归属未知的状态，不按全局名字打开或终止替代对象。
+[Windows 对象创建标志](https://learn.microsoft.com/en-us/windows/win32/api/ntdef/nf-ntdef-initializeobjectattributes)
+
+普通 Windows 对照用当前测试账户作对象 owner，实测同名对象占位时创建失败、
+释放占位后全新创建、从仅 `READ_CONTROL` 句柄回读 ACL 和完整性标签、当前
+普通身份无法打开分配权限、最后句柄关闭后测试名缺席。候选核验拒绝该普通
+owner。生产创建者服务、管道交接、关闭前撤销创建能力和故障后的原所有权证明
+待接入。现有运行入口尚未选择此范围。
+
 2026-10-26接续：固定quarantine入口已在SOURCE消费本owner，非完整runtime lease。停止集合现保留各Job失败并继续其余已核验对象，最终观察schema 2必须核对预期数量/缺失/失败/零成员；全局锁或清单丢失仍停止。实际构建及故障验收尚未进行。下文原始实现阶段的缺口描述保留为历史，当前状态见STATUS。
 
 日期：2026-10-26（America/New_York）。状态：SOURCE_IMPLEMENTED_NOT_COMPILED。新增KernelJobSeal.cs、PrivateJobNamespace.cs、OwnedJobs.cs；没有调用Job/namespace API、启动/停止进程、编译或安装。

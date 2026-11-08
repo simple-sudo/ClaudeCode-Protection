@@ -5,6 +5,13 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-08 Session 0 创建者 Job 登记和权限
+
+INTEGRATED / BUILD(原 Job 所有者的跨会话专用范围)。VERIFIED(普通实际 Job
+创建、重名拒绝、权限与标签回读、普通分配拒绝及对象关闭，登记解析与权限反例)。
+正式服务绑定、异常恢复和 WFP 实机准入 NOT_RUN。
+[机制与范围](OWNED-JOB-SOURCE.md#2026-11-08-session-0-创建者-job)
+
 ## 2026-11-08 Session 0 具名 Job 挂起交接通过
 
 VERIFIED(单次实机 LocalService 挂起原子创建、跨会话原 Job 及线程核验、
