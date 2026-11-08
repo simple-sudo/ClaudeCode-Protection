@@ -3,7 +3,10 @@ using System.Runtime.ExceptionServices;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Net.Security;
 using System.Net.Sockets;
+using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
 
 internal static class GatewayFeedbackCases
 {
@@ -156,6 +159,34 @@ internal static class GatewayFeedbackCases
         var initialized=winsock.GetField("s_initialized",BindingFlags.NonPublic|BindingFlags.Static)!;
         ProxyCall("InitializeFixedClientSockets");Check(initialized.GetValue(null) is 1);
         ProxyCall("InitializeFixedClientSockets");Check(initialized.GetValue(null) is 1);
+        var resolver=library.GetType("ProtectionLifecycle.ResolverTlsEvidence",true)!;
+        var observe=resolver.GetMethod("Observe",BindingFlags.NonPublic|BindingFlags.Static)!;
+        using(var key=RSA.Create(2048))
+        {
+            var request=new CertificateRequest("CN=Ordinary resolver policy fixture",key,
+                HashAlgorithmName.SHA256,RSASignaturePadding.Pkcs1);
+            request.CertificateExtensions.Add(new X509BasicConstraintsExtension(true,false,0,true));
+            using var root=request.CreateSelfSigned(DateTimeOffset.UtcNow.AddHours(-1),DateTimeOffset.UtcNow.AddHours(1));
+            using var chain=new X509Chain();
+            chain.ChainPolicy.TrustMode=X509ChainTrustMode.CustomRootTrust;
+            chain.ChainPolicy.CustomTrustStore.Add(root);
+            chain.ChainPolicy.DisableCertificateDownloads=true;
+            chain.ChainPolicy.RevocationMode=X509RevocationMode.NoCheck; // fixture only
+            Check(chain.Build(root));
+            object Observe(string host,X509Certificate2? cert,
+                X509Chain? actualChain,SslPolicyErrors errors)
+                =>observe.Invoke(null,[host,cert,actualChain,errors])!;
+            bool Accepted(object value)=>(bool)resolver.GetProperty("Accepted")!.GetValue(value)!;
+            var none=SslPolicyErrors.None;
+            var clean=Observe("cloudflare-dns.com",root,chain,none);
+            Check(Accepted(clean) && ((string[])resolver.GetProperty("ChainCertificateSHA256")!.GetValue(clean)!).Single()==
+                Convert.ToHexString(SHA256.HashData(root.RawData)));
+            Check(!Accepted(Observe("www.microsoft.com",root,chain,none)));
+            Check(!Accepted(Observe("cloudflare-dns.com",root,chain,SslPolicyErrors.RemoteCertificateChainErrors)));
+            Check(!Accepted(Observe("cloudflare-dns.com",root,chain,SslPolicyErrors.RemoteCertificateNameMismatch)));
+            Check(!Accepted(Observe("cloudflare-dns.com",null,chain,none)));
+            Check(!Accepted(Observe("cloudflare-dns.com",root,null,none)));
+        }
         Console.WriteLine($"PASS {count} fixed gateway feedback checks and actual pinned-runtime process-local Winsock initialization/reuse; no exception messages, paths, tokens or raw output; diagnostic only. No socket creation/connections, UAC, child process, protected state, Job or WFP operation.");
     }
 

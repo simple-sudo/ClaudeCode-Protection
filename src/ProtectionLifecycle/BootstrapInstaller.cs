@@ -224,6 +224,9 @@ public static class BootstrapInstaller
             "D21A7D9F39A93E82087062EAD14F49329E7DBDD2743B2DC12DE98CAB6DC691F1"
         }; // Exact reviewed packages expose no launch/admission command.
         private static readonly string[] OneShotAdmissionManifests={
+            // Exact 91d7aa4c closed the session and restored its Winsock lease
+            // after the resolver TLS failure.
+            "1EE4F2D4FE70E21C451E60238CF4A9DD18B8B2A39BA30C6D6D17E26BA04BD521",
             // Exact afb95ad1 closed its successful offline Job.
             "EEE8E79F82E09C405911523E935DA3537E137446433590D835B55FB8C47F3B2D",
             // Exact 8ad9a646 closed the offline Job after native RNG failure.

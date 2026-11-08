@@ -5,6 +5,18 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-07 固定解析器 TLS 证书观测
+
+INTEGRATED / BUILD(首个解析器 TLS 回调的有界拒绝原因和证书链摘要)。
+VERIFIED(候选清单及普通 Windows 链观测对照、历史包与网关回归)。
+该候选真实安装及解析器 TLS NOT_RUN。
+
+## 2026-11-07 首次受限 OpenSSL 代理实测
+
+VERIFIED(一次精确未激活更新、真实受限端点与网关通过首段校验、原所有者关闭及
+Winsock 恢复)。FAIL(固定解析器 TLS 认证)，目标 TLS/HEAD 未达到。适配器状态
+1702 仍 UNKNOWN，完整 L3、官方 CLI 和整机未验收。
+
 ## 2026-11-07 固定 OpenSSL HEAD 代理入口
 
 INTEGRATED / BUILD(原安装所有者、包 v4 证书材料和固定代理探针)。

@@ -38,7 +38,7 @@
     <Compile Include="GpuIdentityObservation.cs" />
     <Compile Include="ProcessLocalRevocation.cs" />
     <Compile Include="ProtectionRuntimeLease.cs" />
-    <Compile Include="SessionProxy.cs;GatewayDestinationGuard.cs;GatewayChildReport.cs;ProtectedSession.cs" />
+    <Compile Include="SessionProxy.cs;GatewayDestinationGuard.cs;GatewayChildReport.cs;ProtectedSession.cs;ResolverTlsEvidence.cs" />
     <Compile Include="SessionResources.cs;HostPrivacyControlFiles.cs" />
     <Compile Include="BundledProjectDevelopment.cs;../Shared/TextSummarySource.cs" />
     <Compile Include="CallerCSharpProject.cs;../Shared/CSharpProjectTask.cs;../Shared/ProjectFailure.cs" />

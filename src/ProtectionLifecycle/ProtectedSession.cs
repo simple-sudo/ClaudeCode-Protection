@@ -621,6 +621,7 @@ internal sealed class ProtectedSession
         internal SessionProxy Gateway=>owner.gateway??throw WfpNative.Contract("SessionGatewayMissing");
         internal bool IsFixedGatewayQualification=>owner.IsGatewayQualification;
         internal bool FixedNoContentHttpsCanary=>owner.FixedNoContentHttpsCanary;
+        internal bool UsesFixedOpenSslHead=>owner.UsesFixedOpenSslHead;
         internal LpacCapabilityProfile CapabilityProfile=>owner.CapabilityProfile;
         internal void AssertFixedGatewayRoot((uint Pid,long CreatedFileTime) peer)
         {
@@ -739,7 +740,8 @@ internal sealed class ProtectedSession
             foreach(var fence in fences)if(!fence.Observe().FullQuarantineObserved)throw WfpNative.Contract("SessionInitialQuarantineMissing");
             profile=InstallationProfileLease.Create(state);job=OwnedKernelJob.CreateEmpty(state,version);
             using(var package=new InstallationPackageSid(state))sid=package.Value;
-            upstream=ProxyChannelLease.Open(state);gateway=new SessionProxy(job,upstream,sid,id,CapabilityProfile,FixedNoContentHttpsCanary);
+            upstream=ProxyChannelLease.Open(state);
+            gateway=new SessionProxy(job,upstream,sid,id,CapabilityProfile,FixedNoContentHttpsCanary,UsesFixedOpenSslHead);
             loopback=InstallationLoopbackLease.Enable(state,false);
             preparation=new Preparation(this);
             if(IsGatewayQualification)
@@ -880,6 +882,7 @@ internal sealed class ProtectedSession
         ProcessResumed=resumed,ChildExitCode=childExitCode,FinalJob=final,Failures=failures,StopObservation=stopObservation,LaunchAuthorized=false,ClaudeLaunched=false,
         FixedGatewayQualification=IsGatewayQualification,FormalAdmissionIssued=false,
         GatewayChildFeedback=gatewayChildFeedback,GatewayFailure=gateway?.FailureFeedback,GatewayChildFeedbackUsedForAdmission=false,
+        ResolverTls=gateway?.ResolverTls,
         CapabilityContentEvidence=gatewayCapabilityFeedback,
         FixedGatewayRootBidirectionalWriteObserved=fixedExchangeObserved,
         PublicTimeZoneReadResource=(object?)null,

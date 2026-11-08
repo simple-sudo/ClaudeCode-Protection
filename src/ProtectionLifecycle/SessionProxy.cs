@@ -29,6 +29,9 @@ internal sealed class SessionProxy : IDisposable
     private readonly string packageSid, sessionId;
     private readonly LpacCapabilityProfile capabilityProfile;
     private readonly bool fixedNoContentHttpsCanary;
+    private readonly bool observeFixedResolverTls;
+    private ResolverTlsEvidence? resolverTlsEvidence;
+    internal ResolverTlsEvidence? ResolverTls=>Volatile.Read(ref resolverTlsEvidence);
     // The retained base hash identifies the existing compiled endpoint/WFP
     // policy. Bind the candidate identity separately, rather than pretending
     // an internetClient token is the historical zero-capability identity.
@@ -49,12 +52,17 @@ internal sealed class SessionProxy : IDisposable
     private volatile bool disposed;
     internal string Secret { get; } = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
     internal string SessionId => sessionId;
-    internal SessionProxy(OwnedKernelJob job, ProxyChannelLease upstream, string packageSid, string sessionId,LpacCapabilityProfile? capabilities=null,bool fixedNoContentHttpsCanary=false)
+    internal SessionProxy(OwnedKernelJob job, ProxyChannelLease upstream, string packageSid, string sessionId,
+        LpacCapabilityProfile? capabilities=null,bool fixedNoContentHttpsCanary=false,bool observeFixedResolverTls=false)
     {
         capabilityProfile=capabilities??LpacCapabilityProfile.None;
         if(fixedNoContentHttpsCanary && !capabilityProfile.IsInternetClientQualification)throw WfpNative.Contract("NoContentHttpsGatewayRequiresFixedInternetClient");
+        if(observeFixedResolverTls && !fixedNoContentHttpsCanary)throw WfpNative.Contract("ResolverTlsObservationRequiresFixedHead");
         this.fixedNoContentHttpsCanary=fixedNoContentHttpsCanary;
-        EffectivePolicySHA256=Convert.ToHexString(SHA256.HashData(Encoding.ASCII.GetBytes("CPC-GATEWAY-EFFECTIVE-V2;"+PolicySHA256+";"+capabilityProfile.SHA256+";fixed-no-content-https-canary="+fixedNoContentHttpsCanary)));
+        this.observeFixedResolverTls=observeFixedResolverTls;
+        var effective="CPC-GATEWAY-EFFECTIVE-V2;"+PolicySHA256+";"+capabilityProfile.SHA256+";fixed-no-content-https-canary="+fixedNoContentHttpsCanary;
+        if(observeFixedResolverTls)effective+=";fixed-openssl-head-resolver-tls-observation";
+        EffectivePolicySHA256=Convert.ToHexString(SHA256.HashData(Encoding.ASCII.GetBytes(effective)));
         this.job = job; this.upstream = upstream; this.packageSid = packageSid; this.sessionId = Identifiers.Hex32(sessionId);
         authorization = Encoding.ASCII.GetBytes("Basic " + Convert.ToBase64String(Encoding.ASCII.GetBytes(sessionId + ":" + Secret)));
         listener.Server.ExclusiveAddressUse = true;
@@ -71,6 +79,7 @@ internal sealed class SessionProxy : IDisposable
     internal void BindAdmission(ProtectedSession.Admission permit)
     {
         if(!ReferenceEquals(permit.Gateway,this) || !ReferenceEquals(permit.CapabilityProfile,capabilityProfile) || permit.FixedNoContentHttpsCanary!=fixedNoContentHttpsCanary ||
+            permit.UsesFixedOpenSslHead!=observeFixedResolverTls ||
             capabilityProfile.IsInternetClientQualification && !permit.IsFixedGatewayQualification)throw WfpNative.Contract("GatewayAdmissionOwnerOrCapabilitiesMismatch");
         permit.AssertCurrent();
         if(Interlocked.CompareExchange(ref admission,permit,null) is not null)throw WfpNative.Contract("GatewayAdmissionAlreadyBound");
@@ -203,19 +212,25 @@ internal sealed class SessionProxy : IDisposable
     private async Task<(ProxyDestinationPolicy.Resolution Resolution,TimeSpan ResponseAge)> Resolve(string host, CancellationToken token)
     {
         var resolverTunnelConsumed=0;
+        var tls=OfflineTls();
+        if(observeFixedResolverTls)tls.RemoteCertificateValidationCallback=(sender,certificate,chain,errors)=>
+        {
+            var observation=ResolverTlsEvidence.Observe((sender as SslStream)?.TargetHostName,certificate,chain,errors);
+            return Interlocked.CompareExchange(ref resolverTlsEvidence,observation,null) is null && observation.Accepted;
+        };
         using var handler = new SocketsHttpHandler {
             UseProxy = false, AllowAutoRedirect = false, UseCookies = false, Credentials = null,
             MaxConnectionsPerServer = 1, MaxResponseHeadersLength = 8,
-            SslOptions = OfflineTls(),
+            SslOptions = tls,
             ConnectCallback = async (context, cancel) => {
-                if (context.DnsEndPoint.Host != "cloudflare-dns.com" || context.DnsEndPoint.Port != 443)
+                if (context.DnsEndPoint.Host != ResolverTlsEvidence.Host || context.DnsEndPoint.Port != 443)
                     throw new InvalidDataException("UnapprovedResolverTransport");
                 ConsumeFixedTunnelAttempt(ref resolverTunnelConsumed);
                 return await OpenTunnel(IPAddress.Parse("1.1.1.1"), cancel);
             }
         };
         using var client = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(5), MaxResponseContentBufferSize = 65536 };
-        using var message = new HttpRequestMessage(HttpMethod.Get, "https://cloudflare-dns.com/dns-query?name=" + Uri.EscapeDataString(host) + "&type=A") {
+        using var message = new HttpRequestMessage(HttpMethod.Get, "https://"+ResolverTlsEvidence.Host+"/dns-query?name=" + Uri.EscapeDataString(host) + "&type=A") {
             Version=HttpVersion.Version11,VersionPolicy=HttpVersionPolicy.RequestVersionExact
         };
         message.Headers.Accept.ParseAdd("application/dns-json");
