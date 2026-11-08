@@ -29,6 +29,12 @@ internal sealed record GatewayChildReport(int SchemaVersion,string SessionId,int
             if(classifyHeadResponse && ex is FixedHeadResponseException head)
             {
                 errors.Add(new("FIXED_HEAD_RESPONSE",(int)head.Reason));
+                if(head.Trailing is { } tail && errors.Count==1)
+                {
+                    errors.Add(new("FIXED_HEAD_FINAL_STATUS",tail.FinalStatus));
+                    errors.Add(new("FIXED_HEAD_TRAILING_BYTES",tail.Bytes));
+                    errors.Add(new("FIXED_HEAD_TRAILING_KIND",(int)tail.Kind));
+                }
                 continue;
             }
             if(classifyHandshake && ex is OpenSslFailure {NativeError: >0 and <=16} tls)
@@ -147,7 +153,8 @@ internal sealed record GatewayChildReport(int SchemaVersion,string SessionId,int
         var r=JsonSerializer.Deserialize<GatewayChildReport>(raw)??throw new InvalidDataException("GatewayFeedbackMissing");
         if(r.SchemaVersion!=1 || r.SessionId!=Identifiers.Hex32(expectedSessionId) || expectedPid==0 || r.Pid<=0 || (uint)r.Pid!=expectedPid ||
             (uint)r.ExitCode!=actualExitCode || r.Errors is null || r.Errors.Any(e=>e is null ||
-                !(KnownErrorKind(e.Kind) || SchannelKind(e.Kind) || e.Kind is "TLS_OPENSSL" or "TLS_OPENSSL_VERIFY" or "FIXED_HEAD_RESPONSE")))
+                !(KnownErrorKind(e.Kind) || SchannelKind(e.Kind) || e.Kind is "TLS_OPENSSL" or "TLS_OPENSSL_VERIFY" or "FIXED_HEAD_RESPONSE" ||
+                    IsHeadTrailingObservation(e.Kind))))
             throw new InvalidDataException("GatewayFeedbackOwnerOrErrorBinding");
         for(var i=0;i<r.Errors.Length;i++)
         {
@@ -155,7 +162,9 @@ internal sealed record GatewayChildReport(int SchemaVersion,string SessionId,int
             if(SchannelKind(kind) && (r.Phase!="HTTPS_TLS_HANDSHAKE" || r.ExitCode!=125 || r.Errors[i].Code>=0))
                 throw new InvalidDataException("GatewayFeedbackSchannelPhaseBinding");
             if(kind=="FIXED_HEAD_RESPONSE" && (r.Phase!="HTTPS_HTTP_EXCHANGE" || r.ExitCode!=125 ||
-                r.Errors.Length!=1 || !Enum.IsDefined((FixedHeadResponseError)r.Errors[i].Code)))
+                !Enum.IsDefined((FixedHeadResponseError)r.Errors[i].Code) || r.Errors.Length!=1 && (i!=0 || !ValidHeadTrailingObservation(r.Errors))))
+                throw new InvalidDataException("GatewayFeedbackHeadResponseBinding");
+            if(IsHeadTrailingObservation(kind) && !ValidHeadTrailingObservation(r.Errors))
                 throw new InvalidDataException("GatewayFeedbackHeadResponseBinding");
             if(kind is "TLS_OPENSSL" or "TLS_OPENSSL_VERIFY")
             {
@@ -181,6 +190,13 @@ internal sealed record GatewayChildReport(int SchemaVersion,string SessionId,int
         if(!success && !rejectedStatus && !failed)throw new InvalidDataException("GatewayFeedbackOutcomeShape");
         return r;
     }
+    private static bool IsHeadTrailingObservation(string? kind)=>kind is "FIXED_HEAD_FINAL_STATUS" or "FIXED_HEAD_TRAILING_BYTES" or "FIXED_HEAD_TRAILING_KIND";
+    private static bool ValidHeadTrailingObservation(GatewayChildError[] errors)=>errors is [
+        {Kind:"FIXED_HEAD_RESPONSE",Code:(int)FixedHeadResponseError.BytesAfterFinalHeader},
+        {Kind:"FIXED_HEAD_FINAL_STATUS",Code:var status},
+        {Kind:"FIXED_HEAD_TRAILING_BYTES",Code:var bytes},
+        {Kind:"FIXED_HEAD_TRAILING_KIND",Code:var kind}
+    ] && FixedHeadTrailingObservation.IsValid(status,bytes,kind);
     internal static async Task<string> ReadBounded(StreamReader reader)
     {
         // Drain concurrently with the fixed child. A second JSON record, raw

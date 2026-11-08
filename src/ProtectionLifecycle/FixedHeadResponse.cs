@@ -8,19 +8,49 @@ internal enum FixedHeadResponseError
     ProtocolSwitch=5, InformationalCapacity=6, BytesAfterFinalHeader=7
 }
 
-internal sealed class FixedHeadResponseException(FixedHeadResponseError reason) : IOException("Fixed HEAD response refused")
+internal enum FixedHeadTailKind
+{
+    EmptyLine=1, EmptyChunk=2, HttpPrefix=3, Other=4
+}
+
+// This describes only bytes already read alongside the final header.
+// It must never be used to infer the rest of the stream or authorize reuse.
+internal sealed record FixedHeadTrailingObservation(int FinalStatus,int Bytes,FixedHeadTailKind Kind)
+{
+    internal static FixedHeadTrailingObservation Observe(int status,ReadOnlySpan<byte> tail)
+    {
+        var kind=tail.SequenceEqual("\r\n"u8)?FixedHeadTailKind.EmptyLine:
+            tail.SequenceEqual("0\r\n\r\n"u8)?FixedHeadTailKind.EmptyChunk:
+            tail.StartsWith("HTTP/"u8)?FixedHeadTailKind.HttpPrefix:FixedHeadTailKind.Other;
+        return new(status,tail.Length,kind);
+    }
+
+    internal static bool IsValid(int status,int bytes,int kind)=>status is >=200 and <=599 && bytes is >=1 and <FixedHeadResponse.ReadBatchBytes &&
+        ((FixedHeadTailKind)kind switch {
+            FixedHeadTailKind.EmptyLine=>bytes==2,
+            FixedHeadTailKind.EmptyChunk=>bytes==5,
+            FixedHeadTailKind.HttpPrefix=>bytes>=5,
+            FixedHeadTailKind.Other=>true,
+            _=>false
+        });
+}
+
+internal sealed class FixedHeadResponseException(FixedHeadResponseError reason,FixedHeadTrailingObservation? trailing)
+    : IOException("Fixed HEAD response refused")
 {
     internal FixedHeadResponseError Reason {get;}=reason;
+    internal FixedHeadTrailingObservation? Trailing {get;}=trailing;
 }
 
 internal static class FixedHeadResponse
 {
     private const int MaxHeaderBytes=8192, MaxInterimResponses=4;
+    internal const int ReadBatchBytes=512;
 
     internal static async Task<int> ReadStatus(OpenSslMemoryConnection tls,CancellationToken cancel)
     {
         var line=new byte[MaxHeaderBytes];
-        var chunk=new byte[512];
+        var chunk=new byte[ReadBatchBytes];
         int total=0,length=0,interim=0;
         int? status=null;
         bool previousCr=false;
@@ -42,7 +72,8 @@ internal static class FixedHeadResponse
                     else if(length>0)RequireFieldName(line.AsSpan(0,length));
                     else if(status>=200)
                     {
-                        if(index!=count-1)throw Refuse(FixedHeadResponseError.BytesAfterFinalHeader);
+                        if(index!=count-1)throw new FixedHeadResponseException(FixedHeadResponseError.BytesAfterFinalHeader,
+                            FixedHeadTrailingObservation.Observe(status.Value,chunk.AsSpan(index+1,count-index-1)));
                         return status.Value;
                     }
                     else
@@ -81,5 +112,5 @@ internal static class FixedHeadResponse
                 throw Refuse(FixedHeadResponseError.InvalidFieldName);
     }
 
-    private static FixedHeadResponseException Refuse(FixedHeadResponseError reason)=>new(reason);
+    private static FixedHeadResponseException Refuse(FixedHeadResponseError reason)=>new(reason,null);
 }

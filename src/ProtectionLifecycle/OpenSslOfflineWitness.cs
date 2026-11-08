@@ -89,7 +89,14 @@ internal sealed record OpenSslOfflineWitness(int SchemaVersion,string SessionId,
         await Head([lists.WrongSigner,lists.RootCurrent],[],expectedVerifyError:8);
         await Head([lists.Current.Concat(new byte[]{0}).ToArray()],[],policyFailure:true);
         await Head([],[],policyFailure:true);
-        await Head(reviewed,"HTTP/1.1 200 OK\r\n\r\nunexpected"u8.ToArray(),responseError:FixedHeadResponseError.BytesAfterFinalHeader);
+        await Head(reviewed,"HTTP/1.1 200 OK\r\n\r\nunexpected"u8.ToArray(),responseError:FixedHeadResponseError.BytesAfterFinalHeader,
+            expectedTail:new(200,10,FixedHeadTailKind.Other));
+        await Head(reviewed,"HTTP/1.1 301 Moved\r\nTransfer-Encoding: chunked\r\n\r\n0\r\n\r\n"u8.ToArray(),
+            responseError:FixedHeadResponseError.BytesAfterFinalHeader,expectedTail:new(301,5,FixedHeadTailKind.EmptyChunk));
+        await Head(reviewed,"HTTP/1.1 204 No Content\r\n\r\n\r\n"u8.ToArray(),
+            responseError:FixedHeadResponseError.BytesAfterFinalHeader,expectedTail:new(204,2,FixedHeadTailKind.EmptyLine));
+        await Head(reviewed,"HTTP/1.1 404 Missing\r\n\r\nHTTP/1.1 200 OK\r\n\r\n"u8.ToArray(),
+            responseError:FixedHeadResponseError.BytesAfterFinalHeader,expectedTail:new(404,19,FixedHeadTailKind.HttpPrefix));
         await Head(reviewed,"HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\n\r\n"u8.ToArray(),responseError:FixedHeadResponseError.ProtocolSwitch);
         await Head(reviewed,"HTTP/1.1 200 OK\r\n Folded: text\r\n\r\n"u8.ToArray(),responseError:FixedHeadResponseError.InvalidFieldName);
         await Head(reviewed,"HTTP/1.1 200 OK\r\nX: a\0b\r\n\r\n"u8.ToArray(),responseError:FixedHeadResponseError.MalformedOctet);
@@ -101,7 +108,8 @@ internal sealed record OpenSslOfflineWitness(int SchemaVersion,string SessionId,
         return cases;
 
         async Task Head(byte[][] crls,byte[] reply,int? status=null,int? expectedVerifyError=null,
-            bool policyFailure=false,FixedHeadResponseError? responseError=null,int replyFragmentBytes=4096)
+            bool policyFailure=false,FixedHeadResponseError? responseError=null,int replyFragmentBytes=4096,
+            FixedHeadTrailingObservation? expectedTail=null)
         {
             var outgoing=Channel.CreateUnbounded<byte[]>();
             var incoming=Channel.CreateUnbounded<byte[]>();
@@ -120,7 +128,7 @@ internal sealed record OpenSslOfflineWitness(int SchemaVersion,string SessionId,
                 catch(OpenSslFailure error)when(expectedVerifyError is not null && error.VerificationError==expectedVerifyError){}
                 catch(OpenSslFailure error)when(policyFailure && error.NativeError is null && error.VerificationError is null){}
                 catch(InvalidDataException)when(policyFailure){}
-                catch(FixedHeadResponseException error)when(error.Reason==responseError){}
+                catch(FixedHeadResponseException error)when(error.Reason==responseError && error.Trailing==expectedTail){}
                 if(status is not null || responseError is not null)await server;
             }
             finally

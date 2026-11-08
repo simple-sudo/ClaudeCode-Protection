@@ -224,6 +224,9 @@ public static class BootstrapInstaller
             "D21A7D9F39A93E82087062EAD14F49329E7DBDD2743B2DC12DE98CAB6DC691F1"
         }; // Exact reviewed packages expose no launch/admission command.
         private static readonly string[] OneShotAdmissionManifests={
+            // Exact a8d6e45c closed and restored the session after the
+            // fixed HEAD rejected bytes beyond the final response header.
+            "1E9893FD015B8EA5B7A12C022523737DCD0BF8B6E7A4D4696B86EF45097FAD00",
             // Exact f91e0538 closed and restored the session after the
             // DNS freshness gate rejected a short-lived answer.
             "F5C221D98A181FDBE08E640199695F84BE9FE163764DE11E285786C9F0EE497F",

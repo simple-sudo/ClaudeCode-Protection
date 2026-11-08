@@ -724,7 +724,8 @@ internal sealed class ProtectedSession
             else gatewayChildFeedback=GatewayChildReport.Parse(raw,id,child.Pid,childExitCode.Value);
         }
         RuntimeStop? stopObservation=null;
-        var errors=new List<Exception>();bool resumed=false,completed=false;var fixedExchangeObserved=false;
+        var errors=new List<Exception>();bool resumed=false,completed=false;
+        (uint Pid,long CreatedFileTime)? fixedRootIdentity=null;
         try
         {
             AssertPreparation();
@@ -755,6 +756,7 @@ internal sealed class ProtectedSession
                 feedbackText=CaptureCapabilityContent?GatewayCapabilityChildReport.ReadBounded(feedbackReader):GatewayChildReport.ReadBounded(feedbackReader);
             }
             child=AtomicChild.CreateSession(layout,state,version,job,profile,preparation,feedbackPipe?.ClientSafePipeHandle.DangerousGetHandle()??IntPtr.Zero);
+            if(IsGatewayQualification)fixedRootIdentity=(child.Pid,child.ExpectedCreatedFileTime);
             feedbackPipe?.DisposeLocalCopyOfClientHandle();
             if(qualification is {Winsock: not WinsockScope.None} fixedGateway)
             {
@@ -786,11 +788,11 @@ internal sealed class ProtectedSession
             childExitCode=exited.GetAwaiter().GetResult();
             ReadFixedFeedback();
             if(childExitCode!=42)throw WfpNative.Contract("SessionSyntheticWorkloadFailed");
-            if(IsGatewayQualification)
+            if(fixedRootIdentity is { } root)
             {
                 if(gatewayChildFeedback is not {Phase:"COMPLETE",HttpStatus:>=200 and <400})throw WfpNative.Contract("FixedGatewayTerminalFeedbackMissing");
-                gateway.RequireFixedExchange(child.Pid,child.ExpectedCreatedFileTime);
-                runtime.AssertHealthy();fixedExchangeObserved=true;
+                gateway.RequireFixedExchange(root.Pid,root.CreatedFileTime);
+                runtime.AssertHealthy();
             }
             completed=true;
         }
@@ -831,6 +833,8 @@ internal sealed class ProtectedSession
                 catch(Exception ex){if(resumed && !feedbackReadAttempted)errors.Add(ex);}
         }
         var success=completed && zero?.ObservedZero==true && errors.Count==0;
+        var fixedExchangeObserved=resumed && fixedRootIdentity is { } observedRoot &&
+            gateway?.FixedExchangeObserved(observedRoot.Pid,observedRoot.CreatedFileTime)==true;
         var report=Report(success?(IsGatewayQualification?"FIXED_GATEWAY_QUALIFICATION_CLOSED":"FIXED_SYNTHETIC_SESSION_CLOSED"):"PROTECTED_SESSION_NOT_CONFIRMED",resumed,zero,
             errors.SelectMany(WfpNative.Describe).ToArray(),stopObservation,profile?.ProcessCreationAttempted==true,child is not null,childExitCode,child?.ResumeAttempted==true,fixedExchangeObserved);
         state.WriteNew("protected-session-result-"+id+".json",Encoding.UTF8.GetBytes(report));

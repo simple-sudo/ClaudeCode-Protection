@@ -5,6 +5,11 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-07 固定 HEAD 额外字节回执
+
+INTEGRATED / BUILD(最终头后异常的有界观测、独立的原网关双向转发回执)。
+VERIFIED(普通内存 TLS 与严格协议校验)。真实候选执行 NOT_RUN。
+
 ## 2026-11-07 固定 HEAD 的真实响应边界
 
 VERIFIED(单次真实 DNS 请求时效、目标隧道、目标 TLS、固定 HEAD 写入和收到

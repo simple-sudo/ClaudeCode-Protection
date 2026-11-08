@@ -173,7 +173,7 @@ internal static class OpenSslMemoryCases
             .Replace("\"Code\":1}","\"Code\":2}",StringComparison.Ordinal)));
         var responseFailure=library.GetType("ProtectionLifecycle.FixedHeadResponseException",true)!;
         var reason=library.GetType("ProtectionLifecycle.FixedHeadResponseError",true)!;
-        var malformed=Activator.CreateInstance(responseFailure,Instance,null,[Enum.Parse(reason,"InvalidFieldName")],null)!;
+        var malformed=Activator.CreateInstance(responseFailure,Instance,null,[Enum.Parse(reason,"InvalidFieldName"),null],null)!;
         var headResult=Call(gateway.GetMethod("Result",Static)!,id,"HTTPS_HTTP_EXCHANGE",125,Type.Missing,malformed)!;
         var headRaw=JsonSerializer.Serialize(headResult,gateway);
         var headErrors=JsonNode.Parse(headRaw)!["Errors"]!.AsArray();
@@ -182,6 +182,27 @@ internal static class OpenSslMemoryCases
         _=ReadGateway(headRaw);checks++;
         Reject<InvalidDataException>(()=>ReadGateway(headRaw.Replace("HTTPS_HTTP_EXCHANGE","HTTPS_HTTP_WRITE",StringComparison.Ordinal)));
         Reject<InvalidDataException>(()=>ReadGateway(headRaw.Replace("\"Code\":4","\"Code\":8",StringComparison.Ordinal)));
+        var tailType=library.GetType("ProtectionLifecycle.FixedHeadTrailingObservation",true)!;
+        var tailKind=library.GetType("ProtectionLifecycle.FixedHeadTailKind",true)!;
+        var tail=Activator.CreateInstance(tailType,Instance,null,[301,5,Enum.Parse(tailKind,"EmptyChunk")],null)!;
+        var extra=Activator.CreateInstance(responseFailure,Instance,null,[Enum.Parse(reason,"BytesAfterFinalHeader"),tail],null)!;
+        var extraRaw=JsonSerializer.Serialize(Call(gateway.GetMethod("Result",Static)!,id,"HTTPS_HTTP_EXCHANGE",125,Type.Missing,extra),gateway);
+        var extraRecord=JsonNode.Parse(extraRaw)!.AsObject();
+        var extraErrors=extraRecord["Errors"]!.AsArray();
+        Check(extraRecord["HttpStatus"] is null && extraErrors.Count==4 && extraErrors[1]!["Code"]!.GetValue<int>()==301 &&
+            extraErrors[2]!["Code"]!.GetValue<int>()==5 && extraErrors[3]!["Code"]!.GetValue<int>()==2);
+        _=ReadGateway(extraRaw);checks++;
+        foreach(var (index,code) in new[]{(0,4),(1,103),(2,512),(2,4),(3,9)})
+        {
+            var changedReport=extraRecord.DeepClone().AsObject();
+            changedReport["Errors"]!.AsArray()[index]!["Code"]=code;
+            Reject<InvalidDataException>(()=>ReadGateway(changedReport.ToJsonString()));
+        }
+        Reject<InvalidDataException>(()=>ReadGateway(extraRaw.Replace("HTTPS_HTTP_EXCHANGE","HTTPS_HTTP_WRITE",StringComparison.Ordinal)));
+        extraErrors.RemoveAt(3);
+        Reject<InvalidDataException>(()=>ReadGateway(extraRecord.ToJsonString()));
+        extraErrors.RemoveAt(2);extraErrors.RemoveAt(1);
+        _=ReadGateway(extraRecord.ToJsonString());checks++; // historical error-only receipt
         var writeResult=Call(gateway.GetMethod("Result",Static)!,id,"HTTPS_HTTP_WRITE",125,Type.Missing,new IOException())!;
         _=ReadGateway(JsonSerializer.Serialize(writeResult,gateway));checks++;
         Console.WriteLine($"PASS {checks} fixed OpenSSL and package compatibility checks. Real TLS and gateway replay in ordinary memory only.");

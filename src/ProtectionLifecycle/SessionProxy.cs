@@ -99,6 +99,8 @@ internal sealed class SessionProxy : IDisposable
         var peer=fixedExchange.Task.WaitAsync(TimeSpan.FromMilliseconds(500)).GetAwaiter().GetResult();
         if(peer!=(pid,createdFileTime))throw WfpNative.Contract("FixedGatewayExchangeRootIdentityDiffers");
     }
+    internal bool FixedExchangeObserved(uint pid,long createdFileTime)
+        =>fixedExchange.Task.IsCompletedSuccessfully && fixedExchange.Task.Result==(pid,createdFileTime);
     private void AssertForwardingCurrent()
     {
         (Volatile.Read(ref admission)??throw WfpNative.Contract("GatewayAdmissionMissing")).AssertForwardingCurrent();
