@@ -242,9 +242,24 @@ internal static class WindowsPathSeal
                     throw new InvalidDataException("Ambiguous or broadened creation tag");
                 found=tag;
             }
-            return found??throw new InvalidDataException("Creation identity is missing; object is not adopted");
+            if(found is null)throw new InvalidDataException("Creation identity is missing; object is not adopted");
+            if(found.Role is CreationRole.OfficialClaudeDirectory or CreationRole.OfficialClaudeExe)
+                AssertOfficialStagingAudience(security.DiscretionaryAcl,found.Sid);
+            return found;
         }
         finally{if(descriptor!=IntPtr.Zero)LocalFree(descriptor);}
+    }
+    internal static void AssertOfficialStagingAudience(RawAcl dacl,string tagSid)
+    {
+        foreach(GenericAce ace in dacl)
+        {
+            if(ace is not CommonAce common || common.IsCallback)throw new InvalidDataException("Unreviewed staging ACE");
+            if(common.AceQualifier!=AceQualifier.AccessAllowed)continue;
+            var sid=common.SecurityIdentifier.Value;
+            if(sid is "S-1-5-18" or "S-1-5-32-544")continue;
+            if(sid!=tagSid || common.AccessMask!=0x20000 || common.AceFlags!=AceFlags.None)
+                throw new InvalidDataException("Official image staging must remain private to its owner");
+        }
     }
     internal static PathLease LockDirectory(string path, PathPolicy policy)
     {

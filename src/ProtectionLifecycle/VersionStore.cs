@@ -40,16 +40,16 @@ internal sealed class VerifiedVersion : IDisposable
 {
     private readonly ProtectedState owner;
     private readonly List<PathLease> directories;
-    private readonly List<FileStream> streams;
+    private readonly Dictionary<AssetSpec,FileStream> streams;
     private bool disposed;
     internal ReviewedPackage Package { get; }
-    private VerifiedVersion(ProtectedState owner,ReviewedPackage package,List<PathLease> directories,List<FileStream> streams)
+    private VerifiedVersion(ProtectedState owner,ReviewedPackage package,List<PathLease> directories,Dictionary<AssetSpec,FileStream> streams)
     {this.owner=owner;Package=package;this.directories=directories;this.streams=streams;}
 
     internal static VerifiedVersion Open(FixedLayout layout,ProtectedState state,string release)
     {
         state.AssertHeld();release=Identifiers.Hex32(release);
-        var directories=new List<PathLease>();var streams=new List<FileStream>();
+        var directories=new List<PathLease>();var streams=new Dictionary<AssetSpec,FileStream>();
         PathLease Hold(string path){var lease=WindowsPathSeal.LockDirectory(path,PathPolicy.Protected);directories.Add(lease);return lease;}
         try
         {
@@ -80,11 +80,12 @@ internal sealed class VerifiedVersion : IDisposable
                     StrictJson.Text(root,"Release")!=release || StrictJson.Text(root,"ManifestSHA256")!=package.ManifestHash)
                     throw new InvalidDataException("Foreign/changed version marker");
             }
-            var bin=Hold(WindowsPathSeal.Child(version.Path,"bin"));CreationIdentity.AssertDirectory(bin,state,"bin",release);ExactChildren(bin,new[]{"current","center","admin"});
-            foreach(var group in package.Files.GroupBy(f=>Path.GetDirectoryName(f.Asset.Path.Replace('/','\\'))!,StringComparer.Ordinal))
+            var bin=Hold(WindowsPathSeal.Child(version.Path,"bin"));CreationIdentity.AssertDirectory(bin,state,"bin",release);
+            ExactChildren(bin,PackageAssetCatalog.BinRoles(package.Files.Select(f=>f.Asset)));
+            foreach(var group in package.Files.GroupBy(f=>f.Asset.BinRole,StringComparer.Ordinal))
             {
-                var parent=Hold(WindowsPathSeal.Child(version.Path,group.Key));
-                CreationIdentity.AssertDirectory(parent,state,Path.GetFileName(group.Key),release);
+                var parent=Hold(WindowsPathSeal.Child(bin.Path,group.Key));
+                CreationIdentity.AssertDirectory(parent,state,group.Key,release);
                 ExactChildren(parent,group.Select(f=>Path.GetFileName(f.Asset.Path)));
                 foreach(var file in group)
                 {
@@ -93,7 +94,7 @@ internal sealed class VerifiedVersion : IDisposable
                     {
                         WindowsPathSeal.AssertAcl(handle,true);
                         CreationIdentity.AssertFileScope(state,handle,CreationTag.AssetRole(file.Asset.Id),release);
-                        var stream=new FileStream(handle,FileAccess.Read,65536,false);streams.Add(stream);
+                        var stream=new FileStream(handle,FileAccess.Read,65536,false);streams.Add(file.Asset,stream);
                         if(stream.Length!=file.Length || Convert.ToHexString(SHA256.HashData(stream))!=file.SHA256)
                             throw new InvalidDataException("Installed payload differs");
                     }
@@ -102,7 +103,7 @@ internal sealed class VerifiedVersion : IDisposable
             }
             return new(state,package,directories,streams);
         }
-        catch{foreach(var stream in streams)stream.Dispose();for(var i=directories.Count-1;i>=0;i--)directories[i].Dispose();throw;}
+        catch{foreach(var stream in streams.Values)stream.Dispose();for(var i=directories.Count-1;i>=0;i--)directories[i].Dispose();throw;}
     }
     private static void ExactChildren(PathLease parent,IEnumerable<string> expected)
     {
@@ -116,13 +117,22 @@ internal sealed class VerifiedVersion : IDisposable
     {
         if(disposed || !ReferenceEquals(state,owner)) throw new InvalidOperationException("Version verification lease lost");
         state.AssertHeld();foreach(var directory in directories)directory.AssertHeld();
-        foreach(var stream in streams)
-        {if(stream.SafeFileHandle.IsClosed || stream.SafeFileHandle.IsInvalid)throw new IOException("Payload lock lost");WindowsPathSeal.AssertAcl(stream.SafeFileHandle,true);}
+        foreach(var (asset,stream) in streams)
+        {
+            if(stream.SafeFileHandle.IsClosed || stream.SafeFileHandle.IsInvalid)throw new IOException("Payload lock lost");
+            if(asset==PackageAssetCatalog.OfficialClaudeImage)
+            {
+                if(WindowsPathSeal.ReadCreationTag(stream.SafeFileHandle).Role!=CreationRole.OfficialClaudeExe ||
+                    directories.Single(d=>Path.GetFileName(d.Path)==asset.BinRole).ReadCreationTag().Role!=CreationRole.OfficialClaudeDirectory)
+                    throw new IOException("Official image staging ownership lost");
+            }
+            else WindowsPathSeal.AssertAcl(stream.SafeFileHandle,true);
+        }
     }
     public void Dispose()
     {
         if(disposed)return;disposed=true;
-        foreach(var stream in streams)stream.Dispose();for(var i=directories.Count-1;i>=0;i--)directories[i].Dispose();
+        foreach(var stream in streams.Values)stream.Dispose();for(var i=directories.Count-1;i>=0;i--)directories[i].Dispose();
     }
 }
 

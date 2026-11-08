@@ -29,8 +29,7 @@ internal sealed class OpenSslModuleLease : IDisposable
     }
     internal static void AssertOwnedPackage(ReviewedPackage package)
     {
-        if(package.SchemaVersion is not (Schema or PackageAssetCatalog.FixedHeadTrustSchema or PackageAssetCatalog.FixedResolverTrustSchema) ||
-            !Has(Crypto) || !Has(Ssl))
+        if(!Has(Crypto) || !Has(Ssl))
             throw WfpNative.Contract("OpenSslRequiresExactWindowsEntropyAssets");
 
         bool Has(AssetSpec spec)=>package.Files.Any(file=>file.Asset==spec && spec.Matches(file.Length,file.SHA256));

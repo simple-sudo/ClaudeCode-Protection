@@ -195,13 +195,15 @@ internal sealed class RemovalInventory
         using var bin=TryDirectory(WindowsPathSeal.Child(version.Path,"bin"));
         if(bin is not null)
         {
-            directories.Add(CaptureDirectory(bin,state,"bin",intent.Release));CheckChildren(bin,new[]{"current","center","admin"});
-            foreach(var role in new[]{"current","center","admin"})
+            var groups=intent.Files.GroupBy(f=>f.Asset.BinRole,StringComparer.Ordinal).ToArray();
+            directories.Add(CaptureDirectory(bin,state,"bin",intent.Release));CheckChildren(bin,groups.Select(g=>g.Key));
+            foreach(var group in groups)
             {
+                var role=group.Key;
                 using var parent=TryDirectory(WindowsPathSeal.Child(bin.Path,role));if(parent is null)continue;
-                directories.Add(CaptureDirectory(parent,state,role,intent.Release));var expected=intent.Files.Where(f=>f.Asset.Path.StartsWith("bin/"+role+"/",StringComparison.Ordinal)).ToArray();
-                CheckChildren(parent,expected.Select(f=>Path.GetFileName(f.Asset.Path)));
-                foreach(var file in expected)
+                directories.Add(CaptureDirectory(parent,state,role,intent.Release));
+                CheckChildren(parent,group.Select(f=>Path.GetFileName(f.Asset.Path)));
+                foreach(var file in group)
                 {
                     var observed=TryReadFile(state,parent,file.Asset.Id,Path.GetFileName(file.Asset.Path),intent.Release);
                     if(observed is null)continue;
@@ -226,18 +228,19 @@ internal sealed class RemovalInventory
             using var pd=JsonDocument.Parse(part.Bytes);var p=pd.RootElement;StrictJson.Fields(p,"SchemaVersion","InstallationId","OperationId","Release","IntentSHA256","Directories","Files");AssertHeader(p,state,operation);
             var intentHash=Identifiers.Hash(StrictJson.Text(p,"IntentSHA256"));
             if(StrictJson.Text(p,"Release")!=release || !intent.MatchesEvidence(intentHash))throw new InvalidDataException("Removal page intent differs");
-            var dirs=p.GetProperty("Directories").EnumerateArray().Select(n=>ReadDirectory(n,new[]{"release","bin","current","center","admin"})??throw new InvalidDataException()).ToArray();
+            var dirRoles=new[]{"release","bin"}.Concat(PackageAssetCatalog.BinRoles(intent.Files.Select(f=>f.Asset))).ToArray();
+            var dirs=p.GetProperty("Directories").EnumerateArray().Select(n=>ReadDirectory(n,dirRoles)??throw new InvalidDataException()).ToArray();
             var roles=intent.Files.Select(f=>f.Asset.Id).Concat(new[]{"version-marker","package-manifest"}).ToArray();
             var files=p.GetProperty("Files").EnumerateArray().Select(n=>ReadEntry(n,roles)??throw new InvalidDataException()).ToArray();
-            if(dirs.Length>5 || files.Length>roles.Length || dirs.Select(d=>d.Role).Distinct(StringComparer.Ordinal).Count()!=dirs.Length || files.Select(f=>f.Role).Distinct(StringComparer.Ordinal).Count()!=files.Length ||
+            if(dirs.Length>dirRoles.Length || files.Length>roles.Length || dirs.Select(d=>d.Role).Distinct(StringComparer.Ordinal).Count()!=dirs.Length || files.Select(f=>f.Role).Distinct(StringComparer.Ordinal).Count()!=files.Length ||
                 !dirs.Any(d=>d.Role=="release"))throw new InvalidDataException("Removal page structure differs");
-            foreach(var dir in dirs)if((dir.Role is "current" or "center" or "admin") && !dirs.Any(d=>d.Role=="bin"))throw new InvalidDataException("Missing captured parent directory");
+            if(dirs.Any(d=>IsBinChild(d.Role)) && !dirs.Any(d=>d.Role=="bin"))throw new InvalidDataException("Missing captured parent directory");
             foreach(var file in files)
             {
                 var expected=intent.Files.SingleOrDefault(f=>f.Asset.Id==file.Role);
                 if(expected is not null)
                 {
-                    var parent=Path.GetFileName(Path.GetDirectoryName(expected.Asset.Path.Replace('/','\\'))!);
+                    var parent=expected.Asset.BinRole;
                     if(!dirs.Any(d=>d.Role==parent) || (file.ByteState==PendingFileAuthority.ExpectedBytes && (file.Length!=expected.Length || file.SHA256!=expected.SHA256)))throw new InvalidDataException("Removal asset differs from authorized intent");
                 }
                 else if(file.Role=="package-manifest" && file.ByteState==PendingFileAuthority.ExpectedBytes && file.SHA256!=intent.ManifestSHA256)throw new InvalidDataException("Removal manifest differs from intent");
@@ -259,7 +262,7 @@ internal sealed class RemovalInventory
     {
         if(n.ValueKind==JsonValueKind.Null)return null;StrictJson.Fields(n,"Role","Identity","Length","SHA256","CreationTag","ByteState");var role=StrictJson.Text(n,"Role");var length=n.GetProperty("Length").GetInt64();
         var tag=StrictJson.Text(n,"CreationTag");var byteState=StrictJson.Text(n,"ByteState");
-        if(!roles.Contains(role,StringComparer.Ordinal) || length is <0 or >PackagePolicy.MaxAssetBytes || CreationTag.TryParse(tag) is null ||
+        if(!roles.Contains(role,StringComparer.Ordinal) || length<0 || CreationTag.TryParse(tag) is null ||
             byteState is not (PendingFileAuthority.ExpectedBytes or PendingFileAuthority.OwnedPending))throw new InvalidDataException("Unknown/invalid removal file");
         return new(role,Identifiers.ObjectIdentity(StrictJson.Text(n,"Identity")),length,Identifiers.Hash(StrictJson.Text(n,"SHA256")),tag,byteState);
     }
@@ -276,11 +279,12 @@ internal sealed class RemovalInventory
             CheckChildren(version,page.Files.Where(f=>f.Role is "version-marker" or "package-manifest").Select(f=>f.Role=="version-marker"?"version.json":"package.json").Concat(page.Directories.Any(d=>d.Role=="bin")?new[]{"bin"}:Array.Empty<string>()));
             foreach(var file in page.Files.Where(f=>f.Role is "version-marker" or "package-manifest"))MatchFile(state,version,file,file.Role=="version-marker"?"version.json":"package.json",page.Release);
             using var bin=TryDirectory(WindowsPathSeal.Child(version.Path,"bin"));if(bin is null)continue;MatchDirectory(bin,page.Directories.SingleOrDefault(d=>d.Role=="bin"));
-            CheckChildren(bin,page.Directories.Where(d=>d.Role is "current" or "center" or "admin").Select(d=>d.Role));
-            foreach(var role in new[]{"current","center","admin"})
+            var children=page.Directories.Where(d=>IsBinChild(d.Role)).ToArray();
+            CheckChildren(bin,children.Select(d=>d.Role));
+            foreach(var child in children)
             {
-                using var parent=TryDirectory(WindowsPathSeal.Child(bin.Path,role));if(parent is null)continue;MatchDirectory(parent,page.Directories.SingleOrDefault(d=>d.Role==role));
-                var files=page.Files.Where(f=>FileRelative(f.Role).StartsWith("bin/"+role+"/",StringComparison.Ordinal)).ToArray();
+                using var parent=TryDirectory(WindowsPathSeal.Child(bin.Path,child.Role));if(parent is null)continue;MatchDirectory(parent,child);
+                var files=page.Files.Where(f=>FileRelative(f.Role).StartsWith("bin/"+child.Role+"/",StringComparison.Ordinal)).ToArray();
                 CheckChildren(parent,files.Select(f=>Path.GetFileName(FileRelative(f.Role))));
                 foreach(var file in files)MatchFile(state,parent,file,Path.GetFileName(FileRelative(file.Role)),page.Release);
             }
@@ -350,7 +354,12 @@ internal sealed class RemovalInventory
     private void RecordAttempt(string attempt,string? release,string role,string status,string? failure,int? code=null)
     {state.WriteNew("remove-step-"+root.OperationId+"-"+attempt+"-"+status.ToLowerInvariant().Replace('_','-')+".json",JsonSerializer.SerializeToUtf8Bytes(new {SchemaVersion=1,InstallationId=state.InstallationId,OperationId=root.OperationId,InventorySHA256=SHA256,Release=release,Role=role,Status=status,FailureType=failure,FailureCode=code,AtUtc=DateTime.UtcNow.ToString("o")}));}
     private static string FileRelative(string role)=>role=="version-marker"?"version.json":role=="package-manifest"?"package.json":PackageAssetCatalog.KnownAssets.Single(a=>a.Id==role).Path;
-    private static string DirRelative(string role)=>role switch{"release"=>"","bin"=>"bin","current"=>"bin/current","center"=>"bin/center","admin"=>"bin/admin",_=>throw new InvalidDataException("Unknown directory role")};
+    private static bool IsBinChild(string role)=>role is not ("release" or "bin");
+    private static string DirRelative(string role)=>role switch {
+        "release"=>"","bin"=>"bin",
+        "current" or "center" or "admin" or PackageAssetCatalog.OfficialClaudeBinRole=>"bin/"+role,
+        _=>throw new InvalidDataException("Unknown directory role")
+    };
     private static void MatchDirectory(PathLease actual,RemovalDirectory? expected)
     {if(expected is null || actual.ObjectIdentity()!=expected.Identity || actual.ReadCreationTag().Sid!=expected.CreationTag)throw new InvalidDataException("New/replaced/retagged directory refused");}
     private static void MatchFile(ProtectedState state,PathLease parent,RemovalFile expected,string leaf,string? release)

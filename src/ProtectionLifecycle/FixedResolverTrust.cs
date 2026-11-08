@@ -29,8 +29,7 @@ internal sealed class FixedResolverTrust
     internal static FixedResolverTrust ReadOwned(ReviewedPackage package)
     {
         FixedOpenSslHeadTrust.AssertOwnedPackage(package);
-        if(package.SchemaVersion!=PackageAssetCatalog.FixedResolverTrustSchema ||
-            PackageAssetCatalog.FixedResolverTrustAssets.Any(spec=>!package.Files.Any(
+        if(PackageAssetCatalog.FixedResolverTrustAssets.Any(spec=>!package.Files.Any(
                 file=>file.Asset==spec && spec.Matches(file.Length,file.SHA256))))
             throw WfpNative.Contract("FixedResolverRequiresExactInstalledTrustAssets");
         return Read(OpenSslModuleLease.WorkerDirectory(package.Release),package.Release,DateTimeOffset.UtcNow);

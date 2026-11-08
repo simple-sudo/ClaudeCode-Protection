@@ -16,7 +16,8 @@ internal enum CreationRole : uint
     StateIdentity=26,OwnedJob=27,BrokerOpenSslCrypto=28,BrokerOpenSslLibrary=29,
     BrokerOpenSslWindowsCrypto=30,BrokerOpenSslWindowsLibrary=31,
     BrokerFixedHeadRoot=32,BrokerFixedHeadLeafCrl=33,BrokerFixedHeadIssuerCrl=34,BrokerFixedHeadRootCrl=35,
-    BrokerFixedResolverRoot=36,BrokerFixedResolverLeafCrl=37,BrokerFixedResolverIssuerCrl=38
+    BrokerFixedResolverRoot=36,BrokerFixedResolverLeafCrl=37,BrokerFixedResolverIssuerCrl=38,
+    OfficialClaudeDirectory=39,OfficialClaudeExe=40
 }
 
 // A non-inherited READ_CONTROL-only ACE serves as an object tag. No account,
@@ -66,9 +67,11 @@ internal sealed class CreationTag
         PackageAssetCatalog.HeadIssuerCrlId=>CreationRole.BrokerFixedHeadIssuerCrl,PackageAssetCatalog.HeadRootCrlId=>CreationRole.BrokerFixedHeadRootCrl,
         PackageAssetCatalog.ResolverRootId=>CreationRole.BrokerFixedResolverRoot,PackageAssetCatalog.ResolverLeafCrlId=>CreationRole.BrokerFixedResolverLeafCrl,
         PackageAssetCatalog.ResolverIssuerCrlId=>CreationRole.BrokerFixedResolverIssuerCrl,
+        PackageAssetCatalog.OfficialClaudeId=>CreationRole.OfficialClaudeExe,
         _=>throw new InvalidDataException("Unknown creation asset")};
     internal static CreationRole DirectoryRole(string role)=>role switch {
         "versions"=>CreationRole.Versions,"release"=>CreationRole.Release,"bin"=>CreationRole.Bin,"current"=>CreationRole.Current,"center"=>CreationRole.Center,"admin"=>CreationRole.Admin,
+        PackageAssetCatalog.OfficialClaudeBinRole=>CreationRole.OfficialClaudeDirectory,
         _=>throw new InvalidDataException("Unknown directory creation role")};
 }
 
@@ -115,6 +118,8 @@ internal static class CreationIdentity
             CreationRole.Versions=>layout.Versions,CreationRole.CodeMarker=>WindowsPathSeal.Child(layout.CodeRoot,"installation.json"),
             CreationRole.Release=>version,CreationRole.Bin=>WindowsPathSeal.Child(version,"bin"),CreationRole.Current=>WindowsPathSeal.Child(version,"bin/current"),
             CreationRole.Center=>WindowsPathSeal.Child(version,"bin/center"),CreationRole.Admin=>WindowsPathSeal.Child(version,"bin/admin"),
+            CreationRole.OfficialClaudeDirectory when scope.Files.Any(f=>f.Asset==PackageAssetCatalog.OfficialClaudeImage)=>
+                WindowsPathSeal.Child(version,"bin/"+PackageAssetCatalog.OfficialClaudeBinRole),
             CreationRole.VersionMarker=>WindowsPathSeal.Child(version,"version.json"),CreationRole.PackageManifest=>WindowsPathSeal.Child(version,"package.json"),
             _=>WindowsPathSeal.Child(version,scope.Files.Single(f=>CreationTag.AssetRole(f.Asset.Id)==tag.Role).Asset.Path)
         };
@@ -137,14 +142,14 @@ internal static class CreationIdentity
     {
         var tag=CreationTag.For(CreationTag.DirectoryRole(role),operation);_=AssertStageTag(state,tag,tag.Role,release);
         if(!string.Equals(WindowsPathSeal.Child(parent.Path,leaf),ExpectedPath(state,tag),StringComparison.OrdinalIgnoreCase))throw new InvalidDataException("Creation directory path differs from fixed role");
-        return WindowsPathSeal.CreateProtectedDirectory(parent,leaf,publicRead,tag);
+        return WindowsPathSeal.CreateProtectedDirectory(parent,leaf,publicRead && tag.Role!=CreationRole.OfficialClaudeDirectory,tag);
     }
     internal static SafeFileHandle CreateAsset(PathLease parent,string leaf,ProtectedState state,string operation,string release,PayloadFile expected)
     {
         var tag=CreationTag.For(CreationTag.AssetRole(expected.Asset.Id),operation);var scope=AssertStageTag(state,tag,tag.Role,release);
         if(!scope.Files.Any(f=>f.Asset.Id==expected.Asset.Id && f.Length==expected.Length && f.SHA256==expected.SHA256))throw new InvalidDataException("Creation asset differs from approved intent");
         if(!string.Equals(WindowsPathSeal.Child(parent.Path,leaf),ExpectedPath(state,tag),StringComparison.OrdinalIgnoreCase))throw new InvalidDataException("Creation asset path differs from fixed role");
-        return WindowsPathSeal.CreateProtectedFile(parent,leaf,true,tag);
+        return WindowsPathSeal.CreateProtectedFile(parent,leaf,tag.Role!=CreationRole.OfficialClaudeExe,tag);
     }
     internal static string CompletionLeaf(CreationTag tag)=>"object-complete-"+tag.Id+"-"+((uint)tag.Role).ToString("D2",CultureInfo.InvariantCulture)+".json";
     internal static void RecordComplete(ProtectedState state,FileStream stream,CreationTag expected)
@@ -176,7 +181,7 @@ internal static class CreationIdentity
             var asset=scope.Files.SingleOrDefault(f=>CreationTag.AssetRole(f.Asset.Id)==expected.Role)??throw new InvalidDataException("Unreviewed completion role");
             expectedHash=asset.SHA256;expectedLength=asset.Length;
         }
-        if(length<1 || length>PackagePolicy.MaxAssetBytes || (expectedLength is not null && length!=expectedLength))throw new InvalidDataException("Actual created length differs from authorized scope");
+        if(length<1 || (expectedLength is not null && length!=expectedLength))throw new InvalidDataException("Actual created length differs from authorized scope");
         stream.Position=0;var hash=Convert.ToHexString(SHA256.HashData(stream));
         if(hash!=expectedHash)throw new InvalidDataException("Actual created bytes differ from authorized scope");
         return new(expected.Sid,WindowsPathSeal.Identity(handle),length,Identifiers.Hash(hash));

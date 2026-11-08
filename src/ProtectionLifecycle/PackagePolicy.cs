@@ -50,7 +50,6 @@ internal static class PackagePolicy
         "10C687554CDF8BBA56D2680784850F1F7C321D17F339FC1E41EB3F2C885010E6"
     };
     internal const int MaxManifestBytes = PackageAssetCatalog.MaxManifestBytes;
-    internal const long MaxAssetBytes = PackageAssetCatalog.MaxAssetBytes;
     internal const long MaxPackageBytes = 256L * 1024 * 1024;
     internal static (string Release,string ManifestHash,IReadOnlyList<PayloadFile> Files,int SchemaVersion) ValidateOwned(ReadOnlyMemory<byte> raw,OwnedReleaseReceipt receipt)
     {
@@ -93,7 +92,9 @@ internal static class PackagePolicy
             var size = entry.GetProperty("Length").GetInt64();
             var assetHash=Identifiers.Hash(StrictJson.Text(entry,"SHA256"));
             if(!spec.Matches(size,assetHash))throw new InvalidDataException("Asset bytes outside reviewed policy");
-            total = checked(total + size);
+            // The exact, once-only official image has its own compiled byte
+            // bound. All other assets still share the historical package budget.
+            if(spec!=PackageAssetCatalog.OfficialClaudeImage)total = checked(total + size);
             if (total > MaxPackageBytes) throw new InvalidDataException("Package size refused");
             files.Add(new(spec,size,assetHash));
         }

@@ -197,18 +197,20 @@ internal static class VersionStager
         CreationIdentity.WriteMetadata(release,"version.json",state,transaction.Id,package.Release,CreationRole.VersionMarker,JsonSerializer.SerializeToUtf8Bytes(new VersionReceipt(1,state.InstallationId,package.Release,package.ManifestHash)));
         CreationIdentity.WriteMetadata(release,"package.json",state,transaction.Id,package.Release,CreationRole.PackageManifest,package.ManifestBytes.ToArray());
         using var bin=CreationIdentity.CreateDirectory(release,"bin",true,state,transaction.Id,"bin",package.Release);
-        using var daily=CreationIdentity.CreateDirectory(bin,"current",true,state,transaction.Id,"current",package.Release);
-        using var center=CreationIdentity.CreateDirectory(bin,"center",true,state,transaction.Id,"center",package.Release);
-        using var admin=CreationIdentity.CreateDirectory(bin,"admin",true,state,transaction.Id,"admin",package.Release);
-        foreach(var file in package.Files)
+        var destinations=new Dictionary<string,PathLease>(StringComparer.Ordinal);
+        try
         {
-            runtime.AssertLaunchAdmissionClosed(); runtime.AssertNoOwnedProcesses();
-            var parentName=Path.GetDirectoryName(file.Asset.Path.Replace('/','\\'))!;
-            using var sourceParent=WindowsPathSeal.LockDirectory(WindowsPathSeal.Child(source.Path,parentName),PathPolicy.Source);
-            var destination=file.Asset.Path.StartsWith("bin/current/",StringComparison.Ordinal)?daily:
-                file.Asset.Path.StartsWith("bin/center/",StringComparison.Ordinal)?center:admin;
-            CopyVerified(sourceParent,destination,Path.GetFileName(file.Asset.Path),file,state,transaction.Id,package.Release);
+            foreach(var role in PackageAssetCatalog.BinRoles(package.Files.Select(f=>f.Asset)))
+                destinations.Add(role,CreationIdentity.CreateDirectory(bin,role,true,state,transaction.Id,role,package.Release));
+            foreach(var file in package.Files)
+            {
+                runtime.AssertLaunchAdmissionClosed();runtime.AssertNoOwnedProcesses();
+                var role=file.Asset.BinRole;
+                using var sourceParent=WindowsPathSeal.LockDirectory(WindowsPathSeal.Child(source.Path,"bin/"+role),PathPolicy.Source);
+                CopyVerified(sourceParent,destinations[role],Path.GetFileName(file.Asset.Path),file,state,transaction.Id,package.Release);
+            }
         }
+        finally{foreach(var destination in destinations.Values)destination.Dispose();}
         var owned=new OwnedReleaseReceipt(1,state.InstallationId,package.Release,package.ManifestHash,transaction.Id,"VERIFIED_PAYLOAD");
         var releaseLeaf="release-"+package.Release+".json";
         if(state.ReadOptional(releaseLeaf) is null)state.WriteNew(releaseLeaf,JsonSerializer.SerializeToUtf8Bytes(owned));
@@ -260,7 +262,8 @@ internal static class VersionStager
         source.AssertHeld();destination.AssertHeld();
         using var inputHandle=WindowsPathSeal.Open(WindowsPathSeal.Child(source.Path,leaf),false,true);
         using var input=new FileStream(inputHandle,FileAccess.Read,65536,false);
-        if(input.Length!=expected.Length || input.Length>PackagePolicy.MaxAssetBytes) throw new InvalidDataException("Source payload length changed");
+        if(input.Length!=expected.Length || !expected.Asset.Matches(input.Length,expected.SHA256))
+            throw new InvalidDataException("Source payload length changed");
         var before=Convert.ToHexString(SHA256.HashData(input));
         if(before!=expected.SHA256) throw new InvalidDataException("Source payload digest changed");
         input.Position=0;

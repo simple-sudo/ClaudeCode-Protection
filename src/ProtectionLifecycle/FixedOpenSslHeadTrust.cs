@@ -27,8 +27,7 @@ internal sealed class FixedOpenSslHeadTrust
     internal static void AssertOwnedPackage(ReviewedPackage package)
     {
         OpenSslModuleLease.AssertOwnedPackage(package);
-        if(package.SchemaVersion is not (PackageAssetCatalog.FixedHeadTrustSchema or PackageAssetCatalog.FixedResolverTrustSchema) ||
-            PackageAssetCatalog.FixedHeadTrustAssets.Any(spec=>!package.Files.Any(
+        if(PackageAssetCatalog.FixedHeadTrustAssets.Any(spec=>!package.Files.Any(
                 file=>file.Asset==spec && spec.Matches(file.Length,file.SHA256))))
             throw WfpNative.Contract("FixedHeadRequiresExactInstalledTrustAssets");
         RequireCurrent(DateTimeOffset.UtcNow);

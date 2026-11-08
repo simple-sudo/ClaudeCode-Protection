@@ -5,6 +5,13 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-07 官方 CLI 精确映像暂存
+
+INTEGRATED / BUILD(仅固定映像暂存、旧清单兼容及精确恢复合同)。
+VERIFIED(普通身份真实文件持有、摘要、封包与写入共享拒绝，以及合成权限与清单反例)。
+候选安装、原生私有权限及受限官方 CLI 执行 NOT_RUN。
+[候选证据](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#精确映像暂存候选)
+
 ## 2026-11-07 本机管理面隔离实测
 
 VERIFIED(安装版本 `2ac3cb39`、固定低完整性 LPAC、真实 IPv4 回环代理与管理端口
