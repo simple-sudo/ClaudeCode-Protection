@@ -446,13 +446,7 @@ internal sealed partial class AtomicChild : IDisposable
                 if(offline.Probe==OfflineTlsProbe.OpenSsl)env[OpenSslModuleLease.ReleaseVariable]=version.Package.Release;
             }
             if(console is { } offlineConsoleSetup)
-            {
-                var workspace=offlineConsoleSetup.Workspace.Path;
-                SetPrivateRuntimeDirectories(env,workspace);
-                foreach(var name in new[]{"HOME","XDG_CONFIG_HOME","CLAUDE_CONFIG_DIR","APPDATA"})env[name]=workspace;
-                env["ProgramFiles"]=Path.GetDirectoryName(workspace)!;
-                env[OfflineConsoleQualification.SessionVariable]=offlineConsoleSetup.Session;
-            }
+                OfflineConsoleQualification.BindEnvironment(env,offlineConsoleSetup.Workspace.Path,offlineConsoleSetup.Session);
             if(preparation is not null)
             {
                 // Creation requires LOCALAPPDATA; use the original freshly

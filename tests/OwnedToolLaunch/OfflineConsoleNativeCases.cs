@@ -21,6 +21,7 @@ internal static class OfflineConsoleNativeCases
         var atomic=library.GetType("ProtectionLifecycle.AtomicChild",true)!;
         Refuse<InvalidDataException>(()=>Call(atomic.GetMethod("AssertOfflineConsoleWorkerIdentity",Static)!,null));
         VerifyFailureMetadata(library);
+        VerifyWorkspaceEnvironment(library);
         var type=library.GetType("ProtectionLifecycle.OfflineConsoleStreams",true)!;
         var read=type.GetMethod("ReadBounded",Static)!;
         foreach(var length in new[]{0,4096})
@@ -50,6 +51,32 @@ internal static class OfflineConsoleNativeCases
         Require(Parse(known.Replace("ACCESS","unreviewed",StringComparison.Ordinal)) is null);
         Require(Parse(known.Replace("-2147024891","+12",StringComparison.Ordinal)) is null);
         Require(Parse(known+"private extra") is null);
+    }
+
+    private static void VerifyWorkspaceEnvironment(Assembly library)
+    {
+        var owner=library.GetType("ProtectionLifecycle.OfflineConsoleQualification",true)!;
+        var bind=owner.GetMethod("BindEnvironment",Static)!;
+        var verify=owner.GetMethod("FindEnvironmentMismatch",Static)!;
+        var session=new string('a',32);
+        var parent=Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
+        var workspace=Path.Combine(parent,"ClaudeCodeProtection-Task-"+session);
+        var env=new Dictionary<string,string>(StringComparer.OrdinalIgnoreCase);
+        _=Call(bind,null,env,workspace,session);
+        Require(env.Count==10 && env["ProgramFiles"]==parent && env["CPC_OFFLINE_CONSOLE_SESSION"]==session);
+        string? Diagnose(string cwd)=>Call(verify,null,workspace,cwd,(Func<string,string?>)(name=>env.GetValueOrDefault(name)))?.ToString();
+        Require(Diagnose(workspace.ToUpperInvariant()) is null);
+        Require(Diagnose(parent)=="CurrentDirectory");
+        foreach(var (name,expected) in new[]{("TEMP","Temp"),("TMP","Tmp"),("LOCALAPPDATA","LocalAppData"),("USERPROFILE","UserProfile"),
+            ("HOME","Home"),("XDG_CONFIG_HOME","XdgConfigHome"),("CLAUDE_CONFIG_DIR","ClaudeConfigDir"),("APPDATA","AppData")})
+        {
+            Require(env.Remove(name) && Diagnose(workspace)==expected);
+            env.Add(name,workspace);
+        }
+        env["HTTP_PROXY"]="unused";
+        Require(Diagnose(workspace)=="UnexpectedAuthority");
+        Refuse<InvalidDataException>(()=>Call(bind,null,env,workspace,session));
+        Refuse<InvalidDataException>(()=>Call(bind,null,new Dictionary<string,string>(),parent,session));
     }
 
     private static void RunChild(Assembly library,Type type,bool flood)

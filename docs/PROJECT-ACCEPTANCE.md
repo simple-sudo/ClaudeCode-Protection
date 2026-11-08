@@ -5,6 +5,12 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-08 受限离线控制台环境诊断
+
+VERIFIED(版本 `1805e4fb` 未激活安装、身份检查、有序闭合和工作区回收)。
+FAIL(固定载荷环境检查)，具体失败字段 UNKNOWN。候选细分检查通过普通回归，
+真实执行 NOT_RUN。[实测与候选](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#环境检查失败定位)
+
 ## 2026-11-08 受限离线控制台实测
 
 VERIFIED(版本 `5f2cc24f` 未激活安装、固定资产私有受众、低完整性零能力

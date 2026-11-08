@@ -17,8 +17,32 @@ internal static class OfflineConsoleQualification
     private static ReadOnlySpan<byte> ExpectedOutput=>"CPC_OFFLINE_CONSOLE_STDOUT\n"u8;
     private static ReadOnlySpan<byte> ExpectedError=>"CPC_OFFLINE_CONSOLE_STDERR\n"u8;
     private static ReadOnlySpan<byte> ExpectedFile=>"CPC_OFFLINE_CONSOLE_WORKSPACE\n"u8;
-    private enum ChildStage { Identity, Environment, Streams, InputEof, Workspace, Descendant, Output }
+    private enum ChildStage
+    {
+        Identity, Environment, SessionId, ProgramFiles, WorkspacePath, CurrentDirectory, Temp, Tmp,
+        LocalAppData, UserProfile, Home, XdgConfigHome, ClaudeConfigDir, AppData, UnexpectedAuthority,
+        Streams, InputEof, Workspace, Descendant, Output
+    }
+    private static readonly (string Name,ChildStage Stage)[] WorkspaceVariables=[
+        ("TEMP",ChildStage.Temp),("TMP",ChildStage.Tmp),("LOCALAPPDATA",ChildStage.LocalAppData),("USERPROFILE",ChildStage.UserProfile),
+        ("HOME",ChildStage.Home),("XDG_CONFIG_HOME",ChildStage.XdgConfigHome),("CLAUDE_CONFIG_DIR",ChildStage.ClaudeConfigDir),
+        ("APPDATA",ChildStage.AppData)
+    ];
+    private static readonly string[] ForbiddenVariables=[
+        "CPC_SESSION_ID","CPC_SESSION_SECRET","CPC_NETWORK_PLAN","CPC_RESOURCE_PLAN","CPC_GPU_PLAN",
+        "HTTP_PROXY","HTTPS_PROXY","ALL_PROXY","ANTHROPIC_API_KEY","CLAUDE_CODE_OAUTH_TOKEN"
+    ];
     private sealed record ChildFailure(string Stage,string Kind,int Code);
+
+    internal static void BindEnvironment(IDictionary<string,string> environment,string workspace,string session)
+    {
+        var programFiles=Path.GetDirectoryName(workspace)??throw WfpNative.Contract("OfflineConsoleProgramFilesMissing");
+        if(!string.Equals(workspace,SessionTaskWorkspace.PathFor(session,programFiles),StringComparison.OrdinalIgnoreCase) ||
+            ForbiddenVariables.Any(environment.ContainsKey))throw WfpNative.Contract("OfflineConsoleParentEnvironmentDiffers");
+        environment["ProgramFiles"]=programFiles;
+        environment[SessionVariable]=session;
+        foreach(var (name,_) in WorkspaceVariables)environment[name]=workspace;
+    }
 
     internal static int RunChild()
     {
@@ -40,19 +64,20 @@ internal static class OfflineConsoleQualification
     private static int RunCheckedChild(ref ChildStage stage)
     {
         AtomicChild.AssertOfflineConsoleWorkerIdentity();
-        stage=ChildStage.Environment;
+        stage=ChildStage.SessionId;
         var session=Identifiers.Hex32(Environment.GetEnvironmentVariable(SessionVariable)??"");
         // Use the canonical Program Files root chosen by the original owner.
         // The restricted process need not query the shell's known folders.
+        stage=ChildStage.ProgramFiles;
         var programFiles=Environment.GetEnvironmentVariable("ProgramFiles")??throw WfpNative.Contract("OfflineConsoleProgramFilesMissing");
+        stage=ChildStage.WorkspacePath;
         var workspace=SessionTaskWorkspace.PathFor(session,programFiles);
-        if(!string.Equals(Environment.CurrentDirectory,workspace,StringComparison.OrdinalIgnoreCase) ||
-            new[]{"TEMP","TMP","LOCALAPPDATA","USERPROFILE","HOME","XDG_CONFIG_HOME","CLAUDE_CONFIG_DIR","APPDATA"}.Any(
-                name=>Environment.GetEnvironmentVariable(name)!=workspace) ||
-            new[]{"CPC_SESSION_ID","CPC_SESSION_SECRET","CPC_NETWORK_PLAN","CPC_RESOURCE_PLAN","CPC_GPU_PLAN",
-                "HTTP_PROXY","HTTPS_PROXY","ALL_PROXY","ANTHROPIC_API_KEY","CLAUDE_CODE_OAUTH_TOKEN"}.Any(
-                name=>Environment.GetEnvironmentVariable(name) is not null))
+        stage=ChildStage.CurrentDirectory;
+        if(FindEnvironmentMismatch(workspace,Environment.CurrentDirectory,Environment.GetEnvironmentVariable) is { } mismatch)
+        {
+            stage=mismatch;
             throw WfpNative.Contract("OfflineConsoleChildEnvironmentDiffers");
+        }
         stage=ChildStage.Streams;
         if(!Console.IsInputRedirected || !Console.IsOutputRedirected || !Console.IsErrorRedirected)
             throw WfpNative.Contract("OfflineConsoleRedirectionMissing");
@@ -79,6 +104,14 @@ internal static class OfflineConsoleQualification
         using(var stdout=Console.OpenStandardOutput())stdout.Write(ExpectedOutput);
         using(var stderr=Console.OpenStandardError())stderr.Write(ExpectedError);
         return 0;
+    }
+
+    private static ChildStage? FindEnvironmentMismatch(string workspace,string currentDirectory,Func<string,string?> get)
+    {
+        if(!string.Equals(currentDirectory,workspace,StringComparison.OrdinalIgnoreCase))return ChildStage.CurrentDirectory;
+        foreach(var (name,stage) in WorkspaceVariables)
+            if(!string.Equals(get(name),workspace,StringComparison.OrdinalIgnoreCase))return stage;
+        return ForbiddenVariables.Any(name=>get(name) is not null)?ChildStage.UnexpectedAuthority:null;
     }
 
     internal static (int ExitCode,string Report) Run(FixedLayout layout,ProtectedState state,VerifiedVersion version)
