@@ -1,5 +1,6 @@
 using System.Reflection;
 using System.Runtime.ExceptionServices;
+using System.Security.AccessControl;
 using System.Security.Principal;
 
 internal static class GatewayQualificationBoundaryCases
@@ -87,6 +88,29 @@ internal static class GatewayQualificationBoundaryCases
                 Check(refused);
             }
         }
+        var descriptorCheck=library.GetType("ProtectionLifecycle.KernelJobSeal+SessionObjectDescriptor",true)!
+            .GetMethod("AssertDescriptor",BindingFlags.Static|BindingFlags.NonPublic)!;
+        const string trustedGrants="(A;;0x001fffff;;;SY)(A;;0x001fffff;;;BA)";
+        const string ownerDeny="(D;;0x000c0000;;;S-1-3-4)";
+        const string legacy="O:BAD:P"+trustedGrants;
+        const string service="O:S-1-5-19D:P"+ownerDeny+trustedGrants;
+        _=descriptorCheck.Invoke(null,[new RawSecurityDescriptor(legacy),false]);Check(true);
+        _=descriptorCheck.Invoke(null,[new RawSecurityDescriptor(service),true]);Check(true);
+        foreach(var (sddl,localService) in new (string,bool)[]{
+            (legacy,true),(service,false),
+            ("O:S-1-5-19D:P"+trustedGrants,true),
+            ("O:S-1-5-19D:P(D;;0x000c0000;;;WD)"+trustedGrants,true),
+            ("O:S-1-5-19D:P(D;;0x00040000;;;S-1-3-4)"+trustedGrants,true),
+            ("O:S-1-5-19D:P"+trustedGrants+ownerDeny,true),
+            ("O:S-1-5-20D:P"+ownerDeny+trustedGrants,true),
+            ("O:S-1-5-19D:"+ownerDeny+trustedGrants,true),
+            (service+"(A;;0x00020000;;;WD)",true)})
+        {
+            var refused=false;
+            try{_=descriptorCheck.Invoke(null,[new RawSecurityDescriptor(sddl),localService]);}
+            catch(TargetInvocationException error) when(error.InnerException is InvalidDataException){refused=true;}
+            Check(refused);
+        }
         var map=atomic.GetMethod("SetPrivateRuntimeDirectories",BindingFlags.Static|BindingFlags.NonPublic)!;
         var env=new SortedDictionary<string,string>(StringComparer.OrdinalIgnoreCase){["PATH"]="fixed-system-path",["HTTP_PROXY"]="fixed-session-endpoint",["LOCALAPPDATA"]="host-value-must-be-replaced"};
         const string owned=@"C:\fixed-nonexistent-container-fixture";
@@ -99,6 +123,6 @@ internal static class GatewayQualificationBoundaryCases
             try{map.Invoke(null,new object[]{env,invalid});}catch(TargetInvocationException ex)when(ex.InnerException is InvalidDataException){refused=true;}
             Check(refused && before==string.Join(";",env.Select(x=>x.Key+"="+x.Value)));
         }
-        Console.WriteLine($"PASS {count} ordinary gateway qualification boundary checks; common maintenance gate, actual ordinary self token, conflicting plans, unchanged formal holds and pure private-directory mapping. No UAC, protected-state access, gateway, network, Job or WFP operation.");
+        Console.WriteLine($"PASS {count} ordinary gateway qualification boundary checks; maintenance gate, actual ordinary self token, conflicting plans, formal holds, descriptor checks and private-directory mapping. No UAC, protected-state access, gateway, network, Job or WFP operation.");
     }
 }

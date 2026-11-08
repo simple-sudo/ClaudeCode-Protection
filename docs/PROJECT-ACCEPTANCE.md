@@ -5,6 +5,15 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-08 Session 0 具名 Job 挂起交接通过
+
+VERIFIED(单次实机 LocalService 挂起原子创建、跨会话原 Job 及线程核验、
+主令牌与对象权限、Job 清零和 profile、临时服务及暂存回收)。
+INTEGRATED / BUILD / VERIFIED(普通 Broker 对象描述符正例及反例)。
+前一版错误 5 的具体调用 UNKNOWN。新身份正式 WFP 准入、自研线程恢复、
+宿主 SID 真实内容复验及官方 CLI NOT_RUN。
+[实机及源码范围](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#session-0-具名-job-挂起交接通过)
+
 ## 2026-11-08 具名 Job 与管道权限对照
 
 FAIL(首候选管道阶段错误 5、补齐读取属性后交接前置阶段错误 5)。

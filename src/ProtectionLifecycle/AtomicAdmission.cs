@@ -251,6 +251,9 @@ internal sealed partial class AtomicChild : IDisposable
     {
         if(!ReferenceEquals(sessionPreparation,exactPreparation))throw WfpNative.Contract("ForeignSuspendedSessionRoot");
         AssertSuspendedIdentity();
+        var localService=!exactPreparation.IsGatewayQualification;
+        KernelJobSeal.SessionObjectDescriptor.AssertSeal(process,localService);
+        KernelJobSeal.SessionObjectDescriptor.AssertSeal(thread,localService);
     }
     internal void AssertSuspendedResourceIdentity(ProtectedSession.ResourceQualification permit)
     {
@@ -533,7 +536,6 @@ internal sealed partial class AtomicChild : IDisposable
         {
             if(sessionPermit is null || !sessionPermit.Matches(sessionPreparation))throw WfpNative.Contract("FullSessionPermitRequiredBeforeFirstInstruction");
             AssertSuspendedSessionIdentity(sessionPreparation);
-            KernelJobSeal.SessionObjectDescriptor.AssertSeal(process);KernelJobSeal.SessionObjectDescriptor.AssertSeal(thread);
             sessionAdmission=sessionPermit;
         }
         else if(sessionPermit is not null)throw WfpNative.Contract("SessionPermitCannotAuthorizeLegacyCanary");

@@ -624,3 +624,32 @@ Job。该限制的 Windows 语义见 [Owner Rights SID](https://learn.microsoft.
 本轮没有恢复自研线程、安装产品、改变 WFP 或运行官方 CLI。
 [进程会话查询权限](https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-processidtosessionid)
 [管道对端查询](https://learn.microsoft.com/en-us/windows/win32/ipc/pipe-functions)
+
+### Session 0 具名 Job 挂起交接通过
+
+2026-11-08 07:21（纽约时间），一次许可 `43873392…` 后执行固定 24 项
+工件。服务与原所有者从已绑定的本机管道核验对端 PID 和会话。可信
+LocalService 创建者使用精确服务 SID 获得 Job 分配及描述符读取权限，
+查询、修改和终止权限的反例通过。一次原子挂起创建通过。原所有者持有并
+核对实际进程、初始线程、创建时间、Session 0、映像及同一 Job 成员身份，
+并核验实际主令牌为独立 LocalService、无本机账户域组、低完整性零能力
+LPAC，以及进程和线程的 Owner Rights 拒绝项和固定授权项。此前阶段 2
+错误 5 的具体调用仍 UNKNOWN。
+
+原所有者结束原 Job，核对累计一个成员、活动成员归零及进程终态。服务
+回收 profile 后确认存储与映射缺席。控制器回执阶段 0、错误 0、无超时，
+从持有的服务进程确认终止并核验服务登记和暂存目录缺席。随后普通独立
+查询再确认 SCM 1060 和目录不存在。回执路径
+`work/independent-creator-handoff-20261108-01/session-zero-pipe-peer/receipt.json`，
+SHA-256 `6AC84C4B7C0BA7F30CFB523D08B9A697D914D3760E1FA348E78D063079615934`。
+许可已消耗。线程始终挂起，本次使用单独的测试 Job，未安装产品、改变 WFP
+或运行官方 CLI。
+
+产品源码将同一权限契约接入 Broker 的挂起身份绑定和恢复前复核。正式
+会话的进程与线程均要求 LocalService 所有者、受保护的 DACL，首条拒绝
+Owner Rights 的 `READ_CONTROL | WRITE_DAC`，并只向 SYSTEM 和管理员
+授予固定完整权限。固定网关资格入口继续使用原管理员所有者契约。五产品
+Release 构建均无警告和错误，11 个普通回归入口通过，其中权限描述符含
+两种正例与九种反例。服务创建、Job 和 profile 交接尚未接入原 Broker。
+下一步以原 Broker 持有的 Job 与 WFP 隔离、固定工作区和精确回收为前提，
+恢复自研载荷验证正常功能和宿主 SID 的真实内容获取路径。

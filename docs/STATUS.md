@@ -5,6 +5,13 @@
 历史页的“当前/待执行/暂停/DELIVERABLE”按段落日期及限定范围解释，不是今天的状态或操作许可。
 不在本页复制当前安装和授权摘要。
 
+## 2026-11-08 Session 0 具名 Job 挂起交接通过
+
+实机核验同一 Job 内独立 LocalService 低完整性零能力 LPAC 及初始线程，
+原 Job、profile、服务和暂存闭合。Broker 进程和线程对象权限检查已接入，
+五产品构建及 11 个普通回归入口通过。
+[证据范围](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#session-0-具名-job-挂起交接通过)
+
 ## 2026-11-08 具名 Job 与管道权限对照
 
 补齐 `FILE_READ_ATTRIBUTES` 后实机通过管道与 profile 准备。随后交接前置

@@ -29,6 +29,8 @@ internal static class KernelJobSeal
     internal sealed class SessionObjectDescriptor : IDisposable
     {
         private const int AllRights=0x001fffff;
+        private const string LocalServiceSid="S-1-5-19",OwnerRightsSid="S-1-3-4";
+        private const int ImplicitOwnerRights=0x000c0000; // READ_CONTROL | WRITE_DAC.
         private IntPtr value;
         internal SessionObjectDescriptor()
         {
@@ -37,7 +39,7 @@ internal static class KernelJobSeal
         }
         internal SecurityAttributes Attributes=>value==IntPtr.Zero?throw new ObjectDisposedException(nameof(SessionObjectDescriptor)):
             new(){Length=Marshal.SizeOf<SecurityAttributes>(),Descriptor=value,Inherit=0};
-        internal static void AssertSeal(SafeHandle handle)
+        internal static void AssertSeal(SafeHandle handle,bool localService=false)
         {
             if(handle.IsClosed || handle.IsInvalid)throw new InvalidOperationException("Held session object required");
             var sized=GetKernelObjectSecurity(handle,1|4,null,0,out var needed);
@@ -46,12 +48,21 @@ internal static class KernelJobSeal
             var bytes=new byte[checked((int)needed)];
             if(!GetKernelObjectSecurity(handle,1|4,bytes,needed,out var actual))throw Error("ReadSuspendedSessionObjectDescriptor");
             if(actual!=needed)throw new InvalidDataException("SessionObjectDescriptorChanged");
-            var descriptor=new RawSecurityDescriptor(bytes,0);
-            if(descriptor.Owner?.Value!=AdminsSid || descriptor.DiscretionaryAcl is null || descriptor.DiscretionaryAcl.Count!=2 ||
+            AssertDescriptor(new RawSecurityDescriptor(bytes,0),localService);
+        }
+        internal static void AssertDescriptor(RawSecurityDescriptor descriptor,bool localService)
+        {
+            var acl=descriptor.DiscretionaryAcl;
+            if(descriptor.Owner?.Value!=(localService?LocalServiceSid:AdminsSid) || acl is null || acl.Count!=(localService?3:2) ||
                 (descriptor.ControlFlags&ControlFlags.DiscretionaryAclProtected)==0)throw new InvalidDataException("SessionObjectSecurityBroadened");
+            // Merely omitting LocalService from the allow list leaves the
+            // object owner's implicit WRITE_DAC intact.
+            if(localService && (acl[0] is not CommonAce deny || deny.IsCallback || deny.AceFlags!=AceFlags.None ||
+                deny.AceQualifier!=AceQualifier.AccessDenied || deny.AccessMask!=ImplicitOwnerRights || deny.SecurityIdentifier.Value!=OwnerRightsSid))
+                throw new InvalidDataException("SessionObjectOwnerRightsDenialMissing");
             var remaining=new HashSet<string>(new[]{SystemSid,AdminsSid},StringComparer.Ordinal);
-            foreach(GenericAce entry in descriptor.DiscretionaryAcl)
-                if(entry is not CommonAce ace || ace.IsCallback || ace.AceFlags!=AceFlags.None || ace.AceQualifier!=AceQualifier.AccessAllowed ||
+            for(var index=localService?1:0;index<acl.Count;index++)
+                if(acl[index] is not CommonAce ace || ace.IsCallback || ace.AceFlags!=AceFlags.None || ace.AceQualifier!=AceQualifier.AccessAllowed ||
                     ace.AccessMask!=AllRights || !remaining.Remove(ace.SecurityIdentifier.Value))throw new InvalidDataException("SessionObjectUnexpectedAccessGrant");
             if(remaining.Count!=0)throw new InvalidDataException("SessionObjectRequiredOwnerMissing");
         }
