@@ -226,6 +226,8 @@ public static partial class InstalledBroker
         =>WithCurrentInstallation((layout,state,version)=>OfflineTlsQualification.Run(layout,state,version,OfflineTlsProbe.OpenSsl));
     public static (int ExitCode,string Report) QualifyOfflineConsole()
         =>WithCurrentInstallation(OfflineConsoleQualification.Run);
+    public static (int ExitCode,string Report) QualifyIndependentOfflineConsole()
+        =>WithCurrentInstallation(OfflineConsoleQualification.RunIndependent);
     public static (int ExitCode,string Report) InspectWinsockReadAccess()=>WithCurrentInstallation((_,state,_)=>SessionWinsockReadAccess.Inspect(state),forManifestAccessRecovery:true);
     public static (int ExitCode,string Report) RecoverWinsockReadAccess()=>WithCurrentInstallation((_,state,_)=>SessionWinsockReadAccess.Recover(state),forManifestAccessRecovery:true);
     public static int RunGatewayQualificationCanary()=>AtomicChild.RunGatewayQualificationCanary();

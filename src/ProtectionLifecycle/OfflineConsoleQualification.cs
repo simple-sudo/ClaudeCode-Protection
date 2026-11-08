@@ -144,13 +144,7 @@ internal static class OfflineConsoleQualification
 
     internal static (int ExitCode,string Report) Run(FixedLayout layout,ProtectedState state,VerifiedVersion version)
     {
-        state.AssertHeld();version.AssertHeld(state);LifecycleRecovery.AssertNoPending(state);
-        InstallationLoopbackLease.AssertClosedHistory(state);
-        foreach(var intent in OwnedJobIntent.ReadAll(state))
-            if(AtomicJobCompletion.ReadClosed(state,intent) is null)
-                throw WfpNative.Contract("OfflineConsoleRequiresPriorAdmissionsClosed");
-        var plans=FencePlan.ReadAll(state);
-        if(plans.Count==0)throw WfpNative.Contract("OfflineConsoleRequiresExistingQuarantine");
+        var plans=RequireOfflinePrerequisites(state,version);
 
         var id=Guid.NewGuid().ToString("N");
         var fences=new List<PersistentFence>();
@@ -235,23 +229,8 @@ internal static class OfflineConsoleQualification
                 if(singleProcess && ParseChildFailure(exit,stderr)?.Stage is ("Temp" or "Tmp" or "LocalAppData") &&
                     stdout is {Overflow:false,Bytes.Length:>0})
                 {
-                    var projected=OfflineConsoleProjection.Parse(stdout.Bytes,id,childPid);
-                    var ownedTemp=storage.View.Temp;
-                    var localData=storage.View.LocalData;
-                    var hostTemp=Path.GetTempPath();
-                    var hostLocal=Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-                    var receipt=state.WriteNew("offline-console-projection-"+id+".json",JsonSerializer.SerializeToUtf8Bytes(new {
-                        SchemaVersion=1,state.InstallationId,SessionId=id,JobId=job.JobId,
-                        version.Package.Release,version.Package.ManifestHash,Restricted=projected,
-                        Expected=new {Temp=ownedTemp,LocalAppData=localData,Workspace=workspace.Path},
-                        TrustedOwner=new {Temp=hostTemp,LocalAppData=hostLocal}
-                    }));
-                    environmentProjection=new {
-                        ReceiptSHA256=receipt,
-                        Temp=OfflineConsoleProjection.Classify(projected.Temp,ownedTemp,workspace.Path,hostTemp),
-                        Tmp=OfflineConsoleProjection.Classify(projected.Tmp,ownedTemp,workspace.Path,hostTemp),
-                        LocalAppData=OfflineConsoleProjection.Classify(projected.LocalAppData,localData,workspace.Path,hostLocal)
-                    };
+                    environmentProjection=SealEnvironmentProjection(state,version,id,job.JobId,childPid,stdout.Bytes,
+                        workspace.Path,storage.View.Temp,storage.View.LocalData);
                 }
                 if(singleProcess && exit==0)
                 {
@@ -295,6 +274,182 @@ internal static class OfflineConsoleQualification
             if(fences.Count!=plans.Count || fences.Any(f=>!f.Observe().FullQuarantineObserved))
                 throw WfpNative.Contract("OfflineConsoleFullQuarantineRequired");
         }
+    }
+
+    private static IReadOnlyList<FencePlan> RequireOfflinePrerequisites(ProtectedState state,VerifiedVersion version)
+    {
+        state.AssertHeld();version.AssertHeld(state);LifecycleRecovery.AssertNoPending(state);
+        InstallationLoopbackLease.AssertClosedHistory(state);
+        foreach(var intent in OwnedJobIntent.ReadAll(state))
+            if(AtomicJobCompletion.ReadClosed(state,intent) is null)
+                throw WfpNative.Contract("OfflineConsoleRequiresPriorAdmissionsClosed");
+        var plans=FencePlan.ReadAll(state);
+        if(plans.Count==0)throw WfpNative.Contract("OfflineConsoleRequiresExistingQuarantine");
+        return plans;
+    }
+
+    internal static (int ExitCode,string Report) RunIndependent(FixedLayout layout,ProtectedState state,VerifiedVersion version)
+    {
+        var plans=RequireOfflinePrerequisites(state,version);
+        var fences=new List<PersistentFence>();
+        var failures=new List<Exception>();
+        var stage="VerifyQuarantine";
+        string? jobId=null;
+        uint? exit=null;
+        RuntimeStop? stopped=null;
+        OfflineConsoleOutput? stdout=null,stderr=null;
+        OfflineConsoleHostIdentitySummary? hostIdentity=null;
+        object? environmentProjection=null;
+        var resumed=false;
+        var profileClosed=false;
+        var workspaceClosed=false;
+        var serviceRemoved=false;
+        var filesMatched=false;
+        var closed=false;
+        try
+        {
+            foreach(var plan in plans)fences.Add(PersistentFence.OpenExisting(state,plan.Data.FenceId));
+            AssertQuarantine();
+            stage="RegisterCreator";
+            using var creator=SessionZeroCreatorRegistration.Create(layout,state,version);
+            jobId=creator.JobId;
+            stage="PrepareWorkspace";
+            using var job=OwnedKernelJob.CreateForSessionZero(state,version,creator);
+            using var workspace=SessionZeroOfflineWorkspace.Create(state,job,creator);
+            var host=OfflineConsoleHostIdentity.Capture(job.JobId);
+            using var channel=new SessionZeroCreatorChannel(job);
+            ProtectionRuntimeLease? runtime=null;
+            AtomicChild? child=null;
+            string? failedStage=null;
+            try
+            {
+                stage="StartCreator";
+                var service=creator.StartAndHold(job,channel);
+                stage="ValidateSuspendedRoot";
+                using var root=channel.Exchange(layout,state,version,service,creator.Sid);
+                child=AtomicChild.AdoptSessionZeroOfflineConsole(layout,state,version,job,root);
+                runtime=ProtectionRuntimeLease.ForFixedOfflineConsole(state,version,job,fences,child,job.JobId);
+                runtime.Activate(10000);
+                stage="RunWorker";
+                _=child.ResumeQuarantined();resumed=true;
+                do
+                {
+                    runtime.AssertHealthy();
+                    workspace.AssertHeld();
+                    exit=child.ObserveOfflineConsoleExit();
+                }while(exit is null);
+                runtime.AssertHealthy();
+                if(exit!=0)throw WfpNative.Contract("IndependentOfflineConsoleChildExitDiffers");
+            }
+            catch(Exception error){failedStage=stage;failures.Add(error);}
+            finally
+            {
+                try
+                {
+                    stage="StopOriginalJob";
+                    if(runtime is not null)
+                    {
+                        stopped=runtime.Stop(RuntimeStop.OfflineConsoleTerminalReason);
+                        closed=stopped.ConfirmsClosedOfflineConsole(job.JobId,job.JobId);
+                        if(!closed)throw WfpNative.Contract("IndependentOfflineConsoleStopUnconfirmed");
+                    }
+                    else if(job.AtomicAdmissionReserved)
+                    {
+                        var priorFailures=failures.Count;
+                        foreach(var fence in fences)
+                            try{if(!fence.Observe().FullQuarantineObserved)_=fence.ReinstateQuarantine();}
+                            catch(Exception error){failures.Add(error);}
+                        var zero=job.CloseAtomicAdmissionAndStop();
+                        closed=zero.ObservedZero && zero.ExpectedLimits && failures.Count==priorFailures;
+                    }
+                }
+                catch(Exception error){failedStage??=stage;failures.Add(error);}
+                child?.Dispose();
+            }
+            if(closed)
+            {
+                stage="CloseCreatorProfile";
+                (stdout,stderr)=channel.CloseCreatorProfile(state);
+                profileClosed=true;
+                if(child is not null)
+                {
+                    stage="SealWorkerEvidence";
+                    try
+                    {
+                        if(exit==0)
+                        {
+                            workspace.AssertHeld();
+                            hostIdentity=OfflineConsoleHostIdentity.Read(workspace.Path,job.JobId,child.Pid)
+                                .Seal(state,version,job.JobId,host,child.OfflineConsoleUserSid);
+                            filesMatched=ReadFixedFile(workspace.Path,OutputLeaf,ExpectedFile) && ReadFixedFile(workspace.Temp,TempLeaf,ExpectedTempFile);
+                        }
+                        else if(ParseChildFailure(exit,stderr)?.Stage is ("Temp" or "Tmp" or "LocalAppData") &&
+                            stdout is {Overflow:false,Bytes.Length:>0})
+                            environmentProjection=SealEnvironmentProjection(state,version,job.JobId,job.JobId,child.Pid,stdout.Bytes,
+                                workspace.Path,workspace.Temp,workspace.LocalData);
+                    }
+                    catch(Exception error){failedStage??=stage;failures.Add(error);}
+                }
+                stage="CloseWorkspace";
+                workspace.CloseAfterProfileCleanup(channel);workspaceClosed=true;
+                stage="RemoveCreatorRegistration";
+                creator.RemoveAfterProfileCleanup(workspace);serviceRemoved=true;
+            }
+            stage=failedStage??stage;
+        }
+        catch(Exception error){failures.Add(error);}
+        finally
+        {
+            try{AssertQuarantine();}catch(Exception error){failures.Add(error);}
+            foreach(var fence in fences)try{fence.Dispose();}catch(Exception error){failures.Add(error);}
+        }
+        var matched=stdout is {Overflow:false} && stderr is {Overflow:false} &&
+            ExpectedOutput.SequenceEqual(stdout.Bytes) && ExpectedError.SequenceEqual(stderr.Bytes);
+        var identityObserved=IndependentIdentityObserved(hostIdentity);
+        var complete=failures.Count==0 && closed && profileClosed && workspaceClosed && serviceRemoved && resumed && exit==0 &&
+            filesMatched && matched && identityObserved;
+        var report=JsonSerializer.Serialize(new {
+            SchemaVersion=1,Scope="INSTALLED_FIXED_INDEPENDENT_OFFLINE_CONSOLE",state.InstallationId,JobId=jobId,
+            version.Package.Release,version.Package.ManifestHash,Status=complete?"INDEPENDENT_OFFLINE_CONSOLE_CLOSED":"INDEPENDENT_OFFLINE_CONSOLE_NOT_CONFIRMED",
+            LastStage=stage,ProcessResumed=resumed,ChildExit=exit,OriginalJobClosed=closed,ProfileClosed=profileClosed,WorkspaceClosed=workspaceClosed,
+            ServiceRemoved=serviceRemoved,FilesMatched=filesMatched,StreamsMatched=matched,HostIdentityObservation=hostIdentity,
+            HostAccountSidDiffers=hostIdentity?.TokenUser=="DIFFERS_FROM_HOST",HostIdentityQualified=false,
+            Output=Summarize(stdout),Error=Summarize(stderr),ChildFailure=ParseChildFailure(exit,stderr),EnvironmentProjection=environmentProjection,
+            StopObservation=stopped,Failures=failures.SelectMany(WfpNative.Describe).ToArray(),
+            GatewayOpened=false,NetworkQualified=false,LaunchAuthorized=false,FormalAdmissionIssued=false,ClaudeLaunched=false
+        });
+        if(jobId is not null)state.WriteNew("independent-offline-console-after-"+jobId+".json",Encoding.UTF8.GetBytes(report));
+        return(complete?0:3,report);
+
+        void AssertQuarantine()
+        {
+            if(fences.Count!=plans.Count || fences.Any(f=>!f.Observe().FullQuarantineObserved))
+                throw WfpNative.Contract("IndependentOfflineConsoleFullQuarantineRequired");
+        }
+    }
+
+    internal static bool IndependentIdentityObserved(OfflineConsoleHostIdentitySummary? observation) =>
+        observation is {TokenUser:"DIFFERS_FROM_HOST"} && observation.LogonName!="MATCHES_HOST" &&
+        observation.ProfileDirectory!="MATCHES_HOST" && observation.ComputerName!="MATCHES_HOST" && observation.MachineGuid!="MATCHES_HOST";
+
+    private static object SealEnvironmentProjection(ProtectedState state,VerifiedVersion version,string id,string jobId,uint childPid,
+        byte[] bytes,string workspace,string ownedTemp,string localData)
+    {
+        var projected=OfflineConsoleProjection.Parse(bytes,id,childPid);
+        var hostTemp=Path.GetTempPath();
+        var hostLocal=Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        var receipt=state.WriteNew("offline-console-projection-"+id+".json",JsonSerializer.SerializeToUtf8Bytes(new {
+            SchemaVersion=1,state.InstallationId,SessionId=id,JobId=jobId,
+            version.Package.Release,version.Package.ManifestHash,Restricted=projected,
+            Expected=new {Temp=ownedTemp,LocalAppData=localData,Workspace=workspace},
+            TrustedOwner=new {Temp=hostTemp,LocalAppData=hostLocal}
+        }));
+        return new {
+            ReceiptSHA256=receipt,
+            Temp=OfflineConsoleProjection.Classify(projected.Temp,ownedTemp,workspace,hostTemp),
+            Tmp=OfflineConsoleProjection.Classify(projected.Tmp,ownedTemp,workspace,hostTemp),
+            LocalAppData=OfflineConsoleProjection.Classify(projected.LocalAppData,localData,workspace,hostLocal)
+        };
     }
 
     private static bool ReadFixedFile(string directory,string leaf,ReadOnlySpan<byte> expected)

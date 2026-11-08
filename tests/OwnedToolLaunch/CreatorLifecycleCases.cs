@@ -128,5 +128,26 @@ internal static class CreatorLifecycleCases
         var inventory=Method("ProtectedState","RequireFixedInventoryPrefix");
         _=inventory.Invoke(null,["creator-service-intent-"]);Check(true);
         Console.WriteLine($"PASS {count-previous} creator registration checks; exact image command, SCM descriptor, protected inventory and start/removal receipt binding. No SCM mutations.");
+        previous=count;
+        var comparison=Method("OfflineConsoleQualification","IndependentIdentityObserved");
+        var summary=library.GetType("ProtectionLifecycle.OfflineConsoleHostIdentitySummary",true)!;
+        bool Observed(string token,string logon="DENIED",string profile="DENIED",string machine="DENIED",string computer="DENIED")
+        {
+            var observation=Activator.CreateInstance(summary,[hash,token,logon,profile,computer,machine]);
+            return comparison.Invoke(null,[observation]) is true;
+        }
+        Check(Observed("DIFFERS_FROM_HOST"));
+        Check(!Observed("MATCHES_HOST"));
+        Check(!Observed("REFERENCE_UNAVAILABLE"));
+        Check(!Observed("DIFFERS_FROM_HOST",logon:"MATCHES_HOST"));
+        Check(!Observed("DIFFERS_FROM_HOST",profile:"MATCHES_HOST"));
+        Check(!Observed("DIFFERS_FROM_HOST",computer:"MATCHES_HOST"));
+        Check(!Observed("DIFFERS_FROM_HOST",machine:"MATCHES_HOST"));
+        Check(comparison.Invoke(null,[null]) is false);
+        var denied=false;
+        try{_=broker.GetMethod("QualifyIndependentOfflineConsole")!.Invoke(null,null);}
+        catch(TargetInvocationException error) when(error.InnerException is UnauthorizedAccessException){denied=true;}
+        Check(denied);
+        Console.WriteLine($"PASS {count-previous} independent offline checks; no success when a host identity matches or TokenUser differs unproven, ordinary caller denied before setup. No service or WFP mutations.");
     }
 }

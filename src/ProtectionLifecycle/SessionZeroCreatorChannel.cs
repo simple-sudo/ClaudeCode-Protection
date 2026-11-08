@@ -23,6 +23,7 @@ internal sealed class SessionZeroCreatorChannel : IDisposable
     private int consumed;
     private byte[]? cleanupNonce;
     internal bool ProfileCleanupConfirmed {get;private set;}
+    internal bool ConfirmsProfileCleanupFor(OwnedKernelJob exactJob)=>ReferenceEquals(job,exactJob) && ProfileCleanupConfirmed;
     internal bool IsPreparedFor(OwnedKernelJob exactJob)=>ReferenceEquals(job,exactJob) && Volatile.Read(ref consumed)==0 &&
         !pipe.SafePipeHandle.IsClosed && !pipe.SafePipeHandle.IsInvalid;
     internal string PipeName=>NameForJob(job.JobId);
@@ -213,17 +214,26 @@ internal sealed class SessionZeroCreatorChannel : IDisposable
             if(!GetThreadTimes(thread,out var threadCreated,out _,out _,out _))throw Error("ReadCreatorChildThreadTime");
             if(threadCreated!=report.ThreadCreated)throw WfpNative.Contract("CreatorChildThreadTimeMismatch");
             KernelJobSeal.SessionObjectDescriptor.AssertSeal(thread,true);
-            return new(process,thread,report);
+            return new(process,thread,report,job);
         }
         catch{thread?.Dispose();process.Dispose();throw;}
     }
 
-    internal sealed class SuspendedRoot(SafeProcessHandle process,SafeWaitHandle thread,Reply identity) : IDisposable
+    internal sealed class SuspendedRoot(SafeProcessHandle process,SafeWaitHandle thread,Reply identity,OwnedKernelJob job) : IDisposable
     {
-        internal SafeProcessHandle Process=>process;
-        internal SafeWaitHandle Thread=>thread;
+        private int transferredOrDisposed;
         internal Reply Identity=>identity;
-        public void Dispose(){thread.Dispose();process.Dispose();}
+        internal (SafeProcessHandle Process,SafeWaitHandle Thread) TransferTo(OwnedKernelJob exactJob)
+        {
+            if(!ReferenceEquals(job,exactJob) || Interlocked.Exchange(ref transferredOrDisposed,1)!=0)
+                throw WfpNative.Contract("CreatorRootTransferMismatch");
+            return(process,thread);
+        }
+        public void Dispose()
+        {
+            if(Interlocked.Exchange(ref transferredOrDisposed,1)!=0)return;
+            thread.Dispose();process.Dispose();
+        }
     }
 
     internal static void AssertImage(SafeProcessHandle process,string expected)

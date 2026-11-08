@@ -126,9 +126,10 @@ internal sealed class SessionZeroCreatorRegistration : IDisposable
         RemoveVerified(Unstarted);
     }
 
-    internal void RemoveAfterProfileCleanup()
+    internal void RemoveAfterProfileCleanup(SessionZeroOfflineWorkspace workspace)
     {
         AssertOriginal();
+        workspace.AssertClosedFor(state,JobId);
         if(!startAttempted || channel?.ProfileCleanupConfirmed!=true || process is null || WaitForSingleObject(process,5000)!=0)
             throw WfpNative.Contract("CreatorServiceTerminalProofMissing");
         if(!GetExitCodeProcess(process,out var exitCode))throw Error("ReadOriginalCreatorExitCode");

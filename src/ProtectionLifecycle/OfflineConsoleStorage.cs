@@ -27,12 +27,12 @@ internal sealed class OfflineConsoleStorage : IDisposable
         return new(root,packages,directory,localData,WindowsPathSeal.Child(localData,"Temp"));
     }
 
-    internal static OfflineConsoleStorage Create(ProtectedState state,PathLease workspace)
+    internal static OfflineConsoleStorage Create(ProtectedState state,PathLease workspace,string? exactCreatorAudience=null)
     {
         state.AssertHeld();workspace.AssertHeld();
         using var identity=WindowsIdentity.GetCurrent();
         using var package=new InstallationPackageSid(state);
-        var owner=identity.User?.Value??throw WfpNative.Contract("WorkspaceHumanOwnerMissing");
+        var owner=exactCreatorAudience??identity.User?.Value??throw WfpNative.Contract("WorkspaceHumanOwnerMissing");
         var view=Resolve(workspace.Path,package.Name);
         var directories=new List<PathLease>();
         try

@@ -5,6 +5,13 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-08 固定独立身份离线入口
+
+INTEGRATED / BUILD(固定入口贯通服务登记、独立工作区、原监督及关闭链)。
+VERIFIED(普通管理员拒绝、身份匹配反例、既有普通 Job/管道/回执回归)。
+生产 SCM、受限恢复、真实宿主 SID 复验、异常恢复及官方 Claude Code NOT_RUN。
+[机制与范围](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#固定独立身份离线入口)
+
 ## 2026-11-08 原 Broker 的服务登记与回收
 
 INTEGRATED / BUILD(固定登记、原 SCM 句柄与 Job 绑定、回收和持久未闭合门)。

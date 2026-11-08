@@ -127,6 +127,7 @@ internal static class Program
                 "qualify-schannel-acquisition" => ProtectionLifecycle.InstalledBroker.QualifySchannelAcquisition(),
                 "qualify-openssl-offline" => ProtectionLifecycle.InstalledBroker.QualifyOpenSslOffline(),
                 "qualify-offline-console" => ProtectionLifecycle.InstalledBroker.QualifyOfflineConsole(),
+                "qualify-independent-offline-console" => ProtectionLifecycle.InstalledBroker.QualifyIndependentOfflineConsole(),
                 "qualify-winsock-provider-session-gateway" => ProtectionLifecycle.InstalledBroker.QualifyWinsockProviderSessionGateway(),
                 "qualify-winsock-transport-session-gateway" => ProtectionLifecycle.InstalledBroker.QualifyWinsockTransportSessionGateway(),
                 "qualify-winsock-session-gateway" => ProtectionLifecycle.InstalledBroker.QualifyWinsockSessionGateway(),

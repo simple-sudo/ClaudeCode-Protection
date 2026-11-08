@@ -78,17 +78,41 @@ internal static class SessionTaskWorkspace
         var creation=ReadCreated(state,profile);var path=PathFor(creation.Intent.SessionId);
         using var parent=WindowsPathSeal.LockDirectory(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),PathPolicy.CreationParent);
         if(parent.ObjectIdentity()!=creation.Intent.ParentIdentity)throw WfpNative.Contract("TaskWorkspaceParentChanged");
-        var entries=new List<(string Path,bool Directory,SafeFileHandle Handle)>();int removed=0;
+        var removed=0;
+        try
+        {
+            using var package=new InstallationPackageSid(state);
+            DeleteExactTree(state,path,creation.Identity,profile.OwnerSid,package.Value,()=>
+            {
+                if(state.Read("profile-delete-intent-"+profile.ProfileId+".json",8192).SHA256!=profileIntent.SHA256)
+                    throw WfpNative.Contract("TaskWorkspaceCleanupAuthorityChanged");
+            },ref removed);
+            state.WriteNew(ClosedLeaf(profile.ProfileId),JsonSerializer.SerializeToUtf8Bytes(new {SchemaVersion=1,state.InstallationId,profile.ProfileId,
+                CreatedSHA256=creation.Created.SHA256,ProfileCleanupIntentSHA256=profileIntent.SHA256,
+                Status="EXACT_TASK_DIRECTORY_ABSENCE_OBSERVED",RootAbsent=true,RemovedEntries=removed}));
+        }
+        catch(Exception ex)
+        {
+            try{state.WriteNew("task-workspace-failure-"+profile.ProfileId+"-"+Guid.NewGuid().ToString("N")+".json",JsonSerializer.SerializeToUtf8Bytes(new {
+                SchemaVersion=1,state.InstallationId,profile.ProfileId,RemovedEntries=removed,Status="NOT_CONFIRMED",Failures=WfpNative.Describe(ex)}));}
+            catch(Exception log){throw new AggregateException("Exact task cleanup and failure recording both failed",ex,log);}throw;
+        }
+    }
+
+    internal static void DeleteExactTree(ProtectedState state,string path,string identity,string audience,string packageSid,Action assertAuthority,ref int removed,
+        bool allowAlreadyAbsent=true)
+    {
+        var entries=new List<(string Path,bool Directory,SafeFileHandle Handle)>();
         try
         {
             SafeFileHandle? root=null;
             try{root=Open(path,true);}
-            catch(ExactPathAbsentException ex)when(string.Equals(ex.FailedPath,path,StringComparison.OrdinalIgnoreCase)){}
+            catch(ExactPathAbsentException ex)when(allowAlreadyAbsent && string.Equals(ex.FailedPath,path,StringComparison.OrdinalIgnoreCase)){}
             if(root is not null)
             {
                 entries.Add((path,true,root));
-                if(WindowsPathSeal.Identity(root)!=creation.Identity)throw WfpNative.Contract("TaskWorkspaceRootReplaced");
-                using var package=new InstallationPackageSid(state);SessionResources.AssertMutableWorkspace(root,profile.OwnerSid,package.Value);
+                if(WindowsPathSeal.Identity(root)!=identity)throw WfpNative.Contract("TaskWorkspaceRootReplaced");
+                SessionResources.AssertMutableWorkspace(root,audience,packageSid);
                 var pending=new Stack<(string Path,int Depth,SafeFileHandle Handle)>();pending.Push((path,0,root));
                 while(pending.Count>0)
                 {
@@ -111,8 +135,7 @@ internal static class SessionTaskWorkspace
                 foreach(var entry in entries.OrderByDescending(e=>e.Path.Length))
                 {
                     state.AssertHeld();
-                    if(state.Read("profile-delete-intent-"+profile.ProfileId+".json",8192).SHA256!=profileIntent.SHA256)
-                        throw WfpNative.Contract("TaskWorkspaceCleanupAuthorityChanged");
+                    assertAuthority();
                     if(entry.Path!=path && !entry.Path.StartsWith(path+"\\",StringComparison.OrdinalIgnoreCase))throw WfpNative.Contract("TaskCleanupEscapedRoot");
                     WindowsPathSeal.VerifyObject(entry.Handle,entry.Path,entry.Directory);
                     var disposition=0x17u; // DELETE | POSIX | FORCE_IMAGE_SECTION_CHECK | IGNORE_READONLY_ATTRIBUTE; no ON_CLOSE.
@@ -122,15 +145,6 @@ internal static class SessionTaskWorkspace
             }
             try{using var exists=WindowsPathSeal.Open(path,true,false);throw WfpNative.Contract("TaskWorkspaceStillPresent");}
             catch(ExactPathAbsentException ex)when(string.Equals(ex.FailedPath,path,StringComparison.OrdinalIgnoreCase)){}
-            state.WriteNew(ClosedLeaf(profile.ProfileId),JsonSerializer.SerializeToUtf8Bytes(new {SchemaVersion=1,state.InstallationId,profile.ProfileId,
-                CreatedSHA256=creation.Created.SHA256,ProfileCleanupIntentSHA256=profileIntent.SHA256,
-                Status="EXACT_TASK_DIRECTORY_ABSENCE_OBSERVED",RootAbsent=true,RemovedEntries=removed}));
-        }
-        catch(Exception ex)
-        {
-            try{state.WriteNew("task-workspace-failure-"+profile.ProfileId+"-"+Guid.NewGuid().ToString("N")+".json",JsonSerializer.SerializeToUtf8Bytes(new {
-                SchemaVersion=1,state.InstallationId,profile.ProfileId,RemovedEntries=removed,Status="NOT_CONFIRMED",Failures=WfpNative.Describe(ex)}));}
-            catch(Exception log){throw new AggregateException("Exact task cleanup and failure recording both failed",ex,log);}throw;
         }
         finally{for(var i=entries.Count-1;i>=0;i--)entries[i].Handle.Dispose();}
     }

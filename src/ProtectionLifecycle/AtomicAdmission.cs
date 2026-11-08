@@ -158,6 +158,7 @@ internal sealed partial class AtomicChild : IDisposable
     private readonly bool gpuWorkload;
     private readonly OfflineTlsProbe? offlineTls;
     private readonly bool offlineConsole;
+    private readonly bool independentOfflineConsole;
     private readonly ProtectedSession.Preparation? sessionPreparation;
     private readonly ProtectedSession.ResourceQualification? resourceQualification;
     private ProtectedSession.Admission? sessionAdmission;
@@ -362,6 +363,23 @@ internal sealed partial class AtomicChild : IDisposable
         this.state=state;this.version=version;this.job=job;this.image=image;packageSid=sid;Pid=info.ProcessId;this.network=network;this.gpuWorkload=gpuWorkload;
         process=new(info.Process,true);thread=new(info.Thread,true);initialThreadId=info.ThreadId;
         sessionPreparation=preparation;resourceQualification=resources;this.offlineTls=offlineTls;this.offlineConsole=offlineConsole;
+    }
+    private AtomicChild(ProtectedState state,VerifiedVersion version,OwnedKernelJob job,SessionZeroCreatorChannel.SuspendedRoot root,string image,string sid)
+    {
+        this.state=state;this.version=version;this.job=job;this.image=image;packageSid=sid;
+        Pid=root.Identity.Pid;initialThreadId=root.Identity.Tid;
+        (process,thread)=root.TransferTo(job);
+        offlineConsole=true;independentOfflineConsole=true;
+    }
+    internal static AtomicChild AdoptSessionZeroOfflineConsole(FixedLayout layout,ProtectedState state,VerifiedVersion version,
+        OwnedKernelJob job,SessionZeroCreatorChannel.SuspendedRoot root)
+    {
+        ProtectedState.RequireAdministrator();state.AssertHeld();version.AssertHeld(state);
+        _=job.SessionZeroCreatorSid;
+        job.AssertCreatorSealedBeforeResume();
+        var image=WindowsPathSeal.Child(layout.Version(version.Package.Release),"bin/admin/ProtectionBroker.exe");
+        using var package=new InstallationPackageSid(state);
+        return new(state,version,job,root,image,package.Value);
     }
     internal static AtomicChild CreateCanary(FixedLayout layout,ProtectedState state,VerifiedVersion version,OwnedKernelJob job,InstallationProfileLease profile,
         NetworkProbePlan? network=null,IntPtr output=default,GpuProbePlan? gpu=null)
@@ -649,8 +667,8 @@ internal sealed partial class AtomicChild : IDisposable
         if(offlineConsole)
         {
             if(proxy is not null || sessionPermit is not null)throw WfpNative.Contract("OfflineConsoleRequiresFullQuarantine");
-            KernelJobSeal.SessionObjectDescriptor.AssertSeal(process);
-            KernelJobSeal.SessionObjectDescriptor.AssertSeal(thread);
+            KernelJobSeal.SessionObjectDescriptor.AssertSeal(process,independentOfflineConsole);
+            KernelJobSeal.SessionObjectDescriptor.AssertSeal(thread,independentOfflineConsole);
             AssertNoChildCreation(process);
             job.AssertSingleProcessEverAdmitted();
         }
@@ -665,6 +683,11 @@ internal sealed partial class AtomicChild : IDisposable
         if(!string.Equals(WindowsPathSeal.Canonical(path.ToString()),image,StringComparison.OrdinalIgnoreCase))throw WfpNative.Contract("AtomicCreatedImageMismatch");
         var token=ReadTokenSnapshot(process,true,offlineConsole,out var tokenUser);
         if(!token.IsAppContainer || RequiresLpac && !token.LpacAccessCheckObserved || token.PackageSid!=packageSid || !CapabilityProfile.Matches(token.CapabilityCount,token.Capabilities) || token.IntegritySid!="S-1-16-4096")throw WfpNative.Contract("AtomicTokenBeforeResumeMismatch");
+        if(independentOfflineConsole)
+        {
+            using var host=WindowsIdentity.GetCurrent(TokenAccessLevels.Query);
+            AssertIndependentSessionUser(tokenUser,host.User);
+        }
         var plans=FencePlan.ReadAll(state);if(plans.Count==0)throw WfpNative.Contract("AtomicResumeRequiresRegisteredFence");
         var observations=new List<FenceObservation>();
         var proxyOnly=network?.RequiresProxy==true;
@@ -686,7 +709,7 @@ internal sealed partial class AtomicChild : IDisposable
             ImageSHA256=version.Package.Files.Single(f=>f.Asset.Id=="broker-exe").SHA256,Job=snapshot,Fences=observations,
             Binding="SECURITY_CAPABILITIES_AND_JOB_LIST_AT_CREATION",Status="BEFORE_FIRST_RESUME",NetworkBehaviorQualified=false,
             SessionBindingSHA256=sessionAdmission?.BindingSHA256,
-            Scope=sessionAdmission is not null?"AUTHENTICATED_SESSION_GATEWAY":network?.Kind==NetworkProbeKind.Control?"UNFENCED_OWNED_LOOPBACK_CONTROL":proxyOnly?"COMPILED_IPV4_PROXY_ONLY":gpuWorkload?"FIXED_CUDA_FULL_QUARANTINE":offlineConsole?"FIXED_CONSOLE_FULL_QUARANTINE":
+            Scope=sessionAdmission is not null?"AUTHENTICATED_SESSION_GATEWAY":network?.Kind==NetworkProbeKind.Control?"UNFENCED_OWNED_LOOPBACK_CONTROL":proxyOnly?"COMPILED_IPV4_PROXY_ONLY":gpuWorkload?"FIXED_CUDA_FULL_QUARANTINE":independentOfflineConsole?"FIXED_INDEPENDENT_CONSOLE_FULL_QUARANTINE":offlineConsole?"FIXED_CONSOLE_FULL_QUARANTINE":
                 offlineTls switch {OfflineTlsProbe.Schannel=>"FIXED_SCHANNEL_FULL_QUARANTINE",OfflineTlsProbe.OpenSsl=>"FIXED_OPENSSL_FULL_QUARANTINE",_=>"FULL_QUARANTINE"}};
         state.WriteNew("admission-before-resume-"+job.JobId+".json",JsonSerializer.SerializeToUtf8Bytes(proof));
         OfflineConsoleUserSid=tokenUser;
