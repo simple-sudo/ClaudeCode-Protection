@@ -347,3 +347,34 @@ Job、低完整性 LPAC、确切令牌及继承句柄在放行前全部校验。
 [SID]: https://learn.microsoft.com/en-us/windows-server/identity/ad-ds/manage/understand-security-identifiers
 [LocalService]: https://learn.microsoft.com/en-us/windows/win32/services/localservice-account
 [CreateProcessAsUserW]: https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-createprocessasuserw
+
+### 临时服务创建与原所有者绑定
+
+基线 `e4b5bc6` 上冻结了一个手动启动的 LocalService 临时服务。它预设受限
+服务 SID、单一遍历特权和零自动故障动作。服务应等待原所有者持有并核对
+其进程句柄，再检查自身主令牌、尝试创建始终挂起的零能力 LPAC，并在创建时
+同时绑定 Job、子进程限制和三个管道句柄。本切片不注册 AppContainer
+profile，不变更 WFP，不恢复任何探针线程。
+
+| 一次许可 | 终态与范围 |
+| --- | --- |
+| `3C73A61F…` | 原所有者回读服务配置和固定映像，SCM 接受一次启动。原进程绑定阶段返回 5，未发出开始信号。后续 SCM 显示服务停止，服务退出码 `0x0C0105B4` 对应等待信号超时。未执行令牌自查或挂起准入。 |
+| `B7B5B442…` | 恢复程序核对停止状态、配置、暂存目录权限和映像哈希。服务移除后的首次同步回读未通过，未尝试删除暂存文件。随后普通 SCM 只读复核两次返回 1060，确认服务登记已移除。 |
+| `7D5A3F82…` | 只读确认原服务不存在后，再核对原回执、目录权限及唯一映像字节。通过所持有的文件与目录句柄回收暂存文件和空目录。再次核对服务与目录均不存在。 |
+
+三份回执 SHA-256 按表中顺序为
+`83DA601C63FE8FBB566C56174BFF37F4DEB90617F76673204E10C2C16DB5DD5C`、
+`60B1B90FD77FC7441FB731E677C63444AEACBB675DF18B2E3DC3A3718D09892B`、
+`A2E3EC103F61A8D645291C2F6BF6A14AB69E77FA88629EB964E58E12C660D49B`。
+服务登记和暂存恢复已经闭合。首次操作缺少原进程句柄和正常闭合证明，
+仍保留 FAIL。三份许可均已消耗。各固定工件及普通构建、自身句柄和拒绝
+检查记录留在本机。无外部请求、网络规则变更、产品更新或官方 CLI 执行。
+
+下一候选需要让服务在发布就绪前，仅对自己的新进程对象向已绑定原所有者
+授予查询映像和等待终止的最小权限，并回读该权限变化。原所有者仍须持有
+核对过的真实进程句柄才允许开始。SCM 的删除是延迟完成的，后续回收应将
+单次删除与有限时间的只读确认分开。Windows 进程权限和服务删除契约分别见
+[进程权限]与 [DeleteService]。这两项变更还没有经过服务实测。
+
+[进程权限]: https://learn.microsoft.com/en-us/windows/win32/procthread/process-security-and-access-rights
+[DeleteService]: https://learn.microsoft.com/en-us/windows/win32/api/winsvc/nf-winsvc-deleteservice

@@ -5,6 +5,15 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-08 临时 LocalService 与原所有者绑定
+
+VERIFIED(新建固定服务、配置回读、一次 SCM 启动与服务等待超时)。
+FAIL(原所有者进程句柄绑定返回 5，未发出开始信号)。
+FAIL(第一次恢复的即时 SCM 回读未通过)。
+VERIFIED(后来 SCM 确认服务不存在，另一次精确回收后服务及暂存目录均不存在)。
+服务令牌内容、挂起 LPAC 及其 Job 和管道核验 NOT_RUN。
+[限定实测与原回执摘要](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#临时服务创建与原所有者绑定)
+
 ## 2026-11-08 独立主令牌前置实验
 
 FAIL(首次原所有者令牌阶段拒绝，未调用登录)。
