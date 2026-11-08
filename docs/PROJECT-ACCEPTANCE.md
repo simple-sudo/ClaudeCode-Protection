@@ -5,6 +5,13 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-08 Session 0 服务复制权限实机对照
+
+VERIFIED(原服务观察句柄绑定与终止、服务登记和暂存回收)。
+FAIL(固定原所有者单独打开 `PROCESS_DUP_HANDLE` 返回 5)。具名 Job 替代仅 BUILD
+及普通检查，Session 0 LPAC 交接和恢复执行 NOT_RUN。
+[实机证据](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#复制权限与观察权限的实机对照)
+
 ## 2026-11-08 Session 0 交接的原服务绑定失败
 
 FAIL(原服务绑定，未发开始信号)。VERIFIED(服务等待超时、登记和暂存回收)。
