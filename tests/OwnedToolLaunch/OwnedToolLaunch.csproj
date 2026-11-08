@@ -11,6 +11,8 @@
     <Compile Include="RestrictingSidCases.cs" />
     <Compile Include="OfficialClaudePackageCases.cs" />
     <Compile Include="OfflineConsoleNativeCases.cs" />
+    <EmbeddedResource Include="../../src/ProtectionBootstrap/ApprovedPackage.json" LogicalName="Candidate.ApprovedPackage.json" />
+    <EmbeddedResource Include="../../src/ProtectionBootstrap/InactiveUpdateTransition.json" LogicalName="Candidate.InactiveUpdateTransition.json" />
     <Compile Include="WinsockRegistryScopeCases.cs" />
     <Compile Include="WinsockLeaseCases.cs;SchannelNativeBoundaryCases.cs;OpenSslMemoryCases.cs;ResolverTimingCases.cs;LocalManagementBoundaryCases.cs" />
     <Compile Include="Program.cs;TimeZoneReadCases.cs;GatewayFeedbackCases.cs;GatewayQualificationBoundaryCases.cs;ProjectFailureExecutionCases.cs;ControlFileGateCases.cs;WorkspaceCallerLifetimeCases.cs;MaintenanceIdentityCases.cs;ResetSettingsFileCases.cs;PrivacyProbeClosureCases.cs" />

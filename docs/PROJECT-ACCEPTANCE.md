@@ -5,6 +5,12 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-07 固定离线控制台首次更新拒绝
+
+FAIL(候选 `4b303b84` 的前序版本门禁)。VERIFIED(原所有者退出、纯校验重放)。
+更新未完成，受限载荷与官方 CLI 均 NOT_RUN。
+[拒绝及证据](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#首次候选更新拒绝)
+
 ## 2026-11-07 固定离线控制台自研载荷
 
 INTEGRATED / BUILD(原 Broker、原子创建、运行监督和原 workspace 回收)。

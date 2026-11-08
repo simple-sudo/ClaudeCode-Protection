@@ -290,6 +290,7 @@ if(args[0]=="inactive-transition")
         Require(refused,"inactive selection must refuse changed, unknown or same-package transitions");
     }
         foreach(var (actualRelease,actualManifest) in new[]{
+        ("2ac3cb3914cc4241975eac03ff2a7e96","F4E20BC2B7C3703017A283B479074FFCF2E33A4CEE60389CDA1A389938C83AC6"),
         ("3bd091e1e73441e6a31c1fa804d17e77","ED20BA5A45C5B27B0A1E182CA24D22DBB24FA61E0DFF6AE00279C1FFD0F3A7BB"),
         ("a8d6e45c8ac0456fb44dfa2ac306515c","1E9893FD015B8EA5B7A12C022523737DCD0BF8B6E7A4D4696B86EF45097FAD00"),
         ("f91e053868124246bac0c15420be6991","F5C221D98A181FDBE08E640199695F84BE9FE163764DE11E285786C9F0EE497F"),
@@ -364,7 +365,25 @@ if(args[0]=="inactive-transition")
         var bad=record.DeepClone().AsObject();bad[field]=value;
         DenyExact(()=>ParseTransition(bad.ToJsonString()));
     }
-    Console.WriteLine("PASS 167 inactive-transition checks including exact embedded pair and alternate pinned predecessor refusal; fixture only");return 0;
+    var testAssembly=Assembly.GetExecutingAssembly();
+    using var candidate=testAssembly.GetManifestResourceStream("Candidate.ApprovedPackage.json")!;
+    using var transitionBytes=testAssembly.GetManifestResourceStream("Candidate.InactiveUpdateTransition.json")!;
+    using var candidateDocument=JsonDocument.Parse(candidate);
+    using var transitionDocument=JsonDocument.Parse(transitionBytes);
+    var exact=transitionDocument.RootElement;
+    var actualPrior=exact.GetProperty("PriorRelease").GetString()!;
+    var actualPriorHash=exact.GetProperty("PriorManifestSHA256").GetString()!;
+    var actualNext=candidateDocument.RootElement.GetProperty("Release").GetString()!;
+    candidate.Position=0;
+    var actualNextHash=Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(candidate));
+    transitionBytes.Position=0;
+    var exactBinding=Call(transition,"Read",transitionBytes)!;
+    _=transition.GetMethod("Require",BindingFlags.Instance|BindingFlags.NonPublic)!.Invoke(exactBinding,
+        new object[]{actualPrior,actualPriorHash,actualNext,actualNextHash});
+    Check(actualPrior,actualPriorHash,actualPrior,actualPriorHash,actualNext,actualNextHash);
+    var changedPrior=(actualPriorHash[0]=='A'?"B":"A")+actualPriorHash[1..];
+    Deny(()=>Check(actualPrior,changedPrior,actualPrior,actualPriorHash,actualNext,actualNextHash));
+    Console.WriteLine("PASS historical inactive-transition fixtures plus exact candidate manifest and predecessor guard");return 0;
 }
 if(args[0]=="etw-token-access")
 {

@@ -224,6 +224,9 @@ public static class BootstrapInstaller
             "D21A7D9F39A93E82087062EAD14F49329E7DBDD2743B2DC12DE98CAB6DC691F1"
         }; // Exact reviewed packages expose no launch/admission command.
         private static readonly string[] OneShotAdmissionManifests={
+            // Exact 2ac3cb39 closed the local management-boundary session and
+            // restored its leases. The update still rechecks all live gates.
+            "F4E20BC2B7C3703017A283B479074FFCF2E33A4CEE60389CDA1A389938C83AC6",
             // Exact 3bd091e1 observed a target 403 with trailing bytes
             // and restored the closed original session and its leases.
             "ED20BA5A45C5B27B0A1E182CA24D22DBB24FA61E0DFF6AE00279C1FFD0F3A7BB",
