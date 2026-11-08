@@ -224,6 +224,8 @@ public static class BootstrapInstaller
             "D21A7D9F39A93E82087062EAD14F49329E7DBDD2743B2DC12DE98CAB6DC691F1"
         }; // Exact reviewed packages expose no launch/admission command.
         private static readonly string[] OneShotAdmissionManifests={
+            // Exact 8ad9a646 closed the offline Job after native RNG failure.
+            "F5AE7357F63A1D1D77F35F8975A02EEAE3693179F76A341EACF0BCCCFE1186DC",
             // Exact d7fc0bbf closed the offline Job after the fixture failed.
             "EB3181E3C655524E8A1A03562D82D8B0ABF4DA463912C629FA2089869393CB4D",
             // Exact d8be9fe7 produced a closed offline Job with an

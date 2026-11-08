@@ -16,8 +16,9 @@ internal sealed class OpenSslModuleException(string stage,Exception cause) : IOE
 // pins the bytes it loads and allows only System32 dependency resolution.
 internal sealed class OpenSslModuleLease : IDisposable
 {
-    private static readonly AssetSpec Crypto=PackageAssetCatalog.ForSchema(2).Single(a=>a.Id==PackageAssetCatalog.OpenSslCryptoId);
-    private static readonly AssetSpec Ssl=PackageAssetCatalog.ForSchema(2).Single(a=>a.Id==PackageAssetCatalog.OpenSslLibraryId);
+    private const int Schema=PackageAssetCatalog.OpenSslWindowsEntropySchema;
+    private static readonly AssetSpec Crypto=PackageAssetCatalog.ForSchema(Schema).Single(a=>a.Id==PackageAssetCatalog.OpenSslWindowsCryptoId);
+    private static readonly AssetSpec Ssl=PackageAssetCatalog.ForSchema(Schema).Single(a=>a.Id==PackageAssetCatalog.OpenSslWindowsLibraryId);
     private readonly Module crypto,ssl;
     internal IntPtr CryptoHandle=>crypto.Handle;
     internal IntPtr SslHandle=>ssl.Handle;
@@ -28,8 +29,8 @@ internal sealed class OpenSslModuleLease : IDisposable
     }
     internal static void AssertOwnedPackage(ReviewedPackage package)
     {
-        if(package.SchemaVersion!=2 || !Has(Crypto) || !Has(Ssl))
-            throw WfpNative.Contract("OpenSslRequiresExactInstalledV2Assets");
+        if(package.SchemaVersion!=Schema || !Has(Crypto) || !Has(Ssl))
+            throw WfpNative.Contract("OpenSslRequiresExactWindowsEntropyAssets");
 
         bool Has(AssetSpec spec)=>package.Files.Any(file=>file.Asset==spec && spec.Matches(file.Length,file.SHA256));
     }

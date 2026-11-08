@@ -1,5 +1,12 @@
 # 当前状态与授权摘要
 
+2026-11-07 已从核验的 OpenSSL 3.5.9 上游源码构建 Windows 系统熵源候选。
+两份固定 DLL 通过导入核对，libcrypto 使用 `BCryptGenRandom`。包 v3 保留
+v1/v2 历史读取，候选 `afb95ad1` / `EEE8E79F…` 只接纳现装 `8ad9a646` 的
+精确清单。五产品 Release BUILD0/0，第三方原生编译有警告，范围限固定离线对照。
+22 项工件、146 项构建输入与七个普通回归入口通过。新候选安装和真实受限执行
+NOT_RUN。见[Windows 系统熵源候选](SCHANNEL-FAILURE-BOUNDARY-20261107.md#windows-系统熵源候选)。
+
 2026-11-07 本人批准 `3F0B2E88…` 后，原安装所有者完成 `d7fc0bbf` →
 `8ad9a646` 未激活更新，公开清单 `F5AE7357…` 复核一致。全隔离低完整性 LPAC
 已进入 OpenSSL 原生密钥生成，在 `FIXTURE_KEY / 0x1200006C` 停止，握手未发生。

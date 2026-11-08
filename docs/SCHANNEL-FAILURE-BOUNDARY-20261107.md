@@ -261,3 +261,29 @@ LPAC 进入固定 OpenSSL 密钥生成，在 `FIXTURE_KEY / 0x1200006C` 退出 3
 构建的依据，旧接口在该受限进程内的原始状态仍 UNKNOWN。后续须维持操作系统熵源
 和全隔离，并用新的字节执行原所有者实测。
 [OpenSSL 3.5.9 Windows 熵源实现](https://raw.githubusercontent.com/openssl/openssl/openssl-3.5.9/providers/implementations/rands/seeding/rand_win.c)
+
+## Windows 系统熵源候选
+
+核验上游 OpenSSL 3.5.9 发布源码 SHA-256
+`603F5602E2EEF00D77FBD429D34DCD5822BB301757A1BC9CDB24C670F1EB859A`。
+使用本机 MSVC 19.44.35227、Windows SDK 10.0.26100.0 和工作区便携 Perl 5.42.3。
+按 `VC-WIN64A-HYBRIDCRT`、`_WIN32_WINNT=0x0A00`、`--with-rand-seed=os`
+构建。固定对照禁用配置自动加载、外部 provider 模块和 legacy provider。构建
+没有修改系统安装或向系统安装 DLL。编译报告存在上游警告，未运行上游全套测试。
+原源码、工具包、命令、配置、导入和编译记录保留于本机 `openssl-cng-build-20261107`。
+[OpenSSL 3.5 发布入口](https://www.openssl-library.org/source/)
+
+PE 导入复核确认新 libcrypto 导入 `BCryptGenRandom`，未导入旧版
+`CryptGenRandom` 或 `CryptAcquireContextW`。新 libssl 指向固定的新 libcrypto
+文件名。包 v3 固定新 DLL 的角色、长度与哈希，旧包 v1/v2 和原创建及恢复角色
+继续可读。新受限入口只接受 v3 的运行库，仍不搜索可写目录。
+[Windows 系统随机接口](https://learn.microsoft.com/en-us/windows/win32/api/bcrypt/nf-bcrypt-bcryptgenrandom)
+
+候选 `afb95ad171c4476e9adb8eb610987625` /
+`EEE8E79F82E09C405911523E935DA3537E137446433590D835B55FB8C47F3B2D`
+只接纳 `8ad9a646` / `F5AE7357…`。五产品 Release BUILD0/0，22 项工件、
+146 项构建输入核验一致。原样管理库和 DLL 通过七个普通入口，含 47 项 OpenSSL
+及清单验证和 111 项未激活迁移。普通身份内存握手、双向交换、生产网关首段重放
+和三项拒绝均通过。真实低完整性 LPAC 对 Windows 系统熵源的验证仍 NOT_RUN。
+证据位于本机同一工作目录的 `windows-entropy-exact-candidate` 及
+`windows-entropy-exact-tests`。

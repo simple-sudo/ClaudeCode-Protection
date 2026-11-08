@@ -5,6 +5,12 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-07 OpenSSL Windows 系统熵源候选
+
+INTEGRATED / BUILD(系统随机接口与固定资产包 v3)。VERIFIED(PE 导入、普通身份
+实际内存 TLS、三项拒绝及相关夹具)。第三方原生编译有警告且上游全套测试未运行。
+新候选实际安装及受限运行 NOT_RUN，外部 TLS 与完整产品未验收。
+
 ## 2026-11-07 低完整性 LPAC 的 OpenSSL 随机数初始化实测
 
 VERIFIED(原所有者未激活更新、受限加载、进入原生密钥生成、有序关闭及 Job 归零)。

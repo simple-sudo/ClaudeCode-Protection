@@ -18,6 +18,8 @@ internal static class PackageAssetCatalog
     internal const int MaxManifestBytes = 64 * 1024;
     internal const long MaxAssetBytes = 128L * 1024 * 1024;
     internal const string OpenSslCryptoId="broker-openssl-crypto",OpenSslLibraryId="broker-openssl-ssl";
+    internal const int OpenSslWindowsEntropySchema=3;
+    internal const string OpenSslWindowsCryptoId="broker-openssl-windows-crypto",OpenSslWindowsLibraryId="broker-openssl-windows-ssl";
     internal static readonly IReadOnlyList<AssetSpec> Catalog = Array.AsReadOnly(new[] {
         new AssetSpec("daily-exe", "bin/current/ClaudeProtection.exe") {VerifyBeforeElevation=true},
         new AssetSpec("daily-dll", "bin/current/ClaudeProtection.dll") {VerifyBeforeElevation=true},
@@ -43,10 +45,20 @@ internal static class PackageAssetCatalog
             VerifyBeforeElevation=true,FixedLength=1308920,FixedSHA256="8957182A9C385BFD9F3F790921DE2DDC614CF91F99EDBED4E9E5446A46504E32"
         }
     }).ToArray());
+    private static readonly IReadOnlyList<AssetSpec> WindowsEntropyModules=Array.AsReadOnly(new[] {
+        new AssetSpec(OpenSslWindowsCryptoId,"bin/admin/libcrypto-3-x64.dll") {
+            VerifyBeforeElevation=true,FixedLength=5476352,FixedSHA256="9E7EF27C8F8CD5AD816BD916213F26A8D6D9B3F190EEF24412975A910F20995D"
+        },
+        new AssetSpec(OpenSslWindowsLibraryId,"bin/admin/libssl-3-x64.dll") {
+            VerifyBeforeElevation=true,FixedLength=1412096,FixedSHA256="55F6A6F6E88423DE07E59C641357420F8174EC431674C9678422BBFB2CA39A20"
+        }
+    });
+    private static readonly IReadOnlyList<AssetSpec> WithWindowsEntropy=Array.AsReadOnly(Catalog.Concat(WindowsEntropyModules).ToArray());
     internal static IReadOnlyList<AssetSpec> ForSchema(int schema)=>schema switch {
-        1=>Catalog,2=>WithOfflineOpenSsl,_=>throw new InvalidDataException("Unknown installed package schema")
+        1=>Catalog,2=>WithOfflineOpenSsl,OpenSslWindowsEntropySchema=>WithWindowsEntropy,
+        _=>throw new InvalidDataException("Unknown installed package schema")
     };
     // Map a previously authorized role to a path. Release authorization
     // always uses the exact inventory selected by ForSchema.
-    internal static IReadOnlyList<AssetSpec> KnownAssets=>WithOfflineOpenSsl;
+    internal static IReadOnlyList<AssetSpec> KnownAssets {get;}=Array.AsReadOnly(WithOfflineOpenSsl.Concat(WindowsEntropyModules).ToArray());
 }

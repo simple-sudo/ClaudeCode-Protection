@@ -108,13 +108,16 @@ internal static class OpenSslMemoryCases
             });
             return Call(pinned,new ReadOnlyMemory<byte>(bytes),Convert.ToHexString(SHA256.HashData(bytes)))!;
         }
-        var v1=Assets(1,"Asset");var v2=Assets(2,"Asset");
-        Check(v1.Count==14 && v2.Count==16 && v1.All(a=>assetIds.Add(a!["Asset"]!.GetValue<string>())) &&
-            v2.Take(v1.Count).All(a=>assetIds.Contains(a!["Asset"]!.GetValue<string>())));
-        _=ParseManifest(1,v1);_=ParseManifest(2,v2);checks+=2;
+        var v1=Assets(1,"Asset");var v2=Assets(2,"Asset");var v3=Assets(3,"Asset");
+        Check(v1.Count==14 && v2.Count==16 && v3.Count==16 && v1.All(a=>assetIds.Add(a!["Asset"]!.GetValue<string>())) &&
+            v2.Take(v1.Count).All(a=>assetIds.Contains(a!["Asset"]!.GetValue<string>())) &&
+            v3.Take(v1.Count).All(a=>assetIds.Contains(a!["Asset"]!.GetValue<string>())));
+        _=ParseManifest(1,v1);_=ParseManifest(2,v2);_=ParseManifest(3,v3);checks+=3;
         Reject<InvalidDataException>(()=>ParseManifest(1,v2));
         Reject<InvalidDataException>(()=>ParseManifest(2,v1));
         Reject<InvalidDataException>(()=>ParseManifest(3,v2));
+        Reject<InvalidDataException>(()=>ParseManifest(2,v3));
+        Reject<InvalidDataException>(()=>ParseManifest(4,v3));
         var changed=v2.DeepClone().AsArray();changed[15]!["SHA256"]=new string('B',64);
         Reject<InvalidDataException>(()=>ParseManifest(2,changed));
         changed=v2.DeepClone().AsArray();changed[15]!["Length"]=10;
@@ -127,8 +130,9 @@ internal static class OpenSslMemoryCases
             using var document=JsonDocument.Parse(files.ToJsonString());
             _=Call(stage,document.RootElement,schema,"Id");
         }
-        ReadStage(Assets(1,"Id"),1);ReadStage(Assets(2,"Id"),2);checks+=2;
+        ReadStage(Assets(1,"Id"),1);ReadStage(Assets(2,"Id"),2);ReadStage(Assets(3,"Id"),3);checks+=3;
         Reject<InvalidDataException>(()=>ReadStage(Assets(2,"Id"),1));
+        Reject<InvalidDataException>(()=>ReadStage(Assets(2,"Id"),3));
         Reject<InvalidDataException>(()=>ReadStage(v2,2));
         Console.WriteLine($"PASS {checks} fixed OpenSSL and package compatibility checks. Real TLS and gateway replay in ordinary memory only.");
         return Task.CompletedTask;

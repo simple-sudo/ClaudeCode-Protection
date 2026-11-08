@@ -13,7 +13,8 @@ internal enum CreationRole : uint
     DailyExe=12,DailyDll=13,DailyDeps=14,DailyRuntime=15,DailyReader=16,
     CenterExe=17,CenterDll=18,CenterDeps=19,CenterRuntime=20,
     BrokerExe=21,BrokerDll=22,BrokerDeps=23,BrokerRuntime=24,BrokerLifecycle=25,
-    StateIdentity=26,OwnedJob=27,BrokerOpenSslCrypto=28,BrokerOpenSslLibrary=29
+    StateIdentity=26,OwnedJob=27,BrokerOpenSslCrypto=28,BrokerOpenSslLibrary=29,
+    BrokerOpenSslWindowsCrypto=30,BrokerOpenSslWindowsLibrary=31
 }
 
 // A non-inherited READ_CONTROL-only ACE serves as an object tag. No account,
@@ -57,6 +58,8 @@ internal sealed class CreationTag
         "center-exe"=>CreationRole.CenterExe,"center-dll"=>CreationRole.CenterDll,"center-deps"=>CreationRole.CenterDeps,"center-runtime"=>CreationRole.CenterRuntime,
         "broker-exe"=>CreationRole.BrokerExe,"broker-dll"=>CreationRole.BrokerDll,"broker-deps"=>CreationRole.BrokerDeps,"broker-runtime"=>CreationRole.BrokerRuntime,"broker-lifecycle"=>CreationRole.BrokerLifecycle,
         PackageAssetCatalog.OpenSslCryptoId=>CreationRole.BrokerOpenSslCrypto,PackageAssetCatalog.OpenSslLibraryId=>CreationRole.BrokerOpenSslLibrary,
+        PackageAssetCatalog.OpenSslWindowsCryptoId=>CreationRole.BrokerOpenSslWindowsCrypto,
+        PackageAssetCatalog.OpenSslWindowsLibraryId=>CreationRole.BrokerOpenSslWindowsLibrary,
         _=>throw new InvalidDataException("Unknown creation asset")};
     internal static CreationRole DirectoryRole(string role)=>role switch {
         "versions"=>CreationRole.Versions,"release"=>CreationRole.Release,"bin"=>CreationRole.Bin,"current"=>CreationRole.Current,"center"=>CreationRole.Center,"admin"=>CreationRole.Admin,
