@@ -143,6 +143,7 @@ internal sealed partial class AtomicChild : IDisposable
     private readonly OwnedKernelJob job;
     private readonly SafeProcessHandle process;
     private readonly SafeWaitHandle thread;
+    private readonly uint initialThreadId;
     private readonly string image,packageSid;
     private readonly NetworkProbePlan? network;
     private readonly bool gpuWorkload;
@@ -324,7 +325,8 @@ internal sealed partial class AtomicChild : IDisposable
     private AtomicChild(ProtectedState state,VerifiedVersion version,OwnedKernelJob job,ProcessInfo info,string image,string sid,NetworkProbePlan? network,bool gpuWorkload,ProtectedSession.Preparation? preparation,ProtectedSession.ResourceQualification? resources,OfflineTlsProbe? offlineTls,bool offlineConsole)
     {
         this.state=state;this.version=version;this.job=job;this.image=image;packageSid=sid;Pid=info.ProcessId;this.network=network;this.gpuWorkload=gpuWorkload;
-        process=new(info.Process,true);thread=new(info.Thread,true);sessionPreparation=preparation;resourceQualification=resources;this.offlineTls=offlineTls;this.offlineConsole=offlineConsole;
+        process=new(info.Process,true);thread=new(info.Thread,true);initialThreadId=info.ThreadId;
+        sessionPreparation=preparation;resourceQualification=resources;this.offlineTls=offlineTls;this.offlineConsole=offlineConsole;
     }
     internal static AtomicChild CreateCanary(FixedLayout layout,ProtectedState state,VerifiedVersion version,OwnedKernelJob job,InstallationProfileLease profile,
         NetworkProbePlan? network=null,IntPtr output=default,GpuProbePlan? gpu=null)
@@ -381,7 +383,9 @@ internal sealed partial class AtomicChild : IDisposable
         var inherit=report || console is not null;
         using var package=network?.Kind==NetworkProbeKind.Control?InstallationPackageSid.ForNetworkControl(state):new InstallationPackageSid(state);
         profile.AssertPackage(package);
-        var jobHandle=job.ReserveAtomicAdmission(version);
+        var originalJobHandle=job.ReserveAtomicAdmission(version);
+        using var consoleAssignment=console is null?null:originalJobHandle.DuplicateAssignment();
+        var jobHandle=consoleAssignment??originalJobHandle;
         using var capabilityAttributes=(preparation?.CapabilityProfile??FixedCapabilities(tls is not null)).AllocateAttributes();
         IntPtr attributes=IntPtr.Zero,capabilities=IntPtr.Zero,jobList=IntPtr.Zero,environment=IntPtr.Zero,handles=IntPtr.Zero,packagesPolicy=IntPtr.Zero;
         OfflineConsoleStreams.CreationAttributes? consoleAttributes=null;
@@ -573,6 +577,7 @@ internal sealed partial class AtomicChild : IDisposable
             else if(proxyOnly?!observed.IPv4ProxyOnlyObserved:!observed.FullQuarantineObserved)throw WfpNative.Contract("AtomicResumeRequiresCommittedExpectedFence");
             observations.Add(observed);
         }
+        AssertHeldInitialThread(process,thread,Pid,initialThreadId);
         var proof=new {SchemaVersion=1,state.InstallationId,job.JobId,Pid,CreatedFileTime=created.ToString("X16"),Token=token,
             ExpectedCapabilitiesSHA256=CapabilityProfile.SHA256,ObservedCapabilities=token.Capabilities?.CopyEntries(),
             ImageSHA256=version.Package.Files.Single(f=>f.Asset.Id=="broker-exe").SHA256,Job=snapshot,Fences=observations,
@@ -593,6 +598,13 @@ internal sealed partial class AtomicChild : IDisposable
     {
         return ObserveCanaryExit(network?.Kind==NetworkProbeKind.ProxySession?90000u:network is not null || gpuWorkload?30000u:15000u)
             ??throw new TimeoutException("Finite atomic canary did not exit");
+    }
+    internal static void AssertHeldInitialThread(SafeProcessHandle process,SafeWaitHandle thread,uint pid,uint tid)
+    {
+        if(pid==0 || tid==0 || process.IsClosed || process.IsInvalid || thread.IsClosed || thread.IsInvalid ||
+            GetProcessId(process)!=pid || GetThreadId(thread)!=tid || GetProcessIdOfThread(thread)!=pid ||
+            WaitForSingleObject(process,0)!=0x102 || WaitForInitialThread(thread,0)!=0x102)
+            throw WfpNative.Contract("HeldInitialThreadIdentityOrLifetimeMismatch");
     }
     internal void AssertGpuRuntimeOwner(ProtectedState exactState,VerifiedVersion exactVersion,OwnedKernelJob exactJob)
     {
@@ -1147,6 +1159,9 @@ internal sealed partial class AtomicChild : IDisposable
     [StructLayout(LayoutKind.Sequential)] private struct StartupInfoEx {internal StartupInfo Basic;internal IntPtr Attributes;}
     [StructLayout(LayoutKind.Sequential)] private struct SecurityCapabilities {internal IntPtr Sid,Capabilities;internal uint Count,Reserved;}
     [StructLayout(LayoutKind.Sequential)] private struct ProcessInfo {internal IntPtr Process,Thread;internal uint ProcessId,ThreadId;}
+    [DllImport("kernel32.dll",ExactSpelling=true)] private static extern uint GetThreadId(SafeWaitHandle thread);
+    [DllImport("kernel32.dll",ExactSpelling=true)] private static extern uint GetProcessIdOfThread(SafeWaitHandle thread);
+    [DllImport("kernel32.dll",EntryPoint="WaitForSingleObject",ExactSpelling=true)] private static extern uint WaitForInitialThread(SafeWaitHandle thread,uint milliseconds);
     [DllImport("kernel32.dll",SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)] private static extern bool InitializeProcThreadAttributeList(IntPtr list,int count,int flags,ref nuint size);
     [DllImport("kernel32.dll",SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)] private static extern bool UpdateProcThreadAttribute(IntPtr list,uint flags,IntPtr attribute,IntPtr value,nuint size,IntPtr previous,IntPtr returned);
     [DllImport("kernel32.dll")] private static extern void DeleteProcThreadAttributeList(IntPtr list);

@@ -185,17 +185,30 @@ internal static class OfflineConsoleNativeCases
         var mode=flood?"flood":"normal";
         var value=excluded.SafeWaitHandle.DangerousGetHandle().ToInt64().ToString(CultureInfo.InvariantCulture);
         var command=new StringBuilder($"\"{image}\" offline-console-streams-worker {mode} {value}");
+        var jobType=library.GetType("ProtectionLifecycle.SafeJobHandle",true)!;
+        using var job=(SafeHandle)Activator.CreateInstance(jobType)!;
+        using(var createdJob=new SafeFileHandle(CreateJobObject(IntPtr.Zero,null),ownsHandle:true))
+        {
+            if(createdJob.IsInvalid)throw Error("CreateOrdinaryConsoleFixtureJob");
+            _=Call(typeof(SafeHandle).GetMethod("SetHandle",Instance)!,job,createdJob.DangerousGetHandle());
+            createdJob.SetHandleAsInvalid();
+        }
+        using var assignment=(SafeHandle)Call(jobType.GetMethod("DuplicateAssignment",Instance)!,job)!;
         nuint size=0;
-        _=InitializeProcThreadAttributeList(IntPtr.Zero,2,0,ref size);
+        _=InitializeProcThreadAttributeList(IntPtr.Zero,3,0,ref size);
         if(size is 0 or >65536)throw Error("SizeFixtureAttributeList");
         var attributes=Marshal.AllocHGlobal(checked((int)size));
+        var jobList=IntPtr.Zero;
         ProcessInfo native;
         bool initialized=false;
         try
         {
-            if(!InitializeProcThreadAttributeList(attributes,2,0,ref size))throw Error("CreateFixtureAttributeList");
+            if(!InitializeProcThreadAttributeList(attributes,3,0,ref size))throw Error("CreateFixtureAttributeList");
             initialized=true;
             _=Call(binding.GetType().GetMethod("Bind",Instance)!,binding,attributes);
+            jobList=Marshal.AllocHGlobal(IntPtr.Size);Marshal.WriteIntPtr(jobList,assignment.DangerousGetHandle());
+            if(!UpdateProcThreadAttribute(attributes,0,(IntPtr)0x2000d,jobList,(nuint)IntPtr.Size,IntPtr.Zero,IntPtr.Zero))
+                throw Error("BindFixtureAssignOnlyJob");
             var startup=new StartupEx{Basic=new(){Size=Marshal.SizeOf<StartupEx>(),Flags=0x100,Input=input,Output=output,Error=error},
                 Attributes=attributes};
             var detached=(uint)type.GetField("DetachedCreationFlag",Static)!.GetRawConstantValue()!;
@@ -205,6 +218,7 @@ internal static class OfflineConsoleNativeCases
         finally
         {
             if(initialized)DeleteProcThreadAttributeList(attributes);
+            if(jobList!=IntPtr.Zero)Marshal.FreeHGlobal(jobList);
             Marshal.FreeHGlobal(attributes);
         }
         using var process=new SafeProcessHandle(native.Process,true);
@@ -212,7 +226,14 @@ internal static class OfflineConsoleNativeCases
         try
         {
             var atomic=library.GetType("ProtectionLifecycle.AtomicChild",true)!;
+            Require(IsProcessInJob(process,job,out var member) && member);
             _=Call(atomic.GetMethod("AssertNoChildCreation",Static)!,null,process);
+            var checkInitialThread=atomic.GetMethod("AssertHeldInitialThread",Static)!;
+            _=Call(checkInitialThread,null,process,thread,native.Pid,native.Tid);
+            Refuse<InvalidDataException>(()=>Call(checkInitialThread,null,process,thread,native.Pid,0u));
+            Refuse<InvalidDataException>(()=>Call(checkInitialThread,null,process,thread,(uint)Environment.ProcessId,native.Tid));
+            using(var foreign=new SafeWaitHandle(GetCurrentThread(),ownsHandle:false))
+                Refuse<InvalidDataException>(()=>Call(checkInitialThread,null,process,foreign,native.Pid,GetCurrentThreadId()));
             var tokenArguments=new object?[]{process,false,true,null};
             _=Call(atomic.GetMethod("ReadTokenSnapshot",Static)!,null,tokenArguments);
             using(var identity=WindowsIdentity.GetCurrent())
@@ -226,6 +247,7 @@ internal static class OfflineConsoleNativeCases
             var stdout=Result((Task)captures[0]!);
             var stderr=Result((Task)captures[1]!);
             if(exit!=0)throw new InvalidDataException($"Ordinary console fixture exit {exit}, stderr bytes {stderr.Bytes.Length}");
+            Refuse<InvalidDataException>(()=>Call(checkInitialThread,null,process,thread,native.Pid,native.Tid));
             Require(!stderr.Overflow && stderr.Bytes.AsSpan().SequenceEqual("fixture-stderr\n"u8));
             Require(flood?stdout.Overflow && stdout.Bytes.Length==4096 && stdout.Bytes.All(value=>value==65):
                 !stdout.Overflow && stdout.Bytes.AsSpan().SequenceEqual("fixture-stdout\n"u8));
@@ -292,6 +314,12 @@ internal static class OfflineConsoleNativeCases
     [StructLayout(LayoutKind.Sequential)] private struct ProcessInfo {internal IntPtr Process,Thread;internal uint Pid,Tid;}
     [DllImport("kernel32.dll",SetLastError=true)] private static extern bool InitializeProcThreadAttributeList(IntPtr list,int count,int flags,ref nuint size);
     [DllImport("kernel32.dll")] private static extern void DeleteProcThreadAttributeList(IntPtr list);
+    [DllImport("kernel32.dll",SetLastError=true)] private static extern bool UpdateProcThreadAttribute(IntPtr list,uint flags,
+        IntPtr attribute,IntPtr value,nuint size,IntPtr previous,IntPtr returned);
+    [DllImport("kernel32.dll",EntryPoint="CreateJobObjectW",CharSet=CharSet.Unicode,SetLastError=true)]
+    private static extern IntPtr CreateJobObject(IntPtr attributes,string? name);
+    [DllImport("kernel32.dll",SetLastError=true)] private static extern bool IsProcessInJob(SafeProcessHandle process,SafeHandle job,
+        [MarshalAs(UnmanagedType.Bool)]out bool member);
     [DllImport("kernel32.dll",EntryPoint="CreateProcessW",CharSet=CharSet.Unicode,SetLastError=true)]
     private static extern bool CreateProcess(string image,StringBuilder command,IntPtr processSecurity,IntPtr threadSecurity,bool inherit,
         uint flags,IntPtr environment,string? cwd,ref StartupEx startup,out ProcessInfo info);
@@ -301,4 +329,6 @@ internal static class OfflineConsoleNativeCases
     [DllImport("kernel32.dll",SetLastError=true)] private static extern uint WaitForSingleObject(SafeProcessHandle process,uint milliseconds);
     [DllImport("kernel32.dll",SetLastError=true)] private static extern bool GetExitCodeProcess(SafeProcessHandle process,out uint code);
     [DllImport("kernel32.dll",SetLastError=true)] private static extern bool TerminateProcess(SafeProcessHandle process,uint code);
+    [DllImport("kernel32.dll",ExactSpelling=true)] private static extern IntPtr GetCurrentThread();
+    [DllImport("kernel32.dll",ExactSpelling=true)] private static extern uint GetCurrentThreadId();
 }

@@ -5,6 +5,12 @@
 历史页的“当前/待执行/暂停/DELIVERABLE”按段落日期及限定范围解释，不是今天的状态或操作许可。
 不在本页复制当前安装和授权摘要。
 
+## 2026-11-08 挂起进程交接前置检查
+
+原 Broker 恢复前检查原线程，离线 Job 创建改用仅分配句柄。普通实际对照证明
+对象 owner 权限限制和跨进程的最小 Job 交接。尚未安装或接入 LocalService 实时交接。
+[证据范围](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#原-broker-接收挂起进程的前置检查)
+
 ## 2026-11-08 可信 LocalService 创建者与精确恢复
 
 可信创建者从独立账户取得挂起低完整性零能力 LPAC，原 Job 与 profile 闭合。

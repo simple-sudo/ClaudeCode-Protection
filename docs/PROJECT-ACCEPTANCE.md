@@ -5,6 +5,13 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-08 挂起进程交接前置检查
+
+INTEGRATED / BUILD / VERIFIED(普通 Windows 原 Job 分配权限和进程/线程对应检查)。
+VERIFIED(普通账户 Owner Rights 对照、跨进程 Job 分配与最后句柄关闭)。真实
+Session 0 交接、服务权限密封、受限自研恢复及官方 Claude 均 NOT_RUN。
+[证据范围](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#原-broker-接收挂起进程的前置检查)
+
 ## 2026-11-08 可信 LocalService 创建者与精确恢复
 
 VERIFIED(独立 LocalService 低完整性零能力 LPAC 的挂起原子创建、实际令牌与

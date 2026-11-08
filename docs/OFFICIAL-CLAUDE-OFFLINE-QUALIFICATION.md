@@ -528,3 +528,31 @@ Job、三管道和子进程限制尝试一次低完整性零能力 LPAC 挂起�
 固定自研载荷并实测实际用户 SID、替代身份来源、开发正控制及有序闭合。
 现有产品仍未采用新身份。既有 SID 暴露保持 FAIL，真实运行、完整 L3 和官方
 CLI 均 NOT_RUN。
+
+### 原 Broker 接收挂起进程的前置检查
+
+原 `AtomicChild` 在写入恢复前证据、消费许可及调用 `ResumeThread` 之前，
+对持有的进程和初始线程句柄回读 PID、TID、线程所属进程和两个对象的存活。
+离线控制台在原 Job 的一次创建资格下只借用 `JOB_OBJECT_ASSIGN_PROCESS`
+句柄，原 Broker 保留查询、终止和规则管理。现有 Job 规则、工作区、WFP 和
+profile 归属流程保持原有校验，未开启外部创建者入口。
+
+普通 Windows 的两个实际对照已通过。第一个以普通账号作为两个自有挂起对象
+的 owner。只含 SYSTEM 和 Administrators 允许项时，同账户能打开两个对象的
+`WRITE_DAC`。加入 Owner Rights 限制后两个打开均返回 5，同时拒绝外部进程
+句柄复制与写内存、线程恢复与改上下文请求，创建者原持有句柄仍能核验并结束原
+Job。该限制的 Windows 语义见 [Owner Rights SID](https://learn.microsoft.com/en-us/windows-server/identity/ad-ds/manage/understand-security-identifiers)。
+
+第二个对照使用两个真实普通进程。所有者只把 Job 分配句柄复制到确切的创建者，
+其 Job 查询返回 5，原子创建仍将挂起载荷纳入原 Job。创建者关闭副本后返回
+待核验句柄，原所有者从实际持有创建者进程复制限权进程和线程句柄并交叉核对。
+关闭原所有者最后的 Job 句柄后，子进程终止，创建者观察到并正常退出。两个
+对照的原始结果在 `work/independent-creator-handoff-20261108-01/`，摘要分别为
+`B73468352DE90784DEBDDE08BD95FD8523CB1CF838B8E88FE97F3911A7D06B58` 和
+`AA65FB4601CF00D19349051945F93B81E6F76C6CCE07CBBE68D563058CFD013F`。
+
+五产品 Release 0 警告 0 错误，11 个普通回归入口通过，含生产 Job 分配句柄
+绑定、真实同进程线程及其他进程线程和终态拒绝。两个 native 对照属于普通同 Windows
+会话，不证明 Session 0 传递、LocalService 对象密封或实际 LPAC 运行。后续
+交接需在原 Broker 持有 WFP、Job、映像和工作区时完成，并在恢复前验证精确
+服务身份、不可重放的本机通道、交接副本已关闭和实际令牌。产品未安装，官方 CLI 未执行。
