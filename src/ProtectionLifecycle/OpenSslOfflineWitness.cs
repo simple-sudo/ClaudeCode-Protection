@@ -1,5 +1,3 @@
-using System.Security.Cryptography;
-using System.Security.Cryptography.X509Certificates;
 using System.Text.Json;
 using System.Threading.Channels;
 using ClaudeCodeProtection.Security;
@@ -23,32 +21,20 @@ internal sealed record OpenSslOfflineWitness(int SchemaVersion,string SessionId,
         {
             using var modules=ordinaryFixture?OpenSslModuleLease.OpenForOrdinaryFixture():OpenSslModuleLease.OpenForInstalledWorker(release??"");
             stage="FIXTURE";
-            using var rootKey=RSA.Create(2048);
-            using var root=MakeRoot(rootKey,"CN=Fixed local TLS test root");
-            using var wrongKey=RSA.Create(2048);
-            using var wrong=MakeRoot(wrongKey,"CN=Independent local TLS test root");
-            using var leafKey=RSA.Create(2048);
-            var leaf=new CertificateRequest("CN=deliberate-mismatch.invalid",leafKey,HashAlgorithmName.SHA256,RSASignaturePadding.Pkcs1);
-            var san=new SubjectAlternativeNameBuilder();
-            san.AddDnsName(SessionProxy.Target);leaf.CertificateExtensions.Add(san.Build());
-            leaf.CertificateExtensions.Add(new X509BasicConstraintsExtension(false,false,0,true));
-            leaf.CertificateExtensions.Add(new X509KeyUsageExtension(X509KeyUsageFlags.DigitalSignature,true));
-            var now=DateTimeOffset.UtcNow;
-            using var issued=leaf.Create(root,now.AddMinutes(-5),now.AddHours(1),RandomNumberGenerator.GetBytes(16));
-            var privateKey=leafKey.ExportPkcs8PrivateKey();
-            try
-            {
-                using var deadline=new CancellationTokenSource(TimeSpan.FromSeconds(7));
-                var wire=new Fixture(modules,issued.RawData,privateKey);
-                stage="EXCHANGE";wire.Exchange(SessionProxy.Target,root.RawData,null,deadline.Token).GetAwaiter().GetResult();exchanged=true;
-                stage="WRONG_NAME";wrongName=wire.Exchange("deliberate-mismatch.invalid",root.RawData,62,deadline.Token).GetAwaiter().GetResult();
-                stage="UNKNOWN_ROOT";wrongRoot=wire.Exchange(SessionProxy.Target,wrong.RawData,20,deadline.Token).GetAwaiter().GetResult();
-                stage="EARLY_EOF";wire.CheckEarlyEof(root.RawData,deadline.Token).GetAwaiter().GetResult();eof=true;
-            }
-            finally{CryptographicOperations.ZeroMemory(privateKey);}
+            using var identity=new OpenSslOfflineIdentity(modules);
+            using var deadline=new CancellationTokenSource(TimeSpan.FromSeconds(7));
+            var wire=new Fixture(modules,identity);
+            stage="EXCHANGE";wire.Exchange(SessionProxy.Target,identity.TrustedRoot,null,deadline.Token).GetAwaiter().GetResult();exchanged=true;
+            stage="WRONG_NAME";wrongName=wire.Exchange("deliberate-mismatch.invalid",identity.TrustedRoot,62,deadline.Token).GetAwaiter().GetResult();
+            stage="UNKNOWN_ROOT";wrongRoot=wire.Exchange(SessionProxy.Target,identity.UntrustedRoot,20,deadline.Token).GetAwaiter().GetResult();
+            stage="EARLY_EOF";wire.CheckEarlyEof(identity.TrustedRoot,deadline.Token).GetAwaiter().GetResult();eof=true;
             stage="MODULE_RELEASE";
         }
         catch(OpenSslModuleException error)when(stage=="MODULES")
+        {
+            return Result(error.Stage,error.ErrorCode);
+        }
+        catch(OpenSslFixtureException error)when(stage=="FIXTURE")
         {
             return Result(error.Stage,error.ErrorCode);
         }
@@ -58,7 +44,7 @@ internal sealed record OpenSslOfflineWitness(int SchemaVersion,string SessionId,
         }
         return Result(null,null);
 
-        OpenSslOfflineWitness Result(string? failure,int? error)=>new(2,Identifiers.Hex32(session),Environment.ProcessId,start,
+        OpenSslOfflineWitness Result(string? failure,int? error)=>new(3,Identifiers.Hex32(session),Environment.ProcessId,start,
             DateTime.UtcNow.ToFileTimeUtc(),exchanged,wrongName,wrongRoot,eof,failure,error);
     }
 
@@ -69,7 +55,7 @@ internal sealed record OpenSslOfflineWitness(int SchemaVersion,string SessionId,
         StrictJson.Fields(json.RootElement,"SchemaVersion","SessionId","Pid","StartedFileTime","EndedFileTime","ExchangeVerified",
             "WrongNameError","UnknownRootError","EofDenied","FailureStage","ErrorCode");
         var report=json.RootElement.Deserialize<OpenSslOfflineWitness>()??throw new InvalidDataException("Offline TLS report absent");
-        if(report.SchemaVersion is not (1 or 2) || report.SessionId!=Identifiers.Hex32(session) || report.Pid<=0 || (uint)report.Pid!=pid ||
+        if(report.SchemaVersion is not (1 or 2 or 3) || report.SessionId!=Identifiers.Hex32(session) || report.Pid<=0 || (uint)report.Pid!=pid ||
             createdFileTime<=0 || report.StartedFileTime<createdFileTime || report.EndedFileTime<report.StartedFileTime ||
             report.EndedFileTime-createdFileTime>TimeSpan.FromSeconds(30).Ticks)
             throw new InvalidDataException("Offline TLS report actor differs");
@@ -78,7 +64,8 @@ internal sealed record OpenSslOfflineWitness(int SchemaVersion,string SessionId,
             if(exit!=0)throw new InvalidDataException("Offline TLS completion exit differs");
             return report;
         }
-        var stage=report.SchemaVersion==2 && OpenSslModuleLease.IsReportedStage(report.FailureStage)?0:Array.IndexOf(Stages,report.FailureStage);
+        var stage=report.SchemaVersion>=2 && OpenSslModuleLease.IsReportedStage(report.FailureStage)?0:
+            report.SchemaVersion==3 && OpenSslFixtureException.IsReportedStage(report.FailureStage)?1:Array.IndexOf(Stages,report.FailureStage);
         if(exit!=3 || stage<0 || report.ErrorCode is null || report.ExchangeVerified!=(stage>2) ||
             report.WrongNameError!=(stage>3?62:(int?)null) || report.UnknownRootError!=(stage>4?20:(int?)null) ||
             report.EofDenied!=(stage>5))
@@ -86,16 +73,7 @@ internal sealed record OpenSslOfflineWitness(int SchemaVersion,string SessionId,
         return report;
     }
 
-    private static X509Certificate2 MakeRoot(RSA key,string subject)
-    {
-        var request=new CertificateRequest(subject,key,HashAlgorithmName.SHA256,RSASignaturePadding.Pkcs1);
-        request.CertificateExtensions.Add(new X509BasicConstraintsExtension(true,false,0,true));
-        request.CertificateExtensions.Add(new X509KeyUsageExtension(X509KeyUsageFlags.KeyCertSign,true));
-        var now=DateTimeOffset.UtcNow;
-        return request.CreateSelfSigned(now.AddHours(-1),now.AddHours(2));
-    }
-
-    private sealed class Fixture(OpenSslModuleLease modules,byte[] certificate,byte[] privateKey)
+    private sealed class Fixture(OpenSslModuleLease modules,OpenSslOfflineIdentity identity)
     {
         private static readonly byte[] Request={19,43,71},Reply={89,53,11};
         private OpenSslMemoryConnection Client(Stream wire,string host,byte[] anchor)
@@ -137,7 +115,7 @@ internal sealed record OpenSslOfflineWitness(int SchemaVersion,string SessionId,
                     using var replay=expectedError is null?
                         await SessionTunnel.RequireTlsClientHelloAsync(serverWire,host,()=>exchange.Token.ThrowIfCancellationRequested(),exchange.Token):null;
                     using var peer=OpenSslMemoryConnection.CreateOfflineFixturePeer(modules.SslHandle,modules.CryptoHandle,
-                        replay??serverWire,certificate,privateKey);
+                        replay??serverWire,identity);
                     await peer.AuthenticateAsync(exchange.Token);
                     var request=new byte[Request.Length];
                     if(await peer.ReadAsync(request,exchange.Token)!=Request.Length || !request.AsSpan().SequenceEqual(Request))

@@ -10,6 +10,7 @@ namespace ProtectionLifecycle;
 internal sealed class OpenSslMemoryConnection : IDisposable
 {
     private const int MaxWireBytes=128*1024, BufferBytes=4096, WantRead=2;
+    internal const ulong NoLoadConfig=0x80;
     private readonly Native api;
     private readonly Stream wire;
     private readonly byte[] buffer=new byte[BufferBytes];
@@ -23,16 +24,16 @@ internal sealed class OpenSslMemoryConnection : IDisposable
         :this(sslModule,cryptoModule,wire,host,trustAnchor,null){}
 
     internal static OpenSslMemoryConnection CreateOfflineFixturePeer(IntPtr sslModule,IntPtr cryptoModule,Stream wire,
-        byte[] certificate,byte[] privateKey)
-        =>new(sslModule,cryptoModule,wire,null,certificate,privateKey);
+        OpenSslOfflineIdentity identity)
+        =>new(sslModule,cryptoModule,wire,null,null,identity);
 
-    private OpenSslMemoryConnection(IntPtr sslModule,IntPtr cryptoModule,Stream wire,string? host,byte[] certificate,byte[]? privateKey)
+    private OpenSslMemoryConnection(IntPtr sslModule,IntPtr cryptoModule,Stream wire,string? host,byte[]? anchor,OpenSslOfflineIdentity? identity)
     {
         if(!OperatingSystem.IsWindows() || RuntimeInformation.ProcessArchitecture!=Architecture.X64)
             throw new PlatformNotSupportedException("Fixed OpenSSL Windows x64 ABI required");
-        if(certificate.Length is <1 or >16384 || (host is null && privateKey is not {Length:>=1 and <=16384}) ||
-            host is not null && (host.Length is <1 or >253 || Uri.CheckHostName(host)!=UriHostNameType.Dns ||
-            !host.All(c=>char.IsAsciiLetterOrDigit(c) || c is '-' or '.')))
+        if(host is null?identity is null:
+            anchor is not {Length:>=1 and <=16384} || host.Length is <1 or >253 || Uri.CheckHostName(host)!=UriHostNameType.Dns ||
+            !host.All(c=>char.IsAsciiLetterOrDigit(c) || c is '-' or '.'))
             throw new InvalidDataException("Fixed TLS name or trust anchor refused");
         api=new(sslModule,cryptoModule);
         this.wire=wire;
@@ -41,7 +42,7 @@ internal sealed class OpenSslMemoryConnection : IDisposable
         {
             // OPENSSL_INIT_NO_LOAD_CONFIG. No default trust file, CA path,
             // provider search override or verification callback is installed.
-            Check(api.Init(0x80,IntPtr.Zero)==1,"INIT");
+            Check(api.Init(NoLoadConfig,IntPtr.Zero)==1,"INIT");
             context=api.ContextNew(client?api.ClientMethod():api.ServerMethod());
             Check(context!=IntPtr.Zero,"CONTEXT");
             Check(api.ContextControl(context,123,0x0303,IntPtr.Zero)==1 &&
@@ -51,9 +52,13 @@ internal sealed class OpenSslMemoryConnection : IDisposable
             if(client)
             {
                 api.ContextVerify(context,1,IntPtr.Zero); // SSL_VERIFY_PEER
-                AddTrustAnchor(certificate);
+                AddTrustAnchor(anchor!);
             }
-            else SetFixtureCertificate(certificate,privateKey!);
+            else
+            {
+                Check(api.UseCertificate(context,identity!.Certificate)==1,"FIXTURE_CERTIFICATE");
+                Check(api.UsePrivateKey(context,identity.Key)==1 && api.CheckPrivateKey(context)==1,"FIXTURE_KEY_BINDING");
+            }
             ssl=api.SslNew(context);
             Check(ssl!=IntPtr.Zero,"SESSION");
             if(host is not null)ConfigureClient(host);
@@ -113,24 +118,6 @@ internal sealed class OpenSslMemoryConnection : IDisposable
             finally{if(certificate!=IntPtr.Zero)api.FreeCertificate(certificate);}
         }
         finally{Marshal.FreeHGlobal(allocated);}
-    }
-
-    private void SetFixtureCertificate(byte[] certificate,byte[] derKey)
-    {
-        Check(api.UseCertificate(context,certificate.Length,certificate)==1,"FIXTURE_CERTIFICATE");
-        var pinned=GCHandle.Alloc(derKey,GCHandleType.Pinned);
-        try
-        {
-            var cursor=pinned.AddrOfPinnedObject();
-            var key=api.DecodePrivateKey(IntPtr.Zero,ref cursor,derKey.Length);
-            try
-            {
-                Check(key!=IntPtr.Zero && cursor==pinned.AddrOfPinnedObject()+derKey.Length,"FIXTURE_KEY");
-                Check(api.UsePrivateKey(context,key)==1 && api.CheckPrivateKey(context)==1,"FIXTURE_KEY_BINDING");
-            }
-            finally{if(key!=IntPtr.Zero)api.FreePrivateKey(key);}
-        }
-        finally{pinned.Free();}
     }
 
     private async Task<int> OperateAsync(Func<int> step,string stage,CancellationToken cancel,bool authenticate=false,int? requiredLength=null)
@@ -233,23 +220,21 @@ internal sealed class OpenSslMemoryConnection : IDisposable
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)] internal delegate int Error(IntPtr ssl,int result);
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)] internal delegate IntPtr Decode(IntPtr previous,ref IntPtr cursor,int length);
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)] internal delegate int Io(IntPtr owner,[In,Out] byte[] bytes,int count);
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)] internal delegate int UseDer(IntPtr owner,int count,byte[] bytes);
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)] internal delegate nuint SizeOn(IntPtr owner);
 
         internal readonly InitCall Init;
         internal readonly PointerCall ClientMethod,ServerMethod,BioMemory;
         internal readonly PointerOn ContextNew,SslNew,CertStore,VerifyParameters,BioNew;
-        internal readonly VoidOn ContextFree,SslFree,FreeCertificate,FreePrivateKey,ConnectState,AcceptState;
+        internal readonly VoidOn ContextFree,SslFree,FreeCertificate,ConnectState,AcceptState;
         internal readonly Control ContextControl,SslControl;
         internal readonly Verify ContextVerify;
         internal readonly Options SetContextOptions;
-        internal readonly Pair SetHost,AddCertificate,UsePrivateKey;
-        internal readonly UseDer UseCertificate;
+        internal readonly Pair SetHost,AddCertificate,UseCertificate,UsePrivateKey;
         internal readonly SetFlags SetHostFlags;
         internal readonly Triple SetBio;
         internal readonly IntOn Handshake,VerifyResult,BioFree,CheckPrivateKey;
         internal readonly Error GetError;
-        internal readonly Decode DecodeCertificate,DecodePrivateKey;
+        internal readonly Decode DecodeCertificate;
         internal readonly Io BioRead,BioWrite,Read,Write;
         internal readonly SizeOn BioPending;
         internal readonly VoidCall ClearErrors;
@@ -272,7 +257,7 @@ internal sealed class OpenSslMemoryConnection : IDisposable
             SslControl=Bind<Control>(ssl,"SSL_ctrl");
             ConnectState=Bind<VoidOn>(ssl,"SSL_set_connect_state");
             AcceptState=Bind<VoidOn>(ssl,"SSL_set_accept_state");
-            UseCertificate=Bind<UseDer>(ssl,"SSL_CTX_use_certificate_ASN1");
+            UseCertificate=Bind<Pair>(ssl,"SSL_CTX_use_certificate");
             UsePrivateKey=Bind<Pair>(ssl,"SSL_CTX_use_PrivateKey");
             CheckPrivateKey=Bind<IntOn>(ssl,"SSL_CTX_check_private_key");
             SetBio=Bind<Triple>(ssl,"SSL_set_bio");
@@ -283,8 +268,6 @@ internal sealed class OpenSslMemoryConnection : IDisposable
             Write=Bind<Io>(ssl,"SSL_write");
             SetHostFlags=Bind<SetFlags>(crypto,"X509_VERIFY_PARAM_set_hostflags");
             DecodeCertificate=Bind<Decode>(crypto,"d2i_X509");
-            DecodePrivateKey=Bind<Decode>(crypto,"d2i_AutoPrivateKey");
-            FreePrivateKey=Bind<VoidOn>(crypto,"EVP_PKEY_free");
             AddCertificate=Bind<Pair>(crypto,"X509_STORE_add_cert");
             FreeCertificate=Bind<VoidOn>(crypto,"X509_free");
             BioMemory=Bind<PointerCall>(crypto,"BIO_s_mem");

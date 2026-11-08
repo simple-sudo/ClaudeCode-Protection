@@ -34,7 +34,7 @@ internal static class OpenSslMemoryCases
         Reject<InvalidDataException>(()=>Read(raw.Insert(1,"\"SchemaVersion\":1,"),0));
         var valid=JsonNode.Parse(raw)!.AsObject();
         foreach(var (field,value) in new (string,JsonNode?)[]{
-            ("Pid",Environment.ProcessId+1),("SchemaVersion",3),("SessionId",new string('b',32)),("StartedFileTime",before-1),
+            ("Pid",Environment.ProcessId+1),("SchemaVersion",4),("SessionId",new string('b',32)),("StartedFileTime",before-1),
             ("WrongNameError",0),("UnknownRootError",null),("EofDenied",false),("FailureStage","WRONG_NAME"),("Unreviewed",true)})
         {
             var invalid=valid.DeepClone().AsObject();invalid[field]=value;
@@ -45,7 +45,7 @@ internal static class OpenSslMemoryCases
         Check(!Complete(Read(failure.ToJsonString(),3)));
         Reject<InvalidDataException>(()=>Read(failure.ToJsonString(),0));
         var wrongImage=JsonNode.Parse(JsonSerializer.Serialize(Call(observe,id,false,id),type))!.AsObject();
-        Check(wrongImage["SchemaVersion"]!.GetValue<int>()==2 &&
+        Check(wrongImage["SchemaVersion"]!.GetValue<int>()==3 &&
             wrongImage["FailureStage"]!.GetValue<string>()=="MODULE_IMAGE" && !Complete(Read(wrongImage.ToJsonString(),3)));
         var historical=wrongImage.DeepClone().AsObject();historical["SchemaVersion"]=1;
         Reject<InvalidDataException>(()=>Read(historical.ToJsonString(),3));
@@ -54,6 +54,10 @@ internal static class OpenSslMemoryCases
         wrongImage["FailureStage"]="MODULE_SSL_LOAD";
         Check(!Complete(Read(wrongImage.ToJsonString(),3)));
         wrongImage["FailureStage"]="MODULE_UNKNOWN_LOAD";
+        Reject<InvalidDataException>(()=>Read(wrongImage.ToJsonString(),3));
+        wrongImage["FailureStage"]="FIXTURE_KEY";
+        Check(!Complete(Read(wrongImage.ToJsonString(),3)));
+        wrongImage["SchemaVersion"]=2;
         Reject<InvalidDataException>(()=>Read(wrongImage.ToJsonString(),3));
 
         var lease=library.GetType("ProtectionLifecycle.OpenSslModuleLease",true)!;

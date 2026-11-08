@@ -5,6 +5,17 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-07 OpenSSL 内存证书候选
+
+INTEGRATED / BUILD(固定 OpenSSL 在内存生成临时密钥和证书，v3 细分回报)。
+VERIFIED(普通身份实际内存握手、双向加密交换及三类拒绝)。受限执行 NOT_RUN。
+
+## 2026-11-07 第二次全隔离 OpenSSL 实测
+
+VERIFIED(未激活更新、低完整性 LPAC 读取并映射两份固定 DLL、原所有者关闭)。
+FAIL(证书准备 `FIXTURE / 0x8007000E`)。内部失败调用 UNKNOWN，受限握手、外部
+网络和整机均未验收。[实测](SCHANNEL-FAILURE-BOUNDARY-20261107.md#第二次全隔离实测)
+
 ## 2026-11-07 受限 OpenSSL 映像绑定和分段回报
 
 INTEGRATED / BUILD(发布版本、映像绑定和分段回报)。VERIFIED(普通身份的原样

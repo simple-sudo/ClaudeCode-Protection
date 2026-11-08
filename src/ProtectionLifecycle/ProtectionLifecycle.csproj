@@ -18,7 +18,7 @@
     <Compile Include="AtomicAdmission.cs" />
     <Compile Include="SchannelAcquisition.cs;OfflineTlsQualification.cs" />
     <Compile Include="OpenSslMemoryConnection.cs" />
-    <Compile Include="OpenSslOfflineWitness.cs;OpenSslModuleLease.cs" />
+    <Compile Include="OpenSslOfflineWitness.cs;OpenSslOfflineIdentity.cs;OpenSslModuleLease.cs" />
     <Compile Include="TokenCapabilitySnapshot.cs" />
     <Compile Include="LpacCapabilityProfile.cs" />
     <Compile Include="GatewayCapabilityContent.cs" />

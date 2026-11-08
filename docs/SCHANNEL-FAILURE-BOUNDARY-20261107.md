@@ -208,3 +208,35 @@ Winsock 租约、socket 或外部对端。回报绑定会话、原进程 PID、�
 和清单验证、97 项迁移验证。普通身份已实测内存握手和三类拒绝，路径绑定及回报
 验证由夹具覆盖。候选安装和低完整性 LPAC 装载尚未执行。证据留在本机同一工作
 目录的 `module-binding-exact-candidate` 及 `module-binding-exact-tests`。
+
+## 第二次全隔离实测
+
+2026-11-08 00:38:47–00:39:18Z，本人批准 `8F30C4FF…`，按冻结的 62 项输入执行
+一次。安装回执确认 `d8be9fe7` → `d7fc0bbf` 为 INACTIVE。低完整性 LPAC 子进程
+恢复后通过两份固定 DLL 的读取、摘要及映射校验，在 `FIXTURE / 0x8007000E` 停止。
+子进程退出 3，没有 TLS 握手。返回值在 Windows 中定义为 E_OUTOFMEMORY。
+实际失败调用及内部原因 UNKNOWN。[Microsoft HRESULT 表](https://learn.microsoft.com/windows/win32/seccrypto/common-hresult-values)
+
+隔离和 Job 停止刻度均为 219 ms，原所有者确认准入关闭、原 Job 归零和停止错误 0。
+操作器十处权限观测一致，三份获批回执独立核验 SHA-256
+`36EB187DD50A4494E929B0EA1C02F21AEC7A8D5585A9F567BB658B251F8FD943`。
+公共 Application 时间窗零项，BFE 和 AV Running，完整厂商覆盖 UNKNOWN。
+许可已消耗。证据在 `work/openssl-owner-20261107-01/operation-module-binding-once`。
+没有外部连接、Winsock 租约或官方 CLI 执行。
+
+## 内存证书候选
+
+固定 OpenSSL 3.5.9 在子进程内生成 Ed25519 密钥、两个独立根和一份叶证书。
+私钥通过同进程原生对象交给内存 TLS 对端，根证书以有界 DER 交给客户端。
+不调用 .NET 的 Windows 证书准备链，不注册系统证书或密钥，不加载配置或证书
+路径。客户端验证原规则仍适用，回报 v3 分辨密钥、证书、扩展、签名及编码错误，
+保留 v1/v2 读取。[OpenSSL 证书签名](https://docs.openssl.org/3.5/man3/X509_sign/)
+
+候选 `8ad9a646a9f846a397c6c677def87e90` /
+`F5AE7357F63A1D1D77F35F8975A02EEAE3693179F76A341EACF0BCCCFE1186DC`
+只接纳 `d7fc0bbf` / `EB3181E3…`。五产品 Release BUILD0/0，22 项工件及
+146 项构建输入前后复核一致。候选原样管理库和 DLL 通过七个普通入口。42 项
+OpenSSL 检查包含真实内存握手、加密请求与响应、生产网关首段重放、错名 62、
+未知根 20、提前 EOF；另有 104 项精确迁移夹具。证据在本机同一工作目录的
+`native-fixture-exact-candidate` 及 `native-fixture-exact-tests`。
+候选安装与受限执行 NOT_RUN，需按当前工件重新审查一次。
