@@ -178,6 +178,7 @@ internal static class OfflineConsoleQualification
                 AtomicChild? child=null;
                 ProtectionRuntimeLease? runtime=null;
                 uint childPid=0;
+                SecurityIdentifier? suspendedUser=null;
                 (Task<OfflineConsoleOutput> Output,Task<OfflineConsoleOutput> Error)? capture=null;
                 try
                 {
@@ -187,6 +188,7 @@ internal static class OfflineConsoleQualification
                     runtime=ProtectionRuntimeLease.ForFixedOfflineConsole(state,version,job,fences,child,id);
                     runtime.Activate(10000);
                     _=child.ResumeQuarantined();resumed=true;
+                    suspendedUser=child.OfflineConsoleUserSid;
                     do
                     {
                         runtime.AssertHealthy();
@@ -255,7 +257,7 @@ internal static class OfflineConsoleQualification
                 {
                     AssertWorkspace(workspace,state);
                     storage.AssertHeld(workspace);
-                    hostIdentity=OfflineConsoleHostIdentity.Read(workspace.Path,id,childPid).Seal(state,version,job.JobId,hostIdentityReference);
+                    hostIdentity=OfflineConsoleHostIdentity.Read(workspace.Path,id,childPid).Seal(state,version,job.JobId,hostIdentityReference,suspendedUser);
                     workspaceMatched=ReadFixedFile(workspace.Path,OutputLeaf,ExpectedFile);
                     tempMatched=ReadFixedFile(storage.View.Temp,TempLeaf,ExpectedTempFile);
                 }

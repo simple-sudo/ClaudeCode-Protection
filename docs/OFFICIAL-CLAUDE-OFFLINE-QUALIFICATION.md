@@ -401,3 +401,32 @@ Session 0 的 LocalService 主令牌、受限服务 SID、已启用的服务组�
 也确认两者不存在。回执摘要
 `4633A0745FAC10B93F4BA119696AD345E692E459386FEDBB465A74F7A8D5D10F`。
 许可已消耗。无官方 CLI 执行、产品安装、外部请求或网络规则变更。
+
+### 普通账户的 profile 前后对照
+
+在同一台 Windows 11 主机上另建自研对照。保持映像、工作目录、Job、三根
+继承管道及禁止创建子进程策略不变。普通挂起创建在持有目录属性句柄或持有
+删除权限的目录句柄时均成功。加入未注册的包 SID 与 LPAC opt-out 后，两次
+均返回 2。此轮所有成功创建的子进程均由各自的原 Job 结束并清零。
+
+随后固定同一个新包 SID，在相同目录和参数下做前后对照。仅派生 SID 时
+`CreateProcessW` 返回 2。用普通账户创建新 profile、核对返回 SID 及 Windows
+映射路径后，同一调用成功。核对挂起进程的 AppContainer 标志、包 SID 和原
+Job 成员资格。线程从未恢复，原 Job 终止回执及单累计成员、零活动成员通过。
+`DeleteAppContainerProfile` 返回成功，原存储根不存在。未独立确认注册记录
+消失。原日志留在 `work/identity-creation-20261108-01/`，两份结果摘要分别为
+`3559CDBB750CFF779A6D5AAC3B53A355012A75161FBAD1DBC1652D0BB3024BCF` 和
+`EDB8F2BA6BC7E5297FC06E50EDCD0DA0BDAAC6933B934FDC5A874B94DA6F4A0E`。
+
+这为普通身份确认了 profile 的影响，也与 [Windows 文档的启动流程][AppContainerLaunch]
+一致。LocalService 的错误为 5，仍需在同一实际服务身份下分开观察映像执行、
+服务账户 profile 注册与回收、原子创建三步。下一次服务实验须单独固定工件和
+恢复范围，本轮未启动或变更服务。宿主 SID 暴露仍为 FAIL。
+
+原离线 Broker 在恢复线程前从已经持有的实际主令牌读取用户 SID。Job 清零后，
+子进程的报告必须与该 SID 完全匹配，缺失、读取失败或不同 SID 拒绝封存。
+关系摘要与原回执结构保持兼容。五产品 Release 0 警告 0 错误，13 个普通回归
+入口通过，含真实普通挂起子进程 SID 读取及不匹配反例。产品受限复验、官方 CLI
+及外部网络均 NOT_RUN。
+
+[AppContainerLaunch]: https://learn.microsoft.com/en-us/windows/win32/secauthz/implementing-an-appcontainer

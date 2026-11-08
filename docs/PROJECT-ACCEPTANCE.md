@@ -5,6 +5,14 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-08 AppContainer profile 普通对照与 SID 取证绑定
+
+VERIFIED(普通账户下同一固定自研映像在注册 profile 前拒绝、注册后取得挂起
+AppContainer，原 Job 清零、profile 删除和存储根不存在)。
+INTEGRATED / BUILD / VERIFIED(普通进程令牌读取、离线报告 SID 核验与反例)。
+LocalService 错误 5 的具体原因仍 UNKNOWN，新产品受限复验及官方 CLI NOT_RUN。
+[对照和取证边界](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#普通账户的-profile-前后对照)
+
 ## 2026-11-08 LocalService 修正版原子创建
 
 BUILD / VERIFIED(六项普通检查)。

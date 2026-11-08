@@ -1,5 +1,13 @@
 # 当前状态与授权摘要
 
+2026-11-08 普通 Windows 前后对照确认，同一自研映像和创建参数在未注册
+AppContainer profile 时返回 2，注册后获得挂起进程及匹配的包 SID。
+原 Job 清零，Windows profile 删除成功且本轮存储根确认不存在。LocalService
+原错误 5 仍待区分。离线 Broker 现用挂起时实际主令牌的用户 SID 校验子进程
+报告，五产品 Release 构建和 13 个普通回归入口通过，产品代码未安装。
+普通侧读回 `4d186bcb` 的公开版本及清单，私有选择指针拒绝读取。官方 CLI 未执行。
+[对照和取证边界](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#普通账户的-profile-前后对照)。
+
 2026-11-08 临时 LocalService 修正版通过 Session 0 主令牌、服务组和最小
 特权自查。原所有者实际持有并核对了服务进程句柄。一次挂起原子创建调用
 `CreateProcessW` 返回拒绝访问（5），未取得子进程。原服务进程句柄

@@ -5,6 +5,7 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.ExceptionServices;
 using System.Runtime.InteropServices;
+using System.Security.Principal;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -128,19 +129,27 @@ internal static class OfflineConsoleNativeCases
         var reading=library.GetType("ProtectionLifecycle.OfflineConsoleIdentityRead",true)!;
         var parse=type.GetMethod("Parse",Static)!;
         var compare=type.GetMethod("Compare",Static)!;
+        var assertTokenUser=type.GetMethod("AssertTokenUser",Instance)!;
         var session=new string('c',32);
         var reference=Call(type.GetMethod("Capture",Static)!,null,session)!;
         var captured=JsonSerializer.SerializeToUtf8Bytes(reference,type);
         _=Call(parse,null,captured,session,(uint)Environment.ProcessId);
+        using var identity=WindowsIdentity.GetCurrent();
         using(var document=JsonDocument.Parse(captured))
         {
             var root=document.RootElement;
             foreach(var field in new[]{"TokenUser","LogonName","ProfileDirectory","ComputerName","MachineGuid"})
                 Require(root.GetProperty(field).GetProperty("Error").GetInt32()==0 &&
                     root.GetProperty(field).GetProperty("Value").GetString() is {Length:>0});
-            using var identity=System.Security.Principal.WindowsIdentity.GetCurrent();
             Require(root.GetProperty("TokenUser").GetProperty("Value").GetString()==identity.User?.Value);
         }
+        _=Call(assertTokenUser,reference,identity.User);
+        Refuse<InvalidDataException>(()=>Call(assertTokenUser,reference,new SecurityIdentifier(WellKnownSidType.LocalServiceSid,null)));
+        Refuse<InvalidDataException>(()=>Call(assertTokenUser,reference,(SecurityIdentifier?)null));
+        var unreadable=JsonNode.Parse(captured)!.AsObject();
+        unreadable["TokenUser"]=new JsonObject{["Error"]=5,["Value"]=null};
+        var denied=Call(parse,null,JsonSerializer.SerializeToUtf8Bytes(unreadable),session,(uint)Environment.ProcessId)!;
+        Refuse<InvalidDataException>(()=>Call(assertTokenUser,denied,identity.User));
         Refuse<InvalidDataException>(()=>Call(parse,null,captured,session,0u));
         Refuse<InvalidDataException>(()=>Call(parse,null,captured,new string('d',32),(uint)Environment.ProcessId));
         Refuse<InvalidDataException>(()=>Call(parse,null,new byte[32769],session,(uint)Environment.ProcessId));
@@ -204,6 +213,10 @@ internal static class OfflineConsoleNativeCases
         {
             var atomic=library.GetType("ProtectionLifecycle.AtomicChild",true)!;
             _=Call(atomic.GetMethod("AssertNoChildCreation",Static)!,null,process);
+            var tokenArguments=new object?[]{process,false,true,null};
+            _=Call(atomic.GetMethod("ReadTokenSnapshot",Static)!,null,tokenArguments);
+            using(var identity=WindowsIdentity.GetCurrent())
+                Require(tokenArguments[3] is SecurityIdentifier childUser && childUser.Value==identity.User?.Value);
             var captures=(ITuple)Call(type.GetMethod("ReadAfterCreate",Instance)!,transport)!;
             Refuse<InvalidDataException>(()=>Call(type.GetMethod("ReadAfterCreate",Instance)!,transport));
             Require(ResumeThread(thread)==1);

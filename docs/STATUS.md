@@ -5,6 +5,12 @@
 历史页的“当前/待执行/暂停/DELIVERABLE”按段落日期及限定范围解释，不是今天的状态或操作许可。
 不在本页复制当前安装和授权摘要。
 
+## 2026-11-08 AppContainer profile 普通对照与 SID 取证绑定
+
+普通账户对照验证注册 profile 后可以创建挂起 AppContainer，自研进程与 profile
+存储已闭合。原 Broker 以持有令牌的实际用户 SID 校验子进程报告。
+[证据与范围](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#普通账户的-profile-前后对照)
+
 ## 2026-11-08 LocalService 修正版原子创建
 
 真实服务令牌自查、原所有者句柄绑定和完整恢复通过。固定挂起原子创建

@@ -556,7 +556,7 @@ internal sealed partial class AtomicChild : IDisposable
         var path=new StringBuilder(32768);uint length=(uint)path.Capacity;
         if(!QueryFullProcessImageName(process,0,path,ref length))throw Error("AtomicReadCreatedImage");
         if(!string.Equals(WindowsPathSeal.Canonical(path.ToString()),image,StringComparison.OrdinalIgnoreCase))throw WfpNative.Contract("AtomicCreatedImageMismatch");
-        var token=ReadToken(process);
+        var token=ReadTokenSnapshot(process,true,offlineConsole,out var tokenUser);
         if(!token.IsAppContainer || RequiresLpac && !token.LpacAccessCheckObserved || token.PackageSid!=packageSid || !CapabilityProfile.Matches(token.CapabilityCount,token.Capabilities) || token.IntegritySid!="S-1-16-4096")throw WfpNative.Contract("AtomicTokenBeforeResumeMismatch");
         var plans=FencePlan.ReadAll(state);if(plans.Count==0)throw WfpNative.Contract("AtomicResumeRequiresRegisteredFence");
         var observations=new List<FenceObservation>();
@@ -581,6 +581,7 @@ internal sealed partial class AtomicChild : IDisposable
             Scope=sessionAdmission is not null?"AUTHENTICATED_SESSION_GATEWAY":network?.Kind==NetworkProbeKind.Control?"UNFENCED_OWNED_LOOPBACK_CONTROL":proxyOnly?"COMPILED_IPV4_PROXY_ONLY":gpuWorkload?"FIXED_CUDA_FULL_QUARANTINE":offlineConsole?"FIXED_CONSOLE_FULL_QUARANTINE":
                 offlineTls switch {OfflineTlsProbe.Schannel=>"FIXED_SCHANNEL_FULL_QUARANTINE",OfflineTlsProbe.OpenSsl=>"FIXED_OPENSSL_FULL_QUARANTINE",_=>"FULL_QUARANTINE"}};
         state.WriteNew("admission-before-resume-"+job.JobId+".json",JsonSerializer.SerializeToUtf8Bytes(proof));
+        OfflineConsoleUserSid=tokenUser;
         sessionAdmission?.BeforeResume(this);
         resourceQualification?.BeforeResume(this);
         ResumeAttempted=true;
@@ -621,6 +622,7 @@ internal sealed partial class AtomicChild : IDisposable
             !ReferenceEquals(version,exactVersion) || !ReferenceEquals(job,exactJob) || !job.ContainsProcess(process))
             throw WfpNative.Contract("OfflineConsoleRuntimeRequiresExactSuspendedChild");
     }
+    internal SecurityIdentifier? OfflineConsoleUserSid { get;private set; }
     internal uint? ObserveOfflineConsoleExit()
     {
         if(!offlineConsole)throw WfpNative.Contract("OfflineConsoleWorkloadRequired");
@@ -1069,10 +1071,19 @@ internal sealed partial class AtomicChild : IDisposable
         public void Dispose(){StandardInput.Dispose();StandardOutput.Dispose();StandardError.Dispose();process.Dispose();}
     }
     private static AdmissionToken ReadToken(SafeProcessHandle process,bool observePackageAccess=true)
+        =>ReadTokenSnapshot(process,observePackageAccess,false,out _);
+
+    private static AdmissionToken ReadTokenSnapshot(SafeProcessHandle process,bool observePackageAccess,bool captureUser,out SecurityIdentifier? user)
     {
         if(!OpenProcessToken(process,observePackageAccess?8u|2u:8u,out var token))throw Error("AtomicOpenCreatedToken");
         using(token)
         {
+            user=null;
+            if(captureUser)
+            {
+                using var identity=new WindowsIdentity(token.DangerousGetHandle());
+                user=identity.User??throw WfpNative.Contract("OfflineConsoleSuspendedTokenUserMissing");
+            }
             var container=WindowsTokenInformation.Read(token,WindowsTokenInformation.Dword.IsAppContainer,"AtomicReadTokenInformation")!=0;
             var sid=Read(31,p=>{var s=Marshal.ReadIntPtr(p);return s==IntPtr.Zero?null:new SecurityIdentifier(s).Value;});
             // Read actual capability SIDs/attributes within the bounded native

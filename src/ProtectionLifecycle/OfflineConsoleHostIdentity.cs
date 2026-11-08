@@ -66,15 +66,23 @@ internal sealed record OfflineConsoleHostIdentity(int SchemaVersion,string Sessi
         return result;
     }
 
-    internal OfflineConsoleHostIdentitySummary Seal(ProtectedState state,VerifiedVersion version,string jobId,OfflineConsoleHostIdentity host)
+    internal OfflineConsoleHostIdentitySummary Seal(ProtectedState state,VerifiedVersion version,string jobId,OfflineConsoleHostIdentity host,
+        SecurityIdentifier? suspendedUser)
     {
         if(SessionId!=host.SessionId || Pid==host.Pid)throw WfpNative.Contract("OfflineHostIdentityReferenceMismatch");
+        AssertTokenUser(suspendedUser);
         var hash=state.WriteNew("offline-console-host-identity-"+SessionId+".json",JsonSerializer.SerializeToUtf8Bytes(new {
             SchemaVersion=1,state.InstallationId,SessionId,JobId=jobId,version.Package.Release,version.Package.ManifestHash,
             Restricted=this,TrustedOwner=host
         }));
         return new(hash,Compare(TokenUser,host.TokenUser),Compare(LogonName,host.LogonName),
             Compare(ProfileDirectory,host.ProfileDirectory),Compare(ComputerName,host.ComputerName),Compare(MachineGuid,host.MachineGuid));
+    }
+
+    internal void AssertTokenUser(SecurityIdentifier? suspendedUser)
+    {
+        if(suspendedUser is null || TokenUser.Error!=0 || TokenUser.Value!=suspendedUser.Value)
+            throw WfpNative.Contract("OfflineHostIdentityDoesNotMatchHeldProcessToken");
     }
 
     internal static string Compare(OfflineConsoleIdentityRead restricted,OfflineConsoleIdentityRead host)
