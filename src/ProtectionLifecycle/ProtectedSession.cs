@@ -76,6 +76,7 @@ internal sealed class ProtectedSession
     private GatewayCapabilityChildReport? gatewayCapabilityFeedback;
     private LocalManagementBoundaryReport? localManagementFeedback;
     private object? localManagementReference;
+    private ProxyRouteObservation? proxyRoute;
     private bool localManagementPositiveControl;
     private ProtectionRuntimeLease? runtime;
     private SessionResources? resources;
@@ -762,6 +763,10 @@ internal sealed class ProtectedSession
             profile=InstallationProfileLease.Create(state);job=OwnedKernelJob.CreateEmpty(state,version);
             using(var package=new InstallationPackageSid(state))sid=package.Value;
             upstream=ProxyChannelLease.Open(state);
+            if(!IsGatewayQualification || IsLocalManagementBoundary)
+                proxyRoute=ProxyRouteObservation.Capture(upstream).GetAwaiter().GetResult();
+            if(!IsGatewayQualification && proxyRoute is not {Complete:true,ReachableDirect:false})
+                throw WfpNative.Contract("UpstreamRouteSnapshotRefused");
             if(IsLocalManagementBoundary)
             {
                 var bytes=LocalManagementBoundary.CaptureTrustedController(upstream).GetAwaiter().GetResult();
@@ -927,6 +932,7 @@ internal sealed class ProtectedSession
         FixedOpenSslHead=UsesFixedOpenSslHead,
         LocalManagementBoundary=IsLocalManagementBoundary,
         LocalManagementTrustedReference=localManagementReference,
+        ProxyRouteObservation=proxyRoute,
         LocalManagementGatewayAcknowledged=localManagementPositiveControl,
         LocalManagementFeedback=localManagementFeedback is null?null:new {localManagementFeedback.Phase,localManagementFeedback.ExitCode,
             localManagementFeedback.SetupError,Attempts=localManagementFeedback.Attempts.Select(attempt=>attempt.Summary()).ToArray()},

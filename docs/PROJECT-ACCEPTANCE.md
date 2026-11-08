@@ -5,6 +5,13 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-08 代理路由快照拒绝检查
+
+INTEGRATED / BUILD / VERIFIED(普通侧真实回环快照及候选解析结果、普通反例)。
+现有快照存在可达直连后备。原 Broker 持有身份采集、真实流量路由、故障期间
+防直连及正式产品验收仍 NOT_RUN/UNKNOWN。
+[证据范围](LOCAL-MANAGEMENT-BOUNDARY-20261107.md#路由快照拒绝检查)
+
 ## 2026-11-08 普通账户写限制与 profile 注册
 
 VERIFIED(同账户写受限线程的真实文件与注册表权限打开拒绝、profile 注册拒绝、

@@ -1,5 +1,6 @@
 using System.Reflection;
 using System.Runtime.ExceptionServices;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
@@ -72,6 +73,50 @@ internal static class LocalManagementBoundaryCases
         Check(trusted("HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\n{}"u8));
         Check(!trusted("HTTP/1.1 401 Unauthorized\r\n\r\n{}"u8));
         Check(!trusted("HTTP/1.1 200 OK\r\n\r\n"u8));
+        CheckRoutes(library,Check);
         Console.WriteLine($"PASS {checks} fixed local management feedback and trusted reference checks. Fixture only, no connections, installed state, or WFP operation.");
+    }
+
+    private static void CheckRoutes(Assembly library,Action<bool> check)
+    {
+        var evaluate=library.GetType("ProtectionLifecycle.ProxyRouteObservation",true)!.GetMethod("Evaluate",Static)!;
+        JsonElement Route(string proxies,string config="{\"mode\":\"global\"}")=>JsonSerializer.SerializeToElement(
+            evaluate.Invoke(null,[Encoding.UTF8.GetBytes(config),Encoding.UTF8.GetBytes(proxies)]));
+        const string snapshot="""
+            {"proxies":{
+              "GLOBAL":{"name":"GLOBAL","type":"Selector","now":"chain","all":["chain","DIRECT"],"emptyFallback":"REJECT","dialer-proxy":""},
+              "chain":{"name":"chain","type":"Fallback","now":"private node","all":["private node","backup"],"emptyFallback":"REJECT","dialer-proxy":""},
+              "private node":{"name":"private node","type":"Vless","dialer-proxy":""},
+              "backup":{"name":"backup","type":"Vless","dialer-proxy":""},
+              "REJECT":{"name":"REJECT","type":"Reject","dialer-proxy":""}
+            }}
+            """;
+        bool Flag(JsonElement route,string name)=>route.GetProperty(name).GetBoolean();
+        string? Status(JsonElement route)=>route.GetProperty("Status").GetString();
+        var current=Route(snapshot);
+        check(Status(current)=="NO_DIRECT_ROUTE_IN_SNAPSHOT" && Flag(current,"Complete") && !Flag(current,"ReachableDirect") &&
+            Flag(current,"ManualDirectChoice") && !current.GetRawText().Contains("private node",StringComparison.Ordinal));
+        var emptyFallback=Route(snapshot.Replace("\"emptyFallback\":\"REJECT\"","\"emptyFallback\":\"COMPATIBLE\"",StringComparison.Ordinal));
+        check(Flag(emptyFallback,"DirectEmptyFallback") && Flag(emptyFallback,"ReachableDirect"));
+        var automatic=Route(snapshot.Replace("\"backup\":{\"name\":\"backup\",\"type\":\"Vless\"",
+            "\"backup\":{\"name\":\"backup\",\"type\":\"Direct\"",StringComparison.Ordinal));
+        check(Flag(automatic,"ReachableDirect") && !Flag(automatic,"DirectEmptyFallback"));
+        var selected=Route(snapshot.Replace("\"now\":\"chain\"","\"now\":\"DIRECT\"",StringComparison.Ordinal));
+        check(Flag(selected,"ReachableDirect") && Status(selected)=="DIRECT_ROUTE_REACHABLE");
+        check(Status(Route(snapshot,"{\"mode\":\"direct\"}"))=="DIRECT_MODE");
+        check(Status(Route(snapshot,"{\"mode\":\"rule\"}"))=="GLOBAL_MODE_NOT_OBSERVED");
+        foreach(var incomplete in new[]{
+            snapshot.Replace("\"private node\",\"backup\"","\"private node\",\"GLOBAL\"",StringComparison.Ordinal),
+            snapshot.Replace("\"private node\",\"backup\"","\"private node\",\"missing\"",StringComparison.Ordinal),
+            snapshot.Replace("\"private node\",\"backup\"","\"private node\",\"private node\"",StringComparison.Ordinal),
+            snapshot.Replace("\"emptyFallback\":\"REJECT\",","",StringComparison.Ordinal),
+            snapshot.Replace("\"now\":\"chain\"","\"now\":\"unlisted\"",StringComparison.Ordinal),
+            snapshot.Replace("\"dialer-proxy\":\"\"","\"dialer-proxy\":\"chain\"",StringComparison.Ordinal),
+            snapshot.Replace("\"type\":\"Vless\"","\"type\":\"Unknown\"",StringComparison.Ordinal)})
+            check(Status(Route(incomplete))=="ROUTE_EVIDENCE_INCOMPLETE");
+        check(Status(Route(snapshot,"{\"mode\":\"direct\",\"mode\":\"global\"}"))=="CONTROLLER_EVIDENCE_UNAVAILABLE");
+        check(Status(Route(snapshot.Replace("\"name\":\"GLOBAL\"","\"name\":\"GLOBAL\",\"name\":\"GLOBAL\"",StringComparison.Ordinal)))==
+            "CONTROLLER_EVIDENCE_UNAVAILABLE");
+        check(Status(Route(new string(' ',524289)))=="CONTROLLER_EVIDENCE_UNAVAILABLE");
     }
 }
