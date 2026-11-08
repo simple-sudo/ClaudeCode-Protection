@@ -495,9 +495,9 @@ internal sealed class ProtectedSession
         ProtectedState.RequireAdministrator();state.AssertHeld();version.AssertHeld(state);
         var owner=new ProtectedSession(layout,state,version,mode);
         if(owner.qualification is null)throw WfpNative.Contract("FixedGatewayQualificationRequired");
-        if(owner.UsesFixedOpenSslHead)FixedOpenSslHeadTrust.AssertOwnedPackage(version.Package);
+        var resolverTrust=owner.UsesFixedOpenSslHead?FixedResolverTrust.ReadOwned(version.Package):null;
         if(owner.qualification.Winsock!=WinsockScope.None)SessionWinsockReadAccess.RequireCurrentRootControl();
-        return owner.Execute();
+        return owner.Execute(resolverTrust);
     }
     private bool CurrentWorkloadEvidenceEligible()=>IsGatewayQualification?
         clock.ElapsedMilliseconds>=0 && clock.ElapsedMilliseconds<GatewayQualificationLimitMs:
@@ -511,7 +511,11 @@ internal sealed class ProtectedSession
             throw WfpNative.Contract("FixedGatewayQualificationExpiredOrBindingDrift");
         if(preparation?.RootPid is not null)
             (preparation.PublicTimeZone??throw WfpNative.Contract("TimeZoneResourceNotPrepared")).AssertCurrent();
-        if(UsesFixedOpenSslHead)FixedOpenSslHeadTrust.RequireCurrent(DateTimeOffset.UtcNow);
+        if(UsesFixedOpenSslHead)
+        {
+            FixedOpenSslHeadTrust.RequireCurrent(DateTimeOffset.UtcNow);
+            FixedResolverTrust.RequireCurrent(DateTimeOffset.UtcNow);
+        }
         winsockAccess?.AssertHeld();
         gateway.AssertHealthy();
     }
@@ -700,7 +704,7 @@ internal sealed class ProtectedSession
             RequiredEnvironmentIds=StrictEnvironmentRequirements.Required.Select(def=>def.Id).ToArray()
         })));
     }
-    private (int ExitCode,string Report) Execute()
+    private (int ExitCode,string Report) Execute(FixedResolverTrust? resolverTrust=null)
     {
         InstallationProfileLease? profile=null;InstallationLoopbackLease? loopback=null;ProxyChannelLease? upstream=null;
         AtomicChild? child=null;JobSnapshot? zero=null;
@@ -741,7 +745,7 @@ internal sealed class ProtectedSession
             profile=InstallationProfileLease.Create(state);job=OwnedKernelJob.CreateEmpty(state,version);
             using(var package=new InstallationPackageSid(state))sid=package.Value;
             upstream=ProxyChannelLease.Open(state);
-            gateway=new SessionProxy(job,upstream,sid,id,CapabilityProfile,FixedNoContentHttpsCanary,UsesFixedOpenSslHead);
+            gateway=new SessionProxy(job,upstream,sid,id,CapabilityProfile,FixedNoContentHttpsCanary,resolverTrust);
             loopback=InstallationLoopbackLease.Enable(state,false);
             preparation=new Preparation(this);
             if(IsGatewayQualification)

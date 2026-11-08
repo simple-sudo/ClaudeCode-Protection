@@ -9,7 +9,7 @@ using System.Text.Json.Nodes;
 using System.Runtime.InteropServices;
 using Microsoft.Win32.SafeHandles;
 
-if(args.Length!=1 || args[0] is not ("winsock-provider-policy" or "winsock-provider-metadata" or "gateway-socket-create" or "winsock-transport-policy" or "winsock-transport-metadata" or "winsock-lease-policy" or "winsock-registry-metadata" or "winsock-registry-scope" or "restricting-sid-boundary" or "gpu-report-policy" or "privacy-probe-closure" or "privacy-probe-exit-child" or "timezone-snapshot" or "timezone-policy" or "timezone-metadata" or "gateway-feedback" or "gateway-tls-client-hello" or "gateway-schannel-native" or "gateway-schannel-acquisition" or "gateway-openssl-memory" or "gateway-openssl-revocation" or "gateway-qualification-boundary" or "policy" or "messages" or "handle-transfer" or "fault-mode" or "fault-mode-read" or "partial-output" or "hosted-policy" or "etw-policy" or "tls-transport-policy" or "etw-token-access" or "inactive-transition" or "project-policy" or "project-build" or "privacy-native" or "caller-project-build" or "caller-project-policy" or "self-control-open" or "caller-data-build" or "caller-compile-failure" or "caller-run-failure" or "caller-test-failure" or "caller-output-failure" or "caller-failure-owner" or "control-file-gate" or "caller-multi-edit-build" or "workspace-caller-lifetime" or "workspace-caller-lifetime-child" or "maintenance-identity" or "reset-settings-file" or "resource-release"))return 125;
+if(args.Length!=1 || args[0] is not ("winsock-provider-policy" or "winsock-provider-metadata" or "gateway-socket-create" or "winsock-transport-policy" or "winsock-transport-metadata" or "winsock-lease-policy" or "winsock-registry-metadata" or "winsock-registry-scope" or "restricting-sid-boundary" or "gpu-report-policy" or "privacy-probe-closure" or "privacy-probe-exit-child" or "timezone-snapshot" or "timezone-policy" or "timezone-metadata" or "gateway-feedback" or "gateway-tls-client-hello" or "gateway-schannel-native" or "gateway-schannel-acquisition" or "gateway-openssl-memory" or "gateway-openssl-revocation" or "gateway-resolver-offline-trust" or "gateway-qualification-boundary" or "policy" or "messages" or "handle-transfer" or "fault-mode" or "fault-mode-read" or "partial-output" or "hosted-policy" or "etw-policy" or "tls-transport-policy" or "etw-token-access" or "inactive-transition" or "project-policy" or "project-build" or "privacy-native" or "caller-project-build" or "caller-project-policy" or "self-control-open" or "caller-data-build" or "caller-compile-failure" or "caller-run-failure" or "caller-test-failure" or "caller-output-failure" or "caller-failure-owner" or "control-file-gate" or "caller-multi-edit-build" or "workspace-caller-lifetime" or "workspace-caller-lifetime-child" or "maintenance-identity" or "reset-settings-file" or "resource-release"))return 125;
 try
 {
 using var identity=WindowsIdentity.GetCurrent();
@@ -19,6 +19,7 @@ if(args[0]=="privacy-probe-exit-child"){Console.WriteLine("READY");Console.ReadL
 var library=Assembly.LoadFrom(Path.Combine(AppContext.BaseDirectory,"ProtectionLifecycle.dll"));
 if(args[0]=="gateway-openssl-memory"){OpenSslMemoryCases.Run(library).GetAwaiter().GetResult();return 0;}
 if(args[0]=="gateway-openssl-revocation"){OpenSslMemoryCases.VerifyRevocation(library);return 0;}
+if(args[0]=="gateway-resolver-offline-trust"){OpenSslMemoryCases.VerifyResolverTrust(library);return 0;}
 if(args[0] is "winsock-provider-policy" or "winsock-provider-metadata"){WinsockLeaseCases.RunProviders(library,args[0]=="winsock-provider-metadata");return 0;}
 if(args[0] is "winsock-transport-policy" or "winsock-transport-metadata"){WinsockLeaseCases.RunTransport(library,args[0]=="winsock-transport-metadata");return 0;}
 if(args[0]=="winsock-registry-scope"){WinsockRegistryScopeCases.Run(library);return 0;}
@@ -283,6 +284,7 @@ if(args[0]=="inactive-transition")
         Require(refused,"inactive selection must refuse changed, unknown or same-package transitions");
     }
         foreach(var (actualRelease,actualManifest) in new[]{
+        ("5aef9d7d265b43d5b344b79f1313c6c9","527B5693314BC84A0E0A05B6EC89BC848A58D53621BBCC75435FB3535C97620A"),
         ("91d7aa4c11024b8a9dd13ff5a9f44018","1EE4F2D4FE70E21C451E60238CF4A9DD18B8B2A39BA30C6D6D17E26BA04BD521"),
         ("afb95ad171c4476e9adb8eb610987625","EEE8E79F82E09C405911523E935DA3537E137446433590D835B55FB8C47F3B2D"),
         ("8ad9a646a9f846a397c6c677def87e90","F5AE7357F63A1D1D77F35F8975A02EEAE3693179F76A341EACF0BCCCFE1186DC"),
@@ -351,7 +353,7 @@ if(args[0]=="inactive-transition")
         var bad=record.DeepClone().AsObject();bad[field]=value;
         DenyExact(()=>ParseTransition(bad.ToJsonString()));
     }
-    Console.WriteLine("PASS 125 inactive-transition checks including exact embedded pair and alternate pinned predecessor refusal; fixture only");return 0;
+    Console.WriteLine("PASS 132 inactive-transition checks including exact embedded pair and alternate pinned predecessor refusal; fixture only");return 0;
 }
 if(args[0]=="etw-token-access")
 {

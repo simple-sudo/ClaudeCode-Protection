@@ -92,7 +92,7 @@ internal sealed class OpenSslMemoryConnection : IDisposable
         {
             var parameters=api.VerifyParameters(ssl);
             Check(parameters!=IntPtr.Zero,"VERIFY_PARAMETERS");
-            api.SetHostFlags(parameters,0x22); // no wildcard, no common-name fallback
+            api.SetHostFlags(parameters,OpenSslDer.ExactDnsName);
             Check(api.SetHost(ssl,name)==1 && api.SslControl(ssl,55,0,name)==1,"SERVER_NAME");
         }
         finally{Marshal.FreeCoTaskMem(name);}
@@ -125,24 +125,14 @@ internal sealed class OpenSslMemoryConnection : IDisposable
         }
         // CRL_CHECK | CRL_CHECK_ALL. A missing or expired CRL fails
         // validation. No lookup methods, network retrieval, or callback.
-        Check(api.SetStoreFlags(store,0x4u|0x8u)==1,"TRUST_REVOCATION");
+        Check(api.SetStoreFlags(store,OpenSslDer.CheckWholeChainRevocation)==1,"TRUST_REVOCATION");
     }
 
-    private static void AddTrustObject(IntPtr store,byte[] der,Native.Decode decode,Native.Pair add,Native.VoidOn free,string stage)
+    private static void AddTrustObject(IntPtr store,byte[] der,OpenSslDer.Decode decode,Native.Pair add,OpenSslDer.Free free,string stage)
     {
-        var pinned=GCHandle.Alloc(der,GCHandleType.Pinned);
-        try
-        {
-            var start=pinned.AddrOfPinnedObject();
-            var cursor=start;
-            var item=decode(IntPtr.Zero,ref cursor,der.Length);
-            try
-            {
-                Check(item!=IntPtr.Zero && cursor==start+der.Length && add(store,item)==1,stage);
-            }
-            finally{if(item!=IntPtr.Zero)free(item);}
-        }
-        finally{pinned.Free();}
+        var item=OpenSslDer.Read(der,decode,free);
+        try{Check(item!=IntPtr.Zero && add(store,item)==1,stage);}
+        finally{if(item!=IntPtr.Zero)free(item);}
     }
 
     private async Task<int> OperateAsync(Func<int> step,string stage,CancellationToken cancel,bool authenticate=false,int? requiredLength=null)
@@ -244,14 +234,14 @@ internal sealed class OpenSslMemoryConnection : IDisposable
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)] internal delegate int StoreFlags(IntPtr store,uint flags);
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)] internal delegate void Triple(IntPtr first,IntPtr second,IntPtr third);
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)] internal delegate int Error(IntPtr ssl,int result);
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)] internal delegate IntPtr Decode(IntPtr previous,ref IntPtr cursor,int length);
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)] internal delegate int Io(IntPtr owner,[In,Out] byte[] bytes,int count);
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)] internal delegate nuint SizeOn(IntPtr owner);
 
         internal readonly InitCall Init;
         internal readonly PointerCall ClientMethod,ServerMethod,BioMemory;
         internal readonly PointerOn ContextNew,SslNew,CertStore,VerifyParameters,BioNew;
-        internal readonly VoidOn ContextFree,SslFree,FreeCertificate,FreeCrl,ConnectState,AcceptState;
+        internal readonly VoidOn ContextFree,SslFree,ConnectState,AcceptState;
+        internal readonly OpenSslDer.Free FreeCertificate,FreeCrl;
         internal readonly Control ContextControl,SslControl;
         internal readonly Verify ContextVerify;
         internal readonly Options SetContextOptions;
@@ -261,7 +251,7 @@ internal sealed class OpenSslMemoryConnection : IDisposable
         internal readonly Triple SetBio;
         internal readonly IntOn Handshake,VerifyResult,BioFree,CheckPrivateKey;
         internal readonly Error GetError;
-        internal readonly Decode DecodeCertificate,DecodeCrl;
+        internal readonly OpenSslDer.Decode DecodeCertificate,DecodeCrl;
         internal readonly Io BioRead,BioWrite,Read,Write;
         internal readonly SizeOn BioPending;
         internal readonly VoidCall ClearErrors;
@@ -294,12 +284,12 @@ internal sealed class OpenSslMemoryConnection : IDisposable
             Read=Bind<Io>(ssl,"SSL_read");
             Write=Bind<Io>(ssl,"SSL_write");
             SetHostFlags=Bind<SetFlags>(crypto,"X509_VERIFY_PARAM_set_hostflags");
-            DecodeCertificate=Bind<Decode>(crypto,"d2i_X509");
+            DecodeCertificate=Bind<OpenSslDer.Decode>(crypto,"d2i_X509");
             AddCertificate=Bind<Pair>(crypto,"X509_STORE_add_cert");
-            FreeCertificate=Bind<VoidOn>(crypto,"X509_free");
-            DecodeCrl=Bind<Decode>(crypto,"d2i_X509_CRL");
+            FreeCertificate=Bind<OpenSslDer.Free>(crypto,"X509_free");
+            DecodeCrl=Bind<OpenSslDer.Decode>(crypto,"d2i_X509_CRL");
             AddCrl=Bind<Pair>(crypto,"X509_STORE_add_crl");
-            FreeCrl=Bind<VoidOn>(crypto,"X509_CRL_free");
+            FreeCrl=Bind<OpenSslDer.Free>(crypto,"X509_CRL_free");
             SetStoreFlags=Bind<StoreFlags>(crypto,"X509_STORE_set_flags");
             BioMemory=Bind<PointerCall>(crypto,"BIO_s_mem");
             BioNew=Bind<PointerOn>(crypto,"BIO_new");

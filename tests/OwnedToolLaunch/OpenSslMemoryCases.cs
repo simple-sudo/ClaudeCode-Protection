@@ -1,7 +1,9 @@
 using System.Collections;
+using System.Net.Security;
 using System.Reflection;
 using System.Runtime.ExceptionServices;
 using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
@@ -109,11 +111,12 @@ internal static class OpenSslMemoryCases
             });
             return Call(pinned,new ReadOnlyMemory<byte>(bytes),Convert.ToHexString(SHA256.HashData(bytes)))!;
         }
-        var v1=Assets(1,"Asset");var v2=Assets(2,"Asset");var v3=Assets(3,"Asset");var v4=Assets(4,"Asset");
+        var v1=Assets(1,"Asset");var v2=Assets(2,"Asset");var v3=Assets(3,"Asset");var v4=Assets(4,"Asset");var v5=Assets(5,"Asset");
         Check(v1.Count==14 && v2.Count==16 && v3.Count==16 && v4.Count==20 && v1.All(a=>assetIds.Add(a!["Asset"]!.GetValue<string>())) &&
             v2.Take(v1.Count).All(a=>assetIds.Contains(a!["Asset"]!.GetValue<string>())) &&
             v3.Take(v1.Count).All(a=>assetIds.Contains(a!["Asset"]!.GetValue<string>())));
         _=ParseManifest(1,v1);_=ParseManifest(2,v2);_=ParseManifest(3,v3);_=ParseManifest(4,v4);checks+=4;
+        Check(v5.Count==23);_=ParseManifest(5,v5);checks++;
         Reject<InvalidDataException>(()=>ParseManifest(1,v2));
         Reject<InvalidDataException>(()=>ParseManifest(2,v1));
         Reject<InvalidDataException>(()=>ParseManifest(3,v2));
@@ -121,6 +124,7 @@ internal static class OpenSslMemoryCases
         Reject<InvalidDataException>(()=>ParseManifest(4,v3));
         Reject<InvalidDataException>(()=>ParseManifest(3,v4));
         Reject<InvalidDataException>(()=>ParseManifest(5,v4));
+        Reject<InvalidDataException>(()=>ParseManifest(4,v5));
         var changed=v2.DeepClone().AsArray();changed[15]!["SHA256"]=new string('B',64);
         Reject<InvalidDataException>(()=>ParseManifest(2,changed));
         changed=v2.DeepClone().AsArray();changed[15]!["Length"]=10;
@@ -136,11 +140,12 @@ internal static class OpenSslMemoryCases
             _=Call(stage,document.RootElement,schema,"Id");
         }
         ReadStage(Assets(1,"Id"),1);ReadStage(Assets(2,"Id"),2);ReadStage(Assets(3,"Id"),3);checks+=3;
-        ReadStage(Assets(4,"Id"),4);checks++;
+        ReadStage(Assets(4,"Id"),4);ReadStage(Assets(5,"Id"),5);checks+=2;
         Reject<InvalidDataException>(()=>ReadStage(Assets(2,"Id"),1));
         Reject<InvalidDataException>(()=>ReadStage(Assets(2,"Id"),3));
         Reject<InvalidDataException>(()=>ReadStage(v2,2));
         Reject<InvalidDataException>(()=>ReadStage(Assets(3,"Id"),4));
+        Reject<InvalidDataException>(()=>ReadStage(Assets(4,"Id"),5));
 
         var trust=library.GetType("ProtectionLifecycle.FixedOpenSslHeadTrust",true)!;
         var trustRead=trust.GetMethod("Read",Static)!;
@@ -175,6 +180,73 @@ internal static class OpenSslMemoryCases
         var witness=library.GetType("ProtectionLifecycle.OpenSslOfflineWitness",true)!;
         var checks=((Task<int>)Call(witness.GetMethod("VerifyRevocationOrdinary",Static)!)!).GetAwaiter().GetResult();
         Console.WriteLine($"PASS {checks} fixed HEAD and revocation checks using ordinary in-memory TLS. No sockets or external requests.");
+    }
+
+    internal static void VerifyResolverTrust(Assembly library)
+    {
+        var lease=library.GetType("ProtectionLifecycle.OpenSslModuleLease",true)!;
+        var id=new string('a',32);
+        var directory=Path.Combine(AppContext.BaseDirectory,"native");
+        var now=new DateTimeOffset(2026,11,8,2,0,0,TimeSpan.Zero);
+        var checks=0;
+        void Check(bool value){if(!value)throw new InvalidDataException("Offline resolver trust check failed");checks++;}
+        void Reject(Action action)
+        {
+            try{action();}
+            catch(InvalidDataException){checks++;return;}
+            throw new InvalidDataException("Invalid offline resolver trust input accepted");
+        }
+        var trust=library.GetType("ProtectionLifecycle.FixedResolverTrust",true)!;
+        var read=trust.GetMethod("Read",Static)!;
+        var accepted=trust.GetMethod("AcceptsPlatformChain",Static)!;
+        var evidence=library.GetType("ProtectionLifecycle.ResolverTlsEvidence",true)!;
+        var verifier=library.GetType("ProtectionLifecycle.OpenSslOfflineChain",true)!.GetMethod("Verify",Static)!;
+        byte[] Read(string name)=>File.ReadAllBytes(Path.Combine(directory,name));
+        var fixedTrust=Call(read,directory,id,now)!;
+        Reject(()=>Call(read,directory,id,new DateTimeOffset(2026,11,8,1,9,59,TimeSpan.Zero)));
+        Reject(()=>Call(read,directory,id,new DateTimeOffset(2026,11,15,1,9,29,TimeSpan.Zero)));
+        Reject(()=>Call(read,Path.Combine(directory,"tampered"),id,now));
+        var root=Read("resolver-root.der");var issuer=Read("resolver-issuer.der");var leaf=Read("resolver-leaf.der");
+        var leafList=Read("resolver-leaf-list.crl");var issuerList=Read("resolver-issuer-list.crl");
+        var digests=new[]{leaf,issuer,root}.Select(bytes=>Convert.ToHexString(SHA256.HashData(bytes))).ToArray();
+        object Evidence(SslPolicyErrors errors,int[] chainStatus,bool expectedHost=true,string[]? chainDigests=null)
+            =>Activator.CreateInstance(evidence,Instance,null,
+                [expectedHost,true,true,(int)errors,chainStatus,chainDigests??digests,false],null)!;
+        var offline=Evidence(SslPolicyErrors.RemoteCertificateChainErrors,[64,16777216]);
+        Check((bool)Call(accepted,offline)! && (bool)Call(accepted,Evidence(SslPolicyErrors.None,[]))!);
+        Check(!(bool)Call(accepted,Evidence(SslPolicyErrors.RemoteCertificateChainErrors,[64,4]))!);
+        Check(!(bool)Call(accepted,Evidence(SslPolicyErrors.RemoteCertificateChainErrors,[]))!);
+        Check(!(bool)Call(accepted,Evidence(SslPolicyErrors.RemoteCertificateNameMismatch,[64,16777216]))!);
+        Check(!(bool)Call(accepted,Evidence(SslPolicyErrors.None,[],false))!);
+        Check(!(bool)Call(accepted,Evidence(SslPolicyErrors.None,[],true,[digests[0],digests[1]]))!);
+        using var modules=(IDisposable)Call(lease.GetMethod("OpenForOrdinaryFixture",Static)!)!;
+        bool Verify(string host,byte[] cert,IReadOnlyList<byte[]> lists)=>
+            (bool)Call(verifier,modules,host,root,cert,issuer,lists)!;
+        Check(Verify("cloudflare-dns.com",leaf,[leafList,issuerList]));
+        Check(!Verify("www.microsoft.com",leaf,[leafList,issuerList]));
+        Check(!Verify("cloudflare-dns.com",leaf,[leafList]));
+        Check(!Verify("cloudflare-dns.com",leaf,[issuerList]));
+        Check(!Verify("cloudflare-dns.com",[ ..leaf,0 ],[leafList,issuerList]));
+        var tampered=leafList.ToArray();tampered[^1]^=1;
+        Check(!Verify("cloudflare-dns.com",leaf,[tampered,issuerList]));
+        using var rootCert=new X509Certificate2(root);
+        using var issuerCert=new X509Certificate2(issuer);
+        using var leafCert=new X509Certificate2(leaf);
+        using var chain=new X509Chain();
+        chain.ChainPolicy.TrustMode=X509ChainTrustMode.CustomRootTrust;
+        chain.ChainPolicy.CustomTrustStore.Add(rootCert);
+        chain.ChainPolicy.ExtraStore.Add(issuerCert);
+        chain.ChainPolicy.DisableCertificateDownloads=true;
+        chain.ChainPolicy.RevocationMode=X509RevocationMode.Offline;
+        _=chain.Build(leafCert);
+        Check(chain.ChainElements.Count==3 && chain.ChainStatus.All(status=>
+            (status.Status&~(X509ChainStatusFlags.RevocationStatusUnknown|X509ChainStatusFlags.OfflineRevocation))==0));
+        var observed=Call(evidence.GetMethod("Observe",Static)!,"cloudflare-dns.com",leafCert,chain,
+            chain.ChainStatus.Length==0?SslPolicyErrors.None:SslPolicyErrors.RemoteCertificateChainErrors)!;
+        var verify=trust.GetMethod("Verify",Instance)!;
+        Check((bool)verify.Invoke(fixedTrust,[modules,observed,leafCert,chain])!);
+        Check(!(bool)verify.Invoke(fixedTrust,[modules,observed,issuerCert,chain])!);
+        Console.WriteLine($"PASS {checks} offline resolver trust checks using the exact native verifier and a Windows offline certificate chain. No sockets or external requests.");
     }
 
     private static object? Call(MethodInfo method,params object[] args)

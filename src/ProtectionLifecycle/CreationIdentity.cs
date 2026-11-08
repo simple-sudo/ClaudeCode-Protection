@@ -15,7 +15,8 @@ internal enum CreationRole : uint
     BrokerExe=21,BrokerDll=22,BrokerDeps=23,BrokerRuntime=24,BrokerLifecycle=25,
     StateIdentity=26,OwnedJob=27,BrokerOpenSslCrypto=28,BrokerOpenSslLibrary=29,
     BrokerOpenSslWindowsCrypto=30,BrokerOpenSslWindowsLibrary=31,
-    BrokerFixedHeadRoot=32,BrokerFixedHeadLeafCrl=33,BrokerFixedHeadIssuerCrl=34,BrokerFixedHeadRootCrl=35
+    BrokerFixedHeadRoot=32,BrokerFixedHeadLeafCrl=33,BrokerFixedHeadIssuerCrl=34,BrokerFixedHeadRootCrl=35,
+    BrokerFixedResolverRoot=36,BrokerFixedResolverLeafCrl=37,BrokerFixedResolverIssuerCrl=38
 }
 
 // A non-inherited READ_CONTROL-only ACE serves as an object tag. No account,
@@ -63,6 +64,8 @@ internal sealed class CreationTag
         PackageAssetCatalog.OpenSslWindowsLibraryId=>CreationRole.BrokerOpenSslWindowsLibrary,
         PackageAssetCatalog.HeadRootId=>CreationRole.BrokerFixedHeadRoot,PackageAssetCatalog.HeadLeafCrlId=>CreationRole.BrokerFixedHeadLeafCrl,
         PackageAssetCatalog.HeadIssuerCrlId=>CreationRole.BrokerFixedHeadIssuerCrl,PackageAssetCatalog.HeadRootCrlId=>CreationRole.BrokerFixedHeadRootCrl,
+        PackageAssetCatalog.ResolverRootId=>CreationRole.BrokerFixedResolverRoot,PackageAssetCatalog.ResolverLeafCrlId=>CreationRole.BrokerFixedResolverLeafCrl,
+        PackageAssetCatalog.ResolverIssuerCrlId=>CreationRole.BrokerFixedResolverIssuerCrl,
         _=>throw new InvalidDataException("Unknown creation asset")};
     internal static CreationRole DirectoryRole(string role)=>role switch {
         "versions"=>CreationRole.Versions,"release"=>CreationRole.Release,"bin"=>CreationRole.Bin,"current"=>CreationRole.Current,"center"=>CreationRole.Center,"admin"=>CreationRole.Admin,

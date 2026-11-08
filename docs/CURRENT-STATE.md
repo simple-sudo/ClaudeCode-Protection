@@ -1,5 +1,12 @@
 # 当前状态与授权摘要
 
+2026-11-07 已在固定 OpenSSL 探针的原网关接入解析器离线吊销验证。
+候选 `be7f2a49` / `C98E38A2…` 使用包 v5 固定的根和两份签名 CRL，
+在 Windows 仅缺吊销材料时仍要求精确证书链、主机名及独立整链验证通过。
+五产品 Release BUILD0/0，29 项工件、153 项构建输入复核一致，九个普通
+回归入口通过。候选未安装。
+见[固定解析器信任](SCHANNEL-FAILURE-BOUNDARY-20261107.md#固定解析器信任)。
+
 2026-11-07 本人批准 `841DA319…` 后，原所有者一次性完成 `91d7aa4c` →
 `5aef9d7d` 未激活更新。实测 Cloudflare 证书主机名匹配，Windows 链返回
 `RevocationStatusUnknown` 和 `OfflineRevocation`，原网关关闭连接，

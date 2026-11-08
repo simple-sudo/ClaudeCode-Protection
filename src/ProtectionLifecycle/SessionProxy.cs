@@ -29,7 +29,7 @@ internal sealed class SessionProxy : IDisposable
     private readonly string packageSid, sessionId;
     private readonly LpacCapabilityProfile capabilityProfile;
     private readonly bool fixedNoContentHttpsCanary;
-    private readonly bool observeFixedResolverTls;
+    private readonly FixedResolverTrust? fixedResolverTrust;
     private ResolverTlsEvidence? resolverTlsEvidence;
     internal ResolverTlsEvidence? ResolverTls=>Volatile.Read(ref resolverTlsEvidence);
     // The retained base hash identifies the existing compiled endpoint/WFP
@@ -53,15 +53,15 @@ internal sealed class SessionProxy : IDisposable
     internal string Secret { get; } = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
     internal string SessionId => sessionId;
     internal SessionProxy(OwnedKernelJob job, ProxyChannelLease upstream, string packageSid, string sessionId,
-        LpacCapabilityProfile? capabilities=null,bool fixedNoContentHttpsCanary=false,bool observeFixedResolverTls=false)
+        LpacCapabilityProfile? capabilities=null,bool fixedNoContentHttpsCanary=false,FixedResolverTrust? fixedResolverTrust=null)
     {
         capabilityProfile=capabilities??LpacCapabilityProfile.None;
         if(fixedNoContentHttpsCanary && !capabilityProfile.IsInternetClientQualification)throw WfpNative.Contract("NoContentHttpsGatewayRequiresFixedInternetClient");
-        if(observeFixedResolverTls && !fixedNoContentHttpsCanary)throw WfpNative.Contract("ResolverTlsObservationRequiresFixedHead");
+        if(fixedResolverTrust is not null && !fixedNoContentHttpsCanary)throw WfpNative.Contract("ResolverTlsTrustRequiresFixedHead");
         this.fixedNoContentHttpsCanary=fixedNoContentHttpsCanary;
-        this.observeFixedResolverTls=observeFixedResolverTls;
+        this.fixedResolverTrust=fixedResolverTrust;
         var effective="CPC-GATEWAY-EFFECTIVE-V2;"+PolicySHA256+";"+capabilityProfile.SHA256+";fixed-no-content-https-canary="+fixedNoContentHttpsCanary;
-        if(observeFixedResolverTls)effective+=";fixed-openssl-head-resolver-tls-observation";
+        if(fixedResolverTrust is not null)effective+=";fixed-openssl-head-resolver-explicit-offline-revocation";
         EffectivePolicySHA256=Convert.ToHexString(SHA256.HashData(Encoding.ASCII.GetBytes(effective)));
         this.job = job; this.upstream = upstream; this.packageSid = packageSid; this.sessionId = Identifiers.Hex32(sessionId);
         authorization = Encoding.ASCII.GetBytes("Basic " + Convert.ToBase64String(Encoding.ASCII.GetBytes(sessionId + ":" + Secret)));
@@ -79,7 +79,7 @@ internal sealed class SessionProxy : IDisposable
     internal void BindAdmission(ProtectedSession.Admission permit)
     {
         if(!ReferenceEquals(permit.Gateway,this) || !ReferenceEquals(permit.CapabilityProfile,capabilityProfile) || permit.FixedNoContentHttpsCanary!=fixedNoContentHttpsCanary ||
-            permit.UsesFixedOpenSslHead!=observeFixedResolverTls ||
+            permit.UsesFixedOpenSslHead!=(fixedResolverTrust is not null) ||
             capabilityProfile.IsInternetClientQualification && !permit.IsFixedGatewayQualification)throw WfpNative.Contract("GatewayAdmissionOwnerOrCapabilitiesMismatch");
         permit.AssertCurrent();
         if(Interlocked.CompareExchange(ref admission,permit,null) is not null)throw WfpNative.Contract("GatewayAdmissionAlreadyBound");
@@ -213,10 +213,23 @@ internal sealed class SessionProxy : IDisposable
     {
         var resolverTunnelConsumed=0;
         var tls=OfflineTls();
-        if(observeFixedResolverTls)tls.RemoteCertificateValidationCallback=(sender,certificate,chain,errors)=>
+        using var modules=fixedResolverTrust?.OpenModules();
+        if(fixedResolverTrust is { } trust && modules is not null)tls.RemoteCertificateValidationCallback=(sender,certificate,chain,errors)=>
         {
-            var observation=ResolverTlsEvidence.Observe((sender as SslStream)?.TargetHostName,certificate,chain,errors);
-            return Interlocked.CompareExchange(ref resolverTlsEvidence,observation,null) is null && observation.Accepted;
+            var observation=ResolverTlsEvidence.Observe((sender as SslStream)?.TargetHostName,certificate,chain,errors) with {Accepted=false};
+            try
+            {
+                token.ThrowIfCancellationRequested();
+                var accepted=trust.Verify(modules,observation,certificate,chain);
+                if(accepted)AssertForwardingCurrent();
+                observation=observation with {Accepted=accepted};
+            }
+            finally
+            {
+                if(Interlocked.CompareExchange(ref resolverTlsEvidence,observation,null) is not null)
+                    throw WfpNative.Contract("FixedResolverValidationAlreadyObserved");
+            }
+            return observation.Accepted;
         };
         using var handler = new SocketsHttpHandler {
             UseProxy = false, AllowAutoRedirect = false, UseCookies = false, Credentials = null,

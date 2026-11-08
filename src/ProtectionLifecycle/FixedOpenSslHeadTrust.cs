@@ -27,7 +27,7 @@ internal sealed class FixedOpenSslHeadTrust
     internal static void AssertOwnedPackage(ReviewedPackage package)
     {
         OpenSslModuleLease.AssertOwnedPackage(package);
-        if(package.SchemaVersion!=PackageAssetCatalog.FixedHeadTrustSchema ||
+        if(package.SchemaVersion is not (PackageAssetCatalog.FixedHeadTrustSchema or PackageAssetCatalog.FixedResolverTrustSchema) ||
             PackageAssetCatalog.FixedHeadTrustAssets.Any(spec=>!package.Files.Any(
                 file=>file.Asset==spec && spec.Matches(file.Length,file.SHA256))))
             throw WfpNative.Contract("FixedHeadRequiresExactInstalledTrustAssets");
@@ -46,7 +46,7 @@ internal sealed class FixedOpenSslHeadTrust
         return new(root,crls);
     }
 
-    private static byte[] ReadAsset(AssetSpec asset,string directory)
+    internal static byte[] ReadAsset(AssetSpec asset,string directory)
     {
         var length=checked((int)(asset.FixedLength??throw new InvalidDataException("Fixed trust length missing")));
         var path=Path.Combine(directory,Path.GetFileName(asset.Path));
