@@ -5,6 +5,13 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-08 原 Broker 的 Session 0 本机交接
+
+INTEGRATED / BUILD(Broker 交接接收端及原 Job 撤销和 WFP 复核调用)。
+VERIFIED(普通 Windows 管道对端回读和拒绝、请求和回执格式反例)。
+生产服务端、WFP 全链、受限恢复、SID 内容复验及官方 Claude Code NOT_RUN。
+[机制与范围](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#原-broker-的-session-0-本机交接)
+
 ## 2026-11-08 Session 0 创建者分配权限撤销
 
 INTEGRATED / BUILD(原 Job 的临时授权、恢复前撤销检查与关闭账本)。

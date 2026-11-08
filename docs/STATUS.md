@@ -5,6 +5,12 @@
 历史页的“当前/待执行/暂停/DELIVERABLE”按段落日期及限定范围解释，不是今天的状态或操作许可。
 不在本页复制当前安装和授权摘要。
 
+## 2026-11-08 原 Broker 的 Session 0 本机交接
+
+接入固定管道、对端核验、前后全隔离回读与挂起根检查。普通 Windows 实测
+管道 PID 和会话回读及普通会话拒绝。
+[机制与范围](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#原-broker-的-session-0-本机交接)
+
 ## 2026-11-08 Session 0 创建者分配权限撤销
 
 接入原 Job 的临时授权、精确撤销和关闭回执要求。普通 Windows 实测保留旧分配

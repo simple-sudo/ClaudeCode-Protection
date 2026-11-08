@@ -653,3 +653,24 @@ Release 构建均无警告和错误，11 个普通回归入口通过，其中权
 两种正例与九种反例。服务创建、Job 和 profile 交接尚未接入原 Broker。
 下一步以原 Broker 持有的 Job 与 WFP 隔离、固定工作区和精确回收为前提，
 恢复自研载荷验证正常功能和宿主 SID 的真实内容获取路径。
+
+### 原 Broker 的 Session 0 本机交接
+
+Broker 端使用独占的本机命名管道，拒绝远程连接和重名，创建服务只获固定
+读写及查询属性权限。可信 SCM 调用方必须持有原服务进程并提供已核验的服务
+SID。Broker 从同一管道读取对端 PID 和会话，与所持进程及已验证版本的 Broker
+映像交叉核对。发送前回读原安装的 WFP 全隔离，并启用一次性 Job 分配。固定
+消息只绑定安装、Job、发起端和一次性随机值，不携带任意映像、命令或路径。
+[Windows 管道对端 PID](https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-getnamedpipeclientprocessid) ·
+[Windows 管道对端会话](https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-getnamedpipeclientsessionid)
+
+收到服务完成消息后，Broker 重验管道对端，撤销分配权限并确认只剩原 Job
+句柄。之后才按回报打开受保护的进程和线程并核对实际 Session 0、创建时间、
+原 Job 唯一成员、固定映像、权限、LocalService 主令牌及零能力低完整性 LPAC。
+根进程禁止子进程。返回前重新核验 WFP。此模块持有挂起对象，正式恢复仍须
+经过原运行监督和恢复前准入。
+
+五产品 Release 和 13 个普通回归入口通过。新增对照覆盖固定消息格式、拒绝
+错误随机值或对象标识、实际管道 PID 和会话回读及普通会话拒绝。此候选未安装。
+固定 SCM 服务入口、服务端创建及 profile 生命周期、跨会话控制台和原监督链
+尚未连接，本轮没有运行真实服务、恢复受限线程或执行官方 CLI。

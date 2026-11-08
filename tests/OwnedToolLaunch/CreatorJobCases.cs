@@ -1,5 +1,8 @@
+using System.Buffers.Binary;
 using System.Reflection;
 using System.ComponentModel;
+using System.Diagnostics;
+using System.IO.Pipes;
 using System.Runtime.InteropServices;
 using System.Security.AccessControl;
 using System.Security.Principal;
@@ -174,6 +177,51 @@ internal static class CreatorJobCases
         using var closed=OpenJobObject(0x20000,false,Name(creator));
         Check(closed.IsInvalid && Marshal.GetLastWin32Error()==2);
         Console.WriteLine($"PASS {count} creator Job checks; legacy intent, proof binding, fresh creation, collision refusal, exact ACL and label, actual grant/revoke and held-handle refusal. No service, child creation, UAC, installation or WFP.");
+        var prior=count;
+        var channel=library.GetType("ProtectionLifecycle.SessionZeroCreatorChannel",true)!;
+        var request=channel.GetMethod("CreateRequest",methods)!;
+        var reply=channel.GetMethod("ParseReply",methods)!;
+        var nonce=Enumerable.Range(1,16).Select(n=>(byte)n).ToArray();
+        var outgoing=(byte[])request.Invoke(null,[nonce,install,jobId,12u,7u])!;
+        Check(outgoing.Length==60 && outgoing.AsSpan(0,4).SequenceEqual("CCP1"u8));
+        Check(BinaryPrimitives.ReadUInt32LittleEndian(outgoing.AsSpan(4))==12 && BinaryPrimitives.ReadUInt32LittleEndian(outgoing.AsSpan(8))==7);
+        Check(outgoing.AsSpan(12,16).SequenceEqual(nonce) && outgoing.AsSpan(28,16).SequenceEqual(Convert.FromHexString(install)) &&
+            outgoing.AsSpan(44,16).SequenceEqual(Convert.FromHexString(jobId)));
+        Refused(()=>request.Invoke(null,[nonce,install,jobId,12u,0u]));
+        Refused(()=>request.Invoke(null,[nonce[..15],install,jobId,12u,7u]));
+        var incoming=new byte[44];
+        "CCR1"u8.CopyTo(incoming);
+        nonce.CopyTo(incoming,4);
+        BinaryPrimitives.WriteUInt32LittleEndian(incoming.AsSpan(20),21);
+        BinaryPrimitives.WriteUInt32LittleEndian(incoming.AsSpan(24),31);
+        BinaryPrimitives.WriteInt64LittleEndian(incoming.AsSpan(28),41);
+        BinaryPrimitives.WriteInt64LittleEndian(incoming.AsSpan(36),51);
+        var report=reply.Invoke(null,[incoming,nonce,20u,40L])!;
+        Check(report.GetType().GetProperty("Pid")!.GetValue(report) is uint pid && pid==21);
+        foreach(var offset in new[]{0,4,20,24,28,36})
+        {
+            var changed=(byte[])incoming.Clone();
+            changed[offset]=0;
+            Refused(()=>reply.Invoke(null,[changed,nonce,20u,40L]));
+        }
+        Refused(()=>reply.Invoke(null,[incoming[..43],nonce,20u,40L]));
+        Refused(()=>reply.Invoke(null,[incoming.Concat(new byte[1]).ToArray(),nonce,20u,40L]));
+        Refused(()=>reply.Invoke(null,[incoming,nonce,21u,40L]));
+        using var self=Process.GetCurrentProcess();
+        var pipeName="CpcCreatorFixture."+Guid.NewGuid().ToString("N");
+        using var server=new NamedPipeServerStream(pipeName,PipeDirection.InOut,1,PipeTransmissionMode.Byte,PipeOptions.Asynchronous|PipeOptions.CurrentUserOnly);
+        using var client=new NamedPipeClientStream(".",pipeName,PipeDirection.InOut,PipeOptions.Asynchronous);
+        using var timeout=new CancellationTokenSource(TimeSpan.FromSeconds(3));
+        var connected=server.WaitForConnectionAsync(timeout.Token);
+        client.ConnectAsync(timeout.Token).GetAwaiter().GetResult();
+        connected.GetAwaiter().GetResult();
+        var peer=((uint Pid,uint Session))channel.GetMethod("ReadClientPeer",methods)!.Invoke(null,[server.SafePipeHandle])!;
+        Check(peer.Pid==(uint)self.Id && peer.Session==(uint)self.SessionId);
+        // The ordinary fixture is outside Session 0 and cannot pass as the
+        // creation service even with the exact process handle and PID.
+        Check(peer.Session!=0);
+        Refused(()=>channel.GetMethod("AssertServicePeer",methods)!.Invoke(null,[server.SafePipeHandle,self.SafeHandle,peer.Session]));
+        Console.WriteLine($"PASS {count-prior} creator channel checks; request/reply binding and actual ordinary pipe PID/session refusal. No service, handoff, elevation or WFP.");
     }
 
     [StructLayout(LayoutKind.Sequential)] private struct SecurityAttributes {internal int Length;internal IntPtr Descriptor;internal int Inherit;}

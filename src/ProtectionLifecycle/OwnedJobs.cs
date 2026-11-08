@@ -102,6 +102,7 @@ internal sealed class OwnedKernelJob : IDisposable
     private bool admissionClaimed,admissionClosed;
     private bool creatorGrantAttempted,creatorReleaseConfirmed;
     internal string JobId=>intent.JobId;
+    internal string SessionZeroCreatorSid=>intent.CreatorServiceSid??throw WfpNative.Contract("SessionZeroCreatorJobRequired");
     internal bool AtomicAdmissionReserved=>admissionClaimed;
     internal SafeJobHandle ToolCreationHandle(ProtectedSession.ResourceQualification permit)
     {
@@ -114,7 +115,7 @@ internal sealed class OwnedKernelJob : IDisposable
         if(intent.CreatorServiceSid is not null)throw WfpNative.Contract("SessionZeroJobRequiresBoundCreator");
         ReserveAdmission(version);return handle;
     }
-    internal string ReserveSessionZeroAdmission(VerifiedVersion version,SecurityIdentifier exactCreatorSid)
+    internal void ReserveSessionZeroAdmission(VerifiedVersion version,SecurityIdentifier exactCreatorSid)
     {
         if(intent.CreatorServiceSid is null || intent.CreatorServiceSid!=exactCreatorSid.Value)throw WfpNative.Contract("SessionZeroJobCreatorMismatch");
         AssertHeld();AssertCreatorProof(state,intent);
@@ -123,7 +124,6 @@ internal sealed class OwnedKernelJob : IDisposable
         ReserveAdmission(version);
         creatorGrantAttempted=true;
         if(KernelJobSeal.SetCreatorAccess(handle,intent,grant:true))throw WfpNative.Contract("SessionZeroCreatorGrantAlreadyPresent");
-        return intent.Name;
     }
     // Call only after the authenticated creator has returned from the atomic
     // creation syscall and released its Job handle. ACL changes alone do not

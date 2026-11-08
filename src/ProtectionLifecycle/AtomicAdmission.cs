@@ -295,6 +295,16 @@ internal sealed partial class AtomicChild : IDisposable
         if(actual is null || host is null || actual.Equals(host) || !actual.IsWellKnown(WellKnownSidType.LocalServiceSid))
             throw WfpNative.Contract("FormalSessionRequiresIndependentLocalServiceUser");
     }
+    internal static void AssertIndependentOfflineHandoffToken(SafeProcessHandle process,string expectedPackageSid)
+    {
+        var token=ReadTokenSnapshot(process,true,true,out var actualUser);
+        using var host=WindowsIdentity.GetCurrent(TokenAccessLevels.Query);
+        AssertIndependentSessionUser(actualUser,host.User);
+        if(!token.IsAppContainer || !token.LpacAccessCheckObserved || token.ApplicationPackageAccessMask!=2 ||
+            token.PackageSid!=expectedPackageSid || token.IntegritySid!="S-1-16-4096" || !LpacCapabilityProfile.None.Matches(token.CapabilityCount,token.Capabilities))
+            throw WfpNative.Contract("IndependentOfflineHandoffTokenMismatch");
+        AssertNoChildCreation(process);
+    }
     internal static SafeProcessHandle HoldSessionPeer(OwnedKernelJob job,string sid,int sourcePort,LpacCapabilityProfile? capabilities=null)
     {
         var process=OpenProcess(0x101000,false,ProxyChannelLease.SessionPeerOwner(sourcePort));
