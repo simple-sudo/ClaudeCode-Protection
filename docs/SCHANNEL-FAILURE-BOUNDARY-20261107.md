@@ -240,3 +240,24 @@ OpenSSL 检查包含真实内存握手、加密请求与响应、生产网关首
 未知根 20、提前 EOF；另有 104 项精确迁移夹具。证据在本机同一工作目录的
 `native-fixture-exact-candidate` 及 `native-fixture-exact-tests`。
 候选安装与受限执行 NOT_RUN，需按当前工件重新审查一次。
+
+## 受限随机数初始化实测
+
+2026-11-08 00:47:00–00:47:15Z，本人批准 `3F0B2E88…`，按冻结的 62 项输入
+执行一次。原所有者完成 `d7fc0bbf` → `8ad9a646` 未激活更新。全隔离低完整性
+LPAC 进入固定 OpenSSL 密钥生成，在 `FIXTURE_KEY / 0x1200006C` 退出 3。
+对应 OpenSSL 3.5.9 的 `RAND_R_ERROR_INSTANTIATING_DRBG`。握手及其负对照
+未执行。[OpenSSL 3.5.9 随机数错误定义](https://raw.githubusercontent.com/openssl/openssl/openssl-3.5.9/include/openssl/randerr.h)
+
+原所有者确认撤销准入、全隔离及原 Job 归零，隔离和 Job 停止刻度均为 174 ms。
+停止错误为 0，操作器十处权限观测一致。三份回执独立核对，派生 SHA-256
+`B71E580E6BA1564106016E50D95D0AE1396D079F3597BB3ECF11F5AD359881EA`。
+公开 Application 时间窗零项，BFE 和 AV Running，完整厂商覆盖 UNKNOWN。
+许可已消耗。证据位于本机 `work/openssl-owner-20261107-01/operation-native-fixture-once`。
+
+静态读取同一 PSF libcrypto 的 PE 导入，发现 `CryptAcquireContextW` 和
+`CryptGenRandom`，无 `BCryptGenRandom` 导入。上游 3.5.9 对 MSVC 和
+`_WIN32_WINNT >= 0x0600` 的配置使用 `BCryptGenRandom`。这是下一次有针对性
+构建的依据，旧接口在该受限进程内的原始状态仍 UNKNOWN。后续须维持操作系统熵源
+和全隔离，并用新的字节执行原所有者实测。
+[OpenSSL 3.5.9 Windows 熵源实现](https://raw.githubusercontent.com/openssl/openssl/openssl-3.5.9/providers/implementations/rands/seeding/rand_win.c)

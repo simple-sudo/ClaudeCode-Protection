@@ -5,6 +5,12 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-07 低完整性 LPAC 的 OpenSSL 随机数初始化实测
+
+VERIFIED(原所有者未激活更新、受限加载、进入原生密钥生成、有序关闭及 Job 归零)。
+FAIL(随机数实例化 `FIXTURE_KEY / 0x1200006C`)。具体 Windows API 返回 UNKNOWN，
+TLS 未握手。外部代理通信、真实内容 L3、官方 CLI 和整机未验收。
+
 ## 2026-11-07 OpenSSL 内存证书候选
 
 INTEGRATED / BUILD(固定 OpenSSL 在内存生成临时密钥和证书，v3 细分回报)。
