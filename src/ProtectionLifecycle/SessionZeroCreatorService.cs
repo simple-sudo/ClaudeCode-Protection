@@ -13,6 +13,8 @@ internal static class SessionZeroCreatorService
     private static readonly ServiceMain Callback=Run;
     private static readonly ServiceControlHandler Control=(_,_,_,_)=>120; // ERROR_CALL_NOT_IMPLEMENTED.
     private static int exit=125;
+    internal enum FailurePhase:uint {ReportStarting=1,VerifyToken,ResolveImage,SealProcess,ReportReady,OfflineProtocol}
+    private const uint FailureTag=0xc5000000;
 
     internal static int Dispatch()
     {
@@ -31,21 +33,26 @@ internal static class SessionZeroCreatorService
         var service=RegisterServiceCtrlHandlerEx(name,Control,IntPtr.Zero);
         if(service==IntPtr.Zero)return;
         var status=new Status{ServiceType=0x10,State=2,CheckPoint=1,WaitHint=10000}; // Own process, start pending.
+        var phase=FailurePhase.ReportStarting;
         uint result=0;
         try
         {
             Publish();
+            phase=FailurePhase.VerifyToken;
             _=SessionZeroCreatorClient.VerifyCurrentService(name);
+            phase=FailurePhase.ResolveImage;
             _=AtomicChild.ResolveSessionZeroImage(FixedLayout.FromWindows(),Environment.ProcessPath);
+            phase=FailurePhase.SealProcess;
             GrantOwnObservation();
+            phase=FailurePhase.ReportReady;
             status.State=4;status.CheckPoint=0;status.WaitHint=0;
             Publish();
+            phase=FailurePhase.OfflineProtocol;
             SessionZeroCreatorClient.RunOfflineCreator(jobId);
         }
         catch(Exception error)
         {
-            result=unchecked((uint)(error is Win32Exception native?native.NativeErrorCode:error.HResult));
-            if(result==0)result=13;
+            result=EncodeFailure(phase,unchecked((uint)(error is Win32Exception native?native.NativeErrorCode:error.HResult)));
         }
         status.State=1;status.CheckPoint=0;status.WaitHint=0; // Stopped.
         status.Win32Code=result==0?0u:1066u;status.ServiceCode=result;
@@ -55,6 +62,33 @@ internal static class SessionZeroCreatorService
         {
             if(!SetServiceStatus(service,ref status))throw new Win32Exception(Marshal.GetLastWin32Error(),"SetCreatorServiceStatus");
         }
+    }
+
+    // SCM offers a single 32-bit service-specific field. Keep the phase and
+    // exact Win32/common HRESULT values; explicitly mark an unencoded family.
+    // This conveys diagnostics only and grants no cleanup or resume authority.
+    internal static uint EncodeFailure(FailurePhase phase,uint code)
+    {
+        if(phase is <FailurePhase.ReportStarting or >FailurePhase.OfflineProtocol)
+            throw new ArgumentOutOfRangeException(nameof(phase));
+        if(code==0)code=13;
+        var kind=(code&0xffff0000u) switch {0u=>0u,0x80130000u=>1u,0x80070000u=>2u,0x80000000u=>3u,_=>15u};
+        return FailureTag|((uint)phase<<20)|(kind<<16)|(kind==15?0u:code&0xffffu);
+    }
+
+    internal static WfpFailure DescribeStopped(uint win32,uint specific)
+    {
+        if(win32!=1066)return new("CreatorServiceStoppedBeforeBinding",win32==0?13u:win32);
+        var phase=(FailurePhase)((specific>>20)&15);
+        var kind=(specific>>16)&15;
+        if((specific&0xff000000)!=FailureTag || phase is <FailurePhase.ReportStarting or >FailurePhase.OfflineProtocol ||
+            kind is >3 and not 15 || (kind==15 && (specific&0xffff)!=0))
+            return new("CreatorServiceStoppedBeforeBinding",specific==0?13u:specific);
+        var name="CreatorService"+phase;
+        if(kind==15)return new(name+"CodeNotEncoded",specific);
+        var prefix=kind switch {0u=>0u,1u=>0x80130000u,2u=>0x80070000u,_=>0x80000000u};
+        var code=prefix|(specific&0xffff);
+        return code==0?new("CreatorServiceStoppedBeforeBinding",specific):new(name,code);
     }
 
     internal static string JobIdFromServiceName(string name)

@@ -33,6 +33,26 @@ internal static class CreatorLifecycleCases
         Check(acl[0] is CommonAce deny && deny.SecurityIdentifier.Value=="S-1-3-4" && deny.AceQualifier==AceQualifier.AccessDenied && deny.AccessMask==0x000c0000);
         Check(acl[1] is CommonAce system && system.SecurityIdentifier.Value=="S-1-5-18" && system.AccessMask==0x001fffff);
         Check(acl[2] is CommonAce observer && observer.SecurityIdentifier.Value=="S-1-5-32-544" && observer.AccessMask==0x00101000);
+        var encode=Method("SessionZeroCreatorService","EncodeFailure");
+        var phaseType=encode.GetParameters()[0].ParameterType;
+        var describe=Method("SessionZeroCreatorService","DescribeStopped");
+        (string? Stage,uint Code) Stopped(uint win32,uint code)
+        {
+            var failure=describe.Invoke(null,[win32,code])!;
+            return ((string?)failure.GetType().GetProperty("Stage",BindingFlags.Instance|BindingFlags.NonPublic)!.GetValue(failure),
+                (uint)failure.GetType().GetProperty("Status",BindingFlags.Instance|BindingFlags.NonPublic)!.GetValue(failure)!);
+        }
+        foreach(var phase in Enum.GetNames(phaseType))
+        foreach(var code in new[]{5u,0x80131501u,0x80070005u,0x80004005u})
+        {
+            var encoded=(uint)encode.Invoke(null,[Enum.Parse(phaseType,phase),code])!;
+            Check(Stopped(1066,encoded)==("CreatorService"+phase,code));
+        }
+        var unknown=(uint)encode.Invoke(null,[Enum.Parse(phaseType,"VerifyToken"),0x81234567u])!;
+        Check(Stopped(1066,unknown)==("CreatorServiceVerifyTokenCodeNotEncoded",unknown));
+        Check(Stopped(1066,unknown|1u)==("CreatorServiceStoppedBeforeBinding",unknown|1u));
+        Check(Stopped(1066,0x80131501u)==("CreatorServiceStoppedBeforeBinding",0x80131501u));
+        Check(Stopped(1053,0)==("CreatorServiceStoppedBeforeBinding",1053));
         var broker=library.GetType("ProtectionLifecycle.InstalledBroker",true)!;
         Check(broker.GetMethod("RunSessionZeroOfflineCreatorService")!.Invoke(null,null) is 124); // Ordinary SCM refusal.
         var layout=Method("FixedLayout","FromWindows").Invoke(null,null)!;

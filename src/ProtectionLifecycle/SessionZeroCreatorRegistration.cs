@@ -98,7 +98,7 @@ internal sealed class SessionZeroCreatorRegistration : IDisposable
         while(watch.ElapsedMilliseconds<10000)
         {
             var status=ReadStatus(service);
-            if(status.State==1)throw new Win32Exception((int)(status.Win32Code switch {0=>13u,1066=>status.ServiceCode,_=>status.Win32Code}),"CreatorServiceStoppedBeforeBinding");
+            if(status.State==1)throw SessionZeroCreatorService.DescribeStopped(status.Win32Code,status.ServiceCode);
             if(status.State==4 && status.Pid!=0)
             {
                 var held=OpenProcess(0x101000,false,status.Pid);
@@ -301,7 +301,12 @@ internal sealed class SessionZeroCreatorRegistration : IDisposable
         if(status.Type!=0x10)throw WfpNative.Contract("CreatorServiceTypeMismatch");
         return status;
     }
-    private static Win32Exception Error(string stage)=>new(Marshal.GetLastWin32Error(),stage);
+    private static Win32Exception Error(string stage)
+    {
+        var result=new Win32Exception(Marshal.GetLastWin32Error(),stage);
+        result.Data["Stage"]=stage;
+        return result;
+    }
     public void Dispose(){process?.Dispose();service.Dispose();manager.Dispose();}
 
     private sealed class ServiceHandle : SafeHandleZeroOrMinusOneIsInvalid

@@ -5,6 +5,15 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-08 已安装候选的服务启动失败
+
+VERIFIED(一次未激活升级、固定清单、私有映像权限、外层原进程终态及最终令牌)。
+FAIL(独立身份离线资格在服务启动阶段报告 `0x80131501`)。
+UNKNOWN(服务内部检查点、原 Job 和工作区闭合)。确切服务登记仍在。
+NOT_RUN(受限线程恢复、宿主 SID 真实复验、官方 CLI)。
+INTEGRATED / BUILD / VERIFIED(新版 SCM 分阶段回报的普通回归，未安装)。
+[实机记录](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#已安装候选的服务启动失败)
+
 ## 2026-11-08 固定独立身份离线入口
 
 INTEGRATED / BUILD(固定入口贯通服务登记、独立工作区、原监督及关闭链)。
