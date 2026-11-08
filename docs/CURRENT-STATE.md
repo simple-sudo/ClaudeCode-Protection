@@ -1,5 +1,12 @@
 # 当前状态与授权摘要
 
+2026-11-08 获批 LocalService 同身份对照通过固定映像执行打开、工作目录打开、
+普通挂起子进程的令牌、Job 与管道校验及清零。在已确认新 profile 存储和映射
+缺席后，`CreateAppContainerProfile` 返回错误 5。失败后再次核对缺席，原所有者
+确认服务退出及暂存回收。未进入注册后的 LPAC 创建，原错误 5 的内部拒绝位置及
+宿主 SID 修复仍待实证。许可已消耗。官方 CLI 未执行。
+[同身份对照结果](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#localservice-同身份-profile-注册拒绝)。
+
 2026-11-08 普通 Windows 前后对照确认，同一自研映像和创建参数在未注册
 AppContainer profile 时返回 2，注册后获得挂起进程及匹配的包 SID。
 原 Job 清零，Windows profile 删除成功且本轮存储根确认不存在。LocalService

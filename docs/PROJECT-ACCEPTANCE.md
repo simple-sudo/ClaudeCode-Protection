@@ -5,6 +5,14 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-08 LocalService 同身份 profile 注册拒绝
+
+VERIFIED(受限服务身份的精确映像与目录打开、普通挂起进程令牌、Job 与管道校验，
+原 Job 清零、服务原句柄终态、服务及暂存回收)。FAIL(profile 注册返回 5，
+固定存储及映射缺席回读通过)。注册后的 LPAC 创建 NOT_RUN，原 LPAC 创建拒绝
+内部位置 UNKNOWN，宿主 SID 暴露仍 FAIL，正式 Claude NOT_RUN。
+[限定实测](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#localservice-同身份-profile-注册拒绝)
+
 ## 2026-11-08 AppContainer profile 普通对照与 SID 取证绑定
 
 VERIFIED(普通账户下同一固定自研映像在注册 profile 前拒绝、注册后取得挂起

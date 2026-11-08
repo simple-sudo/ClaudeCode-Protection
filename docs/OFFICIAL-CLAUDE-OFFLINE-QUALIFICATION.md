@@ -430,3 +430,29 @@ Job 成员资格。线程从未恢复，原 Job 终止回执及单累计成员�
 及外部网络均 NOT_RUN。
 
 [AppContainerLaunch]: https://learn.microsoft.com/en-us/windows/win32/secauthz/implementing-an-appcontainer
+
+### LocalService 同身份 profile 注册拒绝
+
+05:25（纽约时间），一次批准 `79C57FFE…` 后，在 `83dd970` 基线上完成固定
+24 项输入的实验。原所有者持有新服务原进程句柄并核对 SCM 配置和映像。
+相同受限服务身份打开固定映像的执行权限及工作目录的遍历权限。普通挂起
+正控制使用同一映像、工作目录、单成员 Job、子进程限制和三管道。核对
+Session 0 LocalService、服务组、无宿主账户域组、句柄白名单和原 Job
+清零后，服务才进入 profile 阶段。此正控制的线程始终未恢复。
+
+服务持有 Windows 所报 LocalService `Packages` 父目录，核对固定新 profile
+的存储与映射缺席。一次 `CreateAppContainerProfile` 返回 5，回执阶段 17。
+失败后同一服务重新核对存储缺席及映射 API 的缺失结果。尚未调用注册后的
+LPAC `CreateProcessW`。因此本次将拒绝定位到 profile 注册 API，排除了本次
+普通挂起正控制的映像、工作目录及共有属性。上次 profileless LPAC 创建的
+拒绝位置仍 UNKNOWN。注册 API 的具体拒绝对象，以及拒绝是否由服务令牌的
+写限制单独引起，也仍 UNKNOWN。
+
+原所有者通过原进程句柄确认服务退出，回读服务登记和唯一暂存目录已回收。
+普通侧独立复核两者缺席。回执 SHA-256
+`B1224F6FE571018D606544965260A8FCCAABC50710F37EF9EE77AD37CFC1C5A4`，
+固定材料在 `work/identity-creation-20261108-01/service-profile-candidate/`。
+许可已消耗，未调整现有 ACL、账户特权、网络规则或产品安装，未执行官方 CLI。
+后续应区分可信维护侧的 profile 准备与受限执行侧的启动。在同一账户下比较
+写限制的影响，并验证只授予固定 profile 所需访问，不能依据本次结果扩大
+正式运行身份权限。宿主 SID 暴露仍为 FAIL。

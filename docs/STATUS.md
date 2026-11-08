@@ -5,6 +5,12 @@
 历史页的“当前/待执行/暂停/DELIVERABLE”按段落日期及限定范围解释，不是今天的状态或操作许可。
 不在本页复制当前安装和授权摘要。
 
+## 2026-11-08 LocalService 同身份 profile 注册拒绝
+
+同一受限 LocalService 通过普通挂起创建与清零，`CreateAppContainerProfile`
+返回 5。服务及暂存已回收，注册后的 LPAC 创建未发生。
+[实机证据](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#localservice-同身份-profile-注册拒绝)
+
 ## 2026-11-08 AppContainer profile 普通对照与 SID 取证绑定
 
 普通账户对照验证注册 profile 后可以创建挂起 AppContainer，自研进程与 profile
