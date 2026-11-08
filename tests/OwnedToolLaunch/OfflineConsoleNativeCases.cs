@@ -62,13 +62,14 @@ internal static class OfflineConsoleNativeCases
         var session=new string('a',32);
         var parent=Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
         var workspace=Path.Combine(parent,"ClaudeCodeProtection-Task-"+session);
-        var nativeBase=Path.Combine(parent,"native-profile-fixture");
-        var localData=Path.Combine(nativeBase,"Packages","profile-fixture","AC");
+        var package="ClaudeCodeProtection."+new string('b',32);
+        var nativeBase=Path.Combine(workspace,"local");
+        var localData=Path.Combine(nativeBase,"Packages",package,"AC");
         var temp=Path.Combine(localData,"Temp");
         var env=new Dictionary<string,string>(StringComparer.OrdinalIgnoreCase);
-        _=Call(bind,null,env,workspace,localData,session);
+        _=Call(bind,null,env,workspace,package,session);
         Require(env.Count==11 && env["ProgramFiles"]==parent && env["CPC_OFFLINE_CONSOLE_SESSION"]==session &&
-            env["TEMP"]==temp && env["TMP"]==temp && env["LOCALAPPDATA"]==nativeBase);
+            env["TEMP"]==temp && env["TMP"]==temp && env["LOCALAPPDATA"]==nativeBase && env["CPC_OFFLINE_CONSOLE_PACKAGE"]==package);
         string? Diagnose(string cwd)=>Call(verify,null,workspace,localData,temp,cwd,(Func<string,string?>)(name=>env.GetValueOrDefault(name)))?.ToString();
         Require(Diagnose(workspace)=="LocalAppData");
         env["LOCALAPPDATA"]=localData;
@@ -83,14 +84,15 @@ internal static class OfflineConsoleNativeCases
         }
         env["TEMP"]=Path.Combine(parent,"HostTemp");
         Require(Diagnose(workspace)=="Temp");
-        env["TEMP"]=Path.Combine(localData,"Packages","profile-fixture","AC","Temp");
+        env["TEMP"]=Path.Combine(localData,"Packages",package,"AC","Temp");
         Require(Diagnose(workspace)=="Temp");
         env["TEMP"]=temp;
         env["HTTP_PROXY"]="unused";
         Require(Diagnose(workspace)=="UnexpectedAuthority");
-        Refuse<InvalidDataException>(()=>Call(bind,null,env,workspace,localData,session));
-        Refuse<InvalidDataException>(()=>Call(bind,null,new Dictionary<string,string>(),parent,localData,session));
-        Refuse<InvalidDataException>(()=>Call(bind,null,new Dictionary<string,string>(),workspace,Path.Combine(parent,"AC"),session));
+        Refuse<InvalidDataException>(()=>Call(bind,null,env,workspace,package,session));
+        Refuse<InvalidDataException>(()=>Call(bind,null,new Dictionary<string,string>(),parent,package,session));
+        Refuse<InvalidDataException>(()=>Call(bind,null,new Dictionary<string,string>(),workspace,"..\\"+package,session));
+        Refuse<InvalidDataException>(()=>Call(bind,null,new Dictionary<string,string>(),workspace,package+"\\..",session));
     }
 
     private static void VerifyProjectionEvidence(Assembly library)

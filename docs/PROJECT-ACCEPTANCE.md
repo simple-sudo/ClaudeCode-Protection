@@ -5,6 +5,12 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-08 固定离线任务内目录投影
+
+INTEGRATED / BUILD(任务树、低完整性目录、严格投影及实际临时文件正控制)。
+VERIFIED(普通路径契约、越界反例与相关回归)。受限执行 NOT_RUN。
+[候选和范围](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#任务内目录投影)
+
 ## 2026-11-08 固定自研离线控制台闭合通过
 
 VERIFIED(版本 `49c54e70` 未激活安装、低完整性零能力 LPAC 的精确目录、

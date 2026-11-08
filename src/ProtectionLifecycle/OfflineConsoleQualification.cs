@@ -13,16 +13,18 @@ namespace ProtectionLifecycle;
 internal static class OfflineConsoleQualification
 {
     internal const string ChildCommand="offline-console-qualification-child",SessionVariable="CPC_OFFLINE_CONSOLE_SESSION";
-    private const string LocalDataVariable="CPC_OFFLINE_CONSOLE_LOCALDATA";
+    private const string PackageVariable="CPC_OFFLINE_CONSOLE_PACKAGE";
     private const string DescendantCommand="offline-console-denial-target",OutputLeaf="offline-console-output.txt";
+    private const string TempLeaf="offline-console-temp.txt";
     private static ReadOnlySpan<byte> ExpectedOutput=>"CPC_OFFLINE_CONSOLE_STDOUT\n"u8;
     private static ReadOnlySpan<byte> ExpectedError=>"CPC_OFFLINE_CONSOLE_STDERR\n"u8;
     private static ReadOnlySpan<byte> ExpectedFile=>"CPC_OFFLINE_CONSOLE_WORKSPACE\n"u8;
+    private static ReadOnlySpan<byte> ExpectedTempFile=>"CPC_OFFLINE_CONSOLE_TEMP\n"u8;
     private enum ChildStage
     {
         Identity, SessionId, ProgramFiles, WorkspacePath, ProfilePath, CurrentDirectory, Temp, Tmp,
         LocalAppData, UserProfile, Home, XdgConfigHome, ClaudeConfigDir, AppData, UnexpectedAuthority,
-        Streams, InputEof, Workspace, Descendant, Output
+        Streams, InputEof, Workspace, TempFile, Descendant, Output
     }
     private static readonly (string Name,ChildStage Stage)[] WorkspaceVariables=[
         ("USERPROFILE",ChildStage.UserProfile),
@@ -35,25 +37,19 @@ internal static class OfflineConsoleQualification
     ];
     private sealed record ChildFailure(string Stage,string Kind,int Code);
 
-    internal static void BindEnvironment(IDictionary<string,string> environment,string workspace,string localData,string session)
+    internal static void BindEnvironment(IDictionary<string,string> environment,string workspace,string package,string session)
     {
         var programFiles=Path.GetDirectoryName(workspace)??throw WfpNative.Contract("OfflineConsoleProgramFilesMissing");
         if(!string.Equals(workspace,SessionTaskWorkspace.PathFor(session,programFiles),StringComparison.OrdinalIgnoreCase) ||
             ForbiddenVariables.Any(environment.ContainsKey))throw WfpNative.Contract("OfflineConsoleParentEnvironmentDiffers");
-        // CreateProcess appends Packages/<moniker>/AC to this input for a
-        // security-capabilities child. Bind the input to the already held
-        // profile ancestry and still require the exact projected output.
-        var package=Path.GetDirectoryName(localData);
-        var packages=package is null?null:Path.GetDirectoryName(package);
-        var nativeBase=packages is null?null:Path.GetDirectoryName(packages);
-        if(!string.Equals(Path.GetFileName(localData),"AC",StringComparison.OrdinalIgnoreCase) ||
-            !string.Equals(Path.GetFileName(packages),"Packages",StringComparison.OrdinalIgnoreCase) || nativeBase is null)
-            throw WfpNative.Contract("OfflineConsoleNativeProjectionBaseDiffers");
+        // Windows appends the package suffix to LOCALAPPDATA. The base and
+        // expected output both stay within this session's task directory.
+        var view=OfflineConsoleStorage.Resolve(workspace,package);
         environment["ProgramFiles"]=programFiles;
         environment[SessionVariable]=session;
-        environment[LocalDataVariable]=localData;
-        environment["LOCALAPPDATA"]=nativeBase;
-        environment["TEMP"]=environment["TMP"]=WindowsPathSeal.Child(localData,"Temp");
+        environment[PackageVariable]=package;
+        environment["LOCALAPPDATA"]=view.Base;
+        environment["TEMP"]=environment["TMP"]=view.Temp;
         foreach(var (name,_) in WorkspaceVariables)environment[name]=workspace;
     }
 
@@ -86,11 +82,11 @@ internal static class OfflineConsoleQualification
         stage=ChildStage.WorkspacePath;
         var workspace=SessionTaskWorkspace.PathFor(session,programFiles);
         stage=ChildStage.ProfilePath;
-        var localData=Environment.GetEnvironmentVariable(LocalDataVariable)??throw WfpNative.Contract("OfflineConsoleProfilePathMissing");
-        var temp=WindowsPathSeal.Child(localData,"Temp");
+        var package=Environment.GetEnvironmentVariable(PackageVariable)??throw WfpNative.Contract("OfflineConsolePackageNameMissing");
+        var view=OfflineConsoleStorage.Resolve(workspace,package);
         stage=ChildStage.CurrentDirectory;
         var projection=OfflineConsoleProjection.Capture(session);
-        if(FindEnvironmentMismatch(workspace,localData,temp,Environment.CurrentDirectory,projection.Read) is { } mismatch)
+        if(FindEnvironmentMismatch(workspace,view.LocalData,view.Temp,Environment.CurrentDirectory,projection.Read) is { } mismatch)
         {
             stage=mismatch;
             if(mismatch is ChildStage.Temp or ChildStage.Tmp or ChildStage.LocalAppData)
@@ -109,6 +105,9 @@ internal static class OfflineConsoleQualification
         stage=ChildStage.Workspace;
         using(var file=new FileStream(WindowsPathSeal.Child(workspace,OutputLeaf),FileMode.CreateNew,FileAccess.Write,FileShare.None))
         {file.Write(ExpectedFile);file.Flush(true);}
+        stage=ChildStage.TempFile;
+        using(var file=new FileStream(WindowsPathSeal.Child(view.Temp,TempLeaf),FileMode.CreateNew,FileAccess.Write,FileShare.None))
+        {file.Write(ExpectedTempFile);file.Flush(true);}
         stage=ChildStage.Descendant;
         // This inert same-image invocation exists only as a negative control.
         // If the policy fails, the original owner stops its exact Job.
@@ -156,7 +155,7 @@ internal static class OfflineConsoleQualification
         var failures=new List<Exception>();
         string? jobId=null;
         uint? exit=null;
-        bool resumed=false,singleProcess=false,workspaceMatched=false,workspaceClosed=false;
+        bool resumed=false,singleProcess=false,workspaceMatched=false,tempMatched=false,workspaceClosed=false;
         RuntimeStop? stopped=null;
         OfflineConsoleOutput? stdout=null,stderr=null;
         object? environmentProjection=null;
@@ -165,8 +164,8 @@ internal static class OfflineConsoleQualification
             foreach(var plan in plans)fences.Add(PersistentFence.OpenExisting(state,plan.Data.FenceId));
             AssertQuarantine();
             using(var profile=InstallationProfileLease.Create(state))
-            using(var localData=profile.HoldConsoleLocalData())
             using(var workspace=SessionResources.CreateOwnedTaskDirectory(state,profile,id))
+            using(var storage=OfflineConsoleStorage.Create(state,workspace))
             using(var streams=new OfflineConsoleStreams())
             {
                 AssertWorkspace(workspace,state);
@@ -174,21 +173,20 @@ internal static class OfflineConsoleQualification
                 jobId=job.JobId;
                 AtomicChild? child=null;
                 ProtectionRuntimeLease? runtime=null;
-                PathLease? temp=null;
                 uint childPid=0;
                 (Task<OfflineConsoleOutput> Output,Task<OfflineConsoleOutput> Error)? capture=null;
                 try
                 {
-                    child=AtomicChild.CreateOfflineConsoleQualification(layout,state,version,job,profile,id,workspace,localData,streams);
+                    child=AtomicChild.CreateOfflineConsoleQualification(layout,state,version,job,profile,id,workspace,storage,streams);
                     childPid=child.Pid;
                     capture=streams.ReadAfterCreate();
-                    temp=WindowsPathSeal.LockDirectory(WindowsPathSeal.Child(localData.Path,"Temp"),PathPolicy.Source);
                     runtime=ProtectionRuntimeLease.ForFixedOfflineConsole(state,version,job,fences,child,id);
                     runtime.Activate(10000);
                     _=child.ResumeQuarantined();resumed=true;
                     do
                     {
                         runtime.AssertHealthy();
+                        storage.AssertHeld(workspace);
                         DemandCaptureWithinBound(capture.Value.Output);
                         DemandCaptureWithinBound(capture.Value.Error);
                         exit=child.ObserveOfflineConsoleExit();
@@ -220,7 +218,6 @@ internal static class OfflineConsoleQualification
                     }
                     catch(Exception error){failures.Add(error);}
                     child?.Dispose();
-                    temp?.Dispose();
                 }
                 if(capture is { } readers)
                 {
@@ -233,29 +230,29 @@ internal static class OfflineConsoleQualification
                     stdout is {Overflow:false,Bytes.Length:>0})
                 {
                     var projected=OfflineConsoleProjection.Parse(stdout.Bytes,id,childPid);
-                    var ownedTemp=WindowsPathSeal.Child(localData.Path,"Temp");
+                    var ownedTemp=storage.View.Temp;
+                    var localData=storage.View.LocalData;
                     var hostTemp=Path.GetTempPath();
                     var hostLocal=Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
                     var receipt=state.WriteNew("offline-console-projection-"+id+".json",JsonSerializer.SerializeToUtf8Bytes(new {
                         SchemaVersion=1,state.InstallationId,SessionId=id,JobId=job.JobId,
                         version.Package.Release,version.Package.ManifestHash,Restricted=projected,
-                        Expected=new {Temp=ownedTemp,LocalAppData=localData.Path,Workspace=workspace.Path},
+                        Expected=new {Temp=ownedTemp,LocalAppData=localData,Workspace=workspace.Path},
                         TrustedOwner=new {Temp=hostTemp,LocalAppData=hostLocal}
                     }));
                     environmentProjection=new {
                         ReceiptSHA256=receipt,
                         Temp=OfflineConsoleProjection.Classify(projected.Temp,ownedTemp,workspace.Path,hostTemp),
                         Tmp=OfflineConsoleProjection.Classify(projected.Tmp,ownedTemp,workspace.Path,hostTemp),
-                        LocalAppData=OfflineConsoleProjection.Classify(projected.LocalAppData,localData.Path,workspace.Path,hostLocal)
+                        LocalAppData=OfflineConsoleProjection.Classify(projected.LocalAppData,localData,workspace.Path,hostLocal)
                     };
                 }
                 if(singleProcess && exit==0)
                 {
                     AssertWorkspace(workspace,state);
-                    using var file=new FileStream(WindowsPathSeal.Open(WindowsPathSeal.Child(workspace.Path,OutputLeaf),false,true),FileAccess.Read);
-                    var buffer=new byte[ExpectedFile.Length];
-                    if(file.Length!=buffer.Length)throw WfpNative.Contract("OfflineConsoleWorkspaceOutputLengthDiffers");
-                    file.ReadExactly(buffer);workspaceMatched=ExpectedFile.SequenceEqual(buffer);
+                    storage.AssertHeld(workspace);
+                    workspaceMatched=ReadFixedFile(workspace.Path,OutputLeaf,ExpectedFile);
+                    tempMatched=ReadFixedFile(storage.View.Temp,TempLeaf,ExpectedTempFile);
                 }
             }
             workspaceClosed=true;
@@ -269,12 +266,13 @@ internal static class OfflineConsoleQualification
         var matched=stdout is {Overflow:false} && stderr is {Overflow:false} &&
             ExpectedOutput.SequenceEqual(stdout.Bytes) && ExpectedError.SequenceEqual(stderr.Bytes);
         var closed=jobId is not null && stopped?.ConfirmsClosedOfflineConsole(id,jobId)==true;
-        var complete=failures.Count==0 && closed && workspaceClosed && singleProcess && workspaceMatched && matched && exit==0 && resumed;
+        var complete=failures.Count==0 && closed && workspaceClosed && singleProcess && workspaceMatched && tempMatched && matched && exit==0 && resumed;
         var childFailure=ParseChildFailure(exit,stderr);
         var report=JsonSerializer.Serialize(new {
             SchemaVersion=1,Scope="INSTALLED_FIXED_OFFLINE_CONSOLE",state.InstallationId,SessionId=id,JobId=jobId,
             version.Package.Release,version.Package.ManifestHash,Status=complete?"OFFLINE_CONSOLE_CLOSED":"OFFLINE_CONSOLE_NOT_CONFIRMED",
-            ProcessResumed=resumed,ChildExit=exit,SingleProcessEverAdmitted=singleProcess,WorkspaceMatched=workspaceMatched,WorkspaceClosed=workspaceClosed,
+            ProcessResumed=resumed,ChildExit=exit,SingleProcessEverAdmitted=singleProcess,WorkspaceMatched=workspaceMatched,
+            TaskTempMatched=tempMatched,WorkspaceClosed=workspaceClosed,
             Output=Summarize(stdout),Error=Summarize(stderr),ChildFailure=childFailure,EnvironmentProjection=environmentProjection,
             StreamsMatched=matched,OriginalOwnerClosed=closed,StopObservation=stopped,
             Failures=failures.SelectMany(WfpNative.Describe).ToArray(),GatewayOpened=false,NetworkQualified=false,
@@ -288,6 +286,15 @@ internal static class OfflineConsoleQualification
             if(fences.Count!=plans.Count || fences.Any(f=>!f.Observe().FullQuarantineObserved))
                 throw WfpNative.Contract("OfflineConsoleFullQuarantineRequired");
         }
+    }
+
+    private static bool ReadFixedFile(string directory,string leaf,ReadOnlySpan<byte> expected)
+    {
+        using var file=new FileStream(WindowsPathSeal.Open(WindowsPathSeal.Child(directory,leaf),false,true),FileAccess.Read);
+        var buffer=new byte[expected.Length];
+        if(file.Length!=buffer.Length)throw WfpNative.Contract("OfflineConsoleFileLengthDiffers");
+        file.ReadExactly(buffer);
+        return expected.SequenceEqual(buffer);
     }
 
     private static ChildFailure? ParseChildFailure(uint? exit,OfflineConsoleOutput? output)

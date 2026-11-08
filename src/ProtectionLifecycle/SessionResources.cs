@@ -581,7 +581,7 @@ internal sealed class SessionResources : IDisposable
         try{profile.RecordTaskWorkspace(session,directory);return directory;}
         catch{directory.Dispose();throw;}
     }
-    private static PathLease CreateWorkspace(string path,string owner,string package,bool mutable)
+    internal static PathLease CreateWorkspace(string path,string owner,string package,bool mutable)
     {
         using var grant=new WorkspaceDescriptor(owner,package,mutable);
         var attributes=grant.Attributes;

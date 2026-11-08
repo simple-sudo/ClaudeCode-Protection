@@ -17,7 +17,7 @@
     <Compile Include="../Shared/WindowsDirectoryNames.cs" />
     <Compile Include="AtomicAdmission.cs" />
     <Compile Include="SchannelAcquisition.cs;OfflineTlsQualification.cs" />
-    <Compile Include="OfflineConsoleStreams.cs;OfflineConsoleQualification.cs;OfflineConsoleProjection.cs" />
+    <Compile Include="OfflineConsoleStreams.cs;OfflineConsoleQualification.cs;OfflineConsoleProjection.cs;OfflineConsoleStorage.cs" />
     <Compile Include="OpenSslMemoryConnection.cs;OpenSslDer.cs;OpenSslOfflineChain.cs;FixedOpenSslHead.cs;FixedHeadResponse.cs;FixedOpenSslHeadTrust.cs;FixedResolverTrust.cs" />
     <Compile Include="OpenSslOfflineWitness.cs;OpenSslOfflineIdentity.cs;OpenSslOfflineCrlFixture.cs;OpenSslModuleLease.cs" />
     <Compile Include="TokenCapabilitySnapshot.cs" />
