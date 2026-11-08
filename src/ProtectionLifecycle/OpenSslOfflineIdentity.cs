@@ -7,26 +7,36 @@ namespace ProtectionLifecycle;
 internal sealed class OpenSslOfflineIdentity : IDisposable
 {
     private readonly Native api;
-    private IntPtr leaf,leafKey;
+    private IntPtr leaf,leafKey,intermediateCertificate;
     internal byte[] TrustedRoot { get; }
     internal byte[] UntrustedRoot { get; }
+    internal (byte[] RootCurrent,byte[] Current,byte[] Expired,byte[] Revoked,byte[] WrongSigner)? RevocationFixture {get;}
     internal IntPtr Certificate=>leaf!=IntPtr.Zero?leaf:throw new ObjectDisposedException(nameof(OpenSslOfflineIdentity));
     internal IntPtr Key=>leafKey!=IntPtr.Zero?leafKey:throw new ObjectDisposedException(nameof(OpenSslOfflineIdentity));
+    internal IntPtr IntermediateCertificate=>intermediateCertificate;
 
-    internal OpenSslOfflineIdentity(OpenSslModuleLease modules)
+    internal OpenSslOfflineIdentity(OpenSslModuleLease modules,bool revocationFixture=false)
     {
         api=new Native(modules.CryptoHandle);
         Require(api.Initialize(OpenSslMemoryConnection.NoLoadConfig,IntPtr.Zero)==1,"FIXTURE_INIT");
         using var rootKey=CreateKey();
         using var wrongKey=CreateKey();
-        using var root=CreateCertificate(rootKey.Value,IntPtr.Zero,rootKey.Value,"Fixed local TLS test root",1);
-        using var wrong=CreateCertificate(wrongKey.Value,IntPtr.Zero,wrongKey.Value,"Independent local TLS test root",2);
+        using var root=CreateCertificate(rootKey.Value,IntPtr.Zero,rootKey.Value,"Fixed local TLS test root",1,isCa:true);
+        using var wrong=CreateCertificate(wrongKey.Value,IntPtr.Zero,wrongKey.Value,"Independent local TLS test root",2,isCa:true);
         TrustedRoot=Encode(root.Value);
         UntrustedRoot=Encode(wrong.Value);
+        using var intermediateKey=revocationFixture?CreateKey():null;
+        using var intermediate=intermediateKey is null?null:
+            CreateCertificate(intermediateKey.Value,root.Value,rootKey.Value,"Fixed local TLS test intermediate",4,isCa:true);
         using var key=CreateKey();
-        using var certificate=CreateCertificate(key.Value,root.Value,rootKey.Value,"deliberate-mismatch.invalid",3);
+        using var certificate=CreateCertificate(key.Value,intermediate?.Value??root.Value,intermediateKey?.Value??rootKey.Value,
+            "deliberate-mismatch.invalid",3,isCa:false);
+        if(intermediate is not null && intermediateKey is not null)
+            RevocationFixture=new OpenSslOfflineCrlFixture(modules.CryptoHandle).Create(api.Subject(root.Value),rootKey.Value,
+                api.Subject(intermediate.Value),intermediateKey.Value,wrongKey.Value,api.Serial(certificate.Value));
         leafKey=key.Take();
         leaf=certificate.Take();
+        intermediateCertificate=intermediate?.Take()??IntPtr.Zero;
     }
 
     private Owned CreateKey()
@@ -40,7 +50,7 @@ internal sealed class OpenSslOfflineIdentity : IDisposable
         throw failure;
     }
 
-    private Owned CreateCertificate(IntPtr key,IntPtr issuer,IntPtr issuerKey,string subject,int serial)
+    private Owned CreateCertificate(IntPtr key,IntPtr issuer,IntPtr issuerKey,string subject,int serial,bool isCa)
     {
         using var cert=Hold(api.NewCertificate(),api.FreeCertificate,"FIXTURE_CERTIFICATE");
         var c=cert.Value;
@@ -50,10 +60,10 @@ internal sealed class OpenSslOfflineIdentity : IDisposable
             api.SetIssuer(c,issuer==IntPtr.Zero?name:api.Subject(issuer))==1 && api.SetPublicKey(c,key)==1 &&
             api.AdjustTime(api.NotBefore(c),-300)!=IntPtr.Zero && api.AdjustTime(api.NotAfter(c),3600)!=IntPtr.Zero,
             "FIXTURE_CERTIFICATE");
-        if(issuer==IntPtr.Zero)
+        if(isCa)
         {
             Extension(c,"basicConstraints","critical,CA:TRUE");
-            Extension(c,"keyUsage","critical,keyCertSign");
+            Extension(c,"keyUsage","critical,keyCertSign,cRLSign");
         }
         else
         {
@@ -92,6 +102,7 @@ internal sealed class OpenSslOfflineIdentity : IDisposable
 
     public void Dispose()
     {
+        if(intermediateCertificate!=IntPtr.Zero){api.FreeCertificate(intermediateCertificate);intermediateCertificate=IntPtr.Zero;}
         if(leaf!=IntPtr.Zero){api.FreeCertificate(leaf);leaf=IntPtr.Zero;}
         if(leafKey!=IntPtr.Zero){api.FreeKey(leafKey);leafKey=IntPtr.Zero;}
     }

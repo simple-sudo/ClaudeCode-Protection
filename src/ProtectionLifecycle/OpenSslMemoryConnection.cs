@@ -21,13 +21,21 @@ internal sealed class OpenSslMemoryConnection : IDisposable
     private bool authenticated,faulted;
 
     internal OpenSslMemoryConnection(IntPtr sslModule,IntPtr cryptoModule,Stream wire,string host,byte[] trustAnchor)
-        :this(sslModule,cryptoModule,wire,host,trustAnchor,null){}
+        :this(sslModule,cryptoModule,wire,host,trustAnchor,null,null){}
+
+    internal static OpenSslMemoryConnection CreateRevocationCheckedClient(IntPtr sslModule,IntPtr cryptoModule,Stream wire,
+        string host,byte[] trustAnchor,IReadOnlyList<byte[]> certificateRevocationLists)
+    {
+        ArgumentNullException.ThrowIfNull(certificateRevocationLists);
+        return new(sslModule,cryptoModule,wire,host,trustAnchor,null,certificateRevocationLists);
+    }
 
     internal static OpenSslMemoryConnection CreateOfflineFixturePeer(IntPtr sslModule,IntPtr cryptoModule,Stream wire,
         OpenSslOfflineIdentity identity)
-        =>new(sslModule,cryptoModule,wire,null,null,identity);
+        =>new(sslModule,cryptoModule,wire,null,null,identity,null);
 
-    private OpenSslMemoryConnection(IntPtr sslModule,IntPtr cryptoModule,Stream wire,string? host,byte[]? anchor,OpenSslOfflineIdentity? identity)
+    private OpenSslMemoryConnection(IntPtr sslModule,IntPtr cryptoModule,Stream wire,string? host,byte[]? anchor,
+        OpenSslOfflineIdentity? identity,IReadOnlyList<byte[]>? certificateRevocationLists)
     {
         if(!OperatingSystem.IsWindows() || RuntimeInformation.ProcessArchitecture!=Architecture.X64)
             throw new PlatformNotSupportedException("Fixed OpenSSL Windows x64 ABI required");
@@ -52,12 +60,17 @@ internal sealed class OpenSslMemoryConnection : IDisposable
             if(client)
             {
                 api.ContextVerify(context,1,IntPtr.Zero); // SSL_VERIFY_PEER
-                AddTrustAnchor(anchor!);
+                var store=api.CertStore(context);
+                Check(store!=IntPtr.Zero,"TRUST_STORE");
+                AddTrustObject(store,anchor!,api.DecodeCertificate,api.AddCertificate,api.FreeCertificate,"TRUST_ANCHOR");
+                if(certificateRevocationLists is not null)InstallRevocationPolicy(store,certificateRevocationLists);
             }
             else
             {
                 Check(api.UseCertificate(context,identity!.Certificate)==1,"FIXTURE_CERTIFICATE");
                 Check(api.UsePrivateKey(context,identity.Key)==1 && api.CheckPrivateKey(context)==1,"FIXTURE_KEY_BINDING");
+                if(identity.IntermediateCertificate!=IntPtr.Zero)
+                    Check(api.ContextControl(context,89,1,identity.IntermediateCertificate)==1,"FIXTURE_INTERMEDIATE");
             }
             ssl=api.SslNew(context);
             Check(ssl!=IntPtr.Zero,"SESSION");
@@ -101,23 +114,35 @@ internal sealed class OpenSslMemoryConnection : IDisposable
         return await OperateAsync(()=>api.Read(ssl,bytes,bytes.Length),"READ",cancel).ConfigureAwait(false);
     }
 
-    private void AddTrustAnchor(byte[] der)
+    private void InstallRevocationPolicy(IntPtr store,IReadOnlyList<byte[]> lists)
     {
-        var allocated=Marshal.AllocHGlobal(der.Length);
+        const int maxLists=4,maxCrlBytes=1024*1024;
+        if(lists.Count is <1 or >maxLists)throw new InvalidDataException("Fixed offline CRL count refused");
+        foreach(var der in lists)
+        {
+            if(der is not {Length:>=1 and <=maxCrlBytes})throw new InvalidDataException("Fixed offline CRL size refused");
+            AddTrustObject(store,der,api.DecodeCrl,api.AddCrl,api.FreeCrl,"TRUST_CRL");
+        }
+        // CRL_CHECK | CRL_CHECK_ALL. A missing or expired CRL fails
+        // validation. No lookup methods, network retrieval, or callback.
+        Check(api.SetStoreFlags(store,0x4u|0x8u)==1,"TRUST_REVOCATION");
+    }
+
+    private static void AddTrustObject(IntPtr store,byte[] der,Native.Decode decode,Native.Pair add,Native.VoidOn free,string stage)
+    {
+        var pinned=GCHandle.Alloc(der,GCHandleType.Pinned);
         try
         {
-            Marshal.Copy(der,0,allocated,der.Length);
-            var cursor=allocated;
-            var certificate=api.DecodeCertificate(IntPtr.Zero,ref cursor,der.Length);
+            var start=pinned.AddrOfPinnedObject();
+            var cursor=start;
+            var item=decode(IntPtr.Zero,ref cursor,der.Length);
             try
             {
-                Check(certificate!=IntPtr.Zero && cursor==allocated+der.Length,"TRUST_ANCHOR");
-                var store=api.CertStore(context);
-                Check(store!=IntPtr.Zero && api.AddCertificate(store,certificate)==1,"TRUST_STORE");
+                Check(item!=IntPtr.Zero && cursor==start+der.Length && add(store,item)==1,stage);
             }
-            finally{if(certificate!=IntPtr.Zero)api.FreeCertificate(certificate);}
+            finally{if(item!=IntPtr.Zero)free(item);}
         }
-        finally{Marshal.FreeHGlobal(allocated);}
+        finally{pinned.Free();}
     }
 
     private async Task<int> OperateAsync(Func<int> step,string stage,CancellationToken cancel,bool authenticate=false,int? requiredLength=null)
@@ -216,6 +241,7 @@ internal sealed class OpenSslMemoryConnection : IDisposable
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)] internal delegate ulong Options(IntPtr ssl,ulong options);
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)] internal delegate int Pair(IntPtr first,IntPtr second);
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)] internal delegate void SetFlags(IntPtr parameters,uint flags);
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)] internal delegate int StoreFlags(IntPtr store,uint flags);
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)] internal delegate void Triple(IntPtr first,IntPtr second,IntPtr third);
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)] internal delegate int Error(IntPtr ssl,int result);
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)] internal delegate IntPtr Decode(IntPtr previous,ref IntPtr cursor,int length);
@@ -225,16 +251,17 @@ internal sealed class OpenSslMemoryConnection : IDisposable
         internal readonly InitCall Init;
         internal readonly PointerCall ClientMethod,ServerMethod,BioMemory;
         internal readonly PointerOn ContextNew,SslNew,CertStore,VerifyParameters,BioNew;
-        internal readonly VoidOn ContextFree,SslFree,FreeCertificate,ConnectState,AcceptState;
+        internal readonly VoidOn ContextFree,SslFree,FreeCertificate,FreeCrl,ConnectState,AcceptState;
         internal readonly Control ContextControl,SslControl;
         internal readonly Verify ContextVerify;
         internal readonly Options SetContextOptions;
-        internal readonly Pair SetHost,AddCertificate,UseCertificate,UsePrivateKey;
+        internal readonly Pair SetHost,AddCertificate,AddCrl,UseCertificate,UsePrivateKey;
         internal readonly SetFlags SetHostFlags;
+        internal readonly StoreFlags SetStoreFlags;
         internal readonly Triple SetBio;
         internal readonly IntOn Handshake,VerifyResult,BioFree,CheckPrivateKey;
         internal readonly Error GetError;
-        internal readonly Decode DecodeCertificate;
+        internal readonly Decode DecodeCertificate,DecodeCrl;
         internal readonly Io BioRead,BioWrite,Read,Write;
         internal readonly SizeOn BioPending;
         internal readonly VoidCall ClearErrors;
@@ -270,6 +297,10 @@ internal sealed class OpenSslMemoryConnection : IDisposable
             DecodeCertificate=Bind<Decode>(crypto,"d2i_X509");
             AddCertificate=Bind<Pair>(crypto,"X509_STORE_add_cert");
             FreeCertificate=Bind<VoidOn>(crypto,"X509_free");
+            DecodeCrl=Bind<Decode>(crypto,"d2i_X509_CRL");
+            AddCrl=Bind<Pair>(crypto,"X509_STORE_add_crl");
+            FreeCrl=Bind<VoidOn>(crypto,"X509_CRL_free");
+            SetStoreFlags=Bind<StoreFlags>(crypto,"X509_STORE_set_flags");
             BioMemory=Bind<PointerCall>(crypto,"BIO_s_mem");
             BioNew=Bind<PointerOn>(crypto,"BIO_new");
             BioFree=Bind<IntOn>(crypto,"BIO_free");

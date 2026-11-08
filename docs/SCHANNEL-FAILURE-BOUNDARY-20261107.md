@@ -307,3 +307,24 @@ PE 导入复核确认新 libcrypto 导入 `BCryptGenRandom`，未导入旧版
 CLI。该次成功验证了 Windows 系统熵源构建在受限身份中的应用 TLS 能力。旧运行库
 具体系统调用失败原因仍 UNKNOWN。外部代理转发、生产信任与吊销策略、真实内容
 L3 和整机验收分别保留。
+
+## 固定 HEAD 的离线吊销验证
+
+固定 HEAD 传输从调用者持有的字节流读取，不拥有 socket、网关或证书获取权限。
+单一显式 DER 根证书和有界 CRL 进入同一个内存信任库。OpenSSL 在本次 TLS
+连接校验名称、签名、时间和整链吊销状态。DER 必须完整消费，CRL 缺失或过期
+失败，证书中的下载地址不用于发起请求。验证通过后才发送唯一固定 HEAD，
+只接受有界且完整的 HTTP/1.1 最终响应头。[OpenSSL 离线整链吊销检查](https://docs.openssl.org/3.5/man3/X509_VERIFY_PARAM_set_flags/#verification-flags)
+
+普通 Windows 对照以同摘要 OpenSSL DLL、临时根、中间证书和叶证书完成实际
+内存 TLS。8 项检查通过，包含当前完整 CRL 的 204 正控制、缺中间证书所需 CRL、
+过期、已撤销、错误签名、无列表、DER 尾字节，以及 HEAD 响应带正文。
+握手拒绝的对照均未把请求交给对端。另有 47 项内存 TLS 和清单、网关反馈、
+网关准入及既有平台 TLS 策略回归。Lifecycle、Broker、Bootstrap 和
+OwnedToolLaunch Release BUILD0/0。首次在同一测试进程重复装载的拒绝记录保留，
+两组入口现分别在独立进程运行。普通证据在本机 `fixed-head-full-chain-regression`。
+
+当前只接入保护库并完成普通内存测试。下一步由原所有者在放行前绑定一份可核验
+的真实根证书与新鲜签名 CRL，将它们用于实际代理连接上的服务器证书。该连接的
+验证失败应保留原网络撤销和 Job 关闭路径。现有包摘要、网关命令及实际安装无
+更新，本次未发送真实外部请求。

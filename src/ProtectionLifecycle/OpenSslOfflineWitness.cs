@@ -73,6 +73,69 @@ internal sealed record OpenSslOfflineWitness(int SchemaVersion,string SessionId,
         return report;
     }
 
+    internal static async Task<int> VerifyRevocationOrdinary()
+    {
+        using var modules=OpenSslModuleLease.OpenForOrdinaryFixture();
+        using var identity=new OpenSslOfflineIdentity(modules,revocationFixture:true);
+        var lists=identity.RevocationFixture!.Value;
+        int cases=0;
+        await Head([lists.Current,lists.RootCurrent],"HTTP/1.1 204 No Content\r\nConnection: close\r\n\r\n"u8.ToArray(),204);
+        await Head([lists.Current],[],expectedVerifyError:3);
+        await Head([lists.Expired,lists.RootCurrent],[],expectedVerifyError:12);
+        await Head([lists.Revoked,lists.RootCurrent],[],expectedVerifyError:23);
+        await Head([lists.WrongSigner,lists.RootCurrent],[],expectedVerifyError:8);
+        await Head([lists.Current.Concat(new byte[]{0}).ToArray()],[],policyFailure:true);
+        await Head([],[],policyFailure:true);
+        await Head([lists.Current,lists.RootCurrent],"HTTP/1.1 200 OK\r\n\r\nunexpected"u8.ToArray(),malformedResponse:true);
+        return cases;
+
+        async Task Head(byte[][] crls,byte[] reply,int? status=null,int? expectedVerifyError=null,
+            bool policyFailure=false,bool malformedResponse=false)
+        {
+            var outgoing=Channel.CreateUnbounded<byte[]>();
+            var incoming=Channel.CreateUnbounded<byte[]>();
+            using var clientWire=new MemoryWire(incoming.Reader,outgoing.Writer);
+            using var serverWire=new MemoryWire(outgoing.Reader,incoming.Writer);
+            using var deadline=new CancellationTokenSource(TimeSpan.FromSeconds(4));
+            var applicationRead=0;
+            var server=Serve();
+            try
+            {
+                try
+                {
+                    var observed=await FixedOpenSslHead.SendAsync(modules,clientWire,identity.TrustedRoot,crls,deadline.Token);
+                    if(observed!=status)throw new InvalidOperationException("Unexpected fixed HEAD status");
+                }
+                catch(OpenSslFailure error)when(expectedVerifyError is not null && error.VerificationError==expectedVerifyError){}
+                catch(OpenSslFailure error)when(policyFailure && error.NativeError is null && error.VerificationError is null){}
+                catch(InvalidDataException)when(policyFailure || malformedResponse){}
+                if(status is not null || malformedResponse)await server;
+            }
+            finally
+            {
+                deadline.Cancel();
+                try{await server;}
+                catch(OperationCanceledException)when(deadline.IsCancellationRequested){}
+                catch(OpenSslFailure)when(status is null && !malformedResponse){}
+            }
+            if(applicationRead!=(status is not null || malformedResponse?1:0))
+                throw new InvalidDataException("Fixed HEAD was released before certificate verification");
+            cases++;
+
+            async Task Serve()
+            {
+                using var peer=OpenSslMemoryConnection.CreateOfflineFixturePeer(modules.SslHandle,modules.CryptoHandle,serverWire,identity);
+                await peer.AuthenticateAsync(deadline.Token);
+                var request=new byte[1024];
+                var count=await peer.ReadAsync(request,deadline.Token);
+                applicationRead++;
+                if(!request.AsSpan(0,count).SequenceEqual("HEAD / HTTP/1.1\r\nHost: www.microsoft.com\r\nConnection: close\r\n\r\n"u8))
+                    throw new InvalidDataException("Fixed HEAD request bytes differ");
+                if(reply.Length>0)await peer.WriteAsync(reply,deadline.Token);
+            }
+        }
+    }
+
     private sealed class Fixture(OpenSslModuleLease modules,OpenSslOfflineIdentity identity)
     {
         private static readonly byte[] Request={19,43,71},Reply={89,53,11};

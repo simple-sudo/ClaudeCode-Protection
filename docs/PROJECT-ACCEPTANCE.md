@@ -5,6 +5,12 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-07 固定 HEAD 的离线吊销验证
+
+INTEGRATED / BUILD(OpenSSL 内存吊销验证及固定 HEAD 传输)。VERIFIED(普通身份
+使用原样 DLL、含中间证书的内存链、完整有效列表的正控制和缺失或无效证据的负控制)。
+未接入已安装 Broker 的网络命令，真实受限和真实代理测试 NOT_RUN。
+
 ## 2026-11-07 受限内存 TLS 交换闭合
 
 VERIFIED(精确未激活更新、真实低完整性 LPAC 全隔离下固定 DLL 和内存 TLS 双向

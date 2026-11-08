@@ -138,6 +138,13 @@ internal static class OpenSslMemoryCases
         return Task.CompletedTask;
     }
 
+    internal static void VerifyRevocation(Assembly library)
+    {
+        var witness=library.GetType("ProtectionLifecycle.OpenSslOfflineWitness",true)!;
+        var checks=((Task<int>)Call(witness.GetMethod("VerifyRevocationOrdinary",Static)!)!).GetAwaiter().GetResult();
+        Console.WriteLine($"PASS {checks} fixed HEAD and revocation checks using ordinary in-memory TLS. No sockets or external requests.");
+    }
+
     private static object? Call(MethodInfo method,params object[] args)
     {
         try{return method.Invoke(null,args);}
