@@ -215,7 +215,7 @@ internal sealed class OwnedKernelJob : IDisposable
         var intent=OwnedJobIntent.ForNewJob(state.InstallationId,version.Package.Release,version.Package.ManifestHash,creator?.Sid.Value);
         if(creator is not null)
         {
-            creator.AssertJobPreparation(state,version);
+            _=creator.AssertReadyForJob(state,version);
             intent=intent with {JobId=creator.JobId};
         }
         state.WriteNew(OwnedJobIntent.Leaf(intent.JobId),JsonSerializer.SerializeToUtf8Bytes(intent)); // Before kernel creation.

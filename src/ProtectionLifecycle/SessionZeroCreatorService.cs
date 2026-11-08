@@ -79,16 +79,25 @@ internal static class SessionZeroCreatorService
     internal static WfpFailure DescribeStopped(uint win32,uint specific)
     {
         if(win32!=1066)return new("CreatorServiceStoppedBeforeBinding",win32==0?13u:win32);
-        var phase=(FailurePhase)((specific>>20)&15);
-        var kind=(specific>>16)&15;
-        if((specific&0xff000000)!=FailureTag || phase is <FailurePhase.ReportStarting or >FailurePhase.OfflineProtocol ||
-            kind is >3 and not 15 || (kind==15 && (specific&0xffff)!=0))
+        if(!TryDecodeFailure(specific,out var phase,out var kind))
             return new("CreatorServiceStoppedBeforeBinding",specific==0?13u:specific);
         var name="CreatorService"+phase;
         if(kind==15)return new(name+"CodeNotEncoded",specific);
         var prefix=kind switch {0u=>0u,1u=>0x80130000u,2u=>0x80070000u,_=>0x80000000u};
         var code=prefix|(specific&0xffff);
-        return code==0?new("CreatorServiceStoppedBeforeBinding",specific):new(name,code);
+        return new(name,code);
+    }
+
+    internal static bool IsReportedStartupFailure(uint win32,uint specific) =>
+        win32==1066 && TryDecodeFailure(specific,out var phase,out _) && phase<FailurePhase.OfflineProtocol;
+
+    private static bool TryDecodeFailure(uint specific,out FailurePhase phase,out uint kind)
+    {
+        phase=(FailurePhase)((specific>>20)&15);
+        kind=(specific>>16)&15;
+        var value=specific&0xffff;
+        return (specific&0xff000000)==FailureTag && phase is >=FailurePhase.ReportStarting and <=FailurePhase.OfflineProtocol &&
+            (kind switch {0=>value!=0,1 or 2 or 3=>true,15=>value==0,_=>false});
     }
 
     internal static string JobIdFromServiceName(string name)

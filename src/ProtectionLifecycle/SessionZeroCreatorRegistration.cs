@@ -15,11 +15,13 @@ internal sealed class SessionZeroCreatorRegistration : IDisposable
     internal const string IntentPrefix="creator-service-intent-";
     private const string LocalService=@"NT AUTHORITY\LocalService",Traverse="SeChangeNotifyPrivilege";
     private const string Closed="PROFILE_AND_SERVICE_CLOSED",Unstarted="SERVICE_REMOVED_BEFORE_START";
+    private const string StartupFailed="SERVICE_REMOVED_AFTER_STARTUP_FAILURE_WITHOUT_JOB";
     private readonly ProtectedState state;
     private readonly VerifiedVersion version;
     private readonly ServiceHandle manager,service;
     private readonly string image,name,command,intentHash;
     private bool startAttempted,deleteAttempted;
+    private uint? startupFailure;
     private SafeProcessHandle? process;
     private SessionZeroCreatorChannel? channel;
     internal string JobId {get;}
@@ -77,28 +79,37 @@ internal sealed class SessionZeroCreatorRegistration : IDisposable
         return "\""+WindowsPathSeal.Canonical(image)+"\" session-zero-offline-creator";
     }
 
-    internal void AssertJobPreparation(ProtectedState exactState,VerifiedVersion exactVersion)
+    internal SafeProcessHandle AssertReadyForJob(ProtectedState exactState,VerifiedVersion exactVersion,
+        SessionZeroCreatorChannel? expectedChannel=null)
     {
         AssertOriginal();
-        if(!ReferenceEquals(state,exactState) || !ReferenceEquals(version,exactVersion) || startAttempted)
+        if(!ReferenceEquals(state,exactState) || !ReferenceEquals(version,exactVersion) || !startAttempted ||
+            channel is null || (expectedChannel is not null && !ReferenceEquals(channel,expectedChannel)) ||
+            !channel.IsPreparedFor(this) || process is null || WaitForSingleObject(process,0)!=258)
             throw WfpNative.Contract("CreatorServiceJobPreparationBindingMismatch");
+        return process;
     }
 
-    internal SafeProcessHandle StartAndHold(OwnedKernelJob job,SessionZeroCreatorChannel preparedChannel)
+    internal void StartAndHold(SessionZeroCreatorChannel preparedChannel)
     {
-        AssertJobPreparation(state,version);
-        if(job.JobId!=JobId || job.SessionZeroCreatorSid!=Sid.Value || !preparedChannel.IsPreparedFor(job))
-            throw WfpNative.Contract("CreatorServiceStartNeedsExactJobAndPipe");
+        AssertOriginal();
+        if(startAttempted || !preparedChannel.IsPreparedFor(this))throw WfpNative.Contract("CreatorServiceStartNeedsOriginalPipe");
+        AssertNoJobOrWorkspace(state,JobId);
         var before=ReadStatus(service);
         if(before.State!=1)throw WfpNative.Contract("FreshCreatorServiceNotStopped");
-        state.WriteNew("creator-service-start-"+JobId+".json",JsonSerializer.SerializeToUtf8Bytes(new {SchemaVersion=1,IntentSHA256=intentHash}));
+        state.WriteNew(StartLeaf(JobId),JsonSerializer.SerializeToUtf8Bytes(new {SchemaVersion=1,IntentSHA256=intentHash}));
         startAttempted=true;
         if(!StartService(service,0,IntPtr.Zero))throw Error("StartFixedCreatorService");
         var watch=Stopwatch.StartNew();
         while(watch.ElapsedMilliseconds<10000)
         {
             var status=ReadStatus(service);
-            if(status.State==1)throw SessionZeroCreatorService.DescribeStopped(status.Win32Code,status.ServiceCode);
+            if(status.State==1)
+            {
+                if(SessionZeroCreatorService.IsReportedStartupFailure(status.Win32Code,status.ServiceCode))
+                    startupFailure=status.ServiceCode;
+                throw SessionZeroCreatorService.DescribeStopped(status.Win32Code,status.ServiceCode);
+            }
             if(status.State==4 && status.Pid!=0)
             {
                 var held=OpenProcess(0x101000,false,status.Pid);
@@ -109,7 +120,7 @@ internal sealed class SessionZeroCreatorRegistration : IDisposable
                     var after=ReadStatus(service);
                     if(after.State!=4 || after.Pid!=status.Pid || WaitForSingleObject(held,0)!=258)
                         throw WfpNative.Contract("CreatorServiceProcessChanged");
-                    process=held;channel=preparedChannel;return held;
+                    process=held;channel=preparedChannel;return;
                 }
                 catch{held.Dispose();throw;}
             }
@@ -118,10 +129,29 @@ internal sealed class SessionZeroCreatorRegistration : IDisposable
         throw new TimeoutException("Original creator service did not become ready");
     }
 
+    internal bool TryRemoveAfterStartupFailure(SessionZeroCreatorChannel preparedChannel)
+    {
+        if(startupFailure is not uint failure)return false;
+        AssertOriginal();
+        if(!startAttempted || process is not null || channel is not null || !preparedChannel.IsPreparedFor(this))
+            throw WfpNative.Contract("CreatorServiceStartupFailureBindingMismatch");
+        AssertNoJobOrWorkspace(state,JobId);
+        var status=ReadStatus(service);
+        if(status.State!=1 || status.Win32Code!=1066 || status.ServiceCode!=failure)
+            throw WfpNative.Contract("CreatorServiceStartupFailureChanged");
+        var start=state.Read(StartLeaf(JobId),4096);
+        ValidateStartProof(start.Bytes,intentHash);
+        state.WriteNew(StartupFailureLeaf(JobId),JsonSerializer.SerializeToUtf8Bytes(new {
+            SchemaVersion=1,IntentSHA256=intentHash,StartSHA256=start.SHA256,ServiceCode=failure
+        }));
+        RemoveVerified(StartupFailed);
+        return true;
+    }
+
     internal void RemoveNeverStarted()
     {
         AssertOriginal();
-        if(startAttempted || state.ReadOptional("creator-service-start-"+JobId+".json") is not null)
+        if(startAttempted || state.ReadOptional(StartLeaf(JobId)) is not null)
             throw WfpNative.Contract("CreatorServiceMayHaveStarted");
         RemoveVerified(Unstarted);
     }
@@ -171,7 +201,14 @@ internal sealed class SessionZeroCreatorRegistration : IDisposable
     }
 
     private static string IntentLeaf(string id)=>IntentPrefix+Identifiers.Hex32(id)+".json";
+    private static string StartLeaf(string id)=>"creator-service-start-"+Identifiers.Hex32(id)+".json";
+    private static string StartupFailureLeaf(string id)=>"creator-service-startup-failed-"+Identifiers.Hex32(id)+".json";
     private static string DoneLeaf(string id)=>"creator-service-removed-"+Identifiers.Hex32(id)+".json";
+    private static void AssertNoJobOrWorkspace(ProtectedState state,string id)
+    {
+        if(state.ReadOptional(OwnedJobIntent.Leaf(id)) is not null || state.ReadOptional("creator-workspace-intent-"+id+".json") is not null)
+            throw WfpNative.Contract("CreatorServiceStartupRecoveryRequiresNoJobOrWorkspace");
+    }
     internal static void AssertNoPending(ProtectedState state,SessionZeroCreatorRegistration? preparing)
     {
         var entries=state.ListLeaves(IntentPrefix);
@@ -184,21 +221,42 @@ internal sealed class SessionZeroCreatorRegistration : IDisposable
             var raw=state.Read(leaf,4096);
             using var intent=JsonDocument.Parse(raw.Bytes,new JsonDocumentOptions{MaxDepth=2});
             ValidateIntent(intent.RootElement,state.InstallationId,id);
-            if(preparing is not null && ReferenceEquals(preparing.state,state) && preparing.JobId==id &&
-                preparing.intentHash==raw.SHA256 && !preparing.startAttempted && !preparing.deleteAttempted && !preparing.service.IsClosed)
+            if(preparing is not null && ReferenceEquals(preparing.state,state) && preparing.JobId==id && preparing.intentHash==raw.SHA256)
+            {
+                _=preparing.AssertReadyForJob(state,preparing.version);
                 continue;
+            }
             var done=state.ReadOptional(DoneLeaf(id))??throw WfpNative.Contract("CreatorServiceRegistrationRequiresRecovery");
             using var receipt=JsonDocument.Parse(done.Bytes,new JsonDocumentOptions{MaxDepth=2});
-            var start=state.ReadOptional("creator-service-start-"+id+".json");
-            if(start is not null)
+            var start=state.ReadOptional(StartLeaf(id));
+            if(start is not null)ValidateStartProof(start.Bytes,raw.SHA256);
+            var failure=state.ReadOptional(StartupFailureLeaf(id));
+            if(failure is not null)
             {
-                using var started=JsonDocument.Parse(start.Bytes,new JsonDocumentOptions{MaxDepth=2});
-                StrictJson.Fields(started.RootElement,"SchemaVersion","IntentSHA256");
-                if(started.RootElement.GetProperty("SchemaVersion").GetInt32()!=1 || StrictJson.Text(started.RootElement,"IntentSHA256")!=raw.SHA256)
-                    throw WfpNative.Contract("CreatorServiceStartProofMismatch");
+                if(start is null)throw WfpNative.Contract("CreatorServiceStartupFailureMissingStart");
+                AssertNoJobOrWorkspace(state,id);
+                ValidateStartupFailure(failure.Bytes,raw.SHA256,start.SHA256);
             }
-            ValidateRemoval(receipt.RootElement,raw.SHA256,start is not null);
+            ValidateRemoval(receipt.RootElement,raw.SHA256,start is not null,failure is not null);
         }
+    }
+    private static void ValidateStartProof(byte[] bytes,string intentHash)
+    {
+        using var started=JsonDocument.Parse(bytes,new JsonDocumentOptions{MaxDepth=2});
+        var record=started.RootElement;
+        StrictJson.Fields(record,"SchemaVersion","IntentSHA256");
+        if(record.GetProperty("SchemaVersion").GetInt32()!=1 || StrictJson.Text(record,"IntentSHA256")!=intentHash)
+            throw WfpNative.Contract("CreatorServiceStartProofMismatch");
+    }
+    internal static void ValidateStartupFailure(byte[] bytes,string intentHash,string startHash)
+    {
+        using var failed=JsonDocument.Parse(bytes,new JsonDocumentOptions{MaxDepth=2});
+        var record=failed.RootElement;
+        StrictJson.Fields(record,"SchemaVersion","IntentSHA256","StartSHA256","ServiceCode");
+        if(record.GetProperty("SchemaVersion").GetInt32()!=1 || StrictJson.Text(record,"IntentSHA256")!=intentHash ||
+            StrictJson.Text(record,"StartSHA256")!=startHash ||
+            !SessionZeroCreatorService.IsReportedStartupFailure(1066,record.GetProperty("ServiceCode").GetUInt32()))
+            throw WfpNative.Contract("CreatorServiceStartupFailureProofMismatch");
     }
     internal static void ValidateIntent(JsonElement record,string install,string id)
     {
@@ -207,11 +265,12 @@ internal sealed class SessionZeroCreatorRegistration : IDisposable
             throw WfpNative.Contract("CreatorServiceIntentBindingMismatch");
         _=Identifiers.Hex32(StrictJson.Text(record,"Release"));_=Identifiers.Hash(StrictJson.Text(record,"ManifestHash"));
     }
-    internal static void ValidateRemoval(JsonElement record,string intentHash,bool started)
+    internal static void ValidateRemoval(JsonElement record,string intentHash,bool started,bool startupFailed)
     {
         StrictJson.Fields(record,"SchemaVersion","IntentSHA256","Disposition");
+        var expected=startupFailed?StartupFailed:started?Closed:Unstarted;
         if(record.GetProperty("SchemaVersion").GetInt32()!=1 || StrictJson.Text(record,"IntentSHA256")!=intentHash ||
-            StrictJson.Text(record,"Disposition")!=(started?Closed:Unstarted))
+            (startupFailed && !started) || StrictJson.Text(record,"Disposition")!=expected)
             throw WfpNative.Contract("CreatorServiceRemovalProofMismatch");
     }
 

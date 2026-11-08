@@ -127,17 +127,33 @@ internal static class CreatorLifecycleCases
         Refused(()=>AssertIntent(expected with {InstallationId=release},jobId));
         Refused(()=>AssertIntent(expected with {Release="wrong"},jobId));
         Refused(()=>AssertIntent(new{SchemaVersion=1,InstallationId=installation,JobId=jobId,Release=release,ManifestHash=hash,Command=image},jobId));
-        void AssertRemoval(string disposition,bool started,string expectedHash)
+        void AssertRemoval(string disposition,bool started,string expectedHash,bool startupFailed=false)
         {
             using var doc=JsonDocument.Parse(JsonSerializer.SerializeToUtf8Bytes(new{SchemaVersion=1,IntentSHA256=hash,Disposition=disposition}));
-            _=removed.Invoke(null,[doc.RootElement,expectedHash,started]);
+            _=removed.Invoke(null,[doc.RootElement,expectedHash,started,startupFailed]);
         }
         const string closed="PROFILE_AND_SERVICE_CLOSED",unstarted="SERVICE_REMOVED_BEFORE_START";
+        const string startupRemoved="SERVICE_REMOVED_AFTER_STARTUP_FAILURE_WITHOUT_JOB";
         AssertRemoval(closed,true,hash);Check(true);
         AssertRemoval(unstarted,false,hash);Check(true);
         Refused(()=>AssertRemoval(closed,false,hash));
         Refused(()=>AssertRemoval(unstarted,true,hash));
         Refused(()=>AssertRemoval(closed,true,new string('B',64)));
+        AssertRemoval(startupRemoved,true,hash,startupFailed:true);Check(true);
+        Refused(()=>AssertRemoval(startupRemoved,true,hash));
+        Refused(()=>AssertRemoval(startupRemoved,false,hash,startupFailed:true));
+        Refused(()=>AssertRemoval(closed,true,hash,startupFailed:true));
+        var validateFailure=Method("SessionZeroCreatorRegistration","ValidateStartupFailure");
+        var startHash=new string('B',64);
+        uint ServiceCode(string phase)=>(uint)encode.Invoke(null,[Enum.Parse(phaseType,phase),0x80131501u])!;
+        var startupEvidence=new {SchemaVersion=1,IntentSHA256=hash,StartSHA256=startHash,ServiceCode=ServiceCode("SealProcess")};
+        void AssertStartupEvidence(object evidence)
+            =>_=validateFailure.Invoke(null,[JsonSerializer.SerializeToUtf8Bytes(evidence),hash,startHash]);
+        AssertStartupEvidence(startupEvidence);Check(true);
+        Refused(()=>AssertStartupEvidence(startupEvidence with {IntentSHA256=startHash}));
+        Refused(()=>AssertStartupEvidence(startupEvidence with {StartSHA256=hash}));
+        Refused(()=>AssertStartupEvidence(startupEvidence with {ServiceCode=0x80131501u}));
+        Refused(()=>AssertStartupEvidence(startupEvidence with {ServiceCode=ServiceCode("OfflineProtocol")}));
         Check((string?)command.Invoke(null,[image])=="\""+image+"\" session-zero-offline-creator");
         Refused(()=>command.Invoke(null,[image+" arbitrary"]));
         const string sddl="O:BAD:P(A;;0x000f01ff;;;SY)(A;;0x000f01ff;;;BA)";

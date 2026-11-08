@@ -18,24 +18,25 @@ internal sealed class SessionZeroCreatorChannel : IDisposable
     private const int NonceSize=16,ReplySize=44;
     internal const int RequestSize=60;
     internal const string ServicePrefix="CpcSessionCreator.";
-    private readonly OwnedKernelJob job;
+    private readonly SessionZeroCreatorRegistration registration;
+    private OwnedKernelJob? boundJob;
     private readonly NamedPipeServerStream pipe;
     private int consumed;
     private byte[]? cleanupNonce;
     internal bool ProfileCleanupConfirmed {get;private set;}
-    internal bool ConfirmsProfileCleanupFor(OwnedKernelJob exactJob)=>ReferenceEquals(job,exactJob) && ProfileCleanupConfirmed;
-    internal bool IsPreparedFor(OwnedKernelJob exactJob)=>ReferenceEquals(job,exactJob) && Volatile.Read(ref consumed)==0 &&
+    internal bool ConfirmsProfileCleanupFor(OwnedKernelJob exactJob)=>ReferenceEquals(boundJob,exactJob) && ProfileCleanupConfirmed;
+    internal bool IsPreparedFor(SessionZeroCreatorRegistration exactRegistration)=>ReferenceEquals(registration,exactRegistration) && Volatile.Read(ref consumed)==0 &&
         !pipe.SafePipeHandle.IsClosed && !pipe.SafePipeHandle.IsInvalid;
-    internal string PipeName=>NameForJob(job.JobId);
+    internal string PipeName=>NameForJob(registration.JobId);
     internal static string NameForJob(string jobId)=>ServicePrefix+Identifiers.Hex32(jobId);
 
-    internal SessionZeroCreatorChannel(OwnedKernelJob job)
+    internal SessionZeroCreatorChannel(SessionZeroCreatorRegistration registration)
     {
         ProtectedState.RequireAdministrator();
-        this.job=job;
+        this.registration=registration;
         // Explicit FILE_READ_ATTRIBUTES; no FILE_CREATE_PIPE_INSTANCE for the
         // client. One overlapped local-only server, refusing any occupied name.
-        var sddl="O:BAG:SYD:P(A;;FA;;;SY)(A;;FA;;;BA)(A;;0x00120083;;;"+job.SessionZeroCreatorSid+")S:(ML;;NW;;;ME)";
+        var sddl="O:BAG:SYD:P(A;;FA;;;SY)(A;;FA;;;BA)(A;;0x00120083;;;"+registration.Sid.Value+")S:(ML;;NW;;;ME)";
         if(!ConvertStringSecurityDescriptorToSecurityDescriptor(sddl,1,out var descriptor,out _))throw Error("CreatorPipeDescriptor");
         try
         {
@@ -53,10 +54,13 @@ internal sealed class SessionZeroCreatorChannel : IDisposable
 
     // The caller must retain the original Job and close it through the
     // existing offline stop path if a granted exchange fails.
-    internal SuspendedRoot Exchange(FixedLayout layout,ProtectedState state,VerifiedVersion version,SafeProcessHandle service,SecurityIdentifier verifiedCreatorSid)
+    internal SuspendedRoot Exchange(FixedLayout layout,ProtectedState state,VerifiedVersion version,OwnedKernelJob job)
     {
+        var service=registration.AssertReadyForJob(state,version,this);
+        if(job.JobId!=registration.JobId || job.SessionZeroCreatorSid!=registration.Sid.Value)
+            throw WfpNative.Contract("CreatorPipeJobMismatch");
         if(Interlocked.Exchange(ref consumed,1)!=0)throw WfpNative.Contract("CreatorPipeAlreadyConsumed");
-        ProtectedState.RequireAdministrator();state.AssertHeld();version.AssertHeld(state);
+        boundJob=job;
         var image=WindowsPathSeal.Child(layout.Version(version.Package.Release),"bin/admin/ProtectionBroker.exe");
         using var package=new InstallationPackageSid(state);
         var nonce=RandomNumberGenerator.GetBytes(NonceSize);
@@ -71,7 +75,7 @@ internal sealed class SessionZeroCreatorChannel : IDisposable
         var serviceCreated=ProcessCreated(service);
         var request=CreateRequest(nonce,state.InstallationId,job.JobId,ownerPid,ownerSession);
         AssertQuarantine(state);
-        job.ReserveSessionZeroAdmission(version,verifiedCreatorSid);
+        job.ReserveSessionZeroAdmission(version,registration.Sid);
         pipe.WriteAsync(request.AsMemory(),cancellation).AsTask().GetAwaiter().GetResult();
         var reply=new byte[ReplySize];
         pipe.ReadExactlyAsync(reply.AsMemory(),cancellation).AsTask().GetAwaiter().GetResult();
@@ -103,6 +107,7 @@ internal sealed class SessionZeroCreatorChannel : IDisposable
 
     internal (OfflineConsoleOutput Output,OfflineConsoleOutput Error) CloseCreatorProfile(ProtectedState state)
     {
+        var job=boundJob??throw WfpNative.Contract("CreatorProfileCleanupJobUnavailable");
         job.AssertCreatorProfileCleanupAllowed(state);
         AssertQuarantine(state);
         var nonce=Interlocked.Exchange(ref cleanupNonce,null)??throw WfpNative.Contract("CreatorProfileCleanupChannelUnavailable");

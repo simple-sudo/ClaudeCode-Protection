@@ -304,6 +304,7 @@ internal static class OfflineConsoleQualification
         var profileClosed=false;
         var workspaceClosed=false;
         var serviceRemoved=false;
+        var startupFailureRegistrationRemoved=false;
         var filesMatched=false;
         var closed=false;
         try
@@ -313,20 +314,34 @@ internal static class OfflineConsoleQualification
             stage="RegisterCreator";
             using var creator=SessionZeroCreatorRegistration.Create(layout,state,version);
             jobId=creator.JobId;
+            stage="StartCreator";
+            using var channel=new SessionZeroCreatorChannel(creator);
+            try{creator.StartAndHold(channel);}
+            catch(Exception startError)
+            {
+                try
+                {
+                    AssertQuarantine();
+                    startupFailureRegistrationRemoved=creator.TryRemoveAfterStartupFailure(channel);
+                    serviceRemoved=startupFailureRegistrationRemoved;
+                }
+                catch(Exception cleanupError)
+                {
+                    throw new AggregateException("Creator startup and original registration cleanup failed",startError,cleanupError);
+                }
+                throw;
+            }
             stage="PrepareWorkspace";
             using var job=OwnedKernelJob.CreateForSessionZero(state,version,creator);
             using var workspace=SessionZeroOfflineWorkspace.Create(state,job,creator);
             var host=OfflineConsoleHostIdentity.Capture(job.JobId);
-            using var channel=new SessionZeroCreatorChannel(job);
             ProtectionRuntimeLease? runtime=null;
             AtomicChild? child=null;
             string? failedStage=null;
             try
             {
-                stage="StartCreator";
-                var service=creator.StartAndHold(job,channel);
                 stage="ValidateSuspendedRoot";
-                using var root=channel.Exchange(layout,state,version,service,creator.Sid);
+                using var root=channel.Exchange(layout,state,version,job);
                 child=AtomicChild.AdoptSessionZeroOfflineConsole(layout,state,version,job,root);
                 runtime=ProtectionRuntimeLease.ForFixedOfflineConsole(state,version,job,fences,child,job.JobId);
                 runtime.Activate(10000);
@@ -412,7 +427,8 @@ internal static class OfflineConsoleQualification
             SchemaVersion=1,Scope="INSTALLED_FIXED_INDEPENDENT_OFFLINE_CONSOLE",state.InstallationId,JobId=jobId,
             version.Package.Release,version.Package.ManifestHash,Status=complete?"INDEPENDENT_OFFLINE_CONSOLE_CLOSED":"INDEPENDENT_OFFLINE_CONSOLE_NOT_CONFIRMED",
             LastStage=stage,ProcessResumed=resumed,ChildExit=exit,OriginalJobClosed=closed,ProfileClosed=profileClosed,WorkspaceClosed=workspaceClosed,
-            ServiceRemoved=serviceRemoved,FilesMatched=filesMatched,StreamsMatched=matched,HostIdentityObservation=hostIdentity,
+            ServiceRemoved=serviceRemoved,StartupFailureRegistrationRemoved=startupFailureRegistrationRemoved,
+            FilesMatched=filesMatched,StreamsMatched=matched,HostIdentityObservation=hostIdentity,
             HostAccountSidDiffers=hostIdentity?.TokenUser=="DIFFERS_FROM_HOST",HostIdentityQualified=false,
             Output=Summarize(stdout),Error=Summarize(stderr),ChildFailure=ParseChildFailure(exit,stderr),EnvironmentProjection=environmentProjection,
             StopObservation=stopped,Failures=failures.SelectMany(WfpNative.Describe).ToArray(),
