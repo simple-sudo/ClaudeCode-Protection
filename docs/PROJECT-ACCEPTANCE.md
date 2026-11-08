@@ -5,6 +5,12 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-07 目标 TLS 实测及 HEAD 响应兼容
+
+VERIFIED(单次真实受限目标隧道、Microsoft TLS 身份与离线吊销、原所有者闭合)。
+FAIL(HTTP 交换)，旧回报无法确认应用写入或拒绝位置。INTEGRATED / BUILD(固定
+HEAD 的有界响应处理)。VERIFIED(内存 HTTP 和 TLS，版本范围为候选)。该候选实测 NOT_RUN。
+
 ## 2026-11-07 目标隧道检查点
 
 INTEGRATED / BUILD(原所有者的固定目标隧道检查点)。

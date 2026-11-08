@@ -78,19 +78,30 @@ internal sealed record OpenSslOfflineWitness(int SchemaVersion,string SessionId,
         using var modules=OpenSslModuleLease.OpenForOrdinaryFixture();
         using var identity=new OpenSslOfflineIdentity(modules,revocationFixture:true);
         var lists=identity.RevocationFixture!.Value;
+        byte[][] reviewed=[lists.Current,lists.RootCurrent];
         int cases=0;
-        await Head([lists.Current,lists.RootCurrent],"HTTP/1.1 204 No Content\r\nConnection: close\r\n\r\n"u8.ToArray(),204);
+        await Head(reviewed,"HTTP/1.1 204 No Content\r\nConnection: close\r\n\r\n"u8.ToArray(),204);
+        await Head(reviewed,"HTTP/1.1 103 Early Hints\r\nLink: </ignored>\r\n\r\nHTTP/1.1 301 Moved\r\nContent-Length: 100\r\n\r\n"u8.ToArray(),301);
+        await Head(reviewed,"HTTP/1.1 100 Continue\r\n\r\nHTTP/1.1 403 Refusé\r\nX-Note: opaque é\r\n\r\n"u8.ToArray(),403,replyFragmentBytes:11);
         await Head([lists.Current],[],expectedVerifyError:3);
         await Head([lists.Expired,lists.RootCurrent],[],expectedVerifyError:12);
         await Head([lists.Revoked,lists.RootCurrent],[],expectedVerifyError:23);
         await Head([lists.WrongSigner,lists.RootCurrent],[],expectedVerifyError:8);
         await Head([lists.Current.Concat(new byte[]{0}).ToArray()],[],policyFailure:true);
         await Head([],[],policyFailure:true);
-        await Head([lists.Current,lists.RootCurrent],"HTTP/1.1 200 OK\r\n\r\nunexpected"u8.ToArray(),malformedResponse:true);
+        await Head(reviewed,"HTTP/1.1 200 OK\r\n\r\nunexpected"u8.ToArray(),responseError:FixedHeadResponseError.BytesAfterFinalHeader);
+        await Head(reviewed,"HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\n\r\n"u8.ToArray(),responseError:FixedHeadResponseError.ProtocolSwitch);
+        await Head(reviewed,"HTTP/1.1 200 OK\r\n Folded: text\r\n\r\n"u8.ToArray(),responseError:FixedHeadResponseError.InvalidFieldName);
+        await Head(reviewed,"HTTP/1.1 200 OK\r\nX: a\0b\r\n\r\n"u8.ToArray(),responseError:FixedHeadResponseError.MalformedOctet);
+        await Head(reviewed,"HTTP/2 200 OK\r\n\r\n"u8.ToArray(),responseError:FixedHeadResponseError.InvalidStatusLine);
+        await Head(reviewed,System.Text.Encoding.ASCII.GetBytes(string.Concat(Enumerable.Repeat("HTTP/1.1 103 Early Hints\r\n\r\n",5))),
+            responseError:FixedHeadResponseError.InformationalCapacity);
+        await Head(reviewed,System.Text.Encoding.ASCII.GetBytes("HTTP/1.1 200 OK\r\nX: "+new string('a',8192)+"\r\n\r\n"),
+            responseError:FixedHeadResponseError.HeaderCapacity);
         return cases;
 
         async Task Head(byte[][] crls,byte[] reply,int? status=null,int? expectedVerifyError=null,
-            bool policyFailure=false,bool malformedResponse=false)
+            bool policyFailure=false,FixedHeadResponseError? responseError=null,int replyFragmentBytes=4096)
         {
             var outgoing=Channel.CreateUnbounded<byte[]>();
             var incoming=Channel.CreateUnbounded<byte[]>();
@@ -108,17 +119,18 @@ internal sealed record OpenSslOfflineWitness(int SchemaVersion,string SessionId,
                 }
                 catch(OpenSslFailure error)when(expectedVerifyError is not null && error.VerificationError==expectedVerifyError){}
                 catch(OpenSslFailure error)when(policyFailure && error.NativeError is null && error.VerificationError is null){}
-                catch(InvalidDataException)when(policyFailure || malformedResponse){}
-                if(status is not null || malformedResponse)await server;
+                catch(InvalidDataException)when(policyFailure){}
+                catch(FixedHeadResponseException error)when(error.Reason==responseError){}
+                if(status is not null || responseError is not null)await server;
             }
             finally
             {
                 deadline.Cancel();
                 try{await server;}
                 catch(OperationCanceledException)when(deadline.IsCancellationRequested){}
-                catch(OpenSslFailure)when(status is null && !malformedResponse){}
+                catch(OpenSslFailure)when(status is null && responseError is null){}
             }
-            if(applicationRead!=(status is not null || malformedResponse?1:0))
+            if(applicationRead!=(status is not null || responseError is not null?1:0))
                 throw new InvalidDataException("Fixed HEAD was released before certificate verification");
             cases++;
 
@@ -131,7 +143,8 @@ internal sealed record OpenSslOfflineWitness(int SchemaVersion,string SessionId,
                 applicationRead++;
                 if(!request.AsSpan(0,count).SequenceEqual("HEAD / HTTP/1.1\r\nHost: www.microsoft.com\r\nConnection: close\r\n\r\n"u8))
                     throw new InvalidDataException("Fixed HEAD request bytes differ");
-                if(reply.Length>0)await peer.WriteAsync(reply,deadline.Token);
+                for(var offset=0;offset<reply.Length;offset+=replyFragmentBytes)
+                    await peer.WriteAsync(reply.AsSpan(offset,Math.Min(replyFragmentBytes,reply.Length-offset)).ToArray(),deadline.Token);
             }
         }
     }

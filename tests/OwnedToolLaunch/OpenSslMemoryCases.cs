@@ -171,6 +171,19 @@ internal static class OpenSslMemoryCases
         Reject<InvalidDataException>(()=>ReadGateway(gatewayRaw.Replace("HTTPS_TLS_HANDSHAKE","HTTPS_HTTP_EXCHANGE",StringComparison.Ordinal)));
         Reject<InvalidDataException>(()=>ReadGateway(gatewayRaw.Replace("\"Code\":1,","\"Code\":2,",StringComparison.Ordinal)
             .Replace("\"Code\":1}","\"Code\":2}",StringComparison.Ordinal)));
+        var responseFailure=library.GetType("ProtectionLifecycle.FixedHeadResponseException",true)!;
+        var reason=library.GetType("ProtectionLifecycle.FixedHeadResponseError",true)!;
+        var malformed=Activator.CreateInstance(responseFailure,Instance,null,[Enum.Parse(reason,"InvalidFieldName")],null)!;
+        var headResult=Call(gateway.GetMethod("Result",Static)!,id,"HTTPS_HTTP_EXCHANGE",125,Type.Missing,malformed)!;
+        var headRaw=JsonSerializer.Serialize(headResult,gateway);
+        var headErrors=JsonNode.Parse(headRaw)!["Errors"]!.AsArray();
+        Check(headErrors.Count==1 && headErrors[0]!["Kind"]!.GetValue<string>()=="FIXED_HEAD_RESPONSE" &&
+            headErrors[0]!["Code"]!.GetValue<int>()==4);
+        _=ReadGateway(headRaw);checks++;
+        Reject<InvalidDataException>(()=>ReadGateway(headRaw.Replace("HTTPS_HTTP_EXCHANGE","HTTPS_HTTP_WRITE",StringComparison.Ordinal)));
+        Reject<InvalidDataException>(()=>ReadGateway(headRaw.Replace("\"Code\":4","\"Code\":8",StringComparison.Ordinal)));
+        var writeResult=Call(gateway.GetMethod("Result",Static)!,id,"HTTPS_HTTP_WRITE",125,Type.Missing,new IOException())!;
+        _=ReadGateway(JsonSerializer.Serialize(writeResult,gateway));checks++;
         Console.WriteLine($"PASS {checks} fixed OpenSSL and package compatibility checks. Real TLS and gateway replay in ordinary memory only.");
         return Task.CompletedTask;
     }

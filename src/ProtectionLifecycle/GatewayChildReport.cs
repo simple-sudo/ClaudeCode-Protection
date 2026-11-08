@@ -14,18 +14,23 @@ internal sealed record GatewayChildReport(int SchemaVersion,string SessionId,int
     internal const int MaxCharacters=4096;
     internal static GatewayChildReport Result(string sessionId,string phase,int exitCode,int? status=null,Exception? failure=null)
     {
-        var errors=DescribeCore(failure,phase=="HTTPS_TLS_HANDSHAKE").ToList();
+        var errors=DescribeCore(failure,phase=="HTTPS_TLS_HANDSHAKE",phase=="HTTPS_HTTP_EXCHANGE").ToList();
         if(exitCode==125 && errors.Count==0)errors.Add(new("REFUSED",125));
         // Invalid environment text is never echoed, including on input refusal.
         var id=sessionId.Length==32 && sessionId.All(c=>c is >= '0' and <= '9' or >= 'a' and <= 'f')?sessionId:"";
         return new(1,id,Environment.ProcessId,phase,exitCode,status,errors.ToArray());
     }
-    internal static GatewayChildError[] Describe(Exception? failure)=>DescribeCore(failure,false);
-    private static GatewayChildError[] DescribeCore(Exception? failure,bool classifyHandshake)
+    internal static GatewayChildError[] Describe(Exception? failure)=>DescribeCore(failure,false,false);
+    private static GatewayChildError[] DescribeCore(Exception? failure,bool classifyHandshake,bool classifyHeadResponse)
     {
         var errors=new List<GatewayChildError>();
         for(var ex=failure;ex is not null && errors.Count<4;ex=ex.InnerException)
         {
+            if(classifyHeadResponse && ex is FixedHeadResponseException head)
+            {
+                errors.Add(new("FIXED_HEAD_RESPONSE",(int)head.Reason));
+                continue;
+            }
             if(classifyHandshake && ex is OpenSslFailure {NativeError: >0 and <=16} tls)
             {
                 errors.Add(new("TLS_OPENSSL",tls.NativeError.Value));
@@ -142,13 +147,16 @@ internal sealed record GatewayChildReport(int SchemaVersion,string SessionId,int
         var r=JsonSerializer.Deserialize<GatewayChildReport>(raw)??throw new InvalidDataException("GatewayFeedbackMissing");
         if(r.SchemaVersion!=1 || r.SessionId!=Identifiers.Hex32(expectedSessionId) || expectedPid==0 || r.Pid<=0 || (uint)r.Pid!=expectedPid ||
             (uint)r.ExitCode!=actualExitCode || r.Errors is null || r.Errors.Any(e=>e is null ||
-                !(KnownErrorKind(e.Kind) || SchannelKind(e.Kind) || e.Kind is "TLS_OPENSSL" or "TLS_OPENSSL_VERIFY")))
+                !(KnownErrorKind(e.Kind) || SchannelKind(e.Kind) || e.Kind is "TLS_OPENSSL" or "TLS_OPENSSL_VERIFY" or "FIXED_HEAD_RESPONSE")))
             throw new InvalidDataException("GatewayFeedbackOwnerOrErrorBinding");
         for(var i=0;i<r.Errors.Length;i++)
         {
             var kind=r.Errors[i].Kind;
             if(SchannelKind(kind) && (r.Phase!="HTTPS_TLS_HANDSHAKE" || r.ExitCode!=125 || r.Errors[i].Code>=0))
                 throw new InvalidDataException("GatewayFeedbackSchannelPhaseBinding");
+            if(kind=="FIXED_HEAD_RESPONSE" && (r.Phase!="HTTPS_HTTP_EXCHANGE" || r.ExitCode!=125 ||
+                r.Errors.Length!=1 || !Enum.IsDefined((FixedHeadResponseError)r.Errors[i].Code)))
+                throw new InvalidDataException("GatewayFeedbackHeadResponseBinding");
             if(kind is "TLS_OPENSSL" or "TLS_OPENSSL_VERIFY")
             {
                 var code=r.Errors[i].Code;
@@ -168,7 +176,7 @@ internal sealed record GatewayChildReport(int SchemaVersion,string SessionId,int
         var failed=r.ExitCode==125 && (r.Phase is "ENVIRONMENT" or "IDENTITY" or "NETWORK_CONTENT_READS" or "NETWORK_CONTENT_REQUIRES_ANALYSIS" or
             "TIMEZONE_DEFINITION" or "TIMEZONE_PUBLIC_CACHE" or "TIMEZONE_LOCAL_BINDING" or "HTTPS" or "HTTPS_SETTINGS" or
             "HTTPS_TLS_POLICY" or "HTTPS_CLIENT" or "HTTPS_SEND" or "HTTPS_SOCKET_INITIALIZATION" or "HTTPS_SOCKET_CREATE" or
-            "HTTPS_CONNECT" or "HTTPS_CONNECT_WRITE" or "HTTPS_CONNECT_REPLY" or "HTTPS_TLS_HANDSHAKE" or "HTTPS_HTTP_EXCHANGE") &&
+            "HTTPS_CONNECT" or "HTTPS_CONNECT_WRITE" or "HTTPS_CONNECT_REPLY" or "HTTPS_TLS_HANDSHAKE" or "HTTPS_HTTP_WRITE" or "HTTPS_HTTP_EXCHANGE") &&
             r.HttpStatus is null && r.Errors.Length is >0 and <=4;
         if(!success && !rejectedStatus && !failed)throw new InvalidDataException("GatewayFeedbackOutcomeShape");
         return r;
