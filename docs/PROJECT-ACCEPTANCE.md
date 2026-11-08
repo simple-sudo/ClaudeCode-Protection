@@ -5,6 +5,12 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-07 固定 HEAD 的真实响应边界
+
+VERIFIED(单次真实 DNS 请求时效、目标隧道、目标 TLS、固定 HEAD 写入和收到
+最终响应头、原所有者闭合)。FAIL(HEAD 响应帧约束)，附带字节类型和最终
+HTTP 状态 UNKNOWN。通用受保护网络、完整 L3 和官方 Claude Code 尚待验收。
+
 ## 2026-11-07 解析器应答时效
 
 VERIFIED(实测短 TTL 目标隧道在 CONNECT 前拒绝、原所有者闭合)。
