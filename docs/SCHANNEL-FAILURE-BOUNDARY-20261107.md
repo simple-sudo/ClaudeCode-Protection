@@ -398,3 +398,29 @@ Cloudflare 证书校验回调中，记录预期主机匹配、证书和链存在
 五产品 Release BUILD0/0，26 项候选字节和 150 项构建输入复核一致。八个普通
 回归入口通过，包括 143 项网关回报、125 项迁移及普通 Windows 构建的内存证书链
 对照。此次构建及回归阶段无安装或受限网络实测。
+
+## 解析器离线吊销实测
+
+2026-11-08 01:37:32–01:37:50Z，本人批准 `841DA319…`，按 82 项冻结输入
+从 `91d7aa4c` 未激活更新到 `5aef9d7d` 并执行一次。原受限端点创建并关闭。
+Cloudflare 校验回调观察到预期主机匹配、证书和链存在，策略错误 4，链状态
+64（`RevocationStatusUnknown`）和 16777216（`OfflineRevocation`）。
+网关在解析器 TLS 阶段关闭。受限端 EOF 退出 125。未观测实际 DNS 应用请求、
+目标证书或 HTTP 状态。原所有者核验关闭准入、先隔离再原 Job 归零，两刻度
+均为 1326 ms，31 项 Winsock 恢复，零停止错误。十处原操作器令牌观测一致。
+三份回执独立核验，归纳记录 SHA-256
+`8D403AA45BAA262AC2FB77A4247D3452DE09640BF13D4C2A76DF43D5C5492F79`。
+本次批准已消耗，原记录在 `operation-resolver-observation-once`。
+
+普通研发身份向 [SSL.com 公开证书库](https://www.ssl.com/repository/) 获取根及中间
+证书，并从[公开证书样例](https://docs.deepinfo.com/reference/lookup/ssl/examples/ip-address/)
+取得叶证书。三份 DER 的 SHA-256 与受限实测完全一致。普通 curl 的首个证书库
+HTTPS 获取也曾报 `CRYPT_E_REVOCATION_OFFLINE`；之后仅将公开获取到且与实测
+摘要一致的 DER 用于离线对照。依据证书内分发点，从同一签发方 HTTPS 主机取得
+两份 CRL。叶 CRL 为 `AFF51485…`，有效窗 2026-11-08 01:10:00Z 至
+2026-11-15 01:09:59Z。中间 CRL 为 `530474D2…`，有效窗 2026-06-12
+17:45:08Z 至 2027-06-07 17:45:07Z。普通 OpenSSL 3.2.4 核对两个签名，
+在只使用明确的根、中间证书和这两份 CRL 时通过整链及主机验证。错名、缺叶
+CRL、缺中间 CRL 均拒绝。日志 SHA-256
+`DAC26A9246DDAE0555D5B55296CE97D8903FDF42CDF9F568BB87C2268C33E5A9`。
+材料保存在本机 `resolver-public-trust-inputs`，真实网关尚未使用这些材料。
