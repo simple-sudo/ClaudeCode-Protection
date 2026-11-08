@@ -22,6 +22,7 @@ internal static class OfflineConsoleNativeCases
         Refuse<InvalidDataException>(()=>Call(atomic.GetMethod("AssertOfflineConsoleWorkerIdentity",Static)!,null));
         VerifyFailureMetadata(library);
         VerifyWorkspaceEnvironment(library);
+        VerifyProjectionEvidence(library);
         var type=library.GetType("ProtectionLifecycle.OfflineConsoleStreams",true)!;
         var read=type.GetMethod("ReadBounded",Static)!;
         foreach(var length in new[]{0,4096})
@@ -84,6 +85,30 @@ internal static class OfflineConsoleNativeCases
         Require(Diagnose(workspace)=="UnexpectedAuthority");
         Refuse<InvalidDataException>(()=>Call(bind,null,env,workspace,localData,session));
         Refuse<InvalidDataException>(()=>Call(bind,null,new Dictionary<string,string>(),parent,localData,session));
+    }
+
+    private static void VerifyProjectionEvidence(Assembly library)
+    {
+        var projection=library.GetType("ProtectionLifecycle.OfflineConsoleProjection",true)!;
+        var parse=projection.GetMethod("Parse",Static)!;
+        var classify=projection.GetMethod("Classify",Static)!;
+        var session=new string('b',32);
+        byte[] Frame(string? temp)=>System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(new {
+            SchemaVersion=1,SessionId=session,Pid=42,Temp=temp,Tmp=(string?)null,LocalAppData=""
+        });
+        var data=Frame(@"C:\Private\Path");
+        _=Call(parse,null,data,session,42u);
+        Refuse<InvalidDataException>(()=>Call(parse,null,data,session,43u));
+        Refuse<InvalidDataException>(()=>Call(parse,null,data,new string('c',32),42u));
+        Refuse<InvalidDataException>(()=>Call(parse,null,Frame(new string('x',241)),session,42u));
+        Refuse<InvalidDataException>(()=>Call(parse,null,Frame("a\0b"),session,42u));
+        var duplicate=Encoding.UTF8.GetBytes("{\"Temp\":null,"+Encoding.UTF8.GetString(data)[1..]);
+        Refuse<InvalidDataException>(()=>Call(parse,null,duplicate,session,42u));
+        foreach(var (actual,expected) in new (string?,string)[] {
+            (null,"ABSENT"),("","EMPTY"),(@"C:\Profile\AC\Temp","OWNED_EXACT"),(@"C:\Profile\AC\Temp\","OWNED_TRAILING_SEPARATOR"),
+            (@"C:\Task","TASK_WORKSPACE"),(@"C:\Host\Temp\","HOST_DEFAULT"),(@"C:\Unknown","OTHER")
+        })
+            Require((string?)Call(classify,null,actual,@"C:\Profile\AC\Temp",@"C:\Task",@"C:\Host\Temp")==expected);
     }
 
     private static void RunChild(Assembly library,Type type,bool flood)
