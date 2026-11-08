@@ -456,3 +456,23 @@ LPAC `CreateProcessW`。因此本次将拒绝定位到 profile 注册 API，排�
 后续应区分可信维护侧的 profile 准备与受限执行侧的启动。在同一账户下比较
 写限制的影响，并验证只授予固定 profile 所需访问，不能依据本次结果扩大
 正式运行身份权限。宿主 SID 暴露仍为 FAIL。
+
+### 普通账户写限制对照
+
+在同一 Windows 普通账户下，从实际令牌生成 `WRITE_RESTRICTED` 降权版本，
+使用 World、写限制 SID、当前登录 SID 和一个合成的服务限制 SID。核对线程
+正在使用同一用户 SID 的受限令牌，再对同一实际 `Packages` 父目录和当前用户
+注册表 hive 只尝试打开建子目录和建子键权限。普通令牌两项成功，写受限令牌
+两项都返回 5。未向这两个权限对照的句柄写入。
+
+`CreateAppContainerProfile` 在该受限线程下返回 `0x80070005`。确认本次 profile
+存储和映射缺席后，恢复普通身份调用同一 API，获得预期包 SID 和存储映射。
+一次 Windows 删除返回成功，随后再次核对存储与映射 API 缺席。记录
+`work/identity-creation-20261108-01/write-restriction-control/result.log`，SHA-256
+`E6DE5876D88F7741E4B6590202A4E5C43ACB36A077D3EE008A3E41374B934345`。
+
+本对照验证写限制足以在该真实普通账户环境复现注册拒绝。SCM 的 LocalService
+主令牌、会话和 profile 存储权限与本对照不同，内部具体拒绝对象仍 UNKNOWN。
+下一候选保持执行者的 SCM 写限制，先由固定可信准备角色创建并持有同一
+LocalService 账户下的 profile，再交由受限角色尝试原子创建。受限角色仍必须
+通过独立身份、LPAC、Job、句柄和闭合检查。此分离方案尚未执行。

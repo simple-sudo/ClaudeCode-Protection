@@ -1,5 +1,12 @@
 # 当前状态与授权摘要
 
+2026-11-08 同一普通账户的写限制对照复现 profile 注册错误 5。启用实际写受限
+线程令牌后，`Packages` 建子目录权限和当前用户 hive 建子键权限也分别返回 5。
+恢复普通令牌后同一 profile 注册成功，删除及存储与映射 API 缺席回读通过。
+下一步验证可信 profile 准备与受限执行分离。LocalService 内部拒绝对象及不同
+主身份下 LPAC 创建仍待实测，官方 CLI 未执行。
+[普通账户写限制对照](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#普通账户写限制对照)。
+
 2026-11-08 获批 LocalService 同身份对照通过固定映像执行打开、工作目录打开、
 普通挂起子进程的令牌、Job 与管道校验及清零。在已确认新 profile 存储和映射
 缺席后，`CreateAppContainerProfile` 返回错误 5。失败后再次核对缺席，原所有者

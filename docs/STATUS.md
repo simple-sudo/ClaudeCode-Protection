@@ -5,6 +5,11 @@
 历史页的“当前/待执行/暂停/DELIVERABLE”按段落日期及限定范围解释，不是今天的状态或操作许可。
 不在本页复制当前安装和授权摘要。
 
+## 2026-11-08 普通账户写限制与 profile 注册
+
+同一账户的普通与写受限令牌对照复现 profile 注册错误 5。普通身份注册正控制
+与精确回收通过。[实际证据](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#普通账户写限制对照)
+
 ## 2026-11-08 LocalService 同身份 profile 注册拒绝
 
 同一受限 LocalService 通过普通挂起创建与清零，`CreateAppContainerProfile`

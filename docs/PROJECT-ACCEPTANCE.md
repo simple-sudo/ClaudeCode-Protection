@@ -5,6 +5,13 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-08 普通账户写限制与 profile 注册
+
+VERIFIED(同账户写受限线程的真实文件与注册表权限打开拒绝、profile 注册拒绝、
+恢复普通身份后同一 profile 注册成功及精确回收)。LocalService 内部拒绝对象
+UNKNOWN。分离准备和执行角色、不同主身份下 LPAC 与官方 CLI NOT_RUN。
+[实际证据](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#普通账户写限制对照)
+
 ## 2026-11-08 LocalService 同身份 profile 注册拒绝
 
 VERIFIED(受限服务身份的精确映像与目录打开、普通挂起进程令牌、Job 与管道校验，
