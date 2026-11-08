@@ -31,7 +31,9 @@ internal sealed class SessionProxy : IDisposable
     private readonly bool fixedNoContentHttpsCanary;
     private readonly FixedResolverTrust? fixedResolverTrust;
     private ResolverTlsEvidence? resolverTlsEvidence;
+    private UpstreamTunnelEvidence? upstreamTunnelEvidence;
     internal ResolverTlsEvidence? ResolverTls=>Volatile.Read(ref resolverTlsEvidence);
+    internal UpstreamTunnelEvidence? TargetTunnel=>Volatile.Read(ref upstreamTunnelEvidence);
     // The retained base hash identifies the existing compiled endpoint/WFP
     // policy. Bind the candidate identity separately, rather than pretending
     // an internetClient token is the historical zero-capability identity.
@@ -179,12 +181,24 @@ internal sealed class SessionProxy : IDisposable
                 var addresses=resolution.Addresses;var chosen=addresses[0];
                 if(!ProxyDestinationPolicy.AuthorizePinnedHttps(request.Host,443,addresses,chosen).Allowed)
                     throw new InvalidDataException("SessionResolvedDestinationRefused");
-                // Resolve immediately before the literal CONNECT, after the
-                // client's bounded handshake has passed. No invalid ClientHello
-                // starts even a resolver tunnel on behalf of that connection.
-                AssertForwardingCurrent();
-                phase="UPSTREAM";
-                using var remote=await OpenTunnel(chosen,deadline.Token,AssertFreshResolution);
+                using var remote=await OpenTargetTunnel();
+                async Task<NetworkStream> OpenTargetTunnel()
+                {
+                    // The target consumes the authenticated resolver result.
+                    // Observe the exact gate without giving it recovery authority.
+                    var attempt=fixedResolverTrust is null?null:
+                        new UpstreamTunnelAttempt(resolution.MinimumTtlSeconds,(int)responseAge.TotalSeconds,resolutionStarted);
+                    phase="UPSTREAM";
+                    try
+                    {
+                        AssertForwardingCurrent();
+                        return await OpenTunnel(chosen,deadline.Token,AssertFreshResolution,attempt);
+                    }
+                    finally
+                    {
+                        if(attempt is not null)Volatile.Write(ref upstreamTunnelEvidence,attempt.Capture());
+                    }
+                }
                 // Close the literal upstream socket on revoke/deadline as
                 // well as passing the token to pending stream I/O.
                 using var closeUpstream=deadline.Token.UnsafeRegister(static stream=>((NetworkStream)stream!).Dispose(),remote);
@@ -264,28 +278,53 @@ internal sealed class SessionProxy : IDisposable
     {
         if(Interlocked.Exchange(ref consumed,1)!=0)throw WfpNative.Contract("FixedGatewayTunnelAttemptAlreadyConsumed");
     }
-    private async Task<NetworkStream> OpenTunnel(IPAddress ip,CancellationToken token,Action? assertFreshResolution=null)
+    private async Task<NetworkStream> OpenTunnel(IPAddress ip,CancellationToken token,Action? assertFreshResolution=null,
+        UpstreamTunnelAttempt? attempt=null)
     {
+        void Step(UpstreamTunnelStep next){if(attempt is not null)attempt.Step=next;}
+        Step(UpstreamTunnelStep.AddressPolicy);
         if (ip.AddressFamily != AddressFamily.InterNetwork || !ProxyDestinationPolicy.IsPublicAddressCandidate(ip))
             throw new InvalidDataException("PublicIPv4TunnelRequired");
-        AssertForwardingCurrent();upstream.AssertHealthy();destinations.RequireRemotePublicAddress(ip);
+        Step(UpstreamTunnelStep.AdmissionBeforeConnect);
+        AssertForwardingCurrent();
+        Step(UpstreamTunnelStep.ProxyBeforeConnect);
+        upstream.AssertHealthy();
+        Step(UpstreamTunnelStep.AddressBeforeConnect);
+        destinations.RequireRemotePublicAddress(ip);
+        Step(UpstreamTunnelStep.FreshnessBeforeConnect);
         assertFreshResolution?.Invoke();
+        Step(UpstreamTunnelStep.LoopbackConnect);
         var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
         try
         {
             await socket.ConnectAsync(new IPEndPoint(IPAddress.Loopback, CompiledFencePolicy.ProxyPort), token);
-            upstream.AssertConnectedPeer(socket);AssertForwardingCurrent();
+            Step(UpstreamTunnelStep.PeerBeforeRequest);
+            upstream.AssertConnectedPeer(socket);
+            Step(UpstreamTunnelStep.AdmissionBeforeRequest);
+            AssertForwardingCurrent();
             var stream = new NetworkStream(socket, ownsSocket: true);
+            Step(UpstreamTunnelStep.AddressBeforeRequest);
             destinations.RequireRemotePublicAddress(ip);
             var authority = ip + ":443";
+            Step(UpstreamTunnelStep.FreshnessBeforeRequest);
             assertFreshResolution?.Invoke();
+            Step(UpstreamTunnelStep.ConnectWrite);
             await stream.WriteAsync(Encoding.ASCII.GetBytes("CONNECT " + authority + " HTTP/1.1\r\nHost: " + authority + "\r\n\r\n"), token);
+            Step(UpstreamTunnelStep.ConnectReply);
             var reply = await ReadHeader(stream, token);
-            var status = reply.Split("\r\n", StringSplitOptions.None)[0].Split(' ');
-            if (status.Length < 2 || status[0] is not ("HTTP/1.1" or "HTTP/1.0") || status[1] != "200")
-                throw new InvalidDataException("UpstreamLiteralConnectRefused");
-            upstream.AssertConnectedPeer(socket);AssertForwardingCurrent();destinations.RequireRemotePublicAddress(ip);
-            assertFreshResolution?.Invoke();return stream;
+            var status=UpstreamTunnelAttempt.ParseConnectStatus(reply);
+            attempt?.RecordStatus(status);
+            if(status!=200)throw new InvalidDataException("UpstreamLiteralConnectRefused");
+            Step(UpstreamTunnelStep.PeerAfterReply);
+            upstream.AssertConnectedPeer(socket);
+            Step(UpstreamTunnelStep.AdmissionAfterReply);
+            AssertForwardingCurrent();
+            Step(UpstreamTunnelStep.AddressAfterReply);
+            destinations.RequireRemotePublicAddress(ip);
+            Step(UpstreamTunnelStep.FreshnessAfterReply);
+            assertFreshResolution?.Invoke();
+            Step(UpstreamTunnelStep.TunnelReady);
+            return stream;
         }
         catch { socket.Dispose(); throw; }
     }

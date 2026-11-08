@@ -146,6 +146,32 @@ internal static class GatewayFeedbackCases
         ProxyCall("RequireFixedClientConnectReply","HTTP/1.1 200 Connection Established\r\n\r\n");Check(true);
         foreach(var reply in new[]{"HTTP/1.1 407 Proxy Authentication Required\r\n\r\n","HTTP/1.1 2000 Connection Established\r\n\r\n","HTTP/1.0 200 Connection Established\r\n\r\n","HTTP/1.1 200 Connection Established\r\nExtra: data\r\n\r\n"})
         {var refused=false;try{ProxyCall("RequireFixedClientConnectReply",reply);}catch(InvalidDataException){refused=true;}Check(refused);}
+        var tunnel=library.GetType("ProtectionLifecycle.UpstreamTunnelAttempt",true)!;
+        var parseStatus=tunnel.GetMethod("ParseConnectStatus",BindingFlags.NonPublic|BindingFlags.Static)!;
+        foreach(var (reply,expected) in new (string,int?)[]{
+            ("HTTP/1.1 200 Connection Established\r\n\r\n",200),("HTTP/1.0 200\r\n\r\n",200),
+            ("HTTP/1.1 407 Proxy Authentication Required\r\n\r\n",407),("HTTP/1.1 502 refusal\r\n\r\n",502),
+            ("HTTP/1.1 2000 Connection Established\r\n\r\n",null),("HTTP/1.1 20A\r\n\r\n",null),
+            ("HTTP/2 200\r\n\r\n",null),("HTTP/1.1  200\r\n\r\n",null),("HTTP/1.1 200",null)})
+            Check((int?)parseStatus.Invoke(null,[reply])==expected);
+        const BindingFlags tunnelInstance=BindingFlags.Instance|BindingFlags.NonPublic|BindingFlags.Public;
+        var attempt=Activator.CreateInstance(tunnel,tunnelInstance,null,[60,3,System.Diagnostics.Stopwatch.GetTimestamp()],null)!;
+        var step=tunnel.GetProperty("Step",tunnelInstance)!;
+        var capture=tunnel.GetMethod("Capture",tunnelInstance)!;
+        var recordStatus=tunnel.GetMethod("RecordStatus",tunnelInstance)!;
+        JsonElement Snapshot()=>JsonSerializer.SerializeToElement(capture.Invoke(attempt,null));
+        var initial=Snapshot();
+        Check(initial.GetProperty("Step").GetString()=="AdmissionBeforeTunnel" && initial.GetProperty("ConnectStatus").ValueKind==JsonValueKind.Null);
+        step.SetValue(attempt,Enum.Parse(step.PropertyType,"FreshnessAfterReply"));
+        recordStatus.Invoke(attempt,[200]);
+        var refusedAfterReply=Snapshot();
+        Check(refusedAfterReply.GetProperty("Step").GetString()=="FreshnessAfterReply" &&
+            refusedAfterReply.GetProperty("ConnectStatus").GetInt32()==200 && !refusedAfterReply.GetProperty("TunnelReady").GetBoolean());
+        step.SetValue(attempt,Enum.Parse(step.PropertyType,"TunnelReady"));
+        var ready=Snapshot();
+        Check(ready.GetProperty("TunnelReady").GetBoolean() && ready.GetProperty("MinimumTtlSeconds").GetInt32()==60 &&
+            ready.GetProperty("ResponseAgeSeconds").GetInt32()==3 && ready.GetProperty("ElapsedMs").GetInt64()>=0 &&
+            ready.EnumerateObject().Count()==6);
         var culture=System.Globalization.CultureInfo.CurrentCulture;var ui=System.Globalization.CultureInfo.CurrentUICulture;
         var defaultCulture=System.Globalization.CultureInfo.DefaultThreadCurrentCulture;var defaultUi=System.Globalization.CultureInfo.DefaultThreadCurrentUICulture;
         try

@@ -224,6 +224,9 @@ public static class BootstrapInstaller
             "D21A7D9F39A93E82087062EAD14F49329E7DBDD2743B2DC12DE98CAB6DC691F1"
         }; // Exact reviewed packages expose no launch/admission command.
         private static readonly string[] OneShotAdmissionManifests={
+            // Exact be7f2a49 proved resolver TLS and restored all leases
+            // after the target tunnel stopped.
+            "C98E38A232633827A51AA0FABD1DBF0F6D0F0969327C46874EA12C708A10B925",
             // Exact 5aef9d7d closed and restored the session after the
             // resolver rejected the unproven offline revocation status.
             "527B5693314BC84A0E0A05B6EC89BC848A58D53621BBCC75435FB3535C97620A",

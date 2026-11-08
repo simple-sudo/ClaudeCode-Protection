@@ -887,6 +887,7 @@ internal sealed class ProtectedSession
         FixedGatewayQualification=IsGatewayQualification,FormalAdmissionIssued=false,
         GatewayChildFeedback=gatewayChildFeedback,GatewayFailure=gateway?.FailureFeedback,GatewayChildFeedbackUsedForAdmission=false,
         ResolverTls=gateway?.ResolverTls,
+        TargetTunnel=gateway?.TargetTunnel,
         CapabilityContentEvidence=gatewayCapabilityFeedback,
         FixedGatewayRootBidirectionalWriteObserved=fixedExchangeObserved,
         PublicTimeZoneReadResource=(object?)null,
