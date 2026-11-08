@@ -17,8 +17,10 @@ VERIFIED(`e2309d71` 未激活安装，真实零能力低完整性 LPAC 的三个
 ## 2026-11-08 固定离线 Windows 身份内容对照
 
 INTEGRATED / BUILD(固定身份 API 与注册表取值、原所有者私有封存、仅关系回执)。
-VERIFIED(五个真实普通侧取值、报告约束及相关普通回归)。受限执行和官方 CLI
-执行 NOT_RUN。
+VERIFIED(五个真实普通侧取值、报告约束及相关普通回归)。
+VERIFIED(`4d186bcb` 未激活安装，五项真实受限读取与可信参考对照，原 Job
+有序清零及任务树回收)。FAIL(自身令牌返回宿主账户完整 SID)。三个指定接口
+拒绝，登录名查询返回 1008。其他身份路径 UNKNOWN，官方 CLI 执行 NOT_RUN。
 [对照范围](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#windows-身份内容对照)
 
 ## 2026-11-08 固定自研离线控制台闭合通过

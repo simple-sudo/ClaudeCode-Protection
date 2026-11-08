@@ -13,8 +13,10 @@
 
 ## 2026-11-08 固定离线 Windows 身份内容对照
 
-在既有固定离线链上接入五项真实 Windows 身份读取、双侧内容比较与原值封存。
-[候选与验证范围](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#windows-身份内容对照)
+在固定离线链上完成五项真实 Windows 身份对照。零能力低完整性 LPAC 的令牌
+用户 SID 匹配宿主账户。三个指定接口拒绝，登录名查询返回 1008，原 Job 和
+工作区已闭合。
+[实测与缺口](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#windows-身份内容对照)
 
 ## 2026-11-08 固定自研离线控制台闭合通过
 
