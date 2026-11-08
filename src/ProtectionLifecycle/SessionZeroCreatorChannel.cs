@@ -22,6 +22,9 @@ internal sealed class SessionZeroCreatorChannel : IDisposable
     private readonly NamedPipeServerStream pipe;
     private int consumed;
     private byte[]? cleanupNonce;
+    internal bool ProfileCleanupConfirmed {get;private set;}
+    internal bool IsPreparedFor(OwnedKernelJob exactJob)=>ReferenceEquals(job,exactJob) && Volatile.Read(ref consumed)==0 &&
+        !pipe.SafePipeHandle.IsClosed && !pipe.SafePipeHandle.IsInvalid;
     internal string PipeName=>NameForJob(job.JobId);
     internal static string NameForJob(string jobId)=>ServicePrefix+Identifiers.Hex32(jobId);
 
@@ -95,7 +98,9 @@ internal sealed class SessionZeroCreatorChannel : IDisposable
         var nonce=Interlocked.Exchange(ref cleanupNonce,null)??throw WfpNative.Contract("CreatorProfileCleanupChannelUnavailable");
         using var deadline=new CancellationTokenSource(TimeSpan.FromSeconds(10));
         pipe.WriteAsync(SessionZeroCreatorTerminal.CloseFrame(nonce).AsMemory(),deadline.Token).AsTask().GetAwaiter().GetResult();
-        return SessionZeroCreatorTerminal.ReadReceipt(pipe,nonce,deadline.Token);
+        var result=SessionZeroCreatorTerminal.ReadReceipt(pipe,nonce,deadline.Token);
+        ProfileCleanupConfirmed=true;
+        return result;
     }
 
     private static void AssertQuarantine(ProtectedState state)
@@ -221,7 +226,7 @@ internal sealed class SessionZeroCreatorChannel : IDisposable
         public void Dispose(){thread.Dispose();process.Dispose();}
     }
 
-    private static void AssertImage(SafeProcessHandle process,string expected)
+    internal static void AssertImage(SafeProcessHandle process,string expected)
     {
         var path=new StringBuilder(32768);uint length=(uint)path.Capacity;
         if(!QueryFullProcessImageName(process,0,path,ref length))throw Error("ReadCreatorProcessImage");

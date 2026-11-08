@@ -204,15 +204,20 @@ internal sealed class OwnedKernelJob : IDisposable
         =>CreateEmpty(state,version,null);
     // Only the fixed SCM owner may select this scope after verifying its
     // exact service SID. This does not start or authenticate a creator.
-    internal static OwnedKernelJob CreateForSessionZero(ProtectedState state,VerifiedVersion version,SecurityIdentifier verifiedCreatorSid)
-        =>CreateEmpty(state,version,verifiedCreatorSid.Value);
-    private static OwnedKernelJob CreateEmpty(ProtectedState state,VerifiedVersion version,string? creatorServiceSid)
+    internal static OwnedKernelJob CreateForSessionZero(ProtectedState state,VerifiedVersion version,SessionZeroCreatorRegistration creator)
+        =>CreateEmpty(state,version,creator);
+    private static OwnedKernelJob CreateEmpty(ProtectedState state,VerifiedVersion version,SessionZeroCreatorRegistration? creator)
     {
-        ProtectedState.RequireAdministrator();state.AssertHeld();version.AssertHeld(state);LifecycleRecovery.AssertNoPending(state);
+        ProtectedState.RequireAdministrator();state.AssertHeld();version.AssertHeld(state);LifecycleRecovery.AssertNoPending(state,preparingCreator:creator);
         var current=CurrentPointer.Parse(state.Read("current.json",4096),state.InstallationId);
         if(current.Release!=version.Package.Release || current.ManifestSHA256!=version.Package.ManifestHash)throw new InvalidDataException("Job version differs from the verified current version");
         if(OwnedJobIntent.ReadAll(state).Count>=1024)throw new InvalidDataException("Job inventory full");
-        var intent=OwnedJobIntent.ForNewJob(state.InstallationId,version.Package.Release,version.Package.ManifestHash,creatorServiceSid);
+        var intent=OwnedJobIntent.ForNewJob(state.InstallationId,version.Package.Release,version.Package.ManifestHash,creator?.Sid.Value);
+        if(creator is not null)
+        {
+            creator.AssertJobPreparation(state,version);
+            intent=intent with {JobId=creator.JobId};
+        }
         state.WriteNew(OwnedJobIntent.Leaf(intent.JobId),JsonSerializer.SerializeToUtf8Bytes(intent)); // Before kernel creation.
         OwnedKernelJob? owner=null;
         try

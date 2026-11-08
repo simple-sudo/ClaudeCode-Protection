@@ -721,3 +721,24 @@ Broker 只有确认原 Job 准入已关闭、成员为零、分配权已撤销�
 本次仅构建及普通验证，含 Windows 对非 SCM 调用的真实拒绝。原 Broker 仍须接入
 具体 SCM 服务登记与回收、独立工作区所有权和新根进程的运行监督。候选未安装，
 未实际启动服务、创建 profile、挂起或恢复受限载荷，官方 CLI 未执行。
+
+### 原 Broker 的服务登记与回收
+
+可信所有者先核对已选安装版本，分配同一个 Job ID，并在受保护账本记录登记
+意图。临时服务的名称和带引号的 Broker 命令由固定规则派生，重名拒绝。
+服务设置为手动启动、独立 LocalService 进程。启动前回读服务 SID 模式、
+仅遍历的特权清单、无失败重启、固定映像和管理员/SYSTEM 访问控制。随后用同一
+Job ID 和服务 SID 创建原 Job。只有 Job 与已建本机管道均匹配才允许启动，
+Broker 持有原服务进程的查询与等待句柄并复核实际映像及 SCM 状态。
+[Windows 服务登记](https://learn.microsoft.com/en-us/windows/win32/api/winsvc/nf-winsvc-createservicew) ·
+[Windows 服务对象访问权限](https://learn.microsoft.com/en-us/windows/win32/services/service-security-and-access-rights)
+
+回收必须使用首次登记获得的句柄。已启动时，要求同一管道确认 profile 回收、
+原服务进程终止且退出码为零，以及 SCM 停止成功。未启动分支要求无启动尝试
+记录。一次删除后须再次确认确切名称缺席才封存回执。若回执缺失或绑定不符，
+生命周期保持锁闭。归属未知、删除待完成或服务失败时保留现场。
+[Windows 服务删除完成条件](https://learn.microsoft.com/en-us/windows/win32/api/winsvc/nf-winsvc-deleteservice)
+
+五产品 Release 和 13 个普通回归入口通过，含 18 项新增登记检查。
+登记管理器尚未接入完整离线运行入口。普通只读观察没有发现该前缀服务，
+本次未执行 SCM 登记、启动、删除、安装、受限载荷或官方 CLI。

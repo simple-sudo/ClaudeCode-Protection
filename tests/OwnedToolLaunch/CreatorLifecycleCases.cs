@@ -1,6 +1,7 @@
 using System.Buffers.Binary;
 using System.Reflection;
 using System.Security.AccessControl;
+using System.Text.Json;
 
 internal static class CreatorLifecycleCases
 {
@@ -87,5 +88,45 @@ internal static class CreatorLifecycleCases
         BinaryPrimitives.WriteUInt16LittleEndian(malformed.AsSpan(24),4097);
         Refused(()=>Read(malformed,nonce));
         Console.WriteLine($"PASS {count} creator lifecycle checks; actual SCM rejection outside service, fixed image and profile paths, observer rights, terminal and bounded output frames. No service registration, profile mutation, process creation or WFP.");
+        var previous=count;
+        var intent=Method("SessionZeroCreatorRegistration","ValidateIntent");
+        var removed=Method("SessionZeroCreatorRegistration","ValidateRemoval");
+        var descriptor=Method("SessionZeroCreatorRegistration","AssertServiceDescriptor");
+        var command=Method("SessionZeroCreatorRegistration","BuildCommand");
+        var installation=new string('b',32);
+        var release=new string('c',32);
+        var hash=new string('A',64);
+        void AssertIntent(object data,string expectedJob)
+        {
+            using var doc=JsonDocument.Parse(JsonSerializer.SerializeToUtf8Bytes(data));
+            _=intent.Invoke(null,[doc.RootElement,installation,expectedJob]);
+        }
+        var expected=new {SchemaVersion=1,InstallationId=installation,JobId=jobId,Release=release,ManifestHash=hash};
+        AssertIntent(expected,jobId);Check(true);
+        Refused(()=>AssertIntent(expected,release));
+        Refused(()=>AssertIntent(expected with {InstallationId=release},jobId));
+        Refused(()=>AssertIntent(expected with {Release="wrong"},jobId));
+        Refused(()=>AssertIntent(new{SchemaVersion=1,InstallationId=installation,JobId=jobId,Release=release,ManifestHash=hash,Command=image},jobId));
+        void AssertRemoval(string disposition,bool started,string expectedHash)
+        {
+            using var doc=JsonDocument.Parse(JsonSerializer.SerializeToUtf8Bytes(new{SchemaVersion=1,IntentSHA256=hash,Disposition=disposition}));
+            _=removed.Invoke(null,[doc.RootElement,expectedHash,started]);
+        }
+        const string closed="PROFILE_AND_SERVICE_CLOSED",unstarted="SERVICE_REMOVED_BEFORE_START";
+        AssertRemoval(closed,true,hash);Check(true);
+        AssertRemoval(unstarted,false,hash);Check(true);
+        Refused(()=>AssertRemoval(closed,false,hash));
+        Refused(()=>AssertRemoval(unstarted,true,hash));
+        Refused(()=>AssertRemoval(closed,true,new string('B',64)));
+        Check((string?)command.Invoke(null,[image])=="\""+image+"\" session-zero-offline-creator");
+        Refused(()=>command.Invoke(null,[image+" arbitrary"]));
+        const string sddl="O:BAD:P(A;;0x000f01ff;;;SY)(A;;0x000f01ff;;;BA)";
+        _=descriptor.Invoke(null,[new RawSecurityDescriptor(sddl)]);Check(true);
+        foreach(var invalid in new[]{sddl+"(A;;0x10;;;AU)",sddl.Replace("O:BA","O:LS",StringComparison.Ordinal),
+            sddl.Replace(";;;BA",";;;SY",StringComparison.Ordinal),sddl.Replace("0x000f01ff","0x00020000",StringComparison.Ordinal)})
+            Refused(()=>descriptor.Invoke(null,[new RawSecurityDescriptor(invalid)]));
+        var inventory=Method("ProtectedState","RequireFixedInventoryPrefix");
+        _=inventory.Invoke(null,["creator-service-intent-"]);Check(true);
+        Console.WriteLine($"PASS {count-previous} creator registration checks; exact image command, SCM descriptor, protected inventory and start/removal receipt binding. No SCM mutations.");
     }
 }
