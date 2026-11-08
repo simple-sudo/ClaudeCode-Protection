@@ -171,10 +171,16 @@ internal sealed class OwnedKernelJob : IDisposable
     {
         AssertHeld();if(!IsProcessInJob(process,handle,out var belongs))throw Error("InspectExactJobMembership");return belongs;
     }
-    private uint Active()
+    internal void AssertSingleProcessEverAdmitted()
+    {
+        AssertHeld();
+        if(Accounting().TotalProcesses!=1)throw WfpNative.Contract("OfflineConsoleJobProcessCountDiffers");
+    }
+    private uint Active()=>Accounting().ActiveProcesses;
+    private BasicAccounting Accounting()
     {
         if(!QueryAccounting(handle,1,out var accounting,(uint)Marshal.SizeOf<BasicAccounting>(),out _))throw Error("QueryOwnedJobAccounting");
-        return accounting.ActiveProcesses;
+        return accounting;
     }
     private uint[] ProcessIds()
     {

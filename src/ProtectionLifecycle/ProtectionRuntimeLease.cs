@@ -11,6 +11,7 @@ internal sealed record RuntimeStop(string SessionId,string Reason,bool Admission
     internal const string ResourceTerminalReason="OFFLINE_RESOURCE_QUALIFICATION_TERMINAL";
     internal const string GpuTerminalReason="FIXED_GPU_QUALIFICATION_TERMINAL";
     internal const string HostGpuTerminalReason="FIXED_HOST_GPU_REFERENCE_TERMINAL";
+    internal const string OfflineConsoleTerminalReason="FIXED_OFFLINE_CONSOLE_TERMINAL";
     internal static string OfflineTlsTerminalReason(OfflineTlsProbe probe)=>probe switch {
         OfflineTlsProbe.Schannel=>"FIXED_OFFLINE_SCHANNEL_ACQUISITION_TERMINAL",
         OfflineTlsProbe.OpenSsl=>"FIXED_OFFLINE_OPENSSL_EXCHANGE_TERMINAL",
@@ -26,6 +27,8 @@ internal sealed record RuntimeStop(string SessionId,string Reason,bool Admission
         Reason==HostGpuTerminalReason && ConfirmsClosedJob(sessionId,jobId);
     internal bool ConfirmsClosedOfflineTls(OfflineTlsProbe probe,string sessionId,string jobId) =>
         Reason==OfflineTlsTerminalReason(probe) && ConfirmsClosedJob(sessionId,jobId);
+    internal bool ConfirmsClosedOfflineConsole(string sessionId,string jobId) =>
+        Reason==OfflineConsoleTerminalReason && ConfirmsClosedJob(sessionId,jobId);
 
     private bool ConfirmsClosedJob(string sessionId,string jobId) =>
         SessionId==sessionId && AdmissionClosed && QuarantineObservedBeforeStop &&
@@ -55,7 +58,7 @@ internal sealed class ProtectionRuntimeLease
     private readonly ProxyChannelLease? proxy;
     private readonly ProtectedSession.ResourceQualification? resources;
     private readonly SessionProxy? gateway;
-    private enum FixedOffline { None, Gpu, HostGpuReference, Schannel, OpenSsl }
+    private enum FixedOffline { None, Gpu, HostGpuReference, Schannel, OpenSsl, Console }
     private readonly FixedOffline fixedOffline;
     private ProtectedSession.Admission? admission;
     private readonly ProtectedSession.Preparation? preparation;
@@ -88,6 +91,12 @@ internal sealed class ProtectionRuntimeLease
             _=>throw WfpNative.Contract("UnknownOfflineTlsProbe")
         };
         return new(state,version,job,fences,null,null,null,null,null,Identifiers.Hex32(sessionId),mode);
+    }
+    internal static ProtectionRuntimeLease ForFixedOfflineConsole(ProtectedState state,VerifiedVersion version,OwnedKernelJob job,
+        IReadOnlyList<PersistentFence> fences,AtomicChild child,string sessionId)
+    {
+        child.AssertOfflineConsoleRuntimeOwner(state,version,job);
+        return new(state,version,job,fences,null,null,null,null,null,Identifiers.Hex32(sessionId),FixedOffline.Console);
     }
     internal ProtectionRuntimeLease(ProtectedState state,VerifiedVersion version,OwnedKernelJob job,IReadOnlyList<PersistentFence> fences,ProxyChannelLease? proxy,
         SessionProxy? gateway=null,ProtectedSession.Preparation? preparation=null,ProtectedSession.ResourceQualification? resources=null,Action? assertCaller=null)
@@ -122,6 +131,7 @@ internal sealed class ProtectionRuntimeLease
                 FixedOffline.HostGpuReference=>"FIXED_ORDINARY_HOST_GPU_REFERENCE_NO_FORMAL_PERMIT",
                 FixedOffline.Schannel=>"FIXED_OFFLINE_SCHANNEL_NO_FORWARDING_NO_FORMAL_PERMIT",
                 FixedOffline.OpenSsl=>"FIXED_OFFLINE_OPENSSL_NO_FORWARDING_NO_FORMAL_PERMIT",
+                FixedOffline.Console=>"FIXED_OFFLINE_CONSOLE_NO_FORWARDING_NO_FORMAL_PERMIT",
                 _=>resources is not null?"FIXED_OFFLINE_RESOURCES_NO_FORWARDING_NO_FORMAL_PERMIT":gateway is null?"SINGLE_ATOMIC_JOB_COMPILED_PROXY":"QUARANTINED_SUSPENDED_SESSION_STARTUP"
             },
             FormalSessionResumeAuthorized=false,AdmissionReusable=false,
@@ -145,6 +155,7 @@ internal sealed class ProtectionRuntimeLease
         }
         if(gateway is not null && fences.Any(f=>!f.IsSessionChannel))throw WfpNative.Contract("SessionRawProxyPolicyDrift");
         if(!job.Observe().ExpectedLimits)throw WfpNative.Contract("RuntimeJobLimitsDrift");
+        if(fixedOffline==FixedOffline.Console)job.AssertSingleProcessEverAdmitted();
         // Renew only after every check succeeded. A delayed/dead owner cannot
         // let an existing socket retain its old forwarding permission forever.
         admission?.ObserveRuntimeHealthy(this,deadlineMs-clock.ElapsedMilliseconds);

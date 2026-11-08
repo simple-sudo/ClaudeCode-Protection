@@ -72,3 +72,26 @@ SYSTEM 和管理员组，创建标签仅有读取安全描述符的权限。复�
 `work/openssl-owner-20261107-01/official-offline-inventory-candidate/verified-package-readback.json`，
 SHA-256 `573EFE6C3A4CDB74E36C1B3782136AE2ADFB207CDA654ADD79345E1DFF77CF18`。
 候选安装、原生私有权限、受限创建与官方 CLI 运行均为 NOT_RUN。
+
+## 固定离线控制台自研载荷
+
+2026-11-07，原 Broker 和原子创建链新增固定自研模式。创建时同时绑定零能力
+LPAC、无 breakaway 的原 Job、三个标准管道句柄和 Windows 子进程创建限制。
+父端在创建前关闭 stdin 写端。stdout 和 stderr 独立限制为 4096 字节，
+向外只报长度、溢出标志及摘要。受限根使用原 profile 所有者的独立低完整性
+任务目录，写入一份固定测试文件，并对自身镜像尝试一次无操作的子进程创建。
+恢复前原 owner 核对映像、token、Job、系统创建限制和完整隔离，运行中继续
+检查隔离和 Job 的累计成员数。停止先确认隔离再闭合 Job，工作区回收复用
+原 profile 的持久化处置和精确目录身份。
+
+普通 Windows 对照中，带子进程限制的 `CREATE_NO_WINDOW` 组合在应用入口前
+以 `0xC0000142` 退出。该固定模式改用 `DETACHED_PROCESS`。两个普通自研
+子进程分别验证正常和溢出输出、stdin EOF、额外可继承句柄被排除以及创建
+子进程被拒绝（367）。普通验证不提供 LPAC、WFP 或官方 CLI 证据。
+
+未激活候选 `4b303b84270f436289590b640f017e83`，清单
+`C22257109B22B514782666F6E78C9BD7F5FB79555405ED2A2D1874A841AD9B77`。
+迁移绑定 `9D38922C541F55EB4959B288A5DA27E49EEF060AFD3AADDC264C5DA29C03FB46`，
+只接受现装 `2ac3cb39`。五产品 Release BUILD0/0，30 项工件、159 项输入
+复核一致。17 个普通回归入口通过。当前候选安装和真实受限执行为 NOT_RUN。
+下一道资格仍需要受限实测、会话专用官方映像和实际行为观察。

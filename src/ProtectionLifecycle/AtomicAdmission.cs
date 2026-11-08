@@ -147,6 +147,7 @@ internal sealed partial class AtomicChild : IDisposable
     private readonly NetworkProbePlan? network;
     private readonly bool gpuWorkload;
     private readonly OfflineTlsProbe? offlineTls;
+    private readonly bool offlineConsole;
     private readonly ProtectedSession.Preparation? sessionPreparation;
     private readonly ProtectedSession.ResourceQualification? resourceQualification;
     private ProtectedSession.Admission? sessionAdmission;
@@ -156,7 +157,7 @@ internal sealed partial class AtomicChild : IDisposable
     internal uint Pid {get;}
     internal string ExpectedPackageSid=>packageSid;
     internal string ExpectedImagePath=>image;
-    internal bool RequiresLpac=>sessionPreparation is not null || resourceQualification is not null || gpuWorkload || offlineTls is not null;
+    internal bool RequiresLpac=>sessionPreparation is not null || resourceQualification is not null || gpuWorkload || offlineTls is not null || offlineConsole;
     private LpacCapabilityProfile CapabilityProfile=>sessionPreparation?.CapabilityProfile??FixedCapabilities(offlineTls is not null);
     private static LpacCapabilityProfile FixedCapabilities(bool offlineTls)=>offlineTls?
         LpacCapabilityProfile.InternetClientQualification:LpacCapabilityProfile.None;
@@ -320,10 +321,10 @@ internal sealed partial class AtomicChild : IDisposable
         }
         finally{foreach(var handle in held)handle.Dispose();}
     }
-    private AtomicChild(ProtectedState state,VerifiedVersion version,OwnedKernelJob job,ProcessInfo info,string image,string sid,NetworkProbePlan? network,bool gpuWorkload,ProtectedSession.Preparation? preparation,ProtectedSession.ResourceQualification? resources,OfflineTlsProbe? offlineTls)
+    private AtomicChild(ProtectedState state,VerifiedVersion version,OwnedKernelJob job,ProcessInfo info,string image,string sid,NetworkProbePlan? network,bool gpuWorkload,ProtectedSession.Preparation? preparation,ProtectedSession.ResourceQualification? resources,OfflineTlsProbe? offlineTls,bool offlineConsole)
     {
         this.state=state;this.version=version;this.job=job;this.image=image;packageSid=sid;Pid=info.ProcessId;this.network=network;this.gpuWorkload=gpuWorkload;
-        process=new(info.Process,true);thread=new(info.Thread,true);sessionPreparation=preparation;resourceQualification=resources;this.offlineTls=offlineTls;
+        process=new(info.Process,true);thread=new(info.Thread,true);sessionPreparation=preparation;resourceQualification=resources;this.offlineTls=offlineTls;this.offlineConsole=offlineConsole;
     }
     internal static AtomicChild CreateCanary(FixedLayout layout,ProtectedState state,VerifiedVersion version,OwnedKernelJob job,InstallationProfileLease profile,
         NetworkProbePlan? network=null,IntPtr output=default,GpuProbePlan? gpu=null)
@@ -331,6 +332,9 @@ internal sealed partial class AtomicChild : IDisposable
     internal static AtomicChild CreateOfflineTlsQualification(FixedLayout layout,ProtectedState state,VerifiedVersion version,
         OwnedKernelJob job,InstallationProfileLease profile,string sessionId,IntPtr output,OfflineTlsProbe probe)
         =>CreateCore(layout,state,version,job,profile,null,output,null,null,null,(probe,Identifiers.Hex32(sessionId)));
+    internal static AtomicChild CreateOfflineConsoleQualification(FixedLayout layout,ProtectedState state,VerifiedVersion version,
+        OwnedKernelJob job,InstallationProfileLease profile,string sessionId,PathLease workspace,OfflineConsoleStreams streams)
+        =>CreateCore(layout,state,version,job,profile,null,IntPtr.Zero,null,null,null,console:(streams,Identifiers.Hex32(sessionId),workspace));
     internal static AtomicChild CreateResourceQualification(FixedLayout layout,ProtectedState state,VerifiedVersion version,OwnedKernelJob job,
         InstallationProfileLease profile,ProtectedSession.ResourceQualification permit,IntPtr output)
     {
@@ -346,7 +350,7 @@ internal sealed partial class AtomicChild : IDisposable
     }
     private static AtomicChild CreateCore(FixedLayout layout,ProtectedState state,VerifiedVersion version,OwnedKernelJob job,InstallationProfileLease profile,
         NetworkProbePlan? network,IntPtr output,GpuProbePlan? gpu,ProtectedSession.Preparation? preparation,ProtectedSession.ResourceQualification? resources,
-        (OfflineTlsProbe Probe,string Session)? tls=null)
+        (OfflineTlsProbe Probe,string Session)? tls=null,(OfflineConsoleStreams Streams,string Session,PathLease Workspace)? console=null)
     {
         ProtectedState.RequireAdministrator();state.AssertHeld();version.AssertHeld(state);
         preparation?.BeforeCreate(job,version);
@@ -359,22 +363,32 @@ internal sealed partial class AtomicChild : IDisposable
         if(tls is not null && (preparation is not null || resources is not null || network is not null || gpu is not null))
             throw WfpNative.Contract("OfflineTlsQualificationCannotBorrowOtherAuthority");
         if(tls?.Probe==OfflineTlsProbe.OpenSsl)OpenSslModuleLease.AssertOwnedPackage(version.Package);
-        var requireLpac=preparation is not null || resources is not null || gpu is not null || tls is not null;
+        if(console is { } fixedConsole)
+        {
+            if(tls is not null || preparation is not null || resources is not null || network is not null || gpu is not null || output!=IntPtr.Zero)
+                throw WfpNative.Contract("OfflineConsoleCannotBorrowOtherAuthority");
+            fixedConsole.Workspace.AssertHeld();
+            if(fixedConsole.Workspace.Path!=SessionTaskWorkspace.PathFor(fixedConsole.Session))
+                throw WfpNative.Contract("OfflineConsoleWorkspaceMismatch");
+        }
+        var requireLpac=preparation is not null || resources is not null || gpu is not null || tls is not null || console is not null;
         if(requireLpac && Marshal.SizeOf<KernelJobSeal.SecurityAttributes>()!=24)
             throw new PlatformNotSupportedException("Suspended session security attributes require the declared x64 layout");
         var image=WindowsPathSeal.Child(layout.Version(version.Package.Release),"bin/admin/ProtectionBroker.exe");
         network?.Validate();gpu?.Validate();if(network is not null && gpu is not null)throw WfpNative.Contract("OneFixedQualificationWorkloadRequired");
         var report=network is not null || gpu is not null || resources is not null || preparation?.IsGatewayQualification==true || tls is not null;if(report!=(output!=IntPtr.Zero))throw WfpNative.Contract("ReportHandleRequiredExactlyForQualificationWorkload");
+        var inherit=report || console is not null;
         using var package=network?.Kind==NetworkProbeKind.Control?InstallationPackageSid.ForNetworkControl(state):new InstallationPackageSid(state);
         profile.AssertPackage(package);
         var jobHandle=job.ReserveAtomicAdmission(version);
         using var capabilityAttributes=(preparation?.CapabilityProfile??FixedCapabilities(tls is not null)).AllocateAttributes();
         IntPtr attributes=IntPtr.Zero,capabilities=IntPtr.Zero,jobList=IntPtr.Zero,environment=IntPtr.Zero,handles=IntPtr.Zero,packagesPolicy=IntPtr.Zero;
+        OfflineConsoleStreams.CreationAttributes? consoleAttributes=null;
         bool initialized=false,handleHeld=false;
         try
         {
             jobHandle.DangerousAddRef(ref handleHeld);
-            var count=(report?3:2)+(requireLpac?1:0);
+            var count=(inherit?3:2)+(requireLpac?1:0)+(console is not null?1:0);
             nuint size=0;_=InitializeProcThreadAttributeList(IntPtr.Zero,count,0,ref size);
             if(size is 0 or >65536)throw Error("AtomicAttributeListSize");
             attributes=Marshal.AllocHGlobal(checked((int)size));
@@ -392,10 +406,20 @@ internal sealed partial class AtomicChild : IDisposable
             }
             jobList=Marshal.AllocHGlobal(IntPtr.Size);Marshal.WriteIntPtr(jobList,jobHandle.DangerousGetHandle());
             if(!UpdateProcThreadAttribute(attributes,0,(IntPtr)0x2000d,jobList,(nuint)IntPtr.Size,IntPtr.Zero,IntPtr.Zero))throw Error("AtomicSetJobListAtCreation");
-            if(report)
+            var startup=new StartupInfoEx{Basic=new(){Size=Marshal.SizeOf<StartupInfoEx>()},Attributes=attributes};
+            if(console is { } consoleSetup)
+            {
+                consoleAttributes=consoleSetup.Streams.PrepareCreationAttributes();
+                consoleAttributes.Bind(attributes);
+                var channels=consoleAttributes.Channels;
+                startup.Basic.Flags=0x100;
+                startup.Basic.Input=channels.Input;startup.Basic.Output=channels.Output;startup.Basic.Error=channels.Error;
+            }
+            else if(report)
             {
                 handles=Marshal.AllocHGlobal(IntPtr.Size);Marshal.WriteIntPtr(handles,output);
                 if(!UpdateProcThreadAttribute(attributes,0,(IntPtr)0x20002,handles,(nuint)IntPtr.Size,IntPtr.Zero,IntPtr.Zero))throw Error("AtomicSetOnlyReportHandleInheritance");
+                startup.Basic.Flags=0x100;startup.Basic.Output=output;startup.Basic.Error=output;
             }
             var env=new SortedDictionary<string,string>(StringComparer.OrdinalIgnoreCase);
             var inherited=!requireLpac?new[]{"SystemRoot","windir","SystemDrive","ProgramFiles","ProgramFiles(x86)","ProgramW6432","PROCESSOR_ARCHITECTURE","LOCALAPPDATA","USERPROFILE","TEMP","TMP"}:
@@ -421,6 +445,13 @@ internal sealed partial class AtomicChild : IDisposable
                 env[OfflineTlsQualification.SessionVariable(offline.Probe)]=offline.Session;
                 if(offline.Probe==OfflineTlsProbe.OpenSsl)env[OpenSslModuleLease.ReleaseVariable]=version.Package.Release;
             }
+            if(console is { } offlineConsoleSetup)
+            {
+                var workspace=offlineConsoleSetup.Workspace.Path;
+                SetPrivateRuntimeDirectories(env,workspace);
+                foreach(var name in new[]{"HOME","XDG_CONFIG_HOME","CLAUDE_CONFIG_DIR","APPDATA"})env[name]=workspace;
+                env[OfflineConsoleQualification.SessionVariable]=offlineConsoleSetup.Session;
+            }
             if(preparation is not null)
             {
                 // Creation requires LOCALAPPDATA; use the original freshly
@@ -445,24 +476,23 @@ internal sealed partial class AtomicChild : IDisposable
             var environmentBlock=string.Join('\0',env.Select(p=>p.Key+"="+p.Value))+"\0\0";
             if(preparation?.IsGatewayQualification==true && environmentBlock.Length>32760)throw WfpNative.Contract("FixedGatewayEnvironmentBounds");
             environment=Marshal.StringToHGlobalUni(environmentBlock);
-            var startup=new StartupInfoEx{Basic=new(){Size=Marshal.SizeOf<StartupInfoEx>()},Attributes=attributes};
-            if(report){startup.Basic.Flags=0x100;startup.Basic.Output=output;startup.Basic.Error=output;}
-            var command=new StringBuilder("\""+image+"\" "+(tlsCommand??preparation?.ChildCommand??"admission-child"));
+            var command=new StringBuilder("\""+image+"\" "+(console is not null?OfflineConsoleQualification.ChildCommand:tlsCommand??preparation?.ChildCommand??"admission-child"));
             // The OS binds BOTH identity and Job before returning a suspended
-            // initial thread. Only the explicit qualification report handle
-            // may be inherited; no breakaway permission is enabled.
+            // initial thread. Inherit only the selected report or console
+            // handles; no breakaway permission is enabled.
             profile.BeforeProcessCreation(job.JobId);
             ProcessInfo info;
             if(requireLpac)
             {
                 using var descriptor=new KernelJobSeal.SessionObjectDescriptor();
                 var processAttributes=descriptor.Attributes;var threadAttributes=descriptor.Attributes;
-                if(!CreateSealedProcess(image,command,ref processAttributes,ref threadAttributes,report,0x08080404,environment,resources?.Workspace??Path.GetDirectoryName(image)!,ref startup,out info))
+                var flags=console is not null?0x00080404u|OfflineConsoleStreams.DetachedCreationFlag:0x08080404u;
+                if(!CreateSealedProcess(image,command,ref processAttributes,ref threadAttributes,inherit,flags,environment,console?.Workspace.Path??resources?.Workspace??Path.GetDirectoryName(image)!,ref startup,out info))
                     throw Error("AtomicCreateSealedSuspendedSession");
             }
             else if(!CreateProcess(image,command,IntPtr.Zero,IntPtr.Zero,report,0x08080404,environment,Path.GetDirectoryName(image)!,ref startup,out info))
                 throw Error("AtomicCreateSuspendedWithPackageAndJob");
-            var child=new AtomicChild(state,version,job,info,image,package.Value,network,gpu is not null,preparation,resources,tls?.Probe);
+            var child=new AtomicChild(state,version,job,info,image,package.Value,network,gpu is not null,preparation,resources,tls?.Probe,console is not null);
             try
             {
                 if(requireLpac){KernelJobSeal.SessionObjectDescriptor.AssertSeal(child.process);KernelJobSeal.SessionObjectDescriptor.AssertSeal(child.thread);}
@@ -473,6 +503,7 @@ internal sealed partial class AtomicChild : IDisposable
         finally
         {
             if(initialized)DeleteProcThreadAttributeList(attributes);
+            consoleAttributes?.Dispose();
             if(attributes!=IntPtr.Zero)Marshal.FreeHGlobal(attributes);
             if(capabilities!=IntPtr.Zero)Marshal.FreeHGlobal(capabilities);
             if(jobList!=IntPtr.Zero)Marshal.FreeHGlobal(jobList);
@@ -484,7 +515,7 @@ internal sealed partial class AtomicChild : IDisposable
     }
     internal object ResumeQuarantined(ProxyChannelLease? proxy=null,ProtectedSession.Admission? sessionPermit=null)
     {
-        if(disposed || resumed)throw new InvalidOperationException("Canary resume is one-shot");
+        if(disposed || ResumeAttempted)throw new InvalidOperationException("Canary resume is one-shot");
         if(sessionPreparation is not null)
         {
             if(sessionPermit is null || !sessionPermit.Matches(sessionPreparation))throw WfpNative.Contract("FullSessionPermitRequiredBeforeFirstInstruction");
@@ -511,6 +542,14 @@ internal sealed partial class AtomicChild : IDisposable
             if(proxy is not null || sessionPermit is not null)throw WfpNative.Contract("TlsQualificationRequiresOfflineQuarantine");
             KernelJobSeal.SessionObjectDescriptor.AssertSeal(process);
             KernelJobSeal.SessionObjectDescriptor.AssertSeal(thread);
+        }
+        if(offlineConsole)
+        {
+            if(proxy is not null || sessionPermit is not null)throw WfpNative.Contract("OfflineConsoleRequiresFullQuarantine");
+            KernelJobSeal.SessionObjectDescriptor.AssertSeal(process);
+            KernelJobSeal.SessionObjectDescriptor.AssertSeal(thread);
+            AssertNoChildCreation(process);
+            job.AssertSingleProcessEverAdmitted();
         }
         state.AssertHeld();version.AssertHeld(state);
         sessionAdmission?.AssertCurrent();
@@ -543,7 +582,7 @@ internal sealed partial class AtomicChild : IDisposable
             ImageSHA256=version.Package.Files.Single(f=>f.Asset.Id=="broker-exe").SHA256,Job=snapshot,Fences=observations,
             Binding="SECURITY_CAPABILITIES_AND_JOB_LIST_AT_CREATION",Status="BEFORE_FIRST_RESUME",NetworkBehaviorQualified=false,
             SessionBindingSHA256=sessionAdmission?.BindingSHA256,
-            Scope=sessionAdmission is not null?"AUTHENTICATED_SESSION_GATEWAY":network?.Kind==NetworkProbeKind.Control?"UNFENCED_OWNED_LOOPBACK_CONTROL":proxyOnly?"COMPILED_IPV4_PROXY_ONLY":gpuWorkload?"FIXED_CUDA_FULL_QUARANTINE":
+            Scope=sessionAdmission is not null?"AUTHENTICATED_SESSION_GATEWAY":network?.Kind==NetworkProbeKind.Control?"UNFENCED_OWNED_LOOPBACK_CONTROL":proxyOnly?"COMPILED_IPV4_PROXY_ONLY":gpuWorkload?"FIXED_CUDA_FULL_QUARANTINE":offlineConsole?"FIXED_CONSOLE_FULL_QUARANTINE":
                 offlineTls switch {OfflineTlsProbe.Schannel=>"FIXED_SCHANNEL_FULL_QUARANTINE",OfflineTlsProbe.OpenSsl=>"FIXED_OPENSSL_FULL_QUARANTINE",_=>"FULL_QUARANTINE"}};
         state.WriteNew("admission-before-resume-"+job.JobId+".json",JsonSerializer.SerializeToUtf8Bytes(proof));
         sessionAdmission?.BeforeResume(this);
@@ -579,6 +618,31 @@ internal sealed partial class AtomicChild : IDisposable
     {
         if(offlineTls is null)throw WfpNative.Contract("FixedOfflineTlsWorkloadRequired");
         return ObserveCanaryExit(100);
+    }
+    internal void AssertOfflineConsoleRuntimeOwner(ProtectedState exactState,VerifiedVersion exactVersion,OwnedKernelJob exactJob)
+    {
+        if(!offlineConsole || disposed || ResumeAttempted || !IsRunning || !ReferenceEquals(state,exactState) ||
+            !ReferenceEquals(version,exactVersion) || !ReferenceEquals(job,exactJob) || !job.ContainsProcess(process))
+            throw WfpNative.Contract("OfflineConsoleRuntimeRequiresExactSuspendedChild");
+    }
+    internal uint? ObserveOfflineConsoleExit()
+    {
+        if(!offlineConsole)throw WfpNative.Contract("OfflineConsoleWorkloadRequired");
+        return ObserveCanaryExit(100);
+    }
+    private static void AssertNoChildCreation(SafeProcessHandle process)
+    {
+        if(!GetProcessMitigationPolicy(process,13,out var flags,sizeof(uint)))throw Error("OfflineConsoleReadChildPolicy");
+        if(flags!=1)throw WfpNative.Contract("OfflineConsoleChildPolicyNotEnforced");
+    }
+    internal static void AssertOfflineConsoleWorkerIdentity()
+    {
+        using var self=new SafeProcessHandle((IntPtr)(-1),false);
+        var token=ReadToken(self);
+        if(!token.IsAppContainer || !token.LpacAccessCheckObserved || token.ApplicationPackageAccessMask!=2 ||
+            token.PackageSid is null || token.IntegritySid!="S-1-16-4096" || !LpacCapabilityProfile.None.Matches(token.CapabilityCount,token.Capabilities))
+            throw WfpNative.Contract("OfflineConsoleWorkerIdentityRefused");
+        AssertNoChildCreation(self);
     }
     internal static int RunOfflineTlsChild(OfflineTlsProbe probe)
     {

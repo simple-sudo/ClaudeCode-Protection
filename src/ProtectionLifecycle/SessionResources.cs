@@ -124,17 +124,15 @@ internal sealed class SessionResources : IDisposable
                 // Preflight all destination paths before creating profile/task data.
                 foreach(var file in project.Files)_=WindowsPathSeal.Child(WindowsPathSeal.Child(SessionTaskWorkspace.PathFor(nonce),"git-project"),file.Path);
             }
-            var root=includeGit?Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles):profile.WorkspaceRoot();
-            using var parent=WindowsPathSeal.LockDirectory(root,includeGit?PathPolicy.CreationParent:PathPolicy.Source);
             var path=plan.Workspace(sid.Value);
-            if(includeGit)profile.PlanTaskWorkspace(nonce);
             using var identity=WindowsIdentity.GetCurrent();
-            using var grant=new WorkspaceDescriptor(identity.User?.Value??throw WfpNative.Contract("WorkspaceHumanOwnerMissing"),sid.Value,includeGit);
-            var attributes=grant.Attributes;
-            if(!CreateDirectory(path,ref attributes))throw new WfpFailure("CreateFreshSessionWorkspace",unchecked((uint)Marshal.GetLastWin32Error()));
-            directory=WindowsPathSeal.LockDirectory(path,PathPolicy.Source);
-            grant.ApplyLowLabelAndVerify(path);
-            if(includeGit)profile.RecordTaskWorkspace(nonce,directory);
+            var owner=identity.User?.Value??throw WfpNative.Contract("WorkspaceHumanOwnerMissing");
+            if(includeGit)directory=CreateOwnedTaskDirectory(state,profile,nonce);
+            else
+            {
+                using var parent=WindowsPathSeal.LockDirectory(profile.WorkspaceRoot(),PathPolicy.Source);
+                directory=CreateWorkspace(path,owner,sid.Value,false);
+            }
             privacy?.Publish(path);
             var inputPath=WindowsPathSeal.Child(path,"input.txt");
             using(var seeded=new FileStream(inputPath,FileMode.CreateNew,FileAccess.Write,FileShare.None)){seeded.Write(plan.Input);seeded.Flush(true);}
@@ -570,6 +568,27 @@ internal sealed class SessionResources : IDisposable
             if(!left.AsSpan().SequenceEqual(right))throw WfpNative.Contract("AllPackagesFixtureExactAclChanged");
         }
         finally{if(descriptor!=IntPtr.Zero)LocalFree(descriptor);}
+    }
+    internal static PathLease CreateOwnedTaskDirectory(ProtectedState state,InstallationProfileLease profile,string session)
+    {
+        state.AssertHeld();
+        using var sid=new InstallationPackageSid(state);profile.AssertPackage(sid);
+        using var identity=WindowsIdentity.GetCurrent();
+        var owner=identity.User?.Value??throw WfpNative.Contract("WorkspaceHumanOwnerMissing");
+        using var parent=WindowsPathSeal.LockDirectory(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),PathPolicy.CreationParent);
+        profile.PlanTaskWorkspace(session);
+        var directory=CreateWorkspace(SessionTaskWorkspace.PathFor(session),owner,sid.Value,true);
+        try{profile.RecordTaskWorkspace(session,directory);return directory;}
+        catch{directory.Dispose();throw;}
+    }
+    private static PathLease CreateWorkspace(string path,string owner,string package,bool mutable)
+    {
+        using var grant=new WorkspaceDescriptor(owner,package,mutable);
+        var attributes=grant.Attributes;
+        if(!CreateDirectory(path,ref attributes))throw new WfpFailure("CreateFreshSessionWorkspace",unchecked((uint)Marshal.GetLastWin32Error()));
+        var directory=WindowsPathSeal.LockDirectory(path,PathPolicy.Source);
+        try{grant.ApplyLowLabelAndVerify(path);return directory;}
+        catch{directory.Dispose();throw;}
     }
     internal static void AssertMutableWorkspace(SafeFileHandle handle,string human,string package)
     {using var expected=new WorkspaceDescriptor(human,package,true);expected.AssertApplied(handle);}

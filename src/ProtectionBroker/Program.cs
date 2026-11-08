@@ -111,6 +111,8 @@ internal static class Program
             if(command=="local-management-boundary-child")return ProtectionLifecycle.InstalledBroker.RunLocalManagementBoundaryCanary();
             if(command=="schannel-acquisition-child")return ProtectionLifecycle.InstalledBroker.RunSchannelAcquisitionChild();
             if(command=="openssl-offline-child")return ProtectionLifecycle.InstalledBroker.RunOpenSslOfflineChild();
+            if(command=="offline-console-qualification-child")return ProtectionLifecycle.InstalledBroker.RunOfflineConsoleChild();
+            if(command=="offline-console-denial-target")return 125;
             if(command=="zero-capability-comparison-child")return ProtectionLifecycle.InstalledBroker.RunZeroCapabilityComparisonCanary();
             if(command=="admission-child")return ProtectionLifecycle.InstalledBroker.RunAdmissionCanary();
             (int ExitCode,string Report)? result = command switch {
@@ -123,6 +125,7 @@ internal static class Program
                 "qualify-local-management-boundary" => ProtectionLifecycle.InstalledBroker.QualifyLocalManagementBoundary(),
                 "qualify-schannel-acquisition" => ProtectionLifecycle.InstalledBroker.QualifySchannelAcquisition(),
                 "qualify-openssl-offline" => ProtectionLifecycle.InstalledBroker.QualifyOpenSslOffline(),
+                "qualify-offline-console" => ProtectionLifecycle.InstalledBroker.QualifyOfflineConsole(),
                 "qualify-winsock-provider-session-gateway" => ProtectionLifecycle.InstalledBroker.QualifyWinsockProviderSessionGateway(),
                 "qualify-winsock-transport-session-gateway" => ProtectionLifecycle.InstalledBroker.QualifyWinsockTransportSessionGateway(),
                 "qualify-winsock-session-gateway" => ProtectionLifecycle.InstalledBroker.QualifyWinsockSessionGateway(),

@@ -5,6 +5,13 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-07 固定离线控制台自研载荷
+
+INTEGRATED / BUILD(原 Broker、原子创建、运行监督和原 workspace 回收)。
+VERIFIED(普通 Windows 自研子进程的 EOF、双输出、超限、句柄排除及子进程拒绝)。
+真实 LPAC、WFP、Job 有序闭合和官方 CLI 执行 NOT_RUN。
+[机制与证据](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#固定离线控制台自研载荷)
+
 ## 2026-11-07 官方 CLI 精确映像暂存
 
 INTEGRATED / BUILD(仅固定映像暂存、旧清单兼容及精确恢复合同)。
