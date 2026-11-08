@@ -100,6 +100,7 @@ internal sealed class OwnedKernelJob : IDisposable
     private readonly PrivateJobNamespace? jobNamespace;
     private bool disposed;
     private bool admissionClaimed,admissionClosed;
+    private bool creatorGrantAttempted,creatorReleaseConfirmed;
     internal string JobId=>intent.JobId;
     internal bool AtomicAdmissionReserved=>admissionClaimed;
     internal SafeJobHandle ToolCreationHandle(ProtectedSession.ResourceQualification permit)
@@ -118,7 +119,43 @@ internal sealed class OwnedKernelJob : IDisposable
         if(intent.CreatorServiceSid is null || intent.CreatorServiceSid!=exactCreatorSid.Value)throw WfpNative.Contract("SessionZeroJobCreatorMismatch");
         AssertHeld();AssertCreatorProof(state,intent);
         if(Accounting().TotalProcesses!=0)throw WfpNative.Contract("SessionZeroJobAlreadyHadAMember");
-        ReserveAdmission(version);return intent.Name;
+        AssertExclusiveCreatorJob();
+        ReserveAdmission(version);
+        creatorGrantAttempted=true;
+        if(KernelJobSeal.SetCreatorAccess(handle,intent,grant:true))throw WfpNative.Contract("SessionZeroCreatorGrantAlreadyPresent");
+        return intent.Name;
+    }
+    // Call only after the authenticated creator has returned from the atomic
+    // creation syscall and released its Job handle. ACL changes alone do not
+    // revoke rights already present on another open handle.
+    internal void ConfirmSessionZeroCreatorReleased()
+    {
+        AssertHeld();
+        if(!admissionClaimed || admissionClosed || !creatorGrantAttempted || creatorReleaseConfirmed)
+            throw WfpNative.Contract("SessionZeroCreatorReleaseOutOfOrder");
+        if(!KernelJobSeal.SetCreatorAccess(handle,intent,grant:false))throw WfpNative.Contract("SessionZeroCreatorGrantMissingBeforeRelease");
+        AssertExclusiveCreatorJob();
+        creatorReleaseConfirmed=true;
+    }
+    internal void AssertCreatorSealedBeforeResume()
+    {
+        if(intent.CreatorServiceSid is null)return;
+        if(!creatorReleaseConfirmed || admissionClosed)throw WfpNative.Contract("SessionZeroCreatorReleaseUnconfirmed");
+        AssertExclusiveCreatorJob();
+    }
+    private void AssertExclusiveCreatorJob()
+    {
+        if(KernelJobSeal.AssertJobDescriptor(KernelJobSeal.ReadJobDescriptor(handle,true),intent))
+            throw WfpNative.Contract("SessionZeroCreatorAssignmentStillGranted");
+        AssertSoleJobHandle(handle);
+    }
+    internal static void AssertSoleJobHandle(SafeJobHandle handle)
+    {
+        const uint size=14*sizeof(uint); // PUBLIC_OBJECT_BASIC_INFORMATION
+        var basic=new uint[14];
+        var status=NtQueryObject(handle,0,basic,size,out var returned);
+        if(status!=0)throw new Win32Exception(unchecked((int)RtlNtStatusToDosError(status)),"ReadCreatorJobHandleCount");
+        if(returned!=size || basic[2]!=1)throw WfpNative.Contract("SessionZeroCreatorJobNotExclusivelyHeld");
     }
     private void ReserveAdmission(VerifiedVersion version)
     {
@@ -134,10 +171,22 @@ internal sealed class OwnedKernelJob : IDisposable
     internal JobSnapshot CloseAtomicAdmissionAndStop()
     {
         AssertHeld();if(!admissionClaimed)throw new InvalidOperationException("No atomic admission was reserved");
-        admissionClosed=true;var snapshot=StopAndVerifyZero();
+        admissionClosed=true;
+        Exception? revokeFailure=null;
+        if(intent.CreatorServiceSid is not null)
+            try{_=KernelJobSeal.SetCreatorAccess(handle,intent,grant:false);}catch(Exception error){revokeFailure=error;}
+        JobSnapshot snapshot;
+        try{snapshot=StopAndVerifyZero();}
+        catch(Exception error) when(revokeFailure is not null){throw new AggregateException("Creator grant removal and Job stop both failed",revokeFailure,error);}
+        if(revokeFailure is not null)System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(revokeFailure).Throw();
+        if(intent.CreatorServiceSid is not null)
+        {
+            AssertExclusiveCreatorJob();
+            if(creatorGrantAttempted && !creatorReleaseConfirmed)throw WfpNative.Contract("SessionZeroCreatorReleaseUnconfirmedAtStop");
+        }
         var admission=state.Read("job-admission-"+intent.JobId+".json",8192);
         state.WriteNew("job-completed-"+intent.JobId+".json",JsonSerializer.SerializeToUtf8Bytes(new AtomicJobCompletion(1,state.InstallationId,intent.JobId,
-            intent.Release,intent.ManifestSHA256,admission.SHA256,"ADMISSION_CLOSED_MEMBERS_ZERO_OBSERVED",snapshot)));
+            intent.Release,intent.ManifestSHA256,admission.SHA256,"ADMISSION_CLOSED_MEMBERS_ZERO_OBSERVED",snapshot,intent.CreatorServiceSid is null?null:true)));
         return snapshot;
     }
     private OwnedKernelJob(ProtectedState state,OwnedJobIntent intent,SafeJobHandle handle,PrivateJobNamespace? jobNamespace)
@@ -216,7 +265,7 @@ internal sealed class OwnedKernelJob : IDisposable
             nativeName=Marshal.AllocHGlobal(Marshal.SizeOf<NativeUnicodeString>());
             Marshal.StructureToPtr(new NativeUnicodeString{Length=length,MaximumLength=checked((ushort)(length+sizeof(char))),Buffer=nameBuffer},nativeName,false);
             var attributes=new NativeObjectAttributes{Length=Marshal.SizeOf<NativeObjectAttributes>(),Name=nativeName,SecurityDescriptor=descriptor};
-            var status=NtCreateJobObject(out var created,KernelJobSeal.OwnerRights,ref attributes);
+            var status=NtCreateJobObject(out var created,KernelJobSeal.CreatorJobOwnerRights,ref attributes);
             if(status==0 && created is {IsInvalid:false})return created;
             created?.Dispose();
             if(status==0)throw WfpNative.Contract("FreshSessionZeroJobHandleMissing");
@@ -347,6 +396,7 @@ internal sealed class OwnedKernelJob : IDisposable
     [StructLayout(LayoutKind.Sequential)] private struct NativeUnicodeString {internal ushort Length,MaximumLength;internal IntPtr Buffer;}
     [StructLayout(LayoutKind.Sequential)] private struct NativeObjectAttributes {internal int Length;internal IntPtr Root,Name;internal uint Attributes;internal IntPtr SecurityDescriptor,SecurityQualityOfService;}
     [DllImport("ntdll.dll",ExactSpelling=true)] private static extern int NtCreateJobObject(out SafeJobHandle handle,int access,ref NativeObjectAttributes attributes);
+    [DllImport("ntdll.dll",ExactSpelling=true)] private static extern int NtQueryObject(SafeJobHandle handle,int info,[Out] uint[] buffer,uint size,out uint returned);
     [DllImport("ntdll.dll",ExactSpelling=true)] private static extern uint RtlNtStatusToDosError(int status);
     [DllImport("kernel32.dll",EntryPoint="CreateJobObjectW",CharSet=CharSet.Unicode,SetLastError=true)] private static extern SafeJobHandle CreateJobObject(ref KernelJobSeal.SecurityAttributes attributes,string name);
     [DllImport("kernel32.dll",EntryPoint="OpenJobObjectW",CharSet=CharSet.Unicode,SetLastError=true)] private static extern SafeJobHandle OpenJobObject(uint access,[MarshalAs(UnmanagedType.Bool)] bool inherit,string name);

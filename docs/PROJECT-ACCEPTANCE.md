@@ -5,6 +5,14 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-08 Session 0 创建者分配权限撤销
+
+INTEGRATED / BUILD(原 Job 的临时授权、恢复前撤销检查与关闭账本)。
+VERIFIED(普通 Windows 实际分配权限授予和撤销、保留旧句柄反例及释放正例、
+关闭记录新旧格式对照)。生产 LocalService 与 Broker 交接、真实停止恢复及
+官方 Claude Code NOT_RUN。
+[机制与范围](OWNED-JOB-SOURCE.md#2026-11-08-session-0-创建者分配权限的撤销)
+
 ## 2026-11-08 Session 0 创建者 Job 登记和权限
 
 INTEGRATED / BUILD(原 Job 所有者的跨会话专用范围)。VERIFIED(普通实际 Job

@@ -17,9 +17,14 @@ internal static class CreatorJobCases
         var parse=intentType.GetMethod("Parse",methods)!;
         var seal=library.GetType("ProtectionLifecycle.KernelJobSeal",true)!;
         var validate=seal.GetMethod("AssertJobDescriptor",methods)!;
+        var readDescriptor=seal.GetMethod("ReadJobDescriptor",methods)!;
+        var changeGrant=seal.GetMethod("ChangeCreatorAce",methods)!;
+        var writeDacl=seal.GetMethod("WriteProtectedDacl",methods)!;
         var owner=library.GetType("ProtectionLifecycle.OwnedKernelJob",true)!;
         var proof=owner.GetMethod("ValidateCreatorProof",methods)!;
         var createNative=owner.GetMethod("CreateFreshSessionZeroJob",methods)!;
+        var requireSoleHandle=owner.GetMethod("AssertSoleJobHandle",methods)!;
+        var parseClosed=library.GetType("ProtectionLifecycle.AtomicJobCompletion",true)!.GetMethod("ParseClosed",methods)!;
         var install=new string('1',32);
         var release=new string('2',32);
         var hash=new string('A',64);
@@ -77,13 +82,33 @@ internal static class CreatorJobCases
         Refused(()=>AssertProof(new{SchemaVersion=2,IntentSHA256=hash}));
         Refused(()=>AssertProof(new{SchemaVersion=1,IntentSHA256=hash,Name=Name(creator)}));
 
-        var baseAcl=$"D:P(A;;0x0002000f;;;SY)(A;;0x0002000f;;;BA)(A;;RC;;;{tagSid})";
+        JsonObject Closed(string id)=>JsonSerializer.SerializeToNode(new{
+            SchemaVersion=1,InstallationId=install,JobId=id,Release=release,ManifestSHA256=hash,AdmissionSHA256=hash,
+            Status="ADMISSION_CLOSED_MEMBERS_ZERO_OBSERVED",
+            Snapshot=new{JobId=id,LimitFlags=0x2000,ActiveBefore=0,ActiveAfter=0,ProcessIds=Array.Empty<uint>(),AtUtc="2026-11-08T00:00:00Z"}
+        })!.AsObject();
+        object? ReadClosed(JsonObject receipt,object intent)=>parseClosed.Invoke(null,[JsonSerializer.SerializeToUtf8Bytes(receipt),intent]);
+        var oldClosed=Closed(legacyId);
+        Check(ReadClosed(oldClosed,legacy) is not null);
+        oldClosed["CreatorAccessRevoked"]=true;
+        Refused(()=>ReadClosed(oldClosed,legacy));
+        var newClosed=Closed(jobId);
+        Refused(()=>ReadClosed(newClosed,creator));
+        newClosed["CreatorAccessRevoked"]=false;
+        Refused(()=>ReadClosed(newClosed,creator));
+        newClosed["CreatorAccessRevoked"]=null;
+        Refused(()=>ReadClosed(newClosed,creator));
+        newClosed["CreatorAccessRevoked"]=true;
+        Check(ReadClosed(newClosed,creator) is not null);
+
+        var baseAcl=$"D:P(A;;0x0006000f;;;SY)(A;;0x0006000f;;;BA)(A;;RC;;;{tagSid})";
         var creatorGrant=$"(A;;0x00020001;;;{creatorSid})";
         const string label="S:(ML;;NW;;;ME)";
         var creatorAcl=baseAcl+creatorGrant+label;
-        void AssertCreator(string sddl)=>_=validate.Invoke(null,[new RawSecurityDescriptor(sddl),creator]);
-        AssertCreator("O:BAG:SY"+creatorAcl);Check(true);
-        foreach(var invalid in new[]{baseAcl+label,baseAcl+creatorGrant,creatorAcl.Replace(";;;ME",";;;LW",StringComparison.Ordinal),
+        bool AssertCreator(string sddl)=>(bool)validate.Invoke(null,[new RawSecurityDescriptor(sddl),creator])!;
+        Check(AssertCreator("O:BAG:SY"+creatorAcl));
+        Check(!AssertCreator("O:BAG:SY"+baseAcl+label));
+        foreach(var invalid in new[]{baseAcl+creatorGrant,creatorAcl.Replace(";;;ME",";;;LW",StringComparison.Ordinal),
             creatorAcl.Replace("0x00020001","0x00020005",StringComparison.Ordinal),creatorAcl.Replace(creatorSid,"S-1-5-19",StringComparison.Ordinal),
             creatorAcl.Replace(tagSid,creatorSid,StringComparison.Ordinal),creatorAcl.Replace("D:P","D:",StringComparison.Ordinal)})
             Refused(()=>AssertCreator("O:BAG:SY"+invalid));
@@ -92,7 +117,7 @@ internal static class CreatorJobCases
         // uses the ordinary caller as owner to avoid granting admin rights.
         using var identity=WindowsIdentity.GetCurrent(TokenAccessLevels.Query);
         var user=identity.User??throw new InvalidOperationException("Missing ordinary token user");
-        var fixtureDescriptor=new RawSecurityDescriptor("O:"+user.Value+creatorAcl);
+        var fixtureDescriptor=new RawSecurityDescriptor("O:"+user.Value+baseAcl+label);
         var bytes=new byte[fixtureDescriptor.BinaryLength];
         fixtureDescriptor.GetBinaryForm(bytes,0);
         var pointer=GCHandle.Alloc(bytes,GCHandleType.Pinned);
@@ -109,20 +134,46 @@ internal static class CreatorJobCases
             }
             using var handle=(SafeHandle)createNative.Invoke(null,[creator,attributes.Descriptor])!;
             Check(!handle.IsInvalid);
-            using var read=OpenJobObject(0x20000,false,Name(creator));
-            Check(!read.IsInvalid);
-            var actual=(RawSecurityDescriptor)seal.GetMethod("ReadJobDescriptor",methods)!.Invoke(null,[read,true])!;
-            Check(actual.Owner is { } actualOwner && user.Equals(actualOwner));
-            Refused(()=>validate.Invoke(null,[actual,creator])); // Ordinary-owned replacement refused.
-            actual.Owner=new SecurityIdentifier(WellKnownSidType.BuiltinAdministratorsSid,null);
-            _=validate.Invoke(null,[actual,creator]);Check(true); // Kernel ACL and label both match.
-            using var assign=OpenJobObject(1,false,Name(creator));
-            Check(assign.IsInvalid && Marshal.GetLastWin32Error()==5);
+            RawSecurityDescriptor Read(SafeHandle target)=>(RawSecurityDescriptor)readDescriptor.Invoke(null,[target,true])!;
+            void CheckAssignDenied()
+            {
+                using var blocked=OpenJobObject(1,false,Name(creator));
+                Check(blocked.IsInvalid && Marshal.GetLastWin32Error()==5);
+            }
+            using(var read=OpenJobObject(0x20000,false,Name(creator)))
+            {
+                Check(!read.IsInvalid);
+                var actual=Read(read);
+                Check(actual.Owner is { } actualOwner && user.Equals(actualOwner));
+                Refused(()=>validate.Invoke(null,[actual,creator])); // Ordinary-owned replacement refused.
+                actual.Owner=new SecurityIdentifier(WellKnownSidType.BuiltinAdministratorsSid,null);
+                Check(validate.Invoke(null,[actual,creator]) is false); // Kernel ACL and label both match.
+                Refused(()=>requireSoleHandle.Invoke(null,[handle]));
+            }
+            _=requireSoleHandle.Invoke(null,[handle]);Check(true);
+            CheckAssignDenied();
+            var acl=Read(handle).DiscretionaryAcl!;
+            _=changeGrant.Invoke(null,[acl,user,true]);
+            _=writeDacl.Invoke(null,[handle,acl]);
+            using(var assign=OpenJobObject(1,false,Name(creator)))
+            {
+                Check(!assign.IsInvalid);
+                _=changeGrant.Invoke(null,[acl,user,false]);
+                _=writeDacl.Invoke(null,[handle,acl]);
+                CheckAssignDenied();
+                var basic=new uint[14];
+                Check(NtQueryObject(assign,0,basic,56,out var returned)==0 && returned==56 && basic[1]==1);
+                Refused(()=>requireSoleHandle.Invoke(null,[handle])); // Revocation did not close the existing handle.
+                var revoked=Read(handle);
+                revoked.Owner=new SecurityIdentifier(WellKnownSidType.BuiltinAdministratorsSid,null);
+                Check(validate.Invoke(null,[revoked,creator]) is false); // Owner-only DACL and label read back.
+            }
+            _=requireSoleHandle.Invoke(null,[handle]);Check(true);
         }
         finally{pointer.Free();}
         using var closed=OpenJobObject(0x20000,false,Name(creator));
         Check(closed.IsInvalid && Marshal.GetLastWin32Error()==2);
-        Console.WriteLine($"PASS {count} creator Job checks; legacy intent, proof binding, actual fresh creation, name collision refusal, ACL and label readback, ordinary assignment denial. No service, child creation, UAC, installation or WFP.");
+        Console.WriteLine($"PASS {count} creator Job checks; legacy intent, proof binding, fresh creation, collision refusal, exact ACL and label, actual grant/revoke and held-handle refusal. No service, child creation, UAC, installation or WFP.");
     }
 
     [StructLayout(LayoutKind.Sequential)] private struct SecurityAttributes {internal int Length;internal IntPtr Descriptor;internal int Inherit;}
@@ -130,4 +181,5 @@ internal static class CreatorJobCases
     private static extern SafeFileHandle CreateJobObject(ref SecurityAttributes attributes,string name);
     [DllImport("kernel32.dll",EntryPoint="OpenJobObjectW",CharSet=CharSet.Unicode,SetLastError=true)]
     private static extern SafeFileHandle OpenJobObject(uint access,[MarshalAs(UnmanagedType.Bool)]bool inherit,string name);
+    [DllImport("ntdll.dll",ExactSpelling=true)] private static extern int NtQueryObject(SafeFileHandle handle,int info,[Out] uint[] buffer,uint size,out uint returned);
 }

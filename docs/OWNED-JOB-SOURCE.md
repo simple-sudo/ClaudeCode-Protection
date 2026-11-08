@@ -3,6 +3,26 @@
 > 文档效力（2026-11-02）：Job/进程归属专题。按原版本和场景解释实测，不把树状名称或进程缺席作为权限/闭合证明。自我保护覆盖派生工具与控制面，仍须实际对象权限及鉴权依据。
 > 最新状态/授权只见[CURRENT-STATE](CURRENT-STATE.md)，正式目标与术语见[SECURITY-REQUIREMENTS](SECURITY-REQUIREMENTS.md)。以下旧状态与操作许可不自动延续。
 
+## 2026-11-08 Session 0 创建者分配权限的撤销
+
+原 Job 所有者先创建仅可信维护方可分配的对象，核对当前版本、服务 SID、空成员
+和唯一原句柄并写入一次性准入后，才临时向创建服务授予分配和读取描述符权限。
+成功交接路径应在验证服务已退出原子创建调用并释放 Job 句柄的消息后，撤销
+该条授权。Broker 回读原对象的精确 DACL 与中完整性标签，并用 Windows 内核
+返回的句柄数量确认只剩原 Job 句柄。运行监督初始化及首次恢复线程前均要求
+通过此检查。
+
+停止路径即使遇到撤销失败也尝试终止同一 Job。单独的零成员读回不足以封存
+Session 0 关闭回执。曾授予分配权时，仍须有成功交接后的撤销和句柄确认。
+恢复读取要求回执中明确具备撤销证据，原 schema 2 Job 继续读取旧格式。
+失败或无法确认时保持锁闭，后续仍须接入可核验的原所有权恢复。
+[Windows DACL 操作](https://learn.microsoft.com/en-us/windows/win32/api/aclapi/nf-aclapi-setsecurityinfo) ·
+[Windows 句柄数量](https://learn.microsoft.com/en-us/windows/win32/api/winternl/nf-winternl-ntqueryobject)
+
+普通 Windows 对照给测试账户短时授予实际 Job 分配权限。旧句柄保持打开时，
+撤销 DACL 后新打开被拒，唯一句柄检查也拒绝。释放旧句柄后才通过。对照未
+启动服务或受限载荷。生产服务认证、挂起交接和 profile 回收仍待接入。
+
 ## 2026-11-08 Session 0 创建者 Job
 
 原 `OwnedKernelJob` 新增独立创建者范围。旧 schema 2 仍使用管理员私有命名空间。

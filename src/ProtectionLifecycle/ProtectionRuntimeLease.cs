@@ -123,6 +123,7 @@ internal sealed class ProtectionRuntimeLease
         if(offlineSessionId is not null)id=offlineSessionId;
         pointerSHA256=state.Read("current.json",4096).SHA256;
         if(fences.Count==0 || !job.AtomicAdmissionReserved)throw WfpNative.Contract("RuntimeRequiresAtomicAdmissionAndFence");
+        job.AssertCreatorSealedBeforeResume();
         AssertHealthy();
         state.WriteNew("session-open-"+id+".json",JsonSerializer.SerializeToUtf8Bytes(new {SchemaVersion=1,state.InstallationId,SessionId=id,job.JobId,
             version.Package.Release,version.Package.ManifestHash,CurrentPointerSHA256=pointerSHA256,StartupDeadlineMs=deadlineMs,
