@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Security.AccessControl;
+using System.Security.Principal;
 using System.Text.Json;
 using Microsoft.Win32.SafeHandles;
 
@@ -36,6 +37,15 @@ internal static class CreatorLifecycleCases
         Check(acl[0] is CommonAce deny && deny.SecurityIdentifier.Value=="S-1-3-4" && deny.AceQualifier==AceQualifier.AccessDenied && deny.AccessMask==0x000c0000);
         Check(acl[1] is CommonAce system && system.SecurityIdentifier.Value=="S-1-5-18" && system.AccessMask==0x001fffff);
         Check(acl[2] is CommonAce observer && observer.SecurityIdentifier.Value=="S-1-5-32-544" && observer.AccessMask==0x00101000);
+        var ownerPolicy=Method("SessionZeroCreatorService","IsTrustedCreatorProcessOwner");
+        var serviceSid=new SecurityIdentifier("S-1-5-80-1-2-3-4-5");
+        bool Trusted(SecurityIdentifier owner)=>ownerPolicy.Invoke(null,[owner,serviceSid]) is true;
+        foreach(var owner in new[]{"S-1-5-19","S-1-5-18","S-1-5-32-544",serviceSid.Value})
+            Check(Trusted(new SecurityIdentifier(owner)));
+        foreach(var owner in new[]{"S-1-5-20","S-1-5-80-1-2-3-4-6","S-1-5-80-0","S-1-5-32-545","S-1-5-21-1-2-3-1001"})
+            Check(!Trusted(new SecurityIdentifier(owner)));
+        using(var identity=WindowsIdentity.GetCurrent())
+            Check(identity.User is { } host && !Trusted(host));
         var readProcess=Method("KernelJobSeal","ReadCreatorProcessDescriptor");
         var readLegacy=Method("KernelJobSeal","ReadOwnerDacl");
         using(var self=OpenProcess(0x00020000,false,(uint)Environment.ProcessId))

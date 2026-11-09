@@ -511,7 +511,9 @@ public static class BootstrapInstaller
         {
             var creatorPrior=(priorRelease==SessionZeroCreatorRecovery.Release && priorManifest==SessionZeroCreatorRecovery.Manifest) ||
                 (priorRelease=="51039f75b3bd4629b6ab3ea840e9f36a" &&
-                    priorManifest=="ADB71B6FCF3656780010B57A3567C5E9E6DA47A37E4EDFDCC3A91F043D11256E");
+                    priorManifest=="ADB71B6FCF3656780010B57A3567C5E9E6DA47A37E4EDFDCC3A91F043D11256E") ||
+                (priorRelease=="a3891b3509a84e759ad5e9161c7dc361" &&
+                    priorManifest=="E9ABECF5A18080E66EBFFC8467BF4F74F90D609866EC3E4DA0BFEDE0093BF9BF");
             if(currentRelease!=priorRelease || currentManifest!=priorManifest ||
                 !(creatorPrior || NoAdmissionManifests.Contains(priorManifest,StringComparer.Ordinal) || OneShotAdmissionManifests.Contains(priorManifest,StringComparer.Ordinal)) ||
                 nextRelease==priorRelease || nextManifest==priorManifest)

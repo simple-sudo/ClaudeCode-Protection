@@ -1,5 +1,12 @@
 # 当前状态与授权摘要
 
+2026-11-08，已获批的未激活升级到 `a3891b35` 成功。LocalService 实测通过自身
+进程句柄打开及安全描述符读取，停在 `CreatorServiceValidateProcessOwner`。
+原 Broker 回收未就绪服务，服务登记和工作区缺席已独立回读。受限进程和五项
+身份实测仍未运行。后续源码区分进程对象所有者与 LocalService 主令牌，按固定
+可信身份核验所有者，并要求封闭权限后原所有者未改变。新改动未安装。
+[进程对象所有者对照](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#实机隔离出进程对象所有者检查)。
+
 2026-11-08，已获批的一次未激活升级到 `51039f75` 成功。自研离线复验在
 `CreatorServiceReadProcessSecurity` 返回 `0x80131501`。原 Broker 回收了未就绪
 服务，未建立 Job 和工作区，也未运行受限进程。普通侧复核服务登记和工作区缺席。

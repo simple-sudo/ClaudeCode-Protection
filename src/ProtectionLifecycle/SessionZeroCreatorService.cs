@@ -44,10 +44,10 @@ internal static class SessionZeroCreatorService
         {
             Publish();
             phase=FailurePhase.VerifyToken;
-            _=SessionZeroCreatorClient.VerifyCurrentService(name,next=>phase=next);
+            var creatorSid=SessionZeroCreatorClient.VerifyCurrentService(name,next=>phase=next);
             phase=FailurePhase.ResolveImage;
             _=AtomicChild.ResolveSessionZeroImage(FixedLayout.FromWindows(),Environment.ProcessPath);
-            GrantOwnObservation(ref phase);
+            GrantOwnObservation(creatorSid,ref phase);
             phase=FailurePhase.ReportReady;
             status.State=4;status.CheckPoint=0;status.WaitHint=0;
             Publish();
@@ -113,16 +113,17 @@ internal static class SessionZeroCreatorService
         return Identifiers.Hex32(name[prefix.Length..]);
     }
 
-    private static void GrantOwnObservation(ref FailurePhase phase)
+    private static void GrantOwnObservation(SecurityIdentifier creatorSid,ref FailurePhase phase)
     {
         phase=FailurePhase.OpenProcessSecurity;
         using var self=OpenProcess(0x00060000,false,(uint)Environment.ProcessId); // READ_CONTROL and WRITE_DAC, retained across sealing.
         if(self.IsInvalid)throw new Win32Exception(Marshal.GetLastWin32Error(),"OpenCreatorProcessSecurity");
         phase=FailurePhase.ReadProcessSecurity;
         var descriptor=KernelJobSeal.ReadCreatorProcessDescriptor(self);
+        if(descriptor.DiscretionaryAcl is null)throw new Win32Exception(13,"CreatorServiceProcessDaclMissing");
         phase=FailurePhase.ValidateProcessOwner;
-        if(descriptor.Owner?.IsWellKnown(WellKnownSidType.LocalServiceSid)!=true || descriptor.DiscretionaryAcl is null)
-            throw WfpNative.Contract("CreatorServiceProcessDescriptorInvalid");
+        if(descriptor.Owner is not { } originalOwner || !IsTrustedCreatorProcessOwner(originalOwner,creatorSid))
+            throw new Win32Exception(1307,"CreatorServiceProcessOwnerUnexpected");
         var acl=CreateObserverDacl();
         phase=FailurePhase.WriteProcessSecurity;
         KernelJobSeal.WriteProtectedDacl(self,acl);
@@ -131,9 +132,16 @@ internal static class SessionZeroCreatorService
         var wanted=new byte[acl.BinaryLength];acl.GetBinaryForm(wanted,0);
         var actualAcl=actual.DiscretionaryAcl??throw WfpNative.Contract("CreatorServiceProcessDaclMissing");
         var observed=new byte[actualAcl.BinaryLength];actualAcl.GetBinaryForm(observed,0);
-        if(actual.Owner?.IsWellKnown(WellKnownSidType.LocalServiceSid)!=true || (actual.ControlFlags&ControlFlags.DiscretionaryAclProtected)==0 ||
+        if(actual.Owner is not { } observedOwner || !observedOwner.Equals(originalOwner) ||
+            (actual.ControlFlags&ControlFlags.DiscretionaryAclProtected)==0 ||
             !wanted.AsSpan().SequenceEqual(observed))throw WfpNative.Contract("CreatorServiceObservationDaclDiffers");
     }
+
+    // SCM creates the process object separately from the LocalService primary
+    // token. Keep the original trusted owner and independently seal its DACL.
+    internal static bool IsTrustedCreatorProcessOwner(SecurityIdentifier owner,SecurityIdentifier exactCreatorSid) =>
+        owner.IsWellKnown(WellKnownSidType.LocalServiceSid) || owner.IsWellKnown(WellKnownSidType.LocalSystemSid) ||
+        owner.IsWellKnown(WellKnownSidType.BuiltinAdministratorsSid) || owner.Equals(exactCreatorSid);
 
     // Keep SCM authority. Elevated Broker observers get only wait/query, and
     // other processes sharing the LocalService user cannot rewrite the DACL.

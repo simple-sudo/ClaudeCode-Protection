@@ -935,3 +935,26 @@ Broker 与普通测试工具 Release 构建通过。普通回归覆盖既有与�
 只有查询进程信息而无 `READ_CONTROL` 的句柄被拒。新版改动未安装，LocalService
 仍需真实复验。未执行官方程序，也未访问外网。
 [Windows GetSecurityInfo](https://learn.microsoft.com/en-us/windows/win32/api/aclapi/nf-aclapi-getsecurityinfo)
+
+### 实机隔离出进程对象所有者检查
+
+固定审查 `2698FF6BA0DA50D69852F2027447A4EB70D1D30E7AE451124F26FD31098EF861` 的一次
+许可已消耗。`a3891b35` 未激活升级和清单回读通过，清单 SHA-256 为
+`E9ABECF5A18080E66EBFFC8467BF4F74F90D609866EC3E4DA0BFEDE0093BF9BF`。
+自研复验通过令牌、映像、进程句柄打开及 `GetSecurityInfo` 读取，随后
+`CreatorServiceValidateProcessOwner` 返回 `0x80131501`。同一服务的系统事件
+7024（记录 130023）保存编码退出码 `0xC5D11501`。原 Broker 回收未就绪服务。
+普通侧独立确认服务注册表键和工作区根缺席。未进入受限执行或宿主 SID 对照。
+
+本机外层回执 `work/creator-security-retest-20261108/receipt.json`，SHA-256
+`B79C753502F7EAECB0389D89938C1C73C61093E4F52D9BBEE309792037C0B508`。
+实机定位到原所有者检查。原检查把主令牌身份与进程对象所有者视为同一项，且
+未单列缺失 DACL。实机未记录原始所有者 SID，不能追认某个具体所有者。
+
+后续源码保留已认证的 LocalService 主令牌和同一服务 SID 绑定。对象原所有者
+只可为 LocalService、SYSTEM、内置管理员组或同一确切服务 SID。拒绝宿主账号、
+无关服务和其它所有者。只写原观察权限 DACL，回读要求同一原所有者、受保护
+DACL 和精确内容。缺失 DACL 与未接受所有者分别给出错误 13、1307。实际受限
+根的主令牌、LPAC 和 Job 检查保持各自独立。普通权限回归通过，变更未安装。
+[Windows 对象所有者](https://learn.microsoft.com/en-us/windows/win32/secauthz/owner-of-a-new-object) ·
+[进程安全描述符](https://learn.microsoft.com/en-us/windows/win32/procthread/process-security-and-access-rights)
