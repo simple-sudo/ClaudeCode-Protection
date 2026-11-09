@@ -77,6 +77,8 @@ internal static class CreatorJobCases
         var tagSid=(string)tag.GetType().GetProperty("Sid",BindingFlags.Instance|BindingFlags.NonPublic)!.GetValue(tag)!;
         foreach(var invalid in new[]{"S-1-5-80-0","S-1-5-19","S-1-5-80-08-9-10-11-12",tagSid})Refused(()=>New(invalid));
 
+        PrivateWindowPolicy(library,creator,legacy,New(creatorSid),jobId,creatorSid);
+
         void AssertProof(object receipt)
         {
             using var doc=JsonDocument.Parse(JsonSerializer.Serialize(receipt));
@@ -425,6 +427,63 @@ internal static class CreatorJobCases
         Check(receivedReply.SequenceEqual(incoming));
         Console.WriteLine($"PASS {count-prior} creator client checks; reciprocal actual pipe peer and descriptor, fixed request/reply, account and service group refusals. No service, handoff, elevation or WFP.");
         CreatorLifecycleCases.Run(library);
+    }
+
+    private static void PrivateWindowPolicy(Assembly library,object creator,object legacy,object another,string job,string creatorSid)
+    {
+        const BindingFlags instance=BindingFlags.Instance|BindingFlags.NonPublic;
+        const BindingFlags methods=BindingFlags.Static|BindingFlags.NonPublic;
+        var policyType=library.GetType("ProtectionLifecycle.SessionZeroWindowPolicy",true)!;
+        var leaseType=library.GetType("ProtectionLifecycle.SessionZeroWindowLease",true)!;
+        object New(object intent)=>Activator.CreateInstance(policyType,instance,null,[intent],null)!;
+        var policy=New(creator);
+        var descriptor=policyType.GetMethod("Descriptor",instance)!;
+        var validate=policyType.GetMethod("AssertDescriptor",instance)!;
+        string PathFor(object target)=>(string)policyType.GetProperty("DesktopPath",instance)!.GetValue(target)!;
+        RawSecurityDescriptor Create(bool station)=>(RawSecurityDescriptor)descriptor.Invoke(policy,[station])!;
+        void Check(bool value,string reason){if(!value)throw new InvalidOperationException(reason);}
+        void Refused(Action action,string reason)
+        {
+            try{action();}
+            catch(TargetInvocationException ex) when(ex.InnerException is InvalidDataException error && error.Message==reason){return;}
+            throw new InvalidOperationException("Expected private window refusal: "+reason);
+        }
+        const string descriptorError="PrivateWindowObjectDescriptorMismatch";
+        Check(PathFor(policy)==$@"CpcTask.{job}\Task" && PathFor(New(another))!=PathFor(policy),"Private desktop exposes only the ephemeral Job ID");
+        Refused(()=>New(legacy),"PrivateWindowsRequireCreatorJob");
+        Refused(()=>leaseType.GetMethod("Create",methods)!.Invoke(null,[creator]),"PrivateWindowOwnerMustBeSessionZeroSystem");
+
+        foreach(var (station,ownerMask,packageMask) in new[]{(true,0xf016f,0x23),(false,0xf01ff,0xc7)})
+        {
+            var actual=Create(station);
+            var package=(CommonAce)actual.DiscretionaryAcl![2];
+            Check(actual.Owner?.Value=="S-1-5-18" && actual.Group?.Value=="S-1-5-18" &&
+                ((CommonAce)actual.DiscretionaryAcl[0]).AccessMask==ownerMask &&
+                ((CommonAce)actual.DiscretionaryAcl[1]).SecurityIdentifier.Value==creatorSid &&
+                ((CommonAce)actual.DiscretionaryAcl[1]).AccessMask==(0x20000|packageMask) &&
+                package.AccessMask==packageMask && package.SecurityIdentifier.Value.StartsWith("S-1-15-2-",StringComparison.Ordinal) &&
+                package.SecurityIdentifier.Value is not ("S-1-15-2-1" or "S-1-15-2-2"),"Exact private window principals and access masks");
+            var binary=new byte[actual.BinaryLength];
+            actual.GetBinaryForm(binary,0);
+            validate.Invoke(policy,[station,new RawSecurityDescriptor(binary,0)]);
+            Refused(()=>validate.Invoke(policy,[station,Create(!station)]),descriptorError);
+            var broadened=Create(station);
+            ((CommonAce)broadened.DiscretionaryAcl![2]).AccessMask|=0x40000;
+            Refused(()=>validate.Invoke(policy,[station,broadened]),descriptorError);
+            var shared=Create(station);
+            ((CommonAce)shared.DiscretionaryAcl![1]).SecurityIdentifier=new SecurityIdentifier("S-1-5-19");
+            Refused(()=>validate.Invoke(policy,[station,shared]),descriptorError);
+            var wrongPackage=Create(station);
+            ((CommonAce)wrongPackage.DiscretionaryAcl![2]).SecurityIdentifier=new SecurityIdentifier("S-1-15-2-2");
+            Refused(()=>validate.Invoke(policy,[station,wrongPackage]),descriptorError);
+            var label=Create(station);
+            label.SystemAcl!.RemoveAce(0);
+            Refused(()=>validate.Invoke(policy,[station,label]),descriptorError);
+            var unprotected=Create(station);
+            unprotected.SetFlags(unprotected.ControlFlags&~ControlFlags.DiscretionaryAclProtected);
+            Refused(()=>validate.Invoke(policy,[station,unprotected]),descriptorError);
+        }
+        Console.WriteLine("PASS private window policy, broadened descriptor negatives and ordinary Session 0 owner refusal; no private station created");
     }
 
     [StructLayout(LayoutKind.Sequential)] private struct SecurityAttributes {internal int Length;internal IntPtr Descriptor;internal int Inherit;}

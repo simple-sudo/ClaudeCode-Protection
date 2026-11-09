@@ -5,6 +5,13 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-09 专用窗口对象的权限与持有合同
+
+SOURCE / BUILD(Session 0 窗口站与桌面的固定权限及创建、持有、回收组件)。
+VERIFIED(普通策略反例、原创建链回归、真实临时桌面原生权限读回和 LPAC 正控制)。
+NOT_RUN(原 Broker 窗口持有协议、实际 Session 0 窗口站权限、受限启动修复和回收)。
+[证据](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#专用窗口对象的权限与持有合同)
+
 ## 2026-11-09 普通 LPAC 显式桌面权限对照
 
 VERIFIED(实际交互 LPAC、显式临时桌面的权限差异、正负见证及临时对象回收)。

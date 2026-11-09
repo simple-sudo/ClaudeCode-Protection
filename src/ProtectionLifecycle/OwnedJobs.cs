@@ -41,7 +41,7 @@ internal sealed record OwnedJobIntent(int SchemaVersion,string InstallationId,st
         if(creator is not null)AssertCreatorSid(creator);
         return new(schema,installationId,id,Identifiers.Hex32(StrictJson.Text(r,"Release")),Identifiers.Hash(StrictJson.Text(r,"ManifestSHA256")),AtomicBinding,scope,creator);
     }
-    private static void AssertCreatorSid(string sid)
+    internal static void AssertCreatorSid(string sid)
     {
         // Service-specific SID only. Reject the shared LocalService and the
         // all-services group, as well as our own synthetic creation tag space.

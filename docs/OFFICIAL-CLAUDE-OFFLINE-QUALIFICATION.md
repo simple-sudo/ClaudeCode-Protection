@@ -1492,3 +1492,33 @@ LocalService 进程及线程已关联的窗口对象，拒绝把可见窗口站�
 | `ordinary-lpac-readonly-desktop-Allow` | `92380FB0261CC748675BBAF795B447D3D319FA6CC8D536B6B5357BAB41CAE0DC` |
 | `ordinary-lpac-read-create-desktop-Allow` | `A6CBAB5B8F811E43F6576BCB1A70B3B72FC26A6471895B5E693DDA7F5957E3C7` |
 | `ordinary-lpac-basic-objects-desktop-Allow` | `C260BE36FB86E2AFEB1FAEDBD38FDCA356FBE47B199186105F00ADFCACAC9B34` |
+
+### 专用窗口对象的权限与持有合同
+
+新组件只允许未模拟的 Session 0 LocalSystem 在非交互窗口站上下文调用。窗口站名由
+原 Job 的随机 ID 派生，桌面名固定为 `Task`。窗口站使用仅新建标志，桌面先核对
+名称缺席。两者均以低完整性和受保护 DACL 新建，核对对象名、不可继承标志和原生
+读回的完整权限。DACL 只授予 SYSTEM、原 LocalService 服务专用 SID 和本安装的包 SID。
+包桌面权限为已通过普通见证的 `0xC7`，窗口站候选权限为 `0x23`，包括私有原子表、
+读属性和枚举桌面，尚待 Session 0 验证。对象名不含稳定安装 ID。
+
+持有组件恢复调用方原窗口站和桌面，继续持有新对象。关闭时先关桌面再关窗口站，
+随后要求精确窗口站名称无法再打开。创建、恢复或关闭失败均保留真实错误。
+后续原 Broker 须绑定固定窗口持有者及原 Job，让 LocalService 用显式桌面目标完成
+原挂起创建，核对同枚 LPAC 权限和见证实际所选对象。只有原 Job 闭合后才能释放窗口
+对象。本次源码无 SCM 服务入口、进程创建入口或产品启用路径。
+[窗口站访问权](https://learn.microsoft.com/en-us/windows/win32/winstation/window-station-security-and-access-rights) ·
+[桌面创建与访问权](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-createdesktopexw)
+
+普通 Release 构建覆盖生命周期库、四个产品入口和回归项目。创建者 Job、离线控制台、
+正式 CLI 包静态合同、未激活转换、网关资格及本地管理回归通过。描述符负向回归拒绝
+意外权限、共享 LocalService、宽包组、缺失标签与不受保护 DACL，普通进程在创建前被
+拒绝。初次测试以文本回转时 .NET 丢弃完整性标签，改用与原生路径一致的二进制回读。
+Bootstrap 首次无 restore 缺少 assets，使用清空包源的配置恢复后通过。首次经 `dotnet`
+调用控制台回归时自启动入口错误而超时，改用对应 apphost 后通过。
+
+另以普通 Windows 原生接口从新建的临时桌面成功读回受保护 DACL、低完整性标签、
+不可继承和对象名，再用实际低完整性零能力 LPAC 通过固定见证。原进程、桌面和
+profile 确认回收。`work/session-zero-private-window-lease-20261109-01/ordinary-native-exact-descriptor-Allow/result.txt`
+SHA-256 `34793502E79035B824F56EEDD922727998A1D48BA0E1E128DD0D5F1F7D239476`。
+实际 Session 0 创建、跨窗口站上下文恢复、持有期间监督和全链修复均 NOT_RUN。
