@@ -5,6 +5,14 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-09 实机登录会话与固件结果
+
+VERIFIED(`95c87b67` 未激活安装、独立零能力 LPAC 托管功能、原 Job 和双服务闭合)。
+VERIFIED(两项 SMBIOS 内容的可信实读和同版本受限实际拒绝 5，五项身份对照及 LSA 取证)。
+FAIL(身份门禁，Broker 退出 3)。UNKNOWN(两条登录名路径返回 1008 的具体内部位置及其他来源)。
+NOT_RUN(完整 L3、受限网卡/远控/代理画像、授权开发工具、GPU、实际网络、异常恢复、GUI 和正式 Claude)。
+[实机证据](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#实机登录会话与固件结果)
+
 ## 2026-11-09 登录名与固件真实内容取证
 
 SOURCE / BUILD / INTEGRATED(schema 15 的固定身份取证请求、原值封存和门禁)。

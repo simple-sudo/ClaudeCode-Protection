@@ -1,5 +1,13 @@
 # 当前状态与授权摘要
 
+2026-11-09，`95c87b67` 已实机更新并保持 INACTIVE。同一零能力 LPAC 固定托管载荷
+完成运行和有序回收。可信侧实读 SMBIOS 系统 UUID 与序列号，受限侧两项均返回
+拒绝 5。受限 `GetUserNameW` 与自身 LSA 会话查询均返回 1008，仍为不可用，
+底层返回点未知，身份门禁 FAIL。五项基线中的 SID 不同，profile 路径、物理 DNS
+主机名和 MachineGuid 均拒绝。本次许可已消耗。物理网卡、连接、代理及远控等
+多源受限内容、授权工具、实际网络、GPU、异常退出和正式 Claude 待验收。
+[实机身份回执](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#实机登录会话与固件结果)
+
 2026-11-09，schema 15 在固定托管负载增加 `GetUserNameW` 错误码、自身 LSA 登录
 会话的姓名和域，以及 SMBIOS Type 1 系统 UUID 与序列号。Release 构建、普通 Windows
 真实读取和边界回归通过。新版受限实验尚未执行，现装仍为 `c70350a0`。

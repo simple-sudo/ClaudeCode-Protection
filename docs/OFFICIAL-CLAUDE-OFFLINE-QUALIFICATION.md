@@ -1734,3 +1734,27 @@ GUID 与 MAC 均匹配。以上关联只覆盖可信侧，设备与接口原值�
 
 六项 Release 构建和六组限定回归通过，覆盖固定请求、早期拒绝、真实普通 LSA 与
 SMBIOS 读取及格式负向用例。schema 15 实机安装和受限内容结果仍 NOT_RUN。
+
+### 实机登录会话与固件结果
+
+本人批准审查 `AFB2B987991B…` 并确认一次 UAC。从 `c70350a0` 更新到
+`95c87b6710fe49bbb0beeb019a357219` 后保持 INACTIVE。预检核对 60 项输入，
+普通回执检查 20 项。已安装清单 SHA-256
+`3AA54FC3A55434BBC7F92FE09F260A5141151B5616551158C97D3CA53EE1CD03`。
+
+原 LocalService 创建的零能力低完整性 LPAC 匹配本轮私有窗口，完成工作区与临时文件、
+标准流、派生拒绝并退出 0。Job 在隔离下先闭合，随后 profile、工作区、窗口与两服务
+回收。原句柄终态、令牌和安全回读通过，普通 SCM 复核两个服务均缺席。
+
+可信侧获取两项 SMBIOS 原值，受限侧 UUID 与系统序列号均返回 5。用户 SID 不同，
+profile 路径、物理 DNS 主机名与 MachineGuid 均拒绝。受限 `GetUserNameW` 和自身
+LSA 姓名及域均返回 `1008 / ERROR_NO_TOKEN`。该错误与受限进程具有经原 Broker
+核对的主令牌同时成立。具体内部返回位置尚未测定。三个字段保留不可用，身份门禁
+FAIL，Broker 退出 3。原值证据封存 SHA-256
+`3DBD80620142456CA726C0F2D691A5E45A463EFF7BDB06F38E14C4531592227D`。
+[Windows 1008 定义](https://learn.microsoft.com/en-us/windows/win32/debug/system-error-codes--1000-1299-)
+
+`work/session-zero-identity-survey-20261109-01/receipt.json` SHA-256
+`D34805F6437BF6A544B7509D84ED4572CE9499300C07B50E2866438F36CF54BB`。
+本次许可已消耗。其他固件和设备接口、完整 L3、授权开发工具、网络、GPU、
+异常回收、GUI 和正式 Claude 尚未验收。
