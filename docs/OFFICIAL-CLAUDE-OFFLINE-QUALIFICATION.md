@@ -1648,3 +1648,24 @@ AccessCheck。`0x23` 拒绝 `0x20020`，`0x20023` 授予它，两者均拒绝
 `ordinary-station-request-Allow/result.txt`，SHA-256
 `F54F8C5B50DEF78E72FD8D02FE65127E2B3824A31E54E3C09962F1879814696A`。
 Release 构建及六组限定回归通过。修复候选未安装，真实启动仍 FAIL。
+
+### 独立 LPAC 原生启动实机通过
+
+本人批准审查 `759901A3BECD…` 并确认一次 UAC。更新 `f251e06d` 到
+`73c787b741904186935673709d699540` 后保持 INACTIVE。预检核对 62 项输入、20 项
+回执检查。已安装清单 SHA-256
+`A1F6C306509D0D78C3BEB36B99B4C6959E92326E36712965B84BD8F06FD8EB6D`。
+
+原窗口站给绑定 LPAC 的权限由 `0x23` 变为 `0x20023`，私有桌面仍为 `0xC7`。
+复用与 `f251e06d` 相同的见证字节和四处返回观察。实际 CSR 和 GDI 均返回 0，
+`NtGdiInit2` 非空，无失败出口。见证核对实际选中本轮非交互窗口站与桌面，
+USER32、桌面、SHELL32、UCRT 和 GDI 全部通过，退出 0。
+
+原 Job 在隔离下先有序闭合，随后核对专用窗口对象、profile、工作区和两个服务回收。
+普通 SCM 读回两项服务均缺席，确切工作区根缺席。原句柄终态、令牌连续性及安全回读
+通过。该次许可已消耗。固定原生诊断已通过，托管工作负载、授权开发工具、宿主隐私、
+网络、GPU、异常中断和正式 Claude 均未验收。
+
+`work/session-zero-private-station-read-control-20261109-01/receipt.json` SHA-256
+`3894413E9A2A98D87274978E38FFB4ECEF2149FBD35FC963CA667AB1242E32F2`，原外层
+终态 SHA-256 `68BA2D3F573433CCEFAF4D815056A725007D93C157D29FA965FDDB3154BCCE42`。

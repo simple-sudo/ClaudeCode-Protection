@@ -5,6 +5,13 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-09 独立 LPAC 原生启动实机通过
+
+CAPABILITY_DELIVERED(`73c787b7` 的固定独立 LocalService 零能力 LPAC 原生启动见证与有序回收)。
+VERIFIED(实际私有窗口选择、USER32、SHELL32、UCRT、GDI、原 Job、profile、工作区、窗口与双服务回收)。
+NOT_RUN(同路径正常开发负载、受限 L3、实际网络、GPU、异常回收和正式 Claude)。
+[实机证据](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#独立-lpac-原生启动实机通过)
+
 ## 2026-11-09 实际窗口查询和窗口站打开权限
 
 VERIFIED(`f251e06d` 未激活更新、同一首次加载分支、失败后自查、原 Job 及双服务回收)。
