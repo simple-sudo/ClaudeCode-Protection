@@ -156,3 +156,21 @@ HEAD 和 18 项离线解析器信任。回归准备补齐固定原生及篡改�
 `ordinary-listener-preflight.json` SHA-256
 `364A9314B08F0492B89E6CAA7845E0F0E0C249F312AB3BA31F56CC66C9263250`。
 新版实际安装、外部连接、路线结果和故障回收仍 NOT_RUN。
+
+### 实机准备前拒绝直连
+
+本人批准审查 `B634879C21D1…` 并确认一次 UAC。原安装从 `547495d7` 更新到
+`2376af56d15942eb8a48be57ae691330`，保持 INACTIVE。预检核对 64 项输入，
+普通回执检查 18 项。安装清单 SHA-256
+`B534E42F40754606E8DAD848ADB8D87A46C4DA8E59E985147AC05834F98845FA`。
+
+正式路线预检绑定实际 FlClash 混合端口和控制端，完成配置前后读回与选择图检查。
+回执为 `DIRECT_ROUTE_REACHABLE`，当前可达直连和可选直连均为真。原所有者以
+`UpstreamRouteSnapshotRefused` 在 Job 及受限进程创建前停止。退出 3，原外层
+终态、安全与令牌回读通过，原网关监听端口 17891 核验缺席。未开通产品隔离通道、
+回环和 Winsock 资源。未发出 Cloudflare 解析请求、外部 CONNECT 或 Microsoft HEAD。
+保留真实路线门禁 FAIL。本次许可已消耗，未重试。
+
+`work/reviewed-proxy-route-20261109-01/receipt.json` SHA-256
+`2A08B72FA060A9FB9DC956C9009680C65F26AF9AA15569AB2FA71229CCD933AC`。
+实际外部出口、CONNECT 前后和运行期故障关闭仍待实机。

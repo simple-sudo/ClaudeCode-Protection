@@ -5,6 +5,12 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-09 实机准备前拒绝直连
+
+VERIFIED(`2376af56` 未激活更新、实际控制端路线读回、拒绝发生在 Job 前、原外层终态及监听缺席)。
+FAIL(当前路线含可达和可选直连)。NOT_RUN(解析器和目标 CONNECT、HEAD、外部出口、活动监督与运行期故障关闭)。
+[实机证据](LOCAL-MANAGEMENT-BOUNDARY-20261107.md#实机准备前拒绝直连)
+
 ## 2026-11-09 正式路线的固定资格入口
 
 SOURCE / BUILD / INTEGRATED(schema 17 固定无内容 HTTPS 资格及正式路线检查)。
