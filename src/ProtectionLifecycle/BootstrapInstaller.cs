@@ -522,11 +522,15 @@ public static class BootstrapInstaller
         private readonly ReviewedPackage next;
         private readonly Action<string>? reportFailureStage;
         private bool disposed;
+        private const string WindowAccessRelease="236bde5efe75420087b5c84cfe95250d";
+        private const string WindowAccessManifest="720B2E8244685ACDCF3761ABFE8270C08471D39B2D453D0D5AF24B74AE09568A";
         internal PinnedInactiveUpdateLease(ProtectedState state,BootstrapApproval approval,VerifiedVersion prior,ReviewedPackage next,Action<string>? reportFailureStage)
         {
             this.state=state;this.approval=approval;this.prior=prior;this.next=next;this.reportFailureStage=reportFailureStage;
             var current=CurrentPointer.Parse(state.Read("current.json",4096),state.InstallationId);
             RequirePinnedTransition(current.Release,current.ManifestSHA256,prior.Package.Release,prior.Package.ManifestHash,next.Release,next.ManifestHash);
+            if(prior.Package.Release==WindowAccessRelease && next.SchemaVersion!=PackageAssetCatalog.SessionZeroPrivateWindowSchema)
+                throw WfpNative.Contract("WindowAccessPredecessorRequiresFixedPrivateWindowPackage");
             AssertNoOwnedProcesses();
         }
         // Pure selection check used by the actual constructor and ordinary
@@ -536,6 +540,8 @@ public static class BootstrapInstaller
         {
             var creatorPrior=(priorRelease==SessionZeroCreatorRecovery.Release && priorManifest==SessionZeroCreatorRecovery.Manifest) ||
                 (priorRelease==SessionZeroClosedCreatorRecovery.Release && priorManifest==SessionZeroClosedCreatorRecovery.Manifest) ||
+                // The window access diagnostic closed the original Job and creator resources.
+                (priorRelease==WindowAccessRelease && priorManifest==WindowAccessManifest) ||
                 // The first-load branch diagnostic closed the original Job and creator resources.
                 (priorRelease=="9455e98cf5da489daf88964e0daa6b52" &&
                     priorManifest=="EC2E00DA29027F8FE426995AAD19C050D23A8998FEA9F7E7D6596668F4A58C41") ||

@@ -1550,3 +1550,6 @@ schema 11 只给原离线启动见证选择专用窗口对象。原 Broker 以�
 schema 8、9、10 的原见证 SHA-256 保持一致。schema 11 见证长度 6656，SHA-256
 `F1C25D9DE733B2EE2D410E4DF5F9A1E467103213162B27305D89A85889C7C8DB`，唯一静态导入
 为 KERNEL32。日志和编译工件在 `work/session-zero-private-window-owner-20261109-01/`。
+
+首次普通制包在迁移前驱选择处拒绝了 `236bde5`，保留该尝试。为 schema 11 新增仅匹配
+该精确版本和清单的前驱资格，仍要求嵌入审查清单、现装状态、原 Job 闭合及隔离检查。
