@@ -5,6 +5,14 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-09 私有窗口实机授予通过，初始化仍失败
+
+VERIFIED(`e01441c` 未激活更新、独立 Session 0 专用窗口创建、绑定 LPAC 权限、原 Job 及双服务回收)。
+FAIL(首次 USER32 1114、见证退出 65、GDI32 与 GDI32FULL 加载各返回 8)。
+UNKNOWN(进程实际选择的对象及本版的内部失败分支)。
+NOT_RUN(异常中断回收、正式 Claude、真实网络、GPU、正常工具与受限真实内容 L3)。
+[实机回执与范围](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#私有窗口实机授予通过初始化仍失败)
+
 ## 2026-11-09 原链的私有窗口对象接入
 
 SOURCE / BUILD / INTEGRATED(固定 schema 11 私有窗口启动见证与原 Job、LocalService 和 Broker)。
