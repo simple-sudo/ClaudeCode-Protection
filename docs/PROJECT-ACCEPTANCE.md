@@ -5,6 +5,13 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-09 登录名与固件真实内容取证
+
+SOURCE / BUILD / INTEGRATED(schema 15 的固定身份取证请求、原值封存和门禁)。
+VERIFIED(普通 Windows 实读登录会话和 SMBIOS、CIM 交叉对照、边界回归)。
+NOT_RUN(新版安装、独立 LPAC 下的新增读取、完整 L3 和正式验收)。
+[证据](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#登录名与固件真实内容取证)
+
 ## 2026-11-09 独立 LPAC 托管载荷实机通过
 
 CAPABILITY_DELIVERED(`c70350a0` 固定离线托管载荷的独立 LocalService 零能力 LPAC 启动及正常回收)。

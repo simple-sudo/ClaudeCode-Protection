@@ -1712,3 +1712,25 @@ FAIL，Broker 退出 3。原身份内容留在本机保护状态，分类回执�
 `B067498CAFCF436FBA2AE75BD8792E1ADFBF208E164AB2EBB33E0AA3E125B5EA`。
 本次许可已消耗。完整 L3、授权开发工具、网络、GPU、异常回收、GUI 和正式 Claude
 尚未验收。
+
+### 登录名与固件真实内容取证
+
+schema 15 为同一固定托管载荷加入 `CCS1` 请求，沿用原专用窗口权限和受限创建链。
+新版记录 `GetUserNameW` 的实际错误码，并以当前令牌的 AuthenticationId 查询自身
+LSA 会话姓名和域。域同时与可信侧物理 DNS 主机名比较，因为同机账户域可能带出
+主机名。通过 `GetSystemFirmwareTable` 实读 SMBIOS Type 1 的系统 UUID 与序列号。
+原始数据仍通过原 Job、PID 和封存路径绑定，回执只含分类、错误码和摘要。
+不可用结果或可读固件标识不通过门禁。
+[LSA 会话读取](https://learn.microsoft.com/en-us/windows/win32/api/ntsecapi/nf-ntsecapi-lsagetlogonsessiondata) ·
+[固件表读取](https://learn.microsoft.com/en-us/windows/win32/api/sysinfoapi/nf-sysinfoapi-getsystemfirmwaretable) ·
+[SMBIOS Type 1 定义](https://www.dmtf.org/sites/default/files/standards/documents/DSP0134_3.8.0.pdf)
+
+普通 Windows 实读中，LSA 姓名与 `GetUserNameW` 一致，域与物理 DNS 主机名一致。
+固件 UUID 与当前及已封存 CIM 系统 UUID 相同。固件序列号与 CIM 产品编号、已封存
+固件序列号相同。普通 .NET 接口枚举和 Windows 物理网卡清单中的两块网卡，其接口
+GUID 与 MAC 均匹配。以上关联只覆盖可信侧，设备与接口原值按原可信证据留在本机。
+`work/session-zero-identity-survey-20261109-01/trusted-correlation.json` SHA-256
+`BEFFCB395E41FBD5F9DD5995974E2E91916D961C8F687328E13847285425E5B7`。
+
+六项 Release 构建和六组限定回归通过，覆盖固定请求、早期拒绝、真实普通 LSA 与
+SMBIOS 读取及格式负向用例。schema 15 实机安装和受限内容结果仍 NOT_RUN。

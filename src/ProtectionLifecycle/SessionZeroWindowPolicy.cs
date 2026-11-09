@@ -16,9 +16,10 @@ internal sealed class SessionZeroWindowPolicy
     private static string StationNameForJob(string jobId)=>"CpcTask."+Identifiers.Hex32(jobId);
     private readonly string stationSddl,desktopSddl;
 
-    internal static bool SupportsConsole(int schema)=>schema==PackageAssetCatalog.SessionZeroPrivateWindowConsoleSchema;
-    internal static bool RequiresStationReadControl(int schema)=>schema is PackageAssetCatalog.SessionZeroPrivateWindowReadControlSchema or
-        PackageAssetCatalog.SessionZeroPrivateWindowConsoleSchema;
+    internal static bool SupportsConsole(int schema)=>schema is PackageAssetCatalog.SessionZeroPrivateWindowConsoleSchema or
+        PackageAssetCatalog.SessionZeroIdentitySurveySchema;
+    internal static bool RequiresStationReadControl(int schema)=>schema==PackageAssetCatalog.SessionZeroPrivateWindowReadControlSchema ||
+        SupportsConsole(schema);
 
     internal SessionZeroWindowPolicy(OwnedJobIntent job,bool stationReadControl):this(job.InstallationId,job.JobId,CreatorFor(job),stationReadControl){}
 

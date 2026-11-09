@@ -2,6 +2,7 @@ using System.Runtime.InteropServices;
 using System.Security.Principal;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.Win32.SafeHandles;
 
 namespace ProtectionLifecycle;
@@ -19,16 +20,22 @@ internal sealed record OfflineConsoleHostIdentity(int SchemaVersion,string Sessi
     private static readonly IntPtr LocalMachine=new(unchecked((int)0x80000002));
     private const uint RegistryString=0x2,Registry64BitView=0x10000;
 
-    internal static OfflineConsoleHostIdentity Capture(string session)
+    [JsonIgnore(Condition=JsonIgnoreCondition.WhenWritingNull)]
+    public OfflineConsoleNativeIdentity? Native {get;init;}
+
+    internal static OfflineConsoleHostIdentity Capture(string session)=>CaptureCore(session,false);
+    internal static OfflineConsoleHostIdentity CaptureSurvey(string session)=>CaptureCore(session,true);
+
+    private static OfflineConsoleHostIdentity CaptureCore(string session,bool survey)
     {
         using var identity=WindowsIdentity.GetCurrent(TokenAccessLevels.Query);
         var sid=identity.User?.Value;
-        return new(1,session,Environment.ProcessId,
+        return new(survey?2:1,session,Environment.ProcessId,
             sid is null?new(InvalidData,null):new(0,sid),
             ReadNative(GetUserName),
             ReadNative((StringBuilder buffer,ref int length)=>GetUserProfileDirectory(identity.AccessToken,buffer,ref length)),
             ReadNative((StringBuilder buffer,ref int length)=>GetComputerNameEx(PhysicalDnsHostname,buffer,ref length)),
-            ReadMachineGuid());
+            ReadMachineGuid()){Native=survey?OfflineConsoleNativeIdentity.Capture(identity.AccessToken):null};
     }
 
     internal void Write(string workspace)
@@ -41,13 +48,15 @@ internal sealed record OfflineConsoleHostIdentity(int SchemaVersion,string Sessi
         file.Flush(true);
     }
 
-    internal static OfflineConsoleHostIdentity Read(string workspace,string session,uint pid)
+    internal static OfflineConsoleHostIdentity Read(string workspace,string session,uint pid,bool survey=false)
     {
         using var file=new FileStream(WindowsPathSeal.Open(WindowsPathSeal.Child(workspace,Leaf),false,true),FileAccess.Read);
         AssertSize(file.Length);
         var bytes=new byte[(int)file.Length];
         file.ReadExactly(bytes);
-        return Parse(bytes,session,pid);
+        var parsed=Parse(bytes,session,pid);
+        if((parsed.Native is not null)!=survey)throw WfpNative.Contract("OfflineHostIdentitySurveyMismatch");
+        return parsed;
     }
 
     internal static OfflineConsoleHostIdentity Parse(byte[] bytes,string session,uint pid)
@@ -55,28 +64,50 @@ internal sealed record OfflineConsoleHostIdentity(int SchemaVersion,string Sessi
         AssertSize(bytes.Length);
         using var document=JsonDocument.Parse(bytes,new JsonDocumentOptions{MaxDepth=3});
         var root=document.RootElement;
-        StrictJson.Fields(root,nameof(SchemaVersion),nameof(SessionId),nameof(Pid),nameof(TokenUser),nameof(LogonName),
-            nameof(ProfileDirectory),nameof(ComputerName),nameof(MachineGuid));
-        foreach(var field in new[]{nameof(TokenUser),nameof(LogonName),nameof(ProfileDirectory),nameof(ComputerName),nameof(MachineGuid)})
-            StrictJson.Fields(root.GetProperty(field),nameof(OfflineConsoleIdentityRead.Error),nameof(OfflineConsoleIdentityRead.Value));
+        string[] fields=[nameof(TokenUser),nameof(LogonName),nameof(ProfileDirectory),nameof(ComputerName),nameof(MachineGuid)];
+        string[] envelope=[nameof(SchemaVersion),nameof(SessionId),nameof(Pid),..fields];
+        var version=root.GetProperty(nameof(SchemaVersion)).GetInt32();
+        StrictJson.Fields(root,version==2?[..envelope,nameof(Native)]:envelope);
+        ReadFields(root,fields);
+        if(version==2)
+        {
+            var native=root.GetProperty(nameof(Native));
+            string[] nativeFields=[nameof(OfflineConsoleNativeIdentity.LsaName),nameof(OfflineConsoleNativeIdentity.LsaDomain),
+                nameof(OfflineConsoleNativeIdentity.FirmwareUuid),nameof(OfflineConsoleNativeIdentity.FirmwareSerial)];
+            StrictJson.Fields(native,nativeFields);
+            ReadFields(native,nativeFields);
+        }
         var result=JsonSerializer.Deserialize<OfflineConsoleHostIdentity>(bytes)??throw WfpNative.Contract("OfflineHostIdentityMissing");
-        if(result.SchemaVersion!=1 || result.SessionId!=session || pid==0 || result.Pid!=pid)
+        if(result.SchemaVersion is not (1 or 2) || result.SessionId!=session || pid==0 || result.Pid!=pid)
             throw WfpNative.Contract("OfflineHostIdentityActorMismatch");
         result.AssertReads();
         return result;
     }
 
+    private static void ReadFields(JsonElement root,IEnumerable<string> fields)
+    {
+        foreach(var field in fields)
+            StrictJson.Fields(root.GetProperty(field),nameof(OfflineConsoleIdentityRead.Error),nameof(OfflineConsoleIdentityRead.Value));
+    }
+
     internal OfflineConsoleHostIdentitySummary Seal(ProtectedState state,VerifiedVersion version,string jobId,OfflineConsoleHostIdentity host,
         SecurityIdentifier? suspendedUser)
     {
-        if(SessionId!=host.SessionId || Pid==host.Pid)throw WfpNative.Contract("OfflineHostIdentityReferenceMismatch");
+        if(SessionId!=host.SessionId || Pid==host.Pid || SchemaVersion!=host.SchemaVersion)
+            throw WfpNative.Contract("OfflineHostIdentityReferenceMismatch");
         AssertTokenUser(suspendedUser);
         var hash=state.WriteNew("offline-console-host-identity-"+SessionId+".json",JsonSerializer.SerializeToUtf8Bytes(new {
             SchemaVersion=1,state.InstallationId,SessionId,JobId=jobId,version.Package.Release,version.Package.ManifestHash,
             Restricted=this,TrustedOwner=host
         }));
-        return new(hash,Compare(TokenUser,host.TokenUser),Compare(LogonName,host.LogonName),
+        var summary=new OfflineConsoleHostIdentitySummary(hash,Compare(TokenUser,host.TokenUser),Compare(LogonName,host.LogonName),
             Compare(ProfileDirectory,host.ProfileDirectory),Compare(ComputerName,host.ComputerName),Compare(MachineGuid,host.MachineGuid));
+        if(Native is { } read && host.Native is { } reference)
+            summary=summary with {Survey=new(LogonName.Error,read.LsaName.Error,read.LsaDomain.Error,read.FirmwareUuid.Error,read.FirmwareSerial.Error,
+                CompareWithAlternate(read.LsaName,reference.LsaName,host.LogonName),
+                CompareWithAlternate(read.LsaDomain,reference.LsaDomain,host.ComputerName),
+                Compare(read.FirmwareUuid,reference.FirmwareUuid),Compare(read.FirmwareSerial,reference.FirmwareSerial))};
+        return summary;
     }
 
     internal void AssertTokenUser(SecurityIdentifier? suspendedUser)
@@ -93,13 +124,36 @@ internal sealed record OfflineConsoleHostIdentity(int SchemaVersion,string Sessi
         return string.Equals(restricted.Value,host.Value,StringComparison.OrdinalIgnoreCase)?"MATCHES_HOST":"DIFFERS_FROM_HOST";
     }
 
+    private static string CompareWithAlternate(OfflineConsoleIdentityRead read,OfflineConsoleIdentityRead reference,
+        OfflineConsoleIdentityRead alternate)
+    {
+        if(Compare(read,alternate)=="MATCHES_HOST")return "MATCHES_HOST";
+        return Compare(read,reference);
+    }
+
     private void AssertReads()
     {
-        foreach(var reading in new[]{TokenUser,LogonName,ProfileDirectory,ComputerName,MachineGuid})
-            if(reading.Error<0 || (reading.Error==0
-                ? reading.Value is not {Length:>0 and <MaximumCharacters} || reading.Value.Any(char.IsControl)
-                : reading.Value is not null))
-                throw WfpNative.Contract("OfflineHostIdentityFieldBounds");
+        foreach(var reading in new[]{TokenUser,LogonName,ProfileDirectory,ComputerName,MachineGuid})AssertRead(reading);
+        if(Native is not { } native)return;
+        AssertRead(native.LsaName);AssertRead(native.LsaDomain);
+        AssertRead(native.FirmwareUuid);AssertRead(native.FirmwareSerial);
+        AssertFirmwareHex(native.FirmwareUuid,32,32);
+        AssertFirmwareHex(native.FirmwareSerial,2,256);
+    }
+
+    private static void AssertRead(OfflineConsoleIdentityRead reading)
+    {
+        if(reading.Error<0 || (reading.Error==0
+            ? reading.Value is not {Length:>0 and <MaximumCharacters} || reading.Value.Any(char.IsControl)
+            : reading.Value is not null))
+            throw WfpNative.Contract("OfflineHostIdentityFieldBounds");
+    }
+
+    private static void AssertFirmwareHex(OfflineConsoleIdentityRead reading,int minimum,int maximum)
+    {
+        if(reading.Value is { } value && (value.Length<minimum || value.Length>maximum || value.Length%2!=0 ||
+            value.Any(c=>c is not (>= '0' and <= '9' or >= 'A' and <= 'F'))))
+            throw WfpNative.Contract("OfflineHostIdentityFirmwareEncoding");
     }
 
     private static void AssertSize(long length)
@@ -144,4 +198,10 @@ internal sealed record OfflineConsoleHostIdentity(int SchemaVersion,string Sessi
 
 internal readonly record struct OfflineConsoleIdentityRead(int Error,string? Value);
 internal sealed record OfflineConsoleHostIdentitySummary(string ReceiptSHA256,string TokenUser,string LogonName,
-    string ProfileDirectory,string ComputerName,string MachineGuid);
+    string ProfileDirectory,string ComputerName,string MachineGuid)
+{
+    [JsonIgnore(Condition=JsonIgnoreCondition.WhenWritingNull)]
+    public OfflineConsoleIdentitySurvey? Survey {get;init;}
+}
+internal sealed record OfflineConsoleIdentitySurvey(int GetUserNameError,int LsaNameError,int LsaDomainError,int FirmwareUuidError,
+    int FirmwareSerialError,string LsaName,string LsaDomain,string FirmwareUuid,string FirmwareSerial);

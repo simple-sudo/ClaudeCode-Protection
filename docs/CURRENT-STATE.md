@@ -1,5 +1,10 @@
 # 当前状态与授权摘要
 
+2026-11-09，schema 15 在固定托管负载增加 `GetUserNameW` 错误码、自身 LSA 登录
+会话的姓名和域，以及 SMBIOS Type 1 系统 UUID 与序列号。Release 构建、普通 Windows
+真实读取和边界回归通过。新版受限实验尚未执行，现装仍为 `c70350a0`。
+[真实内容取证与普通基准](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#登录名与固件真实内容取证)
+
 2026-11-09，`c70350a0` 已实机更新并保持 INACTIVE。原 LocalService 下的零能力
 LPAC 托管载荷在专用窗口站和桌面运行并退出 0。工作区和临时文件、标准流、未授权
 派生创建拒绝、有序 Job 停止、profile、工作区、窗口和两个临时服务回收均已核验。

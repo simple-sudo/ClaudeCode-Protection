@@ -10,11 +10,10 @@ internal static class SessionZeroStartupWitness
 {
     internal const string Scope="FIXED_INDEPENDENT_STARTUP_WITNESS_FULL_QUARANTINE";
     internal static bool UsesBranchTrace(int schema)=>schema is PackageAssetCatalog.SessionZeroStartupBranchSchema or
-        PackageAssetCatalog.SessionZeroWindowAccessSchema or PackageAssetCatalog.SessionZeroPrivateWindowTraceSchema or
-        PackageAssetCatalog.SessionZeroPrivateWindowReadControlSchema or PackageAssetCatalog.SessionZeroPrivateWindowConsoleSchema;
+        PackageAssetCatalog.SessionZeroWindowAccessSchema or PackageAssetCatalog.SessionZeroPrivateWindowTraceSchema ||
+        SessionZeroWindowPolicy.RequiresStationReadControl(schema);
     internal static bool UsesPrivateWindow(int schema)=>schema is PackageAssetCatalog.SessionZeroPrivateWindowSchema or
-        PackageAssetCatalog.SessionZeroPrivateWindowTraceSchema or PackageAssetCatalog.SessionZeroPrivateWindowReadControlSchema or
-        PackageAssetCatalog.SessionZeroPrivateWindowConsoleSchema;
+        PackageAssetCatalog.SessionZeroPrivateWindowTraceSchema || SessionZeroWindowPolicy.RequiresStationReadControl(schema);
     private static readonly string[] Checkpoints=[
         "ENTRY","BEFORE_USER32","AFTER_USER32","BEFORE_DESKTOP","AFTER_DESKTOP",
         "BEFORE_SHELL32","AFTER_SHELL32","BEFORE_UCRT","AFTER_UCRT"

@@ -1,3 +1,4 @@
+using System.Buffers.Binary;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
@@ -29,6 +30,7 @@ internal static class OfflineConsoleNativeCases
         VerifyWorkspaceEnvironment(library);
         VerifyProjectionEvidence(library);
         VerifyHostIdentityEvidence(library);
+        VerifyNativeIdentitySurvey(library);
         var type=library.GetType("ProtectionLifecycle.OfflineConsoleStreams",true)!;
         var read=type.GetMethod("ReadBounded",Static)!;
         foreach(var length in new[]{0,4096})
@@ -176,6 +178,57 @@ internal static class OfflineConsoleNativeCases
             Require((string?)Call(compare,null,actor,host)==expected);
         Require((string?)Call(compare,null,host,Reading(5,null))=="REFERENCE_UNAVAILABLE");
         Console.WriteLine("PASS five actual ordinary identity reads and bounded identity evidence controls. Restricted identity not executed.");
+    }
+
+    private static void VerifyNativeIdentitySurvey(Assembly library)
+    {
+        var type=library.GetType("ProtectionLifecycle.OfflineConsoleHostIdentity",true)!;
+        var session=new string('e',32);
+        var capture=Call(type.GetMethod("CaptureSurvey",Static)!,null,session)!;
+        var encoded=JsonSerializer.SerializeToUtf8Bytes(capture,type);
+        var parse=type.GetMethod("Parse",Static)!;
+        _=Call(parse,null,encoded,session,(uint)Environment.ProcessId);
+        var survey=JsonNode.Parse(encoded)!.AsObject();
+        Require(survey["SchemaVersion"]!.GetValue<int>()==2);
+        foreach(var field in new[]{"LsaName","LsaDomain","FirmwareUuid","FirmwareSerial"})
+            Require(survey["Native"]![field]!["Error"]!.GetValue<int>()==0 &&
+                survey["Native"]![field]!["Value"]!.GetValue<string>().Length>0);
+        survey["Native"]!["FirmwareUuid"]!["Value"]="not-native-hex";
+        Refuse<InvalidDataException>(()=>Call(parse,null,JsonSerializer.SerializeToUtf8Bytes(survey),session,(uint)Environment.ProcessId));
+
+        var native=library.GetType("ProtectionLifecycle.OfflineConsoleNativeIdentity",true)!;
+        var parseFirmware=native.GetMethod("ParseFirmware",Static)!;
+        var fixture=new byte[8+24+5];
+        BinaryPrimitives.WriteUInt32LittleEndian(fixture.AsSpan(4),29);
+        fixture[8]=1;fixture[9]=24;fixture[15]=2;
+        fixture[16]=42;
+        fixture[32]=(byte)'A';fixture[34]=(byte)'B';
+        void CheckFirmware(byte[] bytes,int uuidError,string? serial)
+        {
+            var result=Call(parseFirmware,null,bytes)!;
+            var first=result.GetType().GetField("Item1")!.GetValue(result)!;
+            var second=result.GetType().GetField("Item2")!.GetValue(result)!;
+            var read=first.GetType();
+            Require((int)read.GetProperty("Error")!.GetValue(first)! ==uuidError);
+            Require((string?)read.GetProperty("Value")!.GetValue(second)==serial);
+        }
+        CheckFirmware(fixture,0,"42");
+        CheckFirmware(fixture[..^1],13,null);
+        fixture[16]=0;
+        CheckFirmware(fixture,1168,"42");
+        fixture[9]=2;
+        CheckFirmware(fixture,13,null);
+
+        var surveyType=library.GetType("ProtectionLifecycle.OfflineConsoleIdentitySurvey",true)!;
+        var gate=library.GetType("ProtectionLifecycle.OfflineConsoleQualification",true)!.GetMethod("SurveyIdentityObserved",Static)!;
+        bool Accepted(string name,string domain,string uuid,string serial) =>
+            Call(gate,null,Activator.CreateInstance(surveyType,5,5,5,5,5,name,domain,uuid,serial)) is true;
+        Require(Accepted("DENIED","DENIED","DENIED","DENIED"));
+        Require(!Accepted("UNAVAILABLE","DENIED","DENIED","DENIED"));
+        Require(!Accepted("DENIED","MATCHES_HOST","DENIED","DENIED"));
+        Require(!Accepted("DENIED","DENIED","DIFFERS_FROM_HOST","DENIED"));
+        Require(!Accepted("DENIED","DENIED","DENIED","MATCHES_HOST"));
+        Console.WriteLine("PASS actual ordinary own-logon and SMBIOS content reads, bounded firmware parsing and identity survey refusals.");
     }
 
     private static void RunChild(Assembly library,Type type,bool flood)

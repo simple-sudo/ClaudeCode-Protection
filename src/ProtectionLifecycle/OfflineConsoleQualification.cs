@@ -15,6 +15,7 @@ internal static class OfflineConsoleQualification
 {
     internal const string ChildCommand="offline-console-qualification-child",SessionVariable="CPC_OFFLINE_CONSOLE_SESSION";
     internal const string PrivateWindowChildCommand="private-window-offline-console-child";
+    internal const string IdentitySurveyChildCommand="private-window-identity-survey-child";
     private const string PackageVariable="CPC_OFFLINE_CONSOLE_PACKAGE";
     private const string DescendantCommand="offline-console-denial-target",OutputLeaf="offline-console-output.txt";
     private const string TempLeaf="offline-console-temp.txt";
@@ -56,10 +57,10 @@ internal static class OfflineConsoleQualification
         foreach(var (name,_) in WorkspaceVariables)environment[name]=workspace;
     }
 
-    internal static int RunChild(bool privateWindow=false)
+    internal static int RunChild(bool privateWindow=false,bool identitySurvey=false)
     {
         var stage=ChildStage.Identity;
-        try{return RunCheckedChild(ref stage,privateWindow);}
+        try{return RunCheckedChild(ref stage,privateWindow,identitySurvey);}
         catch(Exception error) when(error is not OutOfMemoryException)
         {
             var kind=error switch {
@@ -73,7 +74,7 @@ internal static class OfflineConsoleQualification
         }
     }
 
-    private static int RunCheckedChild(ref ChildStage stage,bool privateWindow)
+    private static int RunCheckedChild(ref ChildStage stage,bool privateWindow,bool identitySurvey)
     {
         AtomicChild.AssertOfflineConsoleWorkerIdentity();
         stage=ChildStage.SessionId;
@@ -130,7 +131,7 @@ internal static class OfflineConsoleQualification
         }
         catch(Win32Exception denied)when(denied.NativeErrorCode==367){}
         stage=ChildStage.HostIdentity;
-        OfflineConsoleHostIdentity.Capture(session).Write(workspace);
+        (identitySurvey?OfflineConsoleHostIdentity.CaptureSurvey(session):OfflineConsoleHostIdentity.Capture(session)).Write(workspace);
         stage=ChildStage.Output;
         using(var stdout=Console.OpenStandardOutput())stdout.Write(privateWindow?ExpectedPrivateWindowOutput:ExpectedOutput);
         using(var stderr=Console.OpenStandardError())stderr.Write(ExpectedError);
@@ -311,6 +312,7 @@ internal static class OfflineConsoleQualification
         var plans=RequireOfflinePrerequisites(state,version);
         var branchWitness=startupWitness && SessionZeroStartupWitness.UsesBranchTrace(version.Package.SchemaVersion);
         var windowAccessWitness=startupWitness && version.Package.SchemaVersion==PackageAssetCatalog.SessionZeroWindowAccessSchema;
+        var identitySurvey=!startupWitness && version.Package.SchemaVersion==PackageAssetCatalog.SessionZeroIdentitySurveySchema;
         var privateWindow=startupWitness?SessionZeroStartupWitness.UsesPrivateWindow(version.Package.SchemaVersion):
             SessionZeroWindowPolicy.SupportsConsole(version.Package.SchemaVersion);
         var privateWindowTrace=privateWindow && branchWitness;
@@ -352,7 +354,7 @@ internal static class OfflineConsoleQualification
                 if(!startupWitness)
                 {
                     stage="CaptureHostIdentity";
-                    host=OfflineConsoleHostIdentity.Capture(jobId);
+                    host=identitySurvey?OfflineConsoleHostIdentity.CaptureSurvey(jobId):OfflineConsoleHostIdentity.Capture(jobId);
                 }
                 stage="PrepareCreatorChannel";
                 preparedChannel=new(creator);
@@ -483,7 +485,7 @@ internal static class OfflineConsoleQualification
                         if(exit==0)
                         {
                             workspace.AssertHeld();
-                            hostIdentity=OfflineConsoleHostIdentity.Read(workspace.Path,job.JobId,child.Pid)
+                            hostIdentity=OfflineConsoleHostIdentity.Read(workspace.Path,job.JobId,child.Pid,identitySurvey)
                                 .Seal(state,version,job.JobId,host!,child.OfflineConsoleUserSid);
                             filesMatched=ReadFixedFile(workspace.Path,OutputLeaf,ExpectedFile) && ReadFixedFile(workspace.Temp,TempLeaf,ExpectedTempFile);
                         }
@@ -538,12 +540,12 @@ internal static class OfflineConsoleQualification
         }
         var matched=stdout is {Overflow:false} && stderr is {Overflow:false} &&
             (privateWindow?ExpectedPrivateWindowOutput:ExpectedOutput).SequenceEqual(stdout.Bytes) && ExpectedError.SequenceEqual(stderr.Bytes);
-        var identityObserved=IndependentIdentityObserved(hostIdentity);
+        var identityObserved=IndependentIdentityObserved(hostIdentity) && (!identitySurvey || SurveyIdentityObserved(hostIdentity?.Survey));
         var functional=failures.Count==0 && closed && profileClosed && workspaceClosed && serviceRemoved && resumed && exit==0 &&
             filesMatched && matched && (!privateWindow || privateWindowsClosed);
         var complete=functional && identityObserved;
         var consoleReport=JsonSerializer.SerializeToNode(new {
-            SchemaVersion=privateWindow?2:1,Scope="INSTALLED_FIXED_INDEPENDENT_OFFLINE_CONSOLE",state.InstallationId,JobId=jobId,
+            SchemaVersion=identitySurvey?3:privateWindow?2:1,Scope="INSTALLED_FIXED_INDEPENDENT_OFFLINE_CONSOLE",state.InstallationId,JobId=jobId,
             version.Package.Release,version.Package.ManifestHash,Status=complete?"INDEPENDENT_OFFLINE_CONSOLE_CLOSED":"INDEPENDENT_OFFLINE_CONSOLE_NOT_CONFIRMED",
             LastStage=stage,ProcessResumed=resumed,ChildExit=exit,OriginalJobClosed=closed,ProfileClosed=profileClosed,WorkspaceClosed=workspaceClosed,
             ServiceRemoved=serviceRemoved,StartupFailureRegistrationRemoved=startupFailureRegistrationRemoved,
@@ -578,6 +580,10 @@ internal static class OfflineConsoleQualification
         NonMatchingReadObserved(observation.MachineGuid);
 
     private static bool NonMatchingReadObserved(string outcome)=>outcome is "DIFFERS_FROM_HOST" or "DENIED";
+
+    internal static bool SurveyIdentityObserved(OfflineConsoleIdentitySurvey? survey) =>
+        survey is {FirmwareUuid:"DENIED",FirmwareSerial:"DENIED"} && NonMatchingReadObserved(survey.LsaName) &&
+        NonMatchingReadObserved(survey.LsaDomain);
 
     private static object SealEnvironmentProjection(ProtectedState state,VerifiedVersion version,string id,string jobId,uint childPid,
         byte[] bytes,string workspace,string ownedTemp,string localData)

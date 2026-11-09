@@ -304,6 +304,15 @@ internal static class CreatorJobCases
         Check(mode.GetValue(managedDecoded) is false && privateMode.GetValue(managedDecoded) is true && readControlMode.GetValue(managedDecoded) is true);
         Refused(()=>parseRequest.Invoke(null,[managedRequest,jobId,12u,7u]));
         Refused(()=>parseWorkload.Invoke(null,[managedRequest,legacyId,12u,7u]));
+        var surveyRequest=(byte[])managedRequest.Clone();
+        "CCS1"u8.CopyTo(surveyRequest);
+        var surveyMode=decoded.GetType().GetProperty("IdentitySurvey",BindingFlags.Instance|BindingFlags.NonPublic)!;
+        var surveyDecoded=parseWorkload.Invoke(null,[surveyRequest,jobId,12u,7u])!;
+        Check(mode.GetValue(surveyDecoded) is false && privateMode.GetValue(surveyDecoded) is true &&
+            readControlMode.GetValue(surveyDecoded) is true && surveyMode.GetValue(surveyDecoded) is true &&
+            surveyMode.GetValue(managedDecoded) is false);
+        Refused(()=>parseRequest.Invoke(null,[surveyRequest,jobId,12u,7u]));
+        Refused(()=>parseWorkload.Invoke(null,[surveyRequest,legacyId,12u,7u]));
         var windowType=library.GetType("ProtectionLifecycle.SessionZeroWindowAccess",true)!;
         var parseWindow=channel.GetMethod("ParseWindowAccess",methods)!;
         var writeWindow=channel.GetMethod("CreateWindowAccess",methods)!;

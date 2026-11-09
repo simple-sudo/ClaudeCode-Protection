@@ -115,6 +115,7 @@ internal static class Program
             if(command=="openssl-offline-child")return ProtectionLifecycle.InstalledBroker.RunOpenSslOfflineChild();
             if(command=="offline-console-qualification-child")return ProtectionLifecycle.InstalledBroker.RunOfflineConsoleChild();
             if(command=="private-window-offline-console-child")return ProtectionLifecycle.InstalledBroker.RunPrivateWindowOfflineConsoleChild();
+            if(command=="private-window-identity-survey-child")return ProtectionLifecycle.InstalledBroker.RunIdentitySurveyChild();
             if(command=="offline-console-denial-target")return 125;
             if(command=="zero-capability-comparison-child")return ProtectionLifecycle.InstalledBroker.RunZeroCapabilityComparisonCanary();
             if(command=="admission-child")return ProtectionLifecycle.InstalledBroker.RunAdmissionCanary();

@@ -40,16 +40,27 @@ internal static class WindowsTokenInformation
 
     internal static PrimaryBinding ReadPrimaryBinding(SafeAccessTokenHandle token)
     {
+        var stats=ReadStatistics(token,"ReadCreatorPrimaryTokenBinding");
+        if(stats.Type!=1 || stats.TokenId==0 || stats.ModifiedId==0)
+            throw WfpNative.Contract("CreatorPrimaryTokenBindingInvalid");
+        return new(stats.TokenId,stats.ModifiedId);
+    }
+
+    internal static ulong ReadAuthenticationId(SafeAccessTokenHandle token) =>
+        ReadStatistics(token,"ReadOwnAuthenticationId").AuthenticationId;
+
+    private static TokenStatistics ReadStatistics(SafeAccessTokenHandle token,string stage)
+    {
         var size=Marshal.SizeOf<TokenStatistics>();
         if(!GetTokenStatistics(token,10,out var stats,size,out var returned)) // TokenStatistics.
         {
-            var error=new Win32Exception(Marshal.GetLastWin32Error(),"Query primary token binding");
-            error.Data["Stage"]="ReadCreatorPrimaryTokenBinding";
+            var error=new Win32Exception(Marshal.GetLastWin32Error(),"Query fixed token statistics");
+            error.Data["Stage"]=stage;
             throw error;
         }
-        if(returned!=size || stats.Type!=1 || stats.TokenId==0 || stats.ModifiedId==0)
+        if(returned!=size)
             throw WfpNative.Contract("CreatorPrimaryTokenBindingInvalid");
-        return new(stats.TokenId,stats.ModifiedId);
+        return stats;
     }
 
     [StructLayout(LayoutKind.Sequential)]
