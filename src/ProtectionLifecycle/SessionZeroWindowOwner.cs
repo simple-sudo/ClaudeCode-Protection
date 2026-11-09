@@ -227,7 +227,12 @@ internal sealed class SessionZeroWindowOwner : IDisposable
         if(job.CreatorServiceSid!=ServiceSid(SessionZeroCreatorChannel.NameForJob(jobId)).Value || job.Release!=current.Release || job.ManifestSHA256!=current.ManifestSHA256 ||
             !string.Equals(image,WindowsPathSeal.Child(layout.Version(job.Release),"bin/admin/ProtectionBroker.exe"),StringComparison.OrdinalIgnoreCase))
             throw WfpNative.Contract("PrivateWindowOwnerOriginalJobMismatch");
-        using var lease=SessionZeroWindowLease.Create(job);
+        using var release=WindowsPathSeal.LockDirectory(layout.Version(job.Release),PathPolicy.Protected);
+        var manifest=ProtectedState.ReadBound(release,"package.json",PackageAssetCatalog.MaxManifestBytes,true);
+        var package=PackagePolicy.ParsePinned(manifest.Bytes,job.ManifestSHA256);
+        if(package.Release!=job.Release || !SessionZeroStartupWitness.UsesPrivateWindow(package.SchemaVersion))
+            throw WfpNative.Contract("PrivateWindowOwnerPackageMismatch");
+        using var lease=SessionZeroWindowLease.Create(job,package.SchemaVersion==PackageAssetCatalog.SessionZeroPrivateWindowReadControlSchema);
         try
         {
             Send(pipe,Frame(request.Nonce,Message.Ready),setup.Token);

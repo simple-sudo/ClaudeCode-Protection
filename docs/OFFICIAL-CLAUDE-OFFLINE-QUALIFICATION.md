@@ -1611,3 +1611,40 @@ Release 构建、六组回归通过。`e01441c` 前驱选择仅允许新的固�
 `ordinary-win32u-selection-Deny/result.txt`，SHA-256 分别为
 `06DCAED8FA21CF46F12E3919873080F8C18A18C710043B6BDE4E4CA44C60ACD3`、
 `09C7D67AFCDFACDBF33F2AC5971B52C3F1C01B95A57FF1CCEC6FD80AA96BCA10`。
+
+### 实际窗口查询和窗口站打开权限
+
+本人批准审查 `D8BBB5B53397…` 并确认一次 UAC。从 `e01441c` 更新到
+`f251e06d8c414c01b7262815f5144e98`，保持 INACTIVE。普通预检核对 63 项输入，
+20 项回执检查通过。已装清单 SHA-256
+`F028A5E19A9EFA9E74BB7687DDFBF41F6EADDCE0A7598CD91D558293F9C83CF2`。
+原 LPAC 得到 `0x23` 与 `0xC7`，Win32k 禁用关闭，系统调用过滤器编号 0。
+同一次首次加载中 CSR 返回 0，`NtGdiInit2` 返回空，GDI 和失败出口均为
+`0xC0000001`，USER32 1114，见证退出 65。失败后的 WIN32U 入口解析成功，窗口
+站和桌面均未返回句柄。名称匹配未知，不能据此判定失败前从未关联窗口。
+
+原 Job、profile、工作区、窗口对象与两个临时服务闭合。普通 SCM 复查服务缺席，
+确切工作区根缺席，原外层句柄终态、安全和令牌核验通过。许可已消耗，未重试。
+`work/session-zero-desktop-selection-20261109-01/receipt.json` SHA-256
+`FBB78126CF11C731D64CC1999DB485629101C0D23322CF8136478681A37AF98B`。
+
+本机 `win32kfull.sys` 的 SHA-256 为
+`DFE1B9F1448713ADACA72913A580A14D1C4B7D1AA00971C79BB548EBDC30344E`。匹配符号
+的静态检查显示，`xxxResolveDesktop` 调用 `_UserTestForWinStaAccess`。后者在
+`TokenIsAppContainer` 为真时将请求掩码改为 `0x20020`，随后在用户访问模式把它
+传入 `ObOpenObjectByPointer`。`0x20020` 包含 `READ_CONTROL` 与
+`WINSTA_ACCESSGLOBALATOMS`。现装描述符的 `0x23` 缺少前者。这是静态定位的具体
+权限缺口，实机仍需确认该分支与修复结果。反汇编保存在证据根的
+`xxxResolveDesktop-exact.txt`、`UserTestForWinStaAccess-exact.txt` 和
+`UserTestForWinStaAccess-tail-exact.txt`。
+[窗口站权限定义](https://learn.microsoft.com/en-us/windows/win32/winstation/window-station-security-and-access-rights)
+
+schema 13 复用同一见证映像和回收链。只将私有窗口站包 ACE 改为 `0x20023`，
+桌面仍为 `0xC7`，共享对象、剪贴板和权限修改权均未扩大。窗口持有者从固定已装
+清单的哈希与 schema 选择描述符，LocalService 的固定请求与原 Broker 的恢复前
+掩码校验同步区分两个版本。普通对照用真实零能力 LPAC 令牌对两种描述符调用
+AccessCheck。`0x23` 拒绝 `0x20020`，`0x20023` 授予它，两者均拒绝
+`WRITE_DAC`。该权限对照没有创建 Session 0 窗口站。结果在证据根的
+`ordinary-station-request-Allow/result.txt`，SHA-256
+`F54F8C5B50DEF78E72FD8D02FE65127E2B3824A31E54E3C09962F1879814696A`。
+Release 构建及六组限定回归通过。修复候选未安装，真实启动仍 FAIL。

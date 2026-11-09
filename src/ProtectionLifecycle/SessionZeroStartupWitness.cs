@@ -10,8 +10,10 @@ internal static class SessionZeroStartupWitness
 {
     internal const string Scope="FIXED_INDEPENDENT_STARTUP_WITNESS_FULL_QUARANTINE";
     internal static bool UsesBranchTrace(int schema)=>schema is PackageAssetCatalog.SessionZeroStartupBranchSchema or
-        PackageAssetCatalog.SessionZeroWindowAccessSchema or PackageAssetCatalog.SessionZeroPrivateWindowTraceSchema;
-    internal static bool UsesPrivateWindow(int schema)=>schema is PackageAssetCatalog.SessionZeroPrivateWindowSchema or PackageAssetCatalog.SessionZeroPrivateWindowTraceSchema;
+        PackageAssetCatalog.SessionZeroWindowAccessSchema or PackageAssetCatalog.SessionZeroPrivateWindowTraceSchema or
+        PackageAssetCatalog.SessionZeroPrivateWindowReadControlSchema;
+    internal static bool UsesPrivateWindow(int schema)=>schema is PackageAssetCatalog.SessionZeroPrivateWindowSchema or
+        PackageAssetCatalog.SessionZeroPrivateWindowTraceSchema or PackageAssetCatalog.SessionZeroPrivateWindowReadControlSchema;
     private static readonly string[] Checkpoints=[
         "ENTRY","BEFORE_USER32","AFTER_USER32","BEFORE_DESKTOP","AFTER_DESKTOP",
         "BEFORE_SHELL32","AFTER_SHELL32","BEFORE_UCRT","AFTER_UCRT"
@@ -60,7 +62,7 @@ internal static class SessionZeroStartupWitness
     internal static Observation Observe(int packageSchema,uint? exit,OfflineConsoleOutput? stdout,OfflineConsoleOutput? stderr)
     {
         var privateWindow=UsesPrivateWindow(packageSchema);
-        var privateTrace=packageSchema==PackageAssetCatalog.SessionZeroPrivateWindowTraceSchema;
+        var privateTrace=privateWindow && UsesBranchTrace(packageSchema);
         var hasDiagnostics=privateWindow || packageSchema==PackageAssetCatalog.SessionZeroStartupDiagnosticsSchema;
         var branchTrace=UsesBranchTrace(packageSchema);
         if(exit is null || stdout is not {Overflow:false} || stderr is not {Overflow:false,Bytes.Length:0})

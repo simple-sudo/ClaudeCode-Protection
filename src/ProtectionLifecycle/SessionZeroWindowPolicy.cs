@@ -16,7 +16,7 @@ internal sealed class SessionZeroWindowPolicy
     private static string StationNameForJob(string jobId)=>"CpcTask."+Identifiers.Hex32(jobId);
     private readonly string stationSddl,desktopSddl;
 
-    internal SessionZeroWindowPolicy(OwnedJobIntent job):this(job.InstallationId,job.JobId,CreatorFor(job)){}
+    internal SessionZeroWindowPolicy(OwnedJobIntent job,bool stationReadControl):this(job.InstallationId,job.JobId,CreatorFor(job),stationReadControl){}
 
     private static string CreatorFor(OwnedJobIntent job)
     {
@@ -25,13 +25,13 @@ internal sealed class SessionZeroWindowPolicy
         return creator;
     }
 
-    internal SessionZeroWindowPolicy(string installationId,string jobId,string creator)
+    internal SessionZeroWindowPolicy(string installationId,string jobId,string creator,bool stationReadControl)
     {
         OwnedJobIntent.AssertCreatorSid(creator);
         // The child can query the name. Expose the ephemeral Job ID only.
         StationName=StationNameForJob(jobId);
         using var package=InstallationPackageSid.FromInstallationId(installationId);
-        stationSddl=Build(SessionZeroWindowAccess.StationRights,StationPackageAccess);
+        stationSddl=Build(SessionZeroWindowAccess.StationRights,StationGrant(stationReadControl));
         desktopSddl=Build(SessionZeroWindowAccess.DesktopRights,DesktopPackageAccess);
 
         string Build(uint ownerAccess,uint packageAccess)=>
@@ -41,9 +41,13 @@ internal sealed class SessionZeroWindowPolicy
 
     internal RawSecurityDescriptor Descriptor(bool station)=>new(station?stationSddl:desktopSddl);
 
-    internal static void AssertGrants(SessionZeroWindowAccess.Evidence evidence)
+    // On the matched Windows build, the AppContainer window-station test
+    // requests READ_CONTROL and access to the station's own global atoms.
+    private static uint StationGrant(bool stationReadControl)=>StationPackageAccess|(stationReadControl?ReadControl:0);
+
+    internal static void AssertGrants(SessionZeroWindowAccess.Evidence evidence,bool stationReadControl)
     {
-        if(evidence.Station!=new SessionZeroWindowAccess.ObjectAccess(0,ReadControl|StationPackageAccess,StationPackageAccess) ||
+        if(evidence.Station!=new SessionZeroWindowAccess.ObjectAccess(0,ReadControl|StationPackageAccess,StationGrant(stationReadControl)) ||
             evidence.Desktop!=new SessionZeroWindowAccess.ObjectAccess(0,ReadControl|DesktopPackageAccess,DesktopPackageAccess))
             throw WfpNative.Contract("CreatorPrivateWindowGrantsMismatch");
     }

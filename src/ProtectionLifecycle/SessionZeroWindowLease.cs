@@ -21,14 +21,14 @@ internal sealed class SessionZeroWindowLease : IDisposable
     private SessionZeroWindowLease(SessionZeroWindowPolicy policy,StationHandle station,DesktopHandle desktop)
     {this.policy=policy;this.station=station;this.desktop=desktop;}
 
-    internal static SessionZeroWindowLease Create(OwnedJobIntent job)
+    internal static SessionZeroWindowLease Create(OwnedJobIntent job,bool stationReadControl)
     {
         using var identity=WindowsIdentity.GetCurrent(TokenAccessLevels.Query);
         using var impersonating=WindowsIdentity.GetCurrent(ifImpersonating:true);
         if(impersonating is not null || identity.User?.IsWellKnown(WellKnownSidType.LocalSystemSid)!=true ||
             !ProcessIdToSessionId((uint)Environment.ProcessId,out var session) || session!=0)
             throw WfpNative.Contract("PrivateWindowOwnerMustBeSessionZeroSystem");
-        var policy=new SessionZeroWindowPolicy(job);
+        var policy=new SessionZeroWindowPolicy(job,stationReadControl);
         var originalStation=GetProcessWindowStation();
         var originalDesktop=GetThreadDesktop(GetCurrentThreadId());
         if(originalStation==IntPtr.Zero || originalDesktop==IntPtr.Zero)

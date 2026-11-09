@@ -100,7 +100,7 @@ internal sealed class SessionZeroCreatorClient : IDisposable
             try
             {
                 var policy=Request.UsePrivateWindow?new SessionZeroWindowPolicy(Request.InstallationId,Request.JobId,
-                    VerifyCurrentService(SessionZeroCreatorChannel.NameForJob(Request.JobId)).Value):null;
+                    VerifyCurrentService(SessionZeroCreatorChannel.NameForJob(Request.JobId)).Value,Request.PrivateStationReadControl):null;
                 frame=SessionZeroCreatorChannel.CreateWindowAccess(Request,SessionZeroWindowAccess.Observe(process,exactProof,policy));
             }
             catch(Exception error) when(error is Win32Exception or WfpFailure or InvalidDataException)

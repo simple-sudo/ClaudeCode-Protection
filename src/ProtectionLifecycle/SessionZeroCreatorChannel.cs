@@ -19,6 +19,7 @@ internal sealed class SessionZeroCreatorChannel : IDisposable
     private const uint StartupWitnessRequestMagic=0x31574343; // CCW1, same size and peer binding.
     private const uint WindowAccessRequestMagic=0x32574343,WindowAccessProofMagic=0x31444343; // CCW2, CCD1.
     private const uint PrivateWindowRequestMagic=0x33574343; // CCW3.
+    private const uint PrivateWindowReadControlRequestMagic=0x34574343; // CCW4.
     private const uint ProfileCreatedMagic=0x314a4343,ProfileRecordedMagic=0x31414343; // CCJ1, CCA1.
     private const uint TokenProofMagic=0x31544343; // CCT1.
     private const int NonceSize=16,ReplySize=44,ObjectIdentityBytes=12;
@@ -108,9 +109,10 @@ internal sealed class SessionZeroCreatorChannel : IDisposable
         var request=CreateRequest(nonce,state.InstallationId,job.JobId,peer.OwnerPid,peer.OwnerSession);
         var windowAccess=startupWitness && version.Package.SchemaVersion==PackageAssetCatalog.SessionZeroWindowAccessSchema;
         var privateWindow=startupWitness && SessionZeroStartupWitness.UsesPrivateWindow(version.Package.SchemaVersion);
+        var stationReadControl=version.Package.SchemaVersion==PackageAssetCatalog.SessionZeroPrivateWindowReadControlSchema;
         if(privateWindow!=(privateWindows is not null))throw WfpNative.Contract("CreatorPrivateWindowLeaseRequired");
         privateWindows?.AssertHeld(job);
-        if(startupWitness)BinaryPrimitives.WriteUInt32LittleEndian(request,privateWindow?PrivateWindowRequestMagic:
+        if(startupWitness)BinaryPrimitives.WriteUInt32LittleEndian(request,privateWindow?(stationReadControl?PrivateWindowReadControlRequestMagic:PrivateWindowRequestMagic):
             windowAccess?WindowAccessRequestMagic:StartupWitnessRequestMagic);
         AssertQuarantine(state);
         AssertBoundPeer(service,image);
@@ -144,7 +146,7 @@ internal sealed class SessionZeroCreatorChannel : IDisposable
         {
             windowProof=ParseWindowAccess(ReadFrame(),nonce);
             AssertBoundPeer(service,image);
-            if(privateWindow)SessionZeroWindowPolicy.AssertGrants(windowProof.Value);
+            if(privateWindow)SessionZeroWindowPolicy.AssertGrants(windowProof.Value,stationReadControl);
         }
         var rootImage=startupWitness?SessionZeroStartupWitness.ReviewedImage(layout,version):image;
         var root=OpenRoot(report,tokenProof,job,rootImage,package.Value);
@@ -251,6 +253,7 @@ internal sealed class SessionZeroCreatorChannel : IDisposable
         internal bool StartupWitness {get;init;}
         internal bool ObserveWindowAccess {get;init;}
         internal bool UsePrivateWindow {get;init;}
+        internal bool PrivateStationReadControl {get;init;}
     }
     internal static Request ParseRequest(byte[] frame,string fixedJobId,uint serverPid,uint serverSession)
         =>ParseBoundRequest(frame,fixedJobId,serverPid,serverSession,allowStartupWitness:false);
@@ -265,12 +268,14 @@ internal sealed class SessionZeroCreatorChannel : IDisposable
             !frame.AsSpan(44,16).SequenceEqual(Convert.FromHexString(Identifiers.Hex32(fixedJobId))))
             throw WfpNative.Contract("CreatorRequestBindingMismatch");
         var magic=BinaryPrimitives.ReadUInt32LittleEndian(frame);
-        if(magic!=RequestMagic && (!allowStartupWitness || magic is not (StartupWitnessRequestMagic or WindowAccessRequestMagic or PrivateWindowRequestMagic)))
+        if(magic!=RequestMagic && (!allowStartupWitness || magic is not (StartupWitnessRequestMagic or WindowAccessRequestMagic or
+            PrivateWindowRequestMagic or PrivateWindowReadControlRequestMagic)))
             throw WfpNative.Contract("CreatorRequestPurposeMismatch");
         return new(Convert.ToHexString(frame.AsSpan(28,16)).ToLowerInvariant(),fixedJobId,frame.AsSpan(12,NonceSize).ToArray()) {
-            StartupWitness=magic is StartupWitnessRequestMagic or WindowAccessRequestMagic or PrivateWindowRequestMagic,
+            StartupWitness=magic!=RequestMagic,
             ObserveWindowAccess=magic==WindowAccessRequestMagic,
-            UsePrivateWindow=magic==PrivateWindowRequestMagic
+            UsePrivateWindow=magic is PrivateWindowRequestMagic or PrivateWindowReadControlRequestMagic,
+            PrivateStationReadControl=magic==PrivateWindowReadControlRequestMagic
         };
     }
 

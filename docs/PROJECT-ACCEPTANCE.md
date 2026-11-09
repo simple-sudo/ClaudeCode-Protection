@@ -5,6 +5,15 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-09 实际窗口查询和窗口站打开权限
+
+VERIFIED(`f251e06d` 未激活更新、同一首次加载分支、失败后自查、原 Job 及双服务回收)。
+FAIL(USER32 1114、GDI `0xC0000001`、`NtGdiInit2` 空返回)。UNKNOWN(失败前实际窗口选择)。
+SOURCE / BUILD / INTEGRATED(schema 13 私有窗口站 `READ_CONTROL` 候选)。
+VERIFIED(真实普通 LPAC 对两种描述符执行原生 AccessCheck、构建和限定回归)。
+NOT_RUN(修复候选的独立 Session 0 安装、受限启动、工具、L3、GPU、网络和正式 Claude)。
+[实机取证和权限修复](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#实际窗口查询和窗口站打开权限)
+
 ## 2026-11-09 首次加载失败后的窗口对象取证
 
 SOURCE / BUILD / INTEGRATED(schema 12 私有窗口见证、四处返回观察、失败后窗口对象查询)。

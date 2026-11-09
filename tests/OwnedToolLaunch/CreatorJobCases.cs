@@ -291,6 +291,13 @@ internal static class CreatorJobCases
         Check(privateMode.GetValue(windowDecoded) is false);
         Refused(()=>parseRequest.Invoke(null,[privateRequest,jobId,12u,7u]));
         Refused(()=>parseWorkload.Invoke(null,[privateRequest,legacyId,12u,7u]));
+        var readControlRequest=(byte[])privateRequest.Clone();
+        "CCW4"u8.CopyTo(readControlRequest);
+        var readControlMode=decoded.GetType().GetProperty("PrivateStationReadControl",BindingFlags.Instance|BindingFlags.NonPublic)!;
+        var readControlDecoded=parseWorkload.Invoke(null,[readControlRequest,jobId,12u,7u])!;
+        Check(privateMode.GetValue(readControlDecoded) is true && readControlMode.GetValue(readControlDecoded) is true &&
+            readControlMode.GetValue(privateDecoded) is false);
+        Refused(()=>parseRequest.Invoke(null,[readControlRequest,jobId,12u,7u]));
         var windowType=library.GetType("ProtectionLifecycle.SessionZeroWindowAccess",true)!;
         var parseWindow=channel.GetMethod("ParseWindowAccess",methods)!;
         var writeWindow=channel.GetMethod("CreateWindowAccess",methods)!;
@@ -315,10 +322,16 @@ internal static class CreatorJobCases
         BinaryPrimitives.WriteUInt32LittleEndian(privateFrame.AsSpan(32),0);
         BinaryPrimitives.WriteUInt32LittleEndian(privateFrame.AsSpan(36),0x200c7);
         BinaryPrimitives.WriteUInt32LittleEndian(privateFrame.AsSpan(40),0xc7);
-        assertPrivateGrants.Invoke(null,[parseWindow.Invoke(null,[privateFrame,nonce])]);Check(true);
-        Refused(()=>assertPrivateGrants.Invoke(null,[windowResult]));
+        var oldGrant=parseWindow.Invoke(null,[privateFrame,nonce]);
+        assertPrivateGrants.Invoke(null,[oldGrant,false]);Check(true);
+        Refused(()=>assertPrivateGrants.Invoke(null,[oldGrant,true]));
+        Refused(()=>assertPrivateGrants.Invoke(null,[windowResult,false]));
+        BinaryPrimitives.WriteUInt32LittleEndian(privateFrame.AsSpan(28),0x20023);
+        var requiredGrant=parseWindow.Invoke(null,[privateFrame,nonce]);
+        assertPrivateGrants.Invoke(null,[requiredGrant,true]);Check(true);
+        Refused(()=>assertPrivateGrants.Invoke(null,[requiredGrant,false]));
         BinaryPrimitives.WriteUInt32LittleEndian(privateFrame.AsSpan(40),0x1ff);
-        Refused(()=>assertPrivateGrants.Invoke(null,[parseWindow.Invoke(null,[privateFrame,nonce])]));
+        Refused(()=>assertPrivateGrants.Invoke(null,[parseWindow.Invoke(null,[privateFrame,nonce]),true]));
         foreignRights=(byte[])windowFrame.Clone();
         BinaryPrimitives.WriteUInt32LittleEndian(foreignRights.AsSpan(40),1);
         Refused(()=>parseWindow.Invoke(null,[foreignRights,nonce]));
@@ -455,7 +468,7 @@ internal static class CreatorJobCases
         const BindingFlags methods=BindingFlags.Static|BindingFlags.NonPublic;
         var policyType=library.GetType("ProtectionLifecycle.SessionZeroWindowPolicy",true)!;
         var leaseType=library.GetType("ProtectionLifecycle.SessionZeroWindowLease",true)!;
-        object New(object intent)=>Activator.CreateInstance(policyType,instance,null,[intent],null)!;
+        object New(object intent,bool readControl=false)=>Activator.CreateInstance(policyType,instance,null,[intent,readControl],null)!;
         var policy=New(creator);
         var descriptor=policyType.GetMethod("Descriptor",instance)!;
         var validate=policyType.GetMethod("AssertDescriptor",instance)!;
@@ -471,7 +484,15 @@ internal static class CreatorJobCases
         const string descriptorError="PrivateWindowObjectDescriptorMismatch";
         Check(PathFor(policy)==$@"CpcTask.{job}\Task" && PathFor(New(another))!=PathFor(policy),"Private desktop exposes only the ephemeral Job ID");
         Refused(()=>New(legacy),"PrivateWindowsRequireCreatorJob");
-        Refused(()=>leaseType.GetMethod("Create",methods)!.Invoke(null,[creator]),"PrivateWindowOwnerMustBeSessionZeroSystem");
+        Refused(()=>leaseType.GetMethod("Create",methods)!.Invoke(null,[creator,false]),"PrivateWindowOwnerMustBeSessionZeroSystem");
+        var newPolicy=New(creator,true);
+        var newStation=(RawSecurityDescriptor)descriptor.Invoke(newPolicy,[true])!;
+        Check(((CommonAce)newStation.DiscretionaryAcl![2]).AccessMask==0x20023,"Station grant includes the native open check without write or owner rights");
+        var newDesktop=(RawSecurityDescriptor)descriptor.Invoke(newPolicy,[false])!;
+        Check(((CommonAce)newDesktop.DiscretionaryAcl![2]).AccessMask==0xc7,"Desktop grant does not change");
+        validate.Invoke(newPolicy,[true,newStation]);
+        Refused(()=>validate.Invoke(newPolicy,[true,Create(true)]),descriptorError);
+        Refused(()=>validate.Invoke(policy,[true,newStation]),descriptorError);
 
         foreach(var (station,ownerMask,packageMask) in new[]{(true,0xf016f,0x23),(false,0xf01ff,0xc7)})
         {
