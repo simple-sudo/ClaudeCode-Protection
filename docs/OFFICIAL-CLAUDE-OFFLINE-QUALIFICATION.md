@@ -896,3 +896,21 @@ Broker 与普通测试工具 Release 构建通过。普通回归覆盖既有与�
 固定，实际全隔离回读、目录和服务删除及后续升级仍待独立实机审查。
 [Job 名称查询](https://learn.microsoft.com/en-us/windows/win32/api/jobapi2/nf-jobapi2-openjobobjectw) ·
 [服务登记回收](https://learn.microsoft.com/en-us/windows/win32/api/winsvc/nf-winsvc-deleteservice)
+
+#### 旧版定向恢复实机通过
+
+2026-11-08，一次人工 UAC，固定审查摘要
+`2B68842A0ED86F762924CB48D705BDA36D5D88BB6A59FC054900043FEAC80277`。
+按原账本核验全隔离、Job 名称缺席、确切已停止服务及预期空目录。原维护进程
+通过三处缺席回读并封存未准入回执，原失败继续保留。保护状态中的回收回执 SHA-256
+为 `7632BE21F6C7468FDCA3FEC1CF03E7C1F55527D0E53E7E06299C1177B2BD9E4F`。
+外层持有的原进程正常终止，无超时，安全检查与所有者令牌检查通过。普通侧另查
+确切服务注册表键和工作区根均缺席，原安装清单摘要不变，候选版本目录未创建。
+未写入实际 Job 归零证明。
+
+本机外层回执 `work/creator-legacy-recovery-once-20261108/receipt.json`，SHA-256
+`BDEB7E367C882D2A73A2C8CDFA31CCFB93CFAB96E58A383F7707BF394F7A2774`。
+受保护暂存候选 `51039f75b3bd4629b6ab3ea840e9f36a`，清单 SHA-256
+`ADB71B6FCF3656780010B57A3567C5E9E6DA47A37E4EDFDCC3A91F043D11256E`。
+一次性授权已消耗。未执行升级、网络修改或官方程序。新版服务诊断、受限读值和
+运行后关闭仍需用自研载荷进行独立实测。
