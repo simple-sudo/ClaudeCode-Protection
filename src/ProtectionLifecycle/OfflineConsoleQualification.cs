@@ -354,6 +354,8 @@ internal static class OfflineConsoleQualification
                 }
                 throw;
             }
+            stage="BindCreatorPipe";
+            channel.BindReadyPeer(layout,state,version);
             stage="PrepareWorkspace";
             using var job=OwnedKernelJob.CreateForSessionZero(state,version,creator);
             using var workspace=SessionZeroOfflineWorkspace.Create(state,job,creator);

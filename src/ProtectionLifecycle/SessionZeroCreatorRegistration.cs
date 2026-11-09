@@ -79,15 +79,23 @@ internal sealed class SessionZeroCreatorRegistration : IDisposable
         return "\""+WindowsPathSeal.Canonical(image)+"\" session-zero-offline-creator";
     }
 
-    internal SafeProcessHandle AssertReadyForJob(ProtectedState exactState,VerifiedVersion exactVersion,
+    internal SafeProcessHandle AssertReadyForPipe(ProtectedState exactState,VerifiedVersion exactVersion,
         SessionZeroCreatorChannel? expectedChannel=null)
     {
         AssertOriginal();
         if(!ReferenceEquals(state,exactState) || !ReferenceEquals(version,exactVersion) || !startAttempted ||
             channel is null || (expectedChannel is not null && !ReferenceEquals(channel,expectedChannel)) ||
             !channel.IsPreparedFor(this) || process is null || WaitForSingleObject(process,0)!=258)
-            throw WfpNative.Contract("CreatorServiceJobPreparationBindingMismatch");
+            throw WfpNative.Contract("CreatorServicePipePreparationBindingMismatch");
         return process;
+    }
+
+    internal SafeProcessHandle AssertReadyForJob(ProtectedState exactState,VerifiedVersion exactVersion,
+        SessionZeroCreatorChannel? expectedChannel=null)
+    {
+        var held=AssertReadyForPipe(exactState,exactVersion,expectedChannel);
+        channel!.AssertBoundPeer(held,image);
+        return held;
     }
 
     internal void StartAndHold(SessionZeroCreatorChannel preparedChannel)

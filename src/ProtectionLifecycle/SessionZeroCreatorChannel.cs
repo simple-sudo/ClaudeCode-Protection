@@ -21,6 +21,7 @@ internal sealed class SessionZeroCreatorChannel : IDisposable
     private readonly SessionZeroCreatorRegistration registration;
     private OwnedKernelJob? boundJob;
     private readonly NamedPipeServerStream pipe;
+    private BoundPeer? boundPeer;
     private int consumed;
     private byte[]? cleanupNonce;
     internal bool ProfileCleanupConfirmed {get;private set;}
@@ -52,11 +53,34 @@ internal sealed class SessionZeroCreatorChannel : IDisposable
         finally{LocalFree(descriptor);}
     }
 
+    internal void BindReadyPeer(FixedLayout layout,ProtectedState state,VerifiedVersion version)
+    {
+        var service=registration.AssertReadyForPipe(state,version,this);
+        if(boundPeer is not null || pipe.IsConnected)throw WfpNative.Contract("CreatorPipeAlreadyBound");
+        var ownerPid=(uint)Environment.ProcessId;
+        if(!ProcessIdToSessionId(ownerPid,out var ownerSession))throw Error("ReadBrokerSession");
+        using var deadline=new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        pipe.WaitForConnectionAsync(deadline.Token).GetAwaiter().GetResult();
+        var servicePid=AssertServicePeer(pipe.SafePipeHandle,service,ownerSession);
+        AssertImage(service,WindowsPathSeal.Child(layout.Version(version.Package.Release),"bin/admin/ProtectionBroker.exe"));
+        boundPeer=new(ownerPid,ownerSession,servicePid,ProcessCreated(service));
+    }
+
+    internal void AssertBoundPeer(SafeProcessHandle service,string image)
+    {
+        if(boundPeer is not { } peer || !pipe.IsConnected ||
+            AssertServicePeer(pipe.SafePipeHandle,service,peer.OwnerSession)!=peer.ServicePid ||
+            ProcessCreated(service)!=peer.ServiceCreated)
+            throw WfpNative.Contract("CreatorPipePeerBindingMissingOrChanged");
+        AssertImage(service,image);
+    }
+
     // The caller must retain the original Job and close it through the
     // existing offline stop path if a granted exchange fails.
     internal SuspendedRoot Exchange(FixedLayout layout,ProtectedState state,VerifiedVersion version,OwnedKernelJob job)
     {
         var service=registration.AssertReadyForJob(state,version,this);
+        var peer=boundPeer??throw WfpNative.Contract("CreatorPipePeerBindingMissingOrChanged");
         if(job.JobId!=registration.JobId || job.SessionZeroCreatorSid!=registration.Sid.Value)
             throw WfpNative.Contract("CreatorPipeJobMismatch");
         if(Interlocked.Exchange(ref consumed,1)!=0)throw WfpNative.Contract("CreatorPipeAlreadyConsumed");
@@ -64,23 +88,17 @@ internal sealed class SessionZeroCreatorChannel : IDisposable
         var image=WindowsPathSeal.Child(layout.Version(version.Package.Release),"bin/admin/ProtectionBroker.exe");
         using var package=new InstallationPackageSid(state);
         var nonce=RandomNumberGenerator.GetBytes(NonceSize);
-        var ownerPid=(uint)Environment.ProcessId;
-        if(!ProcessIdToSessionId(ownerPid,out var ownerSession))throw Error("ReadBrokerSession");
         using var deadline=new CancellationTokenSource(TimeSpan.FromSeconds(10));
         var cancellation=deadline.Token;
-        pipe.WaitForConnectionAsync(cancellation).GetAwaiter().GetResult();
-        var servicePid=AssertServicePeer(pipe.SafePipeHandle,service,ownerSession);
-        // The service uses a distinct entry role of the verified Broker image.
-        AssertImage(service,image);
-        var serviceCreated=ProcessCreated(service);
-        var request=CreateRequest(nonce,state.InstallationId,job.JobId,ownerPid,ownerSession);
+        var request=CreateRequest(nonce,state.InstallationId,job.JobId,peer.OwnerPid,peer.OwnerSession);
         AssertQuarantine(state);
+        AssertBoundPeer(service,image);
         job.ReserveSessionZeroAdmission(version,registration.Sid);
         pipe.WriteAsync(request.AsMemory(),cancellation).AsTask().GetAwaiter().GetResult();
         var reply=new byte[ReplySize];
         pipe.ReadExactlyAsync(reply.AsMemory(),cancellation).AsTask().GetAwaiter().GetResult();
         Reply report;
-        try{report=ParseReply(reply,nonce,servicePid,serviceCreated);}
+        try{report=ParseReply(reply,nonce,peer.ServicePid,peer.ServiceCreated);}
         catch(WfpFailure failure)
         {
             // This single-instance channel was already bound before request.
@@ -89,7 +107,7 @@ internal sealed class SessionZeroCreatorChannel : IDisposable
             catch(Exception revocation){throw new AggregateException("Creator failure and assignment release both unconfirmed",failure,revocation);}
             throw;
         }
-        _=AssertServicePeer(pipe.SafePipeHandle,service,ownerSession);
+        AssertBoundPeer(service,image);
         // A completed reply promises the fixed service has returned from
         // CreateProcess and closed its assignment handle. Read the DACL and
         // actual handle count before inspecting any returned process IDs.
@@ -157,6 +175,7 @@ internal sealed class SessionZeroCreatorChannel : IDisposable
         return request;
     }
 
+    private sealed record BoundPeer(uint OwnerPid,uint OwnerSession,uint ServicePid,long ServiceCreated);
     internal sealed record Request(string InstallationId,string JobId,byte[] Nonce);
     internal static Request ParseRequest(byte[] frame,string fixedJobId,uint serverPid,uint serverSession)
     {
