@@ -5,6 +5,12 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-08 旧服务登记和工作区根只读核验
+
+VERIFIED(原安装未激活、服务登记匹配且当前已停止、工作区根身份和权限匹配、
+Job 创建记录与无准入记录)。旧服务内部失败点和 Job 实际终态仍为 UNKNOWN。
+恢复及重新运行 NOT_RUN。[补充只读回执](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#重启后的补充核验)
+
 ## 2026-11-08 就绪前启动失败的原登记回收
 
 INTEGRATED / BUILD(先确认原服务，再建立 Job 与工作区。已确认的就绪前失败
