@@ -5,6 +5,15 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-09 独立 LPAC 托管载荷实机通过
+
+CAPABILITY_DELIVERED(`c70350a0` 固定离线托管载荷的独立 LocalService 零能力 LPAC 启动及正常回收)。
+VERIFIED(INACTIVE 更新、实际私有桌面、工作区、临时文件、标准流、派生创建拒绝、原 Job 和双服务闭合)。
+VERIFIED(五项真实身份读取尝试及封存，SID 不同，三项拒绝访问)。
+FAIL(首组身份门禁，Broker 退出 3)。UNKNOWN(登录名不可用的底层错误与替代来源)。
+NOT_RUN(完整 L3、Git、PowerShell、编译器、GPU、实际网络、异常恢复、GUI 和正式 Claude)。
+[实机证据](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#独立-lpac-托管载荷实机通过)
+
 ## 2026-11-09 托管离线负载接入私有窗口链
 
 SOURCE / BUILD / INTEGRATED(固定托管离线负载的私有窗口接入和结果分离)。

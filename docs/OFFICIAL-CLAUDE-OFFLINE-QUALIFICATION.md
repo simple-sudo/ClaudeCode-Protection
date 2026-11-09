@@ -1688,3 +1688,27 @@ schema 2。此切片是启动及首组身份对照，完整 P0 真实内容测�
 与旧请求隔离、真实普通桌面拒绝、失败标签、流和环境合同及五项实际普通身份读取。
 日志在 `work/session-zero-private-window-console-20261109-01/`。新版安装、独立受限
 托管负载、真实受限身份、其他 P0 来源、开发工具、GPU、网络与正式 Claude 尚未执行。
+
+### 独立 LPAC 托管载荷实机通过
+
+本人批准审查 `F216653F4FB7…` 并确认一次 UAC。更新 `73c787b7` 到
+`c70350a06da140c69bda6669ce5c8090` 后保持 INACTIVE。预检核对 59 项输入，
+普通回执检查 17 项。已安装清单 SHA-256
+`1D015E7F252AD3788BBC20ECC2186E45C1DA236D5A64AC6015D61CC16BFD667E`。
+
+原 Broker 核验挂起进程的 LocalService 创建链、LPAC 绑定、低完整性及零能力。
+绑定令牌在窗口站取得 `0x20023`，桌面取得 `0xC7`。进程核对实际窗口对象，
+完成环境、工作区和临时文件读写、标准输入输出及派生创建拒绝，退出 0。原 Job
+在隔离下有序闭合，窗口对象、profile、工作区和两个临时服务回收。独立 SCM
+复核两个确切服务均缺席，原外层句柄终态、安全和令牌回读通过。
+
+同一进程实际尝试五项内容读取。与可信 owner 对照，用户 SID 不同，profile 路径、
+物理 DNS 主机名和 MachineGuid 返回拒绝访问。登录名 `GetUserNameW` 结果为
+`UNAVAILABLE`，这一分类没有确认底层错误或其他来源的可见性。首组身份门禁
+FAIL，Broker 退出 3。原身份内容留在本机保护状态，分类回执引用的封存 SHA-256 为
+`F5B55DEE7F758CEBA896428B6A7F639AE6A5AC31FD682AE1C58D1412CEDA510A`。
+
+`work/session-zero-private-window-console-20261109-01/receipt.json` SHA-256
+`B067498CAFCF436FBA2AE75BD8792E1ADFBF208E164AB2EBB33E0AA3E125B5EA`。
+本次许可已消耗。完整 L3、授权开发工具、网络、GPU、异常回收、GUI 和正式 Claude
+尚未验收。

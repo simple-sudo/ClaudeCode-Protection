@@ -1,5 +1,14 @@
 # 当前状态与授权摘要
 
+2026-11-09，`c70350a0` 已实机更新并保持 INACTIVE。原 LocalService 下的零能力
+LPAC 托管载荷在专用窗口站和桌面运行并退出 0。工作区和临时文件、标准流、未授权
+派生创建拒绝、有序 Job 停止、profile、工作区、窗口和两个临时服务回收均已核验。
+五项真实身份对照已执行。用户 SID 不同，profile 路径、物理 DNS 主机名和
+MachineGuid 拒绝访问。登录名读取不可用，原因仍 UNKNOWN，Broker 返回 3，
+首组身份门禁仍 FAIL。本次许可已消耗。完整 L3、授权开发工具、GPU、实际网络、
+异常退出、GUI 生命周期和正式 Claude 待验收。
+[实机托管载荷与身份结果](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#独立-lpac-托管载荷实机通过)
+
 2026-11-09，schema 14 将固定托管离线负载接入原 LocalService、LPAC 和私有窗口持有链。
 原生桌面绑定、工作区、标准流、子进程限制与五项真实身份读取有独立的结果字段。
 Release 构建和普通回归通过，候选未安装。已验证的实机原生见证仍为 `73c787b7`。
