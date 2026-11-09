@@ -1,5 +1,15 @@
 # 当前状态与授权摘要
 
+2026-11-09，`9b513a84` 已实机更新并保持未激活。独立 LocalService 零能力 LPAC
+仍在首次 USER32 加载返回 1114。Broker 恢复前和见证进程内都读到 Win32k 禁用为关闭。
+USER32 文件打开、无执行映射及 WIN32U 加载通过，GDI32 和 GDI32FULL 加载各返回 8。
+原 Job、profile、工作区和服务闭合，许可已消耗。底层 GDI 初始化分支仍 UNKNOWN，
+五项宿主身份及正常受限开发仍 NOT_RUN。
+普通 Windows 已验证进程附加和定点观察方法，受限复测待新的固定工件与具体许可。
+同一未激活包包含正式网关的 CONNECT 前后复核与控制端监听监督，实际网络运行仍 NOT_RUN。
+[实机回执与诊断](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#实机排除-win32k-禁用策略) ·
+[普通返回分支对照](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#普通进程的初始化返回分支)
+
 2026-11-09，新启动见证在原准入链加入恢复前 Win32k 策略读回，以及首次 USER32
 装载后的映像与依赖检查。普通 Windows 正控制通过，进程内禁用 Win32k 的对照复现
 1114。独立 LocalService/LPAC 的实际策略和失败分支仍为 UNKNOWN，新候选未安装。

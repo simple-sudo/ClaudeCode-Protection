@@ -5,6 +5,16 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-09 独立 LPAC 实机区分策略与映像
+
+VERIFIED(`9b513a84` 未激活更新、实际进程 Win32k 禁用为关闭、USER32 文件打开及无执行映射、
+WIN32U 装载、原 Job 与临时对象闭合)。FAIL(USER32 1114、GDI32 和 GDI32FULL 各返回 8)。
+UNKNOWN(实际 GDI 初始化分支及桌面访问)。NOT_RUN(正式 Claude、五项真实受限身份、
+正常开发和实际网络)。
+VERIFIED(普通自研见证的附加观察及 Win32k 对照中 `NtGdiInit2` 空返回)，受限未测。
+[实机结果](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#实机排除-win32k-禁用策略) ·
+[普通对照](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#普通进程的初始化返回分支)
+
 ## 2026-11-09 USER32 与 Win32k 对照
 
 BUILD / INTEGRATED(独立原生见证 schema 8、Broker 恢复前读回和见证进程内诊断)。

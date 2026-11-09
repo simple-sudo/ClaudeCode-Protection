@@ -5,6 +5,15 @@
 历史页的“当前/待执行/暂停/DELIVERABLE”按段落日期及限定范围解释，不是今天的状态或操作许可。
 不在本页复制当前安装和授权摘要。
 
+## 2026-11-09 独立 LPAC 实机区分策略与映像
+
+受限进程的 Win32k 禁用为关闭，USER32 读取、无执行映射及 WIN32U 装载通过，
+USER32 可执行装载仍返回 1114，GDI32 与 GDI32FULL 返回 8。原链核验回收。
+普通自研见证已验证附加断点，禁用 Win32k 的对照定位到 `NtGdiInit2` 返回空，
+真实受限分支仍待取证。
+[实机结果](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#实机排除-win32k-禁用策略) ·
+[普通对照](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#普通进程的初始化返回分支)
+
 ## 2026-11-09 USER32 初始化对照和新增宿主参考
 
 普通 Windows 的进程内 Win32k 禁用复现 USER32 1114。新见证将策略、文件映射、

@@ -1312,3 +1312,47 @@ GDI32FULL 装载各返回 8。该对照验证了区分能力，独立 LPAC 的�
 `dotnet` 宿主启动，子测试等待超时。保留原日志，改用该回归工程自己的 EXE 后通过。
 证据在 `work/session-zero-user32-20261109-01/`。新包未安装，Session 0 实测、
 实际代理出口、五项受限宿主身份读取及正常受限开发均为 NOT_RUN。
+
+### 实机排除 Win32k 禁用策略
+
+本人批准审查 `1B696A1453B8…` 并确认一次 UAC。原 Bootstrap 从 `79818ec3`
+更新到 `9b513a84b3204a8da185c0f3bdd2bee5`，保持 INACTIVE。安装清单回读 SHA-256
+`B0BBE147DBB6E092B8D89BB6D159AD5308D89A2E484610EC2BA629C28783AA4A`。
+首个普通候选的两份库字节不同，未用于安装。复核候选以同一已构建库生成 Bootstrap，
+31 项文件和嵌入合同读回一致，12 项回执检查及普通身份的安装拒绝验证通过。
+
+固定受限见证再次通过原 LocalService 创建者与 Broker 的同一令牌核验，原线程恢复
+一次。USER32 首次可执行装载返回 1114，见证退出 65。Broker 和见证读取进程系统
+调用策略均成功，`DisallowWin32kSystemCalls` 均为 false。对同一受限令牌，
+System32 的 USER32 文件打开、无执行映射和 WIN32U 装载均成功。
+随后 GDI32、GDI32FULL 装载分别返回 8。该结果排除了所查 Win32k 禁用策略。
+实际 Win32k 调用、GDI 附加时的失败分支及桌面对象访问仍待定位。
+
+原 Job 在隔离下有序关闭，原 profile、工作区和服务均经原 owner 确认闭合。普通
+SCM 复查返回 1060，确切工作区根缺席。外层原句柄终态、令牌连续性与安全观察均
+通过，许可已消耗。正式 Claude、五项受限宿主身份读值、正常开发功能和实际网络
+验证均 NOT_RUN。终态 `work/session-zero-user32-20261109-01/receipt.json` SHA-256
+`05D78C37883977124E888A99656EECD737FD8504C01EF481EC8680E1AB8194D5`。
+
+### 普通进程的初始化返回分支
+
+按本机匹配的 Microsoft 符号和映像哈希，普通 Windows 自研见证通过处理器执行断点
+观察首次 USER32 加载。默认组的 `CsrClientConnectToServer` 返回 0，
+`NtGdiInit2` 非空，`GdiDllInitialize` 返回 0。仅对自身禁用 Win32k 的对照组
+中，CSR 同样返回 0，`NtGdiInit2` 返回空，GDI 返回 `0xC0000001`，
+USER32 走失败出口并报告 1114。只记录 GDI 返回是否为空，未保存非空原值。
+普通独立启动、等到入口标记后再附加已持有原句柄的自研见证，也成功取得 CSR、
+GDI 和失败出口的读值，见证退出 65。
+
+本机静态导入显示，GDI32FULL 导入 USER32，GDI32 的入口也检查映射中的 GDI32FULL
+或 GDI32MIN。受限见证在 USER32 失败后测得的两个错误 8 因此不能视作独立根因。
+USER32 和 GDI32 另有独立的系统调用过滤器策略读取，尚无受限进程的此项读值。
+受限第一次加载时的实际 CSR、GDI 与 `NtGdiInit2` 返回分支均 UNKNOWN。
+
+固定 Git、PowerShell 及 .NET 8.0.28 的 CoreCLR 对 USER32 有静态导入，固定官方
+CLI 将 USER32 延迟导入。入口级 `dotnet.exe` 缺少 USER32 直接导入，仍会加载依赖
+它的 CoreCLR。上述结论限静态依赖。正式 CLI、受限工具和真实受限断点未执行。
+普通默认组和 Win32k 对照组的断点日志分别为
+`A5F5BFC9288AE9B9719767DCA668512A4A6DDD5563B5A22357ECA4E4793F9435`
+和 `162669740B734292EF13EF8656431189A4279F10151F4A73F557CC4B46AF6A85`。
+[处理器执行断点](https://learn.microsoft.com/en-us/windows-hardware/drivers/debuggercmds/ba--break-on-access-)。
