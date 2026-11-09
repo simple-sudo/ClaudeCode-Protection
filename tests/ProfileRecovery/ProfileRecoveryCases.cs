@@ -93,6 +93,10 @@ internal sealed class InstallationPackageSid : IDisposable
 }
 internal sealed record OwnedJobIntent(string JobId){internal static OwnedJobIntent Read(ProtectedState state,string job)=>new(job);internal static OwnedJobIntent[] ReadAll(ProtectedState state)=>throw new Exception("native collaborator forbidden in reader tests");}
 internal static class AtomicJobCompletion{internal static object? ReadClosed(ProtectedState state,OwnedJobIntent job)=>state.Closed?new object():null;}
+internal static class UnadmittedJobRetirement
+{
+    internal static bool Read(ProtectedState state,OwnedJobIntent job)=>throw new Exception("Job inventory forbidden in reader tests");
+}
 internal static class SessionZeroCreatorRecovery
 {
     internal static bool IsAdmissionResolved(ProtectedState state,OwnedJobIntent job)=>throw new Exception("native Job inventory forbidden in reader tests");

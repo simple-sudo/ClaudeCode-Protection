@@ -29,6 +29,7 @@ internal static class CreatorJobCases
         var requireSoleHandle=owner.GetMethod("AssertSoleJobHandle",methods)!;
         var requireAbsent=owner.GetMethod("AssertCreatorNameAbsent",methods)!;
         var parseClosed=library.GetType("ProtectionLifecycle.AtomicJobCompletion",true)!.GetMethod("ParseClosed",methods)!;
+        var parseRetirement=library.GetType("ProtectionLifecycle.UnadmittedJobRetirement",true)!.GetMethod("Parse",methods)!;
         var install=new string('1',32);
         var release=new string('2',32);
         var hash=new string('A',64);
@@ -104,6 +105,27 @@ internal static class CreatorJobCases
         Refused(()=>ReadClosed(newClosed,creator));
         newClosed["CreatorAccessRevoked"]=true;
         Check(ReadClosed(newClosed,creator) is not null);
+
+        var retirement=JsonSerializer.SerializeToNode(new{
+            SchemaVersion=1,IntentSHA256=hash,Status="NEVER_ADMITTED_ORIGINAL_JOB_ZERO_OBSERVED",TotalProcesses=0,
+            Snapshot=Closed(legacyId)["Snapshot"]!.DeepClone()
+        })!.AsObject();
+        void ReadRetirement(JsonObject receipt,object intent,string expectedHash)=>
+            parseRetirement.Invoke(null,[JsonSerializer.SerializeToUtf8Bytes(receipt),intent,expectedHash]);
+        ReadRetirement(retirement,legacy,hash);Check(true);
+        Refused(()=>ReadRetirement(retirement,creator,hash));
+        Refused(()=>ReadRetirement(retirement,legacy,new string('B',64)));
+        Refused(()=>ReadClosed(retirement,legacy));
+        var priorMember=retirement.DeepClone().AsObject();
+        priorMember["TotalProcesses"]=1;
+        Refused(()=>ReadRetirement(priorMember,legacy,hash));
+        foreach(var (field,value) in new (string,JsonNode?)[]{("JobId",JsonValue.Create(jobId)),("LimitFlags",JsonValue.Create(0)),
+            ("ActiveAfter",JsonValue.Create(1)),("ProcessIds",new JsonArray(JsonValue.Create(42))),("ProcessIds",null)})
+        {
+            var changed=retirement.DeepClone().AsObject();
+            changed["Snapshot"]![field]=value;
+            Refused(()=>ReadRetirement(changed,legacy,hash));
+        }
 
         var baseAcl=$"D:P(A;;0x0006000f;;;SY)(A;;0x0006000f;;;BA)(A;;RC;;;{tagSid})";
         var creatorGrant=$"(A;;0x00020001;;;{creatorSid})";

@@ -229,9 +229,11 @@ internal static class SessionProfileRecovery
         var jobs=OwnedJobIntent.ReadAll(state);
         var allResolved=true;
         var retiredCount=0;
+        var legacyRetirementChecked=false;
         foreach(var job in jobs)
         {
-            if(SessionZeroCreatorRecovery.ReadRetired(state,job)){retiredCount++;continue;}
+            if(UnadmittedJobRetirement.Read(state,job)){retiredCount++;continue;}
+            if(SessionZeroCreatorRecovery.ReadRetired(state,job)){retiredCount++;legacyRetirementChecked=true;continue;}
             if(AtomicJobCompletion.ReadClosed(state,job) is null)allResolved=false;
         }
         var pending=Pending(state);if(pending.Count>64)throw WfpNative.Contract("ProfileRecoveryInventoryExceeded");
@@ -254,7 +256,7 @@ internal static class SessionProfileRecovery
         return(pending.Count==0?0:3,JsonSerializer.Serialize(new {SchemaVersion=1,Scope="RESOURCE_RECOVERY_JOURNAL_READ_ONLY",
             Status=pending.Count==0?"NO_PENDING_PROFILE_CLEANUP":"PROFILE_RECOVERY_DECISION_REQUIRED",AllAdmissionsClosed=allResolved && retiredCount==0,
             AllJobHistoriesResolved=allResolved,RetiredNeverAdmittedJobs=retiredCount,
-            Pending=items,StorageIdentityAndQuarantineCheckedByRecoveryOnly=true,StateModified=false,JobApiCalled=retiredCount>0,
+            Pending=items,StorageIdentityAndQuarantineCheckedByRecoveryOnly=true,StateModified=false,JobApiCalled=legacyRetirementChecked,
             CleanupAuthorized=false,LaunchAuthorized=false}));
     }
     internal static (int ExitCode,string Report) RecoverNeverStarted(ProtectedState state)
@@ -263,7 +265,7 @@ internal static class SessionProfileRecovery
         var retiredCount=0;
         foreach(var job in OwnedJobIntent.ReadAll(state))
         {
-            if(SessionZeroCreatorRecovery.ReadRetired(state,job)){retiredCount++;continue;}
+            if(UnadmittedJobRetirement.Read(state,job) || SessionZeroCreatorRecovery.ReadRetired(state,job)){retiredCount++;continue;}
             if(AtomicJobCompletion.ReadClosed(state,job) is null)throw WfpNative.Contract("UnstartedRecoveryRequiresAllAdmissionsClosed");
         }
         var fences=FencePlan.ReadAll(state);if(fences.Count==0)throw WfpNative.Contract("UnstartedRecoveryNeedsQuarantine");

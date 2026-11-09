@@ -97,6 +97,7 @@ internal static class OfflineTlsQualification
                             catch(Exception error){failures.Add(error);}
                         profile.AfterOwnedJobZero(job.CloseAtomicAdmissionAndStop());
                     }
+                    else _=job.StopAndRetireUnadmitted();
                 }
                 catch(Exception error){failures.Add(error);}
                 try{child?.Dispose();}catch(Exception error){failures.Add(error);}

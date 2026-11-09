@@ -90,6 +90,44 @@ internal sealed record JobSnapshot(string JobId,uint LimitFlags,uint ActiveBefor
     internal bool ObservedZero=>ActiveBefore==0 && ActiveAfter==0 && ProcessIds.Length==0;
 }
 
+internal sealed record UnadmittedJobRetirement(int SchemaVersion,string IntentSHA256,string Status,uint TotalProcesses,JobSnapshot Snapshot)
+{
+    internal const string Disposition="NEVER_ADMITTED_ORIGINAL_JOB_ZERO_OBSERVED";
+    internal static string Leaf(string id)=>"job-unadmitted-retired-"+Identifiers.Hex32(id)+".json";
+
+    internal static void AssertNoAdmissionEvidence(ProtectedState state,OwnedJobIntent intent)
+    {
+        if(state.ReadOptional("job-admission-"+intent.JobId+".json") is not null ||
+            state.ReadOptional("job-completed-"+intent.JobId+".json") is not null)
+            throw WfpNative.Contract("UnadmittedJobConflictingAdmissionEvidence");
+    }
+
+    internal static bool Read(ProtectedState state,OwnedJobIntent intent)
+    {
+        state.AssertHeld();
+        var raw=state.ReadOptional(Leaf(intent.JobId));
+        if(raw is null)return false;
+        if(OwnedJobIntent.Read(state,intent.JobId)!=intent)throw WfpNative.Contract("UnadmittedJobIntentMismatch");
+        AssertNoAdmissionEvidence(state,intent);
+        Parse(raw.Bytes,intent,state.Read(OwnedJobIntent.Leaf(intent.JobId),8192).SHA256);
+        return true;
+    }
+
+    internal static void Parse(byte[] bytes,OwnedJobIntent intent,string intentHash)
+    {
+        using var doc=JsonDocument.Parse(bytes,new JsonDocumentOptions{MaxDepth=5});
+        var record=doc.RootElement;
+        StrictJson.Fields(record,"SchemaVersion","IntentSHA256","Status","TotalProcesses","Snapshot");
+        StrictJson.Fields(record.GetProperty("Snapshot"),"JobId","LimitFlags","ActiveBefore","ActiveAfter","ProcessIds","AtUtc");
+        var result=record.Deserialize<UnadmittedJobRetirement>();
+        if(intent.SchemaVersion!=2 || intent.CreatorServiceSid is not null || result is null || result.SchemaVersion!=1 ||
+            result.IntentSHA256!=intentHash || result.Status!=Disposition || result.TotalProcesses!=0 ||
+            result.Snapshot is not {ProcessIds:not null} snapshot ||
+            snapshot.JobId!=intent.JobId || !snapshot.ExpectedLimits || !snapshot.ObservedZero)
+            throw WfpNative.Contract("UnadmittedJobRetirementProofMismatch");
+    }
+}
+
 // Concrete kernel owner. Atomic admission reserves one creation using JOB_LIST;
 // there is no post-creation Assign or PID-based termination fallback.
 internal sealed class OwnedKernelJob : IDisposable
@@ -99,6 +137,7 @@ internal sealed class OwnedKernelJob : IDisposable
     private readonly OwnedJobIntent intent;
     private readonly SafeJobHandle handle;
     private readonly PrivateJobNamespace? jobNamespace;
+    private readonly string? originalIntentHash;
     private bool disposed;
     private bool admissionClaimed,admissionClosed;
     private bool creatorGrantAttempted,creatorReleaseConfirmed;
@@ -170,6 +209,8 @@ internal sealed class OwnedKernelJob : IDisposable
         AssertHeld();version.AssertHeld(state);
         if(admissionClaimed || admissionClosed || intent.Release!=version.Package.Release || intent.ManifestSHA256!=version.Package.ManifestHash)
             throw new InvalidOperationException("One-shot job admission is unavailable");
+        if(state.ReadOptional(UnadmittedJobRetirement.Leaf(intent.JobId)) is not null)
+            throw WfpNative.Contract("RetiredJobCannotReserveAdmission");
         var observed=Observe();if(!observed.ExpectedLimits || !observed.ObservedZero)throw WfpNative.Contract("AtomicAdmissionRequiresEmptySealedJob");
         state.WriteNew("job-admission-"+intent.JobId+".json",JsonSerializer.SerializeToUtf8Bytes(new {
             SchemaVersion=1,state.InstallationId,intent.JobId,intent.Release,intent.ManifestSHA256,Binding="ATOMIC_JOB_LIST_AT_CREATION",Reusable=false
@@ -197,8 +238,27 @@ internal sealed class OwnedKernelJob : IDisposable
             intent.Release,intent.ManifestSHA256,admission.SHA256,"ADMISSION_CLOSED_MEMBERS_ZERO_OBSERVED",snapshot,intent.CreatorServiceSid is null?null:true)));
         return snapshot;
     }
-    private OwnedKernelJob(ProtectedState state,OwnedJobIntent intent,SafeJobHandle handle,PrivateJobNamespace? jobNamespace)
-    {this.state=state;this.intent=intent;this.handle=handle;this.jobNamespace=jobNamespace;}
+
+    internal JobSnapshot StopAndRetireUnadmitted()
+    {
+        AssertHeld();
+        if(admissionClaimed || admissionClosed || originalIntentHash is null || intent.CreatorServiceSid is not null)
+            throw WfpNative.Contract("UnadmittedRetirementRequiresOriginalPrivateJob");
+        admissionClosed=true;
+        var snapshot=StopAndVerifyZero();
+        UnadmittedJobRetirement.AssertNoAdmissionEvidence(state,intent);
+        AssertSoleJobHandle(handle);
+        var totalProcesses=Accounting().TotalProcesses;
+        if(!snapshot.ExpectedLimits || totalProcesses!=0 ||
+            state.Read(OwnedJobIntent.Leaf(intent.JobId),8192).SHA256!=originalIntentHash)
+            throw WfpNative.Contract("UnadmittedJobRetirementEvidenceMismatch");
+        var retirement=new UnadmittedJobRetirement(1,originalIntentHash,UnadmittedJobRetirement.Disposition,totalProcesses,snapshot);
+        state.WriteNew(UnadmittedJobRetirement.Leaf(intent.JobId),JsonSerializer.SerializeToUtf8Bytes(retirement));
+        return snapshot;
+    }
+
+    private OwnedKernelJob(ProtectedState state,OwnedJobIntent intent,SafeJobHandle handle,PrivateJobNamespace? jobNamespace,string? originalIntentHash=null)
+    {this.state=state;this.intent=intent;this.handle=handle;this.jobNamespace=jobNamespace;this.originalIntentHash=originalIntentHash;}
 
     internal static OwnedKernelJob CreateEmpty(ProtectedState state,VerifiedVersion version)
         =>CreateEmpty(state,version,null);
@@ -218,11 +278,11 @@ internal sealed class OwnedKernelJob : IDisposable
             _=creator.AssertReadyForJob(state,version);
             intent=intent with {JobId=creator.JobId};
         }
-        state.WriteNew(OwnedJobIntent.Leaf(intent.JobId),JsonSerializer.SerializeToUtf8Bytes(intent)); // Before kernel creation.
+        var intentHash=state.WriteNew(OwnedJobIntent.Leaf(intent.JobId),JsonSerializer.SerializeToUtf8Bytes(intent)); // Before kernel creation.
         OwnedKernelJob? owner=null;
         try
         {
-            owner=CreateNative(state,intent);
+            owner=CreateNative(state,intent,intentHash);
             owner.AssertHeld();var limits=new ExtendedLimits();limits.Basic.LimitFlags=RequiredLimits;
             if(!SetInformationJobObject(owner.handle,9,ref limits,(uint)Marshal.SizeOf<ExtendedLimits>()))throw Error("SetOwnedJobLimits");
             var observed=owner.Observe();
@@ -239,7 +299,7 @@ internal sealed class OwnedKernelJob : IDisposable
             }));}catch(Exception log){throw new AggregateException("Job creation and failure recording both failed",ex,log);}finally{owner?.Dispose();}throw;
         } // No process launch is exposed before the successful return.
     }
-    private static OwnedKernelJob CreateNative(ProtectedState state,OwnedJobIntent intent)
+    private static OwnedKernelJob CreateNative(ProtectedState state,OwnedJobIntent intent,string intentHash)
     {
         using var descriptor=new KernelJobSeal.Descriptor(intent);var attributes=descriptor.Attributes;
         PrivateJobNamespace? jobNamespace=intent.CreatorServiceSid is null?PrivateJobNamespace.CreateNew(state,intent):null;SafeJobHandle? created=null;
@@ -258,7 +318,7 @@ internal sealed class OwnedKernelJob : IDisposable
                     catch(Exception log){throw new AggregateException("Job collision and refusal recording both failed",collision,log);}throw collision;
                 }
             }
-            var owner=new OwnedKernelJob(state,intent,created,jobNamespace);created=null;jobNamespace=null;return owner;
+            var owner=new OwnedKernelJob(state,intent,created,jobNamespace,intentHash);created=null;jobNamespace=null;return owner;
         }
         finally{try{created?.Dispose();}finally{jobNamespace?.Dispose();}}
     }
@@ -460,7 +520,8 @@ internal sealed class RegisteredJobSet : IDisposable
         {
             foreach(var intent in set.intents)
             {
-                if(SessionZeroCreatorRecovery.ReadRetired(state,intent)){set.retired.Add(intent.JobId);continue;}
+                if(UnadmittedJobRetirement.Read(state,intent) || SessionZeroCreatorRecovery.ReadRetired(state,intent))
+                {set.retired.Add(intent.JobId);continue;}
                 if(AtomicJobCompletion.ReadClosed(state,intent) is not null){set.completed.Add(intent.JobId);continue;}
                 var job=OwnedKernelJob.OpenExisting(state,intent);
                 if(job is null)set.absent.Add(intent.JobId);else{set.jobs.Add(job);_=job.Observe();}
@@ -481,8 +542,12 @@ internal sealed class RegisteredJobSet : IDisposable
         if(!OwnedJobIntent.ReadAll(state).SequenceEqual(intents))throw new InvalidDataException("Registered job set changed during maintenance");
         foreach(var id in completed)if(AtomicJobCompletion.ReadClosed(state,intents.Single(i=>i.JobId==id)) is null)
             throw new InvalidDataException("Completed admission proof changed");
-        foreach(var id in retired)if(!SessionZeroCreatorRecovery.ReadRetired(state,intents.Single(i=>i.JobId==id)))
-            throw new InvalidDataException("Retired admission proof changed");
+        foreach(var id in retired)
+        {
+            var intent=intents.Single(i=>i.JobId==id);
+            if(!UnadmittedJobRetirement.Read(state,intent) && !SessionZeroCreatorRecovery.ReadRetired(state,intent))
+                throw new InvalidDataException("Retired admission proof changed");
+        }
     }
     internal RegisteredJobObservation StopAndObserveRegisteredMembers()
     {

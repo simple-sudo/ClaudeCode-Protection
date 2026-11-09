@@ -291,7 +291,7 @@ internal static class NetworkQualification
                         if(stopped.Failures.Length!=0 || !stopped.QuarantineObservedBeforeStop || stopped.FinalJob?.ObservedZero!=true)throw WfpNative.Contract("NetworkRuntimeStopNotConfirmed");
                     }
                     else if(job.AtomicAdmissionReserved){var zero=job.CloseAtomicAdmissionAndStop();profile.AfterOwnedJobZero(zero);}
-                    else{_=job.StopAndVerifyZero();throw WfpNative.Contract("NetworkAdmissionReservationUnknown");}
+                    else _=job.StopAndRetireUnadmitted();
                 }
                 catch(Exception ex){phaseFailure=Combine(phaseFailure,ex);}
                 if(exited is not null)

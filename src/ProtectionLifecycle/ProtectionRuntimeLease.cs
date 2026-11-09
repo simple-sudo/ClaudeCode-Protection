@@ -343,7 +343,7 @@ internal static class WatchdogQualification
                     else
                     {
                         foreach(var fence in fences)if(!fence.Observe().FullQuarantineObserved)_=fence.ReinstateQuarantine();
-                        if(job.AtomicAdmissionReserved)profile.AfterOwnedJobZero(job.CloseAtomicAdmissionAndStop());else _=job.StopAndVerifyZero();
+                        if(job.AtomicAdmissionReserved)profile.AfterOwnedJobZero(job.CloseAtomicAdmissionAndStop());else _=job.StopAndRetireUnadmitted();
                     }
                 }
                 catch(Exception ex){phaseFailure=phaseFailure is null?ex:new AggregateException(phaseFailure,ex);}

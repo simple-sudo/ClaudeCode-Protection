@@ -215,6 +215,7 @@ internal static class OfflineConsoleQualification
                             var zero=job.CloseAtomicAdmissionAndStop();
                             if(profile.ProcessCreationAttempted)profile.AfterOwnedJobZero(zero);
                         }
+                        else _=job.StopAndRetireUnadmitted();
                     }
                     catch(Exception error){failures.Add(error);}
                     child?.Dispose();

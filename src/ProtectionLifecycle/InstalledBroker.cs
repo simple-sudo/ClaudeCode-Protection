@@ -322,8 +322,7 @@ public static partial class InstalledBroker
                 if(job.AtomicAdmissionReserved){final=job.CloseAtomicAdmissionAndStop();profile.AfterOwnedJobZero(final);}
                 else
                 {
-                    _=job.StopAndVerifyZero();
-                    throw WfpNative.Contract("AtomicAdmissionWasNotReservedCompletionUnknown");
+                    _=job.StopAndRetireUnadmitted();
                 }
             }
             catch(Exception ex){failure=failure is null?ex:new AggregateException(failure,ex);}

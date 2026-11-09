@@ -155,6 +155,7 @@ internal static class GpuQualification
                         try{AssertQuarantine();}catch(Exception ex){failures.Add(ex);}
                         profile.AfterOwnedJobZero(job.CloseAtomicAdmissionAndStop());
                     }
+                    else _=job.StopAndRetireUnadmitted();
                 }
                 catch(Exception ex){failures.Add(ex);}
                 try{child?.Dispose();}catch(Exception ex){failures.Add(ex);}

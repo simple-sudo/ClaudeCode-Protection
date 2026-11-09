@@ -332,7 +332,7 @@ internal sealed class ProtectedSession
                 }
                 catch(Exception ex){failures.Add(ex);}
             }
-            else if(job is not null)try{zero=job.AtomicAdmissionReserved?job.CloseAtomicAdmissionAndStop():job.StopAndVerifyZero();}catch(Exception ex){failures.Add(ex);}
+            else if(job is not null)try{zero=job.AtomicAdmissionReserved?job.CloseAtomicAdmissionAndStop():job.StopAndRetireUnadmitted();}catch(Exception ex){failures.Add(ex);}
             if(profile?.ProcessCreationAttempted==true && zero is not null)try{profile.AfterOwnedJobZero(zero);}catch(Exception ex){failures.Add(ex);}
             if(developProject && resources is not null && child is not null && closedResources)
                 try
@@ -871,7 +871,7 @@ internal sealed class ProtectedSession
             else
             {
                 foreach(var fence in fences)try{_=fence.ReinstateQuarantine();}catch(Exception ex){errors.Add(ex);}
-                if(job is not null)try{zero=job.AtomicAdmissionReserved?job.CloseAtomicAdmissionAndStop():job.StopAndVerifyZero();}catch(Exception ex){errors.Add(ex);}
+                if(job is not null)try{zero=job.AtomicAdmissionReserved?job.CloseAtomicAdmissionAndStop():job.StopAndRetireUnadmitted();}catch(Exception ex){errors.Add(ex);}
             }
             if(winsockAccess is not null && zero is not null)try{winsockAccess.RestoreAfterClosedJob(zero);}catch(Exception ex){errors.Add(ex);}
             if(profile?.ProcessCreationAttempted==true && zero is not null)try{profile.AfterOwnedJobZero(zero);}catch(Exception ex){errors.Add(ex);}

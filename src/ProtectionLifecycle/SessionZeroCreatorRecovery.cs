@@ -211,7 +211,7 @@ internal static class SessionZeroCreatorRecovery
     }
 
     internal static bool IsAdmissionResolved(ProtectedState state,OwnedJobIntent job)=>
-        ReadRetired(state,job) || AtomicJobCompletion.ReadClosed(state,job) is not null;
+        UnadmittedJobRetirement.Read(state,job) || ReadRetired(state,job) || AtomicJobCompletion.ReadClosed(state,job) is not null;
 
     internal static void AssertAbsent(ProtectedState state,OwnedJobIntent job,Original original)
     {

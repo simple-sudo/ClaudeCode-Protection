@@ -95,6 +95,7 @@ internal static class GpuHostReferenceQualification
             {
                 if(runtime is not null){stop=runtime.Stop(RuntimeStop.HostGpuTerminalReason);if(!stop.ConfirmsClosedHostGpu(id,job.JobId))throw WfpNative.Contract("HostGpuBoundStopUnconfirmed");}
                 else if(job.AtomicAdmissionReserved){try{AssertQuarantine();}catch(Exception error){errors.Add(error);}_=job.CloseAtomicAdmissionAndStop();}
+                else _=job.StopAndRetireUnadmitted();
             }
             catch(Exception error){errors.Add(error);}
             try{child?.Dispose();}catch(Exception error){errors.Add(error);}
@@ -145,6 +146,7 @@ internal static class GpuHostReferenceQualification
                         try{AssertQuarantine();}catch(Exception error){errors.Add(error);}
                         _=job.CloseAtomicAdmissionAndStop();
                     }
+                    else _=job.StopAndRetireUnadmitted();
                 }
                 catch(Exception error){errors.Add(error);}
                 try{child?.Dispose();}catch(Exception error){errors.Add(error);}

@@ -549,7 +549,7 @@ public static class BootstrapInstaller
                 var retired=false;
                 foreach(var job in jobs)
                 {
-                    if(SessionZeroCreatorRecovery.ReadRetired(state,job)){retired=true;continue;}
+                    if(UnadmittedJobRetirement.Read(state,job) || SessionZeroCreatorRecovery.ReadRetired(state,job)){retired=true;continue;}
                     if(AtomicJobCompletion.ReadClosed(state,job) is null)
                         throw new InvalidOperationException("Every Job needs a closed admission or a verified retirement without admission");
                 }

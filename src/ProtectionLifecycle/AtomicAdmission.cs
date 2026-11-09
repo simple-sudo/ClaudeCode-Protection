@@ -106,6 +106,8 @@ internal sealed record AtomicJobCompletion(int SchemaVersion,string Installation
     internal static AtomicJobCompletion? ReadClosed(ProtectedState state,OwnedJobIntent intent)
     {
         state.AssertHeld();var raw=state.ReadOptional("job-completed-"+intent.JobId+".json");if(raw is null)return null;
+        if(state.ReadOptional(UnadmittedJobRetirement.Leaf(intent.JobId)) is not null)
+            throw WfpNative.Contract("AtomicCompletionConflictsWithUnadmittedRetirement");
         if(state.InstallationId!=intent.InstallationId)throw WfpNative.Contract("AtomicCompletionInstallationMismatch");
         var result=ParseClosed(raw.Bytes,intent);
         var admission=state.Read("job-admission-"+intent.JobId+".json",8192);
