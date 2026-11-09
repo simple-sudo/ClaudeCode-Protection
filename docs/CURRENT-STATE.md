@@ -1,5 +1,12 @@
 # 当前状态与授权摘要
 
+2026-11-08，获批的 NTFS 只读核验把旧 LocalService profile 的现有目录对象身份、
+父目录和名称与原操作时间窗里的创建记录关联起来，保留区间内未见身份冲突。
+原 Job 关闭、服务停止和工作区根归属再次核验。当前 profile 注册仍需 LocalService
+身份复核，现场尚未恢复。本次许可已消耗。新版源码在已绑定的挂起根令牌直接读取
+被拒时，可用 Broker 的临时线程令牌执行一次限权打开。普通构建和回归通过，实机
+令牌访问及宿主 SID 对照未完成。[NTFS 证据与令牌检查](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#旧-profile-目录历史与限权令牌检查)。
+
 2026-11-08，只读实机核验 `aa781cf9` 的挂起根失败现场。原 Job 的持久关闭回执、
 服务配置及停止状态、工作区根身份和权限均已确认。LocalService profile 的磁盘根
 存在，Windows 事件另证实该次 LocalService 成功创建了确切命名 profile。当前注册

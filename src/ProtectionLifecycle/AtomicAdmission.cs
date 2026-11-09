@@ -298,9 +298,9 @@ internal sealed partial class AtomicChild : IDisposable
         if(actual is null || host is null || actual.Equals(host) || !actual.IsWellKnown(WellKnownSidType.LocalServiceSid))
             throw WfpNative.Contract("FormalSessionRequiresIndependentLocalServiceUser");
     }
-    internal static void AssertIndependentOfflineHandoffToken(SafeProcessHandle process,string expectedPackageSid)
+    internal static void AssertIndependentOfflineHandoffToken(OwnedKernelJob job,SafeProcessHandle process,string expectedPackageSid)
     {
-        var token=ReadIndependentOfflineToken(process,out var actualUser);
+        var token=ReadIndependentOfflineToken(job,process,out var actualUser,out _);
         using var host=WindowsIdentity.GetCurrent(TokenAccessLevels.Query);
         AssertIndependentSessionUser(actualUser,host.User);
         if(!token.IsAppContainer || !token.LpacAccessCheckObserved || token.ApplicationPackageAccessMask!=2 ||
@@ -684,7 +684,8 @@ internal sealed partial class AtomicChild : IDisposable
         if(!QueryFullProcessImageName(process,0,path,ref length))throw Error("AtomicReadCreatedImage");
         if(!string.Equals(WindowsPathSeal.Canonical(path.ToString()),image,StringComparison.OrdinalIgnoreCase))throw WfpNative.Contract("AtomicCreatedImageMismatch");
         SecurityIdentifier? tokenUser;
-        var token=independentOfflineConsole?ReadIndependentOfflineToken(process,out tokenUser):
+        var inspectionPrivilegeUsed=false;
+        var token=independentOfflineConsole?ReadIndependentOfflineToken(job,process,out tokenUser,out inspectionPrivilegeUsed):
             ReadTokenSnapshot(process,true,offlineConsole,out tokenUser);
         if(!token.IsAppContainer || RequiresLpac && !token.LpacAccessCheckObserved || token.PackageSid!=packageSid || !CapabilityProfile.Matches(token.CapabilityCount,token.Capabilities) || token.IntegritySid!="S-1-16-4096")throw WfpNative.Contract("AtomicTokenBeforeResumeMismatch");
         if(independentOfflineConsole)
@@ -711,6 +712,7 @@ internal sealed partial class AtomicChild : IDisposable
         var proof=new {SchemaVersion=1,state.InstallationId,job.JobId,Pid,CreatedFileTime=created.ToString("X16"),Token=token,
             ExpectedCapabilitiesSHA256=CapabilityProfile.SHA256,ObservedCapabilities=token.Capabilities?.CopyEntries(),
             ImageSHA256=version.Package.Files.Single(f=>f.Asset.Id=="broker-exe").SHA256,Job=snapshot,Fences=observations,
+            CreatorTokenInspectionPrivilegeUsedForResumeCheck=independentOfflineConsole?(bool?)inspectionPrivilegeUsed:null,
             Binding="SECURITY_CAPABILITIES_AND_JOB_LIST_AT_CREATION",Status="BEFORE_FIRST_RESUME",NetworkBehaviorQualified=false,
             SessionBindingSHA256=sessionAdmission?.BindingSHA256,
             Scope=sessionAdmission is not null?"AUTHENTICATED_SESSION_GATEWAY":network?.Kind==NetworkProbeKind.Control?"UNFENCED_OWNED_LOOPBACK_CONTROL":proxyOnly?"COMPILED_IPV4_PROXY_ONLY":gpuWorkload?"FIXED_CUDA_FULL_QUARANTINE":independentOfflineConsole?"FIXED_INDEPENDENT_CONSOLE_FULL_QUARANTINE":offlineConsole?"FIXED_CONSOLE_FULL_QUARANTINE":
@@ -1216,50 +1218,116 @@ internal sealed partial class AtomicChild : IDisposable
     private static AdmissionToken ReadToken(SafeProcessHandle process,bool observePackageAccess=true)
         =>ReadTokenSnapshot(process,observePackageAccess,false,out _);
 
-    private static AdmissionToken ReadIndependentOfflineToken(SafeProcessHandle process,out SecurityIdentifier? user)
+    private static AdmissionToken ReadIndependentOfflineToken(OwnedKernelJob job,SafeProcessHandle process,out SecurityIdentifier? user,
+        out bool inspectionPrivilegeUsed)
     {
+        inspectionPrivilegeUsed=false;
         try{return ReadTokenSnapshot(process,true,true,out user);}
         catch(Win32Exception error)when(error.NativeErrorCode==5 && error.Data["Stage"] is "AtomicOpenCreatedToken")
         {
-            // The LPAC access check still needs TOKEN_DUPLICATE. Query-only
-            // access distinguishes the failure without granting admission.
-            if(!OpenProcessToken(process,8,out var query))throw Error("CreatorChildTokenQueryOnly");
-            using(query)error.Data["Stage"]="CreatorChildTokenQuerySucceededWithoutDuplicate";
-            throw;
+            var querySucceeded=OpenProcessToken(process,8,out var query);
+            var directFailure=querySucceeded?error:Error("CreatorChildTokenQueryOnly");
+            query?.Dispose();
+            if(querySucceeded)error.Data["Stage"]="CreatorChildTokenQuerySucceededWithoutDuplicate";
+            try
+            {
+                using var held=OpenExactCreatorTokenForInspection(job,process);
+                var snapshot=ReadHeldTokenSnapshot(held,true,true,out user);
+                inspectionPrivilegeUsed=true;
+                return snapshot;
+            }
+            catch(Exception inspection){throw new AggregateException("Direct and scoped creator token inspection failed",directFailure,inspection);}
+        }
+    }
+
+    private static SafeAccessTokenHandle OpenExactCreatorTokenForInspection(OwnedKernelJob job,SafeProcessHandle process)
+    {
+        ProtectedState.RequireAdministrator();
+        _=job.SessionZeroCreatorSid;
+        job.AssertCreatorSealedBeforeResume();
+        job.AssertSingleProcessEverAdmitted();
+        if(!job.ContainsProcess(process) || WaitForSingleObject(process,0)!=0x102)
+            throw WfpNative.Contract("CreatorTokenInspectionRequiresHeldJobMember");
+        KernelJobSeal.SessionObjectDescriptor.AssertSeal(process,true);
+        using var threadIdentity=WindowsIdentity.GetCurrent(true);
+        using var broker=WindowsIdentity.GetCurrent(TokenAccessLevels.Query|TokenAccessLevels.Duplicate);
+        if(threadIdentity is not null || WindowsTokenInformation.Read(broker.AccessToken,WindowsTokenInformation.Dword.Type,"CreatorInspectionBrokerToken")!=1 ||
+            WindowsTokenInformation.Read(broker.AccessToken,WindowsTokenInformation.Dword.Elevation,"CreatorInspectionBrokerToken")!=1)
+            throw WfpNative.Contract("CreatorInspectionRequiresElevatedPrimaryBroker");
+        // An independent impersonation token limits the privilege to the one
+        // native open against the already authenticated, non-inherited handle.
+        if(!DuplicateTokenEx(broker.AccessToken,0x2c,IntPtr.Zero,2,2,out var inspection))
+        {
+            var failure=Error("DuplicateCreatorInspectionBrokerToken");
+            inspection?.Dispose();
+            throw failure;
+        }
+        using(inspection)
+        {
+            if(!LookupPrivilegeValue(null,"SeDebugPrivilege",out var debug))throw Error("LookupCreatorInspectionPrivilege");
+            var change=new InspectionPrivilegeChange{Count=1,Privilege=debug,Attributes=2};
+            Adjust(true);
+            Adjust(false);
+            var held=WindowsIdentity.RunImpersonated(inspection,()=>
+            {
+                if(!OpenProcessToken(process,8|2,out var token))throw Error("OpenCreatorChildTokenUnderInspectionPrivilege");
+                return token;
+            });
+            try
+            {
+                using var currentThread=WindowsIdentity.GetCurrent(true);
+                if(currentThread is not null)throw WfpNative.Contract("CreatorInspectionThreadTokenStillPresent");
+                return held;
+            }
+            catch{held.Dispose();throw;}
+
+            void Adjust(bool disableAll)
+            {
+                var success=AdjustTokenPrivileges(inspection,disableAll,ref change,0,IntPtr.Zero,IntPtr.Zero);
+                var native=Marshal.GetLastWin32Error();
+                if(!success || native!=0)
+                {
+                    var failure=new Win32Exception(native);
+                    failure.Data["Stage"]=disableAll?"ClearCreatorInspectionPrivileges":"EnableCreatorInspectionPrivilege";
+                    throw failure;
+                }
+            }
         }
     }
 
     private static AdmissionToken ReadTokenSnapshot(SafeProcessHandle process,bool observePackageAccess,bool captureUser,out SecurityIdentifier? user)
     {
         if(!OpenProcessToken(process,observePackageAccess?8u|2u:8u,out var token))throw Error("AtomicOpenCreatedToken");
-        using(token)
+        using(token)return ReadHeldTokenSnapshot(token,observePackageAccess,captureUser,out user);
+    }
+
+    private static AdmissionToken ReadHeldTokenSnapshot(SafeAccessTokenHandle token,bool observePackageAccess,bool captureUser,out SecurityIdentifier? user)
+    {
+        user=null;
+        if(captureUser)
         {
-            user=null;
-            if(captureUser)
-            {
-                using var identity=new WindowsIdentity(token.DangerousGetHandle());
-                user=identity.User??throw WfpNative.Contract("OfflineConsoleSuspendedTokenUserMissing");
-            }
-            var container=WindowsTokenInformation.Read(token,WindowsTokenInformation.Dword.IsAppContainer,"AtomicReadTokenInformation")!=0;
-            var sid=Read(31,p=>{var s=Marshal.ReadIntPtr(p);return s==IntPtr.Zero?null:new SecurityIdentifier(s).Value;});
-            // Read actual capability SIDs/attributes within the bounded native
-            // buffer. Count alone must not become a future singleton-profile
-            // identity check. Existing consumers still reject all nonzero sets.
-            var capabilities=TokenCapabilitySnapshot.Read(token.DangerousGetHandle());
-            var integrity=Read(25,p=>new SecurityIdentifier(Marshal.ReadIntPtr(p)).Value);
-            // Class46's zero-buffer query returned ERROR_INVALID_PARAMETER in
-            // the preserved own-token qualification. Do not infer false or a
-            // positive permit from that failure. Check the actual access
-            // semantic using documented AccessCheck + a query-only duplicate.
-            var packageAccess=observePackageAccess?ProbeApplicationPackageAccess(token):0u; // 0 = NOT_OBSERVED, never a grant.
-            return new(container,sid,capabilities.Count,integrity,container && packageAccess==2,packageAccess){Capabilities=capabilities};
-            T Read<T>(int type,Func<IntPtr,T> consume)
-            {
-                _=GetTokenInformation(token,type,IntPtr.Zero,0,out var size);
-                if(size is <4 or >65536)throw Error("AtomicTokenBufferSize");var p=Marshal.AllocHGlobal(size);
-                try{if(!GetTokenInformation(token,type,p,size,out _))throw Error("AtomicReadTokenInformation");return consume(p);}
-                finally{Marshal.FreeHGlobal(p);}
-            }
+            using var identity=new WindowsIdentity(token.DangerousGetHandle());
+            user=identity.User??throw WfpNative.Contract("OfflineConsoleSuspendedTokenUserMissing");
+        }
+        var container=WindowsTokenInformation.Read(token,WindowsTokenInformation.Dword.IsAppContainer,"AtomicReadTokenInformation")!=0;
+        var sid=Read(31,p=>{var s=Marshal.ReadIntPtr(p);return s==IntPtr.Zero?null:new SecurityIdentifier(s).Value;});
+        // Read actual capability SIDs/attributes within the bounded native
+        // buffer. Count alone must not become a future singleton-profile
+        // identity check. Existing consumers still reject all nonzero sets.
+        var capabilities=TokenCapabilitySnapshot.Read(token.DangerousGetHandle());
+        var integrity=Read(25,p=>new SecurityIdentifier(Marshal.ReadIntPtr(p)).Value);
+        // Class46's zero-buffer query returned ERROR_INVALID_PARAMETER in
+        // the preserved own-token qualification. Do not infer false or a
+        // positive permit from that failure. Check the actual access
+        // semantic using documented AccessCheck + a query-only duplicate.
+        var packageAccess=observePackageAccess?ProbeApplicationPackageAccess(token):0u; // 0 = NOT_OBSERVED, never a grant.
+        return new(container,sid,capabilities.Count,integrity,container && packageAccess==2,packageAccess){Capabilities=capabilities};
+        T Read<T>(int type,Func<IntPtr,T> consume)
+        {
+            _=GetTokenInformation(token,type,IntPtr.Zero,0,out var size);
+            if(size is <4 or >65536)throw Error("AtomicTokenBufferSize");var p=Marshal.AllocHGlobal(size);
+            try{if(!GetTokenInformation(token,type,p,size,out _))throw Error("AtomicReadTokenInformation");return consume(p);}
+            finally{Marshal.FreeHGlobal(p);}
         }
     }
     private static uint ProbeApplicationPackageAccess(SafeAccessTokenHandle token)
@@ -1329,5 +1397,12 @@ internal sealed partial class AtomicChild : IDisposable
     [DllImport("advapi32.dll",ExactSpelling=true,SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)] private static extern bool SetTokenInformation(SafeAccessTokenHandle token,int type,IntPtr data,uint size);
     [StructLayout(LayoutKind.Sequential)] private struct GenericMapping {internal uint Read,Write,Execute,All;}
     [DllImport("advapi32.dll",SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)] private static extern bool DuplicateTokenEx(SafeAccessTokenHandle existing,uint access,IntPtr security,int level,int type,out SafeAccessTokenHandle token);
+    [StructLayout(LayoutKind.Sequential)] private struct InspectionPrivilegeLuid {internal uint Low;internal int High;}
+    [StructLayout(LayoutKind.Sequential)] private struct InspectionPrivilegeChange {internal uint Count;internal InspectionPrivilegeLuid Privilege;internal uint Attributes;}
+    [DllImport("advapi32.dll",EntryPoint="LookupPrivilegeValueW",CharSet=CharSet.Unicode,SetLastError=true)]
+    [return:MarshalAs(UnmanagedType.Bool)] private static extern bool LookupPrivilegeValue(string? system,string name,out InspectionPrivilegeLuid privilege);
+    [DllImport("advapi32.dll",ExactSpelling=true,SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)]
+    private static extern bool AdjustTokenPrivileges(SafeAccessTokenHandle token,[MarshalAs(UnmanagedType.Bool)]bool disableAll,
+        ref InspectionPrivilegeChange newState,uint length,IntPtr previous,IntPtr returned);
     [DllImport("advapi32.dll",SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)] private static extern bool AccessCheck(byte[] descriptor,SafeAccessTokenHandle token,uint desired,ref GenericMapping mapping,[Out]byte[] privileges,ref uint size,out uint granted,[MarshalAs(UnmanagedType.Bool)]out bool allowed);
 }

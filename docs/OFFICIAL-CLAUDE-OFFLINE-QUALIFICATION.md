@@ -1100,3 +1100,26 @@ profile 关闭证据绑定到创建记录和 Job 关闭摘要。未取得创建�
 Broker、Bootstrap 和普通工具的 Release 构建通过。普通创建者测试覆盖消息阶段、
 随机数、对象身份及原有失败帧。离线控制台和未激活迁移回归通过。新协议未安装，
 实际 profile 创建、关闭及崩溃后恢复仍需实机验证。
+
+### 旧 profile 目录历史与限权令牌检查
+
+固定审查 `452AC84F2BDC37E8BF7745EFA2AB7E1AF3E94C0DE4AD1C5AA848825B9C8A4700` 的一次只读许可
+已消耗。再次核对了未激活安装、原失败输出、原 Job 持久关闭、停止服务及工作区根。
+持有预期 profile 根及其父目录后，从 C: 卷现有 NTFS 变更日志取得对应对象 ID、父 ID
+和名称的创建记录，时间在原操作窗口内。限定读取区间内未出现替换或重命名冲突。
+未读取 profile 文件内容或注册状态。原句柄终态和分类留在
+`work/creator-profile-lineage-20261108/receipt.json`，SHA-256
+`6EFE427210229A853C365632269F30817BDDB8676E1C997D7805F97F1EBD2BC4`。
+目录归属可作为下一次恢复的输入，需用 LocalService 复核实际映射并单独授权恢复。
+[NTFS 变更记录格式](https://learn.microsoft.com/en-us/windows/desktop/api/winioctl/ns-winioctl-usn_record_v2)
+
+令牌源码保留直接查询与复制请求，并记录单独查询是否成功。如果组合权限返回 5，
+仅独立离线资格可以在核验原持有进程、线程和 Job 后启用一次备用检查。Broker
+复制自己的提升主令牌作为临时线程令牌，清空启用特权后仅启用 `SeDebugPrivilege`，
+线程内只打开同一受约束进程的令牌，申请 `TOKEN_QUERY | TOKEN_DUPLICATE`。退出后
+确认无线程令牌，再执行原令牌身份和 LPAC 检查。Windows 对跨账户令牌读取另有
+调试特权要求，同时仍按请求的令牌权限检查访问。[OpenProcessToken 文档](https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-openprocesstoken)
+
+Broker、Bootstrap、普通工具 Release 构建及创建者、普通控制台、迁移、维护身份
+回归通过。普通令牌进入备用检查的入口被拒绝。调试特权是否能打开实机子进程令牌、
+后续 LPAC 校验和宿主 SID 对照仍待验证。源码未安装。

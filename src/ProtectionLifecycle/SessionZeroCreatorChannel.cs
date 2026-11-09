@@ -347,13 +347,13 @@ internal sealed class SessionZeroCreatorChannel : IDisposable
             job.AssertSingleProcessEverAdmitted();
             AssertImage(process,image);
             KernelJobSeal.SessionObjectDescriptor.AssertSeal(process,true);
-            AtomicChild.AssertIndependentOfflineHandoffToken(process,packageSid);
             thread=OpenThread(0x120802,false,report.Tid);
             if(thread.IsInvalid)throw Error("HoldCreatorChildThread");
             AtomicChild.AssertHeldInitialThread(process,thread,report.Pid,report.Tid);
             if(!GetThreadTimes(thread,out var threadCreated,out _,out _,out _))throw Error("ReadCreatorChildThreadTime");
             if(threadCreated!=report.ThreadCreated)throw WfpNative.Contract("CreatorChildThreadTimeMismatch");
             KernelJobSeal.SessionObjectDescriptor.AssertSeal(thread,true);
+            AtomicChild.AssertIndependentOfflineHandoffToken(job,process,packageSid);
             return new(process,thread,report,job);
         }
         catch{thread?.Dispose();process.Dispose();throw;}

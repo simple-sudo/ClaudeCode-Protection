@@ -238,6 +238,7 @@ internal static class OfflineConsoleNativeCases
             _=Call(atomic.GetMethod("ReadTokenSnapshot",Static)!,null,tokenArguments);
             using(var identity=WindowsIdentity.GetCurrent())
                 Require(tokenArguments[3] is SecurityIdentifier childUser && childUser.Value==identity.User?.Value);
+            Refuse<UnauthorizedAccessException>(()=>Call(atomic.GetMethod("OpenExactCreatorTokenForInspection",Static)!,null,null,process));
             var captures=(ITuple)Call(type.GetMethod("ReadAfterCreate",Instance)!,transport)!;
             Refuse<InvalidDataException>(()=>Call(type.GetMethod("ReadAfterCreate",Instance)!,transport));
             Require(ResumeThread(thread)==1);
