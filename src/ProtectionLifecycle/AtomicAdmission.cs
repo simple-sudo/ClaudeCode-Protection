@@ -446,8 +446,12 @@ internal sealed partial class AtomicChild : IDisposable
                 Input=std.Input,Output=std.Output,Error=std.Error},Attributes=attributes};
             environment=Marshal.StringToHGlobalUni(string.Join('\0',env.Select(p=>p.Key+"="+p.Value))+"\0\0");
             var command=new StringBuilder("\""+image+"\"");
-            if(!client.Request.StartupWitness)command.Append(' ').Append(client.Request.IdentitySurvey?OfflineConsoleQualification.IdentitySurveyChildCommand:
-                client.Request.UsePrivateWindow?OfflineConsoleQualification.PrivateWindowChildCommand:OfflineConsoleQualification.ChildCommand);
+            if(!client.Request.StartupWitness)command.Append(' ').Append(client.Request switch {
+                {NetworkSurvey:true}=>OfflineConsoleQualification.NetworkSurveyChildCommand,
+                {IdentitySurvey:true}=>OfflineConsoleQualification.IdentitySurveyChildCommand,
+                {UsePrivateWindow:true}=>OfflineConsoleQualification.PrivateWindowChildCommand,
+                _=>OfflineConsoleQualification.ChildCommand
+            });
             if(!CreateSealedProcess(image,command,ref processSecurity,ref threadSecurity,true,0x00080404u|OfflineConsoleStreams.DetachedCreationFlag,
                 environment,workspace.Path,ref startup,out var created))throw Error("CreatorAtomicCreateSuspendedOfflineConsole");
             return(new(created.Process,true),new(created.Thread,true));

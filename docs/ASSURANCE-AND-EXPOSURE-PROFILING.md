@@ -108,6 +108,28 @@ FlClash Core 有 32 条 TCP 记录的本地地址与物理接口地址相同。�
 `correlation.json` SHA-256 为 `8E905A9450EC246FB25FA19BB84485598E649FB57E7AF6633A3908F5CD5D8AF8`。
 这批参考给出可关联的实际字段。受限身份从各来源读取这些字段的对抗实验仍待执行。
 
+### 独立载荷本机网络内容取证
+
+schema 16 的固定离线载荷在已核对的独立 LocalService、零能力 LPAC、Job、私有
+窗口和完整隔离中读取真实 `GetAdaptersAddresses`、双栈 `GetExtendedTcpTable`
+及当前已知 FlClash 和 UU 相关进程条目。使用原 Broker 挂起进程的 PID、创建时间
+和本轮 Job 校验来源。原始网络缓冲和进程内容由同一 owner 写入受保护状态，回执只
+给分类、计数和摘要。使用接口 GUID 关联 MAC、IP、DNS 和网关，并用可信侧两次
+相同进程名、PID 和创建时间关联匹配的 TCP 行。空结果、不可用和缺少真实正对照
+保持未确认。没有发起网络连接。
+
+普通可信侧实际读取到 IPv4 TCP 表 295 行、IPv6 表 10 行。两块物理网卡均与
+`Get-NetAdapter -Physical` 的 GUID 和 MAC 匹配。两次采样间有一个稳定 FlClash
+进程，样本没有可归属该进程的 TCP 行，也未观察到稳定 UU 进程。早先独立样本中
+观察到的代理连接和远控监听只保留为历史事实，当前软件连接、运营商及位置仍未知。
+`work/session-zero-network-survey-20261109-01/trusted-network-summary.json` SHA-256
+`7E86BF0FE67544A0062B3C00A0DDDD769441D04208A09EE3586D5B0DFDC921E1`。
+对应原值保留在同一证据根的受保护 `private-reference` 子目录。
+
+七项 Release 构建、八组普通回归通过，含实际 Win32 数据和篡改 PID、时间、来源、
+进程名的拒绝。新版实际受限读取、代理配置、管理接口、远控配置、外部出口、
+运营商关联和完整画像仍待实测。
+
 ### 远控服务与物理网络参考
 
 2026-11-09，普通可信侧将 Windows 服务记录和三条稳定的进程 PID、创建时间与父子

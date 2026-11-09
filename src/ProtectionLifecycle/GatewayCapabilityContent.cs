@@ -29,6 +29,29 @@ internal sealed record GatewayCapabilityEndpoint(int Pid,string Phase,bool Creat
 }
 internal sealed record GatewayNetworkContent(int Pid,long StartedFileTime,long FinishedFileTime,NetworkContentRead[] Reads)
 {
+    internal static GatewayNetworkContent Parse(JsonElement n,uint pid,long ownerCreatedFileTime)
+    {
+        StrictJson.Fields(n,"Pid","StartedFileTime","FinishedFileTime","Reads");
+        var reads=n.GetProperty("Reads");if(reads.ValueKind!=JsonValueKind.Array || reads.GetArrayLength()!=3)throw new InvalidDataException("CapabilityReadRolesInvalid");
+        foreach(var read in reads.EnumerateArray())StrictJson.Fields(read,"Role","SizeStatus","RequestedBytes","ReadStatus","ReturnedBytes","NativeBase","Content","ErrorKind","ErrorCode");
+        var network=JsonSerializer.Deserialize<GatewayNetworkContent>(n.GetRawText())??throw new InvalidDataException("CapabilityReadMissing");
+        if(ownerCreatedFileTime<=0 || network.Pid!=pid || network.StartedFileTime<ownerCreatedFileTime || network.FinishedFileTime<network.StartedFileTime ||
+            network.FinishedFileTime-network.StartedFileTime>TimeSpan.TicksPerSecond*15 || network.Reads is null || network.Reads.Length!=3)
+            throw new InvalidDataException("CapabilityReadActorOrTimeInvalid");
+        for(int i=0;i<3;i++)
+        {
+            var r=network.Reads[i];
+            if(r is null || r.Role!=GatewayCapabilityContent.Roles[i] || r.Content is null || r.Content.Length>GatewayCapabilityContent.MaximumBytes ||
+                r.RequestedBytes>GatewayCapabilityContent.MaximumBytes || r.Content.Length!=0 && (r.ReadStatus!=0 || r.Content.Length!=r.ReturnedBytes || r.Content.Length>r.RequestedBytes) ||
+                r.ReadStatus is null && r.RequestedBytes!=0 ||
+                r.ReadStatus is not null && (r.RequestedBytes<4 || r.SizeStatus!=(i==0?111u:122u)) ||
+                r.ReadStatus==0 && r.ErrorKind is null && r.Content.Length<4 ||
+                r.NativeBase!=0 && (i!=0 || r.Content.Length==0) || i==0 && r.Content.Length!=0 && r.NativeBase==0 ||
+                r.ErrorKind is not (null or "DllNotFoundException" or "EntryPointNotFoundException" or "InvalidDataException" or "ArgumentException" or "TypeInitializationException" or "UnauthorizedAccessException" or "SecurityException" or "SEHException" or "BadImageFormatException" or "TypeLoadException" or "OverflowException") ||
+                (r.ErrorKind is null)!=(r.ErrorCode is null))throw new InvalidDataException("CapabilityReadDataInvalid");
+        }
+        return network;
+    }
     // This is only a gate for the fixed canary's subsequent HEAD, never full
     // privacy acceptance. Unsupported/empty/error output is not a denial.
     internal bool AllThreeDenied=>Reads.Length==3 && Reads.All(r=>r.ErrorKind is null &&
@@ -116,25 +139,7 @@ internal sealed record GatewayCapabilityChildReport(int SchemaVersion,GatewayChi
         GatewayNetworkContent? network=null;var n=root.GetProperty("Network");
         if(n.ValueKind!=JsonValueKind.Null)
         {
-            StrictJson.Fields(n,"Pid","StartedFileTime","FinishedFileTime","Reads");
-            var reads=n.GetProperty("Reads");if(reads.ValueKind!=JsonValueKind.Array || reads.GetArrayLength()!=3)throw new InvalidDataException("CapabilityReadRolesInvalid");
-            foreach(var read in reads.EnumerateArray())StrictJson.Fields(read,"Role","SizeStatus","RequestedBytes","ReadStatus","ReturnedBytes","NativeBase","Content","ErrorKind","ErrorCode");
-            network=JsonSerializer.Deserialize<GatewayNetworkContent>(n.GetRawText())??throw new InvalidDataException("CapabilityReadMissing");
-            if(ownerCreatedFileTime<=0 || network.Pid!=pid || network.StartedFileTime<ownerCreatedFileTime || network.FinishedFileTime<network.StartedFileTime ||
-                network.FinishedFileTime-network.StartedFileTime>TimeSpan.TicksPerSecond*15 || network.Reads is null || network.Reads.Length!=3)
-                throw new InvalidDataException("CapabilityReadActorOrTimeInvalid");
-            for(int i=0;i<3;i++)
-            {
-                var r=network.Reads[i];
-                if(r is null || r.Role!=GatewayCapabilityContent.Roles[i] || r.Content is null || r.Content.Length>GatewayCapabilityContent.MaximumBytes ||
-                    r.RequestedBytes>GatewayCapabilityContent.MaximumBytes || r.Content.Length!=0 && (r.ReadStatus!=0 || r.Content.Length!=r.ReturnedBytes || r.Content.Length>r.RequestedBytes) ||
-                    r.ReadStatus is null && r.RequestedBytes!=0 ||
-                    r.ReadStatus is not null && (r.RequestedBytes<4 || r.SizeStatus!=(i==0?111u:122u)) ||
-                    r.ReadStatus==0 && r.ErrorKind is null && r.Content.Length<4 ||
-                    r.NativeBase!=0 && (i!=0 || r.Content.Length==0) || i==0 && r.Content.Length!=0 && r.NativeBase==0 ||
-                    r.ErrorKind is not (null or "DllNotFoundException" or "EntryPointNotFoundException" or "InvalidDataException" or "ArgumentException" or "TypeInitializationException" or "UnauthorizedAccessException" or "SecurityException" or "SEHException" or "BadImageFormatException" or "TypeLoadException" or "OverflowException") ||
-                    (r.ErrorKind is null)!=(r.ErrorCode is null))throw new InvalidDataException("CapabilityReadDataInvalid");
-            }
+            network=GatewayNetworkContent.Parse(n,pid,ownerCreatedFileTime);
         }
         bool headEligible=network is not null && (fixedNoContentHttpsCanary?network.FixedNoContentHttpsCanaryEligible:network.AllThreeDenied);
         if(root.GetProperty("SchemaVersion").GetInt32()!=1 || network is null && gateway.Phase is not ("ENVIRONMENT" or "IDENTITY" or "NETWORK_CONTENT_READS") ||

@@ -16,6 +16,7 @@ internal static class OfflineConsoleQualification
     internal const string ChildCommand="offline-console-qualification-child",SessionVariable="CPC_OFFLINE_CONSOLE_SESSION";
     internal const string PrivateWindowChildCommand="private-window-offline-console-child";
     internal const string IdentitySurveyChildCommand="private-window-identity-survey-child";
+    internal const string NetworkSurveyChildCommand="private-window-network-survey-child";
     private const string PackageVariable="CPC_OFFLINE_CONSOLE_PACKAGE";
     private const string DescendantCommand="offline-console-denial-target",OutputLeaf="offline-console-output.txt";
     private const string TempLeaf="offline-console-temp.txt";
@@ -28,7 +29,7 @@ internal static class OfflineConsoleQualification
     {
         Identity, SessionId, ProgramFiles, WorkspacePath, ProfilePath, CurrentDirectory, Temp, Tmp,
         LocalAppData, UserProfile, Home, XdgConfigHome, ClaudeConfigDir, AppData, UnexpectedAuthority,
-        Streams, InputEof, Workspace, TempFile, Descendant, HostIdentity, Output, PrivateDesktop
+        Streams, InputEof, Workspace, TempFile, Descendant, HostIdentity, Output, PrivateDesktop, NetworkContent
     }
     private static readonly (string Name,ChildStage Stage)[] WorkspaceVariables=[
         ("USERPROFILE",ChildStage.UserProfile),
@@ -57,10 +58,10 @@ internal static class OfflineConsoleQualification
         foreach(var (name,_) in WorkspaceVariables)environment[name]=workspace;
     }
 
-    internal static int RunChild(bool privateWindow=false,bool identitySurvey=false)
+    internal static int RunChild(bool privateWindow=false,bool identitySurvey=false,bool networkSurvey=false)
     {
         var stage=ChildStage.Identity;
-        try{return RunCheckedChild(ref stage,privateWindow,identitySurvey);}
+        try{return RunCheckedChild(ref stage,privateWindow,identitySurvey,networkSurvey);}
         catch(Exception error) when(error is not OutOfMemoryException)
         {
             var kind=error switch {
@@ -74,7 +75,7 @@ internal static class OfflineConsoleQualification
         }
     }
 
-    private static int RunCheckedChild(ref ChildStage stage,bool privateWindow,bool identitySurvey)
+    private static int RunCheckedChild(ref ChildStage stage,bool privateWindow,bool identitySurvey,bool networkSurvey)
     {
         AtomicChild.AssertOfflineConsoleWorkerIdentity();
         stage=ChildStage.SessionId;
@@ -132,6 +133,11 @@ internal static class OfflineConsoleQualification
         catch(Win32Exception denied)when(denied.NativeErrorCode==367){}
         stage=ChildStage.HostIdentity;
         (identitySurvey?OfflineConsoleHostIdentity.CaptureSurvey(session):OfflineConsoleHostIdentity.Capture(session)).Write(workspace);
+        if(networkSurvey)
+        {
+            stage=ChildStage.NetworkContent;
+            OfflineConsoleNetworkSurvey.Capture(session).Write(workspace);
+        }
         stage=ChildStage.Output;
         using(var stdout=Console.OpenStandardOutput())stdout.Write(privateWindow?ExpectedPrivateWindowOutput:ExpectedOutput);
         using(var stderr=Console.OpenStandardError())stderr.Write(ExpectedError);
@@ -312,7 +318,8 @@ internal static class OfflineConsoleQualification
         var plans=RequireOfflinePrerequisites(state,version);
         var branchWitness=startupWitness && SessionZeroStartupWitness.UsesBranchTrace(version.Package.SchemaVersion);
         var windowAccessWitness=startupWitness && version.Package.SchemaVersion==PackageAssetCatalog.SessionZeroWindowAccessSchema;
-        var identitySurvey=!startupWitness && version.Package.SchemaVersion==PackageAssetCatalog.SessionZeroIdentitySurveySchema;
+        var networkSurvey=!startupWitness && version.Package.SchemaVersion==PackageAssetCatalog.SessionZeroNetworkSurveySchema;
+        var identitySurvey=networkSurvey || !startupWitness && version.Package.SchemaVersion==PackageAssetCatalog.SessionZeroIdentitySurveySchema;
         var privateWindow=startupWitness?SessionZeroStartupWitness.UsesPrivateWindow(version.Package.SchemaVersion):
             SessionZeroWindowPolicy.SupportsConsole(version.Package.SchemaVersion);
         var privateWindowTrace=privateWindow && branchWitness;
@@ -327,6 +334,9 @@ internal static class OfflineConsoleQualification
         SessionZeroStartupWitness.Win32kObservation? beforeResumeWin32k=null;
         SessionZeroStartupWitness.SystemCallFilterObservation? beforeResumeSystemCallFilter=null;
         SessionZeroWindowAccess.Evidence? creatorWindowAccess=null;
+        OfflineConsoleNetworkSurvey.Summary? networkContent=null;
+        Exception? networkEvidenceFailure=null;
+        long childCreated=0;
         SessionZeroWindowOwner? privateWindows=null;
         var privateWindowsClosed=false;
         RuntimeStop? stopped=null;
@@ -348,6 +358,7 @@ internal static class OfflineConsoleQualification
             using var creator=SessionZeroCreatorRegistration.Create(layout,state,version);
             jobId=creator.JobId;
             OfflineConsoleHostIdentity? host=null;
+            OfflineConsoleNetworkSurvey? hostNetwork=null;
             SessionZeroCreatorChannel preparedChannel;
             try
             {
@@ -355,6 +366,11 @@ internal static class OfflineConsoleQualification
                 {
                     stage="CaptureHostIdentity";
                     host=identitySurvey?OfflineConsoleHostIdentity.CaptureSurvey(jobId):OfflineConsoleHostIdentity.Capture(jobId);
+                    if(networkSurvey)
+                    {
+                        stage="CaptureHostNetworkContent";
+                        hostNetwork=OfflineConsoleNetworkSurvey.Capture(jobId);
+                    }
                 }
                 stage="PrepareCreatorChannel";
                 preparedChannel=new(creator);
@@ -408,6 +424,7 @@ internal static class OfflineConsoleQualification
                 using var root=channel.Exchange(layout,state,version,job,startupWitness,privateWindows);
                 creatorWindowAccess=root.WindowAccess;
                 child=AtomicChild.AdoptSessionZeroOfflineConsole(layout,state,version,job,root,startupWitness);
+                if(networkSurvey)childCreated=child.ExpectedCreatedFileTime;
                 runtime=ProtectionRuntimeLease.ForFixedOfflineConsole(state,version,job,fences,child,job.JobId);
                 runtime.Activate(10000);
                 stage="RunWorker";
@@ -495,6 +512,14 @@ internal static class OfflineConsoleQualification
                                 workspace.Path,workspace.Temp,workspace.LocalData);
                     }
                     catch(Exception error){failedStage??=stage;failures.Add(error);}
+                    if(networkSurvey && exit==0)
+                        try
+                        {
+                            workspace.AssertHeld();
+                            networkContent=OfflineConsoleNetworkSurvey.Read(workspace.Path,job.JobId,child.Pid,childCreated)
+                                .Seal(state,version,job.JobId,hostNetwork!,OfflineConsoleNetworkSurvey.CaptureProcesses());
+                        }
+                        catch(Exception error)when(error is not OutOfMemoryException){networkEvidenceFailure=error;}
                 }
                 stage="CloseWorkspace";
                 workspace.CloseAfterProfileCleanup(channel);workspaceClosed=true;
@@ -543,9 +568,9 @@ internal static class OfflineConsoleQualification
         var identityObserved=IndependentIdentityObserved(hostIdentity) && (!identitySurvey || SurveyIdentityObserved(hostIdentity?.Survey));
         var functional=failures.Count==0 && closed && profileClosed && workspaceClosed && serviceRemoved && resumed && exit==0 &&
             filesMatched && matched && (!privateWindow || privateWindowsClosed);
-        var complete=functional && identityObserved;
+        var complete=functional && identityObserved && (!networkSurvey || networkContent?.ConfirmedForFixedReads==true);
         var consoleReport=JsonSerializer.SerializeToNode(new {
-            SchemaVersion=identitySurvey?3:privateWindow?2:1,Scope="INSTALLED_FIXED_INDEPENDENT_OFFLINE_CONSOLE",state.InstallationId,JobId=jobId,
+            SchemaVersion=networkSurvey?4:identitySurvey?3:privateWindow?2:1,Scope="INSTALLED_FIXED_INDEPENDENT_OFFLINE_CONSOLE",state.InstallationId,JobId=jobId,
             version.Package.Release,version.Package.ManifestHash,Status=complete?"INDEPENDENT_OFFLINE_CONSOLE_CLOSED":"INDEPENDENT_OFFLINE_CONSOLE_NOT_CONFIRMED",
             LastStage=stage,ProcessResumed=resumed,ChildExit=exit,OriginalJobClosed=closed,ProfileClosed=profileClosed,WorkspaceClosed=workspaceClosed,
             ServiceRemoved=serviceRemoved,StartupFailureRegistrationRemoved=startupFailureRegistrationRemoved,
@@ -562,6 +587,12 @@ internal static class OfflineConsoleQualification
             consoleReport["PrivateWindowOwnerClosed"]=privateWindowsClosed;
             consoleReport["PrivateDesktopMatched"]=stdout is {Overflow:false} && ExpectedPrivateWindowOutput.SequenceEqual(stdout.Bytes)?JsonValue.Create(true):null;
             consoleReport["CreatorWindowAccess"]=JsonSerializer.SerializeToNode(creatorWindowAccess);
+        }
+        if(networkSurvey)
+        {
+            consoleReport["NetworkContentObservation"]=JsonSerializer.SerializeToNode(networkContent);
+            consoleReport["NetworkContentEvidenceFailures"]=JsonSerializer.SerializeToNode(
+                networkEvidenceFailure is null?[]:WfpNative.Describe(networkEvidenceFailure).ToArray());
         }
         var report=consoleReport.ToJsonString();
         if(jobId is not null)state.WriteNew("independent-offline-console-after-"+jobId+".json",Encoding.UTF8.GetBytes(report));

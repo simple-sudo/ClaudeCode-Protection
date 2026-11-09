@@ -244,6 +244,7 @@ public static partial class InstalledBroker
     public static int RunOfflineConsoleChild()=>OfflineConsoleQualification.RunChild();
     public static int RunPrivateWindowOfflineConsoleChild()=>OfflineConsoleQualification.RunChild(privateWindow:true);
     public static int RunIdentitySurveyChild()=>OfflineConsoleQualification.RunChild(privateWindow:true,identitySurvey:true);
+    public static int RunNetworkSurveyChild()=>OfflineConsoleQualification.RunChild(privateWindow:true,identitySurvey:true,networkSurvey:true);
     public static int RunAdmissionCanary()
     {
         if(Environment.GetEnvironmentVariable("CPC_RESOURCE_PLAN") is not null)return AtomicChild.RunResourceCanary();

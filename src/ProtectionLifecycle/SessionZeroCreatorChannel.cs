@@ -22,6 +22,7 @@ internal sealed class SessionZeroCreatorChannel : IDisposable
     private const uint PrivateWindowReadControlRequestMagic=0x34574343; // CCW4.
     private const uint PrivateWindowConsoleRequestMagic=0x314d4343; // CCM1.
     private const uint IdentitySurveyRequestMagic=0x31534343; // CCS1.
+    private const uint NetworkSurveyRequestMagic=0x314e4343; // CCN1.
     private const uint ProfileCreatedMagic=0x314a4343,ProfileRecordedMagic=0x31414343; // CCJ1, CCA1.
     private const uint TokenProofMagic=0x31544343; // CCT1.
     private const int NonceSize=16,ReplySize=44,ObjectIdentityBytes=12;
@@ -117,8 +118,11 @@ internal sealed class SessionZeroCreatorChannel : IDisposable
         privateWindows?.AssertHeld(job);
         if(startupWitness)BinaryPrimitives.WriteUInt32LittleEndian(request,privateWindow?(stationReadControl?PrivateWindowReadControlRequestMagic:PrivateWindowRequestMagic):
             windowAccess?WindowAccessRequestMagic:StartupWitnessRequestMagic);
-        else if(privateWindow)BinaryPrimitives.WriteUInt32LittleEndian(request,schema==PackageAssetCatalog.SessionZeroIdentitySurveySchema?
-            IdentitySurveyRequestMagic:PrivateWindowConsoleRequestMagic);
+        else if(privateWindow)BinaryPrimitives.WriteUInt32LittleEndian(request,schema switch {
+            PackageAssetCatalog.SessionZeroIdentitySurveySchema=>IdentitySurveyRequestMagic,
+            PackageAssetCatalog.SessionZeroNetworkSurveySchema=>NetworkSurveyRequestMagic,
+            _=>PrivateWindowConsoleRequestMagic
+        });
         AssertQuarantine(state);
         AssertBoundPeer(service,image);
         job.ReserveSessionZeroAdmission(version,registration.Sid);
@@ -260,6 +264,7 @@ internal sealed class SessionZeroCreatorChannel : IDisposable
         internal bool UsePrivateWindow {get;init;}
         internal bool PrivateStationReadControl {get;init;}
         internal bool IdentitySurvey {get;init;}
+        internal bool NetworkSurvey {get;init;}
     }
     internal static Request ParseRequest(byte[] frame,string fixedJobId,uint serverPid,uint serverSession)
         =>ParseBoundRequest(frame,fixedJobId,serverPid,serverSession,allowStartupWitness:false);
@@ -275,15 +280,17 @@ internal sealed class SessionZeroCreatorChannel : IDisposable
             throw WfpNative.Contract("CreatorRequestBindingMismatch");
         var magic=BinaryPrimitives.ReadUInt32LittleEndian(frame);
         if(magic!=RequestMagic && (!allowStartupWitness || magic is not (StartupWitnessRequestMagic or WindowAccessRequestMagic or
-            PrivateWindowRequestMagic or PrivateWindowReadControlRequestMagic or PrivateWindowConsoleRequestMagic or IdentitySurveyRequestMagic)))
+            PrivateWindowRequestMagic or PrivateWindowReadControlRequestMagic or PrivateWindowConsoleRequestMagic or
+            IdentitySurveyRequestMagic or NetworkSurveyRequestMagic)))
             throw WfpNative.Contract("CreatorRequestPurposeMismatch");
-        var managedPrivate=magic is PrivateWindowConsoleRequestMagic or IdentitySurveyRequestMagic;
+        var managedPrivate=magic is PrivateWindowConsoleRequestMagic or IdentitySurveyRequestMagic or NetworkSurveyRequestMagic;
         return new(Convert.ToHexString(frame.AsSpan(28,16)).ToLowerInvariant(),fixedJobId,frame.AsSpan(12,NonceSize).ToArray()) {
             StartupWitness=magic!=RequestMagic && !managedPrivate,
             ObserveWindowAccess=magic==WindowAccessRequestMagic,
             UsePrivateWindow=managedPrivate || magic is PrivateWindowRequestMagic or PrivateWindowReadControlRequestMagic,
             PrivateStationReadControl=managedPrivate || magic==PrivateWindowReadControlRequestMagic,
-            IdentitySurvey=magic==IdentitySurveyRequestMagic
+            IdentitySurvey=magic is IdentitySurveyRequestMagic or NetworkSurveyRequestMagic,
+            NetworkSurvey=magic==NetworkSurveyRequestMagic
         };
     }
 

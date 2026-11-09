@@ -313,6 +313,15 @@ internal static class CreatorJobCases
             surveyMode.GetValue(managedDecoded) is false);
         Refused(()=>parseRequest.Invoke(null,[surveyRequest,jobId,12u,7u]));
         Refused(()=>parseWorkload.Invoke(null,[surveyRequest,legacyId,12u,7u]));
+        var networkRequest=(byte[])surveyRequest.Clone();
+        "CCN1"u8.CopyTo(networkRequest);
+        var networkMode=decoded.GetType().GetProperty("NetworkSurvey",BindingFlags.Instance|BindingFlags.NonPublic)!;
+        var networkDecoded=parseWorkload.Invoke(null,[networkRequest,jobId,12u,7u])!;
+        Check(mode.GetValue(networkDecoded) is false && privateMode.GetValue(networkDecoded) is true &&
+            readControlMode.GetValue(networkDecoded) is true && surveyMode.GetValue(networkDecoded) is true &&
+            networkMode.GetValue(networkDecoded) is true && networkMode.GetValue(surveyDecoded) is false);
+        Refused(()=>parseRequest.Invoke(null,[networkRequest,jobId,12u,7u]));
+        Refused(()=>parseWorkload.Invoke(null,[networkRequest,legacyId,12u,7u]));
         var windowType=library.GetType("ProtectionLifecycle.SessionZeroWindowAccess",true)!;
         var parseWindow=channel.GetMethod("ParseWindowAccess",methods)!;
         var writeWindow=channel.GetMethod("CreateWindowAccess",methods)!;

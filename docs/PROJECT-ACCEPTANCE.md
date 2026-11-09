@@ -5,6 +5,14 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-09 独立载荷本机网络内容取证
+
+SOURCE / BUILD / INTEGRATED(schema 16 固定原生 API 读取和原链封存)。
+VERIFIED(普通 Windows 适配器、双栈 TCP、已知进程读取及两块物理网卡 GUID 和 MAC 关联)。
+UNKNOWN(该时间窗的活动代理及 UU 连接归属，受限可见性)。
+NOT_RUN(schema 16 实机安装、独立 LPAC 本机内容读取、真实外部流量和完整 L3)。
+[普通证据](ASSURANCE-AND-EXPOSURE-PROFILING.md#独立载荷本机网络内容取证)
+
 ## 2026-11-09 实机登录会话与固件结果
 
 VERIFIED(`95c87b67` 未激活安装、独立零能力 LPAC 托管功能、原 Job 和双服务闭合)。

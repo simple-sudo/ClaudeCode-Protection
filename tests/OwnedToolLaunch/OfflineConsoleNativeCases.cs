@@ -31,6 +31,7 @@ internal static class OfflineConsoleNativeCases
         VerifyProjectionEvidence(library);
         VerifyHostIdentityEvidence(library);
         VerifyNativeIdentitySurvey(library);
+        VerifyNetworkContentSurvey(library);
         var type=library.GetType("ProtectionLifecycle.OfflineConsoleStreams",true)!;
         var read=type.GetMethod("ReadBounded",Static)!;
         foreach(var length in new[]{0,4096})
@@ -229,6 +230,37 @@ internal static class OfflineConsoleNativeCases
         Require(!Accepted("DENIED","DENIED","DIFFERS_FROM_HOST","DENIED"));
         Require(!Accepted("DENIED","DENIED","DENIED","MATCHES_HOST"));
         Console.WriteLine("PASS actual ordinary own-logon and SMBIOS content reads, bounded firmware parsing and identity survey refusals.");
+    }
+
+    private static void VerifyNetworkContentSurvey(Assembly library)
+    {
+        var type=library.GetType("ProtectionLifecycle.OfflineConsoleNetworkSurvey",true)!;
+        var session=new string('f',32);
+        var start=DateTime.UtcNow.ToFileTimeUtc();
+        var captured=Call(type.GetMethod("Capture",Static)!,null,session)!;
+        var parse=type.GetMethod("Parse",Static)!;
+        var bytes=JsonSerializer.SerializeToUtf8Bytes(captured,type);
+        var native=Call(parse,null,bytes,session,(uint)Environment.ProcessId,start)!;
+        var after=Call(type.GetMethod("CaptureProcesses",Static)!,null)!;
+        var comparison=Call(type.GetMethod("Compare",Instance)!,native,captured,after,new string('A',64))!;
+        var summary=JsonSerializer.SerializeToNode(comparison)!;
+        Require(summary["Adapters"]!["Status"]!.GetValue<string>()=="CONTENT_READ");
+        Require(summary["MatchingAdapterNames"]!.GetValue<int>()>0);
+        Require(summary["MatchingAdapterMacs"]!.GetValue<int>()>0);
+        Require(summary["TcpV4"]!["CapturedBytes"]!.GetValue<int>()>0 &&
+            summary["TcpV6"]!["CapturedBytes"]!.GetValue<int>()>0);
+        Refuse<InvalidDataException>(()=>Call(parse,null,bytes,session,0u,start));
+        Refuse<InvalidDataException>(()=>Call(parse,null,bytes,session,(uint)Environment.ProcessId+1,start));
+        Refuse<InvalidDataException>(()=>Call(parse,null,bytes,session,(uint)Environment.ProcessId,DateTime.UtcNow.AddSeconds(10).ToFileTimeUtc()));
+        var wrongRole=JsonNode.Parse(bytes)!;
+        wrongRole["Network"]!["Reads"]![0]!["Role"]="other";
+        Refuse<InvalidDataException>(()=>Call(parse,null,JsonSerializer.SerializeToUtf8Bytes(wrongRole),session,(uint)Environment.ProcessId,start));
+        var wrongProcess=JsonNode.Parse(bytes)!;
+        wrongProcess["Processes"]!["Rows"]!.AsArray().Add(new JsonObject{
+            ["Name"]="other",["Pid"]=1,["CreatedFileTime"]=null
+        });
+        Refuse<InvalidDataException>(()=>Call(parse,null,JsonSerializer.SerializeToUtf8Bytes(wrongProcess),session,(uint)Environment.ProcessId,start));
+        Console.WriteLine("PASS actual ordinary adapter and dual-stack TCP content and actor-bound network survey validation.");
     }
 
     private static void RunChild(Assembly library,Type type,bool flood)

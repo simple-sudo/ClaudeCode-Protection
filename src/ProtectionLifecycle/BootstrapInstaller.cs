@@ -532,6 +532,8 @@ public static class BootstrapInstaller
         private const string PrivateWindowReadControlManifest="A1F6C306509D0D78C3BEB36B99B4C6959E92326E36712965B84BD8F06FD8EB6D";
         private const string PrivateWindowConsoleRelease="c70350a06da140c69bda6669ce5c8090";
         private const string PrivateWindowConsoleManifest="1D015E7F252AD3788BBC20ECC2186E45C1DA236D5A64AC6015D61CC16BFD667E";
+        private const string IdentitySurveyRelease="95c87b6710fe49bbb0beeb019a357219";
+        private const string IdentitySurveyManifest="3AA54FC3A55434BBC7F92FE09F260A5141151B5616551158C97D3CA53EE1CD03";
         internal PinnedInactiveUpdateLease(ProtectedState state,BootstrapApproval approval,VerifiedVersion prior,ReviewedPackage next,Action<string>? reportFailureStage)
         {
             this.state=state;this.approval=approval;this.prior=prior;this.next=next;this.reportFailureStage=reportFailureStage;
@@ -547,6 +549,8 @@ public static class BootstrapInstaller
                 throw WfpNative.Contract("PrivateWindowReadControlPredecessorRequiresFixedConsolePackage");
             if(prior.Package.Release==PrivateWindowConsoleRelease && next.SchemaVersion!=PackageAssetCatalog.SessionZeroIdentitySurveySchema)
                 throw WfpNative.Contract("PrivateWindowConsolePredecessorRequiresIdentitySurveyPackage");
+            if(prior.Package.Release==IdentitySurveyRelease && next.SchemaVersion!=PackageAssetCatalog.SessionZeroNetworkSurveySchema)
+                throw WfpNative.Contract("IdentitySurveyPredecessorRequiresNetworkSurveyPackage");
             AssertNoOwnedProcesses();
         }
         // Pure selection check used by the actual constructor and ordinary
@@ -563,6 +567,7 @@ public static class BootstrapInstaller
                 (priorRelease==PrivateWindowTraceRelease && priorManifest==PrivateWindowTraceManifest) ||
                 (priorRelease==PrivateWindowReadControlRelease && priorManifest==PrivateWindowReadControlManifest) ||
                 (priorRelease==PrivateWindowConsoleRelease && priorManifest==PrivateWindowConsoleManifest) ||
+                (priorRelease==IdentitySurveyRelease && priorManifest==IdentitySurveyManifest) ||
                 // The first-load branch diagnostic closed the original Job and creator resources.
                 (priorRelease=="9455e98cf5da489daf88964e0daa6b52" &&
                     priorManifest=="EC2E00DA29027F8FE426995AAD19C050D23A8998FEA9F7E7D6596668F4A58C41") ||
