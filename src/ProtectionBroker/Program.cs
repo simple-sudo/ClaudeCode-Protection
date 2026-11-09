@@ -127,6 +127,7 @@ internal static class Program
                 "qualify-internet-client-session-gateway" => ProtectionLifecycle.InstalledBroker.QualifyInternetClientSessionGateway(),
                 "qualify-no-content-https-canary" => ProtectionLifecycle.InstalledBroker.QualifyNoContentHttpsCanary(),
                 "qualify-fixed-openssl-head" => ProtectionLifecycle.InstalledBroker.QualifyFixedOpenSslHead(),
+                "qualify-reviewed-proxy-route" => ProtectionLifecycle.InstalledBroker.QualifyReviewedProxyRoute(),
                 "qualify-local-management-boundary" => ProtectionLifecycle.InstalledBroker.QualifyLocalManagementBoundary(),
                 "qualify-schannel-acquisition" => ProtectionLifecycle.InstalledBroker.QualifySchannelAcquisition(),
                 "qualify-openssl-offline" => ProtectionLifecycle.InstalledBroker.QualifyOpenSslOffline(),

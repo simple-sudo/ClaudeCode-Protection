@@ -17,7 +17,8 @@ internal sealed class SessionZeroWindowPolicy
     private readonly string stationSddl,desktopSddl;
 
     internal static bool SupportsConsole(int schema)=>schema is PackageAssetCatalog.SessionZeroPrivateWindowConsoleSchema or
-        PackageAssetCatalog.SessionZeroIdentitySurveySchema or PackageAssetCatalog.SessionZeroNetworkSurveySchema;
+        PackageAssetCatalog.SessionZeroIdentitySurveySchema or PackageAssetCatalog.SessionZeroNetworkSurveySchema or
+        PackageAssetCatalog.ReviewedProxyRouteSchema;
     internal static bool RequiresStationReadControl(int schema)=>schema==PackageAssetCatalog.SessionZeroPrivateWindowReadControlSchema ||
         SupportsConsole(schema);
 

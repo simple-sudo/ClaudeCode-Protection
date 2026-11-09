@@ -220,6 +220,7 @@ public static partial class InstalledBroker
     public static (int ExitCode,string Report) QualifyZeroCapabilityComparisonGateway()=>WithCurrentInstallation(ProtectedSession.QualifyZeroCapabilityComparisonGateway);
     public static (int ExitCode,string Report) QualifyNoContentHttpsCanary()=>WithCurrentInstallation(ProtectedSession.QualifyNoContentHttpsCanary);
     public static (int ExitCode,string Report) QualifyFixedOpenSslHead()=>WithCurrentInstallation(ProtectedSession.QualifyFixedOpenSslHead);
+    public static (int ExitCode,string Report) QualifyReviewedProxyRoute()=>WithCurrentInstallation(ProtectedSession.QualifyReviewedProxyRoute);
     public static (int ExitCode,string Report) QualifyLocalManagementBoundary()=>WithCurrentInstallation(ProtectedSession.QualifyLocalManagementBoundary);
     public static (int ExitCode,string Report) QualifySchannelAcquisition()
         =>WithCurrentInstallation((layout,state,version)=>OfflineTlsQualification.Run(layout,state,version,OfflineTlsProbe.Schannel));

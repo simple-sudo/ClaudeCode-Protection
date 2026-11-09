@@ -26,7 +26,26 @@ internal static class GatewayQualificationBoundaryCases
         }
         Check((bool)session.GetProperty("SystemTestingBlocked",BindingFlags.Static|BindingFlags.NonPublic)!.GetValue(null)!);
         Check(broker.GetMethod("QualifySessionGateway")!.GetParameters().Length==0);
+        Check(broker.GetMethod("QualifyReviewedProxyRoute")!.GetParameters().Length==0);
         Check(broker.GetMethod("RunGatewayQualificationCanary")!.GetParameters().Length==0);
+        var mode=session.GetNestedType("GatewayMode",BindingFlags.NonPublic)!;
+        var qualification=session.GetNestedType("GatewayQualification",BindingFlags.NonPublic)!;
+        var select=qualification.GetMethod("For",BindingFlags.Static|BindingFlags.NonPublic)!;
+        var reviewed=select.Invoke(null,[Enum.Parse(mode,"ReviewedRouteOpenSslHead")])!;
+        var legacyQualification=select.Invoke(null,[Enum.Parse(mode,"OpenSslHead")])!;
+        Check(qualification.GetProperty("ReviewedProxyRoute")!.GetValue(reviewed) is true &&
+            qualification.GetProperty("ReviewedProxyRoute")!.GetValue(legacyQualification) is false);
+        Check(qualification.GetProperty("ChildCommand")!.GetValue(reviewed) is "fixed-openssl-head-child" &&
+            qualification.GetProperty("UsesFixedOpenSslHead")!.GetValue(reviewed) is true &&
+            qualification.GetProperty("NoContentHttps")!.GetValue(reviewed) is true);
+        var route=library.GetType("ProtectionLifecycle.ReviewedProxyRouteEvidence",true)!;
+        var routeCovered=route.GetProperty("FixedExchangeCovered",BindingFlags.Instance|BindingFlags.NonPublic)!;
+        bool Covered(params object[] counts)=>routeCovered.GetValue(Activator.CreateInstance(route,counts)) is true;
+        Check(Covered(1,1,1,1,1));
+        Check(!Covered(0,1,1,1,1));
+        Check(!Covered(1,1,0,1,1));
+        Check(!Covered(1,1,1,1,0));
+        Check(!Covered(1,1,1,2,1));
         var matchRoot=session.GetNestedType("Admission",BindingFlags.NonPublic)!
             .GetMethod("MatchesFixedGatewayRoot",BindingFlags.NonPublic|BindingFlags.Static)!;
         bool Matches((uint,long) peer,uint pid,long time)=>(bool)matchRoot.Invoke(null,new object[]{peer,pid,time})!;
@@ -48,6 +67,7 @@ internal static class GatewayQualificationBoundaryCases
         // before opening protected state or creating native runtime objects.
         var denied=false;try{Call("QualifySessionGateway");}catch(UnauthorizedAccessException){denied=true;}Check(denied);
         denied=false;try{Call("QualifyLocalManagementBoundary");}catch(UnauthorizedAccessException){denied=true;}Check(denied);
+        denied=false;try{Call("QualifyReviewedProxyRoute");}catch(UnauthorizedAccessException){denied=true;}Check(denied);
         var names=new[]{"CPC_SESSION_ID","CPC_SESSION_SECRET","CPC_RESOURCE_PLAN","CPC_NETWORK_PLAN","CPC_GPU_PLAN","CPC_PUBLIC_TIMEZONE_ID"};
         var saved=names.Select(Environment.GetEnvironmentVariable).ToArray();
         try

@@ -120,7 +120,7 @@ internal sealed class SessionZeroCreatorChannel : IDisposable
             windowAccess?WindowAccessRequestMagic:StartupWitnessRequestMagic);
         else if(privateWindow)BinaryPrimitives.WriteUInt32LittleEndian(request,schema switch {
             PackageAssetCatalog.SessionZeroIdentitySurveySchema=>IdentitySurveyRequestMagic,
-            PackageAssetCatalog.SessionZeroNetworkSurveySchema=>NetworkSurveyRequestMagic,
+            PackageAssetCatalog.SessionZeroNetworkSurveySchema or PackageAssetCatalog.ReviewedProxyRouteSchema=>NetworkSurveyRequestMagic,
             _=>PrivateWindowConsoleRequestMagic
         });
         AssertQuarantine(state);

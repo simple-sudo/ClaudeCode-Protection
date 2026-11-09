@@ -26,10 +26,11 @@ internal sealed class ProtectedSession
     private readonly VerifiedVersion version;
     // Chosen only by the compiled fixed gateway operation, never by data,
     // environment, persisted evidence or a formal-launch caller.
-    private enum GatewayMode { None, Basic, Winsock, Transport, Provider, InternetClient, ZeroCapabilityComparison, NoContentHttps, OpenSslHead, LocalManagement }
+    private enum GatewayMode { None, Basic, Winsock, Transport, Provider, InternetClient, ZeroCapabilityComparison, NoContentHttps, OpenSslHead,
+        LocalManagement, ReviewedRouteOpenSslHead }
     private enum WinsockScope { None, Catalog, Transport, Provider }
     private sealed record GatewayQualification(WinsockScope Winsock,LpacCapabilityProfile Capabilities,bool CaptureContent,bool NoContentHttps,
-        string ChildCommand,bool UsesFixedOpenSslHead=false,bool LocalManagement=false)
+        string ChildCommand,bool UsesFixedOpenSslHead=false,bool LocalManagement=false,bool ReviewedProxyRoute=false)
     {
         internal static GatewayQualification? For(GatewayMode mode)=>mode switch {
             GatewayMode.None=>null,
@@ -41,6 +42,8 @@ internal sealed class ProtectedSession
             GatewayMode.ZeroCapabilityComparison=>new(WinsockScope.Provider,LpacCapabilityProfile.None,true,false,"zero-capability-comparison-child"),
             GatewayMode.NoContentHttps=>new(WinsockScope.Provider,LpacCapabilityProfile.InternetClientQualification,true,true,"no-content-https-canary-child"),
             GatewayMode.OpenSslHead=>new(WinsockScope.Provider,LpacCapabilityProfile.InternetClientQualification,true,true,"fixed-openssl-head-child",true),
+            GatewayMode.ReviewedRouteOpenSslHead=>new(WinsockScope.Provider,LpacCapabilityProfile.InternetClientQualification,true,true,
+                "fixed-openssl-head-child",UsesFixedOpenSslHead:true,ReviewedProxyRoute:true),
             GatewayMode.LocalManagement=>new(WinsockScope.Provider,LpacCapabilityProfile.InternetClientQualification,false,false,
                 LocalManagementBoundary.WorkerCommand,LocalManagement:true),
             _=>throw WfpNative.Contract("UnknownFixedGatewayMode")
@@ -53,6 +56,7 @@ internal sealed class ProtectedSession
     private bool FixedNoContentHttpsCanary=>qualification?.NoContentHttps==true;
     private bool UsesFixedOpenSslHead=>qualification?.UsesFixedOpenSslHead==true;
     private bool IsLocalManagementBoundary=>qualification?.LocalManagement==true;
+    private bool RequiresReviewedProxyRoute=>!IsGatewayQualification || qualification?.ReviewedProxyRoute==true;
     private SessionWinsockReadAccess? winsockAccess;
     private const long GatewayQualificationLimitMs=30000;
     private readonly string id = Guid.NewGuid().ToString("N"), pointerSHA256;
@@ -495,6 +499,8 @@ internal sealed class ProtectedSession
         =>QualifyGateway(layout,state,version,GatewayMode.NoContentHttps);
     internal static (int ExitCode,string Report) QualifyFixedOpenSslHead(FixedLayout layout,ProtectedState state,VerifiedVersion version)
         =>QualifyGateway(layout,state,version,GatewayMode.OpenSslHead);
+    internal static (int ExitCode,string Report) QualifyReviewedProxyRoute(FixedLayout layout,ProtectedState state,VerifiedVersion version)
+        =>QualifyGateway(layout,state,version,GatewayMode.ReviewedRouteOpenSslHead);
     internal static (int ExitCode,string Report) QualifyLocalManagementBoundary(FixedLayout layout,ProtectedState state,VerifiedVersion version)
         =>QualifyGateway(layout,state,version,GatewayMode.LocalManagement);
     internal static (int ExitCode,string Report) QualifyZeroCapabilityComparisonGateway(FixedLayout layout,ProtectedState state,VerifiedVersion version)
@@ -502,6 +508,8 @@ internal sealed class ProtectedSession
     private static (int ExitCode,string Report) QualifyGateway(FixedLayout layout,ProtectedState state,VerifiedVersion version,GatewayMode mode)
     {
         ProtectedState.RequireAdministrator();state.AssertHeld();version.AssertHeld(state);
+        if(mode==GatewayMode.ReviewedRouteOpenSslHead && version.Package.SchemaVersion!=PackageAssetCatalog.ReviewedProxyRouteSchema)
+            throw WfpNative.Contract("ReviewedRouteRequiresFixedPackageSchema");
         var owner=new ProtectedSession(layout,state,version,mode);
         if(owner.qualification is null)throw WfpNative.Contract("FixedGatewayQualificationRequired");
         var resolverTrust=owner.UsesFixedOpenSslHead?FixedResolverTrust.ReadOwned(version.Package):null;
@@ -636,6 +644,7 @@ internal sealed class ProtectedSession
         internal bool FixedNoContentHttpsCanary=>owner.FixedNoContentHttpsCanary;
         internal bool UsesFixedOpenSslHead=>owner.UsesFixedOpenSslHead;
         internal bool IsLocalManagementBoundary=>owner.IsLocalManagementBoundary;
+        internal bool RequiresReviewedProxyRoute=>owner.RequiresReviewedProxyRoute;
         internal LpacCapabilityProfile CapabilityProfile=>owner.CapabilityProfile;
         internal void AssertFixedGatewayRoot((uint Pid,long CreatedFileTime) peer)
         {
@@ -709,6 +718,7 @@ internal sealed class ProtectedSession
             CaptureCapabilityContent=owner.CaptureCapabilityContent,
             FixedNoContentHttpsCanary=owner.FixedNoContentHttpsCanary,
             FixedOpenSslHead=owner.UsesFixedOpenSslHead,
+            ReviewedProxyRoute=owner.RequiresReviewedProxyRoute,
             LocalManagementBoundary=owner.IsLocalManagementBoundary,
             WinsockReadIntentSHA256=owner.winsockAccess?.IntentSHA256,
             PublicTimeZoneSnapshotSHA256=owner.preparation?.PublicTimeZone?.SHA256,EnvironmentIntentSHA256=owner.expectationsSHA256,FenceIntents=owner.fences.Select(f=>f.IntentSHA256).ToArray(),
@@ -746,7 +756,7 @@ internal sealed class ProtectedSession
         try
         {
             AssertPreparation();
-            if(!IsGatewayQualification)
+            if(RequiresReviewedProxyRoute)
             {
                 // A route refusal must not leave a Job intent without an admission receipt.
                 upstream=ProxyChannelLease.Open(state);
@@ -758,12 +768,14 @@ internal sealed class ProtectedSession
                 EnvironmentIntentSHA256=expectationsSHA256,NetworkPolicySHA256=SessionProxy.PolicySHA256,
                 Scope="FIXED_INSTALLED_CANARY_CREATED_SUSPENDED_ONLY",ResumeAuthorized=false
             }));
-            if(IsGatewayQualification)PrepareQualificationGatewayPolicy();
+            if(IsGatewayQualification && !RequiresReviewedProxyRoute)PrepareQualificationGatewayPolicy();
             var plans=FencePlan.ReadAll(state);
             // Legacy 7890 barriers are retained for recovery, never silently
             // adopted as gateway policy or removed to make a launch succeed.
             if(plans.Any(plan=>plan.Data.PolicySHA256!=SessionProxy.PolicySHA256 || plan.Data.ProxyPort!=SessionProxy.Port))
                 throw WfpNative.Contract("LegacyRawProxyFenceRequiresReviewedMigration");
+            if(IsGatewayQualification && RequiresReviewedProxyRoute && plans.Count==0)
+                throw WfpNative.Contract("ReviewedRouteRequiresExistingSessionFence");
             if(plans.Count==0)fences.Add(PersistentFence.CreateSessionQuarantined(state,version));
             else foreach(var plan in plans)fences.Add(PersistentFence.OpenExisting(state,plan.Data.FenceId));
             foreach(var fence in fences)if(!fence.Observe().FullQuarantineObserved)throw WfpNative.Contract("SessionInitialQuarantineMissing");
@@ -785,7 +797,7 @@ internal sealed class ProtectedSession
                 finally{CryptographicOperations.ZeroMemory(bytes);}
             }
             gateway=new SessionProxy(job,upstream,sid,id,CapabilityProfile,FixedNoContentHttpsCanary,resolverTrust,IsLocalManagementBoundary,
-                requireFreshProxyRoute:!IsGatewayQualification);
+                requireFreshProxyRoute:RequiresReviewedProxyRoute);
             loopback=InstallationLoopbackLease.Enable(state,false);
             preparation=new Preparation(this);
             if(IsGatewayQualification)
@@ -848,6 +860,8 @@ internal sealed class ProtectedSession
                 {
                     if(gatewayChildFeedback is not {Phase:"COMPLETE",HttpStatus:>=200 and <400})throw WfpNative.Contract("FixedGatewayTerminalFeedbackMissing");
                     gateway.RequireFixedExchange(root.Pid,root.CreatedFileTime);
+                    if(RequiresReviewedProxyRoute && gateway.ReviewedRouteEvidence?.FixedExchangeCovered!=true)
+                        throw WfpNative.Contract("FixedGatewayReviewedRouteEvidenceMissing");
                 }
                 runtime.AssertHealthy();
             }
@@ -928,7 +942,8 @@ internal sealed class ProtectedSession
     }
     private string Report(string status,bool resumed,JobSnapshot? final,WfpErrorEvidence[] failures,RuntimeStop? stopObservation=null,
         bool creationAttempted=false,bool created=false,uint? childExitCode=null,bool resumeAttempted=false,bool fixedExchangeObserved=false)=>JsonSerializer.Serialize(new {
-        SchemaVersion=1,Scope=IsLocalManagementBoundary?"INSTALLED_FIXED_LOCAL_MANAGEMENT_BOUNDARY":
+        SchemaVersion=1,Scope=qualification?.ReviewedProxyRoute==true?"INSTALLED_FIXED_REVIEWED_PROXY_ROUTE":
+            IsLocalManagementBoundary?"INSTALLED_FIXED_LOCAL_MANAGEMENT_BOUNDARY":
             IsGatewayQualification?"INSTALLED_FIXED_GATEWAY_QUALIFICATION":"INSTALLED_BROKER_PROTECTED_SESSION",state.InstallationId,version.Package.Release,
         version.Package.ManifestHash,SessionId=id,NetworkPolicySHA256=SessionProxy.PolicySHA256,
         ExpectedCapabilityProfile=CapabilityProfile.Id,ExpectedCapabilitiesSHA256=CapabilityProfile.SHA256,
@@ -938,6 +953,8 @@ internal sealed class ProtectedSession
         LocalManagementBoundary=IsLocalManagementBoundary,
         LocalManagementTrustedReference=localManagementReference,
         ProxyRouteObservation=proxyRoute,
+        ReviewedProxyRouteRequired=RequiresReviewedProxyRoute,
+        ReviewedProxyRouteEvidence=gateway?.ReviewedRouteEvidence,
         LocalManagementGatewayAcknowledged=localManagementPositiveControl,
         LocalManagementFeedback=localManagementFeedback is null?null:new {localManagementFeedback.Phase,localManagementFeedback.ExitCode,
             localManagementFeedback.SetupError,Attempts=localManagementFeedback.Attempts.Select(attempt=>attempt.Summary()).ToArray()},
@@ -959,7 +976,8 @@ internal sealed class ProtectedSession
         GatewayChildFeedback=gatewayChildFeedback,GatewayFailure=gateway?.FailureFeedback,GatewayChildFeedbackUsedForAdmission=false,
         ResolverTls=gateway?.ResolverTls,
         TargetTunnel=gateway?.TargetTunnel,
-        CapabilityContentEvidence=gatewayCapabilityFeedback,
+        CapabilityContentEvidence=qualification?.ReviewedProxyRoute==true?null:gatewayCapabilityFeedback,
+        ReviewedRouteNoContentGate=qualification?.ReviewedProxyRoute==true?gatewayCapabilityFeedback?.Network?.FixedNoContentHttpsCanaryEligible:null,
         FixedGatewayRootBidirectionalWriteObserved=fixedExchangeObserved,
         PublicTimeZoneReadResource=(object?)null,
         WinsockReadResource=winsockAccess is null?(object?)null:new{winsockAccess.KeyCount,winsockAccess.Restored,winsockAccess.IntentSHA256},

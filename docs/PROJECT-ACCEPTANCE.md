@@ -5,6 +5,13 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-09 正式路线的固定资格入口
+
+SOURCE / BUILD / INTEGRATED(schema 17 固定无内容 HTTPS 资格及正式路线检查)。
+VERIFIED(普通入口拒绝、编译模式绑定、检查计数合同、内存 TLS 及普通 Windows 监听表)。
+NOT_RUN(新版实机安装、准备前及 CONNECT 前后实测、实际出口与故障关闭)。
+[证据](LOCAL-MANAGEMENT-BOUNDARY-20261107.md#正式路线的固定资格入口)
+
 ## 2026-11-09 实机网卡、双栈 TCP 与进程内容
 
 VERIFIED(`547495d7` INACTIVE 更新、同一独立 LPAC 托管载荷及原链闭合)。

@@ -12,6 +12,13 @@ using ClaudeCodeProtection.Security;
 
 namespace ProtectionLifecycle;
 
+internal sealed record ReviewedProxyRouteEvidence(int ActiveControllerHealthChecks,int ResolverBeforeConnect,int ResolverAfterReply,
+    int TargetBeforeConnect,int TargetAfterReply)
+{
+    internal bool FixedExchangeCovered=>ActiveControllerHealthChecks>0 && ResolverBeforeConnect==1 && ResolverAfterReply==1 &&
+        TargetBeforeConnect==1 && TargetAfterReply==1;
+}
+
 // Owned by ProtectedSession, never a machine proxy or an independently usable
 // launch service. The initial compiled policy authorizes one synthetic target.
 internal sealed class SessionProxy : IDisposable
@@ -34,8 +41,12 @@ internal sealed class SessionProxy : IDisposable
     private readonly FixedResolverTrust? fixedResolverTrust;
     private ResolverTlsEvidence? resolverTlsEvidence;
     private UpstreamTunnelEvidence? upstreamTunnelEvidence;
+    private int activeControllerHealthChecks,resolverBeforeConnect,resolverAfterReply,targetBeforeConnect,targetAfterReply;
     internal ResolverTlsEvidence? ResolverTls=>Volatile.Read(ref resolverTlsEvidence);
     internal UpstreamTunnelEvidence? TargetTunnel=>Volatile.Read(ref upstreamTunnelEvidence);
+    internal ReviewedProxyRouteEvidence? ReviewedRouteEvidence=>requireFreshProxyRoute
+        ?new(Volatile.Read(ref activeControllerHealthChecks),Volatile.Read(ref resolverBeforeConnect),Volatile.Read(ref resolverAfterReply),
+            Volatile.Read(ref targetBeforeConnect),Volatile.Read(ref targetAfterReply)):null;
     // The retained base hash identifies the existing compiled endpoint/WFP
     // policy. Bind the candidate identity separately, rather than pretending
     // an internetClient token is the historical zero-capability identity.
@@ -92,11 +103,16 @@ internal sealed class SessionProxy : IDisposable
         else upstream.AssertHealthy();
         destinations.AssertCurrent();
     }
+    internal void AssertRuntimeHealthy(bool active)
+    {
+        AssertHealthy();
+        if(active && requireFreshProxyRoute)Interlocked.Increment(ref activeControllerHealthChecks);
+    }
     internal void BindAdmission(ProtectedSession.Admission permit)
     {
         if(!ReferenceEquals(permit.Gateway,this) || !ReferenceEquals(permit.CapabilityProfile,capabilityProfile) || permit.FixedNoContentHttpsCanary!=fixedNoContentHttpsCanary ||
             permit.UsesFixedOpenSslHead!=(fixedResolverTrust is not null) ||
-            permit.IsLocalManagementBoundary!=localManagementBoundary || permit.IsFixedGatewayQualification==requireFreshProxyRoute ||
+            permit.IsLocalManagementBoundary!=localManagementBoundary || permit.RequiresReviewedProxyRoute!=requireFreshProxyRoute ||
             capabilityProfile.IsInternetClientQualification && !permit.IsFixedGatewayQualification)throw WfpNative.Contract("GatewayAdmissionOwnerOrCapabilitiesMismatch");
         permit.AssertCurrent();
         if(Interlocked.CompareExchange(ref admission,permit,null) is not null)throw WfpNative.Contract("GatewayAdmissionAlreadyBound");
@@ -286,7 +302,7 @@ internal sealed class SessionProxy : IDisposable
                 if (context.DnsEndPoint.Host != ResolverTlsEvidence.Host || context.DnsEndPoint.Port != 443)
                     throw new InvalidDataException("UnapprovedResolverTransport");
                 ConsumeFixedTunnelAttempt(ref resolverTunnelConsumed);
-                return await OpenTunnel(IPAddress.Parse("1.1.1.1"), cancel);
+                return await OpenTunnel(IPAddress.Parse("1.1.1.1"),cancel,resolver:true);
             }
         };
         using var client = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(5), MaxResponseContentBufferSize = 65536 };
@@ -309,7 +325,7 @@ internal sealed class SessionProxy : IDisposable
         if(Interlocked.Exchange(ref consumed,1)!=0)throw WfpNative.Contract("FixedGatewayTunnelAttemptAlreadyConsumed");
     }
     private async Task<NetworkStream> OpenTunnel(IPAddress ip,CancellationToken token,Action? assertFreshResolution=null,
-        UpstreamTunnelAttempt? attempt=null)
+        UpstreamTunnelAttempt? attempt=null,bool resolver=false)
     {
         if(localManagementBoundary)throw WfpNative.Contract("LocalGatewayCannotRelay");
         void Step(UpstreamTunnelStep next){if(attempt is not null)attempt.Step=next;}
@@ -331,6 +347,11 @@ internal sealed class SessionProxy : IDisposable
             await socket.ConnectAsync(new IPEndPoint(IPAddress.Loopback, CompiledFencePolicy.ProxyPort), token);
             Step(UpstreamTunnelStep.PeerBeforeRequest);
             await AssertTunnelPeerAndRoute(socket,token,"UpstreamRouteBeforeConnectRefused");
+            if(requireFreshProxyRoute)
+            {
+                if(resolver)Interlocked.Increment(ref resolverBeforeConnect);
+                else Interlocked.Increment(ref targetBeforeConnect);
+            }
             Step(UpstreamTunnelStep.AdmissionBeforeRequest);
             AssertForwardingCurrent();
             var stream = new NetworkStream(socket, ownsSocket: true);
@@ -348,6 +369,11 @@ internal sealed class SessionProxy : IDisposable
             if(status!=200)throw new InvalidDataException("UpstreamLiteralConnectRefused");
             Step(UpstreamTunnelStep.PeerAfterReply);
             await AssertTunnelPeerAndRoute(socket,token,"UpstreamRouteAfterConnectRefused");
+            if(requireFreshProxyRoute)
+            {
+                if(resolver)Interlocked.Increment(ref resolverAfterReply);
+                else Interlocked.Increment(ref targetAfterReply);
+            }
             Step(UpstreamTunnelStep.AdmissionAfterReply);
             AssertForwardingCurrent();
             Step(UpstreamTunnelStep.AddressAfterReply);

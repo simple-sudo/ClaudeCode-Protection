@@ -147,7 +147,7 @@ internal sealed class ProtectionRuntimeLease
         if(clock.ElapsedMilliseconds>=deadlineMs)throw WfpNative.Contract("RuntimeLeaseExpired");
         proxy?.AssertHealthy();resources?.AssertCurrent();
         if(admission is not null)admission.AssertCurrent();else preparation?.AssertCurrent();
-        gateway?.AssertHealthy();
+        gateway?.AssertRuntimeHealthy(activated);
         foreach(var fence in fences)
         {
             var observed=fence.Observe();
