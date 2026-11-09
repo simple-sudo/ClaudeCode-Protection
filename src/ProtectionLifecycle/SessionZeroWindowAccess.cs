@@ -13,7 +13,7 @@ internal static class SessionZeroWindowAccess
     internal readonly record struct ObjectAccess(uint Error,uint CreatorGranted,uint ChildGranted);
     internal readonly record struct Evidence(ObjectAccess Station,ObjectAccess Desktop);
 
-    internal static Evidence Observe(SafeProcessHandle process,SessionZeroCreatorChannel.TokenProof proof)
+    internal static Evidence Observe(SafeProcessHandle process,SessionZeroCreatorChannel.TokenProof proof,SessionZeroWindowPolicy? privateWindows=null)
     {
         using var identity=WindowsIdentity.GetCurrent(TokenAccessLevels.Query|TokenAccessLevels.Duplicate);
         if(!OpenProcessToken(process,10,out var token))
@@ -26,7 +26,7 @@ internal static class SessionZeroWindowAccess
         {
             if(WindowsTokenInformation.ReadPrimaryBinding(token)!=proof.Binding)
                 throw WfpNative.Contract("CreatorWindowAccessTokenChanged");
-            var result=ObserveTokens(identity.AccessToken,token,requireNoninteractive:true);
+            var result=ObserveTokensCore(identity.AccessToken,token,requireNoninteractive:true,privateWindows);
             if(WindowsTokenInformation.ReadPrimaryBinding(token)!=proof.Binding)
                 throw WfpNative.Contract("CreatorWindowAccessTokenChanged");
             return result;
@@ -34,6 +34,10 @@ internal static class SessionZeroWindowAccess
     }
 
     internal static Evidence ObserveTokens(SafeAccessTokenHandle creator,SafeAccessTokenHandle child,bool requireNoninteractive)
+        =>ObserveTokensCore(creator,child,requireNoninteractive,null);
+
+    private static Evidence ObserveTokensCore(SafeAccessTokenHandle creator,SafeAccessTokenHandle child,bool requireNoninteractive,
+        SessionZeroWindowPolicy? privateWindows)
     {
         if(!DuplicateTokenEx(creator,8,IntPtr.Zero,1,2,out var creatorQuery))
         {
@@ -51,18 +55,30 @@ internal static class SessionZeroWindowAccess
             }
             using(childQuery)
             {
+                var noninteractiveStation=new Mapping(0x20103,0x2000c,0x20060,StationRights);
+                var desktopMapping=new Mapping(0x20041,0x200be,0x20100,DesktopRights);
+                if(privateWindows is not null)
+                    return new(CheckPolicy(station:true,noninteractiveStation),CheckPolicy(station:false,desktopMapping));
                 var station=GetProcessWindowStation();
                 if(station==IntPtr.Zero)return Unavailable(LastError());
                 if(!GetUserObjectInformation(station,UserObjectFlags,out var flags,12,out var size))
                     return Unavailable(LastError());
                 if(size!=12 || requireNoninteractive && (flags.Flags&Visible)!=0)return Unavailable(13);
                 var visible=(flags.Flags&Visible)!=0;
-                var stationMapping=visible?new Mapping(0x20303,0x2001c,0x20060,0xf037f):new Mapping(0x20103,0x2000c,0x20060,StationRights);
+                var stationMapping=visible?new Mapping(0x20303,0x2001c,0x20060,0xf037f):noninteractiveStation;
                 var stationAccess=ReadAccess(station,creatorQuery,childQuery,stationMapping);
                 var desktop=GetThreadDesktop(GetCurrentThreadId());
                 var desktopAccess=desktop==IntPtr.Zero?new(LastError(),0,0):
-                    ReadAccess(desktop,creatorQuery,childQuery,new(0x20041,0x200be,0x20100,DesktopRights));
+                    ReadAccess(desktop,creatorQuery,childQuery,desktopMapping);
                 return new(stationAccess,desktopAccess);
+
+                ObjectAccess CheckPolicy(bool station,Mapping mapping)
+                {
+                    var policy=privateWindows!.Descriptor(station);
+                    var bytes=new byte[policy.BinaryLength];policy.GetBinaryForm(bytes,0);
+                    try{return CheckAccess(bytes,creatorQuery,childQuery,mapping);}
+                    finally{Array.Clear(bytes);}
+                }
             }
         }
     }
@@ -79,12 +95,17 @@ internal static class SessionZeroWindowAccess
         {
             if(!GetUserObjectSecurity(handle,ref information,descriptor,needed,out var used))return new(LastError(),0,0);
             if(used!=needed)return new(13,0,0);
-            var creatorGrant=Check(creator,out error);
-            if(error!=0)return new(error,0,0);
-            var childGrant=Check(child,out error);
-            return error==0?new(0,creatorGrant,childGrant):new(error,0,0);
+            return CheckAccess(descriptor,creator,child,mapping);
         }
         finally{Array.Clear(descriptor);}
+    }
+
+    private static ObjectAccess CheckAccess(byte[] descriptor,SafeAccessTokenHandle creator,SafeAccessTokenHandle child,Mapping mapping)
+    {
+        var creatorGrant=Check(creator,out var error);
+        if(error!=0)return new(error,0,0);
+        var childGrant=Check(child,out error);
+        return error==0?new(0,creatorGrant,childGrant):new(error,0,0);
 
         uint Check(SafeAccessTokenHandle token,out uint status)
         {

@@ -5,6 +5,13 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-09 原链的私有窗口对象接入
+
+SOURCE / BUILD / INTEGRATED(固定 schema 11 私有窗口启动见证与原 Job、LocalService 和 Broker)。
+VERIFIED(普通帧与令牌权限合同回归、独立 apphost 拒绝非 SCM 启动、固定原生映像拒绝交互桌面、旧见证 SHA-256 一致)。
+NOT_RUN(未激活候选更新、独立 Session 0 专用窗口启动、真实 ACL 和回收、正式 Claude、真实网络、GPU 和受限 L3)。
+[机制与证据](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#原链的私有窗口对象接入)
+
 ## 2026-11-09 专用窗口对象的权限与持有合同
 
 SOURCE / BUILD(Session 0 窗口站与桌面的固定权限及创建、持有、回收组件)。

@@ -12,16 +12,25 @@ internal sealed class SessionZeroWindowPolicy
     internal const string DesktopName="Task";
     internal string StationName {get;}
     internal string DesktopPath=>StationName+"\\"+DesktopName;
+    internal static string DesktopPathForJob(string jobId)=>StationNameForJob(jobId)+"\\"+DesktopName;
+    private static string StationNameForJob(string jobId)=>"CpcTask."+Identifiers.Hex32(jobId);
     private readonly string stationSddl,desktopSddl;
 
-    internal SessionZeroWindowPolicy(OwnedJobIntent job)
+    internal SessionZeroWindowPolicy(OwnedJobIntent job):this(job.InstallationId,job.JobId,CreatorFor(job)){}
+
+    private static string CreatorFor(OwnedJobIntent job)
     {
         if(job.SchemaVersion!=3 || job.CreatorServiceSid is not { } creator)
             throw WfpNative.Contract("PrivateWindowsRequireCreatorJob");
+        return creator;
+    }
+
+    internal SessionZeroWindowPolicy(string installationId,string jobId,string creator)
+    {
         OwnedJobIntent.AssertCreatorSid(creator);
         // The child can query the name. Expose the ephemeral Job ID only.
-        StationName="CpcTask."+Identifiers.Hex32(job.JobId);
-        using var package=InstallationPackageSid.FromInstallationId(job.InstallationId);
+        StationName=StationNameForJob(jobId);
+        using var package=InstallationPackageSid.FromInstallationId(installationId);
         stationSddl=Build(SessionZeroWindowAccess.StationRights,StationPackageAccess);
         desktopSddl=Build(SessionZeroWindowAccess.DesktopRights,DesktopPackageAccess);
 
@@ -31,6 +40,13 @@ internal sealed class SessionZeroWindowPolicy
     }
 
     internal RawSecurityDescriptor Descriptor(bool station)=>new(station?stationSddl:desktopSddl);
+
+    internal static void AssertGrants(SessionZeroWindowAccess.Evidence evidence)
+    {
+        if(evidence.Station!=new SessionZeroWindowAccess.ObjectAccess(0,ReadControl|StationPackageAccess,StationPackageAccess) ||
+            evidence.Desktop!=new SessionZeroWindowAccess.ObjectAccess(0,ReadControl|DesktopPackageAccess,DesktopPackageAccess))
+            throw WfpNative.Contract("CreatorPrivateWindowGrantsMismatch");
+    }
 
     internal void AssertDescriptor(bool station,RawSecurityDescriptor actual)
     {

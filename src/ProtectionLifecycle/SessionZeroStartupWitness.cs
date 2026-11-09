@@ -21,7 +21,8 @@ internal static class SessionZeroStartupWitness
     internal static string ReviewedImage(FixedLayout layout,VerifiedVersion version)
     {
         var schema=version.Package.SchemaVersion;
-        if(!(schema is PackageAssetCatalog.SessionZeroStartupWitnessSchema or PackageAssetCatalog.SessionZeroStartupDiagnosticsSchema || UsesBranchTrace(schema)) ||
+        if(!(schema is PackageAssetCatalog.SessionZeroStartupWitnessSchema or PackageAssetCatalog.SessionZeroStartupDiagnosticsSchema or
+            PackageAssetCatalog.SessionZeroPrivateWindowSchema || UsesBranchTrace(schema)) ||
             !version.Package.Files.Any(file=>file.Asset.Id==PackageAssetCatalog.SessionZeroStartupWitnessId))
             throw WfpNative.Contract("StartupWitnessRequiresReviewedAsset");
         return WindowsPathSeal.Child(layout.Version(version.Package.Release),PackageAssetCatalog.SessionZeroStartupWitnessPath);
@@ -42,12 +43,19 @@ internal static class SessionZeroStartupWitness
         [JsonIgnore(Condition=JsonIgnoreCondition.WhenWritingNull)]
         public SessionZeroWindowAccess.Evidence? CreatorWindowAccess {get;init;}
         [JsonIgnore(Condition=JsonIgnoreCondition.WhenWritingNull)]
+        public bool? PrivateWindowOwnerReady {get;init;}
+        [JsonIgnore(Condition=JsonIgnoreCondition.WhenWritingNull)]
+        public bool? PrivateWindowOwnerClosed {get;init;}
+        [JsonIgnore(Condition=JsonIgnoreCondition.WhenWritingNull)]
+        public bool? PrivateDesktopMatched {get;init;}
+        [JsonIgnore(Condition=JsonIgnoreCondition.WhenWritingNull)]
         public ImageDiagnostics? Diagnostics {get;init;}
     }
 
     internal static Observation Observe(int packageSchema,uint? exit,OfflineConsoleOutput? stdout,OfflineConsoleOutput? stderr)
     {
-        var hasDiagnostics=packageSchema==PackageAssetCatalog.SessionZeroStartupDiagnosticsSchema;
+        var hasDiagnostics=packageSchema is PackageAssetCatalog.SessionZeroStartupDiagnosticsSchema or PackageAssetCatalog.SessionZeroPrivateWindowSchema;
+        var privateWindow=packageSchema==PackageAssetCatalog.SessionZeroPrivateWindowSchema;
         var branchTrace=UsesBranchTrace(packageSchema);
         if(exit is null || stdout is not {Overflow:false} || stderr is not {Overflow:false,Bytes.Length:0})
             return new("CAPTURE_UNAVAILABLE",null,null);
@@ -73,7 +81,17 @@ internal static class SessionZeroStartupWitness
                 new("NATIVE_EXIT_AFTER_CHECKPOINT",last,null):new("OUTPUT_REJECTED",null,null);
         }
         if(count==Checkpoints.Length && exit==0)
+        {
+            if(privateWindow)
+            {
+                if(tail.IsEmpty || tail[0]!="PRIVATE_DESKTOP_MATCHED")return new("OUTPUT_REJECTED",last,null);
+                var result=Terminal("ALL_CHECKPOINTS_OBSERVED",last,null,tail[1..],hasDiagnostics);
+                return result.Status=="ALL_CHECKPOINTS_OBSERVED"?result with {PrivateDesktopMatched=true}:result;
+            }
             return Terminal("ALL_CHECKPOINTS_OBSERVED",last,null,tail,hasDiagnostics);
+        }
+        if(privateWindow && (exit,count) is (72,4) && tail.Length==1 && ReadValue(tail[0],"WIN32",out var desktopError))
+            return new("PRIVATE_DESKTOP_NOT_CONFIRMED",last,desktopError){PrivateDesktopMatched=false};
         if(count>0 && tail.IsEmpty && exit>=0xc0000000)
             return new("NATIVE_EXIT_AFTER_CHECKPOINT",last,null);
         if(!tail.IsEmpty &&

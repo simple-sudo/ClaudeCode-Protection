@@ -5,6 +5,12 @@
 历史页的“当前/待执行/暂停/DELIVERABLE”按段落日期及限定范围解释，不是今天的状态或操作许可。
 不在本页复制当前安装和授权摘要。
 
+## 2026-11-09 原链的私有窗口对象接入
+
+schema 11 接入原 Job、LocalService 和 Broker。普通回归与原生见证拒绝通过，
+真实 Session 0 启动、窗口和服务回收待测。
+[源码及普通证据](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#原链的私有窗口对象接入)
+
 ## 2026-11-09 专用窗口对象的权限与持有合同
 
 普通 Release 构建、原创建链回归及真实 Windows 桌面权限读回通过。新增 Session 0

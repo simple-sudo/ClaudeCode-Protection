@@ -54,10 +54,13 @@ internal sealed class SessionZeroCreatorClient : IDisposable
     }
 
     internal static SafePipeHandle OpenOwnerPipeHandle(string jobId)
+        =>OpenOwnerPipeByName(SessionZeroCreatorChannel.NameForJob(jobId));
+
+    internal static SafePipeHandle OpenOwnerPipeByName(string name)
     {
         // Explicit rights exclude FILE_CREATE_PIPE_INSTANCE. Identification
         // prevents the peer from borrowing the service's primary authority.
-        var handle=OpenPipe(@"\\.\pipe\"+SessionZeroCreatorChannel.NameForJob(jobId),PipeRights,0,IntPtr.Zero,3,0x40110000,IntPtr.Zero);
+        var handle=OpenPipe(@"\\.\pipe\"+name,PipeRights,0,IntPtr.Zero,3,0x40110000,IntPtr.Zero);
         if(!handle.IsInvalid)return handle;
         var failure=Error("OpenLocalCreatorOwnerPipe");handle.Dispose();throw failure;
     }
@@ -92,9 +95,14 @@ internal sealed class SessionZeroCreatorClient : IDisposable
         }
         using var deadline=new CancellationTokenSource(TimeSpan.FromSeconds(5));
         pipe.WriteAsync(frame.AsMemory(),deadline.Token).AsTask().GetAwaiter().GetResult();
-        if(Request.ObserveWindowAccess && proof is { } exactProof)
+        if((Request.ObserveWindowAccess || Request.UsePrivateWindow) && proof is { } exactProof)
         {
-            try{frame=SessionZeroCreatorChannel.CreateWindowAccess(Request,SessionZeroWindowAccess.Observe(process,exactProof));}
+            try
+            {
+                var policy=Request.UsePrivateWindow?new SessionZeroWindowPolicy(Request.InstallationId,Request.JobId,
+                    VerifyCurrentService(SessionZeroCreatorChannel.NameForJob(Request.JobId)).Value):null;
+                frame=SessionZeroCreatorChannel.CreateWindowAccess(Request,SessionZeroWindowAccess.Observe(process,exactProof,policy));
+            }
             catch(Exception error) when(error is Win32Exception or WfpFailure or InvalidDataException)
             {
                 frame=SessionZeroCreatorChannel.CreateFailure(Request,SessionZeroCreatorChannel.CreationFailure.WindowAccess,FailureCode(error));

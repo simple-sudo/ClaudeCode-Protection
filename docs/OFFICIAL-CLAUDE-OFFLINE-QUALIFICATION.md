@@ -1522,3 +1522,31 @@ Bootstrap 首次无 restore 缺少 assets，使用清空包源的配置恢复后
 profile 确认回收。`work/session-zero-private-window-lease-20261109-01/ordinary-native-exact-descriptor-Allow/result.txt`
 SHA-256 `34793502E79035B824F56EEDD922727998A1D48BA0E1E128DD0D5F1F7D239476`。
 实际 Session 0 创建、跨窗口站上下文恢复、持有期间监督和全链修复均 NOT_RUN。
+
+### 原链的私有窗口对象接入
+
+schema 11 只给原离线启动见证选择专用窗口对象。原 Broker 以固定的已安装 Broker
+映像注册一个按需非交互 Session 0 窗口持有服务，服务不启动子进程。SCM 配置和服务
+令牌均核对最小特权。双方用本机单实例管道、原进程句柄、会话、映像和服务 SID 核对
+端点。服务独立读取固定保护目录内的当前版本、Job 意图和绑定摘要。窗口对象创建请求
+发出前，原注册已标记待删除。创建确认、释放和关闭回执各有固定消息类型及本轮 nonce。
+[SCM 删除语义](https://learn.microsoft.com/en-us/windows/win32/api/winsvc/nf-winsvc-deleteservice)
+
+原 LocalService 仍用原挂起创建入口、LPAC、Job、环境和句柄列表。新请求只选择固定
+目的，桌面路径按原 Job 派生。恢复前用同一枚绑定 LPAC 主令牌对服务已验证的描述符
+合同作原生 AccessCheck，实际掩码必须完全符合合同。原 Broker 同时核验窗口持有进程
+仍在运行。固定原生见证在 USER32 成功后核对实际非交互窗口站和线程桌面与启动目标
+一致，再执行桌面、SHELL32、UCRT 和 GDI 检查。正常终态要求原 Job 先有序闭合，窗口
+服务独立读回零成员回执，然后关窗口对象并确认窗口站名缺席。原 Broker 等到原窗口
+服务进程成功退出，且 SCM 名称消失，才记录闭合。未证实闭合的注册保留待恢复记录。
+
+若窗口服务的管道异常，服务保留窗口对象，直到读到原 Job 闭合证明，或原 Broker
+退出且原 Job 名确认为缺席。该异常分支不产生正常回执。启动前的服务移除、创建中断
+和重启后的恢复路径仍需按实际故障另行验证。候选未安装，现有许可不覆盖本版。
+
+普通构建及六组回归通过。初次把两个 SCM 分派拒绝放在同一测试进程内，第二次调度
+不再返回 124，保留失败记录，随后用独立 Broker apphost 验证新入口返回 124。
+真实普通原生测试中，新见证成功加载 USER32，然后以 72 拒绝缺少合格桌面目标。
+schema 8、9、10 的原见证 SHA-256 保持一致。schema 11 见证长度 6656，SHA-256
+`F1C25D9DE733B2EE2D410E4DF5F9A1E467103213162B27305D89A85889C7C8DB`，唯一静态导入
+为 KERNEL32。日志和编译工件在 `work/session-zero-private-window-owner-20261109-01/`。

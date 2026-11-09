@@ -186,7 +186,7 @@ internal sealed class SessionZeroCreatorRegistration : IDisposable
         state.WriteNew(DoneLeaf(JobId),JsonSerializer.SerializeToUtf8Bytes(new {SchemaVersion=1,IntentSHA256=intentHash,Disposition=disposition}));
     }
 
-    private static void WaitForAbsence(ServiceHandle manager,string name)
+    internal static void WaitForAbsence(ServiceHandle manager,string name)
     {
         var watch=Stopwatch.StartNew();
         while(watch.ElapsedMilliseconds<5000)
@@ -442,7 +442,7 @@ internal sealed class SessionZeroCreatorRegistration : IDisposable
             throw WfpNative.Contract("CreatorServiceRemovalProofMismatch");
     }
 
-    private static void SealRegistration(ServiceHandle service)
+    internal static void SealRegistration(ServiceHandle service)
     {
         var descriptor=new RawSecurityDescriptor("O:BAD:P(A;;0x000f01ff;;;SY)(A;;0x000f01ff;;;BA)");
         var bytes=new byte[descriptor.BinaryLength];descriptor.GetBinaryForm(bytes,0);
@@ -465,6 +465,9 @@ internal sealed class SessionZeroCreatorRegistration : IDisposable
     }
 
     private static void AssertConfiguration(ServiceHandle service,string name,string command)
+        =>AssertServiceConfiguration(service,name,command,LocalService);
+
+    internal static void AssertServiceConfiguration(ServiceHandle service,string name,string command,string account)
     {
         Inspect((IntPtr buffer,int size,out int needed)=>QueryServiceConfig(service,buffer,size,out needed),
             (buffer,size)=>
@@ -473,7 +476,7 @@ internal sealed class SessionZeroCreatorRegistration : IDisposable
                 var config=Marshal.PtrToStructure<Config>(buffer);
                 if(config.Type!=0x10 || config.Start!=3 || config.Error!=1 || config.Tag!=0)throw WfpNative.Contract("CreatorServiceConfigMismatch");
                 AssertString(buffer,size,config.Image,command);
-                AssertString(buffer,size,config.Account,LocalService);
+                AssertString(buffer,size,config.Account,account);
                 AssertString(buffer,size,config.Display,name);
                 if(config.Group!=IntPtr.Zero)AssertString(buffer,size,config.Group,"");
                 if(config.Dependencies!=IntPtr.Zero)AssertString(buffer,size,config.Dependencies,"");
@@ -530,7 +533,7 @@ internal sealed class SessionZeroCreatorRegistration : IDisposable
             !string.Equals(Marshal.PtrToStringUni(address,exact.Length),exact,StringComparison.OrdinalIgnoreCase))
             throw WfpNative.Contract("CreatorServiceConfigurationStringMismatch");
     }
-    private static Status ReadStatus(ServiceHandle service)
+    internal static Status ReadStatus(ServiceHandle service)
     {
         if(!QueryServiceStatusEx(service,0,out var status,Marshal.SizeOf<Status>(),out _))throw Error("ReadCreatorServiceStatus");
         if(status.Type!=0x10)throw WfpNative.Contract("CreatorServiceTypeMismatch");
@@ -549,22 +552,22 @@ internal sealed class SessionZeroCreatorRegistration : IDisposable
         public ServiceHandle():base(true){}
         protected override bool ReleaseHandle()=>CloseServiceHandle(handle);
     }
-    [StructLayout(LayoutKind.Sequential)] private struct Status {internal uint Type,State,Controls,Win32Code,ServiceCode,CheckPoint,WaitHint,Pid,Flags;}
+    [StructLayout(LayoutKind.Sequential)] internal struct Status {internal uint Type,State,Controls,Win32Code,ServiceCode,CheckPoint,WaitHint,Pid,Flags;}
     [StructLayout(LayoutKind.Sequential)] private struct Config {internal uint Type,Start,Error;internal IntPtr Image,Group;internal uint Tag;internal IntPtr Dependencies,Account,Display;}
     [StructLayout(LayoutKind.Sequential)] private struct FailureActions {internal uint Reset;internal IntPtr Reboot,Command;internal uint Count;internal IntPtr Actions;}
-    [DllImport("advapi32.dll",EntryPoint="OpenSCManagerW",CharSet=CharSet.Unicode,SetLastError=true)] private static extern ServiceHandle OpenSCManager(string? machine,string? database,uint access);
-    [DllImport("advapi32.dll",EntryPoint="OpenServiceW",CharSet=CharSet.Unicode,SetLastError=true)] private static extern ServiceHandle OpenService(ServiceHandle manager,string name,uint access);
+    [DllImport("advapi32.dll",EntryPoint="OpenSCManagerW",CharSet=CharSet.Unicode,SetLastError=true)] internal static extern ServiceHandle OpenSCManager(string? machine,string? database,uint access);
+    [DllImport("advapi32.dll",EntryPoint="OpenServiceW",CharSet=CharSet.Unicode,SetLastError=true)] internal static extern ServiceHandle OpenService(ServiceHandle manager,string name,uint access);
     [DllImport("advapi32.dll",EntryPoint="CreateServiceW",CharSet=CharSet.Unicode,SetLastError=true)]
-    private static extern ServiceHandle CreateService(ServiceHandle manager,string name,string display,uint access,uint type,uint start,uint error,string command,
+    internal static extern ServiceHandle CreateService(ServiceHandle manager,string name,string display,uint access,uint type,uint start,uint error,string command,
         string? group,IntPtr tag,string? dependencies,string account,string? password);
     [DllImport("advapi32.dll",EntryPoint="ChangeServiceConfig2W",SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)] private static extern bool ChangeServiceConfig2(ServiceHandle service,uint kind,IntPtr data);
     [DllImport("advapi32.dll",EntryPoint="QueryServiceConfigW",SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)] private static extern bool QueryServiceConfig(ServiceHandle service,IntPtr data,int size,out int needed);
     [DllImport("advapi32.dll",EntryPoint="QueryServiceConfig2W",SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)] private static extern bool QueryServiceConfig2(ServiceHandle service,uint kind,IntPtr data,int size,out int needed);
-    [DllImport("advapi32.dll",EntryPoint="StartServiceW",SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)] private static extern bool StartService(ServiceHandle service,uint argc,IntPtr argv);
+    [DllImport("advapi32.dll",EntryPoint="StartServiceW",SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)] internal static extern bool StartService(ServiceHandle service,uint argc,IntPtr argv);
     [DllImport("advapi32.dll",SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)] private static extern bool QueryServiceStatusEx(ServiceHandle service,int kind,out Status status,int size,out int needed);
     [DllImport("advapi32.dll",SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)] private static extern bool SetServiceObjectSecurity(ServiceHandle service,uint info,byte[] descriptor);
     [DllImport("advapi32.dll",SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)] private static extern bool QueryServiceObjectSecurity(ServiceHandle service,uint info,IntPtr descriptor,int size,out int needed);
-    [DllImport("advapi32.dll",SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)] private static extern bool DeleteService(ServiceHandle service);
+    [DllImport("advapi32.dll",SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)] internal static extern bool DeleteService(ServiceHandle service);
     [DllImport("advapi32.dll")] [return:MarshalAs(UnmanagedType.Bool)] private static extern bool CloseServiceHandle(IntPtr service);
     [DllImport("kernel32.dll",ExactSpelling=true,SetLastError=true)] private static extern SafeProcessHandle OpenProcess(uint access,[MarshalAs(UnmanagedType.Bool)]bool inherit,uint pid);
     [DllImport("kernel32.dll",ExactSpelling=true)] private static extern uint WaitForSingleObject(SafeProcessHandle process,uint milliseconds);

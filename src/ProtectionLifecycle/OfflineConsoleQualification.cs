@@ -303,6 +303,7 @@ internal static class OfflineConsoleQualification
         var plans=RequireOfflinePrerequisites(state,version);
         var branchWitness=startupWitness && SessionZeroStartupWitness.UsesBranchTrace(version.Package.SchemaVersion);
         var windowAccessWitness=startupWitness && version.Package.SchemaVersion==PackageAssetCatalog.SessionZeroWindowAccessSchema;
+        var privateWindowWitness=startupWitness && version.Package.SchemaVersion==PackageAssetCatalog.SessionZeroPrivateWindowSchema;
         using var branchTrace=branchWitness?new SessionZeroStartupBranchTrace():null;
         var fences=new List<PersistentFence>();
         var failures=new List<Exception>();
@@ -313,6 +314,8 @@ internal static class OfflineConsoleQualification
         SessionZeroStartupWitness.Win32kObservation? beforeResumeWin32k=null;
         SessionZeroStartupWitness.SystemCallFilterObservation? beforeResumeSystemCallFilter=null;
         SessionZeroWindowAccess.Evidence? creatorWindowAccess=null;
+        SessionZeroWindowOwner? privateWindows=null;
+        var privateWindowsClosed=false;
         RuntimeStop? stopped=null;
         OfflineConsoleOutput? stdout=null,stderr=null;
         OfflineConsoleHostIdentitySummary? hostIdentity=null;
@@ -383,13 +386,19 @@ internal static class OfflineConsoleQualification
             AtomicChild? child=null;
             try
             {
+                if(privateWindowWitness)
+                {
+                    stage="PreparePrivateWindows";
+                    privateWindows=SessionZeroWindowOwner.Start(layout,state,version,job);
+                }
                 stage="ValidateSuspendedRoot";
-                using var root=channel.Exchange(layout,state,version,job,startupWitness);
+                using var root=channel.Exchange(layout,state,version,job,startupWitness,privateWindows);
                 creatorWindowAccess=root.WindowAccess;
                 child=AtomicChild.AdoptSessionZeroOfflineConsole(layout,state,version,job,root,startupWitness);
                 runtime=ProtectionRuntimeLease.ForFixedOfflineConsole(state,version,job,fences,child,job.JobId);
                 runtime.Activate(10000);
                 stage="RunWorker";
+                privateWindows?.AssertHeld(job);
                 _=child.ResumeQuarantined();resumed=true;
                 if(branchTrace is not null)
                 {
@@ -404,7 +413,7 @@ internal static class OfflineConsoleQualification
                 }while(exit is null);
                 runtime.AssertHealthy();
                 if(exit!=0)throw WfpNative.Contract("IndependentOfflineConsoleChildExitDiffers");
-                void AssertRunning(){runtime.AssertHealthy();workspace.AssertHeld();}
+                void AssertRunning(){runtime.AssertHealthy();workspace.AssertHeld();privateWindows?.AssertHeld(job);}
             }
             catch(Exception error)
             {
@@ -440,6 +449,12 @@ internal static class OfflineConsoleQualification
             }
             if(closed)
             {
+                if(privateWindows is not null)
+                {
+                    stage="ClosePrivateWindows";
+                    try{privateWindows.CloseAfterJob(job);privateWindowsClosed=true;}
+                    catch(Exception error){failedStage??=stage;failures.Add(error);}
+                }
                 stage="CloseCreatorProfile";
                 var capture=channel.CloseCreatorProfile(state);
                 profileClosed=true;
@@ -478,6 +493,7 @@ internal static class OfflineConsoleQualification
         finally
         {
             try{AssertQuarantine();}catch(Exception error){failures.Add(error);}
+            try{privateWindows?.Dispose();}catch(Exception error){failures.Add(error);}
             foreach(var fence in fences)try{fence.Dispose();}catch(Exception error){failures.Add(error);}
         }
         stage=failedStage??stage;
@@ -485,14 +501,18 @@ internal static class OfflineConsoleQualification
         {
             var observation=SessionZeroStartupWitness.Observe(version.Package.SchemaVersion,exit,stdout,stderr)
                 with {BeforeResumeWin32k=beforeResumeWin32k,BeforeResumeSystemCallFilter=beforeResumeSystemCallFilter,
-                    BranchTrace=branchTrace?.Snapshot(),CreatorWindowAccess=creatorWindowAccess};
+                    BranchTrace=branchTrace?.Snapshot(),CreatorWindowAccess=creatorWindowAccess,
+                    PrivateWindowOwnerReady=privateWindowWitness?privateWindows is not null:null,
+                    PrivateWindowOwnerClosed=privateWindowWitness?privateWindowsClosed:null};
             var extended=version.Package.SchemaVersion==PackageAssetCatalog.SessionZeroStartupDiagnosticsSchema;
             var terminal=failures.Count==0 && closed && profileClosed && workspaceClosed && serviceRemoved && resumed &&
+                (!privateWindowWitness || privateWindowsClosed && observation.PrivateDesktopMatched==true &&
+                    observation.Diagnostics is {Win32kQueryError:0,Win32kBlocked:false,User32FileError:0,User32MapError:0,Win32uLoadError:0,Gdi32LoadError:0,Gdi32FullLoadError:0}) &&
                 (branchWitness?observation.Status=="FIRST_USER32_LOAD_SUCCEEDED" &&
                     observation.BranchTrace is {ExitEventContinued:true,User32Mapped:true,Gdi32FullMapped:true,CsrStatus:0,GdiStatus:0,GdiInit2ReturnedNull:false,FailureValue:null}:
                     observation.Status=="ALL_CHECKPOINTS_OBSERVED");
             var diagnostic=JsonSerializer.Serialize(new {
-                SchemaVersion=windowAccessWitness?4:branchWitness?3:extended?2:1,Scope=SessionZeroStartupWitness.Scope,state.InstallationId,JobId=jobId,
+                SchemaVersion=privateWindowWitness?5:windowAccessWitness?4:branchWitness?3:extended?2:1,Scope=SessionZeroStartupWitness.Scope,state.InstallationId,JobId=jobId,
                 version.Package.Release,version.Package.ManifestHash,
                 Status=terminal?"STARTUP_WITNESS_CLOSED":"STARTUP_WITNESS_NOT_CONFIRMED",
                 LastStage=stage,ProcessResumed=resumed,ChildExit=exit,OriginalJobClosed=closed,ProfileClosed=profileClosed,

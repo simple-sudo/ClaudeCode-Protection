@@ -7,6 +7,7 @@ internal static class Program
     private static int Main(string[] args)
     {
         if(args is ["session-zero-offline-creator"])return ProtectionLifecycle.InstalledBroker.RunSessionZeroOfflineCreatorService();
+        if(args is ["session-zero-window-owner"])return ProtectionLifecycle.InstalledBroker.RunSessionZeroWindowOwnerService();
         if(args.Length==3 && args[0]=="qualify-host-gpu-reference-pipe")
         {
             try

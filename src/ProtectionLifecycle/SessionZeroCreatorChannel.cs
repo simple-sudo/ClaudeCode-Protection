@@ -18,6 +18,7 @@ internal sealed class SessionZeroCreatorChannel : IDisposable
     private const uint RequestMagic=0x32504343,ReplyMagic=0x31524343,FailureMagic=0x31464343; // CCP2, CCR1, CCF1.
     private const uint StartupWitnessRequestMagic=0x31574343; // CCW1, same size and peer binding.
     private const uint WindowAccessRequestMagic=0x32574343,WindowAccessProofMagic=0x31444343; // CCW2, CCD1.
+    private const uint PrivateWindowRequestMagic=0x33574343; // CCW3.
     private const uint ProfileCreatedMagic=0x314a4343,ProfileRecordedMagic=0x31414343; // CCJ1, CCA1.
     private const uint TokenProofMagic=0x31544343; // CCT1.
     private const int NonceSize=16,ReplySize=44,ObjectIdentityBytes=12;
@@ -90,7 +91,8 @@ internal sealed class SessionZeroCreatorChannel : IDisposable
 
     // The caller must retain the original Job and close it through the
     // existing offline stop path if a granted exchange fails.
-    internal SuspendedRoot Exchange(FixedLayout layout,ProtectedState state,VerifiedVersion version,OwnedKernelJob job,bool startupWitness)
+    internal SuspendedRoot Exchange(FixedLayout layout,ProtectedState state,VerifiedVersion version,OwnedKernelJob job,bool startupWitness,
+        SessionZeroWindowOwner? privateWindows=null)
     {
         var service=registration.AssertReadyForJob(state,version,this);
         var peer=boundPeer??throw WfpNative.Contract("CreatorPipePeerBindingMissingOrChanged");
@@ -105,7 +107,11 @@ internal sealed class SessionZeroCreatorChannel : IDisposable
         var cancellation=deadline.Token;
         var request=CreateRequest(nonce,state.InstallationId,job.JobId,peer.OwnerPid,peer.OwnerSession);
         var windowAccess=startupWitness && version.Package.SchemaVersion==PackageAssetCatalog.SessionZeroWindowAccessSchema;
-        if(startupWitness)BinaryPrimitives.WriteUInt32LittleEndian(request,windowAccess?WindowAccessRequestMagic:StartupWitnessRequestMagic);
+        var privateWindow=startupWitness && version.Package.SchemaVersion==PackageAssetCatalog.SessionZeroPrivateWindowSchema;
+        if(privateWindow!=(privateWindows is not null))throw WfpNative.Contract("CreatorPrivateWindowLeaseRequired");
+        privateWindows?.AssertHeld(job);
+        if(startupWitness)BinaryPrimitives.WriteUInt32LittleEndian(request,privateWindow?PrivateWindowRequestMagic:
+            windowAccess?WindowAccessRequestMagic:StartupWitnessRequestMagic);
         AssertQuarantine(state);
         AssertBoundPeer(service,image);
         job.ReserveSessionZeroAdmission(version,registration.Sid);
@@ -134,10 +140,11 @@ internal sealed class SessionZeroCreatorChannel : IDisposable
         var tokenProof=ParseTokenProof(ReadFrame(),nonce);
         AssertBoundPeer(service,image);
         SessionZeroWindowAccess.Evidence? windowProof=null;
-        if(windowAccess)
+        if(windowAccess || privateWindow)
         {
             windowProof=ParseWindowAccess(ReadFrame(),nonce);
             AssertBoundPeer(service,image);
+            if(privateWindow)SessionZeroWindowPolicy.AssertGrants(windowProof.Value);
         }
         var rootImage=startupWitness?SessionZeroStartupWitness.ReviewedImage(layout,version):image;
         var root=OpenRoot(report,tokenProof,job,rootImage,package.Value);
@@ -243,6 +250,7 @@ internal sealed class SessionZeroCreatorChannel : IDisposable
     {
         internal bool StartupWitness {get;init;}
         internal bool ObserveWindowAccess {get;init;}
+        internal bool UsePrivateWindow {get;init;}
     }
     internal static Request ParseRequest(byte[] frame,string fixedJobId,uint serverPid,uint serverSession)
         =>ParseBoundRequest(frame,fixedJobId,serverPid,serverSession,allowStartupWitness:false);
@@ -257,11 +265,12 @@ internal sealed class SessionZeroCreatorChannel : IDisposable
             !frame.AsSpan(44,16).SequenceEqual(Convert.FromHexString(Identifiers.Hex32(fixedJobId))))
             throw WfpNative.Contract("CreatorRequestBindingMismatch");
         var magic=BinaryPrimitives.ReadUInt32LittleEndian(frame);
-        if(magic!=RequestMagic && (!allowStartupWitness || magic is not (StartupWitnessRequestMagic or WindowAccessRequestMagic)))
+        if(magic!=RequestMagic && (!allowStartupWitness || magic is not (StartupWitnessRequestMagic or WindowAccessRequestMagic or PrivateWindowRequestMagic)))
             throw WfpNative.Contract("CreatorRequestPurposeMismatch");
         return new(Convert.ToHexString(frame.AsSpan(28,16)).ToLowerInvariant(),fixedJobId,frame.AsSpan(12,NonceSize).ToArray()) {
-            StartupWitness=magic is StartupWitnessRequestMagic or WindowAccessRequestMagic,
-            ObserveWindowAccess=magic==WindowAccessRequestMagic
+            StartupWitness=magic is StartupWitnessRequestMagic or WindowAccessRequestMagic or PrivateWindowRequestMagic,
+            ObserveWindowAccess=magic==WindowAccessRequestMagic,
+            UsePrivateWindow=magic==PrivateWindowRequestMagic
         };
     }
 
@@ -301,7 +310,7 @@ internal sealed class SessionZeroCreatorChannel : IDisposable
 
     internal static byte[] CreateWindowAccess(Request request,SessionZeroWindowAccess.Evidence proof)
     {
-        if(!request.ObserveWindowAccess || request.Nonce.Length!=NonceSize)
+        if(!(request.ObserveWindowAccess || request.UsePrivateWindow) || request.Nonce.Length!=NonceSize)
             throw WfpNative.Contract("CreatorWindowAccessPurposeRequired");
         var frame=new byte[ReplySize];
         BinaryPrimitives.WriteUInt32LittleEndian(frame,WindowAccessProofMagic);

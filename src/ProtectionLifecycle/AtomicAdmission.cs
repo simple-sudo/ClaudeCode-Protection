@@ -441,7 +441,9 @@ internal sealed partial class AtomicChild : IDisposable
             Bind(0x2000f,policy,sizeof(uint));
             channels.Bind(attributes);
             var std=channels.Channels;
-            var startup=new StartupInfoEx{Basic=new(){Size=Marshal.SizeOf<StartupInfoEx>(),Flags=0x100,Input=std.Input,Output=std.Output,Error=std.Error},Attributes=attributes};
+            var desktop=client.Request.UsePrivateWindow?SessionZeroWindowPolicy.DesktopPathForJob(session):null;
+            var startup=new StartupInfoEx{Basic=new(){Size=Marshal.SizeOf<StartupInfoEx>(),Desktop=desktop,Flags=0x100,
+                Input=std.Input,Output=std.Output,Error=std.Error},Attributes=attributes};
             environment=Marshal.StringToHGlobalUni(string.Join('\0',env.Select(p=>p.Key+"="+p.Value))+"\0\0");
             var command=new StringBuilder("\""+image+"\"");
             if(!client.Request.StartupWitness)command.Append(' ').Append(OfflineConsoleQualification.ChildCommand);

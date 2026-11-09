@@ -1,7 +1,8 @@
 #requires -Version 7.4
-param([string]$OutputRoot, [switch]$Win32kControl, [switch]$BuildBranchWitness)
+param([string]$OutputRoot, [switch]$Win32kControl, [switch]$BuildBranchWitness, [switch]$PrivateDesktopControl)
 
 $ErrorActionPreference = 'Stop'
+if ($PrivateDesktopControl -and ($Win32kControl -or $BuildBranchWitness)) { throw 'Private desktop control requires its own witness' }
 
 $repo = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $vswhere = 'C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe'
@@ -32,6 +33,7 @@ try {
     $defines = @()
     if ($Win32kControl) { $defines += '/DORDINARY_WIN32K_CONTROL' }
     if ($BuildBranchWitness) { $defines += '/DSTARTUP_BRANCH_WITNESS' }
+    if ($PrivateDesktopControl) { $defines += '/DSTARTUP_PRIVATE_DESKTOP_WITNESS' }
     $arguments = @('/nologo','/TC','/std:c17','/W4','/WX','/O2','/GS-','/Zl') + $defines + $includes + @(
         "/Fo$object", "/Fe$exe", $source, '/link', '/NODEFAULTLIB', '/ENTRY:StartupWitness', '/SUBSYSTEM:CONSOLE',
         '/DYNAMICBASE', '/NXCOMPAT', '/Brepro', "/LIBPATH:$sdk\Lib\$version\um\x64", 'kernel32.lib'
@@ -81,6 +83,11 @@ try {
         $diagnostics[6] = 'GDI32FULL_LOAD=0x00000008'
         $expectedExit = 65
     }
+    if ($PrivateDesktopControl) {
+        $checkpoints = @('ENTRY','BEFORE_USER32','AFTER_USER32','BEFORE_DESKTOP','WIN32=0x0000000D')
+        $diagnostics = @()
+        $expectedExit = 72
+    }
     $observed = $stdout.GetAwaiter().GetResult()
     [IO.File]::WriteAllText((Join-Path $output 'ordinary-stdout.txt'), $observed)
     $errorOutput = $stderr.GetAwaiter().GetResult()
@@ -93,7 +100,7 @@ try {
     $process.Dispose()
 }
 [pscustomobject]@{
-    Result = if ($Win32kControl) { 'ORDINARY_WIN32K_CONTROL_PASSED' } else { 'ORDINARY_STARTUP_WITNESS_PASSED' }
+    Result = if ($PrivateDesktopControl) { 'ORDINARY_PRIVATE_DESKTOP_REFUSED' } elseif ($Win32kControl) { 'ORDINARY_WIN32K_CONTROL_PASSED' } else { 'ORDINARY_STARTUP_WITNESS_PASSED' }
     StaticImport = $imports[0]
     Checkpoints = $checkpoints.Count
     Diagnostics = $diagnostics.Count

@@ -21,8 +21,6 @@ internal sealed class SessionZeroWindowLease : IDisposable
     private SessionZeroWindowLease(SessionZeroWindowPolicy policy,StationHandle station,DesktopHandle desktop)
     {this.policy=policy;this.station=station;this.desktop=desktop;}
 
-    internal string DesktopPath=>policy.DesktopPath;
-
     internal static SessionZeroWindowLease Create(OwnedJobIntent job)
     {
         using var identity=WindowsIdentity.GetCurrent(TokenAccessLevels.Query);

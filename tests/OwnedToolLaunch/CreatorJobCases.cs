@@ -283,6 +283,14 @@ internal static class CreatorJobCases
         Check(windowMode.GetValue(parseWorkload.Invoke(null,[startup,jobId,12u,7u])) is false);
         Refused(()=>parseRequest.Invoke(null,[windowRequest,jobId,12u,7u]));
         Refused(()=>parseWorkload.Invoke(null,[windowRequest,jobId,12u,8u]));
+        var privateRequest=(byte[])outgoing.Clone();
+        "CCW3"u8.CopyTo(privateRequest);
+        var privateMode=decoded.GetType().GetProperty("UsePrivateWindow",BindingFlags.Instance|BindingFlags.NonPublic)!;
+        var privateDecoded=parseWorkload.Invoke(null,[privateRequest,jobId,12u,7u])!;
+        Check(mode.GetValue(privateDecoded) is true && privateMode.GetValue(privateDecoded) is true && windowMode.GetValue(privateDecoded) is false);
+        Check(privateMode.GetValue(windowDecoded) is false);
+        Refused(()=>parseRequest.Invoke(null,[privateRequest,jobId,12u,7u]));
+        Refused(()=>parseWorkload.Invoke(null,[privateRequest,legacyId,12u,7u]));
         var windowType=library.GetType("ProtectionLifecycle.SessionZeroWindowAccess",true)!;
         var parseWindow=channel.GetMethod("ParseWindowAccess",methods)!;
         var writeWindow=channel.GetMethod("CreateWindowAccess",methods)!;
@@ -293,12 +301,24 @@ internal static class CreatorJobCases
         BinaryPrimitives.WriteUInt32LittleEndian(windowFrame.AsSpan(32),5);
         var windowResult=parseWindow.Invoke(null,[windowFrame,nonce])!;
         Check(((byte[])writeWindow.Invoke(null,[windowDecoded,windowResult])!).SequenceEqual(windowFrame));
+        Check(((byte[])writeWindow.Invoke(null,[privateDecoded,windowResult])!).SequenceEqual(windowFrame));
         Refused(()=>writeWindow.Invoke(null,[decoded,windowResult]));
         Refused(()=>parseWindow.Invoke(null,[windowFrame[..43],nonce]));
         Refused(()=>parseWindow.Invoke(null,[windowFrame,nonce.Reverse().ToArray()]));
         var foreignRights=(byte[])windowFrame.Clone();
         BinaryPrimitives.WriteUInt32LittleEndian(foreignRights.AsSpan(28),0x200);
         Refused(()=>parseWindow.Invoke(null,[foreignRights,nonce]));
+        var assertPrivateGrants=library.GetType("ProtectionLifecycle.SessionZeroWindowPolicy",true)!.GetMethod("AssertGrants",methods)!;
+        var privateFrame=(byte[])windowFrame.Clone();
+        BinaryPrimitives.WriteUInt32LittleEndian(privateFrame.AsSpan(24),0x20023);
+        BinaryPrimitives.WriteUInt32LittleEndian(privateFrame.AsSpan(28),0x23);
+        BinaryPrimitives.WriteUInt32LittleEndian(privateFrame.AsSpan(32),0);
+        BinaryPrimitives.WriteUInt32LittleEndian(privateFrame.AsSpan(36),0x200c7);
+        BinaryPrimitives.WriteUInt32LittleEndian(privateFrame.AsSpan(40),0xc7);
+        assertPrivateGrants.Invoke(null,[parseWindow.Invoke(null,[privateFrame,nonce])]);Check(true);
+        Refused(()=>assertPrivateGrants.Invoke(null,[windowResult]));
+        BinaryPrimitives.WriteUInt32LittleEndian(privateFrame.AsSpan(40),0x1ff);
+        Refused(()=>assertPrivateGrants.Invoke(null,[parseWindow.Invoke(null,[privateFrame,nonce])]));
         foreignRights=(byte[])windowFrame.Clone();
         BinaryPrimitives.WriteUInt32LittleEndian(foreignRights.AsSpan(40),1);
         Refused(()=>parseWindow.Invoke(null,[foreignRights,nonce]));
@@ -484,6 +504,26 @@ internal static class CreatorJobCases
             Refused(()=>validate.Invoke(policy,[station,unprotected]),descriptorError);
         }
         Console.WriteLine("PASS private window policy, broadened descriptor negatives and ordinary Session 0 owner refusal; no private station created");
+        var owner=library.GetType("ProtectionLifecycle.SessionZeroWindowOwner",true)!;
+        var name=(string)owner.GetMethod("NameForJob",methods)!.Invoke(null,[job])!;
+        var parseName=owner.GetMethod("JobIdFromName",methods)!;
+        Check((string?)parseName.Invoke(null,[name])==job,"Owner SCM name binds the original Job");
+        Refused(()=>parseName.Invoke(null,["CpcSessionCreator."+job]),"PrivateWindowOwnerServiceNameInvalid");
+        Refused(()=>owner.GetMethod("VerifyCurrentService",methods)!.Invoke(null,[name]),"PrivateWindowOwnerRequiresSystemServiceToken");
+        var message=owner.GetNestedType("Message",BindingFlags.NonPublic)!;
+        var send=owner.GetMethod("Frame",methods)!;
+        var read=owner.GetMethod("AssertFrame",methods)!;
+        var nonce=Enumerable.Range(0,16).Select(value=>(byte)value).ToArray();
+        foreach(var kind in Enum.GetValues(message))
+        {
+            var frame=(byte[])send.Invoke(null,[nonce,kind])!;
+            read.Invoke(null,[frame,nonce,kind]);
+            Refused(()=>read.Invoke(null,[frame[..19],nonce,kind]),"PrivateWindowOwnerFrameMismatch");
+            Refused(()=>read.Invoke(null,[frame,nonce.Reverse().ToArray(),kind]),"PrivateWindowOwnerFrameMismatch");
+            foreach(var other in Enum.GetValues(message).Cast<object>().Where(value=>!Equals(value,kind)))
+                Refused(()=>read.Invoke(null,[frame,nonce,other]),"PrivateWindowOwnerFrameMismatch");
+        }
+        Console.WriteLine("PASS fixed private window owner identity and ready/release/closed frames; no service registration");
     }
 
     [StructLayout(LayoutKind.Sequential)] private struct SecurityAttributes {internal int Length;internal IntPtr Descriptor;internal int Inherit;}

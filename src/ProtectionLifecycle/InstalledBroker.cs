@@ -14,6 +14,7 @@ namespace ProtectionLifecycle;
 public static partial class InstalledBroker
 {
     public static int RunSessionZeroOfflineCreatorService()=>SessionZeroCreatorService.Dispatch();
+    public static int RunSessionZeroWindowOwnerService()=>SessionZeroCreatorService.DispatchWindowOwner();
     public static int RunHostGpuReferenceChild()=>GpuHostReferenceQualification.RunChild();
     public static (int ExitCode,string Report) QualifyHostGpuReference()=>WithCurrentInstallation(GpuHostReferenceQualification.RunInstalled);
     public static int RunRestrictedPowerShell(string[] arguments)=>RestrictedPowerShellHost.Run(arguments);

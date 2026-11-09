@@ -20,7 +20,7 @@
     <Compile Include="AtomicAdmission.cs" />
     <Compile Include="SchannelAcquisition.cs;OfflineTlsQualification.cs" />
     <Compile Include="OfflineConsoleStreams.cs;OfflineConsoleQualification.cs;OfflineConsoleProjection.cs;OfflineConsoleStorage.cs;OfflineConsoleHostIdentity.cs;SessionZeroStartupWitness.cs" />
-    <Compile Include="SessionZeroStartupBranchTrace.cs;SessionZeroWindowAccess.cs;SessionZeroWindowPolicy.cs;SessionZeroWindowLease.cs" />
+    <Compile Include="SessionZeroStartupBranchTrace.cs;SessionZeroWindowAccess.cs;SessionZeroWindowPolicy.cs;SessionZeroWindowLease.cs;SessionZeroWindowOwner.cs" />
     <Compile Include="OpenSslMemoryConnection.cs;OpenSslDer.cs;OpenSslOfflineChain.cs;FixedOpenSslHead.cs;FixedHeadResponse.cs;FixedOpenSslHeadTrust.cs;FixedResolverTrust.cs" />
     <Compile Include="OpenSslOfflineWitness.cs;OpenSslOfflineIdentity.cs;OpenSslOfflineCrlFixture.cs;OpenSslModuleLease.cs" />
     <Compile Include="TokenCapabilitySnapshot.cs;WindowsTokenInformation.cs" />

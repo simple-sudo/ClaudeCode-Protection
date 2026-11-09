@@ -358,6 +358,13 @@ internal static class CreatorLifecycleCases
         Witness(65,user32Failure+imageDiagnostics,"OUTPUT_REJECTED",schema:9);
         Witness(0,all,"OUTPUT_REJECTED",schema:9);
         Witness(0,"ENTRY\nBEFORE_USER32\nAFTER_USER32\n","FIRST_USER32_LOAD_SUCCEEDED","AFTER_USER32",schema:10);
+        Witness(0,all+"PRIVATE_DESKTOP_MATCHED\n"+imageDiagnostics,"ALL_CHECKPOINTS_OBSERVED","AFTER_UCRT",schema:11,diagnostics:(false,0));
+        Witness(0,all+imageDiagnostics,"OUTPUT_REJECTED","AFTER_UCRT",schema:11);
+        Witness(0,all+"PRIVATE_DESKTOP_MATCHED\n","DIAGNOSTICS_REJECTED","AFTER_UCRT",schema:11);
+        Witness(0,all+"PRIVATE_DESKTOP_MATCHED\n"+imageDiagnostics,"DIAGNOSTICS_REJECTED","AFTER_UCRT",schema:8);
+        const string desktopFailure="ENTRY\nBEFORE_USER32\nAFTER_USER32\nBEFORE_DESKTOP\nWIN32=0x0000000D\n";
+        Witness(72,desktopFailure,"PRIVATE_DESKTOP_NOT_CONFIRMED","BEFORE_DESKTOP",13,schema:11);
+        Witness(72,desktopFailure,"OUTPUT_REJECTED",schema:8);
         denied=false;
         try{_=broker.GetMethod("QualifySessionZeroStartupWitness")!.Invoke(null,null);}
         catch(TargetInvocationException error) when(error.InnerException is UnauthorizedAccessException){denied=true;}

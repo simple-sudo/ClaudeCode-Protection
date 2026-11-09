@@ -95,6 +95,61 @@ static void DiagnoseUser32(HANDLE output)
 }
 
 typedef HWND (WINAPI *DesktopWindowFunction)(void);
+
+#ifdef STARTUP_PRIVATE_DESKTOP_WITNESS
+typedef HWINSTA (WINAPI *ProcessWindowStationFunction)(void);
+typedef HDESK (WINAPI *ThreadDesktopFunction)(DWORD);
+typedef BOOL (WINAPI *UserObjectInformationFunction)(HANDLE, int, PVOID, DWORD, LPDWORD);
+
+static BOOL ExactName(UserObjectInformationFunction read, HANDLE object, const wchar_t *expected, DWORD chars)
+{
+    wchar_t actual[64];
+    DWORD used;
+    if (!object || !read(object, UOI_NAME, actual, sizeof(actual), &used) || used != (chars + 1) * sizeof(wchar_t))
+        return FALSE;
+    for (DWORD i = 0; i < chars; ++i)
+        if (actual[i] != expected[i])
+            return FALSE;
+    return actual[chars] == L'\0';
+}
+
+static BOOL PrivateDesktopSelected(HMODULE user)
+{
+    static const wchar_t prefix[] = L"CpcTask.";
+    static const wchar_t desktop_name[] = L"Task";
+    const DWORD prefix_length = ARRAYSIZE(prefix) - 1;
+    const DWORD station_length = prefix_length + 32;
+    STARTUPINFOW startup;
+    GetStartupInfoW(&startup);
+    const wchar_t *target = startup.lpDesktop;
+    if (!target)
+        return FALSE;
+    for (DWORD i = 0; i < prefix_length; ++i)
+        if (target[i] != prefix[i])
+            return FALSE;
+    for (DWORD i = prefix_length; i < station_length; ++i)
+        if (!(target[i] >= L'0' && target[i] <= L'9') && !(target[i] >= L'a' && target[i] <= L'f'))
+            return FALSE;
+    if (target[station_length] != L'\\')
+        return FALSE;
+    for (DWORD i = 0; i < ARRAYSIZE(desktop_name); ++i)
+        if (target[station_length + 1 + i] != desktop_name[i])
+            return FALSE;
+
+    ProcessWindowStationFunction station = (ProcessWindowStationFunction)(void *)GetProcAddress(user, "GetProcessWindowStation");
+    ThreadDesktopFunction desktop = (ThreadDesktopFunction)(void *)GetProcAddress(user, "GetThreadDesktop");
+    UserObjectInformationFunction read = (UserObjectInformationFunction)(void *)GetProcAddress(user, "GetUserObjectInformationW");
+    if (!station || !desktop || !read)
+        return FALSE;
+    HWINSTA actual_station = station();
+    USEROBJECTFLAGS flags;
+    DWORD used;
+    return actual_station && read(actual_station, UOI_FLAGS, &flags, sizeof(flags), &used) &&
+        used == sizeof(flags) && !(flags.dwFlags & WSF_VISIBLE) &&
+        ExactName(read, actual_station, target, station_length) &&
+        ExactName(read, desktop(GetCurrentThreadId()), desktop_name, ARRAYSIZE(desktop_name) - 1);
+}
+#endif
 #endif
 
 void WINAPI StartupWitness(void)
@@ -138,6 +193,13 @@ void WINAPI StartupWitness(void)
     CHECKPOINT("AFTER_USER32");
 
     CHECKPOINT("BEFORE_DESKTOP");
+#ifdef STARTUP_PRIVATE_DESKTOP_WITNESS
+    if (!PrivateDesktopSelected(user))
+    {
+        SetLastError(ERROR_INVALID_DATA);
+        Fail(output, 72);
+    }
+#endif
     DesktopWindowFunction desktop = (DesktopWindowFunction)(void *)GetProcAddress(user, "GetDesktopWindow");
     if (!desktop)
         Fail(output, 66);
@@ -155,6 +217,9 @@ void WINAPI StartupWitness(void)
     if (!LoadLibraryExW(L"ucrtbase.dll", NULL, LOAD_LIBRARY_SEARCH_SYSTEM32))
         Fail(output, 69);
     CHECKPOINT("AFTER_UCRT");
+#ifdef STARTUP_PRIVATE_DESKTOP_WITNESS
+    CHECKPOINT("PRIVATE_DESKTOP_MATCHED");
+#endif
     DiagnoseUser32(output);
 #endif
     ExitProcess(0);

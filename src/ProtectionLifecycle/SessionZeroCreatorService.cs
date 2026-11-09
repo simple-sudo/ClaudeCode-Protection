@@ -12,6 +12,7 @@ internal static class SessionZeroCreatorService
 {
     private static readonly ServiceMain Callback=(argc,argv)=>Run(argc,argv,recovery:false);
     private static readonly ServiceMain RecoveryCallback=(argc,argv)=>Run(argc,argv,recovery:true);
+    private static readonly ServiceMain WindowOwnerCallback=RunWindowOwner;
     private static readonly ServiceControlHandler Control=(_,_,_,_)=>120; // ERROR_CALL_NOT_IMPLEMENTED.
     private static int exit=125;
     internal enum FailurePhase:uint
@@ -28,10 +29,40 @@ internal static class SessionZeroCreatorService
     }
 
     internal static int Dispatch(bool recovery=false)
+        =>DispatchFixed(recovery?RecoveryCallback:Callback);
+
+    internal static int DispatchWindowOwner()=>DispatchFixed(WindowOwnerCallback);
+
+    private static int DispatchFixed(ServiceMain callback)
     {
-        var table=new[]{new TableEntry{Name="",Main=Marshal.GetFunctionPointerForDelegate(recovery?RecoveryCallback:Callback)},new TableEntry()};
+        var table=new[]{new TableEntry{Name="",Main=Marshal.GetFunctionPointerForDelegate(callback)},new TableEntry()};
         if(!StartServiceCtrlDispatcher(table))return Marshal.GetLastWin32Error()==1063?124:126;
         return Volatile.Read(ref exit);
+    }
+
+    private static void RunWindowOwner(uint argc,IntPtr argv)
+    {
+        if(argc!=1 || argv==IntPtr.Zero || Marshal.PtrToStringUni(Marshal.ReadIntPtr(argv)) is not { } name)return;
+        string jobId;
+        try{jobId=SessionZeroWindowOwner.JobIdFromName(name);}catch(InvalidDataException){return;}
+        var service=RegisterServiceCtrlHandlerEx(name,Control,IntPtr.Zero);
+        if(service==IntPtr.Zero)return;
+        var status=new Status{ServiceType=0x10,State=2,CheckPoint=1,WaitHint=10000};
+        uint failure=0;
+        try
+        {
+            if(!SetServiceStatus(service,ref status))throw new Win32Exception(Marshal.GetLastWin32Error(),"ReportPrivateWindowOwnerStarting");
+            var sid=SessionZeroWindowOwner.VerifyCurrentService(name);
+            var phase=FailurePhase.SealProcess;
+            GrantOwnObservation(sid,ref phase);
+            status.State=4;status.CheckPoint=0;status.WaitHint=0;
+            if(!SetServiceStatus(service,ref status))throw new Win32Exception(Marshal.GetLastWin32Error(),"ReportPrivateWindowOwnerRunning");
+            SessionZeroWindowOwner.RunWorker(jobId,sid);
+        }
+        catch(Exception error)
+        {failure=unchecked((uint)(error is Win32Exception native?native.NativeErrorCode:error.HResult));if(failure==0)failure=13;}
+        status.State=1;status.CheckPoint=0;status.WaitHint=0;status.Win32Code=failure==0?0u:1066;status.ServiceCode=failure;
+        if(SetServiceStatus(service,ref status) && failure==0)Volatile.Write(ref exit,0);
     }
 
     private static void Run(uint argc,IntPtr argv,bool recovery)
