@@ -307,6 +307,7 @@ internal static class OfflineConsoleQualification
         string? jobId=null;
         string? failedStage=null;
         uint? exit=null;
+        SessionZeroStartupWitness.Win32kObservation? beforeResumeWin32k=null;
         RuntimeStop? stopped=null;
         OfflineConsoleOutput? stdout=null,stderr=null;
         OfflineConsoleHostIdentitySummary? hostIdentity=null;
@@ -396,6 +397,7 @@ internal static class OfflineConsoleQualification
             catch(Exception error){failedStage=stage;failures.Add(error);}
             finally
             {
+                beforeResumeWin32k=child?.BeforeResumeWin32k;
                 try
                 {
                     stage="StopOriginalJob";
@@ -463,11 +465,13 @@ internal static class OfflineConsoleQualification
         stage=failedStage??stage;
         if(startupWitness)
         {
-            var observation=SessionZeroStartupWitness.Observe(exit,stdout,stderr);
+            var observation=SessionZeroStartupWitness.Observe(version.Package.SchemaVersion,exit,stdout,stderr)
+                with {BeforeResumeWin32k=beforeResumeWin32k};
+            var extended=version.Package.SchemaVersion==PackageAssetCatalog.SessionZeroStartupDiagnosticsSchema;
             var terminal=failures.Count==0 && closed && profileClosed && workspaceClosed && serviceRemoved && resumed &&
                 observation.Status=="ALL_CHECKPOINTS_OBSERVED";
             var diagnostic=JsonSerializer.Serialize(new {
-                SchemaVersion=1,Scope=SessionZeroStartupWitness.Scope,state.InstallationId,JobId=jobId,
+                SchemaVersion=extended?2:1,Scope=SessionZeroStartupWitness.Scope,state.InstallationId,JobId=jobId,
                 version.Package.Release,version.Package.ManifestHash,
                 Status=terminal?"STARTUP_WITNESS_CLOSED":"STARTUP_WITNESS_NOT_CONFIRMED",
                 LastStage=stage,ProcessResumed=resumed,ChildExit=exit,OriginalJobClosed=closed,ProfileClosed=profileClosed,

@@ -1,5 +1,12 @@
 # 当前状态与授权摘要
 
+2026-11-09，新启动见证在原准入链加入恢复前 Win32k 策略读回，以及首次 USER32
+装载后的映像与依赖检查。普通 Windows 正控制通过，进程内禁用 Win32k 的对照复现
+1114。独立 LocalService/LPAC 的实际策略和失败分支仍为 UNKNOWN，新候选未安装。
+可信侧另实读远控服务、TCP 监听及物理 WLAN 网关关联。相关受限读取和出口仍待实机验证。
+[启动取证](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#区分-win32k-策略与映像加载) ·
+[宿主参考](ASSURANCE-AND-EXPOSURE-PROFILING.md#远控服务与物理网络参考)
+
 2026-11-09，`79818ec3` 已升级并保持未激活。独立 LocalService 的零能力 LPAC 自研
 进程到达原生入口，从 System32 加载 USER32 返回 1114，未到达桌面访问检查点。
 原 Job、profile、工作区和服务均核验回收，许可已消耗。DLL 初始化的底层原因、五项

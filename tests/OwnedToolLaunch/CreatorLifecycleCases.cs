@@ -309,12 +309,17 @@ internal static class CreatorLifecycleCases
         var witness=Method("SessionZeroStartupWitness","Observe");
         var capture=library.GetType("ProtectionLifecycle.OfflineConsoleOutput",true)!;
         object Stream(string value,bool overflow=false)=>Activator.CreateInstance(capture,[System.Text.Encoding.ASCII.GetBytes(value),overflow])!;
-        void Witness(uint? exit,string output,string status,string? checkpoint=null,uint? error=null,bool overflow=false,string stderr="")
+        void Witness(uint? exit,string output,string status,string? checkpoint=null,uint? error=null,bool overflow=false,string stderr="",
+            int schema=7,(bool? Blocked,uint? MapError)? diagnostics=null)
         {
-            var row=witness.Invoke(null,[exit,Stream(output,overflow),Stream(stderr)])!;
+            var row=witness.Invoke(null,[schema,exit,Stream(output,overflow),Stream(stderr)])!;
             Check(row.GetType().GetProperty("Status")!.GetValue(row) as string==status &&
                 row.GetType().GetProperty("LastCheckpoint")!.GetValue(row) as string==checkpoint &&
                 (uint?)row.GetType().GetProperty("Win32Error")!.GetValue(row)==error);
+            var observed=row.GetType().GetProperty("Diagnostics")!.GetValue(row);
+            Check(diagnostics is null?observed is null:observed is not null &&
+                (bool?)observed.GetType().GetProperty("Win32kBlocked")!.GetValue(observed)==diagnostics.Value.Blocked &&
+                (uint?)observed.GetType().GetProperty("User32MapError")!.GetValue(observed)==diagnostics.Value.MapError);
         }
         const string all="ENTRY\nBEFORE_USER32\nAFTER_USER32\nBEFORE_DESKTOP\nAFTER_DESKTOP\nBEFORE_SHELL32\nAFTER_SHELL32\nBEFORE_UCRT\nAFTER_UCRT\n";
         const uint dllInitFailed=0xc0000142;
@@ -328,6 +333,25 @@ internal static class CreatorLifecycleCases
         Witness(dllInitFailed,"ENTRY\nBEFORE_USER","OUTPUT_REJECTED");
         Witness(0,all,"CAPTURE_UNAVAILABLE",overflow:true);
         Witness(0,all,"CAPTURE_UNAVAILABLE",stderr:"unexpected");
+        const string user32Failure="ENTRY\nBEFORE_USER32\nWIN32=0x0000045A\n";
+        const string imageDiagnostics="WIN32K_QUERY=0x00000000\nWIN32K_BLOCKED=0x00000000\nUSER32_FILE=0x00000000\nUSER32_MAP=0x00000000\n"+
+            "WIN32U_LOAD=0x00000000\nGDI32_LOAD=0x00000000\nGDI32FULL_LOAD=0x00000000\n";
+        Witness(0,all+imageDiagnostics,"ALL_CHECKPOINTS_OBSERVED","AFTER_UCRT",schema:8,diagnostics:(false,0));
+        Witness(0,all+imageDiagnostics,"OUTPUT_REJECTED");
+        Witness(65,user32Failure+imageDiagnostics,"WIN32_FAILURE_AFTER_CHECKPOINT","BEFORE_USER32",0x45a,schema:8,diagnostics:(false,0));
+        Witness(65,user32Failure+imageDiagnostics.Replace("WIN32K_BLOCKED=0x00000000","WIN32K_BLOCKED=0x00000001",StringComparison.Ordinal),
+            "WIN32_FAILURE_AFTER_CHECKPOINT","BEFORE_USER32",0x45a,schema:8,diagnostics:(true,0));
+        Witness(65,user32Failure,"DIAGNOSTICS_REJECTED","BEFORE_USER32",0x45a,schema:8);
+        Witness(65,user32Failure+imageDiagnostics.Replace("WIN32K_BLOCKED=0x00000000","WIN32K_BLOCKED=0x00000002",StringComparison.Ordinal),
+            "DIAGNOSTICS_REJECTED","BEFORE_USER32",0x45a,schema:8);
+        Witness(65,user32Failure+imageDiagnostics.Replace("USER32_FILE=0x00000000","USER32_FILE=0x00000005",StringComparison.Ordinal),
+            "DIAGNOSTICS_REJECTED","BEFORE_USER32",0x45a,schema:8);
+        Witness(65,user32Failure+imageDiagnostics
+            .Replace("USER32_FILE=0x00000000\nUSER32_MAP=0x00000000","USER32_FILE=0x00000005\nUSER32_MAP=0xFFFFFFFF",StringComparison.Ordinal)
+            .Replace("WIN32K_QUERY=0x00000000\nWIN32K_BLOCKED=0x00000000","WIN32K_QUERY=0x00000005\nWIN32K_BLOCKED=0xFFFFFFFF",StringComparison.Ordinal),
+            "WIN32_FAILURE_AFTER_CHECKPOINT","BEFORE_USER32",0x45a,schema:8,diagnostics:(null,null));
+        Witness(65,user32Failure+imageDiagnostics+"EXTRA=0x00000000\n","DIAGNOSTICS_REJECTED","BEFORE_USER32",0x45a,schema:8);
+        Witness(0,all+imageDiagnostics+new string('X',384),"OUTPUT_REJECTED",schema:8);
         denied=false;
         try{_=broker.GetMethod("QualifySessionZeroStartupWitness")!.Invoke(null,null);}
         catch(TargetInvocationException error) when(error.InnerException is UnauthorizedAccessException){denied=true;}

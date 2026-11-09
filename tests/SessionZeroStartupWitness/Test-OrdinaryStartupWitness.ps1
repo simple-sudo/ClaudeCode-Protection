@@ -1,4 +1,6 @@
 #requires -Version 7.4
+param([string]$OutputRoot, [switch]$Win32kControl)
+
 $ErrorActionPreference = 'Stop'
 
 $repo = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
@@ -17,7 +19,8 @@ $includes = @(
     (Join-Path $sdk "Include\$version\ucrt")
 ) | ForEach-Object { "/I$_" }
 
-$output = Join-Path $repo ('work\session-zero-startup-witness-' + [Guid]::NewGuid().ToString('N'))
+if (!$OutputRoot) { $OutputRoot = Join-Path $repo 'work' }
+$output = Join-Path $OutputRoot ('session-zero-startup-witness-' + [Guid]::NewGuid().ToString('N'))
 [void](New-Item -ItemType Directory -Path $output)
 $exe = Join-Path $output 'SessionZeroStartupWitness.exe'
 $object = Join-Path $output 'StartupWitness.obj'
@@ -26,7 +29,9 @@ $savedPath = $env:PATH
 try {
     $env:PATH = "$tools;$savedPath"
     # Keep CRT and pre-entry user32/shell32 initialization out of the witness.
-    $arguments = @('/nologo','/TC','/std:c17','/W4','/WX','/O2','/GS-','/Zl') + $includes + @(
+    $defines = @()
+    if ($Win32kControl) { $defines += '/DORDINARY_WIN32K_CONTROL' }
+    $arguments = @('/nologo','/TC','/std:c17','/W4','/WX','/O2','/GS-','/Zl') + $defines + $includes + @(
         "/Fo$object", "/Fe$exe", $source, '/link', '/NODEFAULTLIB', '/ENTRY:StartupWitness', '/SUBSYSTEM:CONSOLE',
         '/DYNAMICBASE', '/NXCOMPAT', '/Brepro', "/LIBPATH:$sdk\Lib\$version\um\x64", 'kernel32.lib'
     )
@@ -53,17 +58,34 @@ try {
     if (!$process.WaitForExit(10000)) { throw 'Startup witness terminal state unavailable' }
     $checkpoints = @('ENTRY','BEFORE_USER32','AFTER_USER32','BEFORE_DESKTOP','AFTER_DESKTOP',
         'BEFORE_SHELL32','AFTER_SHELL32','BEFORE_UCRT','AFTER_UCRT')
-    $expected = ($checkpoints -join [char]10) + [char]10
-    if ($process.ExitCode -ne 0 -or $stdout.GetAwaiter().GetResult() -cne $expected -or $stderr.GetAwaiter().GetResult()) {
+    $diagnostics = @('WIN32K_QUERY','WIN32K_BLOCKED','USER32_FILE','USER32_MAP',
+        'WIN32U_LOAD','GDI32_LOAD','GDI32FULL_LOAD') | ForEach-Object { "$_=0x00000000" }
+    $expectedExit = 0
+    if ($Win32kControl) {
+        $checkpoints = @('ENTRY','BEFORE_USER32','WIN32=0x0000045A')
+        $diagnostics[1] = 'WIN32K_BLOCKED=0x00000001'
+        $diagnostics[5] = 'GDI32_LOAD=0x00000008'
+        $diagnostics[6] = 'GDI32FULL_LOAD=0x00000008'
+        $expectedExit = 65
+    }
+    $observed = $stdout.GetAwaiter().GetResult()
+    [IO.File]::WriteAllText((Join-Path $output 'ordinary-stdout.txt'), $observed)
+    $errorOutput = $stderr.GetAwaiter().GetResult()
+    [IO.File]::WriteAllText((Join-Path $output 'ordinary-stderr.txt'), $errorOutput)
+    $expected = (($checkpoints + $diagnostics) -join [char]10) + [char]10
+    if ($process.ExitCode -ne $expectedExit -or $observed -cne $expected -or $errorOutput) {
         throw 'Ordinary startup witness checkpoints differ'
     }
 } finally {
     $process.Dispose()
 }
 [pscustomobject]@{
-    Result = 'ORDINARY_STARTUP_WITNESS_PASSED'
+    Result = if ($Win32kControl) { 'ORDINARY_WIN32K_CONTROL_PASSED' } else { 'ORDINARY_STARTUP_WITNESS_PASSED' }
     StaticImport = $imports[0]
     Checkpoints = $checkpoints.Count
+    Diagnostics = $diagnostics.Count
+    ExitCode = $expectedExit
+    Length = (Get-Item -LiteralPath $exe).Length
     SHA256 = (Get-FileHash -LiteralPath $exe).Hash
     Image = $exe
     SessionZeroLpacVerified = $false

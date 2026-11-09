@@ -5,6 +5,16 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-09 USER32 与 Win32k 对照
+
+BUILD / INTEGRATED(独立原生见证 schema 8、Broker 恢复前读回和见证进程内诊断)。
+VERIFIED(普通 Windows 默认正控制、进程内禁用 Win32k 复现 1114、目标回归)。
+UNKNOWN(`79818ec3` 真实 LPAC 失败时的 Win32k 状态与实际初始化分支)。
+VERIFIED(可信侧远控服务、TCP 监听、物理网关和 OS 区域设置读值)。
+NOT_RUN(新版独立 LPAC、对应受限内容读取、实际代理出口)。
+[启动取证](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#区分-win32k-策略与映像加载) ·
+[宿主参考](ASSURANCE-AND-EXPOSURE-PROFILING.md#远控服务与物理网络参考)
+
 ## 2026-11-09 独立 LPAC 实机到达原生入口
 
 VERIFIED(`79818ec3` 未激活更新、固定见证在独立 LPAC 到达入口、原 Job 和临时对象回收)。

@@ -1283,3 +1283,32 @@ GDI32FULL。五个相关 DLL 文件都存在“All Restricted Application Packag
 下一次先区分映像映射、依赖初始化和窗口对象访问，不直接改变共享窗口对象权限。
 [窗口站连接规则](https://learn.microsoft.com/en-us/windows/win32/winstation/process-connection-to-a-window-station) ·
 [命名窗口站创建约束](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-createwindowstationw)。
+
+### 区分 Win32k 策略与映像加载
+
+按本机 `user32.dll` 10.0.26100.8875 和匹配的 Microsoft 符号检查进程附加路径。
+`_UserClientDllInitialize` 在 `CsrClientConnectToServer` 返回失败时可返回 FALSE，
+而 `GdiDllInitialize`、内存和回调初始化也有失败分支。既有 1114 无法定位其中
+哪一条。读到的 Windows 默认 Exploit Protection 设置未配置禁用 Win32k，实际
+子进程的有效策略需另行读回。
+
+新包 schema 8 固定新版见证的映像长度和 SHA-256，保留 schema 7 原字节规则。
+Broker 在初始线程恢复前直接从已经核验的进程句柄读 Win32k 策略。见证保持第一次
+USER32 装载及退出码，随后读自己的策略，从 System32 真实打开并无执行映射 USER32，
+依次尝试装载 WIN32U、GDI32 和 GDI32FULL。输出只接受固定顺序与有界数值，分开记录
+文件打开失败、映射未到达和已执行映射。无执行映射成功只证明这次文件读取及映射路径，
+可执行装载和初始化单列。过程仍使用原服务、令牌、Job、隔离、标准流和关闭门禁。
+[进程策略字段](https://learn.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-process_mitigation_system_call_disable_policy)。
+
+普通 Windows 两组实机对照使用自研载荷，静态导入均仅 KERNEL32。默认策略下九个
+启动检查点与七项附加读值通过。独立编译的对照只禁用自身 Win32k，首次 USER32 加载
+返回 1114，退出 65。USER32 文件打开、无执行映射和 WIN32U 装载通过，GDI32 和
+GDI32FULL 装载各返回 8。该对照验证了区分能力，独立 LPAC 的同码失败仍需实测。
+固定新版见证长度 6144，SHA-256
+`7FFE9A92E7D99D655EBE3DB3C181D7CCC25808AA0B84B3AEA8B4E4CEB1DBD876`。
+
+四个产品入口及回归工程 Release BUILD 通过。普通创建链、包兼容、三条标准流、
+本机管理面、网关资格、反馈和内存 TLS 时序回归通过。三条标准流回归首次由
+`dotnet` 宿主启动，子测试等待超时。保留原日志，改用该回归工程自己的 EXE 后通过。
+证据在 `work/session-zero-user32-20261109-01/`。新包未安装，Session 0 实测、
+实际代理出口、五项受限宿主身份读取及正常受限开发均为 NOT_RUN。

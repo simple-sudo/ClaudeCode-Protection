@@ -734,6 +734,12 @@ internal sealed partial class AtomicChild : IDisposable
             using var held=OpenCreatorQueryToken(process);
             AssertCreatorLpacBinding(creatorTokenProof,WindowsTokenInformation.ReadPrimaryBinding(held));
         }
+        if(startupWitness && version.Package.SchemaVersion==PackageAssetCatalog.SessionZeroStartupDiagnosticsSchema)
+        {
+            const int processSystemCallDisablePolicy=4;
+            BeforeResumeWin32k=GetProcessMitigationPolicy(process,processSystemCallDisablePolicy,out var flags,sizeof(uint))
+                ?new(0,(flags&1)!=0):new(unchecked((uint)Marshal.GetLastWin32Error()),null);
+        }
         ResumeAttempted=true;
         var previous=ResumeThread(thread);if(previous==uint.MaxValue)throw Error("AtomicResumePrimaryThread");
         if(previous!=1)throw WfpNative.Contract("AtomicInitialSuspendCountMismatch");
@@ -780,6 +786,7 @@ internal sealed partial class AtomicChild : IDisposable
             throw WfpNative.Contract("OfflineConsoleRuntimeRequiresExactSuspendedChild");
     }
     internal SecurityIdentifier? OfflineConsoleUserSid { get;private set; }
+    internal SessionZeroStartupWitness.Win32kObservation? BeforeResumeWin32k {get;private set;}
     internal uint? ObserveOfflineConsoleExit()
     {
         if(!offlineConsole)throw WfpNative.Contract("OfflineConsoleWorkloadRequired");
