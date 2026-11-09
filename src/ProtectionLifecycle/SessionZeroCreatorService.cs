@@ -139,8 +139,9 @@ internal static class SessionZeroCreatorService
         var descriptor=KernelJobSeal.ReadCreatorProcessDescriptor(self);
         if(descriptor.DiscretionaryAcl is null)throw new Win32Exception(13,"CreatorServiceProcessDaclMissing");
         phase=FailurePhase.ValidateProcessOwner;
-        if(descriptor.Owner is not { } originalOwner || !IsTrustedCreatorProcessOwner(originalOwner,creatorSid))
-            throw new UnexpectedProcessOwner(ObserveOwnerRelation(descriptor.Owner));
+        if(descriptor.Owner is not { } originalOwner)throw new UnexpectedProcessOwner(OwnerRelation.Missing);
+        var relation=ObserveOwnerRelation(originalOwner);
+        if(!IsTrustedCreatorProcessOwner(originalOwner,creatorSid,relation))throw new UnexpectedProcessOwner(relation);
         var acl=CreateObserverDacl();
         phase=FailurePhase.WriteProcessSecurity;
         KernelJobSeal.WriteProtectedDacl(self,acl);
@@ -154,15 +155,15 @@ internal static class SessionZeroCreatorService
             !wanted.AsSpan().SequenceEqual(observed))throw WfpNative.Contract("CreatorServiceObservationDaclDiffers");
     }
 
-    // SCM creates the process object separately from the LocalService primary
-    // token. Keep the original trusted owner and independently seal its DACL.
-    internal static bool IsTrustedCreatorProcessOwner(SecurityIdentifier owner,SecurityIdentifier exactCreatorSid) =>
+    // SCM can use the authenticated service's logon SID as the object owner.
+    // Keep that owner and seal the DACL without granting it owner rights.
+    internal static bool IsTrustedCreatorProcessOwner(SecurityIdentifier owner,SecurityIdentifier exactCreatorSid,OwnerRelation relation) =>
         owner.IsWellKnown(WellKnownSidType.LocalServiceSid) || owner.IsWellKnown(WellKnownSidType.LocalSystemSid) ||
-        owner.IsWellKnown(WellKnownSidType.BuiltinAdministratorsSid) || owner.Equals(exactCreatorSid);
+        owner.IsWellKnown(WellKnownSidType.BuiltinAdministratorsSid) || owner.Equals(exactCreatorSid) ||
+        (owner.IsWellKnown(WellKnownSidType.LogonIdsSid) && relation is OwnerRelation.TokenLogon or OwnerRelation.TokenDefaultAndLogon);
 
-    private static OwnerRelation ObserveOwnerRelation(SecurityIdentifier? owner)
+    private static OwnerRelation ObserveOwnerRelation(SecurityIdentifier owner)
     {
-        if(owner is null)return OwnerRelation.Missing;
         try
         {
             using var identity=WindowsIdentity.GetCurrent(TokenAccessLevels.Query);

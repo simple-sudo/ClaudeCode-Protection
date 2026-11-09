@@ -3,6 +3,7 @@ using System.Reflection;
 using System.Runtime.ExceptionServices;
 using System.Runtime.InteropServices;
 using System.Security.AccessControl;
+using System.Security.Principal;
 using Microsoft.Win32.SafeHandles;
 
 internal static class RestrictingSidCases
@@ -60,18 +61,40 @@ internal static class RestrictingSidCases
         Console.WriteLine($"PASS {checks} restricting SID checks: native own-token reduction and synthetic in-memory registry access controls. No impersonation, child process, registry access/change, capability grant, network, installation, LPAC composition or product qualification.");
     }
 
-    private static bool Allows(SafeAccessTokenHandle token, string aces)
+    internal static void AssertCreatorObserverAcl(RawAcl acl, SecurityIdentifier logon)
     {
-        var descriptor = new RawSecurityDescriptor("O:SYG:SYD:P" + aces);
+        using var identity = WindowsIdentity.GetCurrent(TokenAccessLevels.Query | TokenAccessLevels.Duplicate);
+        if (!DuplicateTokenEx(identity.AccessToken, 8, IntPtr.Zero, 2, 2, out var source)) throw Error("Creator ACL token duplicate");
+        using (source)
+        {
+            var user = identity.User ?? throw new InvalidDataException("Missing ordinary owner SID");
+            var unsealed = new RawSecurityDescriptor($"O:{user.Value}G:SYD:P(A;;0x1;;;SY)");
+            if (!Allows(source, unsealed, 0x00040000)) throw new InvalidDataException("Ordinary owner control did not grant WRITE_DAC");
+            var group = new SecurityIdentifier(WellKnownSidType.LocalSystemSid, null);
+            foreach (var owner in new[] { user, logon })
+            {
+                var sealedProcess = new RawSecurityDescriptor(ControlFlags.DiscretionaryAclPresent | ControlFlags.DiscretionaryAclProtected,
+                    owner, group, null, acl);
+                foreach (uint access in new uint[] { 0x00020000, 0x00040000, 0x00080000, 0x0040, 0x0001 })
+                    if (Allows(source, sealedProcess, access)) throw new InvalidDataException("Sealed creator descriptor granted ordinary process access");
+            }
+        }
+    }
+
+    private static bool Allows(SafeAccessTokenHandle token, string aces) =>
+        Allows(token, new RawSecurityDescriptor("O:SYG:SYD:P" + aces), 1);
+
+    private static bool Allows(SafeAccessTokenHandle token, RawSecurityDescriptor descriptor, uint access)
+    {
         var bytes = new byte[descriptor.BinaryLength]; descriptor.GetBinaryForm(bytes, 0);
         var mapping = new GenericMapping { Read = 0x20019, Write = 0x20006, Execute = 0x20019, All = 0xf003f };
         var privileges = Marshal.AllocHGlobal(1024);
         try
         {
             uint size = 1024;
-            if (!AccessCheck(bytes, token, 1, ref mapping, privileges, ref size, out var granted, out var allowed))
+            if (!AccessCheck(bytes, token, access, ref mapping, privileges, ref size, out var granted, out var allowed))
                 throw Error("Synthetic descriptor AccessCheck");
-            if (size > 1024 || (allowed && (granted & 1) == 0)) throw new InvalidDataException("AccessCheck result differs");
+            if (size > 1024 || (allowed && (granted & access) != access)) throw new InvalidDataException("AccessCheck result differs");
             return allowed;
         }
         finally { Marshal.FreeHGlobal(privileges); }

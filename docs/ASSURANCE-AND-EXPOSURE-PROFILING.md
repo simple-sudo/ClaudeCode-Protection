@@ -78,6 +78,23 @@ Codex/ChatGPT 对本人电脑真实网络、位置、FlClash/UU、设备 ID、�
 
 画像报告不追求无依据地“还原真实用户”。授权项目源码、公开服务端看到的代理 IP、服务端跨账户关联与普通统计指纹可能仍产生不可消除的推断；评估要记录这些无法由本机隔离完全控制的残余风险，而不是承诺绝对匿名。
 
+### 可信普通身份的网络关联参考
+
+2026-11-08，用普通可信身份读取 Windows CIM 服务、进程、双栈 TCP/UDP 表和物理
+接口的地址、路由、DNS。实际读取 2 个物理接口、2 个 IPv4、4 个 IPv6、18 条路由和
+4 条 DNS 记录。6 个相关进程的创建时间均可经 `Win32_Process` 读取。同一快照的
+`Get-Process` 只提供 1 个创建时间。可用进程 ID 将 CIM 进程与服务、端点分别关联。
+FlClash Core 有 32 条 TCP 记录的本地地址与物理接口地址相同。采集时 MuMu 后端
+仅见两条本地记录，远端地域和未采到的会话均为未知。数据分次读取，跨来源关联
+保留同 PID 核验和时间边界。
+
+原值留在本机 `work/host-relay-reference-20261108/`。`reference.json` 的 SHA-256
+为 `57D5E0AA48FF507A3BC380A6F8DCCC52C0CB11F4CE4694FBA1A7A2064D50B3BC`，
+`correlation.json` 的 SHA-256 为 `3A5CD6062B68ED7B51D4217989A997BF98760093BDF09948BC90BEBF26627C4F`。
+受限侧仍需分别验证 `Win32_Process`、`Win32_Service`、`MSFT_NetTCPConnection`、
+`MSFT_NetUDPEndpoint` 及物理地址来源的真实内容可见性。这批参考无受限进程、
+出口实测或地域归属结论。
+
 ## 5. 风险策略、阻断和受控修复
 
 - 风险是**按信息目标与最高严重度决策**，不是累加/平均分：P0_CONFIRMED_EXPOSURE → 对受影响的新准入阻断、现有会话按原故障机制维持隔离/安全终止；P0_REQUIRED_UNKNOWN / 证据过期 / 评估组件不可用 → 不得凭旧报告放行；证据不足只记 UNKNOWN，不虚构“泄露已发生”。

@@ -1001,3 +1001,32 @@ DACL 和精确内容。缺失 DACL 与未接受所有者分别给出错误 13、
 诊断，现有权限和原登记回收条件保持不变。取消额外探针路径，保留本次失败证据。
 普通构建及编码、错误阶段、无权限登录组和原回收凭证兼容回归通过。未安装，
 原服务令牌下的实际分类仍待验证。独立探针留下的服务登记仍待专门处置。
+
+### 实机确认进程所有者为服务登录 SID
+
+固定审查 `B86A6A2F3E86F9963F70D6F44C100FCB59D29FC6D035AB04EF36416DB7ABE9A6` 的一次
+许可已消耗。原 Bootstrap 完成 `ef5580b8` 未激活升级，清单 SHA-256
+`3D9231BBF343B0DAD80E971F957AF467A0E9E55E7BA24B39A42A26C44D40AFFB`。已停止的旧误报探针
+在升级前和复验前均按确切手动服务登记回读，本次保留原登记与暂存。
+
+新服务在 `StartCreator` 返回 `CreatorServiceValidateProcessOwner.TokenLogon`、1307。
+该分类要求实际进程对象所有者与服务主令牌的唯一启用登录组一致，且与默认所有者
+不同。SCM 7024 记录 130046 的服务特定码为 `0xC5D40003`。原 Broker 回收新版
+服务登记，普通侧独立回读注册表缺席且 `sc query` 返回 1060。未建立新 Job、
+工作区或 profile，未运行受限进程。早期 `CreateProcessW` 错误 5 的原因仍待证实。
+
+终态回执 `work/creator-scm-owner-retest-20261108/receipt.json`，SHA-256
+`12AB51F19386EC6D71CE863BDFC4059FF296FD0580232F870ACC6691D1AB35B2`。
+启动失败与新版未激活安装一并保留。
+
+修正源码在既有 SCM、服务 SID 和主令牌资格核对后，接受同一令牌中唯一、启用、
+非仅拒绝且与对象所有者完全相等的登录 SID。仍核对封闭后所有者与原值相同，以及
+原 `OWNER_RIGHTS` 拒绝项和精确观察 DACL。这条登录 SID 分支拒绝其他登录 SID、
+仅匹配默认所有者、缺失或无效登录组。Windows 的 `OWNER_RIGHTS` ACE 抑制所有者隐含的读取安全
+描述符和改写 DACL 权限。[Windows SID 规范](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-dtyp/81d92bba-d22b-4a8c-908a-554ab29148ab)
+
+Broker、Bootstrap 和普通工具的 Release 构建通过。133 项创建者生命周期测试
+包含真实普通令牌登录 SID 和 Windows `AccessCheck` 的内存描述符对照。未封闭的
+普通所有者获得 `WRITE_DAC`，带产品 DACL 的普通用户和登录 SID 所有者均未获
+读取描述符、改权、改所有者、复制句柄或终止权限。原创建者 Job、受限 SID、离线
+控制台及未激活迁移回归通过。修正尚未安装，真实 SCM 封闭与后续受限创建待验证。

@@ -39,7 +39,9 @@ internal static class CreatorLifecycleCases
         Check(acl[2] is CommonAce observer && observer.SecurityIdentifier.Value=="S-1-5-32-544" && observer.AccessMask==0x00101000);
         var ownerPolicy=Method("SessionZeroCreatorService","IsTrustedCreatorProcessOwner");
         var serviceSid=new SecurityIdentifier("S-1-5-80-1-2-3-4-5");
-        bool Trusted(SecurityIdentifier owner)=>ownerPolicy.Invoke(null,[owner,serviceSid]) is true;
+        var relationType=ownerPolicy.GetParameters()[2].ParameterType;
+        bool Trusted(SecurityIdentifier owner,string relation="OtherOwner")=>
+            ownerPolicy.Invoke(null,[owner,serviceSid,Enum.Parse(relationType,relation)]) is true;
         foreach(var owner in new[]{"S-1-5-19","S-1-5-18","S-1-5-32-544",serviceSid.Value})
             Check(Trusted(new SecurityIdentifier(owner)));
         foreach(var owner in new[]{"S-1-5-20","S-1-5-80-1-2-3-4-6","S-1-5-80-0","S-1-5-32-545","S-1-5-21-1-2-3-1001"})
@@ -92,7 +94,6 @@ internal static class CreatorLifecycleCases
         Check(Stopped(1066,0x80131501u)==("CreatorServiceStoppedBeforeBinding",0x80131501u));
         Check(Stopped(1053,0)==("CreatorServiceStoppedBeforeBinding",1053));
         var encodeOwner=Method("SessionZeroCreatorService","EncodeOwnerFailure");
-        var relationType=encodeOwner.GetParameters()[0].ParameterType;
         var startup=Method("SessionZeroCreatorService","IsReportedStartupFailure");
         foreach(var name in Enum.GetNames(relationType))
         {
@@ -106,14 +107,32 @@ internal static class CreatorLifecycleCases
         var logonSid=new SecurityIdentifier("S-1-5-5-0-1234");
         var localService=new SecurityIdentifier("S-1-5-19");
         (string,uint)[] ownLogon=[(logonSid.Value,0xc0000004u)];
-        string? Classify(SecurityIdentifier owner,SecurityIdentifier? tokenOwner,(string,uint)[] groups)=>
-            classify.Invoke(null,[owner,tokenOwner,groups])?.ToString();
+        string Classify(SecurityIdentifier owner,SecurityIdentifier? tokenOwner,(string,uint)[] groups)=>
+            classify.Invoke(null,[owner,tokenOwner,groups])!.ToString()!;
         Check(Classify(logonSid,localService,ownLogon)=="TokenLogon");
         Check(Classify(logonSid,logonSid,ownLogon)=="TokenDefaultAndLogon");
         Check(Classify(logonSid,localService,[(logonSid.Value,0xc0000014u)])=="OtherLogonSid");
         Check(Classify(logonSid,localService,[])=="OtherLogonSid");
         Check(Classify(localService,localService,ownLogon)=="TokenDefault");
         Check(Classify(serviceSid,localService,ownLogon)=="OtherOwner");
+        Check(Trusted(logonSid,Classify(logonSid,localService,ownLogon)));
+        Check(Trusted(logonSid,Classify(logonSid,logonSid,ownLogon)));
+        var foreignLogon=new SecurityIdentifier("S-1-5-5-0-1235");
+        Check(!Trusted(foreignLogon,Classify(foreignLogon,localService,ownLogon)));
+        Check(!Trusted(logonSid,Classify(logonSid,logonSid,[])));
+        Check(!Trusted(logonSid,Classify(logonSid,localService,[(logonSid.Value,0xc0000000u)])));
+        Check(!Trusted(logonSid,Classify(logonSid,localService,[(logonSid.Value,0xc0000014u)])));
+        Check(!Trusted(logonSid,Classify(logonSid,localService,[..ownLogon,..ownLogon])));
+        Check(!Trusted(logonSid,"TokenEvidenceUnavailable"));
+        Check(!Trusted(new SecurityIdentifier("S-1-5-21-1-2-3-1001"),"TokenLogon"));
+        using(var identity=WindowsIdentity.GetCurrent(TokenAccessLevels.Query))
+        {
+            var readGroups=Method("RestrictingSidToken","ReadGroups");
+            var actualLogon=(IReadOnlyList<(string Sid,uint Attributes)>)readGroups.Invoke(null,[identity.AccessToken,28])!;
+            var actualSid=new SecurityIdentifier(actualLogon.Single().Sid);
+            Check(Trusted(actualSid,Classify(actualSid,identity.Owner,actualLogon.ToArray())));
+            RestrictingSidCases.AssertCreatorObserverAcl(acl,actualSid);Check(true);
+        }
         var broker=library.GetType("ProtectionLifecycle.InstalledBroker",true)!;
         Check(broker.GetMethod("RunSessionZeroOfflineCreatorService")!.Invoke(null,null) is 124); // Ordinary SCM refusal.
         var layout=Method("FixedLayout","FromWindows").Invoke(null,null)!;
