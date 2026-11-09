@@ -82,6 +82,7 @@ internal static class LocalManagementBoundaryCases
         var routeType=library.GetType("ProtectionLifecycle.ProxyRouteObservation",true)!;
         var evaluate=routeType.GetMethod("Evaluate",Static)!;
         var withReadback=routeType.GetMethod("EvaluateWithConfigReadback",Static)!;
+        var require=routeType.GetMethod("RequireAllowed",Instance)!;
         JsonElement Route(string proxies,string config="{\"mode\":\"global\"}")=>JsonSerializer.SerializeToElement(
             evaluate.Invoke(null,[Encoding.UTF8.GetBytes(config),Encoding.UTF8.GetBytes(proxies)]));
         const string snapshot="""
@@ -114,6 +115,20 @@ internal static class LocalManagementBoundaryCases
         var changed=WithReadback("{\"mode\":\"direct\"}"u8.ToArray());
         check(Status(changed)=="CONTROLLER_CONFIG_CHANGED_DURING_SNAPSHOT" && !Flag(changed,"AllowsRoutePrecheck"));
         check(Status(WithReadback(new byte[16385]))=="CONTROLLER_EVIDENCE_UNAVAILABLE");
+        const string connectStage="UpstreamRouteBeforeConnectRefused";
+        var safeRoute=withReadback.Invoke(null,[global,safeInventory,global.ToArray()]);
+        _=require.Invoke(safeRoute,[connectStage]);check(true);
+        foreach(var unsafeRoute in new[]{
+            withReadback.Invoke(null,[global,safeInventory,"{\"mode\":\"direct\"}"u8.ToArray()]),
+            evaluate.Invoke(null,[global,Encoding.UTF8.GetBytes(snapshot)]),
+            evaluate.Invoke(null,[global,new byte[0]])})
+        {
+            var refused=false;
+            try{_=require.Invoke(unsafeRoute,[connectStage]);}
+            catch(TargetInvocationException error)when(error.InnerException is InvalidDataException refusal &&
+                refusal.Data["Stage"] is string actual && actual==connectStage){refused=true;}
+            check(refused);
+        }
         var emptyFallback=Route(snapshot.Replace("\"emptyFallback\":\"REJECT\"","\"emptyFallback\":\"COMPATIBLE\"",StringComparison.Ordinal));
         check(Flag(emptyFallback,"DirectEmptyFallback") && Flag(emptyFallback,"ReachableDirect"));
         var automatic=Route(snapshot.Replace("\"backup\":{\"name\":\"backup\",\"type\":\"Vless\"",

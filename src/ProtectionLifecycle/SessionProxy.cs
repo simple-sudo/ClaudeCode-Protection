@@ -30,6 +30,7 @@ internal sealed class SessionProxy : IDisposable
     private readonly LpacCapabilityProfile capabilityProfile;
     private readonly bool fixedNoContentHttpsCanary;
     private readonly bool localManagementBoundary;
+    private readonly bool requireFreshProxyRoute;
     private readonly FixedResolverTrust? fixedResolverTrust;
     private ResolverTlsEvidence? resolverTlsEvidence;
     private UpstreamTunnelEvidence? upstreamTunnelEvidence;
@@ -58,7 +59,7 @@ internal sealed class SessionProxy : IDisposable
     internal string SessionId => sessionId;
     internal SessionProxy(OwnedKernelJob job, ProxyChannelLease upstream, string packageSid, string sessionId,
         LpacCapabilityProfile? capabilities=null,bool fixedNoContentHttpsCanary=false,FixedResolverTrust? fixedResolverTrust=null,
-        bool localManagementBoundary=false)
+        bool localManagementBoundary=false,bool requireFreshProxyRoute=true)
     {
         capabilityProfile=capabilities??LpacCapabilityProfile.None;
         if(fixedNoContentHttpsCanary && !capabilityProfile.IsInternetClientQualification)throw WfpNative.Contract("NoContentHttpsGatewayRequiresFixedInternetClient");
@@ -67,12 +68,14 @@ internal sealed class SessionProxy : IDisposable
             throw WfpNative.Contract("LocalManagementGatewayPlanDiffers");
         this.fixedNoContentHttpsCanary=fixedNoContentHttpsCanary;
         this.localManagementBoundary=localManagementBoundary;
+        this.requireFreshProxyRoute=requireFreshProxyRoute;
         this.fixedResolverTrust=fixedResolverTrust;
         var effective="CPC-GATEWAY-EFFECTIVE-V3;"+PolicySHA256+";"+capabilityProfile.SHA256+
             ";resolver-freshness=authenticated-request-stream;fixed-no-content-https-canary="+fixedNoContentHttpsCanary;
         if(fixedResolverTrust is not null)effective+=";fixed-openssl-head-resolver-explicit-offline-revocation;request=HEAD "+
             FixedOpenSslHead.RequestPath+";client="+FixedOpenSslHead.UserAgent;
         if(localManagementBoundary)effective+=";fixed-local-management-boundary;relay=never";
+        if(requireFreshProxyRoute)effective+=";controller-route-readback-before-every-upstream-connect";
         EffectivePolicySHA256=Convert.ToHexString(SHA256.HashData(Encoding.ASCII.GetBytes(effective)));
         this.job = job; this.upstream = upstream; this.packageSid = packageSid; this.sessionId = Identifiers.Hex32(sessionId);
         authorization = Encoding.ASCII.GetBytes("Basic " + Convert.ToBase64String(Encoding.ASCII.GetBytes(sessionId + ":" + Secret)));
@@ -91,7 +94,7 @@ internal sealed class SessionProxy : IDisposable
     {
         if(!ReferenceEquals(permit.Gateway,this) || !ReferenceEquals(permit.CapabilityProfile,capabilityProfile) || permit.FixedNoContentHttpsCanary!=fixedNoContentHttpsCanary ||
             permit.UsesFixedOpenSslHead!=(fixedResolverTrust is not null) ||
-            permit.IsLocalManagementBoundary!=localManagementBoundary ||
+            permit.IsLocalManagementBoundary!=localManagementBoundary || permit.IsFixedGatewayQualification==requireFreshProxyRoute ||
             capabilityProfile.IsInternetClientQualification && !permit.IsFixedGatewayQualification)throw WfpNative.Contract("GatewayAdmissionOwnerOrCapabilitiesMismatch");
         permit.AssertCurrent();
         if(Interlocked.CompareExchange(ref admission,permit,null) is not null)throw WfpNative.Contract("GatewayAdmissionAlreadyBound");
@@ -326,6 +329,12 @@ internal sealed class SessionProxy : IDisposable
             await socket.ConnectAsync(new IPEndPoint(IPAddress.Loopback, CompiledFencePolicy.ProxyPort), token);
             Step(UpstreamTunnelStep.PeerBeforeRequest);
             upstream.AssertConnectedPeer(socket);
+            if(requireFreshProxyRoute)
+            {
+                var route=await ProxyRouteObservation.Capture(upstream,token);
+                route.RequireAllowed("UpstreamRouteBeforeConnectRefused");
+                upstream.AssertConnectedPeer(socket);
+            }
             Step(UpstreamTunnelStep.AdmissionBeforeRequest);
             AssertForwardingCurrent();
             var stream = new NetworkStream(socket, ownsSocket: true);

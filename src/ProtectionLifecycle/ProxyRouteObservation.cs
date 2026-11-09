@@ -14,6 +14,10 @@ internal sealed record ProxyRouteObservation(string Status,bool ReachableDirect,
     private const int MaxNodes=512,MaxHops=32;
     internal static ProxyRouteObservation Unavailable=>new("CONTROLLER_EVIDENCE_UNAVAILABLE",false,false,false,false,false,false);
     public bool AllowsRoutePrecheck=>Complete && SelectionGraphComplete && !ReachableDirect && !SelectableDirectRoute;
+    internal void RequireAllowed(string stage)
+    {
+        if(!AllowsRoutePrecheck)throw WfpNative.Contract(stage);
+    }
 
     internal static ProxyRouteObservation EvaluateWithConfigReadback(byte[] before,byte[] inventory,byte[] after)
     {
@@ -122,9 +126,10 @@ internal sealed record ProxyRouteObservation(string Status,bool ReachableDirect,
     private static string? Text(JsonElement value)=>value.ValueKind==JsonValueKind.String && value.GetString() is {Length:>0 and <=256} text &&
         !text.Any(char.IsControl)?text:null;
 
-    internal static async Task<ProxyRouteObservation> Capture(ProxyChannelLease proxy)
+    internal static async Task<ProxyRouteObservation> Capture(ProxyChannelLease proxy,CancellationToken cancellation=default)
     {
-        using var deadline=new CancellationTokenSource(TimeSpan.FromSeconds(3));
+        using var deadline=CancellationTokenSource.CreateLinkedTokenSource(cancellation);
+        deadline.CancelAfter(TimeSpan.FromSeconds(3));
         using var handler=new SocketsHttpHandler {UseProxy=false,AllowAutoRedirect=false,UseCookies=false,MaxResponseHeadersLength=8};
         handler.ConnectCallback=async (context,cancel)=>
         {

@@ -751,7 +751,7 @@ internal sealed class ProtectedSession
                 // A route refusal must not leave a Job intent without an admission receipt.
                 upstream=ProxyChannelLease.Open(state);
                 proxyRoute=ProxyRouteObservation.Capture(upstream).GetAwaiter().GetResult();
-                if(!proxyRoute.AllowsRoutePrecheck)throw WfpNative.Contract("UpstreamRouteSnapshotRefused");
+                proxyRoute.RequireAllowed("UpstreamRouteSnapshotRefused");
             }
             state.WriteNew("protected-session-preparation-"+id+".json",JsonSerializer.SerializeToUtf8Bytes(new {
                 SchemaVersion=1,state.InstallationId,SessionId=id,version.Package.Release,version.Package.ManifestHash,
@@ -784,7 +784,8 @@ internal sealed class ProtectedSession
                 }
                 finally{CryptographicOperations.ZeroMemory(bytes);}
             }
-            gateway=new SessionProxy(job,upstream,sid,id,CapabilityProfile,FixedNoContentHttpsCanary,resolverTrust,IsLocalManagementBoundary);
+            gateway=new SessionProxy(job,upstream,sid,id,CapabilityProfile,FixedNoContentHttpsCanary,resolverTrust,IsLocalManagementBoundary,
+                requireFreshProxyRoute:!IsGatewayQualification);
             loopback=InstallationLoopbackLease.Enable(state,false);
             preparation=new Preparation(this);
             if(IsGatewayQualification)
