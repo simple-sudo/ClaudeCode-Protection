@@ -536,6 +536,9 @@ public static class BootstrapInstaller
         {
             var creatorPrior=(priorRelease==SessionZeroCreatorRecovery.Release && priorManifest==SessionZeroCreatorRecovery.Manifest) ||
                 (priorRelease==SessionZeroClosedCreatorRecovery.Release && priorManifest==SessionZeroClosedCreatorRecovery.Manifest) ||
+                // The diagnostic replay closed the original Job and all creator resources.
+                (priorRelease=="9b513a84b3204a8da185c0f3bdd2bee5" &&
+                    priorManifest=="B0BBE147DBB6E092B8D89BB6D159AD5308D89A2E484610EC2BA629C28783AA4A") ||
                 // The first startup witness failed at USER32 and the owner
                 // confirmed Job, profile, workspace and service closure.
                 (priorRelease=="79818ec30e7a4731a2982cbbb43778cc" &&

@@ -33,6 +33,7 @@ static void Fail(HANDLE output, DWORD exit_code)
     ExitProcess(exit_code);
 }
 
+#ifndef STARTUP_BRANCH_WITNESS
 static DWORD MapImage(HANDLE file)
 {
     HANDLE section = CreateFileMappingW(file, NULL, PAGE_READONLY | SEC_IMAGE_NO_EXECUTE, 0, 0, NULL);
@@ -94,6 +95,7 @@ static void DiagnoseUser32(HANDLE output)
 }
 
 typedef HWND (WINAPI *DesktopWindowFunction)(void);
+#endif
 
 void WINAPI StartupWitness(void)
 {
@@ -101,6 +103,16 @@ void WINAPI StartupWitness(void)
     if (!output || output == INVALID_HANDLE_VALUE)
         ExitProcess(64);
     CHECKPOINT("ENTRY");
+
+#ifdef STARTUP_BRANCH_WITNESS
+    ULONGLONG deadline = GetTickCount64() + 4500;
+    while (!IsDebuggerPresent())
+    {
+        if (GetTickCount64() >= deadline)
+            ExitProcess(71);
+        Sleep(10);
+    }
+#endif
 
 #ifdef ORDINARY_WIN32K_CONTROL
     PROCESS_MITIGATION_SYSTEM_CALL_DISABLE_POLICY control = {0};
@@ -111,6 +123,11 @@ void WINAPI StartupWitness(void)
 
     CHECKPOINT("BEFORE_USER32");
     HMODULE user = LoadLibraryExW(L"user32.dll", NULL, LOAD_LIBRARY_SEARCH_SYSTEM32);
+#ifdef STARTUP_BRANCH_WITNESS
+    if (!user)
+        Fail(output, 65);
+    CHECKPOINT("AFTER_USER32");
+#else
     if (!user)
     {
         DWORD error = GetLastError();
@@ -139,5 +156,6 @@ void WINAPI StartupWitness(void)
         Fail(output, 69);
     CHECKPOINT("AFTER_UCRT");
     DiagnoseUser32(output);
+#endif
     ExitProcess(0);
 }

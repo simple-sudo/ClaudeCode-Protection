@@ -116,6 +116,16 @@ internal static class WindowsPathSeal
         try{VerifyObjectCore(handle,path,false,true);AssertAcl(handle,false,true);return handle;}
         catch{handle.Dispose();throw;}
     }
+    internal static SafeFileHandle OpenStartupTraceModule(string leaf)
+    {
+        if(leaf is not ("user32.dll" or "gdi32full.dll"))
+            throw new InvalidDataException("Fixed startup trace module required");
+        var path=Child(Environment.GetFolderPath(Environment.SpecialFolder.System),leaf);
+        var handle=CreateFile(path,ReadControl|ReadAttributes|0x80000000u,1,IntPtr.Zero,3,OpenReparse,IntPtr.Zero);
+        if(handle.IsInvalid){var error=Error("OpenStartupTraceModule");handle.Dispose();throw error;}
+        try{VerifyObjectCore(handle,path,false,true);AssertAcl(handle,false,true);return handle;}
+        catch{handle.Dispose();throw;}
+    }
     // Git for Windows intentionally aliases its executable and dependency
     // DLLs with hardlinks. This is a READ-ONLY exception for a closed asset
     // set; source/payload/state/deletion paths retain the single-link rule.

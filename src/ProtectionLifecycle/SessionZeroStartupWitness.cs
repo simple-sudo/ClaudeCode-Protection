@@ -19,13 +19,15 @@ internal static class SessionZeroStartupWitness
 
     internal static string ReviewedImage(FixedLayout layout,VerifiedVersion version)
     {
-        if(version.Package.SchemaVersion is not (PackageAssetCatalog.SessionZeroStartupWitnessSchema or PackageAssetCatalog.SessionZeroStartupDiagnosticsSchema) ||
+        if(version.Package.SchemaVersion is not (PackageAssetCatalog.SessionZeroStartupWitnessSchema or PackageAssetCatalog.SessionZeroStartupDiagnosticsSchema or
+                PackageAssetCatalog.SessionZeroStartupBranchSchema) ||
             !version.Package.Files.Any(file=>file.Asset.Id==PackageAssetCatalog.SessionZeroStartupWitnessId))
             throw WfpNative.Contract("StartupWitnessRequiresReviewedAsset");
         return WindowsPathSeal.Child(layout.Version(version.Package.Release),PackageAssetCatalog.SessionZeroStartupWitnessPath);
     }
 
     internal sealed record Win32kObservation(uint QueryError,bool? Blocked);
+    internal sealed record SystemCallFilterObservation(uint QueryError,uint? FilterId);
     internal sealed record ImageDiagnostics(uint Win32kQueryError,bool? Win32kBlocked,uint User32FileError,uint? User32MapError,
         uint Win32uLoadError,uint Gdi32LoadError,uint Gdi32FullLoadError);
     internal sealed record Observation(string Status,string? LastCheckpoint,uint? Win32Error)
@@ -33,12 +35,17 @@ internal static class SessionZeroStartupWitness
         [JsonIgnore(Condition=JsonIgnoreCondition.WhenWritingNull)]
         public Win32kObservation? BeforeResumeWin32k {get;init;}
         [JsonIgnore(Condition=JsonIgnoreCondition.WhenWritingNull)]
+        public SystemCallFilterObservation? BeforeResumeSystemCallFilter {get;init;}
+        [JsonIgnore(Condition=JsonIgnoreCondition.WhenWritingNull)]
+        public SessionZeroStartupBranchTrace.Evidence? BranchTrace {get;init;}
+        [JsonIgnore(Condition=JsonIgnoreCondition.WhenWritingNull)]
         public ImageDiagnostics? Diagnostics {get;init;}
     }
 
     internal static Observation Observe(int packageSchema,uint? exit,OfflineConsoleOutput? stdout,OfflineConsoleOutput? stderr)
     {
         var hasDiagnostics=packageSchema==PackageAssetCatalog.SessionZeroStartupDiagnosticsSchema;
+        var branchTrace=packageSchema==PackageAssetCatalog.SessionZeroStartupBranchSchema;
         if(exit is null || stdout is not {Overflow:false} || stderr is not {Overflow:false,Bytes.Length:0})
             return new("CAPTURE_UNAVAILABLE",null,null);
         if(stdout.Bytes.Length>(hasDiagnostics?384:256) || stdout.Bytes.Any(value=>value>127))
@@ -53,6 +60,15 @@ internal static class SessionZeroStartupWitness
         while(count<Checkpoints.Length && count<payload.Length && payload[count]==Checkpoints[count])count++;
         var last=count==0?null:Checkpoints[count-1];
         var tail=payload[count..];
+        if(branchTrace)
+        {
+            if((exit,count) is (0,3) && tail.IsEmpty)return new("FIRST_USER32_LOAD_SUCCEEDED",last,null);
+            if((exit,count) is (71,1) && tail.IsEmpty)return new("ATTACHMENT_WAIT_EXPIRED",last,null);
+            if((exit,count) is (65,2) && tail.Length==1 && ReadValue(tail[0],"WIN32",out var error))
+                return new("WIN32_FAILURE_AFTER_CHECKPOINT",last,error);
+            return count is >0 and <=3 && tail.IsEmpty && exit>=0xc0000000?
+                new("NATIVE_EXIT_AFTER_CHECKPOINT",last,null):new("OUTPUT_REJECTED",null,null);
+        }
         if(count==Checkpoints.Length && exit==0)
             return Terminal("ALL_CHECKPOINTS_OBSERVED",last,null,tail,hasDiagnostics);
         if(count>0 && tail.IsEmpty && exit>=0xc0000000)

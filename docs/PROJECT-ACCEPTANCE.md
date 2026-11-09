@@ -5,6 +5,13 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-09 固定首次加载分支观察
+
+BUILD / INTEGRATED(固定 schema 9 见证及原 Broker 观察)。
+VERIFIED(普通实际附加、返回分支、故障脱离、未附加超时、目标回归)。
+NOT_RUN(新版安装及真实受限附加)。UNKNOWN(已安装 `9b513a84` 的受限首次失败分支)。
+[观察与对照](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#原-broker-的首次加载分支观察)
+
 ## 2026-11-09 独立 LPAC 实机区分策略与映像
 
 VERIFIED(`9b513a84` 未激活更新、实际进程 Win32k 禁用为关闭、USER32 文件打开及无执行映射、

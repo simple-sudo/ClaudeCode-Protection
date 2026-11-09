@@ -734,11 +734,17 @@ internal sealed partial class AtomicChild : IDisposable
             using var held=OpenCreatorQueryToken(process);
             AssertCreatorLpacBinding(creatorTokenProof,WindowsTokenInformation.ReadPrimaryBinding(held));
         }
-        if(startupWitness && version.Package.SchemaVersion==PackageAssetCatalog.SessionZeroStartupDiagnosticsSchema)
+        if(startupWitness && version.Package.SchemaVersion is PackageAssetCatalog.SessionZeroStartupDiagnosticsSchema or PackageAssetCatalog.SessionZeroStartupBranchSchema)
         {
             const int processSystemCallDisablePolicy=4;
             BeforeResumeWin32k=GetProcessMitigationPolicy(process,processSystemCallDisablePolicy,out var flags,sizeof(uint))
                 ?new(0,(flags&1)!=0):new(unchecked((uint)Marshal.GetLastWin32Error()),null);
+        }
+        if(startupWitness && version.Package.SchemaVersion==PackageAssetCatalog.SessionZeroStartupBranchSchema)
+        {
+            const int processSystemCallFilterPolicy=11;
+            BeforeResumeSystemCallFilter=GetProcessMitigationPolicy(process,processSystemCallFilterPolicy,out var flags,sizeof(uint))
+                ?new(0,flags&15):new(unchecked((uint)Marshal.GetLastWin32Error()),null);
         }
         ResumeAttempted=true;
         var previous=ResumeThread(thread);if(previous==uint.MaxValue)throw Error("AtomicResumePrimaryThread");
@@ -787,6 +793,14 @@ internal sealed partial class AtomicChild : IDisposable
     }
     internal SecurityIdentifier? OfflineConsoleUserSid { get;private set; }
     internal SessionZeroStartupWitness.Win32kObservation? BeforeResumeWin32k {get;private set;}
+    internal SessionZeroStartupWitness.SystemCallFilterObservation? BeforeResumeSystemCallFilter {get;private set;}
+    internal void ObserveStartupBranch(SessionZeroStartupBranchTrace trace,Action assertHealthy)
+    {
+        if(!startupWitness || version.Package.SchemaVersion!=PackageAssetCatalog.SessionZeroStartupBranchSchema ||
+            disposed || !resumed || !job.ContainsProcess(process))
+            throw WfpNative.Contract("StartupTraceRequiresResumedReviewedWitness");
+        trace.Observe(process,Pid,initialThreadId,assertHealthy);
+    }
     internal uint? ObserveOfflineConsoleExit()
     {
         if(!offlineConsole)throw WfpNative.Contract("OfflineConsoleWorkloadRequired");

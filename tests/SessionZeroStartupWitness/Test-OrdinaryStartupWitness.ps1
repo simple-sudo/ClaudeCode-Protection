@@ -1,5 +1,5 @@
 #requires -Version 7.4
-param([string]$OutputRoot, [switch]$Win32kControl)
+param([string]$OutputRoot, [switch]$Win32kControl, [switch]$BuildBranchWitness)
 
 $ErrorActionPreference = 'Stop'
 
@@ -31,6 +31,7 @@ try {
     # Keep CRT and pre-entry user32/shell32 initialization out of the witness.
     $defines = @()
     if ($Win32kControl) { $defines += '/DORDINARY_WIN32K_CONTROL' }
+    if ($BuildBranchWitness) { $defines += '/DSTARTUP_BRANCH_WITNESS' }
     $arguments = @('/nologo','/TC','/std:c17','/W4','/WX','/O2','/GS-','/Zl') + $defines + $includes + @(
         "/Fo$object", "/Fe$exe", $source, '/link', '/NODEFAULTLIB', '/ENTRY:StartupWitness', '/SUBSYSTEM:CONSOLE',
         '/DYNAMICBASE', '/NXCOMPAT', '/Brepro', "/LIBPATH:$sdk\Lib\$version\um\x64", 'kernel32.lib'
@@ -43,6 +44,18 @@ try {
     if ($imports.Count -ne 1 -or $imports[0] -ne 'KERNEL32.dll') { throw 'Unexpected startup witness imports' }
 } finally {
     $env:PATH = $savedPath
+}
+
+if ($BuildBranchWitness) {
+    [pscustomobject]@{
+        Result = 'BRANCH_WITNESS_BUILT'
+        Win32kControl = [bool]$Win32kControl
+        StaticImport = $imports[0]
+        Length = (Get-Item -LiteralPath $exe).Length
+        SHA256 = (Get-FileHash -LiteralPath $exe).Hash
+        Image = $exe
+    }
+    return
 }
 
 $info = [Diagnostics.ProcessStartInfo]::new($exe)

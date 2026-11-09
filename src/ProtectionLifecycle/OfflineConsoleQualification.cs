@@ -301,6 +301,8 @@ internal static class OfflineConsoleQualification
     private static (int ExitCode,string Report) RunIndependent(FixedLayout layout,ProtectedState state,VerifiedVersion version,bool startupWitness)
     {
         var plans=RequireOfflinePrerequisites(state,version);
+        var branchWitness=startupWitness && version.Package.SchemaVersion==PackageAssetCatalog.SessionZeroStartupBranchSchema;
+        using var branchTrace=branchWitness?new SessionZeroStartupBranchTrace():null;
         var fences=new List<PersistentFence>();
         var failures=new List<Exception>();
         var stage="VerifyQuarantine";
@@ -308,6 +310,7 @@ internal static class OfflineConsoleQualification
         string? failedStage=null;
         uint? exit=null;
         SessionZeroStartupWitness.Win32kObservation? beforeResumeWin32k=null;
+        SessionZeroStartupWitness.SystemCallFilterObservation? beforeResumeSystemCallFilter=null;
         RuntimeStop? stopped=null;
         OfflineConsoleOutput? stdout=null,stderr=null;
         OfflineConsoleHostIdentitySummary? hostIdentity=null;
@@ -385,19 +388,31 @@ internal static class OfflineConsoleQualification
                 runtime.Activate(10000);
                 stage="RunWorker";
                 _=child.ResumeQuarantined();resumed=true;
+                if(branchTrace is not null)
+                {
+                    stage="ObserveStartupBranch";
+                    child.ObserveStartupBranch(branchTrace,AssertRunning);
+                    stage="RunWorker";
+                }
                 do
                 {
-                    runtime.AssertHealthy();
-                    workspace.AssertHeld();
+                    AssertRunning();
                     exit=child.ObserveOfflineConsoleExit();
                 }while(exit is null);
                 runtime.AssertHealthy();
                 if(exit!=0)throw WfpNative.Contract("IndependentOfflineConsoleChildExitDiffers");
+                void AssertRunning(){runtime.AssertHealthy();workspace.AssertHeld();}
             }
-            catch(Exception error){failedStage=stage;failures.Add(error);}
+            catch(Exception error)
+            {
+                failedStage=stage;failures.Add(error);
+                if(branchWitness && resumed && exit is null)
+                    try{exit=child?.ObserveOfflineConsoleExit();}catch(Exception observation){failures.Add(observation);}
+            }
             finally
             {
                 beforeResumeWin32k=child?.BeforeResumeWin32k;
+                beforeResumeSystemCallFilter=child?.BeforeResumeSystemCallFilter;
                 try
                 {
                     stage="StopOriginalJob";
@@ -466,12 +481,14 @@ internal static class OfflineConsoleQualification
         if(startupWitness)
         {
             var observation=SessionZeroStartupWitness.Observe(version.Package.SchemaVersion,exit,stdout,stderr)
-                with {BeforeResumeWin32k=beforeResumeWin32k};
+                with {BeforeResumeWin32k=beforeResumeWin32k,BeforeResumeSystemCallFilter=beforeResumeSystemCallFilter,BranchTrace=branchTrace?.Snapshot()};
             var extended=version.Package.SchemaVersion==PackageAssetCatalog.SessionZeroStartupDiagnosticsSchema;
             var terminal=failures.Count==0 && closed && profileClosed && workspaceClosed && serviceRemoved && resumed &&
-                observation.Status=="ALL_CHECKPOINTS_OBSERVED";
+                (branchWitness?observation.Status=="FIRST_USER32_LOAD_SUCCEEDED" &&
+                    observation.BranchTrace is {ExitEventContinued:true,User32Mapped:true,Gdi32FullMapped:true,CsrStatus:0,GdiStatus:0,GdiInit2ReturnedNull:false,FailureValue:null}:
+                    observation.Status=="ALL_CHECKPOINTS_OBSERVED");
             var diagnostic=JsonSerializer.Serialize(new {
-                SchemaVersion=extended?2:1,Scope=SessionZeroStartupWitness.Scope,state.InstallationId,JobId=jobId,
+                SchemaVersion=branchWitness?3:extended?2:1,Scope=SessionZeroStartupWitness.Scope,state.InstallationId,JobId=jobId,
                 version.Package.Release,version.Package.ManifestHash,
                 Status=terminal?"STARTUP_WITNESS_CLOSED":"STARTUP_WITNESS_NOT_CONFIRMED",
                 LastStage=stage,ProcessResumed=resumed,ChildExit=exit,OriginalJobClosed=closed,ProfileClosed=profileClosed,

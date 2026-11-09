@@ -1,5 +1,9 @@
 # 当前状态与授权摘要
 
+2026-11-09，原 Broker 已接入固定 USER32 首次加载分支观察，普通 Windows 正负对照、
+观察中断脱离和未附加超时通过。新见证尚未安装。现装 `9b513a84` 的受限首次失败分支
+仍为 UNKNOWN。[原分支观察机制](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#原-broker-的首次加载分支观察)
+
 2026-11-09，`9b513a84` 已实机更新并保持未激活。独立 LocalService 零能力 LPAC
 仍在首次 USER32 加载返回 1114。Broker 恢复前和见证进程内都读到 Win32k 禁用为关闭。
 USER32 文件打开、无执行映射及 WIN32U 加载通过，GDI32 和 GDI32FULL 加载各返回 8。

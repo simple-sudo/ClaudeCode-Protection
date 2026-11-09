@@ -68,8 +68,8 @@ internal static class OfficialClaudePackageCases
             return rows;
         }
 
-        var v5=Rows(5,"Asset");var v6=Rows(6,"Asset");var v7=Rows(7,"Asset");var v8=Rows(8,"Asset");
-        Check(v5.Count==23 && v6.Count==24 && v7.Count==25 && v8.Count==25);
+        var v5=Rows(5,"Asset");var v6=Rows(6,"Asset");var v7=Rows(7,"Asset");var v8=Rows(8,"Asset");var v9=Rows(9,"Asset");
+        Check(v5.Count==23 && v6.Count==24 && v7.Count==25 && v8.Count==25 && v9.Count==25);
         Check(JsonNode.DeepEquals(v5,new JsonArray(v6.Take(23).Select(row=>row!.DeepClone()).ToArray())));
         Check(JsonNode.DeepEquals(v6,new JsonArray(v7.Take(24).Select(row=>row!.DeepClone()).ToArray())));
         var fixedImage=v6.Single(row=>row!["Asset"]!.GetValue<string>()==Official)!;
@@ -77,13 +77,17 @@ internal static class OfficialClaudePackageCases
         Manifest(5,v5);Manifest(6,v6);Stage(6,Rows(6,"Id"));checks+=3;
         Manifest(7,v7);Stage(7,Rows(7,"Id"));checks+=2;
         Manifest(8,v8);Stage(8,Rows(8,"Id"));checks+=2;
+        Manifest(9,v9);Stage(9,Rows(9,"Id"));checks+=2;
         Check(JsonNode.DeepEquals(v6,new JsonArray(v8.Take(24).Select(row=>row!.DeepClone()).ToArray())));
+        Check(JsonNode.DeepEquals(v6,new JsonArray(v9.Take(24).Select(row=>row!.DeepClone()).ToArray())));
         Reject(()=>Manifest(5,v6));
         Reject(()=>Manifest(6,v5));
         Reject(()=>Manifest(7,v6));
         Reject(()=>Manifest(6,v7));
         Reject(()=>Manifest(7,v8));
         Reject(()=>Manifest(8,v7));
+        Reject(()=>Manifest(8,v9));
+        Reject(()=>Manifest(9,v8));
         Reject(()=>Manifest(7,Changed(v7,StartupWitness,"SHA256",genericHash)));
         Reject(()=>Manifest(7,Changed(v7,StartupWitness,"Length",4097L)));
         Reject(()=>Stage(5,Rows(6,"Id")));

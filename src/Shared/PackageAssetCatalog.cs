@@ -25,6 +25,7 @@ internal static class PackageAssetCatalog
     internal const int OfficialClaudeOfflineSchema=6;
     internal const int SessionZeroStartupWitnessSchema=7;
     internal const int SessionZeroStartupDiagnosticsSchema=8;
+    internal const int SessionZeroStartupBranchSchema=9;
     internal const string SessionZeroStartupWitnessId="broker-session-zero-startup-witness";
     internal const string SessionZeroStartupWitnessPath="bin/admin/SessionZeroStartupWitness.exe";
     internal const string OfficialClaudeId="official-claude-offline-exe",OfficialClaudeBinRole="official";
@@ -107,11 +108,15 @@ internal static class PackageAssetCatalog
     private static readonly IReadOnlyList<AssetSpec> WithStartupDiagnostics=Array.AsReadOnly(WithOfficialClaude.Append(StartupWitness with {
         FixedLength=6144,FixedSHA256="7FFE9A92E7D99D655EBE3DB3C181D7CCC25808AA0B84B3AEA8B4E4CEB1DBD876"
     }).ToArray());
+    private static readonly IReadOnlyList<AssetSpec> WithStartupBranch=Array.AsReadOnly(WithOfficialClaude.Append(StartupWitness with {
+        FixedLength=3584,FixedSHA256="34945838654DAE320E70123B74A0628EA1A4FE889BD4061FEE5813BDECD7DC22"
+    }).ToArray());
     internal static IReadOnlyList<AssetSpec> ForSchema(int schema)=>schema switch {
         1=>Catalog,2=>WithOfflineOpenSsl,OpenSslWindowsEntropySchema=>WithWindowsEntropy,FixedHeadTrustSchema=>WithFixedHeadTrust,
         FixedResolverTrustSchema=>WithFixedResolverTrust,OfficialClaudeOfflineSchema=>WithOfficialClaude,
         SessionZeroStartupWitnessSchema=>WithStartupWitness,
         SessionZeroStartupDiagnosticsSchema=>WithStartupDiagnostics,
+        SessionZeroStartupBranchSchema=>WithStartupBranch,
         _=>throw new InvalidDataException("Unknown installed package schema")
     };
     // Map a previously authorized role to a path. Release authorization

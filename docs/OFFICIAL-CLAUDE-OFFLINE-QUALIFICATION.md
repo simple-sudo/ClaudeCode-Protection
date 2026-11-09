@@ -1356,3 +1356,23 @@ CLI 将 USER32 延迟导入。入口级 `dotnet.exe` 缺少 USER32 直接导入�
 `A5F5BFC9288AE9B9719767DCA668512A4A6DDD5563B5A22357ECA4E4793F9435`
 和 `162669740B734292EF13EF8656431189A4279F10151F4A73F557CC4B46AF6A85`。
 [处理器执行断点](https://learn.microsoft.com/en-us/windows-hardware/drivers/debuggercmds/ba--break-on-access-)。
+
+### 原 Broker 的首次加载分支观察
+
+安装包 schema 9 固定只尝试一次 USER32 加载的原生见证。见证入口最多等待
+4.5 秒，未见观察者即退出 71。原 Broker 复用 LocalService、令牌、Job、标准流、
+工作区与隔离门禁，只在原线程恢复后附加。Broker 预先读回系统调用过滤器编号和
+Win32k 禁用策略。只有映射对象身份对应到已持有并核验摘要的本机 USER32 和
+GDI32FULL 才会设置四个处理器执行断点。保留 CSR、GDI、失败出口的数值及
+`NtGdiInit2` 是否为空，不读取远程内存或保存其非空返回值。处理器断点只写原
+线程的调试寄存器。观察中断时撤下已启用的断点并脱离，仍由原 Broker 负责关闭
+Job 和回收临时对象。此入口仍是未激活产品的固定离线诊断。
+
+普通 Windows 实测用原限权进程句柄完成附加观察。早期实现试图读取调试端口，
+实际返回 5。移除额外读取后，原限权句柄保持不变。正控制记录 CSR 和 GDI 均返回
+0 及 `NtGdiInit2` 非空。进程内 Win32k 禁用的对照记录 CSR 返回 0、
+`NtGdiInit2` 为空、GDI 和失败出口均为 `0xC0000001`，原生退出 65。注入
+监督失败后，已设置的断点撤下，附加解除，普通目标正常退出。无附加时在
+USER32 前退出 71。普通 Release 构建、创建与回收协议、包清单、迁移、原生
+控制台及网关边界回归均通过。证据在 `work/session-zero-startup-branch-20261109-01/`。
+本候选的真实 Session 0 LPAC 附加、分支与修复尚未实测。
