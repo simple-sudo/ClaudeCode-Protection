@@ -81,8 +81,8 @@ internal sealed class SessionZeroStartupBranchTrace : IDisposable
                     throw WindowsPathSeal.Error("WaitStartupTraceEvent");
                 }
                 events++;
-                var disposition=evt.Kind==ExceptionEvent?ExceptionNotHandled:Continue;
                 using var image=evt.Kind is CreateProcessEvent or LoadDllEvent?new SafeFileHandle(evt.File,true):null;
+                var disposition=evt.Kind==ExceptionEvent?ExceptionNotHandled:Continue;
                 try
                 {
                     if(evt.Pid!=pid)throw WfpNative.Contract("StartupTraceEventProcessDiffers");

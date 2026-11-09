@@ -5,6 +5,14 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-09 受限首次加载定位到 NtGdiInit2
+
+VERIFIED(`9455e98` 未激活更新、原 LPAC 准入、绑定附加及回收)。
+FAIL(`NtGdiInit2` 空返回、GDI `0xC0000001`、USER32 1114)。
+UNKNOWN(内核返回空的具体原因、桌面访问及修复)。
+NOT_RUN(正式 Claude、受限真实身份读值、开发工具、GPU 与实际网络)。
+[实机结果](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#实机定位到-ntgdiinit2-空返回)
+
 ## 2026-11-09 固定首次加载分支观察
 
 BUILD / INTEGRATED(固定 schema 9 见证及原 Broker 观察)。

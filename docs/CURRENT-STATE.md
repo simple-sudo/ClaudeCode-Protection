@@ -1,5 +1,12 @@
 # 当前状态与授权摘要
 
+2026-11-09，`9455e98` 已实机更新并保持未激活。独立 LocalService 零能力 LPAC 的
+首次 USER32 失败已绑定到 `NtGdiInit2` 返回空。CSR 返回 0，GDI 和失败出口返回
+`0xC0000001`，见证最终报 1114。Win32k 禁用为关闭，系统调用过滤器编号为 0。
+原 Job、profile、工作区和服务核验闭合，许可已消耗。为何未建立所需内核状态仍
+UNKNOWN。受限 L3、工具链、GPU、网关实际出口与正式 Claude 验收均未完成。
+[实机分支回执](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#实机定位到-ntgdiinit2-空返回)
+
 2026-11-09，原 Broker 已接入固定 USER32 首次加载分支观察，普通 Windows 正负对照、
 观察中断脱离和未附加超时通过。新见证尚未安装。现装 `9b513a84` 的受限首次失败分支
 仍为 UNKNOWN。[原分支观察机制](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#原-broker-的首次加载分支观察)

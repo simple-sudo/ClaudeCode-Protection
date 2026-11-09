@@ -5,6 +5,12 @@
 历史页的“当前/待执行/暂停/DELIVERABLE”按段落日期及限定范围解释，不是今天的状态或操作许可。
 不在本页复制当前安装和授权摘要。
 
+## 2026-11-09 受限首次加载定位到 NtGdiInit2
+
+未激活更新完成。独立 LocalService LPAC 的首次 USER32 实测读到 CSR 成功、
+`NtGdiInit2` 返回空及 GDI `0xC0000001`。原链核验回收。
+[实机结果](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#实机定位到-ntgdiinit2-空返回)
+
 ## 2026-11-09 原 Broker 接入固定首次加载分支观察
 
 原生见证首轮加载配合四个绑定映像的处理器断点。普通正负对照、故障脱离及
