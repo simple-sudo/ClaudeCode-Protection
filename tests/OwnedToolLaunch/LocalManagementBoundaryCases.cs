@@ -79,7 +79,9 @@ internal static class LocalManagementBoundaryCases
 
     private static void CheckRoutes(Assembly library,Action<bool> check)
     {
-        var evaluate=library.GetType("ProtectionLifecycle.ProxyRouteObservation",true)!.GetMethod("Evaluate",Static)!;
+        var routeType=library.GetType("ProtectionLifecycle.ProxyRouteObservation",true)!;
+        var evaluate=routeType.GetMethod("Evaluate",Static)!;
+        var withReadback=routeType.GetMethod("EvaluateWithConfigReadback",Static)!;
         JsonElement Route(string proxies,string config="{\"mode\":\"global\"}")=>JsonSerializer.SerializeToElement(
             evaluate.Invoke(null,[Encoding.UTF8.GetBytes(config),Encoding.UTF8.GetBytes(proxies)]));
         const string snapshot="""
@@ -105,6 +107,13 @@ internal static class LocalManagementBoundaryCases
         check(Flag(unknownChoice,"Complete") && !Flag(unknownChoice,"SelectionGraphComplete") && !Flag(unknownChoice,"AllowsRoutePrecheck"));
         var allSafe=Route(nestedAlternative.Replace("\"backup\",\"DIRECT\"","\"backup\",\"private node\"",StringComparison.Ordinal));
         check(Flag(allSafe,"Complete") && Flag(allSafe,"SelectionGraphComplete") && Flag(allSafe,"AllowsRoutePrecheck"));
+        var safeInventory=Encoding.UTF8.GetBytes(nestedAlternative.Replace("\"backup\",\"DIRECT\"","\"backup\",\"private node\"",StringComparison.Ordinal));
+        var global="{\"mode\":\"global\"}"u8.ToArray();
+        JsonElement WithReadback(byte[] after)=>JsonSerializer.SerializeToElement(withReadback.Invoke(null,[global,safeInventory,after]));
+        check(Flag(WithReadback(global.ToArray()),"AllowsRoutePrecheck"));
+        var changed=WithReadback("{\"mode\":\"direct\"}"u8.ToArray());
+        check(Status(changed)=="CONTROLLER_CONFIG_CHANGED_DURING_SNAPSHOT" && !Flag(changed,"AllowsRoutePrecheck"));
+        check(Status(WithReadback(new byte[16385]))=="CONTROLLER_EVIDENCE_UNAVAILABLE");
         var emptyFallback=Route(snapshot.Replace("\"emptyFallback\":\"REJECT\"","\"emptyFallback\":\"COMPATIBLE\"",StringComparison.Ordinal));
         check(Flag(emptyFallback,"DirectEmptyFallback") && Flag(emptyFallback,"ReachableDirect"));
         var automatic=Route(snapshot.Replace("\"backup\":{\"name\":\"backup\",\"type\":\"Vless\"",

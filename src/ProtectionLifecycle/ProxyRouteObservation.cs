@@ -15,6 +15,13 @@ internal sealed record ProxyRouteObservation(string Status,bool ReachableDirect,
     internal static ProxyRouteObservation Unavailable=>new("CONTROLLER_EVIDENCE_UNAVAILABLE",false,false,false,false,false,false);
     public bool AllowsRoutePrecheck=>Complete && SelectionGraphComplete && !ReachableDirect && !SelectableDirectRoute;
 
+    internal static ProxyRouteObservation EvaluateWithConfigReadback(byte[] before,byte[] inventory,byte[] after)
+    {
+        if(before.Length is <2 or >MaxConfigBytes || after.Length is <2 or >MaxConfigBytes)return Unavailable;
+        return before.AsSpan().SequenceEqual(after)?Evaluate(before,inventory):
+            new("CONTROLLER_CONFIG_CHANGED_DURING_SNAPSHOT",false,false,false,false,false,false);
+    }
+
     internal static ProxyRouteObservation Evaluate(byte[] config,byte[] inventory)
     {
         if(config.Length is <2 or >MaxConfigBytes || inventory.Length is <2 or >MaxProxyBytes)return Unavailable;
@@ -134,13 +141,14 @@ internal sealed record ProxyRouteObservation(string Status,bool ReachableDirect,
         };
         using var client=new HttpClient(handler){DefaultVersionPolicy=HttpVersionPolicy.RequestVersionExact,MaxResponseContentBufferSize=MaxProxyBytes};
         client.DefaultRequestHeaders.ConnectionClose=true;
-        byte[]? config=null,inventory=null;
+        byte[]? config=null,inventory=null,configReadback=null;
         try
         {
             config=await client.GetByteArrayAsync("http://127.0.0.1:9090/configs",deadline.Token).ConfigureAwait(false);
             inventory=await client.GetByteArrayAsync("http://127.0.0.1:9090/proxies",deadline.Token).ConfigureAwait(false);
+            configReadback=await client.GetByteArrayAsync("http://127.0.0.1:9090/configs",deadline.Token).ConfigureAwait(false);
             proxy.AssertControllerListener();
-            return Evaluate(config,inventory);
+            return EvaluateWithConfigReadback(config,inventory,configReadback);
         }
         catch(Exception error) when(error is HttpRequestException or IOException or InvalidDataException or UnauthorizedAccessException or
             OperationCanceledException or System.ComponentModel.Win32Exception)
@@ -149,6 +157,7 @@ internal sealed record ProxyRouteObservation(string Status,bool ReachableDirect,
         {
             if(config is not null)CryptographicOperations.ZeroMemory(config);
             if(inventory is not null)CryptographicOperations.ZeroMemory(inventory);
+            if(configReadback is not null)CryptographicOperations.ZeroMemory(configReadback);
         }
     }
 }

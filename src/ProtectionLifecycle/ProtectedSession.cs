@@ -746,6 +746,13 @@ internal sealed class ProtectedSession
         try
         {
             AssertPreparation();
+            if(!IsGatewayQualification)
+            {
+                // A route refusal must not leave a Job intent without an admission receipt.
+                upstream=ProxyChannelLease.Open(state);
+                proxyRoute=ProxyRouteObservation.Capture(upstream).GetAwaiter().GetResult();
+                if(!proxyRoute.AllowsRoutePrecheck)throw WfpNative.Contract("UpstreamRouteSnapshotRefused");
+            }
             state.WriteNew("protected-session-preparation-"+id+".json",JsonSerializer.SerializeToUtf8Bytes(new {
                 SchemaVersion=1,state.InstallationId,SessionId=id,version.Package.Release,version.Package.ManifestHash,
                 EnvironmentIntentSHA256=expectationsSHA256,NetworkPolicySHA256=SessionProxy.PolicySHA256,
@@ -760,15 +767,12 @@ internal sealed class ProtectedSession
             if(plans.Count==0)fences.Add(PersistentFence.CreateSessionQuarantined(state,version));
             else foreach(var plan in plans)fences.Add(PersistentFence.OpenExisting(state,plan.Data.FenceId));
             foreach(var fence in fences)if(!fence.Observe().FullQuarantineObserved)throw WfpNative.Contract("SessionInitialQuarantineMissing");
+            upstream??=ProxyChannelLease.Open(state);
             profile=InstallationProfileLease.Create(state);job=OwnedKernelJob.CreateEmpty(state,version);
             using(var package=new InstallationPackageSid(state))sid=package.Value;
-            upstream=ProxyChannelLease.Open(state);
-            if(!IsGatewayQualification || IsLocalManagementBoundary)
-                proxyRoute=ProxyRouteObservation.Capture(upstream).GetAwaiter().GetResult();
-            if(!IsGatewayQualification && proxyRoute is not {AllowsRoutePrecheck:true})
-                throw WfpNative.Contract("UpstreamRouteSnapshotRefused");
             if(IsLocalManagementBoundary)
             {
+                proxyRoute=ProxyRouteObservation.Capture(upstream).GetAwaiter().GetResult();
                 var bytes=LocalManagementBoundary.CaptureTrustedController(upstream).GetAwaiter().GetResult();
                 try
                 {
