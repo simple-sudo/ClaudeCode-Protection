@@ -5,6 +5,12 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-08 进程对象所有者规则仍未通过
+
+VERIFIED(`74678dbf` 未激活更新、真实进程权限读取与未就绪服务回收)。
+FAIL(所有者检查，1307)。真实所有者 SID 和实际受限身份数据仍未采集。
+[实机失败与读取器对照](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#所有者白名单实机仍拒绝)
+
 ## 2026-11-08 进程对象权限读取通过并定位所有者检查
 
 VERIFIED(`a3891b35` 未激活升级、真实 LocalService 进程句柄及权限读取、未就绪服务回收)。

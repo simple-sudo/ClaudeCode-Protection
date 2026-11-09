@@ -958,3 +958,22 @@ DACL 和精确内容。缺失 DACL 与未接受所有者分别给出错误 13、
 根的主令牌、LPAC 和 Job 检查保持各自独立。普通权限回归通过，变更未安装。
 [Windows 对象所有者](https://learn.microsoft.com/en-us/windows/win32/secauthz/owner-of-a-new-object) ·
 [进程安全描述符](https://learn.microsoft.com/en-us/windows/win32/procthread/process-security-and-access-rights)
+
+### 所有者白名单实机仍拒绝
+
+固定审查 `2E1CB1716997DC421D6503E4B6A2E1D29F2354AE4C434088F006F0B6C8BE130E` 的一次
+许可已消耗。`74678dbf` 未激活升级通过，公开清单 SHA-256
+`BD60B34716324DC6723AD3D053281944FBADD558F86B0CE1016A63543F055913`。真实服务再次通过
+进程权限读取，`CreatorServiceValidateProcessOwner` 明确返回 1307。同一服务的
+7024（记录 130029）保存退出码 `0xC5D0051B`。独立回读服务登记和工作区根缺席。
+无受限进程运行、Job 归零或宿主 SID 对照。实际进程对象所有者仍未采集。
+
+本机回执 `work/creator-owner-retest-20261108/receipt.json`，SHA-256
+`C0A2C9892D9C588190D1357050565F5712B8C0C831957DAC4357E7E090E6746A`。
+独立普通读取器已用真实 Windows 进程核对 `GetSecurityInfo` 的原生所有者指针与
+解析后描述符一致，读取令牌默认所有者和登录 SID，保留两次调用的旧读法尺寸结果。
+仅查询信息、没有 `READ_CONTROL` 的进程句柄读取被拒。普通权限访问现有 EventLog
+的 LocalService 进程安全描述符亦被拒，不能用该对照推断待测所有者。
+读取器证据留在 `work/creator-owner-native-observation-20261108/`。同配置临时
+服务下的读取尚未运行，暂不据此扩大生产所有者接受范围。
+[Windows 原生所有者读取](https://learn.microsoft.com/windows/win32/api/securitybaseapi/nf-securitybaseapi-getsecuritydescriptorowner)
