@@ -3,8 +3,8 @@ using System.Security.Principal;
 
 namespace ProtectionLifecycle;
 
-// The creator runs under LocalService. This profile cannot be entered in the
-// human owner's recovery ledger or adopted after an interrupted creation.
+// The creator runs under LocalService. Its profile identity is recorded by the
+// Broker separately from the human owner's profile and recovery records.
 internal sealed class SessionZeroCreatorProfile : IDisposable
 {
     private const uint NotFound=0x80070002;
@@ -46,6 +46,14 @@ internal sealed class SessionZeroCreatorProfile : IDisposable
             finally{if(created!=IntPtr.Zero)FreeSid(created);}
         }
         catch{parent?.Dispose();package.Dispose();throw;} // Partial or unknown creation is preserved.
+    }
+
+    internal SessionZeroCreatorChannel.CreatedProfile ObserveCreatedStorage()
+    {
+        parent.AssertHeld();
+        using var root=WindowsPathSeal.Open(storage,true,false);
+        if(WindowsPathSeal.Identity(root)!=identity)throw WfpNative.Contract("CreatorProfileStorageChangedBeforeRecord");
+        return new(parent.ObjectIdentity(),identity);
     }
 
     internal void CleanupAfterOwnerStop()

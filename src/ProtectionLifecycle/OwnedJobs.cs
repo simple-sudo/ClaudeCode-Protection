@@ -165,6 +165,13 @@ internal sealed class OwnedKernelJob : IDisposable
         creatorGrantAttempted=true;
         if(KernelJobSeal.SetCreatorAccess(handle,intent,grant:true))throw WfpNative.Contract("SessionZeroCreatorGrantAlreadyPresent");
     }
+    internal void AssertCreatorProfileBeforeFirstProcess()
+    {
+        AssertHeld();
+        if(intent.CreatorServiceSid is null || !admissionClaimed || admissionClosed || !creatorGrantAttempted || creatorReleaseConfirmed ||
+            Accounting().TotalProcesses!=0)
+            throw WfpNative.Contract("CreatorProfileRecordRequiresJobBeforeFirstProcess");
+    }
     // Call only after the authenticated creator has returned from the atomic
     // creation syscall and released its Job handle. ACL changes alone do not
     // revoke rights already present on another open handle.

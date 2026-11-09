@@ -209,7 +209,7 @@ internal static class CreatorJobCases
         var reply=channel.GetMethod("ParseReply",methods)!;
         var nonce=Enumerable.Range(1,16).Select(n=>(byte)n).ToArray();
         var outgoing=(byte[])request.Invoke(null,[nonce,install,jobId,12u,7u])!;
-        Check(outgoing.Length==60 && outgoing.AsSpan(0,4).SequenceEqual("CCP1"u8));
+        Check(outgoing.Length==60 && outgoing.AsSpan(0,4).SequenceEqual("CCP2"u8));
         Check(BinaryPrimitives.ReadUInt32LittleEndian(outgoing.AsSpan(4))==12 && BinaryPrimitives.ReadUInt32LittleEndian(outgoing.AsSpan(8))==7);
         Check(outgoing.AsSpan(12,16).SequenceEqual(nonce) && outgoing.AsSpan(28,16).SequenceEqual(Convert.FromHexString(install)) &&
             outgoing.AsSpan(44,16).SequenceEqual(Convert.FromHexString(jobId)));
@@ -262,20 +262,60 @@ internal static class CreatorJobCases
         Refused(()=>parseRequest.Invoke(null,[outgoing,legacyId,12u,7u]));
         Refused(()=>parseRequest.Invoke(null,[outgoing,jobId,13u,7u]));
         Refused(()=>parseRequest.Invoke(null,[outgoing,jobId,12u,8u]));
+        var legacyRequest=(byte[])outgoing.Clone();legacyRequest[3]=(byte)'1';
+        Refused(()=>parseRequest.Invoke(null,[legacyRequest,jobId,12u,7u]));
+
+        var profileType=channel.GetNestedType("CreatedProfile",BindingFlags.NonPublic)!;
+        var createProfile=channel.GetMethod("CreateProfileCreated",methods)!;
+        var parseProfile=channel.GetMethod("ParseProfileCreated",methods)!;
+        const string parentIdentity="89ABCDEF:00000000:01020304",storageIdentity="89ABCDEF:00000001:05060708";
+        object Profile(string parent,string storage)=>Activator.CreateInstance(profileType,[parent,storage])!;
+        var profile=Profile(parentIdentity,storageIdentity);
+        var profileFrame=(byte[])createProfile.Invoke(null,[decoded,profile])!;
+        Check(profileFrame.Length==44 && profileFrame.AsSpan(0,4).SequenceEqual("CCJ1"u8));
+        Check(profile.Equals(parseProfile.Invoke(null,[profileFrame,nonce])));
+        Refused(()=>parseProfile.Invoke(null,[incoming,nonce]));
+        Refused(()=>reply.Invoke(null,[profileFrame,nonce,20u,40L]));
+        Refused(()=>parseProfile.Invoke(null,[profileFrame[..43],nonce]));
+        foreach(var offset in new[]{4,32})
+        {
+            var changed=(byte[])profileFrame.Clone();changed[offset]^=1;
+            Refused(()=>parseProfile.Invoke(null,[changed,nonce]));
+        }
+        var duplicated=(byte[])profileFrame.Clone();profileFrame.AsSpan(20,12).CopyTo(duplicated.AsSpan(32));
+        Refused(()=>parseProfile.Invoke(null,[duplicated,nonce]));
+        Refused(()=>createProfile.Invoke(null,[decoded,Profile(parentIdentity,"89ABCDEF:00000000:00000000")]));
+        Refused(()=>createProfile.Invoke(null,[decoded,Profile(parentIdentity,storageIdentity.ToLowerInvariant())]));
+        var createAcknowledgement=channel.GetMethod("CreateProfileRecorded",methods)!;
+        var assertAcknowledgement=channel.GetMethod("AssertProfileRecorded",methods)!;
+        var acknowledgement=(byte[])createAcknowledgement.Invoke(null,[nonce])!;
+        Check(acknowledgement.Length==20 && acknowledgement.AsSpan(0,4).SequenceEqual("CCA1"u8));
+        _=assertAcknowledgement.Invoke(null,[acknowledgement,nonce]);Check(true);
+        Refused(()=>assertAcknowledgement.Invoke(null,[acknowledgement[..19],nonce]));
+        Refused(()=>assertAcknowledgement.Invoke(null,[acknowledgement,new byte[16]]));
+        var wrongPhase=(byte[])acknowledgement.Clone();"CCS1"u8.CopyTo(wrongPhase);
+        Refused(()=>assertAcknowledgement.Invoke(null,[wrongPhase,nonce]));
+
         var createFailure=channel.GetMethod("CreateFailure",methods)!;
         var failureStage=channel.GetNestedType("CreationFailure",BindingFlags.NonPublic)!;
         foreach(var (stageName,native) in new[]{("Profile",0x80070005u),("AtomicCreate",5u),("Streams",32u)})
         {
             var fault=(byte[])createFailure.Invoke(null,[decoded,Enum.Parse(failureStage,stageName),native])!;
             Check(fault.Length==44 && fault.AsSpan(0,4).SequenceEqual("CCF1"u8));
-            var exact=false;
-            try{_=reply.Invoke(null,[fault,nonce,20u,40L]);}
-            catch(TargetInvocationException error) when(error.InnerException is IOException remote &&
-                remote.GetType().GetProperty("Stage",BindingFlags.Instance|BindingFlags.NonPublic)!.GetValue(remote) is string observed &&
-                observed=="CreatorService"+stageName && unchecked((uint)remote.HResult)==native){exact=true;}
-            Check(exact);
+            AssertFailure(()=>reply.Invoke(null,[fault,nonce,20u,40L]));
+            AssertFailure(()=>parseProfile.Invoke(null,[fault,nonce]));
             fault[28]=1;
             Refused(()=>reply.Invoke(null,[fault,nonce,20u,40L]));
+
+            void AssertFailure(Action decode)
+            {
+                var exact=false;
+                try{decode();}
+                catch(TargetInvocationException error) when(error.InnerException is IOException remote &&
+                    remote.GetType().GetProperty("Stage",BindingFlags.Instance|BindingFlags.NonPublic)!.GetValue(remote) is string observed &&
+                    observed=="CreatorService"+stageName && unchecked((uint)remote.HResult)==native){exact=true;}
+                Check(exact);
+            }
         }
         Refused(()=>createFailure.Invoke(null,[decoded,Enum.ToObject(failureStage,0u),5u]));
         Refused(()=>createFailure.Invoke(null,[decoded,Enum.ToObject(failureStage,1u),0u]));

@@ -15,8 +15,9 @@ internal sealed class SessionZeroCreatorClient : IDisposable
     private readonly NamedPipeClientStream pipe;
     private readonly SafeJobHandle assignment;
     private int completed;
+    private bool profileRecorded;
     internal SessionZeroCreatorChannel.Request Request {get;}
-    internal SafeJobHandle Assignment=>assignment;
+    internal SafeJobHandle Assignment=>profileRecorded?assignment:throw WfpNative.Contract("CreatorProfileMustBeRecordedBeforeAssignment");
 
     private SessionZeroCreatorClient(NamedPipeClientStream pipe,SafeJobHandle assignment,SessionZeroCreatorChannel.Request request)
     {this.pipe=pipe;this.assignment=assignment;Request=request;}
@@ -73,6 +74,17 @@ internal sealed class SessionZeroCreatorClient : IDisposable
         pipe.WriteAsync(frame.AsMemory(),deadline.Token).AsTask().GetAwaiter().GetResult();
     }
 
+    private void RecordCreatedProfile(SessionZeroCreatorProfile profile)
+    {
+        using var deadline=new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        var frame=SessionZeroCreatorChannel.CreateProfileCreated(Request,profile.ObserveCreatedStorage());
+        pipe.WriteAsync(frame.AsMemory(),deadline.Token).AsTask().GetAwaiter().GetResult();
+        var acknowledgement=new byte[SessionZeroCreatorChannel.ProfileRecordedSize];
+        pipe.ReadExactlyAsync(acknowledgement.AsMemory(),deadline.Token).AsTask().GetAwaiter().GetResult();
+        SessionZeroCreatorChannel.AssertProfileRecorded(acknowledgement,Request.Nonce);
+        profileRecorded=true;
+    }
+
     internal static void RunOfflineCreator(string jobId)
     {
         using var client=Connect(jobId);
@@ -80,6 +92,7 @@ internal sealed class SessionZeroCreatorClient : IDisposable
         try
         {
             using var profile=SessionZeroCreatorProfile.Create(client);
+            client.RecordCreatedProfile(profile);
             stage=SessionZeroCreatorChannel.CreationFailure.Streams;
             using var streams=new OfflineConsoleStreams();
             stage=SessionZeroCreatorChannel.CreationFailure.AtomicCreate;

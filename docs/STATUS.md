@@ -5,6 +5,12 @@
 历史页的“当前/待执行/暂停/DELIVERABLE”按段落日期及限定范围解释，不是今天的状态或操作许可。
 不在本页复制当前安装和授权摘要。
 
+## 2026-11-08 原 Job 关闭和 profile 归属核验
+
+只读实机核验将失败输出绑定到持久 Job 关闭、停止服务和原工作区根。原时间窗
+的 Windows 事件确认 LocalService 创建了命名 profile。新协议在挂起创建前记账，
+普通回归通过。[证据和范围](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#已关闭-job-的只读归属和-profile-记账)
+
 ## 2026-11-08 独立服务创建挂起根
 
 实际创建走过了 LocalService 所有者门禁和挂起创建，Broker 对子进程令牌的打开

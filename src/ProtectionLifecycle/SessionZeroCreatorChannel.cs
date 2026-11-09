@@ -5,6 +5,7 @@ using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Security.Principal;
 using System.Text;
+using System.Text.Json;
 using Microsoft.Win32.SafeHandles;
 
 namespace ProtectionLifecycle;
@@ -14,9 +15,11 @@ namespace ProtectionLifecycle;
 // This channel can never start a service or resume the returned thread.
 internal sealed class SessionZeroCreatorChannel : IDisposable
 {
-    private const uint RequestMagic=0x31504343,ReplyMagic=0x31524343,FailureMagic=0x31464343; // CCP1, CCR1, CCF1.
-    private const int NonceSize=16,ReplySize=44;
+    private const uint RequestMagic=0x32504343,ReplyMagic=0x31524343,FailureMagic=0x31464343; // CCP2, CCR1, CCF1.
+    private const uint ProfileCreatedMagic=0x314a4343,ProfileRecordedMagic=0x31414343; // CCJ1, CCA1.
+    private const int NonceSize=16,ReplySize=44,ObjectIdentityBytes=12;
     internal const int RequestSize=60;
+    internal const int ProfileRecordedSize=4+NonceSize;
     internal const string ServicePrefix="CpcSessionCreator.";
     private readonly SessionZeroCreatorRegistration registration;
     private OwnedKernelJob? boundJob;
@@ -24,6 +27,7 @@ internal sealed class SessionZeroCreatorChannel : IDisposable
     private BoundPeer? boundPeer;
     private int consumed;
     private byte[]? cleanupNonce;
+    private string? profileCreatedHash;
     internal bool ProfileCleanupConfirmed {get;private set;}
     internal bool ConfirmsProfileCleanupFor(OwnedKernelJob exactJob)=>ReferenceEquals(boundJob,exactJob) && ProfileCleanupConfirmed;
     internal bool IsPreparedFor(SessionZeroCreatorRegistration exactRegistration)=>ReferenceEquals(registration,exactRegistration) && Volatile.Read(ref consumed)==0 &&
@@ -95,18 +99,18 @@ internal sealed class SessionZeroCreatorChannel : IDisposable
         AssertBoundPeer(service,image);
         job.ReserveSessionZeroAdmission(version,registration.Sid);
         pipe.WriteAsync(request.AsMemory(),cancellation).AsTask().GetAwaiter().GetResult();
-        var reply=new byte[ReplySize];
-        pipe.ReadExactlyAsync(reply.AsMemory(),cancellation).AsTask().GetAwaiter().GetResult();
-        Reply report;
-        try{report=ParseReply(reply,nonce,peer.ServicePid,peer.ServiceCreated);}
-        catch(WfpFailure failure)
-        {
-            // This single-instance channel was already bound before request.
-            // A nonce-bound failure may be the service's final write.
-            try{job.ConfirmSessionZeroCreatorReleased();}
-            catch(Exception revocation){throw new AggregateException("Creator failure and assignment release both unconfirmed",failure,revocation);}
-            throw;
-        }
+        var profile=ReadReply(frame=>ParseProfileCreated(frame,nonce));
+        AssertBoundPeer(service,image);
+        AssertQuarantine(state);
+        job.AssertCreatorProfileBeforeFirstProcess();
+        var admission=state.Read("job-admission-"+job.JobId+".json",8192);
+        profileCreatedHash=state.WriteNew(ProfileCreatedLeaf(job.JobId),JsonSerializer.SerializeToUtf8Bytes(new {
+            SchemaVersion=1,state.InstallationId,job.JobId,version.Package.Release,version.Package.ManifestHash,
+            CreatorSid=registration.Sid.Value,PackageSid=package.Value,AdmissionSHA256=admission.SHA256,
+            profile.ParentIdentity,profile.StorageIdentity
+        }));
+        pipe.WriteAsync(CreateProfileRecorded(nonce).AsMemory(),cancellation).AsTask().GetAwaiter().GetResult();
+        var report=ReadReply(frame=>ParseReply(frame,nonce,peer.ServicePid,peer.ServiceCreated));
         AssertBoundPeer(service,image);
         // A completed reply promises the fixed service has returned from
         // CreateProcess and closed its assignment handle. Read the DACL and
@@ -124,6 +128,20 @@ internal sealed class SessionZeroCreatorChannel : IDisposable
             return root;
         }
         catch{root.Dispose();throw;}
+
+        T ReadReply<T>(Func<byte[],T> parse)
+        {
+            var frame=new byte[ReplySize];
+            pipe.ReadExactlyAsync(frame.AsMemory(),cancellation).AsTask().GetAwaiter().GetResult();
+            try{return parse(frame);}
+            catch(WfpFailure failure)
+            {
+                // An authenticated failure may be the service's final write.
+                try{job.ConfirmSessionZeroCreatorReleased();}
+                catch(Exception revocation){throw new AggregateException("Creator failure and assignment release both unconfirmed",failure,revocation);}
+                throw;
+            }
+        }
     }
 
     internal (OfflineConsoleOutput Output,OfflineConsoleOutput Error) CloseCreatorProfile(ProtectedState state)
@@ -131,13 +149,22 @@ internal sealed class SessionZeroCreatorChannel : IDisposable
         var job=boundJob??throw WfpNative.Contract("CreatorProfileCleanupJobUnavailable");
         job.AssertCreatorProfileCleanupAllowed(state);
         AssertQuarantine(state);
+        var created=state.Read(ProfileCreatedLeaf(job.JobId),8192);
+        if(created.SHA256!=profileCreatedHash)throw WfpNative.Contract("CreatorProfileCreationProofChanged");
         var nonce=Interlocked.Exchange(ref cleanupNonce,null)??throw WfpNative.Contract("CreatorProfileCleanupChannelUnavailable");
         using var deadline=new CancellationTokenSource(TimeSpan.FromSeconds(10));
         pipe.WriteAsync(SessionZeroCreatorTerminal.CloseFrame(nonce).AsMemory(),deadline.Token).AsTask().GetAwaiter().GetResult();
         var result=SessionZeroCreatorTerminal.ReadReceipt(pipe,nonce,deadline.Token);
+        var completion=state.Read("job-completed-"+job.JobId+".json",8192);
+        state.WriteNew("creator-profile-closed-"+job.JobId+".json",JsonSerializer.SerializeToUtf8Bytes(new {
+            SchemaVersion=1,state.InstallationId,job.JobId,CreatedSHA256=created.SHA256,JobCompletionSHA256=completion.SHA256,
+            Status="ORIGINAL_CREATOR_PROFILE_CLOSED"
+        }));
         ProfileCleanupConfirmed=true;
         return result;
     }
+
+    private static string ProfileCreatedLeaf(string jobId)=>"creator-profile-created-"+Identifiers.Hex32(jobId)+".json";
 
     private static void AssertQuarantine(ProtectedState state)
     {
@@ -190,7 +217,56 @@ internal sealed class SessionZeroCreatorChannel : IDisposable
     }
 
     internal readonly record struct Reply(uint Pid,uint Tid,long ProcessCreated,long ThreadCreated);
+    internal readonly record struct CreatedProfile(string ParentIdentity,string StorageIdentity);
     internal enum CreationFailure : uint { Profile=1, AtomicCreate=2, Streams=3 }
+
+    internal static byte[] CreateProfileCreated(Request request,CreatedProfile profile)
+    {
+        AssertProfileIdentity(profile);
+        if(request.Nonce.Length!=NonceSize)throw WfpNative.Contract("CreatorProfileNonceInvalid");
+        var frame=new byte[ReplySize];
+        BinaryPrimitives.WriteUInt32LittleEndian(frame,ProfileCreatedMagic);
+        request.Nonce.CopyTo(frame,4);
+        Convert.FromHexString(profile.ParentIdentity.Replace(":","",StringComparison.Ordinal)).CopyTo(frame,20);
+        Convert.FromHexString(profile.StorageIdentity.Replace(":","",StringComparison.Ordinal)).CopyTo(frame,20+ObjectIdentityBytes);
+        return frame;
+    }
+
+    internal static CreatedProfile ParseProfileCreated(byte[] frame,byte[] nonce)
+    {
+        if(ReadBoundReplyKind(frame,nonce)!=ProfileCreatedMagic)throw WfpNative.Contract("CreatorProfileReplyBindingMismatch");
+        var profile=new CreatedProfile(DecodeIdentity(frame.AsSpan(20,ObjectIdentityBytes)),DecodeIdentity(frame.AsSpan(20+ObjectIdentityBytes,ObjectIdentityBytes)));
+        AssertProfileIdentity(profile);
+        return profile;
+
+        static string DecodeIdentity(ReadOnlySpan<byte> value)=>
+            Convert.ToHexString(value[..4])+":"+Convert.ToHexString(value[4..8])+":"+Convert.ToHexString(value[8..]);
+    }
+
+    private static void AssertProfileIdentity(CreatedProfile profile)
+    {
+        var parent=Identifiers.ObjectIdentity(profile.ParentIdentity);
+        var storage=Identifiers.ObjectIdentity(profile.StorageIdentity);
+        if(parent==storage || !parent.AsSpan(0,8).SequenceEqual(storage.AsSpan(0,8)) ||
+            parent.EndsWith(":00000000:00000000",StringComparison.Ordinal) || storage.EndsWith(":00000000:00000000",StringComparison.Ordinal))
+            throw WfpNative.Contract("CreatorProfileStorageIdentityInvalid");
+    }
+
+    internal static byte[] CreateProfileRecorded(byte[] nonce)
+    {
+        if(nonce.Length!=NonceSize)throw WfpNative.Contract("CreatorProfileNonceInvalid");
+        var frame=new byte[ProfileRecordedSize];
+        BinaryPrimitives.WriteUInt32LittleEndian(frame,ProfileRecordedMagic);
+        nonce.CopyTo(frame,4);
+        return frame;
+    }
+
+    internal static void AssertProfileRecorded(byte[] frame,byte[] nonce)
+    {
+        if(frame.Length!=ProfileRecordedSize || nonce.Length!=NonceSize ||
+            BinaryPrimitives.ReadUInt32LittleEndian(frame)!=ProfileRecordedMagic || !CryptographicOperations.FixedTimeEquals(frame.AsSpan(4),nonce))
+            throw WfpNative.Contract("CreatorProfileRecordAcknowledgementInvalid");
+    }
     internal static byte[] CreateFailure(Request request,CreationFailure stage,uint code)
     {
         if(request.Nonce.Length!=NonceSize || !Enum.IsDefined(stage) || code==0)
@@ -223,9 +299,9 @@ internal sealed class SessionZeroCreatorChannel : IDisposable
         BinaryPrimitives.WriteInt64LittleEndian(frame.AsSpan(36),report.ThreadCreated);
         return frame;
     }
-    internal static Reply ParseReply(byte[] frame,byte[] nonce,uint creatorPid,long creatorCreated)
+    private static uint ReadBoundReplyKind(byte[] frame,byte[] nonce)
     {
-        if(frame.Length!=ReplySize || nonce.Length!=NonceSize || creatorPid==0 || creatorCreated<=0 ||
+        if(frame.Length!=ReplySize || nonce.Length!=NonceSize ||
             !CryptographicOperations.FixedTimeEquals(frame.AsSpan(4,NonceSize),nonce))
             throw WfpNative.Contract("CreatorReplyBindingMismatch");
         var magic=BinaryPrimitives.ReadUInt32LittleEndian(frame);
@@ -237,7 +313,13 @@ internal sealed class SessionZeroCreatorChannel : IDisposable
                 throw WfpNative.Contract("CreatorFailureFrameInvalid");
             throw new WfpFailure("CreatorService"+stage,code);
         }
-        if(magic!=ReplyMagic)throw WfpNative.Contract("CreatorReplyBindingMismatch");
+        return magic;
+    }
+
+    internal static Reply ParseReply(byte[] frame,byte[] nonce,uint creatorPid,long creatorCreated)
+    {
+        if(creatorPid==0 || creatorCreated<=0 || ReadBoundReplyKind(frame,nonce)!=ReplyMagic)
+            throw WfpNative.Contract("CreatorReplyBindingMismatch");
         var pid=BinaryPrimitives.ReadUInt32LittleEndian(frame.AsSpan(20));
         var tid=BinaryPrimitives.ReadUInt32LittleEndian(frame.AsSpan(24));
         var processCreated=BinaryPrimitives.ReadInt64LittleEndian(frame.AsSpan(28));
