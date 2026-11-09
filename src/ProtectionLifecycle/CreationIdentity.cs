@@ -17,7 +17,7 @@ internal enum CreationRole : uint
     BrokerOpenSslWindowsCrypto=30,BrokerOpenSslWindowsLibrary=31,
     BrokerFixedHeadRoot=32,BrokerFixedHeadLeafCrl=33,BrokerFixedHeadIssuerCrl=34,BrokerFixedHeadRootCrl=35,
     BrokerFixedResolverRoot=36,BrokerFixedResolverLeafCrl=37,BrokerFixedResolverIssuerCrl=38,
-    OfficialClaudeDirectory=39,OfficialClaudeExe=40
+    OfficialClaudeDirectory=39,OfficialClaudeExe=40,SessionZeroStartupWitness=41
 }
 
 // A non-inherited READ_CONTROL-only ACE serves as an object tag. No account,
@@ -68,6 +68,7 @@ internal sealed class CreationTag
         PackageAssetCatalog.ResolverRootId=>CreationRole.BrokerFixedResolverRoot,PackageAssetCatalog.ResolverLeafCrlId=>CreationRole.BrokerFixedResolverLeafCrl,
         PackageAssetCatalog.ResolverIssuerCrlId=>CreationRole.BrokerFixedResolverIssuerCrl,
         PackageAssetCatalog.OfficialClaudeId=>CreationRole.OfficialClaudeExe,
+        PackageAssetCatalog.SessionZeroStartupWitnessId=>CreationRole.SessionZeroStartupWitness,
         _=>throw new InvalidDataException("Unknown creation asset")};
     internal static CreationRole DirectoryRole(string role)=>role switch {
         "versions"=>CreationRole.Versions,"release"=>CreationRole.Release,"bin"=>CreationRole.Bin,"current"=>CreationRole.Current,"center"=>CreationRole.Center,"admin"=>CreationRole.Admin,

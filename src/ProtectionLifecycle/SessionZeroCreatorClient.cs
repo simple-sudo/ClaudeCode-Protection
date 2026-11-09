@@ -39,7 +39,7 @@ internal sealed class SessionZeroCreatorClient : IDisposable
             var frame=new byte[SessionZeroCreatorChannel.RequestSize];
             client.ReadExactlyAsync(frame.AsMemory(),deadline.Token).AsTask().GetAwaiter().GetResult();
             if(ReadServerPeer(handle)!=peer)throw WfpNative.Contract("CreatorOwnerPeerChanged");
-            var request=SessionZeroCreatorChannel.ParseRequest(frame,jobId,peer.Pid,peer.Session);
+            var request=SessionZeroCreatorChannel.ParseWorkloadRequest(frame,jobId,peer.Pid,peer.Session);
             job=OpenJobObject(KernelJobSeal.CreatorRights,false,OwnedJobIntent.CreatorJobName(request.InstallationId,request.JobId));
             if(job.IsInvalid)throw Error("OpenCreatorAssignmentJob");
             KernelJobSeal.AssertGrantedCreatorJob(job,jobId,sid.Value);

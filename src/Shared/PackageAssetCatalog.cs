@@ -23,6 +23,9 @@ internal static class PackageAssetCatalog
     internal const int FixedHeadTrustSchema=4;
     internal const int FixedResolverTrustSchema=5;
     internal const int OfficialClaudeOfflineSchema=6;
+    internal const int SessionZeroStartupWitnessSchema=7;
+    internal const string SessionZeroStartupWitnessId="broker-session-zero-startup-witness";
+    internal const string SessionZeroStartupWitnessPath="bin/admin/SessionZeroStartupWitness.exe";
     internal const string OfficialClaudeId="official-claude-offline-exe",OfficialClaudeBinRole="official";
     internal const string OpenSslWindowsCryptoId="broker-openssl-windows-crypto",OpenSslWindowsLibraryId="broker-openssl-windows-ssl";
     internal const string HeadRootId="broker-fixed-head-root",HeadLeafCrlId="broker-fixed-head-leaf-crl",
@@ -96,14 +99,19 @@ internal static class PackageAssetCatalog
         FixedLength=344807072,FixedSHA256="2E055732C9D03D22700D9046251A8370B673607BFCC9E4D16A1B0E8FB1345CBD"
     };
     private static readonly IReadOnlyList<AssetSpec> WithOfficialClaude=Array.AsReadOnly(WithFixedResolverTrust.Append(OfficialClaudeImage).ToArray());
+    private static readonly AssetSpec StartupWitness=new(SessionZeroStartupWitnessId,SessionZeroStartupWitnessPath) {
+        VerifyBeforeElevation=true,FixedLength=4096,FixedSHA256="DE7363C3EB6E7D54BF7D3B92DB2268E363B44C2F554DCB2F2894A15D7E796FAF"
+    };
+    private static readonly IReadOnlyList<AssetSpec> WithStartupWitness=Array.AsReadOnly(WithOfficialClaude.Append(StartupWitness).ToArray());
     internal static IReadOnlyList<AssetSpec> ForSchema(int schema)=>schema switch {
         1=>Catalog,2=>WithOfflineOpenSsl,OpenSslWindowsEntropySchema=>WithWindowsEntropy,FixedHeadTrustSchema=>WithFixedHeadTrust,
         FixedResolverTrustSchema=>WithFixedResolverTrust,OfficialClaudeOfflineSchema=>WithOfficialClaude,
+        SessionZeroStartupWitnessSchema=>WithStartupWitness,
         _=>throw new InvalidDataException("Unknown installed package schema")
     };
     // Map a previously authorized role to a path. Release authorization
     // always uses the exact inventory selected by ForSchema.
     internal static IReadOnlyList<AssetSpec> KnownAssets {get;}=Array.AsReadOnly(WithOfflineOpenSsl.Concat(WindowsEntropyModules)
-        .Concat(FixedHeadTrustAssets).Concat(FixedResolverTrustAssets).Append(OfficialClaudeImage).ToArray());
+        .Concat(FixedHeadTrustAssets).Concat(FixedResolverTrustAssets).Append(OfficialClaudeImage).Append(StartupWitness).ToArray());
     internal static IEnumerable<string> BinRoles(IEnumerable<AssetSpec> assets)=>assets.Select(a=>a.BinRole).Distinct(StringComparer.Ordinal);
 }

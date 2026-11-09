@@ -1246,3 +1246,15 @@ SHELL32、ADVAPI32 和多个 UCRT 导入。普通构建的原生见证只有 KER
 普通 Windows 无窗口运行通过全部九个检查点，受限 Session 0 尚未运行此见证。
 当前无证据把失败归因到桌面权限或某个 DLL。
 [Windows 的窗口站连接](https://learn.microsoft.com/en-us/windows/win32/winstation/process-connection-to-a-window-station)。
+
+### 原生见证接入原 Broker
+
+固定诊断入口 `qualify-session-zero-startup-witness` 只接受由已审核安装清单固定的
+4096 字节原生映像。原 Broker 启动原 LocalService 角色，鉴别管道只携带诊断用途，
+原子创建保留同一包、Job、进程和线程封印、令牌证明、三条标准流及全隔离。准入回执
+绑定见证映像的清单摘要。原 Job 与 profile 确认关闭后才解释有界输出；部分输出只
+在符合预设顺序时归因。诊断终态单独记账。旧清单、普通管理控制台和恢复请求保留
+原行为。该入口不授予产品启动资格，五项身份读取沿原独立离线入口单独验收。
+
+普通 Release 构建通过。回归核对旧包兼容、映像字节、恢复角色、同一管道的用途隔离、
+完整与部分输出、异常输出及普通调用拒绝。新诊断尚未安装或在真实 LPAC 内运行。

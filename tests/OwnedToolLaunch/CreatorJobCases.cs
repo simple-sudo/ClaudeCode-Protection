@@ -264,6 +264,15 @@ internal static class CreatorJobCases
         Refused(()=>parseRequest.Invoke(null,[outgoing,jobId,12u,8u]));
         var legacyRequest=(byte[])outgoing.Clone();legacyRequest[3]=(byte)'1';
         Refused(()=>parseRequest.Invoke(null,[legacyRequest,jobId,12u,7u]));
+        var parseWorkload=channel.GetMethod("ParseWorkloadRequest",methods)!;
+        var startup=(byte[])outgoing.Clone();
+        "CCW1"u8.CopyTo(startup);
+        var mode=decoded.GetType().GetProperty("StartupWitness",BindingFlags.Instance|BindingFlags.NonPublic)!;
+        Check(mode.GetValue(parseWorkload.Invoke(null,[outgoing,jobId,12u,7u])) is false);
+        Check(mode.GetValue(parseWorkload.Invoke(null,[startup,jobId,12u,7u])) is true);
+        Refused(()=>parseRequest.Invoke(null,[startup,jobId,12u,7u]));
+        Refused(()=>parseWorkload.Invoke(null,[startup,jobId,13u,7u]));
+        Refused(()=>parseWorkload.Invoke(null,[legacyRequest,jobId,12u,7u]));
 
         var profileType=channel.GetNestedType("CreatedProfile",BindingFlags.NonPublic)!;
         var createProfile=channel.GetMethod("CreateProfileCreated",methods)!;

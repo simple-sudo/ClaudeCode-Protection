@@ -536,6 +536,9 @@ public static class BootstrapInstaller
         {
             var creatorPrior=(priorRelease==SessionZeroCreatorRecovery.Release && priorManifest==SessionZeroCreatorRecovery.Manifest) ||
                 (priorRelease==SessionZeroClosedCreatorRecovery.Release && priorManifest==SessionZeroClosedCreatorRecovery.Manifest) ||
+                // Both 702edb5d offline observations preserved failure and closed their owned objects.
+                (priorRelease=="702edb5d13b74a689899c78ab2cc252b" &&
+                    priorManifest=="B38F61DD92C74B49B37FB87C157E619744DA3F7094A7029EA8A6882AF8288106") ||
                 // The installed scoped-inspection attempt preserved the failed
                 // launch and closed its own Job, profile, workspace and service.
                 (priorRelease=="8028a508dadd473298d01900008b6408" &&

@@ -11,6 +11,7 @@ internal static class OfficialClaudePackageCases
     private const BindingFlags Static=BindingFlags.Static|BindingFlags.NonPublic;
     private const BindingFlags Instance=BindingFlags.Instance|BindingFlags.NonPublic|BindingFlags.Public;
     private const string Official="official-claude-offline-exe";
+    private const string StartupWitness="broker-session-zero-startup-witness";
     private const long ImageLength=344807072;
     private const string ImageSHA256="2E055732C9D03D22700D9046251A8370B673607BFCC9E4D16A1B0E8FB1345CBD";
 
@@ -67,15 +68,20 @@ internal static class OfficialClaudePackageCases
             return rows;
         }
 
-        var v5=Rows(5,"Asset");var v6=Rows(6,"Asset");
-        Check(v5.Count==23 && v6.Count==24);
+        var v5=Rows(5,"Asset");var v6=Rows(6,"Asset");var v7=Rows(7,"Asset");
+        Check(v5.Count==23 && v6.Count==24 && v7.Count==25);
         Check(JsonNode.DeepEquals(v5,new JsonArray(v6.Take(23).Select(row=>row!.DeepClone()).ToArray())));
+        Check(JsonNode.DeepEquals(v6,new JsonArray(v7.Take(24).Select(row=>row!.DeepClone()).ToArray())));
         var fixedImage=v6.Single(row=>row!["Asset"]!.GetValue<string>()==Official)!;
         Check(fixedImage["Length"]!.GetValue<long>()==ImageLength && fixedImage["SHA256"]!.GetValue<string>()==ImageSHA256);
         Manifest(5,v5);Manifest(6,v6);Stage(6,Rows(6,"Id"));checks+=3;
+        Manifest(7,v7);Stage(7,Rows(7,"Id"));checks+=2;
         Reject(()=>Manifest(5,v6));
         Reject(()=>Manifest(6,v5));
         Reject(()=>Manifest(7,v6));
+        Reject(()=>Manifest(6,v7));
+        Reject(()=>Manifest(7,Changed(v7,StartupWitness,"SHA256",genericHash)));
+        Reject(()=>Manifest(7,Changed(v7,StartupWitness,"Length",4097L)));
         Reject(()=>Stage(5,Rows(6,"Id")));
         Reject(()=>Stage(6,Rows(5,"Id")));
         Reject(()=>Manifest(6,Changed(v6,Official,"Length",ImageLength-1)));
@@ -89,6 +95,8 @@ internal static class OfficialClaudePackageCases
         Reject(()=>Manifest(6,Changed(large,"daily-dll","Length",legacyLimit)));
         Reject(()=>Manifest(6,Changed(large,"daily-exe","Length",legacyLimit+1)));
         Check((string?)Call(removal.GetMethod("FileRelative",Static)!,Official)=="bin/official/claude.exe");
+        Check((string?)Call(removal.GetMethod("FileRelative",Static)!,StartupWitness)=="bin/admin/SessionZeroStartupWitness.exe");
+        Check(Call(creation.GetMethod("AssetRole",Static)!,StartupWitness)?.ToString()=="SessionZeroStartupWitness");
         Check((string?)Call(removal.GetMethod("DirRelative",Static)!,"official")=="bin/official");
         var fileRole=Call(creation.GetMethod("AssetRole",Static)!,Official);
         var dirRole=Call(creation.GetMethod("DirectoryRole",Static)!,"official");

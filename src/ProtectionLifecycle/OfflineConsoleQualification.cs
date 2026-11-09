@@ -290,6 +290,15 @@ internal static class OfflineConsoleQualification
     }
 
     internal static (int ExitCode,string Report) RunIndependent(FixedLayout layout,ProtectedState state,VerifiedVersion version)
+        =>RunIndependent(layout,state,version,startupWitness:false);
+
+    internal static (int ExitCode,string Report) RunStartupWitness(FixedLayout layout,ProtectedState state,VerifiedVersion version)
+    {
+        _=SessionZeroStartupWitness.ReviewedImage(layout,version);
+        return RunIndependent(layout,state,version,startupWitness:true);
+    }
+
+    private static (int ExitCode,string Report) RunIndependent(FixedLayout layout,ProtectedState state,VerifiedVersion version,bool startupWitness)
     {
         var plans=RequireOfflinePrerequisites(state,version);
         var fences=new List<PersistentFence>();
@@ -316,12 +325,15 @@ internal static class OfflineConsoleQualification
             stage="RegisterCreator";
             using var creator=SessionZeroCreatorRegistration.Create(layout,state,version);
             jobId=creator.JobId;
-            OfflineConsoleHostIdentity host;
+            OfflineConsoleHostIdentity? host=null;
             SessionZeroCreatorChannel preparedChannel;
             try
             {
-                stage="CaptureHostIdentity";
-                host=OfflineConsoleHostIdentity.Capture(jobId);
+                if(!startupWitness)
+                {
+                    stage="CaptureHostIdentity";
+                    host=OfflineConsoleHostIdentity.Capture(jobId);
+                }
                 stage="PrepareCreatorChannel";
                 preparedChannel=new(creator);
             }
@@ -366,8 +378,8 @@ internal static class OfflineConsoleQualification
             try
             {
                 stage="ValidateSuspendedRoot";
-                using var root=channel.Exchange(layout,state,version,job);
-                child=AtomicChild.AdoptSessionZeroOfflineConsole(layout,state,version,job,root);
+                using var root=channel.Exchange(layout,state,version,job,startupWitness);
+                child=AtomicChild.AdoptSessionZeroOfflineConsole(layout,state,version,job,root,startupWitness);
                 runtime=ProtectionRuntimeLease.ForFixedOfflineConsole(state,version,job,fences,child,job.JobId);
                 runtime.Activate(10000);
                 stage="RunWorker";
@@ -417,7 +429,7 @@ internal static class OfflineConsoleQualification
                     failedStage??="ReadCreatorConsoleCapture";
                     failures.Add(captureFailure);
                 }
-                if(child is not null)
+                if(child is not null && !startupWitness)
                 {
                     stage="SealWorkerEvidence";
                     try
@@ -426,7 +438,7 @@ internal static class OfflineConsoleQualification
                         {
                             workspace.AssertHeld();
                             hostIdentity=OfflineConsoleHostIdentity.Read(workspace.Path,job.JobId,child.Pid)
-                                .Seal(state,version,job.JobId,host,child.OfflineConsoleUserSid);
+                                .Seal(state,version,job.JobId,host!,child.OfflineConsoleUserSid);
                             filesMatched=ReadFixedFile(workspace.Path,OutputLeaf,ExpectedFile) && ReadFixedFile(workspace.Temp,TempLeaf,ExpectedTempFile);
                         }
                         else if(ParseChildFailure(exit,stderr)?.Stage is ("Temp" or "Tmp" or "LocalAppData") &&
@@ -449,6 +461,24 @@ internal static class OfflineConsoleQualification
             foreach(var fence in fences)try{fence.Dispose();}catch(Exception error){failures.Add(error);}
         }
         stage=failedStage??stage;
+        if(startupWitness)
+        {
+            var observation=SessionZeroStartupWitness.Observe(exit,stdout,stderr);
+            var terminal=failures.Count==0 && closed && profileClosed && workspaceClosed && serviceRemoved && resumed &&
+                observation.Status=="ALL_CHECKPOINTS_OBSERVED";
+            var diagnostic=JsonSerializer.Serialize(new {
+                SchemaVersion=1,Scope=SessionZeroStartupWitness.Scope,state.InstallationId,JobId=jobId,
+                version.Package.Release,version.Package.ManifestHash,
+                Status=terminal?"STARTUP_WITNESS_CLOSED":"STARTUP_WITNESS_NOT_CONFIRMED",
+                LastStage=stage,ProcessResumed=resumed,ChildExit=exit,OriginalJobClosed=closed,ProfileClosed=profileClosed,
+                WorkspaceClosed=workspaceClosed,ServiceRemoved=serviceRemoved,StartupFailureRegistrationRemoved=startupFailureRegistrationRemoved,
+                Observation=observation,Output=Summarize(stdout),Error=Summarize(stderr),StopObservation=stopped,
+                Failures=failures.SelectMany(WfpNative.Describe).ToArray(),HostIdentityQualified=false,GatewayOpened=false,
+                NetworkQualified=false,LaunchAuthorized=false,FormalAdmissionIssued=false,ClaudeLaunched=false
+            });
+            if(jobId is not null)state.WriteNew("startup-witness-after-"+jobId+".json",Encoding.UTF8.GetBytes(diagnostic));
+            return(terminal?0:3,diagnostic);
+        }
         var matched=stdout is {Overflow:false} && stderr is {Overflow:false} &&
             ExpectedOutput.SequenceEqual(stdout.Bytes) && ExpectedError.SequenceEqual(stderr.Bytes);
         var identityObserved=IndependentIdentityObserved(hostIdentity);

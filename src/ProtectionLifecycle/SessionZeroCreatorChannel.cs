@@ -16,6 +16,7 @@ namespace ProtectionLifecycle;
 internal sealed class SessionZeroCreatorChannel : IDisposable
 {
     private const uint RequestMagic=0x32504343,ReplyMagic=0x31524343,FailureMagic=0x31464343; // CCP2, CCR1, CCF1.
+    private const uint StartupWitnessRequestMagic=0x31574343; // CCW1, same size and peer binding.
     private const uint ProfileCreatedMagic=0x314a4343,ProfileRecordedMagic=0x31414343; // CCJ1, CCA1.
     private const uint TokenProofMagic=0x31544343; // CCT1.
     private const int NonceSize=16,ReplySize=44,ObjectIdentityBytes=12;
@@ -88,7 +89,7 @@ internal sealed class SessionZeroCreatorChannel : IDisposable
 
     // The caller must retain the original Job and close it through the
     // existing offline stop path if a granted exchange fails.
-    internal SuspendedRoot Exchange(FixedLayout layout,ProtectedState state,VerifiedVersion version,OwnedKernelJob job)
+    internal SuspendedRoot Exchange(FixedLayout layout,ProtectedState state,VerifiedVersion version,OwnedKernelJob job,bool startupWitness)
     {
         var service=registration.AssertReadyForJob(state,version,this);
         var peer=boundPeer??throw WfpNative.Contract("CreatorPipePeerBindingMissingOrChanged");
@@ -102,6 +103,7 @@ internal sealed class SessionZeroCreatorChannel : IDisposable
         using var deadline=new CancellationTokenSource(TimeSpan.FromSeconds(10));
         var cancellation=deadline.Token;
         var request=CreateRequest(nonce,state.InstallationId,job.JobId,peer.OwnerPid,peer.OwnerSession);
+        if(startupWitness)BinaryPrimitives.WriteUInt32LittleEndian(request,StartupWitnessRequestMagic);
         AssertQuarantine(state);
         AssertBoundPeer(service,image);
         job.ReserveSessionZeroAdmission(version,registration.Sid);
@@ -131,7 +133,8 @@ internal sealed class SessionZeroCreatorChannel : IDisposable
         pipe.ReadExactlyAsync(tokenFrame.AsMemory(),cancellation).AsTask().GetAwaiter().GetResult();
         var tokenProof=ParseTokenProof(tokenFrame,nonce);
         AssertBoundPeer(service,image);
-        var root=OpenRoot(report,tokenProof,job,image,package.Value);
+        var rootImage=startupWitness?SessionZeroStartupWitness.ReviewedImage(layout,version):image;
+        var root=OpenRoot(report,tokenProof,job,rootImage,package.Value);
         try
         {
             AssertQuarantine(state);
@@ -223,14 +226,28 @@ internal sealed class SessionZeroCreatorChannel : IDisposable
     }
 
     private sealed record BoundPeer(uint OwnerPid,uint OwnerSession,uint ServicePid,long ServiceCreated);
-    internal sealed record Request(string InstallationId,string JobId,byte[] Nonce);
-    internal static Request ParseRequest(byte[] frame,string fixedJobId,uint serverPid,uint serverSession)
+    internal sealed record Request(string InstallationId,string JobId,byte[] Nonce)
     {
-        if(frame.Length!=RequestSize || serverPid==0 || serverSession==0 || BinaryPrimitives.ReadUInt32LittleEndian(frame)!=RequestMagic ||
+        internal bool StartupWitness {get;init;}
+    }
+    internal static Request ParseRequest(byte[] frame,string fixedJobId,uint serverPid,uint serverSession)
+        =>ParseBoundRequest(frame,fixedJobId,serverPid,serverSession,allowStartupWitness:false);
+
+    internal static Request ParseWorkloadRequest(byte[] frame,string fixedJobId,uint serverPid,uint serverSession)
+        =>ParseBoundRequest(frame,fixedJobId,serverPid,serverSession,allowStartupWitness:true);
+
+    private static Request ParseBoundRequest(byte[] frame,string fixedJobId,uint serverPid,uint serverSession,bool allowStartupWitness)
+    {
+        if(frame.Length!=RequestSize || serverPid==0 || serverSession==0 ||
             BinaryPrimitives.ReadUInt32LittleEndian(frame.AsSpan(4))!=serverPid || BinaryPrimitives.ReadUInt32LittleEndian(frame.AsSpan(8))!=serverSession ||
             !frame.AsSpan(44,16).SequenceEqual(Convert.FromHexString(Identifiers.Hex32(fixedJobId))))
             throw WfpNative.Contract("CreatorRequestBindingMismatch");
-        return new(Convert.ToHexString(frame.AsSpan(28,16)).ToLowerInvariant(),fixedJobId,frame.AsSpan(12,NonceSize).ToArray());
+        var magic=BinaryPrimitives.ReadUInt32LittleEndian(frame);
+        if(magic!=RequestMagic && (!allowStartupWitness || magic!=StartupWitnessRequestMagic))
+            throw WfpNative.Contract("CreatorRequestPurposeMismatch");
+        return new(Convert.ToHexString(frame.AsSpan(28,16)).ToLowerInvariant(),fixedJobId,frame.AsSpan(12,NonceSize).ToArray()) {
+            StartupWitness=magic==StartupWitnessRequestMagic
+        };
     }
 
     internal readonly record struct Reply(uint Pid,uint Tid,long ProcessCreated,long ThreadCreated);

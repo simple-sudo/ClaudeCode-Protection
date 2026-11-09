@@ -306,6 +306,34 @@ internal static class CreatorLifecycleCases
         Check(denied);
         Console.WriteLine($"PASS {count-previous} independent offline checks; no success when a host identity matches or TokenUser differs unproven, ordinary caller denied before setup. No service or WFP mutations.");
         previous=count;
+        var witness=Method("SessionZeroStartupWitness","Observe");
+        var capture=library.GetType("ProtectionLifecycle.OfflineConsoleOutput",true)!;
+        object Stream(string value,bool overflow=false)=>Activator.CreateInstance(capture,[System.Text.Encoding.ASCII.GetBytes(value),overflow])!;
+        void Witness(uint? exit,string output,string status,string? checkpoint=null,uint? error=null,bool overflow=false,string stderr="")
+        {
+            var row=witness.Invoke(null,[exit,Stream(output,overflow),Stream(stderr)])!;
+            Check(row.GetType().GetProperty("Status")!.GetValue(row) as string==status &&
+                row.GetType().GetProperty("LastCheckpoint")!.GetValue(row) as string==checkpoint &&
+                (uint?)row.GetType().GetProperty("Win32Error")!.GetValue(row)==error);
+        }
+        const string all="ENTRY\nBEFORE_USER32\nAFTER_USER32\nBEFORE_DESKTOP\nAFTER_DESKTOP\nBEFORE_SHELL32\nAFTER_SHELL32\nBEFORE_UCRT\nAFTER_UCRT\n";
+        const uint dllInitFailed=0xc0000142;
+        Witness(0,all,"ALL_CHECKPOINTS_OBSERVED","AFTER_UCRT");
+        Witness(dllInitFailed,"","NO_ENTRY_CHECKPOINT");
+        Witness(dllInitFailed,"ENTRY\nBEFORE_USER32\n","NATIVE_EXIT_AFTER_CHECKPOINT","BEFORE_USER32");
+        Witness(65,"ENTRY\nBEFORE_USER32\nWIN32=0x0000045A\n","WIN32_FAILURE_AFTER_CHECKPOINT","BEFORE_USER32",0x45a);
+        Witness(68,"ENTRY\nBEFORE_USER32\nWIN32=0x0000045A\n","OUTPUT_REJECTED");
+        Witness(0,"ENTRY\n","OUTPUT_REJECTED");
+        Witness(dllInitFailed,"ENTRY\nAFTER_USER32\n","OUTPUT_REJECTED");
+        Witness(dllInitFailed,"ENTRY\nBEFORE_USER","OUTPUT_REJECTED");
+        Witness(0,all,"CAPTURE_UNAVAILABLE",overflow:true);
+        Witness(0,all,"CAPTURE_UNAVAILABLE",stderr:"unexpected");
+        denied=false;
+        try{_=broker.GetMethod("QualifySessionZeroStartupWitness")!.Invoke(null,null);}
+        catch(TargetInvocationException error) when(error.InnerException is UnauthorizedAccessException){denied=true;}
+        Check(denied);
+        Console.WriteLine($"PASS {count-previous} startup witness checks; exact output, failure boundaries and ordinary refusal before setup.");
+        previous=count;
         var stop=Method("SessionZeroCreatorRegistration","MatchesRecoveryStop");
         const uint originalStop=0xC5620026;
         bool IsStopped(uint state,uint pid,uint error,uint code,uint approved)=>
