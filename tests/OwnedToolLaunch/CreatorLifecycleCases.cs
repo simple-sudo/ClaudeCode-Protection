@@ -1,7 +1,10 @@
 using System.Buffers.Binary;
+using System.ComponentModel;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Security.AccessControl;
 using System.Text.Json;
+using Microsoft.Win32.SafeHandles;
 
 internal static class CreatorLifecycleCases
 {
@@ -33,6 +36,28 @@ internal static class CreatorLifecycleCases
         Check(acl[0] is CommonAce deny && deny.SecurityIdentifier.Value=="S-1-3-4" && deny.AceQualifier==AceQualifier.AccessDenied && deny.AccessMask==0x000c0000);
         Check(acl[1] is CommonAce system && system.SecurityIdentifier.Value=="S-1-5-18" && system.AccessMask==0x001fffff);
         Check(acl[2] is CommonAce observer && observer.SecurityIdentifier.Value=="S-1-5-32-544" && observer.AccessMask==0x00101000);
+        var readProcess=Method("KernelJobSeal","ReadCreatorProcessDescriptor");
+        var readLegacy=Method("KernelJobSeal","ReadOwnerDacl");
+        using(var self=OpenProcess(0x00020000,false,(uint)Environment.ProcessId))
+        {
+            Check(!self.IsInvalid);
+            var old=(RawSecurityDescriptor)readLegacy.Invoke(null,[self,false])!;
+            var current=(RawSecurityDescriptor)readProcess.Invoke(null,[self])!;
+            static byte[] Dacl(RawSecurityDescriptor descriptor)
+            {
+                var acl=descriptor.DiscretionaryAcl!;
+                var data=new byte[acl.BinaryLength];acl.GetBinaryForm(data,0);return data;
+            }
+            Check(current.Owner is { } owner && old.Owner is { } original && owner.Equals(original) && Dacl(current).SequenceEqual(Dacl(old)));
+        }
+        using(var limited=OpenProcess(0x00001000,false,(uint)Environment.ProcessId))
+        {
+            Check(!limited.IsInvalid);
+            var deniedRead=false;
+            try{_=readProcess.Invoke(null,[limited]);}
+            catch(TargetInvocationException error)when(error.InnerException is Win32Exception {NativeErrorCode:5}){deniedRead=true;}
+            Check(deniedRead);
+        }
         var encode=Method("SessionZeroCreatorService","EncodeFailure");
         var phaseType=encode.GetParameters()[0].ParameterType;
         var describe=Method("SessionZeroCreatorService","DescribeStopped");
@@ -153,7 +178,8 @@ internal static class CreatorLifecycleCases
         void AssertStartupEvidence(object evidence)
             =>_=validateFailure.Invoke(null,[JsonSerializer.SerializeToUtf8Bytes(evidence),hash,startHash]);
         AssertStartupEvidence(startupEvidence);Check(true);
-        foreach(var phase in new[]{"VerifyTokenGroups","VerifyTokenPrivileges","ReadProcessSecurity","WriteProcessSecurity","VerifyProcessSecurity"})
+        foreach(var phase in new[]{"VerifyTokenGroups","VerifyTokenPrivileges","ReadProcessSecurity","WriteProcessSecurity","VerifyProcessSecurity",
+            "OpenProcessSecurity","ValidateProcessOwner"})
         { AssertStartupEvidence(startupEvidence with {ServiceCode=ServiceCode(phase)});Check(true); }
         Refused(()=>AssertStartupEvidence(startupEvidence with {IntentSHA256=startHash}));
         Refused(()=>AssertStartupEvidence(startupEvidence with {StartSHA256=hash}));
@@ -199,4 +225,7 @@ internal static class CreatorLifecycleCases
         Check(denied);
         Console.WriteLine($"PASS {count-previous} independent offline checks; no success when a host identity matches or TokenUser differs unproven, ordinary caller denied before setup. No service or WFP mutations.");
     }
+
+    [DllImport("kernel32.dll",ExactSpelling=true,SetLastError=true)]
+    private static extern SafeProcessHandle OpenProcess(uint access,[MarshalAs(UnmanagedType.Bool)]bool inherit,uint pid);
 }

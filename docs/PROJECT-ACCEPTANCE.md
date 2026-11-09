@@ -5,6 +5,12 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-08 新版离线复验失败并回收未就绪服务
+
+VERIFIED(`51039f75` 未激活升级、未准入回执接入及原未就绪服务精确回收)。
+FAIL(LocalService 自身进程权限读取阶段)。精确失败条件仍 UNKNOWN，受限身份
+执行和宿主 SID 复验 NOT_RUN。[升级和复验记录](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#新版实机定位到进程权限读取)
+
 ## 2026-11-08 旧版未准入现场定向回收
 
 VERIFIED(固定 `7df61706` 遗留登记和工作区回收、确切 Job 名称缺席、全隔离及

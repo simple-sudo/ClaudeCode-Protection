@@ -914,3 +914,24 @@ Broker 与普通测试工具 Release 构建通过。普通回归覆盖既有与�
 `ADB71B6FCF3656780010B57A3567C5E9E6DA47A37E4EDFDCC3A91F043D11256E`。
 一次性授权已消耗。未执行升级、网络修改或官方程序。新版服务诊断、受限读值和
 运行后关闭仍需用自研载荷进行独立实测。
+
+### 新版实机定位到进程权限读取
+
+固定审查 `03F4D2647CEC1AD332A930BE6863334A63A285C18DDAD77ECD1DBF3508A9164E` 的一次
+许可已消耗。`51039f75` 未激活升级成功，升级回执明确经过未准入回收门禁，安装清单
+`ADB71B6FCF3656780010B57A3567C5E9E6DA47A37E4EDFDCC3A91F043D11256E` 回读一致。
+原升级与自研复验进程均正常结束。固定离线复验退出 3，报告 `StartCreator` 的
+`CreatorServiceReadProcessSecurity` 返回 `0x80131501`。已通过令牌和映像阶段。
+同一服务的系统事件 7024（记录 130017）保留了编码后的服务退出码 `0xC5911501`。
+原 Broker 核实全隔离、没有 Job 和工作区意图，并删除未就绪服务的原登记。
+普通侧独立查到同一服务注册表项和工作区根缺席。未进入受限执行，身份五项未读取。
+
+本机回执 `work/independent-offline-retest-once-20261108/receipt.json`，SHA-256
+`495DC8DC6D3AC2C922290D2E7786F34D391101B081F6DA3540E25D5209411822`。
+该阶段把两次读取的描述符尺寸检查与原所有者检查合在一起，具体失败分支仍未知。
+后续源码复用已用于 Job 的 `GetSecurityInfo` 按持有进程句柄读取并回读 DACL。
+打开句柄失败、读取失败和所有者不符分别报告，仍要求 LocalService 所有者、原定
+受保护 DACL 和原观察权限。普通进程对照验证两种 API 返回相同所有者和 DACL，
+只有查询进程信息而无 `READ_CONTROL` 的句柄被拒。新版改动未安装，LocalService
+仍需真实复验。未执行官方程序，也未访问外网。
+[Windows GetSecurityInfo](https://learn.microsoft.com/en-us/windows/win32/api/aclapi/nf-aclapi-getsecurityinfo)

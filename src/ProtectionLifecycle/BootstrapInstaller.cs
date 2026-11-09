@@ -509,9 +509,11 @@ public static class BootstrapInstaller
         // Acceptance here says nothing about live closure or maintenance gates.
         internal static void RequirePinnedTransition(string currentRelease,string currentManifest,string priorRelease,string priorManifest,string nextRelease,string nextManifest)
         {
-            var legacyCreatorPrior=priorRelease==SessionZeroCreatorRecovery.Release && priorManifest==SessionZeroCreatorRecovery.Manifest;
+            var creatorPrior=(priorRelease==SessionZeroCreatorRecovery.Release && priorManifest==SessionZeroCreatorRecovery.Manifest) ||
+                (priorRelease=="51039f75b3bd4629b6ab3ea840e9f36a" &&
+                    priorManifest=="ADB71B6FCF3656780010B57A3567C5E9E6DA47A37E4EDFDCC3A91F043D11256E");
             if(currentRelease!=priorRelease || currentManifest!=priorManifest ||
-                !(legacyCreatorPrior || NoAdmissionManifests.Contains(priorManifest,StringComparer.Ordinal) || OneShotAdmissionManifests.Contains(priorManifest,StringComparer.Ordinal)) ||
+                !(creatorPrior || NoAdmissionManifests.Contains(priorManifest,StringComparer.Ordinal) || OneShotAdmissionManifests.Contains(priorManifest,StringComparer.Ordinal)) ||
                 nextRelease==priorRelease || nextManifest==priorManifest)
                 throw new InvalidOperationException("Only pinned reviewed inactive packages can migrate");
         }

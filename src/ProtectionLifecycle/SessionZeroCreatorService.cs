@@ -16,7 +16,8 @@ internal static class SessionZeroCreatorService
     internal enum FailurePhase:uint
     {
         ReportStarting=1,VerifyToken,ResolveImage,SealProcess,ReportReady,OfflineProtocol,
-        VerifyTokenGroups,VerifyTokenPrivileges,ReadProcessSecurity,WriteProcessSecurity,VerifyProcessSecurity
+        VerifyTokenGroups,VerifyTokenPrivileges,ReadProcessSecurity,WriteProcessSecurity,VerifyProcessSecurity,
+        OpenProcessSecurity,ValidateProcessOwner
     }
     private const uint FailureTag=0xc5000000;
 
@@ -94,7 +95,7 @@ internal static class SessionZeroCreatorService
     internal static bool IsReportedStartupFailure(uint win32,uint specific) =>
         win32==1066 && TryDecodeFailure(specific,out var phase,out _) && phase!=FailurePhase.OfflineProtocol;
 
-    private static bool IsKnownPhase(FailurePhase phase)=>phase is >=FailurePhase.ReportStarting and <=FailurePhase.VerifyProcessSecurity;
+    private static bool IsKnownPhase(FailurePhase phase)=>phase is >=FailurePhase.ReportStarting and <=FailurePhase.ValidateProcessOwner;
 
     private static bool TryDecodeFailure(uint specific,out FailurePhase phase,out uint kind)
     {
@@ -114,16 +115,19 @@ internal static class SessionZeroCreatorService
 
     private static void GrantOwnObservation(ref FailurePhase phase)
     {
-        phase=FailurePhase.ReadProcessSecurity;
+        phase=FailurePhase.OpenProcessSecurity;
         using var self=OpenProcess(0x00060000,false,(uint)Environment.ProcessId); // READ_CONTROL and WRITE_DAC, retained across sealing.
-        var descriptor=KernelJobSeal.ReadOwnerDacl(self);
+        if(self.IsInvalid)throw new Win32Exception(Marshal.GetLastWin32Error(),"OpenCreatorProcessSecurity");
+        phase=FailurePhase.ReadProcessSecurity;
+        var descriptor=KernelJobSeal.ReadCreatorProcessDescriptor(self);
+        phase=FailurePhase.ValidateProcessOwner;
         if(descriptor.Owner?.IsWellKnown(WellKnownSidType.LocalServiceSid)!=true || descriptor.DiscretionaryAcl is null)
             throw WfpNative.Contract("CreatorServiceProcessDescriptorInvalid");
         var acl=CreateObserverDacl();
         phase=FailurePhase.WriteProcessSecurity;
         KernelJobSeal.WriteProtectedDacl(self,acl);
         phase=FailurePhase.VerifyProcessSecurity;
-        var actual=KernelJobSeal.ReadOwnerDacl(self);
+        var actual=KernelJobSeal.ReadCreatorProcessDescriptor(self);
         var wanted=new byte[acl.BinaryLength];acl.GetBinaryForm(wanted,0);
         var actualAcl=actual.DiscretionaryAcl??throw WfpNative.Contract("CreatorServiceProcessDaclMissing");
         var observed=new byte[actualAcl.BinaryLength];actualAcl.GetBinaryForm(observed,0);

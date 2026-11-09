@@ -101,15 +101,22 @@ internal static class KernelJobSeal
     }
     internal static RawSecurityDescriptor ReadJobDescriptor(SafeHandle handle,bool includeLabel)
     {
-        if(handle.IsInvalid || handle.IsClosed)throw new InvalidOperationException("Owned job handle required");
         // Request the mandatory label separately from audit policy (READ_CONTROL).
-        var info=includeLabel?0x15u:0x05u;
+        return ReadKernelDescriptor(handle,includeLabel?0x15u:0x05u,"ReadJobSecurity");
+    }
+    internal static RawSecurityDescriptor ReadCreatorProcessDescriptor(SafeProcessHandle process)
+        =>ReadKernelDescriptor(process,0x05,"ReadCreatorProcessSecurity");
+
+    private static RawSecurityDescriptor ReadKernelDescriptor(SafeHandle handle,uint info,string stage)
+    {
+        if(handle.IsInvalid || handle.IsClosed)throw new InvalidOperationException("Held kernel object required");
         var status=GetSecurityInfo(handle,6,info,out _,out _,out var dacl,out _,out var descriptor);
-        if(status!=0)throw new Win32Exception((int)status,"ReadJobSecurity");
+        if(status!=0)throw new Win32Exception((int)status,stage);
         try
         {
-            if(descriptor==IntPtr.Zero || dacl==IntPtr.Zero)throw new InvalidDataException("Job descriptor/DACL missing");
-            var size=GetSecurityDescriptorLength(descriptor);if(size is 0 or >65536)throw new InvalidDataException("Job descriptor size refused");
+            if(descriptor==IntPtr.Zero || dacl==IntPtr.Zero)throw WfpNative.Contract(stage+"DescriptorMissing");
+            var size=GetSecurityDescriptorLength(descriptor);
+            if(size is <20 or >65536)throw WfpNative.Contract(stage+"DescriptorSizeRefused");
             var bytes=new byte[checked((int)size)];Marshal.Copy(descriptor,bytes,0,bytes.Length);
             return new RawSecurityDescriptor(bytes,0);
         }
