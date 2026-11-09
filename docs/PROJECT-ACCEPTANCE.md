@@ -5,6 +5,14 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-09 实机网卡、双栈 TCP 与进程内容
+
+VERIFIED(`547495d7` INACTIVE 更新、同一独立 LPAC 托管载荷及原链闭合)。
+VERIFIED(真实适配器和双栈 TCP 可信内容、受限实际拒绝 5，固定进程枚举和可信对照)。
+UNKNOWN(成功枚举却未返回目标时的底层筛选原因，及其他代理与远控路径)。
+FAIL(综合身份/内容门禁，Broker 退出 3)。NOT_RUN(实际外部连接、完整 L3 和正式验收)。
+[实机证据](ASSURANCE-AND-EXPOSURE-PROFILING.md#实机网卡双栈-tcp-与进程内容)
+
 ## 2026-11-09 独立载荷本机网络内容取证
 
 SOURCE / BUILD / INTEGRATED(schema 16 固定原生 API 读取和原链封存)。
