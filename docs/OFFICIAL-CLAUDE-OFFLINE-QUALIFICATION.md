@@ -1210,3 +1210,21 @@ Broker 在交接、准备恢复及恢复前独立以只读权限核对同一令�
 对同一挂起子进程核对两条路径的对象 ID，并拒绝普通令牌的访问结果；协议用例拒绝旧帧、
 换令牌、修改 ID 变化和无效访问掩码。LocalService 能否打开实际 LPAC 子令牌的复制权限、
 能否恢复自研载荷和宿主 SID 的真实对照仍待新固定实测。
+
+### 同一令牌验证与恢复线程通过，随后初始化失败
+
+审查 `91BCA953…` 的一次升级和离线复验已执行，`702edb5d` 保持未激活。原 Broker
+接受 LocalService 对同一枚主令牌的原生 LPAC 访问检查，核对包 SID、低完整性、
+零能力、独立账户和同一 Job，持久记录绑定并实际恢复初始线程。外层核对了本次
+预恢复的私有令牌证据。原子创建和恢复已通过这个固定自研范围。
+
+子进程退出码 `0xC0000142`，标准输出、错误流均为空。没有自研工作区文件或五项身份
+读值，因此不能判断正常功能或宿主 SID 的运行期暴露。原 Job 有序关闭，profile、
+工作区和服务经原 owner 回收，普通 SCM 返回 1060 且两个目录根缺席。AppModel-Runtime
+管理员日志还记录了这一时间窗的 profile 创建和删除。检查同期可读 Application、
+WER、User-Loader 和 CodeIntegrity 日志未见诊断记录。该退出码指向 DLL 初始化失败，
+具体模块、底层原因和发生在应用哪段初始化均待证。未运行官方 CLI。
+[Windows NTSTATUS](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-erref/596a1078-e883-4972-9bbc-49e60bebca55)
+
+终态回执 `work/creator-bound-token-installed-retest-20261109/receipt.json`，SHA-256
+`4E6CF0D755B354644D036665CB1FB84586FDC3FD73528BDE23C07C2308290D43`。
