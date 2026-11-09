@@ -734,13 +734,14 @@ internal sealed partial class AtomicChild : IDisposable
             using var held=OpenCreatorQueryToken(process);
             AssertCreatorLpacBinding(creatorTokenProof,WindowsTokenInformation.ReadPrimaryBinding(held));
         }
-        if(startupWitness && version.Package.SchemaVersion is PackageAssetCatalog.SessionZeroStartupDiagnosticsSchema or PackageAssetCatalog.SessionZeroStartupBranchSchema)
+        var branchTrace=startupWitness && SessionZeroStartupWitness.UsesBranchTrace(version.Package.SchemaVersion);
+        if(branchTrace || startupWitness && version.Package.SchemaVersion==PackageAssetCatalog.SessionZeroStartupDiagnosticsSchema)
         {
             const int processSystemCallDisablePolicy=4;
             BeforeResumeWin32k=GetProcessMitigationPolicy(process,processSystemCallDisablePolicy,out var flags,sizeof(uint))
                 ?new(0,(flags&1)!=0):new(unchecked((uint)Marshal.GetLastWin32Error()),null);
         }
-        if(startupWitness && version.Package.SchemaVersion==PackageAssetCatalog.SessionZeroStartupBranchSchema)
+        if(branchTrace)
         {
             const int processSystemCallFilterPolicy=11;
             BeforeResumeSystemCallFilter=GetProcessMitigationPolicy(process,processSystemCallFilterPolicy,out var flags,sizeof(uint))
@@ -796,7 +797,7 @@ internal sealed partial class AtomicChild : IDisposable
     internal SessionZeroStartupWitness.SystemCallFilterObservation? BeforeResumeSystemCallFilter {get;private set;}
     internal void ObserveStartupBranch(SessionZeroStartupBranchTrace trace,Action assertHealthy)
     {
-        if(!startupWitness || version.Package.SchemaVersion!=PackageAssetCatalog.SessionZeroStartupBranchSchema ||
+        if(!startupWitness || !SessionZeroStartupWitness.UsesBranchTrace(version.Package.SchemaVersion) ||
             disposed || !resumed || !job.ContainsProcess(process))
             throw WfpNative.Contract("StartupTraceRequiresResumedReviewedWitness");
         trace.Observe(process,Pid,initialThreadId,assertHealthy);

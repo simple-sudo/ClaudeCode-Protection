@@ -536,6 +536,9 @@ public static class BootstrapInstaller
         {
             var creatorPrior=(priorRelease==SessionZeroCreatorRecovery.Release && priorManifest==SessionZeroCreatorRecovery.Manifest) ||
                 (priorRelease==SessionZeroClosedCreatorRecovery.Release && priorManifest==SessionZeroClosedCreatorRecovery.Manifest) ||
+                // The first-load branch diagnostic closed the original Job and creator resources.
+                (priorRelease=="9455e98cf5da489daf88964e0daa6b52" &&
+                    priorManifest=="EC2E00DA29027F8FE426995AAD19C050D23A8998FEA9F7E7D6596668F4A58C41") ||
                 // The diagnostic replay closed the original Job and all creator resources.
                 (priorRelease=="9b513a84b3204a8da185c0f3bdd2bee5" &&
                     priorManifest=="B0BBE147DBB6E092B8D89BB6D159AD5308D89A2E484610EC2BA629C28783AA4A") ||

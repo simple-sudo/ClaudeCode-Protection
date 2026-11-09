@@ -5,6 +5,13 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-09 交互 LPAC 与窗口对象对照
+
+VERIFIED(普通交互会话中零能力 LPAC 通过固定 USER32、桌面和 GDI 见证，profile 回收)。
+BUILD / INTEGRATED(原 LocalService 创建者窗口站与桌面 DACL 对照)。
+VERIFIED(普通 Windows 对象读取及协议回归)。NOT_RUN(新版独立 Session 0 实机)。
+[证据和边界](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#交互-lpac-正控制与-session-0-窗口对象对照)
+
 ## 2026-11-09 受限首次加载定位到 NtGdiInit2
 
 VERIFIED(`9455e98` 未激活更新、原 LPAC 准入、绑定附加及回收)。

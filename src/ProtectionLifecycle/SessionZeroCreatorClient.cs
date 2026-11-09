@@ -77,7 +77,13 @@ internal sealed class SessionZeroCreatorClient : IDisposable
     private void ReportTokenProof(SafeProcessHandle process)
     {
         byte[] frame;
-        try{frame=SessionZeroCreatorChannel.CreateTokenProof(Request,AtomicChild.ObserveCreatorTokenProof(process));}
+        SessionZeroCreatorChannel.TokenProof? proof=null;
+        try
+        {
+            var observed=AtomicChild.ObserveCreatorTokenProof(process);
+            frame=SessionZeroCreatorChannel.CreateTokenProof(Request,observed);
+            proof=observed;
+        }
         catch(Exception error) when(error is Win32Exception or WfpFailure or InvalidDataException)
         {
             var stage=error.Data["Stage"] is "CreatorOpenHeldChildTokenForAccessCheck"?
@@ -86,6 +92,15 @@ internal sealed class SessionZeroCreatorClient : IDisposable
         }
         using var deadline=new CancellationTokenSource(TimeSpan.FromSeconds(5));
         pipe.WriteAsync(frame.AsMemory(),deadline.Token).AsTask().GetAwaiter().GetResult();
+        if(Request.ObserveWindowAccess && proof is { } exactProof)
+        {
+            try{frame=SessionZeroCreatorChannel.CreateWindowAccess(Request,SessionZeroWindowAccess.Observe(process,exactProof));}
+            catch(Exception error) when(error is Win32Exception or WfpFailure or InvalidDataException)
+            {
+                frame=SessionZeroCreatorChannel.CreateFailure(Request,SessionZeroCreatorChannel.CreationFailure.WindowAccess,FailureCode(error));
+            }
+            pipe.WriteAsync(frame.AsMemory(),deadline.Token).AsTask().GetAwaiter().GetResult();
+        }
     }
 
     private void RecordCreatedProfile(SessionZeroCreatorProfile profile)

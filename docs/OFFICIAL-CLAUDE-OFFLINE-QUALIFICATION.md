@@ -1402,3 +1402,28 @@ Win32 进程数据和该数据中的 GDI 字段。空返回仍可能来自系统
 许可已消耗。真实受限身份读值、正常开发、GPU、实际网络和正式 Claude 均未执行。
 终态 `work/session-zero-startup-branch-20261109-01/receipt.json` SHA-256
 `54CAC07F2C465E724924E4FF001AB9979AB80B5DDA5EF79B7DF1277196F467C6`。
+
+### 交互 LPAC 正控制与 Session 0 窗口对象对照
+
+普通 Windows 交互会话，以临时注册的独立 profile、固定离线见证和原生 Job
+创建真实低完整性、零能力 LPAC。恢复前核对包 SID、LPAC 原生访问检查和 Job 成员。
+该进程退出 0，通过 USER32、桌面、SHELL32、UCRT 和 GDI，原句柄终态已确认。
+profile 删除返回成功，原映射及存储路径均确认缺席。证据
+`work/session-zero-startup-branch-20261109-01/interactive-lpac-environment-control/result.txt`
+SHA-256 `099FF9F72C54604391675DD923FBE591378A282B70F698A2FB333D8FFCC446E9`。
+准备阶段两次失败分别为未注册 profile 下错误 2 和缺少 LOCALAPPDATA 时错误 203，
+都发生在子进程创建前，保留原记录。普通对照和独立链的主身份、会话和桌面环境不同。
+本轮只运行固定自研诊断，交互对照没有启用正式会话或产品网络边界。
+
+schema 10 复用 schema 9 的同一原生映像和首次加载断点。在创建者仍持有挂起进程时，
+分别用创建者和经原令牌证明绑定的 LPAC 主令牌检查同一窗口站及桌面 DACL。只读原
+LocalService 进程及线程已关联的窗口对象，拒绝把可见窗口站作为 Session 0 参考。
+协议帧由原身份验证管道和请求 nonce 绑定，只含两个对象的错误和访问掩码。保留访问
+拒绝与观测失败，读取失败不改写成零权限。此项检查不改变原 ACL、进程桌面选择、
+令牌或 Job，也不认定 Windows 为子进程实际选择了同一对象。
+
+普通回归以实际交互窗口站和桌面验证同一令牌的掩码一致，限定入口拒绝交互窗口站。
+初次测试错用了窗口对象信息索引，保留错误 122 的日志，改为 SDK 的 `UOI_FLAGS`
+后通过。另验证 nonce、帧长度、用途和掩码拒绝。Session 0 实际权限、桌面选择与
+`NtGdiInit2` 因果待核验。[窗口站访问权](https://learn.microsoft.com/en-us/windows/win32/winstation/window-station-security-and-access-rights) ·
+[桌面访问权](https://learn.microsoft.com/en-us/windows/win32/winstation/desktop-security-and-access-rights)

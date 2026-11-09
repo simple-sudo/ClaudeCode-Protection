@@ -5,6 +5,12 @@
 历史页的“当前/待执行/暂停/DELIVERABLE”按段落日期及限定范围解释，不是今天的状态或操作许可。
 不在本页复制当前安装和授权摘要。
 
+## 2026-11-09 交互 LPAC 与窗口对象对照
+
+同机交互会话中的真实零能力 LPAC 初始化通过。原 LocalService 创建者接入同令牌的
+窗口对象 DACL 对照，普通 Windows API 和协议回归通过。
+[证据和边界](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#交互-lpac-正控制与-session-0-窗口对象对照)
+
 ## 2026-11-09 受限首次加载定位到 NtGdiInit2
 
 未激活更新完成。独立 LocalService LPAC 的首次 USER32 实测读到 CSR 成功、

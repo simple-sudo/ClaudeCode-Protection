@@ -357,6 +357,7 @@ internal static class CreatorLifecycleCases
         Witness(65,user32Failure,"WIN32_FAILURE_AFTER_CHECKPOINT","BEFORE_USER32",0x45a,schema:9);
         Witness(65,user32Failure+imageDiagnostics,"OUTPUT_REJECTED",schema:9);
         Witness(0,all,"OUTPUT_REJECTED",schema:9);
+        Witness(0,"ENTRY\nBEFORE_USER32\nAFTER_USER32\n","FIRST_USER32_LOAD_SUCCEEDED","AFTER_USER32",schema:10);
         denied=false;
         try{_=broker.GetMethod("QualifySessionZeroStartupWitness")!.Invoke(null,null);}
         catch(TargetInvocationException error) when(error.InnerException is UnauthorizedAccessException){denied=true;}

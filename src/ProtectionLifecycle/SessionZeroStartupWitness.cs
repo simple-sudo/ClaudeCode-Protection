@@ -9,6 +9,7 @@ namespace ProtectionLifecycle;
 internal static class SessionZeroStartupWitness
 {
     internal const string Scope="FIXED_INDEPENDENT_STARTUP_WITNESS_FULL_QUARANTINE";
+    internal static bool UsesBranchTrace(int schema)=>schema is PackageAssetCatalog.SessionZeroStartupBranchSchema or PackageAssetCatalog.SessionZeroWindowAccessSchema;
     private static readonly string[] Checkpoints=[
         "ENTRY","BEFORE_USER32","AFTER_USER32","BEFORE_DESKTOP","AFTER_DESKTOP",
         "BEFORE_SHELL32","AFTER_SHELL32","BEFORE_UCRT","AFTER_UCRT"
@@ -19,8 +20,8 @@ internal static class SessionZeroStartupWitness
 
     internal static string ReviewedImage(FixedLayout layout,VerifiedVersion version)
     {
-        if(version.Package.SchemaVersion is not (PackageAssetCatalog.SessionZeroStartupWitnessSchema or PackageAssetCatalog.SessionZeroStartupDiagnosticsSchema or
-                PackageAssetCatalog.SessionZeroStartupBranchSchema) ||
+        var schema=version.Package.SchemaVersion;
+        if(!(schema is PackageAssetCatalog.SessionZeroStartupWitnessSchema or PackageAssetCatalog.SessionZeroStartupDiagnosticsSchema || UsesBranchTrace(schema)) ||
             !version.Package.Files.Any(file=>file.Asset.Id==PackageAssetCatalog.SessionZeroStartupWitnessId))
             throw WfpNative.Contract("StartupWitnessRequiresReviewedAsset");
         return WindowsPathSeal.Child(layout.Version(version.Package.Release),PackageAssetCatalog.SessionZeroStartupWitnessPath);
@@ -39,13 +40,15 @@ internal static class SessionZeroStartupWitness
         [JsonIgnore(Condition=JsonIgnoreCondition.WhenWritingNull)]
         public SessionZeroStartupBranchTrace.Evidence? BranchTrace {get;init;}
         [JsonIgnore(Condition=JsonIgnoreCondition.WhenWritingNull)]
+        public SessionZeroWindowAccess.Evidence? CreatorWindowAccess {get;init;}
+        [JsonIgnore(Condition=JsonIgnoreCondition.WhenWritingNull)]
         public ImageDiagnostics? Diagnostics {get;init;}
     }
 
     internal static Observation Observe(int packageSchema,uint? exit,OfflineConsoleOutput? stdout,OfflineConsoleOutput? stderr)
     {
         var hasDiagnostics=packageSchema==PackageAssetCatalog.SessionZeroStartupDiagnosticsSchema;
-        var branchTrace=packageSchema==PackageAssetCatalog.SessionZeroStartupBranchSchema;
+        var branchTrace=UsesBranchTrace(packageSchema);
         if(exit is null || stdout is not {Overflow:false} || stderr is not {Overflow:false,Bytes.Length:0})
             return new("CAPTURE_UNAVAILABLE",null,null);
         if(stdout.Bytes.Length>(hasDiagnostics?384:256) || stdout.Bytes.Any(value=>value>127))

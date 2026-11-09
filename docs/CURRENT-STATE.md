@@ -1,5 +1,11 @@
 # 当前状态与授权摘要
 
+2026-11-09，交互会话中的零能力、低完整性 LPAC 用同一固定自研见证通过 USER32、
+桌面、SHELL32、UCRT 和 GDI 检查。独立 Session 0 的失败仍在。源码新增 LocalService
+创建者窗口站和桌面的 DACL 对照，用创建者和同一枚已绑定 LPAC 主令牌分别求访问掩码。
+普通 Windows API 和协议测试通过，新包尚未安装，实际 Session 0 对象访问仍 UNKNOWN。
+[对照范围](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#交互-lpac-正控制与-session-0-窗口对象对照)
+
 2026-11-09，`9455e98` 已实机更新并保持未激活。独立 LocalService 零能力 LPAC 的
 首次 USER32 失败已绑定到 `NtGdiInit2` 返回空。CSR 返回 0，GDI 和失败出口返回
 `0xC0000001`，见证最终报 1114。Win32k 禁用为关闭，系统调用过滤器编号为 0。

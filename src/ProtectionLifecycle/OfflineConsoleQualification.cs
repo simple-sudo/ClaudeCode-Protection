@@ -301,7 +301,8 @@ internal static class OfflineConsoleQualification
     private static (int ExitCode,string Report) RunIndependent(FixedLayout layout,ProtectedState state,VerifiedVersion version,bool startupWitness)
     {
         var plans=RequireOfflinePrerequisites(state,version);
-        var branchWitness=startupWitness && version.Package.SchemaVersion==PackageAssetCatalog.SessionZeroStartupBranchSchema;
+        var branchWitness=startupWitness && SessionZeroStartupWitness.UsesBranchTrace(version.Package.SchemaVersion);
+        var windowAccessWitness=startupWitness && version.Package.SchemaVersion==PackageAssetCatalog.SessionZeroWindowAccessSchema;
         using var branchTrace=branchWitness?new SessionZeroStartupBranchTrace():null;
         var fences=new List<PersistentFence>();
         var failures=new List<Exception>();
@@ -311,6 +312,7 @@ internal static class OfflineConsoleQualification
         uint? exit=null;
         SessionZeroStartupWitness.Win32kObservation? beforeResumeWin32k=null;
         SessionZeroStartupWitness.SystemCallFilterObservation? beforeResumeSystemCallFilter=null;
+        SessionZeroWindowAccess.Evidence? creatorWindowAccess=null;
         RuntimeStop? stopped=null;
         OfflineConsoleOutput? stdout=null,stderr=null;
         OfflineConsoleHostIdentitySummary? hostIdentity=null;
@@ -383,6 +385,7 @@ internal static class OfflineConsoleQualification
             {
                 stage="ValidateSuspendedRoot";
                 using var root=channel.Exchange(layout,state,version,job,startupWitness);
+                creatorWindowAccess=root.WindowAccess;
                 child=AtomicChild.AdoptSessionZeroOfflineConsole(layout,state,version,job,root,startupWitness);
                 runtime=ProtectionRuntimeLease.ForFixedOfflineConsole(state,version,job,fences,child,job.JobId);
                 runtime.Activate(10000);
@@ -481,14 +484,15 @@ internal static class OfflineConsoleQualification
         if(startupWitness)
         {
             var observation=SessionZeroStartupWitness.Observe(version.Package.SchemaVersion,exit,stdout,stderr)
-                with {BeforeResumeWin32k=beforeResumeWin32k,BeforeResumeSystemCallFilter=beforeResumeSystemCallFilter,BranchTrace=branchTrace?.Snapshot()};
+                with {BeforeResumeWin32k=beforeResumeWin32k,BeforeResumeSystemCallFilter=beforeResumeSystemCallFilter,
+                    BranchTrace=branchTrace?.Snapshot(),CreatorWindowAccess=creatorWindowAccess};
             var extended=version.Package.SchemaVersion==PackageAssetCatalog.SessionZeroStartupDiagnosticsSchema;
             var terminal=failures.Count==0 && closed && profileClosed && workspaceClosed && serviceRemoved && resumed &&
                 (branchWitness?observation.Status=="FIRST_USER32_LOAD_SUCCEEDED" &&
                     observation.BranchTrace is {ExitEventContinued:true,User32Mapped:true,Gdi32FullMapped:true,CsrStatus:0,GdiStatus:0,GdiInit2ReturnedNull:false,FailureValue:null}:
                     observation.Status=="ALL_CHECKPOINTS_OBSERVED");
             var diagnostic=JsonSerializer.Serialize(new {
-                SchemaVersion=branchWitness?3:extended?2:1,Scope=SessionZeroStartupWitness.Scope,state.InstallationId,JobId=jobId,
+                SchemaVersion=windowAccessWitness?4:branchWitness?3:extended?2:1,Scope=SessionZeroStartupWitness.Scope,state.InstallationId,JobId=jobId,
                 version.Package.Release,version.Package.ManifestHash,
                 Status=terminal?"STARTUP_WITNESS_CLOSED":"STARTUP_WITNESS_NOT_CONFIRMED",
                 LastStage=stage,ProcessResumed=resumed,ChildExit=exit,OriginalJobClosed=closed,ProfileClosed=profileClosed,

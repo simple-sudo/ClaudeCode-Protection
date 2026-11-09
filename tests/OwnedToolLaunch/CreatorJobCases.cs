@@ -273,6 +273,48 @@ internal static class CreatorJobCases
         Refused(()=>parseRequest.Invoke(null,[startup,jobId,12u,7u]));
         Refused(()=>parseWorkload.Invoke(null,[startup,jobId,13u,7u]));
         Refused(()=>parseWorkload.Invoke(null,[legacyRequest,jobId,12u,7u]));
+        var windowRequest=(byte[])outgoing.Clone();
+        "CCW2"u8.CopyTo(windowRequest);
+        var windowMode=decoded.GetType().GetProperty("ObserveWindowAccess",BindingFlags.Instance|BindingFlags.NonPublic)!;
+        var windowDecoded=parseWorkload.Invoke(null,[windowRequest,jobId,12u,7u])!;
+        Check(mode.GetValue(windowDecoded) is true && windowMode.GetValue(windowDecoded) is true);
+        Check(windowMode.GetValue(parseWorkload.Invoke(null,[startup,jobId,12u,7u])) is false);
+        Refused(()=>parseRequest.Invoke(null,[windowRequest,jobId,12u,7u]));
+        Refused(()=>parseWorkload.Invoke(null,[windowRequest,jobId,12u,8u]));
+        var windowType=library.GetType("ProtectionLifecycle.SessionZeroWindowAccess",true)!;
+        var parseWindow=channel.GetMethod("ParseWindowAccess",methods)!;
+        var writeWindow=channel.GetMethod("CreateWindowAccess",methods)!;
+        var windowFrame=new byte[44];
+        "CCD1"u8.CopyTo(windowFrame);
+        nonce.CopyTo(windowFrame,4);
+        BinaryPrimitives.WriteUInt32LittleEndian(windowFrame.AsSpan(24),0x20103);
+        BinaryPrimitives.WriteUInt32LittleEndian(windowFrame.AsSpan(32),5);
+        var windowResult=parseWindow.Invoke(null,[windowFrame,nonce])!;
+        Check(((byte[])writeWindow.Invoke(null,[windowDecoded,windowResult])!).SequenceEqual(windowFrame));
+        Refused(()=>writeWindow.Invoke(null,[decoded,windowResult]));
+        Refused(()=>parseWindow.Invoke(null,[windowFrame[..43],nonce]));
+        Refused(()=>parseWindow.Invoke(null,[windowFrame,nonce.Reverse().ToArray()]));
+        var foreignRights=(byte[])windowFrame.Clone();
+        BinaryPrimitives.WriteUInt32LittleEndian(foreignRights.AsSpan(28),0x200);
+        Refused(()=>parseWindow.Invoke(null,[foreignRights,nonce]));
+        foreignRights=(byte[])windowFrame.Clone();
+        BinaryPrimitives.WriteUInt32LittleEndian(foreignRights.AsSpan(40),1);
+        Refused(()=>parseWindow.Invoke(null,[foreignRights,nonce]));
+        using(var exact=WindowsIdentity.GetCurrent(TokenAccessLevels.Query|TokenAccessLevels.Duplicate))
+        {
+            var observe=windowType.GetMethod("ObserveTokens",methods)!;
+            var comparison=observe.Invoke(null,[exact.AccessToken,exact.AccessToken,false])!;
+            uint Field(object item,string property)=> (uint)item.GetType().GetProperty(property)!.GetValue(item)!;
+            object Access(object item,string target)=>item.GetType().GetProperty(target)!.GetValue(item)!;
+            foreach(var role in new[]{"Station","Desktop"})
+            {
+                var access=Access(comparison,role);
+                Check(Field(access,"Error")==0 && Field(access,"CreatorGranted")!=0 &&
+                    Field(access,"CreatorGranted")==Field(access,"ChildGranted"));
+            }
+            var refused=observe.Invoke(null,[exact.AccessToken,exact.AccessToken,true])!;
+            Check(Field(Access(refused,"Station"),"Error")==13 && Field(Access(refused,"Desktop"),"Error")==13);
+        }
 
         var profileType=channel.GetNestedType("CreatedProfile",BindingFlags.NonPublic)!;
         var createProfile=channel.GetMethod("CreateProfileCreated",methods)!;

@@ -78,6 +78,8 @@ internal static class OfficialClaudePackageCases
         Manifest(7,v7);Stage(7,Rows(7,"Id"));checks+=2;
         Manifest(8,v8);Stage(8,Rows(8,"Id"));checks+=2;
         Manifest(9,v9);Stage(9,Rows(9,"Id"));checks+=2;
+        Manifest(10,v9);Stage(10,Rows(10,"Id"));checks+=2;
+        Check(JsonNode.DeepEquals(v9,Rows(10,"Asset")));
         Check(JsonNode.DeepEquals(v6,new JsonArray(v8.Take(24).Select(row=>row!.DeepClone()).ToArray())));
         Check(JsonNode.DeepEquals(v6,new JsonArray(v9.Take(24).Select(row=>row!.DeepClone()).ToArray())));
         Reject(()=>Manifest(5,v6));
