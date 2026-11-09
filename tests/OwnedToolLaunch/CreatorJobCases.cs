@@ -296,14 +296,39 @@ internal static class CreatorJobCases
         var wrongPhase=(byte[])acknowledgement.Clone();"CCS1"u8.CopyTo(wrongPhase);
         Refused(()=>assertAcknowledgement.Invoke(null,[wrongPhase,nonce]));
 
+        var makeTokenProof=channel.GetMethod("CreateTokenProof",methods)!;
+        var parseTokenProof=channel.GetMethod("ParseTokenProof",methods)!;
+        var proofType=channel.GetNestedType("TokenProof",BindingFlags.NonPublic)!;
+        var bindingType=proofType.GetProperty("Binding")!.PropertyType;
+        object Binding(ulong id,ulong modified)=>Activator.CreateInstance(bindingType,[id,modified])!;
+        object Proof(ulong id,ulong modified,uint access)=>Activator.CreateInstance(proofType,[Binding(id,modified),access])!;
+        var tokenProof=Proof(31,67,2);
+        var tokenFrame=(byte[])makeTokenProof.Invoke(null,[decoded,tokenProof])!;
+        Check(tokenFrame.Length==44 && tokenFrame.AsSpan(0,4).SequenceEqual("CCT1"u8));
+        Check(tokenProof.Equals(parseTokenProof.Invoke(null,[tokenFrame,nonce])));
+        Refused(()=>parseTokenProof.Invoke(null,[profileFrame,nonce]));
+        Refused(()=>parseTokenProof.Invoke(null,[tokenFrame[..43],nonce]));
+        Refused(()=>parseTokenProof.Invoke(null,[tokenFrame,new byte[16]]));
+        var badTokenFrame=(byte[])tokenFrame.Clone();badTokenFrame[40]=1;
+        Refused(()=>parseTokenProof.Invoke(null,[badTokenFrame,nonce]));
+        Refused(()=>makeTokenProof.Invoke(null,[decoded,Proof(0,67,2)]));
+        Refused(()=>makeTokenProof.Invoke(null,[decoded,Proof(31,0,2)]));
+        Refused(()=>makeTokenProof.Invoke(null,[decoded,Proof(31,67,4)]));
+        var assertTokenBinding=library.GetType("ProtectionLifecycle.AtomicChild",true)!.GetMethod("AssertCreatorLpacBinding",methods)!;
+        _=assertTokenBinding.Invoke(null,[tokenProof,Binding(31,67)]);Check(true);
+        Refused(()=>assertTokenBinding.Invoke(null,[tokenProof,Binding(32,67)]));
+        Refused(()=>assertTokenBinding.Invoke(null,[tokenProof,Binding(31,68)]));
+        Refused(()=>assertTokenBinding.Invoke(null,[Proof(31,67,3),Binding(31,67)]));
+
         var createFailure=channel.GetMethod("CreateFailure",methods)!;
         var failureStage=channel.GetNestedType("CreationFailure",BindingFlags.NonPublic)!;
-        foreach(var (stageName,native) in new[]{("Profile",0x80070005u),("AtomicCreate",5u),("Streams",32u)})
+        foreach(var (stageName,native) in new[]{("Profile",0x80070005u),("AtomicCreate",5u),("Streams",32u),("TokenOpen",5u),("TokenAccessCheck",13u)})
         {
             var fault=(byte[])createFailure.Invoke(null,[decoded,Enum.Parse(failureStage,stageName),native])!;
             Check(fault.Length==44 && fault.AsSpan(0,4).SequenceEqual("CCF1"u8));
             AssertFailure(()=>reply.Invoke(null,[fault,nonce,20u,40L]));
             AssertFailure(()=>parseProfile.Invoke(null,[fault,nonce]));
+            AssertFailure(()=>parseTokenProof.Invoke(null,[fault,nonce]));
             fault[28]=1;
             Refused(()=>reply.Invoke(null,[fault,nonce,20u,40L]));
 

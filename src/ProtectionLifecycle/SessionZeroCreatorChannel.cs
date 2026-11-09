@@ -17,6 +17,7 @@ internal sealed class SessionZeroCreatorChannel : IDisposable
 {
     private const uint RequestMagic=0x32504343,ReplyMagic=0x31524343,FailureMagic=0x31464343; // CCP2, CCR1, CCF1.
     private const uint ProfileCreatedMagic=0x314a4343,ProfileRecordedMagic=0x31414343; // CCJ1, CCA1.
+    private const uint TokenProofMagic=0x31544343; // CCT1.
     private const int NonceSize=16,ReplySize=44,ObjectIdentityBytes=12;
     internal const int RequestSize=60;
     internal const int ProfileReplySize=ReplySize;
@@ -126,7 +127,11 @@ internal sealed class SessionZeroCreatorChannel : IDisposable
         // closed and it has independently observed its held child exit. Keep
         // that cleanup path available when the Broker cannot validate the root.
         cleanupNonce=nonce;
-        var root=OpenRoot(report,job,image,package.Value);
+        var tokenFrame=new byte[ReplySize];
+        pipe.ReadExactlyAsync(tokenFrame.AsMemory(),cancellation).AsTask().GetAwaiter().GetResult();
+        var tokenProof=ParseTokenProof(tokenFrame,nonce);
+        AssertBoundPeer(service,image);
+        var root=OpenRoot(report,tokenProof,job,image,package.Value);
         try
         {
             AssertQuarantine(state);
@@ -230,7 +235,37 @@ internal sealed class SessionZeroCreatorChannel : IDisposable
 
     internal readonly record struct Reply(uint Pid,uint Tid,long ProcessCreated,long ThreadCreated);
     internal readonly record struct CreatedProfile(string ParentIdentity,string StorageIdentity);
-    internal enum CreationFailure : uint { Profile=1, AtomicCreate=2, Streams=3 }
+    internal readonly record struct TokenProof(WindowsTokenInformation.PrimaryBinding Binding,uint PackageAccess);
+    internal enum CreationFailure : uint { Profile=1, AtomicCreate=2, Streams=3, TokenOpen=4, TokenAccessCheck=5 }
+
+    internal static byte[] CreateTokenProof(Request request,TokenProof proof)
+    {
+        AssertTokenProof(proof);
+        if(request.Nonce.Length!=NonceSize)throw WfpNative.Contract("CreatorTokenProofNonceInvalid");
+        var frame=new byte[ReplySize];
+        BinaryPrimitives.WriteUInt32LittleEndian(frame,TokenProofMagic);
+        request.Nonce.CopyTo(frame,4);
+        BinaryPrimitives.WriteUInt64LittleEndian(frame.AsSpan(20),proof.Binding.TokenId);
+        BinaryPrimitives.WriteUInt64LittleEndian(frame.AsSpan(28),proof.Binding.ModifiedId);
+        BinaryPrimitives.WriteUInt32LittleEndian(frame.AsSpan(36),proof.PackageAccess);
+        return frame;
+    }
+
+    internal static TokenProof ParseTokenProof(byte[] frame,byte[] nonce)
+    {
+        if(ReadBoundReplyKind(frame,nonce)!=TokenProofMagic || BinaryPrimitives.ReadUInt32LittleEndian(frame.AsSpan(40))!=0)
+            throw WfpNative.Contract("CreatorTokenProofFrameInvalid");
+        var proof=new TokenProof(new(BinaryPrimitives.ReadUInt64LittleEndian(frame.AsSpan(20)),
+            BinaryPrimitives.ReadUInt64LittleEndian(frame.AsSpan(28))),BinaryPrimitives.ReadUInt32LittleEndian(frame.AsSpan(36)));
+        AssertTokenProof(proof);
+        return proof;
+    }
+
+    private static void AssertTokenProof(TokenProof proof)
+    {
+        if(proof.Binding.TokenId==0 || proof.Binding.ModifiedId==0 || proof.PackageAccess is <1 or >3)
+            throw WfpNative.Contract("CreatorTokenProofInvalid");
+    }
 
     internal static byte[] CreateProfileCreated(Request request,CreatedProfile profile)
     {
@@ -341,7 +376,7 @@ internal sealed class SessionZeroCreatorChannel : IDisposable
         return new(pid,tid,processCreated,threadCreated);
     }
 
-    private static SuspendedRoot OpenRoot(Reply report,OwnedKernelJob job,string image,string packageSid)
+    private static SuspendedRoot OpenRoot(Reply report,TokenProof tokenProof,OwnedKernelJob job,string image,string packageSid)
     {
         // Query, wait and READ_CONTROL. Only the thread handle adds the
         // single suspend/resume right for later use by AtomicChild.
@@ -365,16 +400,17 @@ internal sealed class SessionZeroCreatorChannel : IDisposable
             if(!GetThreadTimes(thread,out var threadCreated,out _,out _,out _))throw Error("ReadCreatorChildThreadTime");
             if(threadCreated!=report.ThreadCreated)throw WfpNative.Contract("CreatorChildThreadTimeMismatch");
             KernelJobSeal.SessionObjectDescriptor.AssertSeal(thread,true);
-            AtomicChild.AssertIndependentOfflineHandoffToken(job,process,packageSid);
-            return new(process,thread,report,job);
+            AtomicChild.AssertIndependentOfflineHandoffToken(process,tokenProof,packageSid);
+            return new(process,thread,report,tokenProof,job);
         }
         catch{thread?.Dispose();process.Dispose();throw;}
     }
 
-    internal sealed class SuspendedRoot(SafeProcessHandle process,SafeWaitHandle thread,Reply identity,OwnedKernelJob job) : IDisposable
+    internal sealed class SuspendedRoot(SafeProcessHandle process,SafeWaitHandle thread,Reply identity,TokenProof tokenProof,OwnedKernelJob job) : IDisposable
     {
         private int transferredOrDisposed;
         internal Reply Identity=>identity;
+        internal TokenProof LpacProof=>tokenProof;
         internal (SafeProcessHandle Process,SafeWaitHandle Thread) TransferTo(OwnedKernelJob exactJob)
         {
             if(!ReferenceEquals(job,exactJob) || Interlocked.Exchange(ref transferredOrDisposed,1)!=0)

@@ -238,7 +238,15 @@ internal static class OfflineConsoleNativeCases
             _=Call(atomic.GetMethod("ReadTokenSnapshot",Static)!,null,tokenArguments);
             using(var identity=WindowsIdentity.GetCurrent())
                 Require(tokenArguments[3] is SecurityIdentifier childUser && childUser.Value==identity.User?.Value);
-            Refuse<UnauthorizedAccessException>(()=>Call(atomic.GetMethod("OpenExactCreatorTokenForInspection",Static)!,null,null,process));
+            using(var query=(SafeAccessTokenHandle)Call(atomic.GetMethod("OpenCreatorQueryToken",Static)!,null,process)!)
+            {
+                var stats=library.GetType("ProtectionLifecycle.WindowsTokenInformation",true)!;
+                var tokenBinding=Call(stats.GetMethod("ReadPrimaryBinding",Static)!,null,query);
+                var observed=Call(atomic.GetMethod("ObserveCreatorTokenProof",Static)!,null,process)!;
+                Require(Equals(tokenBinding,observed.GetType().GetProperty("Binding")!.GetValue(observed)));
+                Require(observed.GetType().GetProperty("PackageAccess")!.GetValue(observed) is 3u);
+                Refuse<InvalidDataException>(()=>Call(atomic.GetMethod("AssertCreatorLpacBinding",Static)!,null,observed,tokenBinding));
+            }
             var captures=(ITuple)Call(type.GetMethod("ReadAfterCreate",Instance)!,transport)!;
             Refuse<InvalidDataException>(()=>Call(type.GetMethod("ReadAfterCreate",Instance)!,transport));
             Require(ResumeThread(thread)==1);

@@ -74,6 +74,20 @@ internal sealed class SessionZeroCreatorClient : IDisposable
         pipe.WriteAsync(frame.AsMemory(),deadline.Token).AsTask().GetAwaiter().GetResult();
     }
 
+    private void ReportTokenProof(SafeProcessHandle process)
+    {
+        byte[] frame;
+        try{frame=SessionZeroCreatorChannel.CreateTokenProof(Request,AtomicChild.ObserveCreatorTokenProof(process));}
+        catch(Exception error) when(error is Win32Exception or WfpFailure or InvalidDataException)
+        {
+            var stage=error.Data["Stage"] is "CreatorOpenHeldChildTokenForAccessCheck"?
+                SessionZeroCreatorChannel.CreationFailure.TokenOpen:SessionZeroCreatorChannel.CreationFailure.TokenAccessCheck;
+            frame=SessionZeroCreatorChannel.CreateFailure(Request,stage,FailureCode(error));
+        }
+        using var deadline=new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        pipe.WriteAsync(frame.AsMemory(),deadline.Token).AsTask().GetAwaiter().GetResult();
+    }
+
     private void RecordCreatedProfile(SessionZeroCreatorProfile profile)
     {
         using var deadline=new CancellationTokenSource(TimeSpan.FromSeconds(10));
@@ -102,6 +116,7 @@ internal sealed class SessionZeroCreatorClient : IDisposable
             stage=SessionZeroCreatorChannel.CreationFailure.Streams;
             var capture=streams.ReadAfterCreate();
             client.CompleteCreation(process,thread);
+            client.ReportTokenProof(process);
             using var deadline=new CancellationTokenSource(TimeSpan.FromSeconds(35));
             var close=new byte[SessionZeroCreatorTerminal.CloseSize];
             client.pipe.ReadExactlyAsync(close.AsMemory(),deadline.Token).AsTask().GetAwaiter().GetResult();
@@ -137,10 +152,20 @@ internal sealed class SessionZeroCreatorClient : IDisposable
     {
         if(Interlocked.Exchange(ref completed,1)!=0)return;
         assignment.Dispose();
-        var code=unchecked((uint)(failure is Win32Exception native?native.NativeErrorCode:failure.HResult));
-        var frame=SessionZeroCreatorChannel.CreateFailure(Request,stage,code==0?13u:code);
+        var frame=SessionZeroCreatorChannel.CreateFailure(Request,stage,FailureCode(failure));
         using var deadline=new CancellationTokenSource(TimeSpan.FromSeconds(2));
         pipe.WriteAsync(frame.AsMemory(),deadline.Token).AsTask().GetAwaiter().GetResult();
+    }
+
+    private static uint FailureCode(Exception failure)
+    {
+        var code=failure switch
+        {
+            WfpFailure wfp=>wfp.Status,
+            Win32Exception native=>unchecked((uint)native.NativeErrorCode),
+            _=>unchecked((uint)failure.HResult)
+        };
+        return code==0?13u:code;
     }
 
     internal static SecurityIdentifier VerifyCurrentService(string name,Action<SessionZeroCreatorService.FailurePhase>? reportStartupPhase=null)

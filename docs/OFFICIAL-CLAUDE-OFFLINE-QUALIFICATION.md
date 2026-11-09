@@ -1186,3 +1186,27 @@ WFP。原两次失败和受保护暂存均保留。外层实机回执
 
 同一候选的安装器对已固定 `aa781cf9` 前序和嵌入的转换合同通过普通选择检查；
 这是源码及工件准备，更新、受限载荷、令牌读取和宿主身份对照均未执行。
+
+### 令牌只读查询通过，复制权限仍被拒
+
+审查 `E390CB22…` 的一次升级和离线复验许可已消耗。原安装核对旧闭合回执后更新为
+`8028a508`，保持未激活。创建者返回同一 Job 中的挂起根，Broker 成功以 `TOKEN_QUERY`
+打开令牌。组合请求 `TOKEN_QUERY | TOKEN_DUPLICATE` 返回 5，短时启用调试特权后的
+同一组合请求也返回 5。未恢复线程，未执行五项实际身份读取。原 Job 关闭且分配权撤销，
+LocalService profile、工作区和服务登记均经原链回收；后续 SCM 返回 1060，目录根缺席。
+未取得正常运行的有序停止回执。外层终态回执
+`work/creator-scoped-token-installed-retest-20261109/receipt.json`，SHA-256
+`AF08E440379E1FAF7593B52453D105A5137506D180B6D4F8A50BC025DE10A5FF`。
+
+新源码撤去跨账户调试特权路径。原 LocalService 创建者用持有的挂起进程句柄执行已有
+原生 LPAC 访问检查，通过鉴别且带随机数的管道报送访问掩码、令牌对象 ID 和修改 ID。
+Broker 在交接、准备恢复及恢复前独立以只读权限核对同一令牌，另行验证真实账户、包 SID、
+能力、完整性级别及原 Job。只有精确绑定且访问掩码为 LPAC 的预期值才允许继续。
+在接受证明前先保留原有关闭权限，创建者检查失败也继续等待原 Job 关闭后清理。
+[令牌权限](https://learn.microsoft.com/en-us/windows/win32/secauthz/access-rights-for-access-token-objects) ·
+[令牌对象与修改 ID](https://learn.microsoft.com/windows/win32/api/winnt/ns-winnt-token_statistics)
+
+普通 Release 构建与创建者、维护身份、未激活迁移及原生控制台回归通过。普通原生测试
+对同一挂起子进程核对两条路径的对象 ID，并拒绝普通令牌的访问结果；协议用例拒绝旧帧、
+换令牌、修改 ID 变化和无效访问掩码。LocalService 能否打开实际 LPAC 子令牌的复制权限、
+能否恢复自研载荷和宿主 SID 的真实对照仍待新固定实测。
