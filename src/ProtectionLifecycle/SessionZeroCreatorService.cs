@@ -13,7 +13,11 @@ internal static class SessionZeroCreatorService
     private static readonly ServiceMain Callback=Run;
     private static readonly ServiceControlHandler Control=(_,_,_,_)=>120; // ERROR_CALL_NOT_IMPLEMENTED.
     private static int exit=125;
-    internal enum FailurePhase:uint {ReportStarting=1,VerifyToken,ResolveImage,SealProcess,ReportReady,OfflineProtocol}
+    internal enum FailurePhase:uint
+    {
+        ReportStarting=1,VerifyToken,ResolveImage,SealProcess,ReportReady,OfflineProtocol,
+        VerifyTokenGroups,VerifyTokenPrivileges,ReadProcessSecurity,WriteProcessSecurity,VerifyProcessSecurity
+    }
     private const uint FailureTag=0xc5000000;
 
     internal static int Dispatch()
@@ -39,11 +43,10 @@ internal static class SessionZeroCreatorService
         {
             Publish();
             phase=FailurePhase.VerifyToken;
-            _=SessionZeroCreatorClient.VerifyCurrentService(name);
+            _=SessionZeroCreatorClient.VerifyCurrentService(name,next=>phase=next);
             phase=FailurePhase.ResolveImage;
             _=AtomicChild.ResolveSessionZeroImage(FixedLayout.FromWindows(),Environment.ProcessPath);
-            phase=FailurePhase.SealProcess;
-            GrantOwnObservation();
+            GrantOwnObservation(ref phase);
             phase=FailurePhase.ReportReady;
             status.State=4;status.CheckPoint=0;status.WaitHint=0;
             Publish();
@@ -69,7 +72,7 @@ internal static class SessionZeroCreatorService
     // This conveys diagnostics only and grants no cleanup or resume authority.
     internal static uint EncodeFailure(FailurePhase phase,uint code)
     {
-        if(phase is <FailurePhase.ReportStarting or >FailurePhase.OfflineProtocol)
+        if(!IsKnownPhase(phase))
             throw new ArgumentOutOfRangeException(nameof(phase));
         if(code==0)code=13;
         var kind=(code&0xffff0000u) switch {0u=>0u,0x80130000u=>1u,0x80070000u=>2u,0x80000000u=>3u,_=>15u};
@@ -89,14 +92,16 @@ internal static class SessionZeroCreatorService
     }
 
     internal static bool IsReportedStartupFailure(uint win32,uint specific) =>
-        win32==1066 && TryDecodeFailure(specific,out var phase,out _) && phase<FailurePhase.OfflineProtocol;
+        win32==1066 && TryDecodeFailure(specific,out var phase,out _) && phase!=FailurePhase.OfflineProtocol;
+
+    private static bool IsKnownPhase(FailurePhase phase)=>phase is >=FailurePhase.ReportStarting and <=FailurePhase.VerifyProcessSecurity;
 
     private static bool TryDecodeFailure(uint specific,out FailurePhase phase,out uint kind)
     {
         phase=(FailurePhase)((specific>>20)&15);
         kind=(specific>>16)&15;
         var value=specific&0xffff;
-        return (specific&0xff000000)==FailureTag && phase is >=FailurePhase.ReportStarting and <=FailurePhase.OfflineProtocol &&
+        return (specific&0xff000000)==FailureTag && IsKnownPhase(phase) &&
             (kind switch {0=>value!=0,1 or 2 or 3=>true,15=>value==0,_=>false});
     }
 
@@ -107,14 +112,17 @@ internal static class SessionZeroCreatorService
         return Identifiers.Hex32(name[prefix.Length..]);
     }
 
-    private static void GrantOwnObservation()
+    private static void GrantOwnObservation(ref FailurePhase phase)
     {
+        phase=FailurePhase.ReadProcessSecurity;
         using var self=OpenProcess(0x00060000,false,(uint)Environment.ProcessId); // READ_CONTROL and WRITE_DAC, retained across sealing.
         var descriptor=KernelJobSeal.ReadOwnerDacl(self);
         if(descriptor.Owner?.IsWellKnown(WellKnownSidType.LocalServiceSid)!=true || descriptor.DiscretionaryAcl is null)
             throw WfpNative.Contract("CreatorServiceProcessDescriptorInvalid");
         var acl=CreateObserverDacl();
+        phase=FailurePhase.WriteProcessSecurity;
         KernelJobSeal.WriteProtectedDacl(self,acl);
+        phase=FailurePhase.VerifyProcessSecurity;
         var actual=KernelJobSeal.ReadOwnerDacl(self);
         var wanted=new byte[acl.BinaryLength];acl.GetBinaryForm(wanted,0);
         var actualAcl=actual.DiscretionaryAcl??throw WfpNative.Contract("CreatorServiceProcessDaclMissing");

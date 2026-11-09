@@ -271,7 +271,7 @@ internal static class CreatorJobCases
         var actualPipe=(RawSecurityDescriptor)seal.GetMethod("ReadCreatorPipeDescriptor",methods)!.Invoke(null,[client])!;
         Check(actualPipe.Owner is { } pipeOwner && user.Equals(pipeOwner));
         Refused(()=>assertPipe.Invoke(null,[actualPipe,service]));
-        Refused(()=>serviceClient.GetMethod("VerifyCurrentService",methods)!.Invoke(null,[pipeName]));
+        Refused(()=>serviceClient.GetMethod("VerifyCurrentService",methods)!.Invoke(null,[pipeName,null]));
         using var wrapped=new NamedPipeClientStream(PipeDirection.InOut,true,true,client);
         using var transferDeadline=new CancellationTokenSource(TimeSpan.FromSeconds(3));
         var transfer=transferDeadline.Token;

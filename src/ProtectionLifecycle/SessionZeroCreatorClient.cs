@@ -118,7 +118,7 @@ internal sealed class SessionZeroCreatorClient : IDisposable
         pipe.WriteAsync(frame.AsMemory(),deadline.Token).AsTask().GetAwaiter().GetResult();
     }
 
-    internal static SecurityIdentifier VerifyCurrentService(string name)
+    internal static SecurityIdentifier VerifyCurrentService(string name,Action<SessionZeroCreatorService.FailurePhase>? reportStartupPhase=null)
     {
         using var identity=WindowsIdentity.GetCurrent(TokenAccessLevels.Query);
         var token=identity.AccessToken;
@@ -129,9 +129,11 @@ internal sealed class SessionZeroCreatorClient : IDisposable
             WindowsTokenInformation.Read(token,WindowsTokenInformation.Dword.IsAppContainer,stage)!=0 ||
             WindowsTokenInformation.Read(token,WindowsTokenInformation.Dword.Elevation,stage)!=0 || IsTokenRestricted(token))
             throw WfpNative.Contract("CreatorRequiresUnrestrictedLocalServicePrimaryToken");
+        reportStartupPhase?.Invoke(SessionZeroCreatorService.FailurePhase.VerifyTokenGroups);
         var service=(SecurityIdentifier)new NTAccount("NT SERVICE",name).Translate(typeof(SecurityIdentifier));
         var groups=RestrictingSidToken.ReadGroups(token,2);
         AssertCreatorGroups(groups,RestrictingSidToken.ReadGroups(token,11),service.Value);
+        reportStartupPhase?.Invoke(SessionZeroCreatorService.FailurePhase.VerifyTokenPrivileges);
         RestrictingSidToken.AssertTraverseOnly(token);
         return service;
     }

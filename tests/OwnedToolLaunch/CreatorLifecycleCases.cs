@@ -51,6 +51,9 @@ internal static class CreatorLifecycleCases
         var unknown=(uint)encode.Invoke(null,[Enum.Parse(phaseType,"VerifyToken"),0x81234567u])!;
         Check(Stopped(1066,unknown)==("CreatorServiceVerifyTokenCodeNotEncoded",unknown));
         Check(Stopped(1066,unknown|1u)==("CreatorServiceStoppedBeforeBinding",unknown|1u));
+        var reserved=(unknown&~0x00f00000u)|0x00f00000u;
+        Check(Stopped(1066,reserved)==("CreatorServiceStoppedBeforeBinding",reserved));
+        Check(Stopped(1066,0xc5411501u)==("CreatorServiceSealProcess",0x80131501u)); // Existing receipt encoding.
         Check(Stopped(1066,0x80131501u)==("CreatorServiceStoppedBeforeBinding",0x80131501u));
         Check(Stopped(1053,0)==("CreatorServiceStoppedBeforeBinding",1053));
         var broker=library.GetType("ProtectionLifecycle.InstalledBroker",true)!;
@@ -150,6 +153,8 @@ internal static class CreatorLifecycleCases
         void AssertStartupEvidence(object evidence)
             =>_=validateFailure.Invoke(null,[JsonSerializer.SerializeToUtf8Bytes(evidence),hash,startHash]);
         AssertStartupEvidence(startupEvidence);Check(true);
+        foreach(var phase in new[]{"VerifyTokenGroups","VerifyTokenPrivileges","ReadProcessSecurity","WriteProcessSecurity","VerifyProcessSecurity"})
+        { AssertStartupEvidence(startupEvidence with {ServiceCode=ServiceCode(phase)});Check(true); }
         Refused(()=>AssertStartupEvidence(startupEvidence with {IntentSHA256=startHash}));
         Refused(()=>AssertStartupEvidence(startupEvidence with {StartSHA256=hash}));
         Refused(()=>AssertStartupEvidence(startupEvidence with {ServiceCode=0x80131501u}));
@@ -173,12 +178,20 @@ internal static class CreatorLifecycleCases
             return comparison.Invoke(null,[observation]) is true;
         }
         Check(Observed("DIFFERS_FROM_HOST"));
+        Check(Observed("DIFFERS_FROM_HOST",logon:"DIFFERS_FROM_HOST",profile:"DIFFERS_FROM_HOST",computer:"DIFFERS_FROM_HOST",machine:"DIFFERS_FROM_HOST"));
         Check(!Observed("MATCHES_HOST"));
         Check(!Observed("REFERENCE_UNAVAILABLE"));
         Check(!Observed("DIFFERS_FROM_HOST",logon:"MATCHES_HOST"));
         Check(!Observed("DIFFERS_FROM_HOST",profile:"MATCHES_HOST"));
         Check(!Observed("DIFFERS_FROM_HOST",computer:"MATCHES_HOST"));
         Check(!Observed("DIFFERS_FROM_HOST",machine:"MATCHES_HOST"));
+        foreach(var missing in new[]{"REFERENCE_UNAVAILABLE","UNAVAILABLE","UNRECOGNIZED"})
+        {
+            Check(!Observed("DIFFERS_FROM_HOST",logon:missing));
+            Check(!Observed("DIFFERS_FROM_HOST",profile:missing));
+            Check(!Observed("DIFFERS_FROM_HOST",computer:missing));
+            Check(!Observed("DIFFERS_FROM_HOST",machine:missing));
+        }
         Check(comparison.Invoke(null,[null]) is false);
         var denied=false;
         try{_=broker.GetMethod("QualifyIndependentOfflineConsole")!.Invoke(null,null);}

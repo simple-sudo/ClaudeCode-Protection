@@ -445,8 +445,11 @@ internal static class OfflineConsoleQualification
     }
 
     internal static bool IndependentIdentityObserved(OfflineConsoleHostIdentitySummary? observation) =>
-        observation is {TokenUser:"DIFFERS_FROM_HOST"} && observation.LogonName!="MATCHES_HOST" &&
-        observation.ProfileDirectory!="MATCHES_HOST" && observation.ComputerName!="MATCHES_HOST" && observation.MachineGuid!="MATCHES_HOST";
+        observation is {TokenUser:"DIFFERS_FROM_HOST"} && NonMatchingReadObserved(observation.LogonName) &&
+        NonMatchingReadObserved(observation.ProfileDirectory) && NonMatchingReadObserved(observation.ComputerName) &&
+        NonMatchingReadObserved(observation.MachineGuid);
+
+    private static bool NonMatchingReadObserved(string outcome)=>outcome is "DIFFERS_FROM_HOST" or "DENIED";
 
     private static object SealEnvironmentProjection(ProtectedState state,VerifiedVersion version,string id,string jobId,uint childPid,
         byte[] bytes,string workspace,string ownedTemp,string localData)
