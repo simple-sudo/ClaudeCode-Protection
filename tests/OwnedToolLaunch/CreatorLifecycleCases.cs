@@ -363,9 +363,12 @@ internal static class CreatorLifecycleCases
         changedFailure["Failures"]![0]!["Code"]=6;
         Refused(()=>AssertFailureRecord(changedFailure));
         var bootstrap=library.GetType("ProtectionLifecycle.BootstrapInstaller",true)!;
-        var rejected=bootstrap.GetMethod("RecoverReviewedClosedCreator")!.Invoke(null,null)!;
-        Check(rejected.GetType().GetField("Item1")!.GetValue(rejected) is 125 &&
-            ((string)rejected.GetType().GetField("Item2")!.GetValue(rejected)!).Contains("\"Stage\":\"MAINTENANCE_IDENTITY\"",StringComparison.Ordinal));
+        foreach(var name in new[]{"RecoverReviewedClosedCreator","FinalizeReviewedClosedCreator"})
+        {
+            var rejected=bootstrap.GetMethod(name)!.Invoke(null,null)!;
+            Check(rejected.GetType().GetField("Item1")!.GetValue(rejected) is 125 &&
+                ((string)rejected.GetType().GetField("Item2")!.GetValue(rejected)!).Contains("\"Stage\":\"MAINTENANCE_IDENTITY\"",StringComparison.Ordinal));
+        }
         Console.WriteLine($"PASS {count-previous} closed creator recovery checks; original stop, expiry, object scope and ordinary maintenance refusal. No profile or SCM mutations.");
     }
 

@@ -202,7 +202,10 @@ public static class BootstrapInstaller
 
     public static int RunReviewedProfileRecoveryService()=>SessionZeroCreatorService.Dispatch(recovery:true);
 
-    public static (int ExitCode,string Report) RecoverReviewedClosedCreator()
+    public static (int ExitCode,string Report) RecoverReviewedClosedCreator()=>CompleteReviewedClosedCreator(finalizeOnly:false);
+    public static (int ExitCode,string Report) FinalizeReviewedClosedCreator()=>CompleteReviewedClosedCreator(finalizeOnly:true);
+
+    private static (int ExitCode,string Report) CompleteReviewedClosedCreator(bool finalizeOnly)
     {
         var stage="MAINTENANCE_IDENTITY";
         try
@@ -210,8 +213,9 @@ public static class BootstrapInstaller
             ProtectedState.RequireAdministrator();
             stage="RECOVERY_PACKAGE_APPROVAL";
             using var bootstrap=BootstrapApproval.Open(true);
-            stage="ORIGINAL_LEDGER_AND_QUARANTINE";
-            var receipt=SessionZeroClosedCreatorRecovery.Recover(bootstrap,value=>stage=value);
+            stage=finalizeOnly?"CLOSED_CREATOR_TERMINAL_READBACK":"ORIGINAL_LEDGER_AND_QUARANTINE";
+            var receipt=finalizeOnly?SessionZeroClosedCreatorRecovery.FinalizeClosed(bootstrap):
+                SessionZeroClosedCreatorRecovery.Recover(bootstrap,value=>stage=value);
             return (0,JsonSerializer.Serialize(new {Status="CLOSED_CREATOR_RESIDUE_RECOVERED",ReceiptSHA256=receipt,
                 PointerChanged=false,WfpModified=false,ClaudeLaunched=false}));
         }

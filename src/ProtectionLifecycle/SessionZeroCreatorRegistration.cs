@@ -191,10 +191,17 @@ internal sealed class SessionZeroCreatorRegistration : IDisposable
         var watch=Stopwatch.StartNew();
         while(watch.ElapsedMilliseconds<5000)
         {
-            using var observation=OpenService(manager,name,4);
-            var code=Marshal.GetLastWin32Error();
-            if(observation.IsInvalid && code==1060)return;
-            if(!observation.IsInvalid || code!=1072)throw WfpNative.Contract("CreatorServiceNameRemovalUnconfirmed");
+            using(var observation=OpenService(manager,name,4))
+            {
+                if(observation.IsInvalid)
+                {
+                    var code=Marshal.GetLastWin32Error();
+                    if(code==1060)return;
+                    if(code!=1072)throw new WfpFailure("CreatorServiceNameRemovalReadback",unchecked((uint)code));
+                }
+                // A still-visible name is not closure. Release this query
+                // handle before waiting. Never delete or adopt it here.
+            }
             Thread.Sleep(25);
         }
         throw new TimeoutException("Original creator service deletion is pending");

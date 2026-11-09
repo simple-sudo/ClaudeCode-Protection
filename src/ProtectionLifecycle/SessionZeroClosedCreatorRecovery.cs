@@ -200,12 +200,7 @@ internal static class SessionZeroClosedCreatorRecovery
             AssertAuthority();
             if(state.Read(AttemptLeaf(job.JobId),8192).SHA256!=attempt || state.Read(ProfileLeaf(job.JobId),4096).SHA256!=profileProof)
                 throw WfpNative.Contract("ClosedCreatorRecoveryAttemptChanged");
-            var result=state.WriteNew(ReceiptLeaf(job.JobId),JsonSerializer.SerializeToUtf8Bytes(new {
-                SchemaVersion=1,state.InstallationId,job.JobId,approval.WorkerId,AttemptSHA256=attempt,
-                ProfileSHA256=profileProof,Status=Disposition
-            }));
-            if(!ReadRecovered(state,job))throw WfpNative.Contract("ClosedCreatorRecoveryReceiptReadbackMissing");
-            return result;
+            return PublishReceipt(state,job,approval.WorkerId,attempt,profileProof);
 
             void AssertAuthority()
             {
@@ -264,11 +259,22 @@ internal static class SessionZeroClosedCreatorRecovery
         StrictJson.Fields(r,"SchemaVersion","InstallationId","JobId","WorkerId","AttemptSHA256","ProfileSHA256","Status");
         AssertBinding(r,job);
         var workerId=Identifiers.Hex32(StrictJson.Text(r,"WorkerId"));
+        if(workerId==job.JobId || StrictJson.Text(r,"Status")!=Disposition ||
+            !ReadProgress(state,job,workerId,original).Matches(StrictJson.Text(r,"AttemptSHA256"),StrictJson.Text(r,"ProfileSHA256")))
+            throw WfpNative.Contract("ClosedCreatorRecoveryReceiptMismatch");
+        AssertTerminal(state,job,workerId,original);
+        return true;
+    }
+
+    private sealed record Progress(string AttemptSHA256,string ProfileSHA256,string ParentIdentity)
+    {
+        internal bool Matches(string attempt,string profile)=>AttemptSHA256==attempt && ProfileSHA256==profile;
+    }
+
+    private static Progress ReadProgress(ProtectedState state,OwnedJobIntent job,string workerId,Original original)
+    {
         var attempt=state.Read(AttemptLeaf(job.JobId),8192);
         var profile=state.Read(ProfileLeaf(job.JobId),4096);
-        if(workerId==job.JobId || StrictJson.Text(r,"Status")!=Disposition ||
-            StrictJson.Text(r,"AttemptSHA256")!=attempt.SHA256 || StrictJson.Text(r,"ProfileSHA256")!=profile.SHA256)
-            throw WfpNative.Contract("ClosedCreatorRecoveryReceiptMismatch");
         using var closedProfile=Read(profile);
         var p=closedProfile.RootElement;
         StrictJson.Fields(p,"SchemaVersion","InstallationId","JobId","WorkerId","AttemptSHA256","Status");
@@ -283,9 +289,67 @@ internal static class SessionZeroClosedCreatorRecovery
         if(StrictJson.Text(a,"Status")!="CLOSED_CREATOR_RECOVERY_STARTED" || StrictJson.Text(a,"WorkerId")!=workerId ||
             a.GetProperty("Original").Deserialize<Original>()!=original)
             throw WfpNative.Contract("ClosedCreatorRecoveryAttemptMismatch");
-        SessionZeroCreatorChannel.AssertProfileIdentity(new(StrictJson.Text(a,"ParentIdentity"),StrictJson.Text(a,"StorageIdentity")));
-        AssertTerminal(state,job,workerId,original);
-        return true;
+        var parent=StrictJson.Text(a,"ParentIdentity");
+        SessionZeroCreatorChannel.AssertProfileIdentity(new(parent,StrictJson.Text(a,"StorageIdentity")));
+        return new(attempt.SHA256,profile.SHA256,parent);
+    }
+
+    // The original owner already confirmed LocalService deletion, mapping
+    // and disk readback. Complete a lost final receipt only from that durable
+    // proof and fresh absence checks, without repeating any deletion.
+    internal static string FinalizeClosed(BootstrapApproval bootstrap)
+    {
+        ProtectedState.RequireAdministrator();
+        var approval=ReadEmbedded();
+        var layout=FixedLayout.FromWindows();
+        using var state=ProtectedState.OpenExisting(layout);
+        using var version=VerifiedVersion.Open(layout,state,Release);
+        var pointer=state.Read("current.json",4096);
+        var current=CurrentPointer.Parse(pointer,state.InstallationId);
+        if(state.InstallationId!=approval.InstallationId || current.Release!=Release || current.ManifestSHA256!=Manifest ||
+            version.Package.ManifestHash!=Manifest)
+            throw WfpNative.Contract("ClosedCreatorFinalizationRequiresExactInactiveInstallation");
+        var job=OwnedJobIntent.Read(state,approval.JobId);
+        var original=ReadOriginal(state,job);
+        if(original.FailedRunSHA256!=approval.FailedRunSHA256 || state.ReadOptional(ReceiptLeaf(job.JobId)) is not null)
+            throw WfpNative.Contract("ClosedCreatorFinalizationOutsideFreshApproval");
+        LifecycleRecovery.AssertNoPending(state,recoveringCreator:job);
+        InstallationLoopbackLease.AssertClosedHistory(state);
+        foreach(var other in OwnedJobIntent.ReadAll(state))
+            if(other.JobId!=job.JobId && !SessionZeroCreatorRecovery.IsAdmissionResolved(state,other))
+                throw WfpNative.Contract("ClosedCreatorFinalizationOtherAdmissionUnresolved");
+        var plans=FencePlan.ReadAll(state);
+        if(plans.Count==0)throw WfpNative.Contract("ClosedCreatorFinalizationRequiresQuarantine");
+        var fences=new List<PersistentFence>();
+        try
+        {
+            foreach(var plan in plans)fences.Add(PersistentFence.OpenExisting(state,plan.Data.FenceId));
+            var progress=ReadProgress(state,job,approval.WorkerId,original);
+            using var profileParent=WindowsPathSeal.LockCreatorProfileParent(SessionZeroCreatorProfile.StorageParentPath(requireLocalService:false));
+            using var package=InstallationPackageSid.FromInstallationId(state.InstallationId);
+            var profile=WindowsPathSeal.Child(profileParent.Path,package.Name);
+            AssertTerminal(state,job,approval.WorkerId,original);
+            AssertDirectoryAbsent(profile,"ClosedCreatorFinalizationProfileStoragePresent");
+            approval.AssertFresh();bootstrap.AssertHeld();version.AssertHeld(state);
+            if(state.Read("current.json",4096).SHA256!=pointer.SHA256 || ReadOriginal(state,job)!=original ||
+                ReadProgress(state,job,approval.WorkerId,original)!=progress || profileParent.ObjectIdentity()!=progress.ParentIdentity ||
+                !FencePlan.ReadAll(state).Select(p=>p.Data.FenceId).SequenceEqual(plans.Select(p=>p.Data.FenceId)) ||
+                fences.Any(f=>!f.Observe().FullQuarantineObserved))
+                throw WfpNative.Contract("ClosedCreatorFinalizationAuthorityChanged");
+            AssertTerminal(state,job,approval.WorkerId,original);
+            AssertDirectoryAbsent(profile,"ClosedCreatorFinalizationProfileStoragePresent");
+            return PublishReceipt(state,job,approval.WorkerId,progress.AttemptSHA256,progress.ProfileSHA256);
+        }
+        finally{foreach(var fence in fences)fence.Dispose();}
+    }
+
+    private static string PublishReceipt(ProtectedState state,OwnedJobIntent job,string workerId,string attempt,string profile)
+    {
+        var result=state.WriteNew(ReceiptLeaf(job.JobId),JsonSerializer.SerializeToUtf8Bytes(new {
+            SchemaVersion=1,state.InstallationId,job.JobId,WorkerId=workerId,AttemptSHA256=attempt,ProfileSHA256=profile,Status=Disposition
+        }));
+        if(!ReadRecovered(state,job))throw WfpNative.Contract("ClosedCreatorRecoveryReceiptReadbackMissing");
+        return result;
     }
 
     private static Original ReadOriginal(ProtectedState state,OwnedJobIntent job)
