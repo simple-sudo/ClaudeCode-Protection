@@ -1,0 +1,70 @@
+#requires -Version 7.4
+$ErrorActionPreference = 'Stop'
+
+$repo = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+$vswhere = 'C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe'
+$installation = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+if ($LASTEXITCODE -ne 0 -or !$installation) { throw 'Microsoft x64 C++ Build Tools required' }
+$compilerRoot = Get-ChildItem -LiteralPath (Join-Path $installation 'VC\Tools\MSVC') -Directory |
+    Sort-Object { [version]$_.Name } -Descending | Select-Object -First 1
+$tools = Join-Path $compilerRoot.FullName 'bin\Hostx64\x64'
+$sdk = 'C:\Program Files (x86)\Windows Kits\10'
+$version = '10.0.26100.0'
+$includes = @(
+    (Join-Path $compilerRoot.FullName 'include')
+    (Join-Path $sdk "Include\$version\um")
+    (Join-Path $sdk "Include\$version\shared")
+    (Join-Path $sdk "Include\$version\ucrt")
+) | ForEach-Object { "/I$_" }
+
+$output = Join-Path $repo ('work\session-zero-startup-witness-' + [Guid]::NewGuid().ToString('N'))
+[void](New-Item -ItemType Directory -Path $output)
+$exe = Join-Path $output 'SessionZeroStartupWitness.exe'
+$object = Join-Path $output 'StartupWitness.obj'
+$source = Join-Path $PSScriptRoot 'StartupWitness.c'
+$savedPath = $env:PATH
+try {
+    $env:PATH = "$tools;$savedPath"
+    # Keep CRT and pre-entry user32/shell32 initialization out of the witness.
+    $arguments = @('/nologo','/TC','/std:c17','/W4','/WX','/O2','/GS-','/Zl') + $includes + @(
+        "/Fo$object", "/Fe$exe", $source, '/link', '/NODEFAULTLIB', '/ENTRY:StartupWitness', '/SUBSYSTEM:CONSOLE',
+        '/DYNAMICBASE', '/NXCOMPAT', '/Brepro', "/LIBPATH:$sdk\Lib\$version\um\x64", 'kernel32.lib'
+    )
+    & (Join-Path $tools 'cl.exe') @arguments
+    if ($LASTEXITCODE -ne 0) { throw 'Startup witness build failed' }
+    $dependencies = & (Join-Path $tools 'dumpbin.exe') /dependents $exe
+    if ($LASTEXITCODE -ne 0) { throw 'Startup witness import inspection failed' }
+    $imports = @($dependencies | Select-String '^[ \t]+[a-z0-9_.-]+\.dll$' | ForEach-Object { $_.Line.Trim() })
+    if ($imports.Count -ne 1 -or $imports[0] -ne 'KERNEL32.dll') { throw 'Unexpected startup witness imports' }
+} finally {
+    $env:PATH = $savedPath
+}
+
+$info = [Diagnostics.ProcessStartInfo]::new($exe)
+$info.WorkingDirectory = $output
+$info.UseShellExecute = $false
+$info.CreateNoWindow = $true
+$info.RedirectStandardOutput = $true
+$info.RedirectStandardError = $true
+$process = [Diagnostics.Process]::Start($info)
+try {
+    $stdout = $process.StandardOutput.ReadToEndAsync()
+    $stderr = $process.StandardError.ReadToEndAsync()
+    if (!$process.WaitForExit(10000)) { throw 'Startup witness terminal state unavailable' }
+    $checkpoints = @('ENTRY','BEFORE_USER32','AFTER_USER32','BEFORE_DESKTOP','AFTER_DESKTOP',
+        'BEFORE_SHELL32','AFTER_SHELL32','BEFORE_UCRT','AFTER_UCRT')
+    $expected = ($checkpoints -join [char]10) + [char]10
+    if ($process.ExitCode -ne 0 -or $stdout.GetAwaiter().GetResult() -cne $expected -or $stderr.GetAwaiter().GetResult()) {
+        throw 'Ordinary startup witness checkpoints differ'
+    }
+} finally {
+    $process.Dispose()
+}
+[pscustomobject]@{
+    Result = 'ORDINARY_STARTUP_WITNESS_PASSED'
+    StaticImport = $imports[0]
+    Checkpoints = $checkpoints.Count
+    SHA256 = (Get-FileHash -LiteralPath $exe).Hash
+    Image = $exe
+    SessionZeroLpacVerified = $false
+}

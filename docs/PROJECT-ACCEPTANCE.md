@@ -5,6 +5,15 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-09 独立身份初始化取证和网关监督
+
+VERIFIED(`702edb5d` 受限线程恢复、Windows 加载器跟踪关闭、原 Job 与临时对象回收)。
+FAIL(受限子进程初始化，`0xC0000142`)。UNKNOWN(具体模块)。
+NOT_RUN(五项身份读值、正常受限功能、原生见证受限运行)。
+INTEGRATED(正式网关 CONNECT 回应后路线复核、控制端监听监督)，普通验证通过。
+[取证](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#加载器跟踪关闭与原生启动见证) ·
+[网关](LOCAL-MANAGEMENT-BOUNDARY-20261107.md#connect-回应和运行期间的控制端核对)
+
 ## 2026-11-08 进程对象所有者规则仍未通过
 
 VERIFIED(`74678dbf` 未激活更新、真实进程权限读取与未就绪服务回收)。

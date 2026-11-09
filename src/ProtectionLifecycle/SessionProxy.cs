@@ -75,7 +75,7 @@ internal sealed class SessionProxy : IDisposable
         if(fixedResolverTrust is not null)effective+=";fixed-openssl-head-resolver-explicit-offline-revocation;request=HEAD "+
             FixedOpenSslHead.RequestPath+";client="+FixedOpenSslHead.UserAgent;
         if(localManagementBoundary)effective+=";fixed-local-management-boundary;relay=never";
-        if(requireFreshProxyRoute)effective+=";controller-route-readback-before-every-upstream-connect";
+        if(requireFreshProxyRoute)effective+=";controller-listener-required;controller-route-readback-before-connect-and-after-reply";
         EffectivePolicySHA256=Convert.ToHexString(SHA256.HashData(Encoding.ASCII.GetBytes(effective)));
         this.job = job; this.upstream = upstream; this.packageSid = packageSid; this.sessionId = Identifiers.Hex32(sessionId);
         authorization = Encoding.ASCII.GetBytes("Basic " + Convert.ToBase64String(Encoding.ASCII.GetBytes(sessionId + ":" + Secret)));
@@ -88,7 +88,9 @@ internal sealed class SessionProxy : IDisposable
         if (disposed || stop.IsCancellationRequested || failure is not null || accept.IsCompleted || clients.Values.Any(entry=>entry.Work.IsFaulted))
             throw WfpNative.Contract("SessionGatewayStoppedExpiredOrFailed");
         if(ProxyChannelLease.SessionListenerOwner()!=unchecked((uint)Environment.ProcessId))throw WfpNative.Contract("SessionGatewayListenerOwnerDrift");
-        upstream.AssertHealthy();destinations.AssertCurrent();
+        if(requireFreshProxyRoute)upstream.AssertControllerListener();
+        else upstream.AssertHealthy();
+        destinations.AssertCurrent();
     }
     internal void BindAdmission(ProtectedSession.Admission permit)
     {
@@ -328,13 +330,7 @@ internal sealed class SessionProxy : IDisposable
         {
             await socket.ConnectAsync(new IPEndPoint(IPAddress.Loopback, CompiledFencePolicy.ProxyPort), token);
             Step(UpstreamTunnelStep.PeerBeforeRequest);
-            upstream.AssertConnectedPeer(socket);
-            if(requireFreshProxyRoute)
-            {
-                var route=await ProxyRouteObservation.Capture(upstream,token);
-                route.RequireAllowed("UpstreamRouteBeforeConnectRefused");
-                upstream.AssertConnectedPeer(socket);
-            }
+            await AssertTunnelPeerAndRoute(socket,token,"UpstreamRouteBeforeConnectRefused");
             Step(UpstreamTunnelStep.AdmissionBeforeRequest);
             AssertForwardingCurrent();
             var stream = new NetworkStream(socket, ownsSocket: true);
@@ -351,7 +347,7 @@ internal sealed class SessionProxy : IDisposable
             attempt?.RecordStatus(status);
             if(status!=200)throw new InvalidDataException("UpstreamLiteralConnectRefused");
             Step(UpstreamTunnelStep.PeerAfterReply);
-            upstream.AssertConnectedPeer(socket);
+            await AssertTunnelPeerAndRoute(socket,token,"UpstreamRouteAfterConnectRefused");
             Step(UpstreamTunnelStep.AdmissionAfterReply);
             AssertForwardingCurrent();
             Step(UpstreamTunnelStep.AddressAfterReply);
@@ -363,6 +359,16 @@ internal sealed class SessionProxy : IDisposable
         }
         catch { socket.Dispose(); throw; }
     }
+
+    private async Task AssertTunnelPeerAndRoute(Socket socket,CancellationToken token,string routeFailure)
+    {
+        upstream.AssertConnectedPeer(socket);
+        if(!requireFreshProxyRoute)return;
+        var route=await ProxyRouteObservation.Capture(upstream,token);
+        route.RequireAllowed(routeFailure);
+        upstream.AssertConnectedPeer(socket);
+    }
+
     internal static async Task<string> ReadHeader(Stream stream, CancellationToken token)
     {
         var bytes = new byte[8192]; var one = new byte[1]; var count = 0;

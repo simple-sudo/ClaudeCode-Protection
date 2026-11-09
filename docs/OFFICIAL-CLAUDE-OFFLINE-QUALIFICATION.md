@@ -1228,3 +1228,21 @@ WER、User-Loader 和 CodeIntegrity 日志未见诊断记录。该退出码指�
 
 终态回执 `work/creator-bound-token-installed-retest-20261109/receipt.json`，SHA-256
 `4E6CF0D755B354644D036665CB1FB84586FDC3FD73528BDE23C07C2308290D43`。
+
+### 加载器跟踪关闭与原生启动见证
+
+审查 `9311391B…` 的一次实机取证已执行。原 `702edb5d` 保持未激活。自研子进程再次
+通过同一令牌证明并恢复，返回 `0xC0000142`，两个输出流均为空。原 Job 按序关闭，
+profile、工作区和服务经原 Broker 回收。固定 Windows User-Loader 会话启动成功，
+停后查询确认缺席，报告一个写入缓冲区、零事件丢失和零文件缓冲区丢失。按原准入
+PID、创建时间和 Job 关闭时间筛查，没有匹配的加载器事件。具体失败模块保持 UNKNOWN。
+五项实际身份读值和正常功能仍未执行到。原始 ETL 保存在本次管理员专用目录。
+终态回执 `work/creator-loader-trace-20261109/receipt.json`，SHA-256
+`D129264D1687D544FAC89B972D13EB665B9B7835BAAD5F2A327C91426279257F`。
+
+静态导入表显示，实测自研子进程使用的 .NET apphost 在进入自研代码前有 USER32、
+SHELL32、ADVAPI32 和多个 UCRT 导入。普通构建的原生见证只有 KERNEL32 静态导入。
+在同一进程内逐步记录入口、USER32 装载、桌面访问、SHELL32 和 UCRT 装载。
+普通 Windows 无窗口运行通过全部九个检查点，受限 Session 0 尚未运行此见证。
+当前无证据把失败归因到桌面权限或某个 DLL。
+[Windows 的窗口站连接](https://learn.microsoft.com/en-us/windows/win32/winstation/process-connection-to-a-window-station)。
