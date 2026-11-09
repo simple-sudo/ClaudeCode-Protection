@@ -95,6 +95,19 @@ FlClash Core 有 32 条 TCP 记录的本地地址与物理接口地址相同。�
 `MSFT_NetUDPEndpoint` 及物理地址来源的真实内容可见性。这批参考无受限进程、
 出口实测或地域归属结论。
 
+### 物理网卡与平台标识的跨来源参考
+
+2026-11-09，普通可信身份实读 `Get-NetAdapter -Physical`、`Win32_NetworkAdapter`、
+`Get-PnpDevice` 和 Windows `NetworkCards` 注册表。两块物理网卡均能以接口 GUID
+在前两种接口及注册表中唯一关联，前两种接口的 MAC 和 PnP 实例 ID 都匹配，PnP
+也能按相同实例 ID 返回对应对象。另实读一项系统 UUID、一项主板序列号、一项固件
+序列号和三个显卡 PnP 实例 ID。各源按次读取，未断言其内部提供者互相独立。
+
+原值留在本机 `work/hardware-fingerprint-reference-20261109/`。
+`reference.json` SHA-256 为 `C185648BAE6011D696C16478D59877DB2E82F1B7D5C024122F87903027089A91`，
+`correlation.json` SHA-256 为 `8E905A9450EC246FB25FA19BB84485598E649FB57E7AF6633A3908F5CD5D8AF8`。
+这批参考给出可关联的实际字段。受限身份从各来源读取这些字段的对抗实验仍待执行。
+
 ## 5. 风险策略、阻断和受控修复
 
 - 风险是**按信息目标与最高严重度决策**，不是累加/平均分：P0_CONFIRMED_EXPOSURE → 对受影响的新准入阻断、现有会话按原故障机制维持隔离/安全终止；P0_REQUIRED_UNKNOWN / 证据过期 / 评估组件不可用 → 不得凭旧报告放行；证据不足只记 UNKNOWN，不虚构“泄露已发生”。

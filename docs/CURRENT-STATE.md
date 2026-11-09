@@ -1,9 +1,14 @@
 # 当前状态与授权摘要
 
-2026-11-09，原生启动见证已接入原 Broker、LocalService、原子 Job 准入和有序关闭链。
-新包清单固定见证映像，诊断只记录预设检查点，普通构建和回归通过。尚未安装或执行
-受限诊断，宿主身份对照仍待实机验证。
-[固定诊断入口](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#原生见证接入原-broker)。
+2026-11-09，`79818ec3` 已升级并保持未激活。独立 LocalService 的零能力 LPAC 自研
+进程到达原生入口，从 System32 加载 USER32 返回 1114，未到达桌面访问检查点。
+原 Job、profile、工作区和服务均核验回收，许可已消耗。DLL 初始化的底层原因、五项
+宿主身份和正常开发功能仍待实机验证。
+[见证实机结果](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#实机定位到-user32-加载阶段)。
+
+同日，普通可信身份读取两块物理网卡和实际设备标识。两块均可通过 GUID、MAC 或
+PnP 实例 ID 在 Windows 多个来源中精确关联，受限读取待测。
+[跨来源硬件参考](ASSURANCE-AND-EXPOSURE-PROFILING.md#物理网卡与平台标识的跨来源参考)。
 
 2026-11-09，正式网关在 CONNECT 成功回应后、交付隧道前再次核对代理图与受理端，
 并在运行监督中要求原代理继续持有控制端口。普通 Release 和回归通过，未安装。

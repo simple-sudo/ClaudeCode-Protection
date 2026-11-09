@@ -1258,3 +1258,28 @@ SHELL32、ADVAPI32 和多个 UCRT 导入。普通构建的原生见证只有 KER
 
 普通 Release 构建通过。回归核对旧包兼容、映像字节、恢复角色、同一管道的用途隔离、
 完整与部分输出、异常输出及普通调用拒绝。新诊断尚未安装或在真实 LPAC 内运行。
+
+### 实机定位到 USER32 加载阶段
+
+审查 `F75BB283…` 的一次升级及原生见证许可已执行。安装更新为 `79818ec3` 并保持
+未激活。原 LocalService 创建者和 Broker 核对同一主令牌、低完整性、零能力、原 Job
+和固定见证映像后，恢复初始线程。真实输出依次是 `ENTRY`、`BEFORE_USER32`、
+`WIN32=0x0000045A`，见证退出 65。失败发生于
+`LoadLibraryExW(L"user32.dll", ..., LOAD_LIBRARY_SEARCH_SYSTEM32)`，
+Windows 返回 1114，尚未调用桌面检查。这个结果定位到 USER32 及其依赖的加载和初始化
+阶段，底层对象、调用和访问判断仍未证实。之前的 .NET 启动器直接导入 USER32，
+本次给出了与 `0xC0000142` 一致的受限实机对照。
+
+原 Job 在隔离下有序关闭，profile、工作区和服务均回收。普通 SCM 返回 1060，工作区根
+缺席。没有五项宿主身份读取或正常开发功能结论。确切终态
+`work/session-zero-startup-witness-installed-20261109/receipt.json`，SHA-256
+`92A5A06B92081FD7A5919CC6990496DE90D96C3B20055DA7ED677BA28ED475DE`。
+[Windows 错误码 1114](https://learn.microsoft.com/en-us/windows/win32/debug/system-error-codes--1000-1299-)。
+
+可信侧静态检查了本机 USER32 导入的 WIN32U、GDI32 和 KERNELBASE，及相邻的
+GDI32FULL。五个相关 DLL 文件都存在“All Restricted Application Packages”允许
+条目。这是 DACL 元数据，真实受限文件读取和加载仍待核对。私有窗口站是后续可验证
+的设计，但命名窗口站的创建要求管理员。现有 LocalService 创建者权限保持原样，
+下一次先区分映像映射、依赖初始化和窗口对象访问，不直接改变共享窗口对象权限。
+[窗口站连接规则](https://learn.microsoft.com/en-us/windows/win32/winstation/process-connection-to-a-window-station) ·
+[命名窗口站创建约束](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-createwindowstationw)。

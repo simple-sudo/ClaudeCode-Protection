@@ -5,6 +5,13 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-09 独立 LPAC 实机到达原生入口
+
+VERIFIED(`79818ec3` 未激活更新、固定见证在独立 LPAC 到达入口、原 Job 和临时对象回收)。
+FAIL(USER32 加载，1114)。UNKNOWN(底层拒绝对象或初始化调用)。
+NOT_RUN(受限五项身份读取、桌面检查及正常功能)。
+[实机回执](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#实机定位到-user32-加载阶段)。
+
 ## 2026-11-09 独立身份初始化取证和网关监督
 
 VERIFIED(`702edb5d` 受限线程恢复、Windows 加载器跟踪关闭、原 Job 与临时对象回收)。
