@@ -1,5 +1,12 @@
 # 当前状态与授权摘要
 
+2026-11-09，用户允许直接执行后续外网验证。可信普通身份经现有 FlClash 本地
+监听发出 Cloudflare 固定 DNS 查询及 Microsoft 固定 HEAD，两次 CONNECT 和
+最终 HTTP 均为 200。Cloudflare 另一次采样记录本次出口为 IPv4，服务端归类
+`US`，原值仅留本机。该对照未经过受保护网关，正式路线门禁的实机拒绝仍成立。
+系统操作仍按适用的具体授权执行。
+[可信侧真实外网对照](LOCAL-MANAGEMENT-BOUNDARY-20261107.md#可信侧真实外网对照)
+
 2026-11-09，`2376af56` 已实机更新并保持 INACTIVE。原网关在准备前绑定实际
 FlClash 混合端口与控制端，完整路线快照报告当前可达直连和可选直连，返回
 `UpstreamRouteSnapshotRefused`。原句柄终态闭合，没有创建 Job 或受限进程，

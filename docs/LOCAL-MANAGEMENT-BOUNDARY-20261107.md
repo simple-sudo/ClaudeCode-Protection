@@ -174,3 +174,22 @@ HEAD 和 18 项离线解析器信任。回归准备补齐固定原生及篡改�
 `work/reviewed-proxy-route-20261109-01/receipt.json` SHA-256
 `2A08B72FA060A9FB9DC956C9009680C65F26AF9AA15569AB2FA71229CCD933AC`。
 实际外部出口、CONNECT 前后和运行期故障关闭仍待实机。
+
+### 可信侧真实外网对照
+
+用户随后明确允许执行 Cloudflare、Microsoft 请求及后续外网验证。普通 Windows
+客户端通过现有 FlClash 混合端口完成 Cloudflare DNS 查询和 Microsoft
+`/robots.txt` HEAD。两次代理 CONNECT 与实际 HTTP 均返回 200，TLS 主机名
+和链验证成功。本次 DNS 响应经当前产品公共地址解析逻辑取得一个 IPv4，并用于
+Microsoft 字面 CONNECT。普通端口表与本机 CIM 在请求前后核对 FlClash Core 的
+PID 与创建时间一致。Schannel 撤销检查关闭，以限定此普通对照的请求范围。
+第一次准备因普通进程接口无法返回创建时间而在请求前停止，后由 CIM 补齐观察。
+
+另一次对同一 Cloudflare 入口的 `/cdn-cgi/trace` 请求返回 200。服务端实际观察
+的对端为 IPv4，报告 `loc=US` 与 `colo=IAD`。出口 IP 原值留在本机受保护
+证据目录。这里只确认该次普通请求的外部视角，宿主物理位置、运营商归属和受保护
+网关的实际外部出口仍为 UNKNOWN。FlClash 与系统设置未改动。
+
+`work/reviewed-proxy-route-20261109-01/trusted-public-control-20261109-02/` 中
+`receipt.json` SHA-256 `15A826AB144DD51327FA3C96456D7C197BA1A31C2C8AABD2D23012156876B0B9`，
+`egress-receipt.json` SHA-256 `7DA5382BC617CB4FBA2C5889F84C90D53DC28FC50EC72D2366BA577FC60B7C8F`。

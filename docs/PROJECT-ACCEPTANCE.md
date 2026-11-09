@@ -5,6 +5,13 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-09 可信侧真实外网对照
+
+VERIFIED(普通 Windows 客户端经现有本地监听完成固定 Cloudflare DNS、Microsoft
+HEAD 和独立 Cloudflare 出口采样)。UNKNOWN(受保护路径实际外部出口、物理宿主位置)。
+NOT_RUN(受保护 CONNECT 前后、活动监督与正式 Claude)。
+[实测范围](LOCAL-MANAGEMENT-BOUNDARY-20261107.md#可信侧真实外网对照)
+
 ## 2026-11-09 实机准备前拒绝直连
 
 VERIFIED(`2376af56` 未激活更新、实际控制端路线读回、拒绝发生在 Job 前、原外层终态及监听缺席)。
