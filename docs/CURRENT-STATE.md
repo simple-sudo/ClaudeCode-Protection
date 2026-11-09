@@ -1,5 +1,17 @@
 # 当前状态与授权摘要
 
+2026-11-09，普通交互会话的真实 LPAC 在显式请求的临时桌面拒绝访问时复现 USER32
+1114，同型临时桌面允许该包访问时通过 USER32、桌面和 GDI。不存在的桌面也复现 1114。
+三个对照的原进程和 profile 均回收，两个新桌面均确认消失。该因果只在普通对照成立。
+独立 Session 0 私有窗口站及桌面的配置与全链实测仍 NOT_RUN。
+[桌面权限正负对照](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#普通-lpac-显式桌面权限对照)
+
+2026-11-09，`236bde5` 已实机更新并保持未激活。窗口站和桌面 DACL 检查均成功，
+LocalService 创建者获得访问，绑定的零能力 LPAC 主令牌均获零权限。见证仍在
+`NtGdiInit2` 返回空后报 USER32 1114。原 Job、profile、工作区和服务已回收，
+本次许可已消耗。子进程实际选择的窗口对象及该权限差异与失败的因果仍 UNKNOWN。
+[实机窗口对象回执](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#实机创建者窗口对象访问对照)
+
 2026-11-09，交互会话中的零能力、低完整性 LPAC 用同一固定自研见证通过 USER32、
 桌面、SHELL32、UCRT 和 GDI 检查。独立 Session 0 的失败仍在。源码新增 LocalService
 创建者窗口站和桌面的 DACL 对照，用创建者和同一枚已绑定 LPAC 主令牌分别求访问掩码。

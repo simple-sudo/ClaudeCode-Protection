@@ -5,6 +5,22 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-09 普通 LPAC 显式桌面权限对照
+
+VERIFIED(实际交互 LPAC、显式临时桌面的权限差异、正负见证及临时对象回收)。
+FAIL(不存在或拒绝访问的桌面引发 USER32 1114，预期负向结果)。
+VERIFIED(普通新桌面 `0xC7` 权限下原生见证通过，`0x1` 和 `0x3` 均复现 1114)。
+FAIL(普通进程新建自选名称窗口站返回 5)。NOT_RUN(独立 Session 0 私有窗口站及桌面修复)。
+[真实普通对照](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#普通-lpac-显式桌面权限对照)
+
+## 2026-11-09 实机创建者窗口对象访问对照
+
+VERIFIED(`236bde5` 未激活更新、独立 LocalService 真实窗口对象 DACL 对照、绑定令牌和原链回收)。
+FAIL(`NtGdiInit2` 空返回、GDI `0xC0000001`、USER32 1114)。
+UNKNOWN(子进程实际选择的窗口对象、权限差异与初始化失败的因果)。
+NOT_RUN(窗口 ACL 变更、正式 Claude、受限真实身份读值、正常开发、GPU 和实际网络)。
+[实机结果](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#实机创建者窗口对象访问对照)
+
 ## 2026-11-09 交互 LPAC 与窗口对象对照
 
 VERIFIED(普通交互会话中零能力 LPAC 通过固定 USER32、桌面和 GDI 见证，profile 回收)。

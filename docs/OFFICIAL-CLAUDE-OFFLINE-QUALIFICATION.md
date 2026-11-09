@@ -1427,3 +1427,68 @@ LocalService 进程及线程已关联的窗口对象，拒绝把可见窗口站�
 后通过。另验证 nonce、帧长度、用途和掩码拒绝。Session 0 实际权限、桌面选择与
 `NtGdiInit2` 因果待核验。[窗口站访问权](https://learn.microsoft.com/en-us/windows/win32/winstation/window-station-security-and-access-rights) ·
 [桌面访问权](https://learn.microsoft.com/en-us/windows/win32/winstation/desktop-security-and-access-rights)
+
+### 实机创建者窗口对象访问对照
+
+本人批准审查 `E5AFB51E8BBF…` 并确认一次 UAC。原 Bootstrap 将 `9455e98`
+更新到 `236bde5efe75420087b5c84cfe95250d`，保持 INACTIVE。普通预检核对 61 项
+输入，17 项回执检查通过。已安装清单回读 SHA-256
+`720B2E8244685ACDCF3761ABFE8270C08471D39B2D453D0D5AF24B74AE09568A`。
+
+窗口对象两项检查均返回 0。原 LocalService 创建者在其非交互窗口站获得 `0xF006E`，
+在其线程桌面获得 `0xF00CF`。对同一对象的 DACL，原链绑定的零能力 LPAC 主令牌
+两项均获零权限。操作仅对创建者当前关联的两个对象做访问检查。Windows 为子进程实际
+选择的对象及该权限差异与内核初始化失败的因果仍 UNKNOWN。
+
+原见证恢复并附加成功。Win32k 禁用关闭，过滤器编号 0，CSR 返回 0，`NtGdiInit2`
+返回空，GDI 和 USER32 失败出口均为 `0xC0000001`。USER32 加载返回 1114，见证退出
+65。原 Job 有序关闭，profile、工作区、临时服务均由原链确认闭合。普通 SCM 复查
+返回 1060，确切工作区根缺席。原外层句柄终态及安全回读通过。许可已消耗，未重试。
+本次无窗口 ACL 修改、受限宿主真实内容读取、正常开发工具、GPU、外部网络或正式 Claude 执行。
+
+`work/session-zero-window-access-20261109-01/receipt.json` SHA-256
+`BB326472B28C7625570BC9A7DE98AB1E416874F3171D69A88CC606012F79CF81`，
+内含原外层终态 SHA-256 `D28CF321D6193D0B6469223C2E9FFBB6C87CD0DA6E479B3944DBDD41F8EF2B27`。
+
+### 普通 LPAC 显式桌面权限对照
+
+在同一 Windows 宿主的普通交互会话中，复用 SHA-256 `7FFE9A92…` 的原生固定见证。
+三次均以本次临时 profile 创建低完整性、零能力 LPAC，恢复前核对原令牌和 Job。
+通过 `STARTUPINFO.lpDesktop` 选择确认不存在的桌面时，见证退出 65，USER32 返回
+1114，GDI32 与 GDI32FULL 各返回 8，Win32k 禁用仍关闭。
+
+随后在同一交互窗口站中新建两个低完整性临时桌面。每次只选择本轮的新对象，父线程
+保留原桌面。两者都仅给创建者控制权，允许组另外授予本轮包桌面对象访问权。恢复前
+用实际挂起进程的 LPAC 主令牌与对象 DACL 检查 `DESKTOP_READOBJECTS`，拒绝组确认
+拒绝，允许组确认授予。拒绝组复现上述 1114、退出 65 及依赖结果，允许组退出 0 并
+完成 USER32、桌面、SHELL32、UCRT 与 GDI。两组同型，新名称和包分别绑定到各自的
+对照。原进程均确认终态，两个临时桌面关闭后均无法再打开，三个 profile 的映射和
+存储均确认消失。第一次编译因掩码有符号和无符号比较失败，保留原日志，改正后重建。
+
+进一步用实际 LPAC 令牌核对每个新临时桌面的最大可获权限。仅 `DESKTOP_READOBJECTS`
+（`0x1`）或再加 `DESKTOP_CREATEWINDOW`（`0x3`）均复现 1114。读写桌面对象、
+创建窗口和菜单、枚举桌面的组合 `0xC7` 通过完整原生见证。该组合没有 hook、日志录制、
+回放、桌面切换或修改 ACL 权限。三个进程、桌面和 profile 均核验回收。`0xC7` 仅是
+当前实测通过的较窄权限集合，最小组合及 Session 0 适用性仍 UNKNOWN。
+
+该对照说明桌面访问不足足以导致同样的 USER32 失败。独立 Session 0 的窗口站选择及
+私有窗口对象修复仍需实机验证。普通显式命名并禁止采用已有对象时，窗口站创建返回
+5。系统生成名称的此前普通对照返回 183。Windows 要求管理员组成员才能指定窗口站名，
+空名称按登录会话 ID 派生。窗口站还承载剪贴板及原子表。后续 Session 0 验证需将这
+两个对象限定在本次拥有的非交互环境，验证显式目标、限制令牌访问及原链回收。
+[窗口站选择](https://learn.microsoft.com/en-us/windows/win32/winstation/process-connection-to-a-window-station) ·
+[窗口站创建](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-createwindowstationw) ·
+[窗口站对象](https://learn.microsoft.com/en-us/windows/win32/winstation/window-stations) ·
+[桌面选择](https://learn.microsoft.com/en-us/windows/win32/winstation/thread-connection-to-a-desktop)
+
+普通结果在 `work/session-zero-window-access-20261109-01/` 的各子目录 `result.txt`。
+
+| 对照目录 | SHA-256 |
+|---|---|
+| `ordinary-lpac-missing-desktop` | `ECB8AD5710A20EAAB68E67909493BAE5C8992ABED0ACF9B758F7AF6E7E88510C` |
+| `ordinary-lpac-private-desktop-v2-Deny` | `44543464B69E65D500496CEF661EB225AB96759B0CA59400E2FD36CDBE9DBF15` |
+| `ordinary-lpac-private-desktop-v2-Allow` | `EEC09C8E8A990EC109A1714B9C380A8CDF7EE16E572D8C79EC9FD93FD49494C5` |
+| `ordinary-named-station` | `7E24976FD2B19D7E69A5AA430E4ACB5C2466713F94F970A58D03B3DC2B371373` |
+| `ordinary-lpac-readonly-desktop-Allow` | `92380FB0261CC748675BBAF795B447D3D319FA6CC8D536B6B5357BAB41CAE0DC` |
+| `ordinary-lpac-read-create-desktop-Allow` | `A6CBAB5B8F811E43F6576BCB1A70B3B72FC26A6471895B5E693DDA7F5957E3C7` |
+| `ordinary-lpac-basic-objects-desktop-Allow` | `C260BE36FB86E2AFEB1FAEDBD38FDCA356FBE47B199186105F00ADFCACAC9B34` |
