@@ -133,6 +133,7 @@ internal static class Program
                 "qualify-openssl-offline" => ProtectionLifecycle.InstalledBroker.QualifyOpenSslOffline(),
                 "qualify-offline-console" => ProtectionLifecycle.InstalledBroker.QualifyOfflineConsole(),
                 "qualify-independent-offline-console" => ProtectionLifecycle.InstalledBroker.QualifyIndependentOfflineConsole(),
+                "qualify-independent-git-init" => ProtectionLifecycle.InstalledBroker.QualifyIndependentGitInit(),
                 "qualify-session-zero-startup-witness" => ProtectionLifecycle.InstalledBroker.QualifySessionZeroStartupWitness(),
                 "qualify-winsock-provider-session-gateway" => ProtectionLifecycle.InstalledBroker.QualifyWinsockProviderSessionGateway(),
                 "qualify-winsock-transport-session-gateway" => ProtectionLifecycle.InstalledBroker.QualifyWinsockTransportSessionGateway(),

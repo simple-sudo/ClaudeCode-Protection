@@ -230,6 +230,8 @@ public static partial class InstalledBroker
         =>WithCurrentInstallation(OfflineConsoleQualification.Run);
     public static (int ExitCode,string Report) QualifyIndependentOfflineConsole()
         =>WithCurrentInstallation(OfflineConsoleQualification.RunIndependent);
+    public static (int ExitCode,string Report) QualifyIndependentGitInit()
+        =>WithCurrentInstallation(OfflineConsoleQualification.RunGitInit);
     public static (int ExitCode,string Report) QualifySessionZeroStartupWitness()
         =>WithCurrentInstallation(OfflineConsoleQualification.RunStartupWitness);
     public static (int ExitCode,string Report) InspectWinsockReadAccess()=>WithCurrentInstallation((_,state,_)=>SessionWinsockReadAccess.Inspect(state),forManifestAccessRecovery:true);

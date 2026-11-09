@@ -313,13 +313,21 @@ internal static class OfflineConsoleQualification
         return RunIndependent(layout,state,version,startupWitness:true);
     }
 
-    private static (int ExitCode,string Report) RunIndependent(FixedLayout layout,ProtectedState state,VerifiedVersion version,bool startupWitness)
+    internal static (int ExitCode,string Report) RunGitInit(FixedLayout layout,ProtectedState state,VerifiedVersion version)
+    {
+        if(version.Package.SchemaVersion!=PackageAssetCatalog.SessionZeroGitInitSchema)
+            throw WfpNative.Contract("IndependentGitInitRequiresFixedPackageSchema");
+        return RunIndependent(layout,state,version,startupWitness:false,gitInit:true);
+    }
+
+    private static (int ExitCode,string Report) RunIndependent(FixedLayout layout,ProtectedState state,VerifiedVersion version,
+        bool startupWitness,bool gitInit=false)
     {
         var plans=RequireOfflinePrerequisites(state,version);
         var branchWitness=startupWitness && SessionZeroStartupWitness.UsesBranchTrace(version.Package.SchemaVersion);
         var windowAccessWitness=startupWitness && version.Package.SchemaVersion==PackageAssetCatalog.SessionZeroWindowAccessSchema;
-        var networkSurvey=!startupWitness && version.Package.SchemaVersion is
-            PackageAssetCatalog.SessionZeroNetworkSurveySchema or PackageAssetCatalog.ReviewedProxyRouteSchema;
+        var networkSurvey=!startupWitness && !gitInit && version.Package.SchemaVersion is
+            PackageAssetCatalog.SessionZeroNetworkSurveySchema or PackageAssetCatalog.ReviewedProxyRouteSchema or PackageAssetCatalog.SessionZeroGitInitSchema;
         var identitySurvey=networkSurvey || !startupWitness && version.Package.SchemaVersion==PackageAssetCatalog.SessionZeroIdentitySurveySchema;
         var privateWindow=startupWitness?SessionZeroStartupWitness.UsesPrivateWindow(version.Package.SchemaVersion):
             SessionZeroWindowPolicy.SupportsConsole(version.Package.SchemaVersion);
@@ -355,6 +363,8 @@ internal static class OfflineConsoleQualification
         {
             foreach(var plan in plans)fences.Add(PersistentFence.OpenExisting(state,plan.Data.FenceId));
             AssertQuarantine();
+            if(gitInit)stage="OpenGitAssets";
+            using var git=gitInit?SessionGitToolchain.Open():null;
             stage="RegisterCreator";
             using var creator=SessionZeroCreatorRegistration.Create(layout,state,version);
             jobId=creator.JobId;
@@ -363,7 +373,7 @@ internal static class OfflineConsoleQualification
             SessionZeroCreatorChannel preparedChannel;
             try
             {
-                if(!startupWitness)
+                if(!startupWitness && !gitInit)
                 {
                     stage="CaptureHostIdentity";
                     host=identitySurvey?OfflineConsoleHostIdentity.CaptureSurvey(jobId):OfflineConsoleHostIdentity.Capture(jobId);
@@ -422,9 +432,10 @@ internal static class OfflineConsoleQualification
                     privateWindows=SessionZeroWindowOwner.Start(layout,state,version,job);
                 }
                 stage="ValidateSuspendedRoot";
-                using var root=channel.Exchange(layout,state,version,job,startupWitness,privateWindows);
+                git?.AssertHeld();
+                using var root=channel.Exchange(layout,state,version,job,startupWitness,privateWindows,gitInit);
                 creatorWindowAccess=root.WindowAccess;
-                child=AtomicChild.AdoptSessionZeroOfflineConsole(layout,state,version,job,root,startupWitness);
+                child=AtomicChild.AdoptSessionZeroOfflineConsole(layout,state,version,job,root,startupWitness,gitInit);
                 if(networkSurvey)childCreated=child.ExpectedCreatedFileTime;
                 runtime=ProtectionRuntimeLease.ForFixedOfflineConsole(state,version,job,fences,child,job.JobId);
                 runtime.Activate(10000);
@@ -444,7 +455,7 @@ internal static class OfflineConsoleQualification
                 }while(exit is null);
                 runtime.AssertHealthy();
                 if(exit!=0)throw WfpNative.Contract("IndependentOfflineConsoleChildExitDiffers");
-                void AssertRunning(){runtime.AssertHealthy();workspace.AssertHeld();privateWindows?.AssertHeld(job);}
+                void AssertRunning(){runtime.AssertHealthy();workspace.AssertHeld();privateWindows?.AssertHeld(job);git?.AssertHeld();}
             }
             catch(Exception error)
             {
@@ -495,7 +506,18 @@ internal static class OfflineConsoleQualification
                     failedStage??="ReadCreatorConsoleCapture";
                     failures.Add(captureFailure);
                 }
-                if(child is not null && !startupWitness)
+                if(gitInit && exit==0)
+                {
+                    stage="VerifyGitRepository";
+                    try
+                    {
+                        workspace.AssertHeld();
+                        git!.AssertHeld();
+                        filesMatched=SessionGitToolchain.IndependentInitObserved(workspace.Path);
+                    }
+                    catch(Exception error){failedStage??=stage;failures.Add(error);}
+                }
+                if(child is not null && !startupWitness && !gitInit)
                 {
                     stage="SealWorkerEvidence";
                     try
@@ -536,6 +558,24 @@ internal static class OfflineConsoleQualification
             foreach(var fence in fences)try{fence.Dispose();}catch(Exception error){failures.Add(error);}
         }
         stage=failedStage??stage;
+        if(gitInit)
+        {
+            var outputQuiet=stdout is {Overflow:false,Bytes.Length:0} && stderr is {Overflow:false,Bytes.Length:0};
+            var qualified=failures.Count==0 && resumed && exit==0 && closed && privateWindowsClosed && profileClosed &&
+                workspaceClosed && serviceRemoved && filesMatched && outputQuiet;
+            var gitReport=JsonSerializer.Serialize(new {
+                SchemaVersion=1,Scope=SessionGitToolchain.IndependentInitScope,state.InstallationId,JobId=jobId,
+                version.Package.Release,version.Package.ManifestHash,Status=qualified?"INDEPENDENT_GIT_INIT_CLOSED":"INDEPENDENT_GIT_INIT_NOT_CONFIRMED",
+                ImageSHA256=SessionGitToolchain.ImageSHA256,SessionGitToolchain.AssetSetSHA256,LastStage=stage,
+                ProcessResumed=resumed,ChildExit=exit,RepositoryObserved=filesMatched,QuietStreamsObserved=outputQuiet,
+                OriginalJobClosed=closed,ProfileClosed=profileClosed,WorkspaceClosed=workspaceClosed,ServiceRemoved=serviceRemoved,
+                PrivateWindowOwnerReady=privateWindows is not null,PrivateWindowOwnerClosed=privateWindowsClosed,CreatorWindowAccess=creatorWindowAccess,
+                Output=Summarize(stdout),Error=Summarize(stderr),StopObservation=stopped,Failures=failures.SelectMany(WfpNative.Describe).ToArray(),
+                HostIdentityQualified=false,GatewayOpened=false,NetworkQualified=false,LaunchAuthorized=false,FormalAdmissionIssued=false,ClaudeLaunched=false
+            });
+            if(jobId is not null)state.WriteNew("independent-git-init-after-"+jobId+".json",Encoding.UTF8.GetBytes(gitReport));
+            return(qualified?0:3,gitReport);
+        }
         if(startupWitness)
         {
             var observation=SessionZeroStartupWitness.Observe(version.Package.SchemaVersion,exit,stdout,stderr)

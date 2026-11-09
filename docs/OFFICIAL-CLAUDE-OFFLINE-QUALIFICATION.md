@@ -1758,3 +1758,20 @@ FAIL，Broker 退出 3。原值证据封存 SHA-256
 `D34805F6437BF6A544B7509D84ED4572CE9499300C07B50E2866438F36CF54BB`。
 本次许可已消耗。其他固件和设备接口、完整 L3、授权开发工具、网络、GPU、
 异常回收、GUI 和正式 Claude 尚未验收。
+
+### 独立链的固定 Git init
+
+schema 18 在原 LocalService 创建通道增加固定 `CCG1` 请求。可信 Broker 与
+创建者分别封存原 Git 映像和六项工具文件，LocalService 通过原挂起创建入口直接
+启动一个固定 Git，选用私有桌面和原完整隔离、零能力 LPAC、Job 与三路标准流。
+从原 Git 命令合同复用隔离环境和禁用凭据、钩子及网络协议。该入口只在本轮工作区
+执行 `git init --quiet --template= --initial-branch=cpc-offline git-project`。
+成功要求原进程退出 0，标准流无意外内容，可信侧核对固定 HEAD 和仓库目录后
+由原 owner 回收全部会话资源。
+
+普通 Release 六项构建和六组限定回归通过。同一固定命令用普通真实 Git 退出 0，
+确认 HEAD、对象和引用目录，标准输出与错误流均为零字节。首次普通测试脚本在
+调用前遇到参数类型不匹配，修正后使用新工作区执行。结果在
+`work/session-zero-git-init-20261109-01/ordinary-git-init.json`，SHA-256
+`42167244C1225199CA708E6D28883623640572EAEDD5A3E32B41A57FC8A0966F`。
+新版安装、独立受限 Git、其他 Git 工作流、PowerShell、编译器和 GPU 仍待实机。

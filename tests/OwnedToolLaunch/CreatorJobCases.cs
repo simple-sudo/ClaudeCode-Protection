@@ -322,6 +322,15 @@ internal static class CreatorJobCases
             networkMode.GetValue(networkDecoded) is true && networkMode.GetValue(surveyDecoded) is false);
         Refused(()=>parseRequest.Invoke(null,[networkRequest,jobId,12u,7u]));
         Refused(()=>parseWorkload.Invoke(null,[networkRequest,legacyId,12u,7u]));
+        var gitRequest=(byte[])networkRequest.Clone();
+        "CCG1"u8.CopyTo(gitRequest);
+        var gitMode=decoded.GetType().GetProperty("GitInit",BindingFlags.Instance|BindingFlags.NonPublic)!;
+        var gitDecoded=parseWorkload.Invoke(null,[gitRequest,jobId,12u,7u])!;
+        Check(mode.GetValue(gitDecoded) is false && privateMode.GetValue(gitDecoded) is true &&
+            readControlMode.GetValue(gitDecoded) is true && gitMode.GetValue(gitDecoded) is true &&
+            networkMode.GetValue(gitDecoded) is false && gitMode.GetValue(networkDecoded) is false);
+        Refused(()=>parseRequest.Invoke(null,[gitRequest,jobId,12u,7u]));
+        Refused(()=>parseWorkload.Invoke(null,[gitRequest,legacyId,12u,7u]));
         var windowType=library.GetType("ProtectionLifecycle.SessionZeroWindowAccess",true)!;
         var parseWindow=channel.GetMethod("ParseWindowAccess",methods)!;
         var writeWindow=channel.GetMethod("CreateWindowAccess",methods)!;

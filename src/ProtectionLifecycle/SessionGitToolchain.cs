@@ -16,6 +16,7 @@ internal sealed record GitToolchainReport(bool InputHashMatched,bool InitAddComm
 // is imported. Git always executes inside the existing confined child/Job.
 internal sealed class SessionGitToolchain : IDisposable
 {
+    internal const string IndependentInitScope="FIXED_INDEPENDENT_GIT_INIT_FULL_QUARANTINE";
     private static readonly (string Name,string Hash)[] Assets={
         ("git.exe","11CE9BFCB40927767C474326EE87477079E1CC24A9782E69936B3351B6C3C205"),
         ("libiconv-2.dll","FF31FA811F9C07CC7FDAA68C9E8BCA3A7B4FDF6E0A079A58175EA58BA139C7AE"),
@@ -26,6 +27,7 @@ internal sealed class SessionGitToolchain : IDisposable
     };
     internal static string DirectoryPath=>WindowsPathSeal.Child(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),"Git/mingw64/bin");
     internal static string ToolPath=>WindowsPathSeal.Child(DirectoryPath,"git.exe");
+    internal static string ImageSHA256=>Assets[0].Hash;
     internal static string AssetSetSHA256=>Convert.ToHexString(SHA256.HashData(Encoding.ASCII.GetBytes(string.Join('\n',Assets.Select(a=>a.Name+":"+a.Hash)))));
     private readonly PathLease directory;
     private readonly List<FileStream> files=new();
@@ -153,6 +155,22 @@ internal sealed class SessionGitToolchain : IDisposable
             "-c","core.fsmonitor=false","-c","maintenance.auto=false","-c","gc.auto=0","-c","commit.gpgsign=false",
             "-c","core.hooksPath="+WindowsPathSeal.Child(workspace,"empty-git-hooks"),"-c","safe.directory="+WindowsPathSeal.Child(workspace,"git-project")}.Concat(arguments))start.ArgumentList.Add(arg);
         return start;
+    }
+    internal static ProcessStartInfo StartIndependentInit(string workspace) =>
+        Start(workspace,DirectoryPath,"init","--quiet","--template=","--initial-branch=cpc-offline","git-project");
+
+    internal static bool IndependentInitObserved(string workspace)
+    {
+        using var repository=WindowsPathSeal.LockDirectory(WindowsPathSeal.Child(workspace,"git-project/.git"),PathPolicy.Source);
+        using var objects=WindowsPathSeal.LockDirectory(WindowsPathSeal.Child(repository.Path,"objects"),PathPolicy.Source);
+        using var refs=WindowsPathSeal.LockDirectory(WindowsPathSeal.Child(repository.Path,"refs/heads"),PathPolicy.Source);
+        using var head=new FileStream(WindowsPathSeal.Open(WindowsPathSeal.Child(repository.Path,"HEAD"),false,true),FileAccess.Read);
+        ReadOnlySpan<byte> expected="ref: refs/heads/cpc-offline\n"u8;
+        if(head.Length!=expected.Length)return false;
+        Span<byte> content=stackalloc byte[expected.Length];
+        head.ReadExactly(content);
+        repository.AssertHeld();objects.AssertHeld();refs.AssertHeld();
+        return expected.SequenceEqual(content);
     }
     private static (int Exit,string Out,string Error) Run(string workspace,string directory,params string[] args)
     {

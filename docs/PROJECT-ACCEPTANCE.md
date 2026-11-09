@@ -5,6 +5,13 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-09 独立链的固定 Git init
+
+SOURCE / BUILD / INTEGRATED(schema 18 独立固定 Git 创建请求及原链回收)。
+VERIFIED(普通实际固定 Git 建库、HEAD 和目录读回、标准流、协议和授权负向)。
+NOT_RUN(新版安装、受限 Git、独立 add/commit、完整工具链和正式 Claude)。
+[证据](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#独立链的固定-git-init)
+
 ## 2026-11-09 可信侧真实外网对照
 
 VERIFIED(普通 Windows 客户端经现有本地监听完成固定 Cloudflare DNS、Microsoft

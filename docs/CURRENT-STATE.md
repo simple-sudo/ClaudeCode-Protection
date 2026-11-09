@@ -1,5 +1,10 @@
 # 当前状态与授权摘要
 
+2026-11-09，schema 18 接入独立 LocalService 零能力 LPAC 的固定 `git init`。
+沿用原 Broker、创建者、Job、私有窗口、工作区与回收。普通 Release 构建、
+边界回归和实际固定 Git 命令通过。新版安装和独立受限 Git 尚未执行。
+[独立 Git 资格](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#独立链的固定-git-init)
+
 2026-11-09，用户允许直接执行后续外网验证。可信普通身份经现有 FlClash 本地
 监听发出 Cloudflare 固定 DNS 查询及 Microsoft 固定 HEAD，两次 CONNECT 和
 最终 HTTP 均为 200。Cloudflare 另一次采样记录本次出口为 IPv4，服务端归类

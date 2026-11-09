@@ -22,6 +22,7 @@ internal static class OfflineConsoleNativeCases
     {
         var broker=library.GetType("ProtectionLifecycle.InstalledBroker",true)!;
         Refuse<UnauthorizedAccessException>(()=>Call(broker.GetMethod("QualifyOfflineConsole")!,null));
+        Refuse<UnauthorizedAccessException>(()=>Call(broker.GetMethod("QualifyIndependentGitInit")!,null));
         var atomic=library.GetType("ProtectionLifecycle.AtomicChild",true)!;
         Refuse<InvalidDataException>(()=>Call(atomic.GetMethod("AssertOfflineConsoleWorkerIdentity",Static)!,null));
         var window=library.GetType("ProtectionLifecycle.SessionZeroWindowLease",true)!;

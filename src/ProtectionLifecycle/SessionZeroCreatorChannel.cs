@@ -23,6 +23,7 @@ internal sealed class SessionZeroCreatorChannel : IDisposable
     private const uint PrivateWindowConsoleRequestMagic=0x314d4343; // CCM1.
     private const uint IdentitySurveyRequestMagic=0x31534343; // CCS1.
     private const uint NetworkSurveyRequestMagic=0x314e4343; // CCN1.
+    private const uint GitInitRequestMagic=0x31474343; // CCG1.
     private const uint ProfileCreatedMagic=0x314a4343,ProfileRecordedMagic=0x31414343; // CCJ1, CCA1.
     private const uint TokenProofMagic=0x31544343; // CCT1.
     private const int NonceSize=16,ReplySize=44,ObjectIdentityBytes=12;
@@ -96,7 +97,7 @@ internal sealed class SessionZeroCreatorChannel : IDisposable
     // The caller must retain the original Job and close it through the
     // existing offline stop path if a granted exchange fails.
     internal SuspendedRoot Exchange(FixedLayout layout,ProtectedState state,VerifiedVersion version,OwnedKernelJob job,bool startupWitness,
-        SessionZeroWindowOwner? privateWindows=null)
+        SessionZeroWindowOwner? privateWindows=null,bool gitInit=false)
     {
         var service=registration.AssertReadyForJob(state,version,this);
         var peer=boundPeer??throw WfpNative.Contract("CreatorPipePeerBindingMissingOrChanged");
@@ -118,9 +119,16 @@ internal sealed class SessionZeroCreatorChannel : IDisposable
         privateWindows?.AssertHeld(job);
         if(startupWitness)BinaryPrimitives.WriteUInt32LittleEndian(request,privateWindow?(stationReadControl?PrivateWindowReadControlRequestMagic:PrivateWindowRequestMagic):
             windowAccess?WindowAccessRequestMagic:StartupWitnessRequestMagic);
+        else if(gitInit)
+        {
+            if(schema!=PackageAssetCatalog.SessionZeroGitInitSchema || !privateWindow)
+                throw WfpNative.Contract("CreatorGitInitRequiresFixedPrivateWindowPackage");
+            BinaryPrimitives.WriteUInt32LittleEndian(request,GitInitRequestMagic);
+        }
         else if(privateWindow)BinaryPrimitives.WriteUInt32LittleEndian(request,schema switch {
             PackageAssetCatalog.SessionZeroIdentitySurveySchema=>IdentitySurveyRequestMagic,
-            PackageAssetCatalog.SessionZeroNetworkSurveySchema or PackageAssetCatalog.ReviewedProxyRouteSchema=>NetworkSurveyRequestMagic,
+            PackageAssetCatalog.SessionZeroNetworkSurveySchema or PackageAssetCatalog.ReviewedProxyRouteSchema or
+                PackageAssetCatalog.SessionZeroGitInitSchema=>NetworkSurveyRequestMagic,
             _=>PrivateWindowConsoleRequestMagic
         });
         AssertQuarantine(state);
@@ -157,7 +165,7 @@ internal sealed class SessionZeroCreatorChannel : IDisposable
             AssertBoundPeer(service,image);
             if(privateWindow)SessionZeroWindowPolicy.AssertGrants(windowProof.Value,stationReadControl);
         }
-        var rootImage=startupWitness?SessionZeroStartupWitness.ReviewedImage(layout,version):image;
+        var rootImage=gitInit?SessionGitToolchain.ToolPath:startupWitness?SessionZeroStartupWitness.ReviewedImage(layout,version):image;
         var root=OpenRoot(report,tokenProof,job,rootImage,package.Value);
         try
         {
@@ -265,6 +273,7 @@ internal sealed class SessionZeroCreatorChannel : IDisposable
         internal bool PrivateStationReadControl {get;init;}
         internal bool IdentitySurvey {get;init;}
         internal bool NetworkSurvey {get;init;}
+        internal bool GitInit {get;init;}
     }
     internal static Request ParseRequest(byte[] frame,string fixedJobId,uint serverPid,uint serverSession)
         =>ParseBoundRequest(frame,fixedJobId,serverPid,serverSession,allowStartupWitness:false);
@@ -281,16 +290,17 @@ internal sealed class SessionZeroCreatorChannel : IDisposable
         var magic=BinaryPrimitives.ReadUInt32LittleEndian(frame);
         if(magic!=RequestMagic && (!allowStartupWitness || magic is not (StartupWitnessRequestMagic or WindowAccessRequestMagic or
             PrivateWindowRequestMagic or PrivateWindowReadControlRequestMagic or PrivateWindowConsoleRequestMagic or
-            IdentitySurveyRequestMagic or NetworkSurveyRequestMagic)))
+            IdentitySurveyRequestMagic or NetworkSurveyRequestMagic or GitInitRequestMagic)))
             throw WfpNative.Contract("CreatorRequestPurposeMismatch");
-        var managedPrivate=magic is PrivateWindowConsoleRequestMagic or IdentitySurveyRequestMagic or NetworkSurveyRequestMagic;
+        var consolePrivate=magic is PrivateWindowConsoleRequestMagic or IdentitySurveyRequestMagic or NetworkSurveyRequestMagic or GitInitRequestMagic;
         return new(Convert.ToHexString(frame.AsSpan(28,16)).ToLowerInvariant(),fixedJobId,frame.AsSpan(12,NonceSize).ToArray()) {
-            StartupWitness=magic!=RequestMagic && !managedPrivate,
+            StartupWitness=magic!=RequestMagic && !consolePrivate,
             ObserveWindowAccess=magic==WindowAccessRequestMagic,
-            UsePrivateWindow=managedPrivate || magic is PrivateWindowRequestMagic or PrivateWindowReadControlRequestMagic,
-            PrivateStationReadControl=managedPrivate || magic==PrivateWindowReadControlRequestMagic,
+            UsePrivateWindow=consolePrivate || magic is PrivateWindowRequestMagic or PrivateWindowReadControlRequestMagic,
+            PrivateStationReadControl=consolePrivate || magic==PrivateWindowReadControlRequestMagic,
             IdentitySurvey=magic is IdentitySurveyRequestMagic or NetworkSurveyRequestMagic,
-            NetworkSurvey=magic==NetworkSurveyRequestMagic
+            NetworkSurvey=magic==NetworkSurveyRequestMagic,
+            GitInit=magic==GitInitRequestMagic
         };
     }
 

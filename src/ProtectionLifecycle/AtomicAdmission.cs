@@ -161,6 +161,7 @@ internal sealed partial class AtomicChild : IDisposable
     private readonly OfflineTlsProbe? offlineTls;
     private readonly bool offlineConsole;
     private readonly bool independentOfflineConsole;
+    private readonly bool independentGitInit;
     private readonly bool startupWitness;
     private readonly SessionZeroCreatorChannel.TokenProof creatorTokenProof;
     private readonly ProtectedSession.Preparation? sessionPreparation;
@@ -368,25 +369,27 @@ internal sealed partial class AtomicChild : IDisposable
         process=new(info.Process,true);thread=new(info.Thread,true);initialThreadId=info.ThreadId;
         sessionPreparation=preparation;resourceQualification=resources;this.offlineTls=offlineTls;this.offlineConsole=offlineConsole;
     }
-    private AtomicChild(ProtectedState state,VerifiedVersion version,OwnedKernelJob job,SessionZeroCreatorChannel.SuspendedRoot root,string image,string sid,bool startupWitness)
+    private AtomicChild(ProtectedState state,VerifiedVersion version,OwnedKernelJob job,SessionZeroCreatorChannel.SuspendedRoot root,
+        string image,string sid,bool startupWitness,bool gitInit)
     {
         this.state=state;this.version=version;this.job=job;this.image=image;packageSid=sid;
         Pid=root.Identity.Pid;initialThreadId=root.Identity.Tid;
         (process,thread)=root.TransferTo(job);
         offlineConsole=true;independentOfflineConsole=true;
+        independentGitInit=gitInit;
         this.startupWitness=startupWitness;
         creatorTokenProof=root.LpacProof;
     }
     internal static AtomicChild AdoptSessionZeroOfflineConsole(FixedLayout layout,ProtectedState state,VerifiedVersion version,
-        OwnedKernelJob job,SessionZeroCreatorChannel.SuspendedRoot root,bool startupWitness)
+        OwnedKernelJob job,SessionZeroCreatorChannel.SuspendedRoot root,bool startupWitness,bool gitInit=false)
     {
         ProtectedState.RequireAdministrator();state.AssertHeld();version.AssertHeld(state);
         _=job.SessionZeroCreatorSid;
         job.AssertCreatorSealedBeforeResume();
-        var image=startupWitness?SessionZeroStartupWitness.ReviewedImage(layout,version):
+        var image=gitInit?SessionGitToolchain.ToolPath:startupWitness?SessionZeroStartupWitness.ReviewedImage(layout,version):
             WindowsPathSeal.Child(layout.Version(version.Package.Release),"bin/admin/ProtectionBroker.exe");
         using var package=new InstallationPackageSid(state);
-        return new(state,version,job,root,image,package.Value,startupWitness);
+        return new(state,version,job,root,image,package.Value,startupWitness,gitInit);
     }
     internal static AtomicChild CreateCanary(FixedLayout layout,ProtectedState state,VerifiedVersion version,OwnedKernelJob job,InstallationProfileLease profile,
         NetworkProbePlan? network=null,IntPtr output=default,GpuProbePlan? gpu=null)
@@ -403,21 +406,31 @@ internal sealed partial class AtomicChild : IDisposable
         if(!Environment.Is64BitProcess || Marshal.SizeOf<StartupInfoEx>()!=112 || Marshal.SizeOf<SecurityCapabilities>()!=24)
             throw new PlatformNotSupportedException("Creator startup requires the declared x64 layout");
         var brokerImage=ResolveSessionZeroImage(FixedLayout.FromWindows(),Environment.ProcessPath);
-        var image=client.Request.StartupWitness?
+        using var git=client.Request.GitInit?SessionGitToolchain.Open():null;
+        var image=git is not null?SessionGitToolchain.ToolPath:client.Request.StartupWitness?
             WindowsPathSeal.Child(Path.GetDirectoryName(brokerImage)!,Path.GetFileName(PackageAssetCatalog.SessionZeroStartupWitnessPath)):brokerImage;
-        using var imageParent=WindowsPathSeal.LockDirectory(Path.GetDirectoryName(image)!,PathPolicy.Protected);
-        using var heldImage=WindowsPathSeal.Open(image,false,true);
-        WindowsPathSeal.AssertAcl(heldImage,true);
+        using var imageParent=git is null?WindowsPathSeal.LockDirectory(Path.GetDirectoryName(image)!,PathPolicy.Protected):null;
+        using var heldImage=git is null?WindowsPathSeal.Open(image,false,true):null;
+        if(heldImage is not null)WindowsPathSeal.AssertAcl(heldImage,true);
         var session=client.Request.JobId;
         using var workspace=WindowsPathSeal.LockDirectory(SessionTaskWorkspace.PathFor(session),PathPolicy.Source);
+        var gitStart=git is null?null:SessionGitToolchain.StartIndependentInit(workspace.Path);
         var env=new SortedDictionary<string,string>(StringComparer.OrdinalIgnoreCase);
-        var windows=Environment.GetFolderPath(Environment.SpecialFolder.Windows);
-        if(string.IsNullOrEmpty(windows))throw WfpNative.Contract("CreatorWindowsPathMissing");
-        env["SystemRoot"]=env["windir"]=WindowsPathSeal.Canonical(windows);
-        env["PATH"]=WindowsPathSeal.Child(windows,"System32")+";"+windows;
-        env["DOTNET_ROOT"]=WindowsPathSeal.Child(Path.GetDirectoryName(workspace.Path)!,"dotnet");
-        env["DOTNET_ROLL_FORWARD"]="LatestPatch";
-        OfflineConsoleQualification.BindEnvironment(env,workspace.Path,profile.Package.Name,session);
+        if(gitStart is not null)
+        {
+            foreach(var entry in gitStart.Environment)
+                if(entry.Value is { } value)env.Add(entry.Key,value);
+        }
+        else
+        {
+            var windows=Environment.GetFolderPath(Environment.SpecialFolder.Windows);
+            if(string.IsNullOrEmpty(windows))throw WfpNative.Contract("CreatorWindowsPathMissing");
+            env["SystemRoot"]=env["windir"]=WindowsPathSeal.Canonical(windows);
+            env["PATH"]=WindowsPathSeal.Child(windows,"System32")+";"+windows;
+            env["DOTNET_ROOT"]=WindowsPathSeal.Child(Path.GetDirectoryName(workspace.Path)!,"dotnet");
+            env["DOTNET_ROLL_FORWARD"]="LatestPatch";
+            OfflineConsoleQualification.BindEnvironment(env,workspace.Path,profile.Package.Name,session);
+        }
         using var channels=streams.PrepareCreationAttributes();
         using var seal=new KernelJobSeal.SessionObjectDescriptor(localService:true);
         var processSecurity=seal.Attributes;var threadSecurity=seal.Attributes;
@@ -445,13 +458,14 @@ internal sealed partial class AtomicChild : IDisposable
             var startup=new StartupInfoEx{Basic=new(){Size=Marshal.SizeOf<StartupInfoEx>(),Desktop=desktop,Flags=0x100,
                 Input=std.Input,Output=std.Output,Error=std.Error},Attributes=attributes};
             environment=Marshal.StringToHGlobalUni(string.Join('\0',env.Select(p=>p.Key+"="+p.Value))+"\0\0");
-            var command=new StringBuilder("\""+image+"\"");
-            if(!client.Request.StartupWitness)command.Append(' ').Append(client.Request switch {
+            var command=gitStart is not null?InheritedToolCommand(image,gitStart.ArgumentList.ToArray()):new StringBuilder("\""+image+"\"");
+            if(gitStart is null && !client.Request.StartupWitness)command.Append(' ').Append(client.Request switch {
                 {NetworkSurvey:true}=>OfflineConsoleQualification.NetworkSurveyChildCommand,
                 {IdentitySurvey:true}=>OfflineConsoleQualification.IdentitySurveyChildCommand,
                 {UsePrivateWindow:true}=>OfflineConsoleQualification.PrivateWindowChildCommand,
                 _=>OfflineConsoleQualification.ChildCommand
             });
+            git?.AssertHeld();
             if(!CreateSealedProcess(image,command,ref processSecurity,ref threadSecurity,true,0x00080404u|OfflineConsoleStreams.DetachedCreationFlag,
                 environment,workspace.Path,ref startup,out var created))throw Error("CreatorAtomicCreateSuspendedOfflineConsole");
             return(new(created.Process,true),new(created.Thread,true));
@@ -725,11 +739,14 @@ internal sealed partial class AtomicChild : IDisposable
         AssertHeldInitialThread(process,thread,Pid,initialThreadId);
         var proof=new {SchemaVersion=1,state.InstallationId,job.JobId,Pid,CreatedFileTime=created.ToString("X16"),Token=token,
             ExpectedCapabilitiesSHA256=CapabilityProfile.SHA256,ObservedCapabilities=token.Capabilities?.CopyEntries(),
-            ImageSHA256=version.Package.Files.Single(f=>f.Asset.Id==(startupWitness?PackageAssetCatalog.SessionZeroStartupWitnessId:"broker-exe")).SHA256,Job=snapshot,Fences=observations,
+            ImageSHA256=independentGitInit?SessionGitToolchain.ImageSHA256:
+                version.Package.Files.Single(f=>f.Asset.Id==(startupWitness?PackageAssetCatalog.SessionZeroStartupWitnessId:"broker-exe")).SHA256,
+            Job=snapshot,Fences=observations,
             CreatorLpacAccessCheckBoundToPrimaryToken=independentOfflineConsole?(bool?)true:null,
             Binding="SECURITY_CAPABILITIES_AND_JOB_LIST_AT_CREATION",Status="BEFORE_FIRST_RESUME",NetworkBehaviorQualified=false,
             SessionBindingSHA256=sessionAdmission?.BindingSHA256,
-            Scope=sessionAdmission is not null?"AUTHENTICATED_SESSION_GATEWAY":network?.Kind==NetworkProbeKind.Control?"UNFENCED_OWNED_LOOPBACK_CONTROL":proxyOnly?"COMPILED_IPV4_PROXY_ONLY":gpuWorkload?"FIXED_CUDA_FULL_QUARANTINE":startupWitness?SessionZeroStartupWitness.Scope:independentOfflineConsole?"FIXED_INDEPENDENT_CONSOLE_FULL_QUARANTINE":offlineConsole?"FIXED_CONSOLE_FULL_QUARANTINE":
+            Scope=sessionAdmission is not null?"AUTHENTICATED_SESSION_GATEWAY":network?.Kind==NetworkProbeKind.Control?"UNFENCED_OWNED_LOOPBACK_CONTROL":proxyOnly?"COMPILED_IPV4_PROXY_ONLY":gpuWorkload?"FIXED_CUDA_FULL_QUARANTINE":startupWitness?SessionZeroStartupWitness.Scope:
+                independentGitInit?SessionGitToolchain.IndependentInitScope:independentOfflineConsole?"FIXED_INDEPENDENT_CONSOLE_FULL_QUARANTINE":offlineConsole?"FIXED_CONSOLE_FULL_QUARANTINE":
                 offlineTls switch {OfflineTlsProbe.Schannel=>"FIXED_SCHANNEL_FULL_QUARANTINE",OfflineTlsProbe.OpenSsl=>"FIXED_OPENSSL_FULL_QUARANTINE",_=>"FULL_QUARANTINE"}};
         state.WriteNew("admission-before-resume-"+job.JobId+".json",JsonSerializer.SerializeToUtf8Bytes(proof));
         OfflineConsoleUserSid=tokenUser;

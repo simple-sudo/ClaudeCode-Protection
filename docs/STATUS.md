@@ -5,6 +5,11 @@
 历史页的“当前/待执行/暂停/DELIVERABLE”按段落日期及限定范围解释，不是今天的状态或操作许可。
 不在本页复制当前安装和授权摘要。
 
+## 2026-11-09 独立链的固定 Git init
+
+复用原独立链创建固定 Git 进程，普通真实 Git 建库和原入口边界回归通过。
+[机制与证据](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#独立链的固定-git-init)
+
 ## 2026-11-09 可信侧真实外网对照
 
 现有本地监听完成 Cloudflare DNS 和 Microsoft HEAD，另取得真实出口参考。

@@ -508,7 +508,8 @@ internal sealed class ProtectedSession
     private static (int ExitCode,string Report) QualifyGateway(FixedLayout layout,ProtectedState state,VerifiedVersion version,GatewayMode mode)
     {
         ProtectedState.RequireAdministrator();state.AssertHeld();version.AssertHeld(state);
-        if(mode==GatewayMode.ReviewedRouteOpenSslHead && version.Package.SchemaVersion!=PackageAssetCatalog.ReviewedProxyRouteSchema)
+        if(mode==GatewayMode.ReviewedRouteOpenSslHead && version.Package.SchemaVersion is not
+            (PackageAssetCatalog.ReviewedProxyRouteSchema or PackageAssetCatalog.SessionZeroGitInitSchema))
             throw WfpNative.Contract("ReviewedRouteRequiresFixedPackageSchema");
         var owner=new ProtectedSession(layout,state,version,mode);
         if(owner.qualification is null)throw WfpNative.Contract("FixedGatewayQualificationRequired");

@@ -193,3 +193,15 @@ PID 与创建时间一致。Schannel 撤销检查关闭，以限定此普通对�
 `work/reviewed-proxy-route-20261109-01/trusted-public-control-20261109-02/` 中
 `receipt.json` SHA-256 `15A826AB144DD51327FA3C96456D7C197BA1A31C2C8AABD2D23012156876B0B9`，
 `egress-receipt.json` SHA-256 `7DA5382BC617CB4FBA2C5889F84C90D53DC28FC50EC72D2366BA577FC60B7C8F`。
+
+后续普通只读控制端采样仍显示 `global`，当前 `GLOBAL` 选择链落到 `Fallback`，
+同时 `GLOBAL` 本身含可选直连成员，空组回退也为直连类。由当前实际代理图可解释
+可信侧请求成功与正式路线拒绝同时成立。产品要继续实机测试，需在合格配置中同时
+移除可达的直连选择与空组直连回退。Mihomo 支持自定义 `GLOBAL` 组及组的
+`empty-fallback`，本轮只读检查。
+[GLOBAL 组](https://wiki.metacubex.one/en/config/proxy-groups/built-in/) ·
+[组回退配置](https://wiki.metacubex.one/en/config/proxy-groups/#empty-fallback)
+
+普通诊断 `controller-route-diagnosis.json` SHA-256
+`F6EB0295429A06E413B023FEABFAA92FED897E1892386CF019C2F8A00428E639`，
+原始控制端内容保存在同一证据根的保护目录。

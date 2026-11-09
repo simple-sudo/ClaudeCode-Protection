@@ -332,7 +332,8 @@ if(args[0]=="inactive-transition")
         ("73c787b741904186935673709d699540","A1F6C306509D0D78C3BEB36B99B4C6959E92326E36712965B84BD8F06FD8EB6D"),
         ("c70350a06da140c69bda6669ce5c8090","1D015E7F252AD3788BBC20ECC2186E45C1DA236D5A64AC6015D61CC16BFD667E"),
         ("95c87b6710fe49bbb0beeb019a357219","3AA54FC3A55434BBC7F92FE09F260A5141151B5616551158C97D3CA53EE1CD03"),
-        ("547495d7fb2545d3b40e16edc211483c","884E9736990A3AA00BFAC706F06FDBC799F0885666DF85CDDE78B647B95B9DB5")})
+        ("547495d7fb2545d3b40e16edc211483c","884E9736990A3AA00BFAC706F06FDBC799F0885666DF85CDDE78B647B95B9DB5"),
+        ("2376af56d15942eb8a48be57ae691330","B534E42F40754606E8DAD848ADB8D87A46C4DA8E59E985147AC05834F98845FA")})
     {
         Check(actualRelease,actualManifest,actualRelease,actualManifest,replacementRelease,replacementManifest);
         Deny(()=>Check(replacementRelease,actualManifest,actualRelease,actualManifest,replacementRelease,replacementManifest));
@@ -359,6 +360,8 @@ if(args[0]=="inactive-transition")
     Deny(()=>Check(wrongLegacyRelease,identitySurveyManifest,wrongLegacyRelease,identitySurveyManifest,replacementRelease,replacementManifest));
     const string networkSurveyManifest="884E9736990A3AA00BFAC706F06FDBC799F0885666DF85CDDE78B647B95B9DB5";
     Deny(()=>Check(wrongLegacyRelease,networkSurveyManifest,wrongLegacyRelease,networkSurveyManifest,replacementRelease,replacementManifest));
+    const string reviewedRouteManifest="B534E42F40754606E8DAD848ADB8D87A46C4DA8E59E985147AC05834F98845FA";
+    Deny(()=>Check(wrongLegacyRelease,reviewedRouteManifest,wrongLegacyRelease,reviewedRouteManifest,replacementRelease,replacementManifest));
     var transition=library.GetType("ProtectionLifecycle.InactiveUpdateTransition",true)!;
     const string expectedPrior="41fb2ae4d89843df91c5d08f6a12eec3";
     const string expectedPriorHash="1B092FE1579CE80ABBECE8DE26D846DDE271E4D58E6926730608CDCC3DDCD17F";
