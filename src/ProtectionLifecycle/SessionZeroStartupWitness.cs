@@ -9,7 +9,9 @@ namespace ProtectionLifecycle;
 internal static class SessionZeroStartupWitness
 {
     internal const string Scope="FIXED_INDEPENDENT_STARTUP_WITNESS_FULL_QUARANTINE";
-    internal static bool UsesBranchTrace(int schema)=>schema is PackageAssetCatalog.SessionZeroStartupBranchSchema or PackageAssetCatalog.SessionZeroWindowAccessSchema;
+    internal static bool UsesBranchTrace(int schema)=>schema is PackageAssetCatalog.SessionZeroStartupBranchSchema or
+        PackageAssetCatalog.SessionZeroWindowAccessSchema or PackageAssetCatalog.SessionZeroPrivateWindowTraceSchema;
+    internal static bool UsesPrivateWindow(int schema)=>schema is PackageAssetCatalog.SessionZeroPrivateWindowSchema or PackageAssetCatalog.SessionZeroPrivateWindowTraceSchema;
     private static readonly string[] Checkpoints=[
         "ENTRY","BEFORE_USER32","AFTER_USER32","BEFORE_DESKTOP","AFTER_DESKTOP",
         "BEFORE_SHELL32","AFTER_SHELL32","BEFORE_UCRT","AFTER_UCRT"
@@ -32,6 +34,7 @@ internal static class SessionZeroStartupWitness
     internal sealed record SystemCallFilterObservation(uint QueryError,uint? FilterId);
     internal sealed record ImageDiagnostics(uint Win32kQueryError,bool? Win32kBlocked,uint User32FileError,uint? User32MapError,
         uint Win32uLoadError,uint Gdi32LoadError,uint Gdi32FullLoadError);
+    internal sealed record FailedWindowQuery(uint QueryError,bool? StationPresent,bool? DesktopPresent,bool? StationMatches,bool? DesktopMatches);
     internal sealed record Observation(string Status,string? LastCheckpoint,uint? Win32Error)
     {
         [JsonIgnore(Condition=JsonIgnoreCondition.WhenWritingNull)]
@@ -49,13 +52,16 @@ internal static class SessionZeroStartupWitness
         [JsonIgnore(Condition=JsonIgnoreCondition.WhenWritingNull)]
         public bool? PrivateDesktopMatched {get;init;}
         [JsonIgnore(Condition=JsonIgnoreCondition.WhenWritingNull)]
+        public FailedWindowQuery? WindowQueryAfterFailure {get;init;}
+        [JsonIgnore(Condition=JsonIgnoreCondition.WhenWritingNull)]
         public ImageDiagnostics? Diagnostics {get;init;}
     }
 
     internal static Observation Observe(int packageSchema,uint? exit,OfflineConsoleOutput? stdout,OfflineConsoleOutput? stderr)
     {
-        var hasDiagnostics=packageSchema is PackageAssetCatalog.SessionZeroStartupDiagnosticsSchema or PackageAssetCatalog.SessionZeroPrivateWindowSchema;
-        var privateWindow=packageSchema==PackageAssetCatalog.SessionZeroPrivateWindowSchema;
+        var privateWindow=UsesPrivateWindow(packageSchema);
+        var privateTrace=packageSchema==PackageAssetCatalog.SessionZeroPrivateWindowTraceSchema;
+        var hasDiagnostics=privateWindow || packageSchema==PackageAssetCatalog.SessionZeroStartupDiagnosticsSchema;
         var branchTrace=UsesBranchTrace(packageSchema);
         if(exit is null || stdout is not {Overflow:false} || stderr is not {Overflow:false,Bytes.Length:0})
             return new("CAPTURE_UNAVAILABLE",null,null);
@@ -71,7 +77,7 @@ internal static class SessionZeroStartupWitness
         while(count<Checkpoints.Length && count<payload.Length && payload[count]==Checkpoints[count])count++;
         var last=count==0?null:Checkpoints[count-1];
         var tail=payload[count..];
-        if(branchTrace)
+        if(branchTrace && !privateWindow)
         {
             if((exit,count) is (0,3) && tail.IsEmpty)return new("FIRST_USER32_LOAD_SUCCEEDED",last,null);
             if((exit,count) is (71,1) && tail.IsEmpty)return new("ATTACHMENT_WAIT_EXPIRED",last,null);
@@ -79,6 +85,13 @@ internal static class SessionZeroStartupWitness
                 return new("WIN32_FAILURE_AFTER_CHECKPOINT",last,error);
             return count is >0 and <=3 && tail.IsEmpty && exit>=0xc0000000?
                 new("NATIVE_EXIT_AFTER_CHECKPOINT",last,null):new("OUTPUT_REJECTED",null,null);
+        }
+        if(privateTrace && (exit,count) is (71,1) && tail.IsEmpty)return new("ATTACHMENT_WAIT_EXPIRED",last,null);
+        if(privateTrace && (exit,count) is (65,2) && !tail.IsEmpty && ReadValue(tail[0],"WIN32",out var firstLoadError))
+        {
+            var query=ReadFailedWindowQuery(tail[1..]);
+            return query is null?new("DIAGNOSTICS_REJECTED",last,firstLoadError):
+                new("WIN32_FAILURE_AFTER_CHECKPOINT",last,firstLoadError){WindowQueryAfterFailure=query};
         }
         if(count==Checkpoints.Length && exit==0)
         {
@@ -99,6 +112,20 @@ internal static class SessionZeroStartupWitness
             ReadValue(tail[0],"WIN32",out var code))
             return Terminal("WIN32_FAILURE_AFTER_CHECKPOINT",last,code,tail[1..],hasDiagnostics && exit==65);
         return new("OUTPUT_REJECTED",null,null);
+    }
+
+    private static FailedWindowQuery? ReadFailedWindowQuery(ReadOnlySpan<string> tail)
+    {
+        if(tail.IsEmpty || !ReadValue(tail[0],"WINDOW_QUERY",out var error))return null;
+        if(error!=0)return tail.Length==1?new(error,null,null,null,null):null;
+        if(tail.Length!=5 || !ReadValue(tail[1],"WINDOW_STATION_PRESENT",out var station) || station>1 ||
+            !ReadValue(tail[2],"WINDOW_DESKTOP_PRESENT",out var desktop) || desktop>1 ||
+            !ReadValue(tail[3],"WINDOW_STATION_MATCH",out var stationMatch) || !Valid(station,stationMatch) ||
+            !ReadValue(tail[4],"WINDOW_DESKTOP_MATCH",out var desktopMatch) || !Valid(desktop,desktopMatch))return null;
+        return new(0,station==1,desktop==1,Match(stationMatch),Match(desktopMatch));
+
+        static bool Valid(uint present,uint match)=>match==uint.MaxValue || present==1 && match<=1;
+        static bool? Match(uint value)=>value==uint.MaxValue?null:value==1;
     }
 
     private static Observation Terminal(string status,string? last,uint? code,ReadOnlySpan<string> tail,bool hasDiagnostics)

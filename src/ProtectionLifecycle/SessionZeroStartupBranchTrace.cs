@@ -22,6 +22,7 @@ internal sealed class SessionZeroStartupBranchTrace : IDisposable
     internal sealed record Evidence(bool Attached,bool ExitEventContinued,bool Detached,bool User32Mapped,bool Gdi32FullMapped,
         uint? CsrStatus,uint? GdiStatus,uint? FailureValue,bool? GdiInit2ReturnedNull);
     internal Evidence Snapshot()=>new(attached,terminal,detached,user32Mapped,gdiMapped,csrStatus,gdiStatus,failureValue,gdiInit2ReturnedNull);
+    internal static FileStream HoldWindowQueryImage()=>Hold("win32u.dll","8C623A46434E33D2B5AA7CBAFF9FB2BF30B51DE4F57C4717334F07CA9342A361");
 
     internal SessionZeroStartupBranchTrace()
     {

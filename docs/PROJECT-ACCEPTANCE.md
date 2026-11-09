@@ -5,6 +5,14 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-09 首次加载失败后的窗口对象取证
+
+SOURCE / BUILD / INTEGRATED(schema 12 私有窗口见证、四处返回观察、失败后窗口对象查询)。
+VERIFIED(普通 LPAC 桌面正负对照、普通真实返回观察、故障脱离、未附加超时及限定回归)。
+FAIL(普通对照仅传入可继承桌面句柄仍报 1114)。UNKNOWN(内核是否采纳该句柄、失败前的窗口选择)。
+NOT_RUN(新版安装、独立 Session 0 复测、启动修复及真实产品验收)。
+[机制及证据](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#首次加载失败后的窗口对象取证)
+
 ## 2026-11-09 私有窗口实机授予通过，初始化仍失败
 
 VERIFIED(`e01441c` 未激活更新、独立 Session 0 专用窗口创建、绑定 LPAC 权限、原 Job 及双服务回收)。

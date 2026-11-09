@@ -524,6 +524,8 @@ public static class BootstrapInstaller
         private bool disposed;
         private const string WindowAccessRelease="236bde5efe75420087b5c84cfe95250d";
         private const string WindowAccessManifest="720B2E8244685ACDCF3761ABFE8270C08471D39B2D453D0D5AF24B74AE09568A";
+        private const string PrivateWindowRelease="e01441c2020144918b27fffadcd37ebd";
+        private const string PrivateWindowManifest="E93D2C2B7492920C333277170D0FD0C2FA42B97E1E6044DBA66F8419EB49AACE";
         internal PinnedInactiveUpdateLease(ProtectedState state,BootstrapApproval approval,VerifiedVersion prior,ReviewedPackage next,Action<string>? reportFailureStage)
         {
             this.state=state;this.approval=approval;this.prior=prior;this.next=next;this.reportFailureStage=reportFailureStage;
@@ -531,6 +533,8 @@ public static class BootstrapInstaller
             RequirePinnedTransition(current.Release,current.ManifestSHA256,prior.Package.Release,prior.Package.ManifestHash,next.Release,next.ManifestHash);
             if(prior.Package.Release==WindowAccessRelease && next.SchemaVersion!=PackageAssetCatalog.SessionZeroPrivateWindowSchema)
                 throw WfpNative.Contract("WindowAccessPredecessorRequiresFixedPrivateWindowPackage");
+            if(prior.Package.Release==PrivateWindowRelease && next.SchemaVersion!=PackageAssetCatalog.SessionZeroPrivateWindowTraceSchema)
+                throw WfpNative.Contract("PrivateWindowPredecessorRequiresFixedTracePackage");
             AssertNoOwnedProcesses();
         }
         // Pure selection check used by the actual constructor and ordinary
@@ -542,6 +546,8 @@ public static class BootstrapInstaller
                 (priorRelease==SessionZeroClosedCreatorRecovery.Release && priorManifest==SessionZeroClosedCreatorRecovery.Manifest) ||
                 // The window access diagnostic closed the original Job and creator resources.
                 (priorRelease==WindowAccessRelease && priorManifest==WindowAccessManifest) ||
+                // The private window witness closed the original Job, window objects, and both service registrations.
+                (priorRelease==PrivateWindowRelease && priorManifest==PrivateWindowManifest) ||
                 // The first-load branch diagnostic closed the original Job and creator resources.
                 (priorRelease=="9455e98cf5da489daf88964e0daa6b52" &&
                     priorManifest=="EC2E00DA29027F8FE426995AAD19C050D23A8998FEA9F7E7D6596668F4A58C41") ||

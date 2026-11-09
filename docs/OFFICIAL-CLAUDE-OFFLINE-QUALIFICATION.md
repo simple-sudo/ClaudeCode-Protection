@@ -1578,3 +1578,36 @@ GPU 和真实网络未执行。
 `work/session-zero-private-window-owner-20261109-01/receipt.json` SHA-256
 `732E1BE73C195AF17641FF41DADD016C27070C3208BAA62F474AFC2730B8929C`，原外层
 终态 SHA-256 `6AA2AADE26DCC4BE9F7E4A666ABCD2FA5A9ED9CEBB360AC6F89FFBC5369FDF02`。
+
+### 首次加载失败后的窗口对象取证
+
+普通 Windows 实际 LPAC 正负对照中，创建者对挂起线程的 `GetThreadDesktop`
+返回空。允许组完成 USER32 后，创建者跨进程查询返回 5。同一 LPAC 进程自行经
+WIN32U 读取时，成功组取得窗口站和桌面，并核对桌面名称与显式目标相符。桌面拒绝
+组在 USER32 1114 后，两种句柄均未返回。每组均确认原进程、临时桌面和 profile
+回收。另一组显式请求不存在的桌面，在原句柄白名单中加一个可继承的临时桌面句柄，
+仍复现 1114，原对象闭合。该组没有证明内核采用了该句柄。
+
+本机匹配符号显示，公开的窗口对象查询 API 直接跳转到 WIN32U 对应入口。schema 12
+保留原私有窗口持有和显式选择机制，复用原 Broker 在同一线程上的四处返回观察。
+固定见证只在首次加载失败后从 System32 的 WIN32U 查询自己的对象。输出区分入口
+不可用、句柄未返回、名称不可读和名称不匹配，不输出句柄值或窗口名称。Broker
+在运行前持有固定哈希的 WIN32U、USER32 和 GDI32FULL 映像。查询时刻在失败之后，
+空返回不能证明初始化之前从未关联窗口。下一次实机可将该查询与同一次 CSR、GDI
+和 `NtGdiInit2` 返回对照。
+[线程桌面查询](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getthreaddesktop) ·
+[Windows 的桌面选择顺序](https://learn.microsoft.com/en-us/windows/win32/winstation/thread-connection-to-a-desktop)
+
+普通附加正控制记录 CSR、GDI 返回 0 和 `NtGdiInit2` 非空，随后见证以 72 拒绝普通
+桌面。进程内禁用 Win32k 的负控制记录 1114、空返回及窗口对象查询无句柄。人为中断
+和无附加超时均实测。旧见证的固定 SHA-256 保持一致。四个产品入口及回归项目
+Release 构建、六组回归通过。`e01441c` 前驱选择仅允许新的固定 schema 12，并保留
+已安装状态、完整隔离和历史闭合检查。本版未安装。
+
+证据根 `work/session-zero-desktop-selection-20261109-01/`。普通附加结果
+`private-trace-ordinary-v2.json` SHA-256
+`B76BD95E5461674F7189A31BCA72A5E5DE826914D1E0DAABFE64D3D46B36CA73`。
+普通 LPAC 正负结果分别为 `ordinary-win32u-selection-Allow/result.txt` 和
+`ordinary-win32u-selection-Deny/result.txt`，SHA-256 分别为
+`06DCAED8FA21CF46F12E3919873080F8C18A18C710043B6BDE4E4CA44C60ACD3`、
+`09C7D67AFCDFACDBF33F2AC5971B52C3F1C01B95A57FF1CCEC6FD80AA96BCA10`。

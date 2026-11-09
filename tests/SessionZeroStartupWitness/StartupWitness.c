@@ -149,6 +149,56 @@ static BOOL PrivateDesktopSelected(HMODULE user)
         ExactName(read, actual_station, target, station_length) &&
         ExactName(read, desktop(GetCurrentThreadId()), desktop_name, ARRAYSIZE(desktop_name) - 1);
 }
+
+#ifdef STARTUP_PRIVATE_TRACE_WITNESS
+// These WIN32U entry points match the public USER32 thunks on the exact
+// system image held by this diagnostic. Call only after the first load failed.
+static DWORD ObservedName(UserObjectInformationFunction read, HANDLE object, const wchar_t *expected, DWORD chars)
+{
+    wchar_t actual[64];
+    DWORD used;
+    if (!object || !read(object, UOI_NAME, actual, sizeof(actual), &used) ||
+        used < sizeof(wchar_t) || used > sizeof(actual) || used % sizeof(wchar_t) || actual[used / sizeof(wchar_t) - 1] != L'\0')
+        return NOT_OBSERVED;
+    if (used != (chars + 1) * sizeof(wchar_t))
+        return 0;
+    for (DWORD i = 0; i < chars; ++i)
+        if (actual[i] != expected[i])
+            return 0;
+    return 1;
+}
+
+static void ObservePrivateWindowFailure(HANDLE output)
+{
+    HMODULE module = LoadLibraryExW(L"win32u.dll", NULL, LOAD_LIBRARY_SEARCH_SYSTEM32);
+    ProcessWindowStationFunction station = module ? (ProcessWindowStationFunction)(void *)GetProcAddress(module, "NtUserGetProcessWindowStation") : NULL;
+    ThreadDesktopFunction desktop = module ? (ThreadDesktopFunction)(void *)GetProcAddress(module, "NtUserGetThreadDesktop") : NULL;
+    UserObjectInformationFunction read = module ? (UserObjectInformationFunction)(void *)GetProcAddress(module, "NtUserGetObjectInformation") : NULL;
+    DWORD error = !module ? GetLastError() : station && desktop && read ? ERROR_SUCCESS : ERROR_PROC_NOT_FOUND;
+    VALUE("WINDOW_QUERY", error);
+    if (error)
+        return;
+
+    HWINSTA station_handle = station();
+    HDESK desktop_handle = desktop(GetCurrentThreadId());
+    VALUE("WINDOW_STATION_PRESENT", station_handle != NULL);
+    VALUE("WINDOW_DESKTOP_PRESENT", desktop_handle != NULL);
+    STARTUPINFOW startup;
+    GetStartupInfoW(&startup);
+    PCWSTR target = startup.lpDesktop;
+    DWORD length = 0;
+    if (target)
+        while (length < 64 && target[length]) ++length;
+    DWORD station_match = NOT_OBSERVED, desktop_match = NOT_OBSERVED;
+    if (length == 45 && target[40] == L'\\') // CpcTask. + 32 digits + \Task.
+    {
+        station_match = ObservedName(read, station_handle, target, 40);
+        desktop_match = ObservedName(read, desktop_handle, target + 41, 4);
+    }
+    VALUE("WINDOW_STATION_MATCH", station_match);
+    VALUE("WINDOW_DESKTOP_MATCH", desktop_match);
+}
+#endif
 #endif
 #endif
 
@@ -159,7 +209,7 @@ void WINAPI StartupWitness(void)
         ExitProcess(64);
     CHECKPOINT("ENTRY");
 
-#ifdef STARTUP_BRANCH_WITNESS
+#if defined(STARTUP_BRANCH_WITNESS) || defined(STARTUP_PRIVATE_TRACE_WITNESS)
     ULONGLONG deadline = GetTickCount64() + 4500;
     while (!IsDebuggerPresent())
     {
@@ -187,7 +237,11 @@ void WINAPI StartupWitness(void)
     {
         DWORD error = GetLastError();
         VALUE("WIN32", error);
+#ifdef STARTUP_PRIVATE_TRACE_WITNESS
+        ObservePrivateWindowFailure(output);
+#else
         DiagnoseUser32(output);
+#endif
         ExitProcess(65);
     }
     CHECKPOINT("AFTER_USER32");

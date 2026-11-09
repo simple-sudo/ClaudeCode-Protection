@@ -20,6 +20,18 @@ $capture = $observerType.GetMethod('Observe',$instance)
 $snapshot = $observerType.GetMethod('Snapshot',$instance)
 $inputs = @(Get-Content -LiteralPath $BuildReceipt -Raw | ConvertFrom-Json)
 if ($inputs.Count -ne 2 -or @($inputs | Where-Object Win32kControl).Count -ne 1) { throw 'Both witness controls required' }
+$privateTrace = $inputs[0].Result -ceq 'PRIVATE_TRACE_WITNESS_BUILT'
+$buildResult = if ($privateTrace) { 'PRIVATE_TRACE_WITNESS_BUILT' } else { 'BRANCH_WITNESS_BUILT' }
+$positiveExit = if ($privateTrace) { 72 } else { 0 }
+$positiveTail = "BEFORE_USER32`nAFTER_USER32`n"
+$negativeTail = "BEFORE_USER32`nWIN32=0x0000045A`n"
+if ($privateTrace) {
+    $holdWindowQueryImage = $observerType.GetMethod('HoldWindowQueryImage', [Reflection.BindingFlags]'NonPublic, Static')
+    $windowQueryImage = $holdWindowQueryImage.Invoke($null, $null)
+    $positiveTail += "BEFORE_DESKTOP`nWIN32=0x0000000D`n"
+    $negativeTail += "WINDOW_QUERY=0x00000000`nWINDOW_STATION_PRESENT=0x00000000`nWINDOW_DESKTOP_PRESENT=0x00000000`n"
+    $negativeTail += "WINDOW_STATION_MATCH=0xFFFFFFFF`nWINDOW_DESKTOP_MATCH=0xFFFFFFFF`n"
+}
 
 Add-Type -TypeDefinition @'
 using System.Runtime.InteropServices;
@@ -36,7 +48,7 @@ $cases = @($inputs | ForEach-Object { @{Input=$_;Mode='Observe'} }) +
     @(@{Input=$default;Mode='AbortAfterUser32Map'}, @{Input=$default;Mode='NoAttachment'})
 $results = @(foreach ($case in $cases) {
     $item = $case.Input
-    if ($item.Result -cne 'BRANCH_WITNESS_BUILT' -or $item.StaticImport -cne 'KERNEL32.dll' -or
+    if ($item.Result -cne $buildResult -or $item.StaticImport -cne 'KERNEL32.dll' -or
         (Get-FileHash -LiteralPath $item.Image).Hash -cne $item.SHA256) { throw 'Branch witness pin differs' }
     $observer = [Activator]::CreateInstance($observerType, $true)
     $info = [Diagnostics.ProcessStartInfo]::new($item.Image)
@@ -81,7 +93,7 @@ $results = @(foreach ($case in $cases) {
         $tail = $stdout.GetAwaiter().GetResult()
         if ($case.Mode -eq 'AbortAfterUser32Map') {
             if (!$evidence.Attached -or !$evidence.User32Mapped -or !$evidence.Detached -or $evidence.ExitEventContinued -or
-                $evidence.Gdi32FullMapped -or $process.ExitCode -ne 0 -or $tail -cne "BEFORE_USER32`nAFTER_USER32`n" -or
+                $evidence.Gdi32FullMapped -or $process.ExitCode -ne $positiveExit -or $tail -cne $positiveTail -or
                 $stderr.GetAwaiter().GetResult()) { throw 'Ordinary branch trace detach evidence differs' }
             [pscustomobject]@{Mode=$case.Mode;Win32kControl=$false;ImageSHA256=$item.SHA256;Exit=$process.ExitCode;Evidence=$evidence}
             continue
@@ -96,10 +108,10 @@ $results = @(foreach ($case in $cases) {
         if (!$evidence.Attached -or !$evidence.ExitEventContinued -or !$evidence.User32Mapped -or !$evidence.Gdi32FullMapped -or
             $evidence.CsrStatus -ne 0 -or $stderr.GetAwaiter().GetResult()) { throw 'Ordinary branch trace evidence incomplete' }
         if ($item.Win32kControl) {
-            if ($process.ExitCode -ne 65 -or $tail -cne "BEFORE_USER32`nWIN32=0x0000045A`n" -or
+            if ($process.ExitCode -ne 65 -or $tail -cne $negativeTail -or
                 !$evidence.GdiInit2ReturnedNull -or $evidence.GdiStatus -ne [uint32]3221225473 -or
                 $evidence.FailureValue -ne [uint32]3221225473) { throw 'Ordinary Win32k control branch differs' }
-        } elseif ($process.ExitCode -ne 0 -or $tail -cne "BEFORE_USER32`nAFTER_USER32`n" -or
+        } elseif ($process.ExitCode -ne $positiveExit -or $tail -cne $positiveTail -or
             $evidence.GdiInit2ReturnedNull -ne $false -or $evidence.GdiStatus -ne 0 -or $null -ne $evidence.FailureValue) {
             throw 'Ordinary positive control branch differs'
         }
@@ -109,5 +121,6 @@ $results = @(foreach ($case in $cases) {
         $observer.Dispose()
     }
 })
+if ($privateTrace) { $windowQueryImage.Dispose() }
 $results | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $OutputPath -Encoding utf8
 $results | ConvertTo-Json -Depth 6

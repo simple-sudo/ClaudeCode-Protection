@@ -107,7 +107,7 @@ internal sealed class SessionZeroCreatorChannel : IDisposable
         var cancellation=deadline.Token;
         var request=CreateRequest(nonce,state.InstallationId,job.JobId,peer.OwnerPid,peer.OwnerSession);
         var windowAccess=startupWitness && version.Package.SchemaVersion==PackageAssetCatalog.SessionZeroWindowAccessSchema;
-        var privateWindow=startupWitness && version.Package.SchemaVersion==PackageAssetCatalog.SessionZeroPrivateWindowSchema;
+        var privateWindow=startupWitness && SessionZeroStartupWitness.UsesPrivateWindow(version.Package.SchemaVersion);
         if(privateWindow!=(privateWindows is not null))throw WfpNative.Contract("CreatorPrivateWindowLeaseRequired");
         privateWindows?.AssertHeld(job);
         if(startupWitness)BinaryPrimitives.WriteUInt32LittleEndian(request,privateWindow?PrivateWindowRequestMagic:

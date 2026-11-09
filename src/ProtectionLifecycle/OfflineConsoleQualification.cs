@@ -303,7 +303,9 @@ internal static class OfflineConsoleQualification
         var plans=RequireOfflinePrerequisites(state,version);
         var branchWitness=startupWitness && SessionZeroStartupWitness.UsesBranchTrace(version.Package.SchemaVersion);
         var windowAccessWitness=startupWitness && version.Package.SchemaVersion==PackageAssetCatalog.SessionZeroWindowAccessSchema;
-        var privateWindowWitness=startupWitness && version.Package.SchemaVersion==PackageAssetCatalog.SessionZeroPrivateWindowSchema;
+        var privateWindowWitness=startupWitness && SessionZeroStartupWitness.UsesPrivateWindow(version.Package.SchemaVersion);
+        var privateWindowTrace=privateWindowWitness && branchWitness;
+        using var windowQueryImage=privateWindowTrace?SessionZeroStartupBranchTrace.HoldWindowQueryImage():null;
         using var branchTrace=branchWitness?new SessionZeroStartupBranchTrace():null;
         var fences=new List<PersistentFence>();
         var failures=new List<Exception>();
@@ -508,11 +510,12 @@ internal static class OfflineConsoleQualification
             var terminal=failures.Count==0 && closed && profileClosed && workspaceClosed && serviceRemoved && resumed &&
                 (!privateWindowWitness || privateWindowsClosed && observation.PrivateDesktopMatched==true &&
                     observation.Diagnostics is {Win32kQueryError:0,Win32kBlocked:false,User32FileError:0,User32MapError:0,Win32uLoadError:0,Gdi32LoadError:0,Gdi32FullLoadError:0}) &&
-                (branchWitness?observation.Status=="FIRST_USER32_LOAD_SUCCEEDED" &&
-                    observation.BranchTrace is {ExitEventContinued:true,User32Mapped:true,Gdi32FullMapped:true,CsrStatus:0,GdiStatus:0,GdiInit2ReturnedNull:false,FailureValue:null}:
-                    observation.Status=="ALL_CHECKPOINTS_OBSERVED");
+                observation.Status==(branchWitness && !privateWindowWitness?"FIRST_USER32_LOAD_SUCCEEDED":"ALL_CHECKPOINTS_OBSERVED") &&
+                (!branchWitness || observation.BranchTrace is {ExitEventContinued:true,User32Mapped:true,Gdi32FullMapped:true,
+                    CsrStatus:0,GdiStatus:0,GdiInit2ReturnedNull:false,FailureValue:null});
             var diagnostic=JsonSerializer.Serialize(new {
-                SchemaVersion=privateWindowWitness?5:windowAccessWitness?4:branchWitness?3:extended?2:1,Scope=SessionZeroStartupWitness.Scope,state.InstallationId,JobId=jobId,
+                SchemaVersion=privateWindowTrace?6:privateWindowWitness?5:windowAccessWitness?4:branchWitness?3:extended?2:1,
+                Scope=SessionZeroStartupWitness.Scope,state.InstallationId,JobId=jobId,
                 version.Package.Release,version.Package.ManifestHash,
                 Status=terminal?"STARTUP_WITNESS_CLOSED":"STARTUP_WITNESS_NOT_CONFIRMED",
                 LastStage=stage,ProcessResumed=resumed,ChildExit=exit,OriginalJobClosed=closed,ProfileClosed=profileClosed,

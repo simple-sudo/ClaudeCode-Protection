@@ -41,7 +41,7 @@ internal sealed class SessionZeroWindowOwner : IDisposable
     internal static SessionZeroWindowOwner Start(FixedLayout layout,ProtectedState state,VerifiedVersion version,OwnedKernelJob job)
     {
         ProtectedState.RequireAdministrator();state.AssertHeld();version.AssertHeld(state);
-        if(version.Package.SchemaVersion!=PackageAssetCatalog.SessionZeroPrivateWindowSchema)
+        if(!SessionZeroStartupWitness.UsesPrivateWindow(version.Package.SchemaVersion))
             throw WfpNative.Contract("PrivateWindowOwnerRequiresFixedPackage");
         var intent=OwnedJobIntent.Read(state,job.JobId);
         if(intent.CreatorServiceSid!=job.SessionZeroCreatorSid || intent.Release!=version.Package.Release || intent.ManifestSHA256!=version.Package.ManifestHash)

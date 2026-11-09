@@ -1,8 +1,9 @@
 #requires -Version 7.4
-param([string]$OutputRoot, [switch]$Win32kControl, [switch]$BuildBranchWitness, [switch]$PrivateDesktopControl)
+param([string]$OutputRoot, [switch]$Win32kControl, [switch]$BuildBranchWitness, [switch]$PrivateDesktopControl, [switch]$BuildPrivateTraceWitness)
 
 $ErrorActionPreference = 'Stop'
-if ($PrivateDesktopControl -and ($Win32kControl -or $BuildBranchWitness)) { throw 'Private desktop control requires its own witness' }
+if ($PrivateDesktopControl -and ($Win32kControl -or $BuildBranchWitness -or $BuildPrivateTraceWitness) -or
+    $BuildPrivateTraceWitness -and $BuildBranchWitness) { throw 'Private desktop control requires its own witness' }
 
 $repo = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $vswhere = 'C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe'
@@ -34,6 +35,7 @@ try {
     if ($Win32kControl) { $defines += '/DORDINARY_WIN32K_CONTROL' }
     if ($BuildBranchWitness) { $defines += '/DSTARTUP_BRANCH_WITNESS' }
     if ($PrivateDesktopControl) { $defines += '/DSTARTUP_PRIVATE_DESKTOP_WITNESS' }
+    if ($BuildPrivateTraceWitness) { $defines += @('/DSTARTUP_PRIVATE_DESKTOP_WITNESS','/DSTARTUP_PRIVATE_TRACE_WITNESS') }
     $arguments = @('/nologo','/TC','/std:c17','/W4','/WX','/O2','/GS-','/Zl') + $defines + $includes + @(
         "/Fo$object", "/Fe$exe", $source, '/link', '/NODEFAULTLIB', '/ENTRY:StartupWitness', '/SUBSYSTEM:CONSOLE',
         '/DYNAMICBASE', '/NXCOMPAT', '/Brepro', "/LIBPATH:$sdk\Lib\$version\um\x64", 'kernel32.lib'
@@ -48,9 +50,9 @@ try {
     $env:PATH = $savedPath
 }
 
-if ($BuildBranchWitness) {
+if ($BuildBranchWitness -or $BuildPrivateTraceWitness) {
     [pscustomobject]@{
-        Result = 'BRANCH_WITNESS_BUILT'
+        Result = if ($BuildPrivateTraceWitness) { 'PRIVATE_TRACE_WITNESS_BUILT' } else { 'BRANCH_WITNESS_BUILT' }
         Win32kControl = [bool]$Win32kControl
         StaticImport = $imports[0]
         Length = (Get-Item -LiteralPath $exe).Length

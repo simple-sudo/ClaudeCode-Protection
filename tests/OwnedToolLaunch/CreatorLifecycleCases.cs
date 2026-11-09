@@ -365,6 +365,21 @@ internal static class CreatorLifecycleCases
         const string desktopFailure="ENTRY\nBEFORE_USER32\nAFTER_USER32\nBEFORE_DESKTOP\nWIN32=0x0000000D\n";
         Witness(72,desktopFailure,"PRIVATE_DESKTOP_NOT_CONFIRMED","BEFORE_DESKTOP",13,schema:11);
         Witness(72,desktopFailure,"OUTPUT_REJECTED",schema:8);
+        const string windowQuery="WINDOW_QUERY=0x00000000\nWINDOW_STATION_PRESENT=0x00000001\nWINDOW_DESKTOP_PRESENT=0x00000001\n"+
+            "WINDOW_STATION_MATCH=0x00000001\nWINDOW_DESKTOP_MATCH=0xFFFFFFFF\n";
+        var windowFailure=witness.Invoke(null,[12,65u,Stream(user32Failure+windowQuery),Stream("")])!;
+        var readback=windowFailure.GetType().GetProperty("WindowQueryAfterFailure")!.GetValue(windowFailure)!;
+        Check(readback.GetType().GetProperty("StationMatches")!.GetValue(readback) is true &&
+            readback.GetType().GetProperty("DesktopMatches")!.GetValue(readback) is null);
+        Witness(65,user32Failure+windowQuery,"WIN32_FAILURE_AFTER_CHECKPOINT","BEFORE_USER32",0x45a,schema:12);
+        Witness(65,user32Failure+windowQuery.Replace("WINDOW_STATION_PRESENT=0x00000001","WINDOW_STATION_PRESENT=0x00000000",StringComparison.Ordinal),
+            "DIAGNOSTICS_REJECTED","BEFORE_USER32",0x45a,schema:12);
+        Witness(65,user32Failure+"WINDOW_QUERY=0x0000007F\n","WIN32_FAILURE_AFTER_CHECKPOINT","BEFORE_USER32",0x45a,schema:12);
+        Witness(65,user32Failure+"WINDOW_QUERY=0x0000007F\n"+windowQuery,"DIAGNOSTICS_REJECTED","BEFORE_USER32",0x45a,schema:12);
+        Witness(65,user32Failure+windowQuery,"DIAGNOSTICS_REJECTED","BEFORE_USER32",0x45a,schema:11);
+        Witness(0,all+"PRIVATE_DESKTOP_MATCHED\n"+imageDiagnostics,"ALL_CHECKPOINTS_OBSERVED","AFTER_UCRT",schema:12,diagnostics:(false,0));
+        Witness(72,desktopFailure,"PRIVATE_DESKTOP_NOT_CONFIRMED","BEFORE_DESKTOP",13,schema:12);
+        Witness(71,"ENTRY\n","ATTACHMENT_WAIT_EXPIRED","ENTRY",schema:12);
         denied=false;
         try{_=broker.GetMethod("QualifySessionZeroStartupWitness")!.Invoke(null,null);}
         catch(TargetInvocationException error) when(error.InnerException is UnauthorizedAccessException){denied=true;}
