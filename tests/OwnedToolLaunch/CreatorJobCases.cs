@@ -27,6 +27,7 @@ internal static class CreatorJobCases
         var proof=owner.GetMethod("ValidateCreatorProof",methods)!;
         var createNative=owner.GetMethod("CreateFreshSessionZeroJob",methods)!;
         var requireSoleHandle=owner.GetMethod("AssertSoleJobHandle",methods)!;
+        var requireAbsent=owner.GetMethod("AssertCreatorNameAbsent",methods)!;
         var parseClosed=library.GetType("ProtectionLifecycle.AtomicJobCompletion",true)!.GetMethod("ParseClosed",methods)!;
         var install=new string('1',32);
         var release=new string('2',32);
@@ -126,10 +127,13 @@ internal static class CreatorJobCases
         var pointer=GCHandle.Alloc(bytes,GCHandleType.Pinned);
         try
         {
+            _=requireAbsent.Invoke(null,[creator]);Check(true);
+            Refused(()=>requireAbsent.Invoke(null,[legacy]));
             var attributes=new SecurityAttributes{Length=Marshal.SizeOf<SecurityAttributes>(),Descriptor=pointer.AddrOfPinnedObject()};
             using(var collision=CreateJobObject(ref attributes,Name(creator)))
             {
                 Check(!collision.IsInvalid && Marshal.GetLastWin32Error()!=183);
+                Refused(()=>requireAbsent.Invoke(null,[creator]));
                 var refused=false;
                 try{using var unexpected=(SafeHandle)createNative.Invoke(null,[creator,attributes.Descriptor])!;}
                 catch(TargetInvocationException error) when(error.InnerException is Win32Exception {NativeErrorCode:183}){refused=true;}

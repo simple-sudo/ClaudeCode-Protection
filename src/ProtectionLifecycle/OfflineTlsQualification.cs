@@ -28,7 +28,7 @@ internal static class OfflineTlsQualification
         if(openSsl)OpenSslModuleLease.AssertOwnedPackage(version.Package);
         LifecycleRecovery.AssertNoPending(state);InstallationLoopbackLease.AssertClosedHistory(state);
         foreach(var intent in OwnedJobIntent.ReadAll(state))
-            if(AtomicJobCompletion.ReadClosed(state,intent) is null)throw WfpNative.Contract("OfflineTlsRequiresPriorAdmissionsClosed");
+            if(!SessionZeroCreatorRecovery.IsAdmissionResolved(state,intent))throw WfpNative.Contract("OfflineTlsRequiresPriorAdmissionsClosed");
         var plans=FencePlan.ReadAll(state);
         if(plans.Count==0)throw WfpNative.Contract("OfflineTlsRequiresExistingQuarantine");
 

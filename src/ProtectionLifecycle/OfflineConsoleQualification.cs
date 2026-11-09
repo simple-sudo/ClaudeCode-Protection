@@ -281,7 +281,7 @@ internal static class OfflineConsoleQualification
         state.AssertHeld();version.AssertHeld(state);LifecycleRecovery.AssertNoPending(state);
         InstallationLoopbackLease.AssertClosedHistory(state);
         foreach(var intent in OwnedJobIntent.ReadAll(state))
-            if(AtomicJobCompletion.ReadClosed(state,intent) is null)
+            if(!SessionZeroCreatorRecovery.IsAdmissionResolved(state,intent))
                 throw WfpNative.Contract("OfflineConsoleRequiresPriorAdmissionsClosed");
         var plans=FencePlan.ReadAll(state);
         if(plans.Count==0)throw WfpNative.Contract("OfflineConsoleRequiresExistingQuarantine");

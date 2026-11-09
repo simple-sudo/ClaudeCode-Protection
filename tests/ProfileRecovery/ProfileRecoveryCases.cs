@@ -93,6 +93,11 @@ internal sealed class InstallationPackageSid : IDisposable
 }
 internal sealed record OwnedJobIntent(string JobId){internal static OwnedJobIntent Read(ProtectedState state,string job)=>new(job);internal static OwnedJobIntent[] ReadAll(ProtectedState state)=>throw new Exception("native collaborator forbidden in reader tests");}
 internal static class AtomicJobCompletion{internal static object? ReadClosed(ProtectedState state,OwnedJobIntent job)=>state.Closed?new object():null;}
+internal static class SessionZeroCreatorRecovery
+{
+    internal static bool IsAdmissionResolved(ProtectedState state,OwnedJobIntent job)=>throw new Exception("native Job inventory forbidden in reader tests");
+    internal static bool ReadRetired(ProtectedState state,OwnedJobIntent job)=>throw new Exception("native Job inventory forbidden in reader tests");
+}
 internal enum PathPolicy{Source}
 internal sealed class PathLease : IDisposable{internal void AssertHeld()=>throw new Exception("native forbidden");internal string ObjectIdentity()=>throw new Exception("native forbidden");public void Dispose(){}}
 internal static class WindowsPathSeal

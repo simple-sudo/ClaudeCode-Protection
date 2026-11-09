@@ -313,6 +313,13 @@ internal sealed class OwnedKernelJob : IDisposable
         finally{try{opened?.Dispose();}finally{jobNamespace?.Dispose();}}
     }
     private static string CreatorProofLeaf(OwnedJobIntent intent)=>"job-creator-confirmed-"+intent.JobId+".json";
+    internal static void AssertCreatorNameAbsent(OwnedJobIntent intent)
+    {
+        if(intent.CreatorServiceSid is null)throw WfpNative.Contract("CreatorJobAbsenceRequiresCreatorIntent");
+        using var observed=OpenJobObject(4,false,intent.Name); // Query only. Never adopt an object found at this name.
+        var error=Marshal.GetLastWin32Error();
+        if(!observed.IsInvalid || error!=2)throw WfpNative.Contract("LegacyCreatorJobNameAbsenceUnconfirmed");
+    }
     private static string IntentHash(ProtectedState state,OwnedJobIntent intent)=>state.Read(OwnedJobIntent.Leaf(intent.JobId),8192).SHA256;
     private static void AssertCreatorProof(ProtectedState state,OwnedJobIntent intent)
     {
@@ -423,12 +430,13 @@ internal sealed class OwnedKernelJob : IDisposable
 
 internal sealed record RegisteredJobFailure(string JobId,string Stage,WfpErrorEvidence[] Errors);
 internal sealed record RegisteredJobObservation(int ExpectedJobs,string[] NamesAbsentAtOpen,JobSnapshot[] PresentJobs,RegisteredJobFailure[] Failures,
-    string Scope,bool CompleteProcessOwnershipQualified,bool AdmissionOrNetworkQualified,string[] CompletedAdmissionJobIds)
+    string Scope,bool CompleteProcessOwnershipQualified,bool AdmissionOrNetworkQualified,string[] CompletedAdmissionJobIds,string[] RetiredNeverAdmittedJobIds)
 {
     // A later zero observation never repairs a failed stop, an unavailable job
     // or a missing observation. All recorded intent entries remain in scope.
-    internal bool AllRegisteredMembersZeroObserved=>NamesAbsentAtOpen.Length==0 && Failures.Length==0 &&
-        PresentJobs.Length+CompletedAdmissionJobIds.Length==ExpectedJobs && PresentJobs.All(s=>s.ObservedZero);
+    internal bool AllRegisteredMembersZeroObserved=>RetiredNeverAdmittedJobIds.Length==0 && AllRegisteredJobsResolved;
+    internal bool AllRegisteredJobsResolved=>NamesAbsentAtOpen.Length==0 && Failures.Length==0 &&
+        PresentJobs.Length+CompletedAdmissionJobIds.Length+RetiredNeverAdmittedJobIds.Length==ExpectedJobs && PresentJobs.All(s=>s.ObservedZero);
 }
 
 // Holds all recovered handles before terminating any members. This is useful
@@ -442,6 +450,7 @@ internal sealed class RegisteredJobSet : IDisposable
     private readonly List<OwnedKernelJob> jobs=new();
     private readonly List<string> absent=new();
     private readonly List<string> completed=new();
+    private readonly List<string> retired=new();
     private bool disposed;
     private RegisteredJobSet(ProtectedState state,IReadOnlyList<OwnedJobIntent> intents){this.state=state;this.intents=intents;}
     internal static RegisteredJobSet OpenForMaintenance(ProtectedState state)
@@ -451,6 +460,7 @@ internal sealed class RegisteredJobSet : IDisposable
         {
             foreach(var intent in set.intents)
             {
+                if(SessionZeroCreatorRecovery.ReadRetired(state,intent)){set.retired.Add(intent.JobId);continue;}
                 if(AtomicJobCompletion.ReadClosed(state,intent) is not null){set.completed.Add(intent.JobId);continue;}
                 var job=OwnedKernelJob.OpenExisting(state,intent);
                 if(job is null)set.absent.Add(intent.JobId);else{set.jobs.Add(job);_=job.Observe();}
@@ -471,6 +481,8 @@ internal sealed class RegisteredJobSet : IDisposable
         if(!OwnedJobIntent.ReadAll(state).SequenceEqual(intents))throw new InvalidDataException("Registered job set changed during maintenance");
         foreach(var id in completed)if(AtomicJobCompletion.ReadClosed(state,intents.Single(i=>i.JobId==id)) is null)
             throw new InvalidDataException("Completed admission proof changed");
+        foreach(var id in retired)if(!SessionZeroCreatorRecovery.ReadRetired(state,intents.Single(i=>i.JobId==id)))
+            throw new InvalidDataException("Retired admission proof changed");
     }
     internal RegisteredJobObservation StopAndObserveRegisteredMembers()
     {
@@ -497,9 +509,10 @@ internal sealed class RegisteredJobSet : IDisposable
             catch(Exception ex){failures.Add(new(job.JobId,"final-observation",WfpNative.Describe(ex)));}
         }
         AssertHeld();
-        var result=new RegisteredJobObservation(intents.Count,absent.ToArray(),snapshots.ToArray(),failures.ToArray(),"REGISTERED_JOB_MEMBERS_ONLY",false,false,completed.ToArray());
+        var result=new RegisteredJobObservation(intents.Count,absent.ToArray(),snapshots.ToArray(),failures.ToArray(),"REGISTERED_JOB_MEMBERS_ONLY",false,false,completed.ToArray(),retired.ToArray());
         state.WriteNew("job-set-observed-"+Guid.NewGuid().ToString("N")+".json",JsonSerializer.SerializeToUtf8Bytes(new {
-            SchemaVersion=3,InstallationId=state.InstallationId,Status=result.AllRegisteredMembersZeroObserved?"REGISTERED_JOB_MEMBERS_ZERO_OBSERVED":"REGISTERED_JOB_STOP_NOT_CONFIRMED",
+            SchemaVersion=4,InstallationId=state.InstallationId,Status=result.AllRegisteredMembersZeroObserved?"REGISTERED_JOB_MEMBERS_ZERO_OBSERVED":
+                result.AllRegisteredJobsResolved?"REGISTERED_JOBS_RESOLVED_WITH_NEVER_ADMITTED_RETIREMENT":"REGISTERED_JOB_STOP_NOT_CONFIRMED",
             Observation=result,AtUtc=DateTime.UtcNow.ToString("o")
         }));
         return result;
@@ -512,7 +525,7 @@ internal sealed class RegisteredJobSet : IDisposable
         // Missing names or an empty Job WITHOUT that proof are insufficient.
         foreach(var intent in intents)
         {
-            if(AtomicJobCompletion.ReadClosed(state,intent) is null)throw WfpNative.Contract("NetworkMigrationRequiresClosedAdmission");
+            if(!SessionZeroCreatorRecovery.IsAdmissionResolved(state,intent))throw WfpNative.Contract("NetworkMigrationRequiresClosedAdmission");
         }
         AssertHeld();
     }

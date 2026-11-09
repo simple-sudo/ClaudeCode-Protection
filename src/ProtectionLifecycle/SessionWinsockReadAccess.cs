@@ -321,7 +321,7 @@ internal sealed class SessionWinsockReadAccess : IDisposable
     internal static (int ExitCode,string Report) Recover(ProtectedState state)
     {
         ProtectedState.RequireAdministrator();state.AssertHeld();InstallationLoopbackLease.AssertClosedHistory(state);
-        foreach(var job in OwnedJobIntent.ReadAll(state))if(AtomicJobCompletion.ReadClosed(state,job) is null)throw WfpNative.Contract("WinsockRecoveryRequiresAllAdmissionsClosed");
+        foreach(var job in OwnedJobIntent.ReadAll(state))if(!SessionZeroCreatorRecovery.IsAdmissionResolved(state,job))throw WfpNative.Contract("WinsockRecoveryRequiresAllAdmissionsClosed");
         var plans=FencePlan.ReadAll(state);if(plans.Count==0)throw WfpNative.Contract("WinsockRecoveryRequiresQuarantine");
         foreach(var plan in plans){using var fence=PersistentFence.OpenExisting(state,plan.Data.FenceId);if(!fence.Observe().FullQuarantineObserved)throw WfpNative.Contract("WinsockRecoveryRequiresQuarantine");}
         var pending=Pending(state);

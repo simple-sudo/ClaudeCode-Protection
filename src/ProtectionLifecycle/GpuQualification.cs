@@ -104,7 +104,7 @@ internal static class GpuQualification
     internal static (int ExitCode,string Report) Run(FixedLayout layout,ProtectedState state,VerifiedVersion version)
     {
         state.AssertHeld();version.AssertHeld(state);LifecycleRecovery.AssertNoPending(state);InstallationLoopbackLease.AssertClosedHistory(state);
-        foreach(var intent in OwnedJobIntent.ReadAll(state))if(AtomicJobCompletion.ReadClosed(state,intent) is null)throw WfpNative.Contract("GpuRequiresPriorAdmissionsClosed");
+        foreach(var intent in OwnedJobIntent.ReadAll(state))if(!SessionZeroCreatorRecovery.IsAdmissionResolved(state,intent))throw WfpNative.Contract("GpuRequiresPriorAdmissionsClosed");
         var plans=FencePlan.ReadAll(state);if(plans.Count==0)throw WfpNative.Contract("GpuRequiresQuarantine");
         var fences=new List<PersistentFence>();var failures=new List<Exception>();
         var id=Guid.NewGuid().ToString("N");var plan=new GpuProbePlan(id,1);

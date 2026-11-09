@@ -110,7 +110,7 @@ internal static class SessionEtwProviderAccess
     internal static (int ExitCode,string Report) Recover(ProtectedState state)
     {
         state.AssertHeld();InstallationLoopbackLease.AssertClosedHistory(state);
-        foreach(var job in OwnedJobIntent.ReadAll(state))if(AtomicJobCompletion.ReadClosed(state,job) is null)throw WfpNative.Contract("EtwRecoveryNeedsAllAdmissionsClosed");
+        foreach(var job in OwnedJobIntent.ReadAll(state))if(!SessionZeroCreatorRecovery.IsAdmissionResolved(state,job))throw WfpNative.Contract("EtwRecoveryNeedsAllAdmissionsClosed");
         var plans=FencePlan.ReadAll(state);if(plans.Count==0)throw WfpNative.Contract("EtwRecoveryNeedsQuarantine");
         foreach(var plan in plans){using var fence=PersistentFence.OpenExisting(state,plan.Data.FenceId);if(!fence.Observe().FullQuarantineObserved)throw WfpNative.Contract("EtwRecoveryNeedsQuarantine");}
         var pending=Pending(state);foreach(var item in pending)Restore(state,item.Intent,item.Hash);AssertNoPending(state);

@@ -166,7 +166,7 @@ internal sealed class SessionManifestReadAccess : IDisposable
     {
         state.AssertHeld();InstallationLoopbackLease.AssertClosedHistory(state);
         foreach(var job in OwnedJobIntent.ReadAll(state))
-            if(AtomicJobCompletion.ReadClosed(state,job) is null)throw WfpNative.Contract("ManifestRecoveryNeedsAllAdmissionsClosed");
+            if(!SessionZeroCreatorRecovery.IsAdmissionResolved(state,job))throw WfpNative.Contract("ManifestRecoveryNeedsAllAdmissionsClosed");
         var plans=FencePlan.ReadAll(state);if(plans.Count==0)throw WfpNative.Contract("ManifestRecoveryNeedsQuarantine");
         foreach(var plan in plans){using var fence=PersistentFence.OpenExisting(state,plan.Data.FenceId);if(!fence.Observe().FullQuarantineObserved)throw WfpNative.Contract("ManifestRecoveryNeedsQuarantine");}
         var pending=Pending(state);

@@ -64,7 +64,7 @@ internal static class GpuHostReferenceQualification
     internal static GpuHostReferenceResult RunBound(ProtectedState state,VerifiedVersion version,FixedLayout layout,IReadOnlyList<PersistentFence> fences,GpuReferenceCaller caller)
     {
         state.AssertHeld();version.AssertHeld(state);caller.AssertCurrent();LifecycleRecovery.AssertNoPending(state);InstallationLoopbackLease.AssertClosedHistory(state);
-        foreach(var prior in OwnedJobIntent.ReadAll(state))if(AtomicJobCompletion.ReadClosed(state,prior) is null)throw WfpNative.Contract("HostGpuRequiresPriorAdmissionsClosed");
+        foreach(var prior in OwnedJobIntent.ReadAll(state))if(!SessionZeroCreatorRecovery.IsAdmissionResolved(state,prior))throw WfpNative.Contract("HostGpuRequiresPriorAdmissionsClosed");
         var id=Guid.NewGuid().ToString("N");var plan=new GpuProbePlan(id,1);var progress=new GpuCallProgressReader(id,true);
         var errors=new List<Exception>();uint? pid=null,exit=null;GpuHostTokenFacts? token=null;GpuChildReport? report=null;RuntimeStop? stop=null;
         AssertQuarantine();
@@ -113,7 +113,7 @@ internal static class GpuHostReferenceQualification
     {
         RequireQualifiedCreationPath(); // Before any new Job/admission/token operation.
         state.AssertHeld();version.AssertHeld(state);LifecycleRecovery.AssertNoPending(state);InstallationLoopbackLease.AssertClosedHistory(state);
-        foreach(var intent in OwnedJobIntent.ReadAll(state))if(AtomicJobCompletion.ReadClosed(state,intent) is null)throw WfpNative.Contract("HostGpuRequiresPriorAdmissionsClosed");
+        foreach(var intent in OwnedJobIntent.ReadAll(state))if(!SessionZeroCreatorRecovery.IsAdmissionResolved(state,intent))throw WfpNative.Contract("HostGpuRequiresPriorAdmissionsClosed");
         var id=Guid.NewGuid().ToString("N");var plan=new GpuProbePlan(id,1);var progress=new GpuCallProgressReader(id,true);
         var errors=new List<Exception>();string? jobId=null;uint? pid=null,exit=null;GpuHostTokenFacts? createdToken=null;GpuChildReport? observed=null;RuntimeStop? stop=null;
         AssertQuarantine();

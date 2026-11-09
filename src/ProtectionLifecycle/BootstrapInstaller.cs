@@ -107,6 +107,13 @@ internal sealed class BootstrapApproval : IDisposable
             ??throw new InvalidDataException("Embedded inactive transition missing");
         return InactiveUpdateTransition.Read(resource);
     }
+    internal SessionZeroCreatorRecovery.Approval ReadCreatorRecoveryApproval()
+    {
+        AssertHeld();
+        using var resource=Assembly.GetEntryAssembly()?.GetManifestResourceStream("ProtectionBootstrap.CreatorRecoveryApproval.json")
+            ??throw new InvalidDataException("Embedded creator recovery approval missing");
+        return SessionZeroCreatorRecovery.Approval.Read(resource);
+    }
     private PathLease HoldDirectory(string path){var lease=WindowsPathSeal.LockDirectory(path,PathPolicy.Protected);directories.Add(lease);return lease;}
     private FileStream HoldFile(string parent,string leaf)
     {
@@ -166,6 +173,33 @@ public static class BootstrapInstaller
         }
     }
 
+    public static (int ExitCode,string Report) RecoverReviewedLegacyCreator()
+    {
+        var stage="MAINTENANCE_IDENTITY";
+        try
+        {
+            ProtectedState.RequireAdministrator();
+            stage="RECOVERY_PACKAGE_APPROVAL";
+            using var bootstrap=BootstrapApproval.Open(true);
+            var approval=bootstrap.ReadCreatorRecoveryApproval();
+            var next=ReviewedPackage.FromBootstrap(bootstrap);
+            var layout=FixedLayout.FromWindows();
+            stage="EXACT_INACTIVE_INSTALLATION";
+            using var state=ProtectedState.OpenExisting(layout);
+            var current=CurrentPointer.Parse(state.Read("current.json",4096),state.InstallationId);
+            bootstrap.ReadInactiveTransition().Require(current.Release,current.ManifestSHA256,next.Release,next.ManifestHash);
+            using var prior=VerifiedVersion.Open(layout,state,current.Release);
+            var receipt=SessionZeroCreatorRecovery.Recover(state,prior,approval,value=>{stage=value;bootstrap.AssertHeld();});
+            return (0,JsonSerializer.Serialize(new {Status="LEGACY_CREATOR_RETIRED_WITHOUT_ADMISSION",ReceiptSHA256=receipt,
+                JobZeroObserved=false,PointerChanged=false,WfpModified=false,ClaudeLaunched=false}));
+        }
+        catch(Exception error)
+        {
+            var details=WfpNative.Describe(error);
+            return(125,JsonSerializer.Serialize(new {Status="LEGACY_CREATOR_RECOVERY_NOT_CONFIRMED",Stage=stage,Failures=details}));
+        }
+    }
+
     // Migration from pinned reviewed packages with no admission or completed
     // one-shot admissions. This is not a generic empty-job/runtime lease.
     public static (int ExitCode,string Report) UpdatePinnedInactive()=>UpdatePinnedInactive(null);
@@ -212,12 +246,13 @@ public static class BootstrapInstaller
         runtime.AssertNoOwnedProcesses();verified.AssertHeld(state);
         return (0,JsonSerializer.Serialize(new {SchemaVersion=1,Status="PINNED_INACTIVE_UPDATE_COMPLETED",state.InstallationId,
             PriorRelease=current.Release,package.Release,package.ManifestHash,OperationId=operation,Activation="INACTIVE",
-            RuntimeLeaseScope="PINNED_NO_ADMISSION_OR_CLOSED_ONE_SHOT_JOBS_AND_ABSENT_OR_QUARANTINED_FENCE",WfpModified=false,JobCreated=false,
+            RuntimeLeaseScope=runtime.LeaseScope,WfpModified=false,JobCreated=false,
             ClaudeLaunched=false,UserConfigurationModified=false,ProtectionQualified=false}));
     }
 
     private sealed class PinnedInactiveUpdateLease : ILifecycleRuntimeLease
     {
+        internal string LeaseScope {get;private set;}="PINNED_NO_ADMISSION_OR_CLOSED_ONE_SHOT_JOBS_AND_ABSENT_OR_QUARANTINED_FENCE";
         private static readonly string[] NoAdmissionManifests={
             "1D83FA034A65DC58D1FFEB9C4F3A54EA52F1C3B7AF6156A54C752FA5D8801BAC",
             "BB0A619C10B53ECF4AC4E79578C9DF4A058E1758B3B111836A5172F46488E9FD",
@@ -474,8 +509,9 @@ public static class BootstrapInstaller
         // Acceptance here says nothing about live closure or maintenance gates.
         internal static void RequirePinnedTransition(string currentRelease,string currentManifest,string priorRelease,string priorManifest,string nextRelease,string nextManifest)
         {
+            var legacyCreatorPrior=priorRelease==SessionZeroCreatorRecovery.Release && priorManifest==SessionZeroCreatorRecovery.Manifest;
             if(currentRelease!=priorRelease || currentManifest!=priorManifest ||
-                !(NoAdmissionManifests.Contains(priorManifest,StringComparer.Ordinal) || OneShotAdmissionManifests.Contains(priorManifest,StringComparer.Ordinal)) ||
+                !(legacyCreatorPrior || NoAdmissionManifests.Contains(priorManifest,StringComparer.Ordinal) || OneShotAdmissionManifests.Contains(priorManifest,StringComparer.Ordinal)) ||
                 nextRelease==priorRelease || nextManifest==priorManifest)
                 throw new InvalidOperationException("Only pinned reviewed inactive packages can migrate");
         }
@@ -504,8 +540,14 @@ public static class BootstrapInstaller
                 var jobs=OwnedJobIntent.ReadAll(state);
                 if(NoAdmissionManifests.Contains(prior.Package.ManifestHash,StringComparer.Ordinal) && jobs.Count!=0)
                     throw new InvalidOperationException("Job history is outside the pinned no-admission package");
-                foreach(var job in jobs)if(AtomicJobCompletion.ReadClosed(state,job) is null)
-                    throw new InvalidOperationException("Every one-shot Job needs a closed admission and zero-members proof");
+                var retired=false;
+                foreach(var job in jobs)
+                {
+                    if(SessionZeroCreatorRecovery.ReadRetired(state,job)){retired=true;continue;}
+                    if(AtomicJobCompletion.ReadClosed(state,job) is null)
+                        throw new InvalidOperationException("Every Job needs a closed admission or a verified retirement without admission");
+                }
+                if(retired)LeaseScope="PINNED_CLOSED_OR_RETIRED_NEVER_ADMITTED_JOBS_AND_ABSENT_OR_QUARANTINED_FENCE";
                 // A failed intent is not absence. Every exact plan must be absent
                 // or fully quarantined; no resource is removed during this update.
                 stage="FENCE_QUARANTINE";

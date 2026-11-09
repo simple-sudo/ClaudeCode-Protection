@@ -260,7 +260,7 @@ internal sealed class SessionTimeZoneReadAccess : IDisposable
     internal static (int ExitCode,string Report) Recover(ProtectedState state,bool reviewedIncidentOnly=false)
     {
         ProtectedState.RequireAdministrator();state.AssertHeld();InstallationLoopbackLease.AssertClosedHistory(state);
-        foreach(var job in OwnedJobIntent.ReadAll(state))if(AtomicJobCompletion.ReadClosed(state,job) is null)throw WfpNative.Contract("TimeZoneRecoveryRequiresAllAdmissionsClosed");
+        foreach(var job in OwnedJobIntent.ReadAll(state))if(!SessionZeroCreatorRecovery.IsAdmissionResolved(state,job))throw WfpNative.Contract("TimeZoneRecoveryRequiresAllAdmissionsClosed");
         var plans=FencePlan.ReadAll(state);if(plans.Count==0)throw WfpNative.Contract("TimeZoneRecoveryRequiresQuarantine");
         foreach(var p in plans){using var f=PersistentFence.OpenExisting(state,p.Data.FenceId);if(!f.Observe().FullQuarantineObserved)throw WfpNative.Contract("TimeZoneRecoveryRequiresQuarantine");}
         var pending=Pending(state);

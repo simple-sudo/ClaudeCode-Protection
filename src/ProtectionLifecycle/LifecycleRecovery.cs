@@ -159,10 +159,10 @@ internal static class LifecycleRecovery
         finally{verified?.Dispose();}
     }
     internal static void AssertNoPending(ProtectedState state,string? exceptOperation=null,bool forNetworkMigration=false,bool forManifestAccessRecovery=false,
-        SessionZeroCreatorRegistration? preparingCreator=null)
+        SessionZeroCreatorRegistration? preparingCreator=null,OwnedJobIntent? recoveringCreator=null)
     {
         state.AssertHeld();
-        SessionZeroCreatorRegistration.AssertNoPending(state,preparingCreator);
+        SessionZeroCreatorRegistration.AssertNoPending(state,preparingCreator,recoveringCreator);
         // Legacy parameter name; only explicit installed OS-resource inspect/
         // recovery commands skip the fixed OS-resource pending gates. All other
         // lifecycle, installed-host, elevation and recovery checks still run.

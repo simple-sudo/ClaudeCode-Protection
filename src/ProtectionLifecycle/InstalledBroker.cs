@@ -479,10 +479,12 @@ public static partial class InstalledBroker
             }
 
             var registeredZeroObserved = jobs is not null && jobs.AllRegisteredMembersZeroObserved;
+            var registeredResolved = jobs is not null && jobs.AllRegisteredJobsResolved;
             // A name absent at open is a bounded observation, not proof that
             // all installation processes/escaped processes are absent.
-            var status = quarantineObserved && registeredZeroObserved && failures.Count == 0
-                ? "QUARANTINE_AND_REGISTERED_JOBS_OBSERVED" : "QUARANTINE_OR_STOP_NOT_CONFIRMED";
+            var status = quarantineObserved && registeredResolved && failures.Count == 0
+                ? registeredZeroObserved ? "QUARANTINE_AND_REGISTERED_JOBS_OBSERVED" : "QUARANTINE_AND_REGISTERED_JOBS_RESOLVED"
+                : "QUARANTINE_OR_STOP_NOT_CONFIRMED";
             var output = JsonSerializer.Serialize(new {
                 SchemaVersion = 1, state.InstallationId, RequestId = requestId, Status = status,
                 QuarantineObserved = quarantineObserved, RegisteredJobMembersZeroObserved = registeredZeroObserved,
@@ -490,6 +492,7 @@ public static partial class InstalledBroker
                 NamesAbsentAtOpen = jobs?.NamesAbsentAtOpen.Length, FailedStages = failures.Count,
                 RegisteredJobFailures = jobs?.Failures.Length,
                 CompletedAdmissionJobs = jobs?.CompletedAdmissionJobIds.Length,
+                RetiredNeverAdmittedJobs = jobs?.RetiredNeverAdmittedJobIds.Length,
                 CompleteProcessOwnershipQualified = false, ImmediateDisconnectQualified = false,
                 LaunchQualified = false, ProxyQualified = false, RebootQualified = false
             });
@@ -499,7 +502,7 @@ public static partial class InstalledBroker
                 RegisteredJobs = jobs, Failures = failures,
                 Scope = "INSTALLATION_PACKAGE_AND_REGISTERED_JOBS_ONLY", AtUtc = DateTime.UtcNow.ToString("o")
             }));
-            return (failures.Count == 0 && quarantineObserved && registeredZeroObserved ? 0 : 3, output);
+            return (failures.Count == 0 && quarantineObserved && registeredResolved ? 0 : 3, output);
         }
         finally
         {

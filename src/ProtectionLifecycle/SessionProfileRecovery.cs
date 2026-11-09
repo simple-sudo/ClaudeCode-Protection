@@ -205,7 +205,7 @@ internal static class SessionProfileRecovery
     {
         state.AssertHeld();InstallationLoopbackLease.AssertClosedHistory(state);
         foreach(var job in OwnedJobIntent.ReadAll(state))
-            if(AtomicJobCompletion.ReadClosed(state,job) is null)throw WfpNative.Contract("ResourceRecoveryRequiresAllAdmissionsClosed");
+            if(!SessionZeroCreatorRecovery.IsAdmissionResolved(state,job))throw WfpNative.Contract("ResourceRecoveryRequiresAllAdmissionsClosed");
         var fences=FencePlan.ReadAll(state);if(fences.Count==0)throw WfpNative.Contract("ResourceRecoveryNeedsQuarantine");
         foreach(var plan in fences)
         {using var fence=PersistentFence.OpenExisting(state,plan.Data.FenceId);if(!fence.Observe().FullQuarantineObserved)throw WfpNative.Contract("ResourceRecoveryNeedsFullQuarantine");}
@@ -227,7 +227,13 @@ internal static class SessionProfileRecovery
     {
         state.AssertHeld();
         var jobs=OwnedJobIntent.ReadAll(state);
-        var allClosed=jobs.All(job=>AtomicJobCompletion.ReadClosed(state,job) is not null);
+        var allResolved=true;
+        var retiredCount=0;
+        foreach(var job in jobs)
+        {
+            if(SessionZeroCreatorRecovery.ReadRetired(state,job)){retiredCount++;continue;}
+            if(AtomicJobCompletion.ReadClosed(state,job) is null)allResolved=false;
+        }
         var pending=Pending(state);if(pending.Count>64)throw WfpNative.Contract("ProfileRecoveryInventoryExceeded");
         var items=new List<object>();
         foreach(var record in pending)
@@ -235,7 +241,7 @@ internal static class SessionProfileRecovery
             var bound=state.ReadOptional("profile-job-"+record.ProfileId+".json") is not null;
             var checkpoint=state.ReadOptional("profile-delete-intent-"+record.ProfileId+".json") is not null;
             string route;
-            if(!allClosed)route="BLOCKED_ADMISSION_CLOSURE_NOT_CONFIRMED";
+            if(!allResolved)route="BLOCKED_ADMISSION_CLOSURE_NOT_CONFIRMED";
             else if(!bound)
             {
                 if(checkpoint)_=ValidateCleanupIntent(state,record);
@@ -246,15 +252,20 @@ internal static class SessionProfileRecovery
             items.Add(new {record.ProfileId,ProcessBindingPresent=bound,CleanupCheckpointPresent=checkpoint,Route=route});
         }
         return(pending.Count==0?0:3,JsonSerializer.Serialize(new {SchemaVersion=1,Scope="RESOURCE_RECOVERY_JOURNAL_READ_ONLY",
-            Status=pending.Count==0?"NO_PENDING_PROFILE_CLEANUP":"PROFILE_RECOVERY_DECISION_REQUIRED",AllAdmissionsClosed=allClosed,
-            Pending=items,StorageIdentityAndQuarantineCheckedByRecoveryOnly=true,StateModified=false,JobApiCalled=false,
+            Status=pending.Count==0?"NO_PENDING_PROFILE_CLEANUP":"PROFILE_RECOVERY_DECISION_REQUIRED",AllAdmissionsClosed=allResolved && retiredCount==0,
+            AllJobHistoriesResolved=allResolved,RetiredNeverAdmittedJobs=retiredCount,
+            Pending=items,StorageIdentityAndQuarantineCheckedByRecoveryOnly=true,StateModified=false,JobApiCalled=retiredCount>0,
             CleanupAuthorized=false,LaunchAuthorized=false}));
     }
     internal static (int ExitCode,string Report) RecoverNeverStarted(ProtectedState state)
     {
         state.AssertHeld();InstallationLoopbackLease.AssertClosedHistory(state);
+        var retiredCount=0;
         foreach(var job in OwnedJobIntent.ReadAll(state))
+        {
+            if(SessionZeroCreatorRecovery.ReadRetired(state,job)){retiredCount++;continue;}
             if(AtomicJobCompletion.ReadClosed(state,job) is null)throw WfpNative.Contract("UnstartedRecoveryRequiresAllAdmissionsClosed");
+        }
         var fences=FencePlan.ReadAll(state);if(fences.Count==0)throw WfpNative.Contract("UnstartedRecoveryNeedsQuarantine");
         foreach(var plan in fences)
         {using var fence=PersistentFence.OpenExisting(state,plan.Data.FenceId);if(!fence.Observe().FullQuarantineObserved)throw WfpNative.Contract("UnstartedRecoveryNeedsFullQuarantine");}
@@ -280,7 +291,8 @@ internal static class SessionProfileRecovery
         AssertNoPending(state);
         return(0,JsonSerializer.Serialize(new {SchemaVersion=1,Scope="EXPLICIT_V2_CREATED_NO_PROCESS_BINDING_RECOVERY_ONLY",
             Status=recovered.Count==0?"NO_PENDING_PROFILE_CLEANUP":"EXACT_NEVER_STARTED_PROFILE_STORAGE_RECOVERED",RecoveredProfileIds=recovered,
-            ProcessBindingAbsenceRequired=true,AllAdmissionsClosed=true,JobCompletionInvented=false,NetworkPolicyModified=false,
+            ProcessBindingAbsenceRequired=true,AllAdmissionsClosed=retiredCount==0,AllJobHistoriesResolved=true,
+            RetiredNeverAdmittedJobs=retiredCount,JobCompletionInvented=false,NetworkPolicyModified=false,
             ProfileRegistrationAbsenceQualified=false,ControllerCrashQualified=false,RebootRecoveryQualified=false,LaunchAuthorized=false}));
     }
     [DllImport("userenv.dll",CharSet=CharSet.Unicode,ExactSpelling=true)] private static extern int DeleteAppContainerProfile(string name);

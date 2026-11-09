@@ -260,7 +260,7 @@ internal static class WatchdogQualification
     internal static (int ExitCode,string Report) Run(FixedLayout layout,ProtectedState state,VerifiedVersion version)
     {
         state.AssertHeld();version.AssertHeld(state);LifecycleRecovery.AssertNoPending(state);InstallationLoopbackLease.AssertClosedHistory(state);
-        foreach(var intent in OwnedJobIntent.ReadAll(state))if(AtomicJobCompletion.ReadClosed(state,intent) is null)throw WfpNative.Contract("WatchdogRequiresPriorAdmissionsClosed");
+        foreach(var intent in OwnedJobIntent.ReadAll(state))if(!SessionZeroCreatorRecovery.IsAdmissionResolved(state,intent))throw WfpNative.Contract("WatchdogRequiresPriorAdmissionsClosed");
         var plans=FencePlan.ReadAll(state);if(plans.Count==0)throw WfpNative.Contract("WatchdogRequiresFence");
         var fences=new List<PersistentFence>();var results=new List<object>();Exception? failure=null;var id=Guid.NewGuid().ToString("N");
         try

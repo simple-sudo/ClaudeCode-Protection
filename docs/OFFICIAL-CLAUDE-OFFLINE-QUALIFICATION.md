@@ -874,3 +874,25 @@ Broker 与普通测试工具 Release 构建通过。普通回归覆盖既有与�
 本机路径 `work/independent-creator-handoff-20261108-01/inspect-rebooted-residue-current-20261108/receipt.json`。
 本次未打开 Job 或读取工作区内容，未清理、启动服务或改变系统。后续恢复须区分
 从未准入的退休凭证与实际 Job 关闭和成员归零的凭证。原失败和只读回执保留。
+
+### 旧版未准入现场的恢复入口
+
+新增 `recover-reviewed-legacy-creator`，经原维护程序执行。它要求已固定的私有
+安装包、原版及目标版绑定，以及另行嵌入的安装、Job、原失败摘要和有效期。
+普通构建没有这份嵌入批准。入口只处理 `7df61706` 的指定启动失败，保留原账本。
+它重新检查无准入、无恢复完成记录、原服务命令与权限、当前 SCM 未启动状态，
+并在全隔离下只查询确切 Job 名称。名称可打开或查询拒绝均保留锁闭。
+
+工作区只接受原 NTFS 根身份和产品生成的五级空目录，逐级核对权限。完整枚举
+通过后才写一次尝试记录和按已持有句柄回收。存在额外文件、链接或未知目录即
+拒绝。原服务只能从核验的同一停止登记句柄删除。三处缺席都回读后，才记录
+`LEGACY_CREATOR_RETIRED_WITHOUT_ADMISSION`。途中失败保留尝试记录，禁止自动
+重试。升级、运行和维护的历史门禁验证该记录及当前缺席。凡要求实际 Job 归零、
+工作结果释放或已准入 profile 回收的入口仍使用原闭合凭证。
+
+普通 Windows 对照确认精确 Job 名称缺席可通过、已占用且无法查询时拒绝。原
+实机保留的失败输出可通过解析，修改启动阶段、恢复标记、准入标记、身份结果
+或工作区关闭标记均被拒。普通权限调用恢复入口在权限检查处拒绝。维护包未
+固定，实际全隔离回读、目录和服务删除及后续升级仍待独立实机审查。
+[Job 名称查询](https://learn.microsoft.com/en-us/windows/win32/api/jobapi2/nf-jobapi2-openjobobjectw) ·
+[服务登记回收](https://learn.microsoft.com/en-us/windows/win32/api/winsvc/nf-winsvc-deleteservice)

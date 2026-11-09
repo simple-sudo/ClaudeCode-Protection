@@ -185,20 +185,76 @@ internal sealed class SessionZeroCreatorRegistration : IDisposable
         deleteAttempted=true;
         if(!DeleteService(service))throw Error("RemoveOriginalCreatorRegistration");
         service.Dispose();
+        WaitForAbsence(manager,name);
+        state.WriteNew(DoneLeaf(JobId),JsonSerializer.SerializeToUtf8Bytes(new {SchemaVersion=1,IntentSHA256=intentHash,Disposition=disposition}));
+    }
+
+    private static void WaitForAbsence(ServiceHandle manager,string name)
+    {
         var watch=Stopwatch.StartNew();
         while(watch.ElapsedMilliseconds<5000)
         {
             using var observation=OpenService(manager,name,4);
             var code=Marshal.GetLastWin32Error();
-            if(observation.IsInvalid && code==1060)
-            {
-                state.WriteNew(DoneLeaf(JobId),JsonSerializer.SerializeToUtf8Bytes(new {SchemaVersion=1,IntentSHA256=intentHash,Disposition=disposition}));
-                return;
-            }
+            if(observation.IsInvalid && code==1060)return;
             if(!observation.IsInvalid || code!=1072)throw WfpNative.Contract("CreatorServiceNameRemovalUnconfirmed");
             Thread.Sleep(25);
         }
         throw new TimeoutException("Original creator service deletion is pending");
+    }
+
+    internal static void AssertRecoveryRegistrationAbsent(string id)
+    {
+        using var manager=OpenSCManager(null,null,1);
+        if(manager.IsInvalid)throw Error("OpenLocalCreatorServiceManager");
+        using var observation=OpenService(manager,SessionZeroCreatorChannel.NameForJob(id),4);
+        var code=Marshal.GetLastWin32Error();
+        if(!observation.IsInvalid || code!=1060)throw WfpNative.Contract("LegacyCreatorServiceAbsenceUnconfirmed");
+    }
+
+    internal static RecoveryRegistration HoldForRecovery(OwnedJobIntent job,string image)
+    {
+        var manager=OpenSCManager(null,null,1);
+        ServiceHandle? service=null;
+        try
+        {
+            if(manager.IsInvalid)throw Error("OpenLocalCreatorServiceManager");
+            var name=SessionZeroCreatorChannel.NameForJob(job.JobId);
+            service=OpenService(manager,name,0x30005); // Delete, read control, query config/status only.
+            if(service.IsInvalid)throw Error("HoldLegacyCreatorRegistration");
+            var recovery=new RecoveryRegistration(manager,service,name,BuildCommand(image));
+            if(((SecurityIdentifier)new NTAccount("NT SERVICE",name).Translate(typeof(SecurityIdentifier))).Value!=job.CreatorServiceSid)
+                throw WfpNative.Contract("LegacyCreatorServiceSidMismatch");
+            recovery.AssertStoppedWithoutStart();
+            return recovery;
+        }
+        catch{service?.Dispose();manager.Dispose();throw;}
+    }
+
+    internal sealed class RecoveryRegistration : IDisposable
+    {
+        private readonly ServiceHandle manager,service;
+        private readonly string name,command;
+        private bool attempted;
+        internal RecoveryRegistration(ServiceHandle manager,ServiceHandle service,string name,string command)
+        {this.manager=manager;this.service=service;this.name=name;this.command=command;}
+        internal void AssertStoppedWithoutStart()
+        {
+            if(attempted)throw WfpNative.Contract("LegacyCreatorServiceRecoveryAlreadyAttempted");
+            AssertConfiguration(service,name,command);
+            var status=ReadStatus(service);
+            if(status.State!=1 || status.Win32Code!=1077 || status.ServiceCode!=0)
+                throw WfpNative.Contract("LegacyCreatorServiceMayHaveStartedSinceBoot");
+        }
+        internal void Remove()
+        {
+            AssertStoppedWithoutStart();
+            attempted=true;
+            if(!DeleteService(service))throw Error("RemoveLegacyCreatorRegistration");
+            service.Dispose();
+            WaitForAbsence(manager,name);
+        }
+        public void Dispose(){service.Dispose();manager.Dispose();}
     }
 
     private void AssertOriginal()
@@ -218,7 +274,7 @@ internal sealed class SessionZeroCreatorRegistration : IDisposable
         if(state.ReadOptional(OwnedJobIntent.Leaf(id)) is not null || state.ReadOptional("creator-workspace-intent-"+id+".json") is not null)
             throw WfpNative.Contract("CreatorServiceStartupRecoveryRequiresNoJobOrWorkspace");
     }
-    internal static void AssertNoPending(ProtectedState state,SessionZeroCreatorRegistration? preparing)
+    internal static void AssertNoPending(ProtectedState state,SessionZeroCreatorRegistration? preparing,OwnedJobIntent? recovering=null)
     {
         var entries=state.ListLeaves(IntentPrefix);
         if(entries.Length>1024)throw WfpNative.Contract("CreatorServiceInventoryLimit");
@@ -230,9 +286,15 @@ internal sealed class SessionZeroCreatorRegistration : IDisposable
             var raw=state.Read(leaf,4096);
             using var intent=JsonDocument.Parse(raw.Bytes,new JsonDocumentOptions{MaxDepth=2});
             ValidateIntent(intent.RootElement,state.InstallationId,id);
+            if(recovering?.JobId==id)continue; // The dedicated recovery owner separately binds this exact ledger.
             if(preparing is not null && ReferenceEquals(preparing.state,state) && preparing.JobId==id && preparing.intentHash==raw.SHA256)
             {
                 _=preparing.AssertReadyForJob(state,preparing.version);
+                continue;
+            }
+            if(state.ReadOptional(SessionZeroCreatorRecovery.ReceiptLeaf(id)) is not null)
+            {
+                _=SessionZeroCreatorRecovery.ReadRetired(state,OwnedJobIntent.Read(state,id));
                 continue;
             }
             var done=state.ReadOptional(DoneLeaf(id))??throw WfpNative.Contract("CreatorServiceRegistrationRequiresRecovery");
@@ -249,7 +311,7 @@ internal sealed class SessionZeroCreatorRegistration : IDisposable
             ValidateRemoval(receipt.RootElement,raw.SHA256,start is not null,failure is not null);
         }
     }
-    private static void ValidateStartProof(byte[] bytes,string intentHash)
+    internal static void ValidateStartProof(byte[] bytes,string intentHash)
     {
         using var started=JsonDocument.Parse(bytes,new JsonDocumentOptions{MaxDepth=2});
         var record=started.RootElement;
@@ -377,7 +439,7 @@ internal sealed class SessionZeroCreatorRegistration : IDisposable
     }
     public void Dispose(){process?.Dispose();service.Dispose();manager.Dispose();}
 
-    private sealed class ServiceHandle : SafeHandleZeroOrMinusOneIsInvalid
+    internal sealed class ServiceHandle : SafeHandleZeroOrMinusOneIsInvalid
     {
         public ServiceHandle():base(true){}
         protected override bool ReleaseHandle()=>CloseServiceHandle(handle);

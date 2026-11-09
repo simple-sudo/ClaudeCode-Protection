@@ -100,7 +100,7 @@ internal static class SessionTaskWorkspace
     }
 
     internal static void DeleteExactTree(ProtectedState state,string path,string identity,string audience,string packageSid,Action assertAuthority,ref int removed,
-        bool allowAlreadyAbsent=true)
+        bool allowAlreadyAbsent=true,IReadOnlySet<string>? expectedEmptyDirectories=null)
     {
         var entries=new List<(string Path,bool Directory,SafeFileHandle Handle)>();
         try
@@ -121,12 +121,18 @@ internal static class SessionTaskWorkspace
                     foreach(var name in WindowsPathSeal.EnumerateNames(next.Handle,next.Path,4096))
                     {
                         var child=WindowsPathSeal.Child(next.Path,name);
+                        if(expectedEmptyDirectories is not null && !expectedEmptyDirectories.Contains(child))
+                            throw WfpNative.Contract("LegacyCreatorWorkspaceUnexpectedEntry");
                         if(entries.Count>=4096)throw WfpNative.Contract("TaskWorkspaceCleanupInventoryExceeded");
                         var attributes=File.GetAttributes(child);if((attributes&FileAttributes.ReparsePoint)!=0)throw WfpNative.Contract("TaskWorkspaceReparsePointRefused");
                         var directory=(attributes&FileAttributes.Directory)!=0;
+                        if(expectedEmptyDirectories is not null && !directory)throw WfpNative.Contract("LegacyCreatorWorkspaceExpectedDirectory");
                         var entry=Open(child,directory);entries.Add((child,directory,entry));if(directory)pending.Push((child,next.Depth+1,entry));
+                        if(expectedEmptyDirectories is not null)SessionResources.AssertMutableWorkspace(entry,audience,packageSid);
                     }
                 }
+                if(expectedEmptyDirectories is not null && !expectedEmptyDirectories.SetEquals(entries.Skip(1).Select(entry=>entry.Path)))
+                    throw WfpNative.Contract("LegacyCreatorWorkspaceInventoryIncomplete");
                 // Complete no-follow/single-link preflight before any deletion.
                 // All handles/ancestors stay held against replacement. Changes
                 // by another trusted host process can cause a refusal, never a
