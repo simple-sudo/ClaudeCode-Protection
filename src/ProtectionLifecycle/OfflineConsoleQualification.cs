@@ -296,6 +296,7 @@ internal static class OfflineConsoleQualification
         var failures=new List<Exception>();
         var stage="VerifyQuarantine";
         string? jobId=null;
+        string? failedStage=null;
         uint? exit=null;
         RuntimeStop? stopped=null;
         OfflineConsoleOutput? stdout=null,stderr=null;
@@ -362,7 +363,6 @@ internal static class OfflineConsoleQualification
             using var workspace=SessionZeroOfflineWorkspace.Create(state,job,creator);
             ProtectionRuntimeLease? runtime=null;
             AtomicChild? child=null;
-            string? failedStage=null;
             try
             {
                 stage="ValidateSuspendedRoot";
@@ -435,7 +435,6 @@ internal static class OfflineConsoleQualification
                 stage="RemoveCreatorRegistration";
                 creator.RemoveAfterProfileCleanup(workspace);serviceRemoved=true;
             }
-            stage=failedStage??stage;
         }
         catch(Exception error){failures.Add(error);}
         finally
@@ -443,6 +442,7 @@ internal static class OfflineConsoleQualification
             try{AssertQuarantine();}catch(Exception error){failures.Add(error);}
             foreach(var fence in fences)try{fence.Dispose();}catch(Exception error){failures.Add(error);}
         }
+        stage=failedStage??stage;
         var matched=stdout is {Overflow:false} && stderr is {Overflow:false} &&
             ExpectedOutput.SequenceEqual(stdout.Bytes) && ExpectedError.SequenceEqual(stderr.Bytes);
         var identityObserved=IndependentIdentityObserved(hostIdentity);

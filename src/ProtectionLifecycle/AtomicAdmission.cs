@@ -300,7 +300,7 @@ internal sealed partial class AtomicChild : IDisposable
     }
     internal static void AssertIndependentOfflineHandoffToken(SafeProcessHandle process,string expectedPackageSid)
     {
-        var token=ReadTokenSnapshot(process,true,true,out var actualUser);
+        var token=ReadIndependentOfflineToken(process,out var actualUser);
         using var host=WindowsIdentity.GetCurrent(TokenAccessLevels.Query);
         AssertIndependentSessionUser(actualUser,host.User);
         if(!token.IsAppContainer || !token.LpacAccessCheckObserved || token.ApplicationPackageAccessMask!=2 ||
@@ -683,7 +683,9 @@ internal sealed partial class AtomicChild : IDisposable
         var path=new StringBuilder(32768);uint length=(uint)path.Capacity;
         if(!QueryFullProcessImageName(process,0,path,ref length))throw Error("AtomicReadCreatedImage");
         if(!string.Equals(WindowsPathSeal.Canonical(path.ToString()),image,StringComparison.OrdinalIgnoreCase))throw WfpNative.Contract("AtomicCreatedImageMismatch");
-        var token=ReadTokenSnapshot(process,true,offlineConsole,out var tokenUser);
+        SecurityIdentifier? tokenUser;
+        var token=independentOfflineConsole?ReadIndependentOfflineToken(process,out tokenUser):
+            ReadTokenSnapshot(process,true,offlineConsole,out tokenUser);
         if(!token.IsAppContainer || RequiresLpac && !token.LpacAccessCheckObserved || token.PackageSid!=packageSid || !CapabilityProfile.Matches(token.CapabilityCount,token.Capabilities) || token.IntegritySid!="S-1-16-4096")throw WfpNative.Contract("AtomicTokenBeforeResumeMismatch");
         if(independentOfflineConsole)
         {
@@ -1213,6 +1215,19 @@ internal sealed partial class AtomicChild : IDisposable
     }
     private static AdmissionToken ReadToken(SafeProcessHandle process,bool observePackageAccess=true)
         =>ReadTokenSnapshot(process,observePackageAccess,false,out _);
+
+    private static AdmissionToken ReadIndependentOfflineToken(SafeProcessHandle process,out SecurityIdentifier? user)
+    {
+        try{return ReadTokenSnapshot(process,true,true,out user);}
+        catch(Win32Exception error)when(error.NativeErrorCode==5 && error.Data["Stage"] is "AtomicOpenCreatedToken")
+        {
+            // The LPAC access check still needs TOKEN_DUPLICATE. Query-only
+            // access distinguishes the failure without granting admission.
+            if(!OpenProcessToken(process,8,out var query))throw Error("CreatorChildTokenQueryOnly");
+            using(query)error.Data["Stage"]="CreatorChildTokenQuerySucceededWithoutDuplicate";
+            throw;
+        }
+    }
 
     private static AdmissionToken ReadTokenSnapshot(SafeProcessHandle process,bool observePackageAccess,bool captureUser,out SecurityIdentifier? user)
     {

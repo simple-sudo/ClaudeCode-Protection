@@ -1046,3 +1046,30 @@ Bootstrap 在 `PINNED_TRANSITION` 返回 `InvalidOperationException`，外层原
 发布 ID 搭配同摘要仍被拒绝。后续候选必须在普通侧直接调用同一纯检查。使用
 修正后的库读取这次失败的原始清单和升级对，前序选择回归通过。所有实时的
 归属、Job、隔离规则和资源检查仍由安装器执行。
+
+### 已创建挂起根但 Broker 令牌读取被拒
+
+审查 `F0BD2C06412DC236AA8B759DB3AB7477C06BB3778C0E71E8CA0F99F373C378E2` 的一次许可已消耗。
+候选自身普通前序检查通过，原 Bootstrap 实机升级 `aa781cf9`，保持未激活。清单
+SHA-256 为 `86F88D2BD6AFDC4B4E6CAC3CECFAF6943A794DA7C36FFD014A73AFF27CB29751`。
+旧误报探针服务在升级前和复验前均按确切手动登记核实为停止，保留原现场。
+
+实际服务通过了登录 SID 门禁和管道绑定，`CreateProcessW` 返回后交接了挂起
+根进程。Broker 在核对映像、单一 Job 成员和进程描述符后，`AtomicOpenCreatedToken`
+请求 `TOKEN_QUERY | TOKEN_DUPLICATE` 返回 5。没有恢复线程，令牌和宿主 SID
+尚未核实。当前证据尚不能区分查询失败与只有组合权限失败。Windows 对所请求的
+令牌权限执行单独的访问检查。[OpenProcessToken](https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-openprocesstoken)
+
+原 Broker 报告 `OriginalJobClosed=true`，未生成完整运行停止观察。接着因
+`CreatorProfileCleanupChannelUnavailable` 停止。普通回读确认本次服务登记和
+工作区根仍在，当前服务状态查询返回 5。SCM 7024 记录 130048 的服务码为
+`0xC5620026`。profile 现状尚未核实，原现场锁闭。终态回执
+`work/creator-logon-owner-guarded-retest-20261108/receipt.json`，SHA-256
+`AA43777A1989E5F33DC7C11F588648CA3B28F1225A831E8448C6F2CE0221363A`。
+
+新源码在原服务返回成功创建、对端绑定及独占 Job 交接均成立后，即保留该次清理
+关联值。若后续进程校验失败，清理仍需原 Job 的持久关闭回执、零成员、完整隔离，
+以及原服务用持有句柄确认其子进程终态。收尾错误仍记录，并保留首先失败的运行阶段。
+另在独立身份路径的令牌组合权限被拒时，单独检查查询权限作为诊断，准入仍要求
+完整令牌核验。普通 Release 和创建者、离线控制台及迁移回归通过。新源码未安装，
+不能用于追认本次遗留现场已回收。

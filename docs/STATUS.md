@@ -5,6 +5,12 @@
 历史页的“当前/待执行/暂停/DELIVERABLE”按段落日期及限定范围解释，不是今天的状态或操作许可。
 不在本页复制当前安装和授权摘要。
 
+## 2026-11-08 独立服务创建挂起根
+
+实际创建走过了 LocalService 所有者门禁和挂起创建，Broker 对子进程令牌的打开
+仍被拒。原 Job 报告已关闭，profile、工作区和服务登记没有收尾证明。源码改进
+失败收尾与分阶段诊断。[实机结果](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#已创建挂起根但-broker-令牌读取被拒)
+
 ## 2026-11-08 LocalService 实际对象所有者
 
 原 Broker 实机通过 SCM 回传 `TokenLogon`。新版临时服务已回收，失败前未建立

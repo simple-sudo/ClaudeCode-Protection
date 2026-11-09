@@ -112,12 +112,15 @@ internal sealed class SessionZeroCreatorChannel : IDisposable
         // CreateProcess and closed its assignment handle. Read the DACL and
         // actual handle count before inspecting any returned process IDs.
         job.ConfirmSessionZeroCreatorReleased();
+        // The creator can close its own profile after this original Job is
+        // closed and it has independently observed its held child exit. Keep
+        // that cleanup path available when the Broker cannot validate the root.
+        cleanupNonce=nonce;
         var root=OpenRoot(report,job,image,package.Value);
         try
         {
             AssertQuarantine(state);
             job.AssertCreatorSealedBeforeResume();
-            cleanupNonce=nonce;
             return root;
         }
         catch{root.Dispose();throw;}
