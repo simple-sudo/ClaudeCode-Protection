@@ -200,6 +200,27 @@ public static class BootstrapInstaller
         }
     }
 
+    public static int RunReviewedProfileRecoveryService()=>SessionZeroCreatorService.Dispatch(recovery:true);
+
+    public static (int ExitCode,string Report) RecoverReviewedClosedCreator()
+    {
+        var stage="MAINTENANCE_IDENTITY";
+        try
+        {
+            ProtectedState.RequireAdministrator();
+            stage="RECOVERY_PACKAGE_APPROVAL";
+            using var bootstrap=BootstrapApproval.Open(true);
+            stage="ORIGINAL_LEDGER_AND_QUARANTINE";
+            var receipt=SessionZeroClosedCreatorRecovery.Recover(bootstrap,value=>stage=value);
+            return (0,JsonSerializer.Serialize(new {Status="CLOSED_CREATOR_RESIDUE_RECOVERED",ReceiptSHA256=receipt,
+                PointerChanged=false,WfpModified=false,ClaudeLaunched=false}));
+        }
+        catch(Exception error)
+        {
+            return(125,JsonSerializer.Serialize(new {Status="CLOSED_CREATOR_RECOVERY_NOT_CONFIRMED",Stage=stage,Failures=WfpNative.Describe(error)}));
+        }
+    }
+
     // Migration from pinned reviewed packages with no admission or completed
     // one-shot admissions. This is not a generic empty-job/runtime lease.
     public static (int ExitCode,string Report) UpdatePinnedInactive()=>UpdatePinnedInactive(null);
@@ -510,6 +531,7 @@ public static class BootstrapInstaller
         internal static void RequirePinnedTransition(string currentRelease,string currentManifest,string priorRelease,string priorManifest,string nextRelease,string nextManifest)
         {
             var creatorPrior=(priorRelease==SessionZeroCreatorRecovery.Release && priorManifest==SessionZeroCreatorRecovery.Manifest) ||
+                (priorRelease==SessionZeroClosedCreatorRecovery.Release && priorManifest==SessionZeroClosedCreatorRecovery.Manifest) ||
                 (priorRelease=="51039f75b3bd4629b6ab3ea840e9f36a" &&
                     priorManifest=="ADB71B6FCF3656780010B57A3567C5E9E6DA47A37E4EDFDCC3A91F043D11256E") ||
                 (priorRelease=="a3891b3509a84e759ad5e9161c7dc361" &&

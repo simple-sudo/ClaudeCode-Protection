@@ -101,6 +101,16 @@ internal static class SessionTaskWorkspace
 
     internal static void DeleteExactTree(ProtectedState state,string path,string identity,string audience,string packageSid,Action assertAuthority,ref int removed,
         bool allowAlreadyAbsent=true,IReadOnlySet<string>? expectedEmptyDirectories=null)
+        =>InspectOrDeleteExactTree(state,path,identity,audience,packageSid,assertAuthority,ref removed,allowAlreadyAbsent,expectedEmptyDirectories,inspectOnly:false);
+
+    internal static void AssertExactEmptyTree(ProtectedState state,string path,string identity,string audience,string packageSid,IReadOnlySet<string> expectedEmptyDirectories)
+    {
+        var removed=0;
+        InspectOrDeleteExactTree(state,path,identity,audience,packageSid,()=>{},ref removed,false,expectedEmptyDirectories,inspectOnly:true);
+    }
+
+    private static void InspectOrDeleteExactTree(ProtectedState state,string path,string identity,string audience,string packageSid,Action assertAuthority,ref int removed,
+        bool allowAlreadyAbsent,IReadOnlySet<string>? expectedEmptyDirectories,bool inspectOnly)
     {
         var entries=new List<(string Path,bool Directory,SafeFileHandle Handle)>();
         try
@@ -138,6 +148,7 @@ internal static class SessionTaskWorkspace
                 // by another trusted host process can cause a refusal, never a
                 // recursive pathname fallback or deletion outside this root.
                 foreach(var entry in entries)WindowsPathSeal.VerifyObject(entry.Handle,entry.Path,entry.Directory);
+                if(inspectOnly)return;
                 foreach(var entry in entries.OrderByDescending(e=>e.Path.Length))
                 {
                     state.AssertHeld();

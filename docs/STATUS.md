@@ -5,6 +5,12 @@
 历史页的“当前/待执行/暂停/DELIVERABLE”按段落日期及限定范围解释，不是今天的状态或操作许可。
 不在本页复制当前安装和授权摘要。
 
+## 2026-11-09 已关闭 Job 的定向恢复入口
+
+原 Bootstrap 接入一次性恢复、原始失败记录核对、仅做 profile 清理的 LocalService
+角色和分阶段关闭回执。普通 Release 构建和门禁回归通过，实机未执行。
+[机制和验证范围](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#已关闭-job-的定向恢复入口)
+
 ## 2026-11-09 独立记录 profile 关闭与输出失败
 
 独立离线链先持久确认 profile 清理，再接收有界输出。输出失败仍保留运行失败，

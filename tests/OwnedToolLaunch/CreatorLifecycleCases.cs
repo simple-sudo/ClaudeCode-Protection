@@ -5,6 +5,7 @@ using System.Runtime.InteropServices;
 using System.Security.AccessControl;
 using System.Security.Principal;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Microsoft.Win32.SafeHandles;
 
 internal static class CreatorLifecycleCases
@@ -304,6 +305,68 @@ internal static class CreatorLifecycleCases
         catch(TargetInvocationException error) when(error.InnerException is UnauthorizedAccessException){denied=true;}
         Check(denied);
         Console.WriteLine($"PASS {count-previous} independent offline checks; no success when a host identity matches or TokenUser differs unproven, ordinary caller denied before setup. No service or WFP mutations.");
+        previous=count;
+        var stop=Method("SessionZeroCreatorRegistration","MatchesRecoveryStop");
+        const uint originalStop=0xC5620026;
+        bool IsStopped(uint state,uint pid,uint error,uint code,uint approved)=>
+            stop.Invoke(null,[state,pid,error,code,approved]) is true;
+        Check(IsStopped(1,0,1077,0,0));
+        Check(IsStopped(1,0,1066,originalStop,originalStop));
+        Check(!IsStopped(1,0,1066,originalStop,0));
+        Check(!IsStopped(1,0,1066,originalStop+1,originalStop));
+        Check(!IsStopped(4,17,1066,originalStop,originalStop));
+        Check(!IsStopped(1,17,1066,originalStop,originalStop));
+        Check(!IsStopped(1,0,0,0,originalStop));
+        var recovery=library.GetType("ProtectionLifecycle.SessionZeroClosedCreatorRecovery",true)!;
+        var readApproval=recovery.GetNestedType("Approval",BindingFlags.NonPublic)!.GetMethod("Read",methods)!;
+        var now=DateTimeOffset.UtcNow;
+        var approved=new {SchemaVersion=1,InstallationId=installation,JobId=jobId,WorkerId=release,FailedRunSHA256=hash,
+            WindowStartUtc=now.AddMinutes(-4),WindowEndUtc=now.AddMinutes(-3),ExpiresUtc=now.AddMinutes(1)};
+        object? ParseApproval(object data)
+        {
+            using var stream=new MemoryStream(JsonSerializer.SerializeToUtf8Bytes(data),false);
+            return readApproval.Invoke(null,[stream]);
+        }
+        Check(ParseApproval(approved) is not null);
+        Refused(()=>ParseApproval(approved with {WorkerId=jobId}));
+        Refused(()=>ParseApproval(approved with {FailedRunSHA256="wrong"}));
+        Refused(()=>ParseApproval(approved with {WindowStartUtc=now.AddMinutes(-6)}));
+        Refused(()=>ParseApproval(approved with {WindowEndUtc=now.AddMinutes(1)}));
+        Refused(()=>ParseApproval(approved with {WindowEndUtc=approved.WindowStartUtc}));
+        Refused(()=>ParseApproval(approved with {ExpiresUtc=now.AddSeconds(-1)}));
+        var oldRelease=(string)recovery.GetField("Release",methods)!.GetRawConstantValue()!;
+        var oldManifest=(string)recovery.GetField("Manifest",methods)!.GetRawConstantValue()!;
+        var originalJob=Method("OwnedJobIntent","ForNewJob").Invoke(null,[installation,oldRelease,oldManifest,serviceSid.Value])!;
+        var oldJobId=(string)originalJob.GetType().GetProperty("JobId")!.GetValue(originalJob)!;
+        var failureRecord=JsonSerializer.SerializeToNode(new {
+            SchemaVersion=1,Scope="INSTALLED_FIXED_INDEPENDENT_OFFLINE_CONSOLE",InstallationId=installation,JobId=oldJobId,
+            Release=oldRelease,ManifestHash=oldManifest,Status="INDEPENDENT_OFFLINE_CONSOLE_NOT_CONFIRMED",LastStage="CloseCreatorProfile",
+            ProcessResumed=false,ChildExit=(object?)null,OriginalJobClosed=true,ProfileClosed=false,WorkspaceClosed=false,ServiceRemoved=false,
+            StartupFailureRegistrationRemoved=false,FilesMatched=false,StreamsMatched=false,HostIdentityObservation=(object?)null,
+            HostAccountSidDiffers=false,HostIdentityQualified=false,Output=(object?)null,Error=(object?)null,ChildFailure=(object?)null,
+            EnvironmentProjection=(object?)null,StopObservation=(object?)null,GatewayOpened=false,NetworkQualified=false,LaunchAuthorized=false,
+            FormalAdmissionIssued=false,ClaudeLaunched=false,Failures=new[]{
+                new {Type="Win32Exception",Code=5u,Stage="AtomicOpenCreatedToken"},
+                new {Type="InvalidDataException",Code=0x80131501u,Stage="CreatorProfileCleanupChannelUnavailable"}
+            }
+        })!.AsObject();
+        var validateFailed=Method("SessionZeroClosedCreatorRecovery","ValidateFailedRun");
+        void AssertFailureRecord(JsonObject value)=>_=validateFailed.Invoke(null,[JsonSerializer.SerializeToUtf8Bytes(value),originalJob]);
+        AssertFailureRecord(failureRecord);Check(true);
+        foreach(var field in new[]{"OriginalJobClosed","ProcessResumed","ProfileClosed","LaunchAuthorized"})
+        {
+            var altered=failureRecord.DeepClone().AsObject();
+            altered[field]=!altered[field]!.GetValue<bool>();
+            Refused(()=>AssertFailureRecord(altered));
+        }
+        var changedFailure=failureRecord.DeepClone().AsObject();
+        changedFailure["Failures"]![0]!["Code"]=6;
+        Refused(()=>AssertFailureRecord(changedFailure));
+        var bootstrap=library.GetType("ProtectionLifecycle.BootstrapInstaller",true)!;
+        var rejected=bootstrap.GetMethod("RecoverReviewedClosedCreator")!.Invoke(null,null)!;
+        Check(rejected.GetType().GetField("Item1")!.GetValue(rejected) is 125 &&
+            ((string)rejected.GetType().GetField("Item2")!.GetValue(rejected)!).Contains("\"Stage\":\"MAINTENANCE_IDENTITY\"",StringComparison.Ordinal));
+        Console.WriteLine($"PASS {count-previous} closed creator recovery checks; original stop, expiry, object scope and ordinary maintenance refusal. No profile or SCM mutations.");
     }
 
     [DllImport("kernel32.dll",ExactSpelling=true,SetLastError=true)]

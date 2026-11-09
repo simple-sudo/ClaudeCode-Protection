@@ -10,7 +10,8 @@ namespace ProtectionLifecycle;
 // console fallback and no caller-controlled arguments or executable path.
 internal static class SessionZeroCreatorService
 {
-    private static readonly ServiceMain Callback=Run;
+    private static readonly ServiceMain Callback=(argc,argv)=>Run(argc,argv,recovery:false);
+    private static readonly ServiceMain RecoveryCallback=(argc,argv)=>Run(argc,argv,recovery:true);
     private static readonly ServiceControlHandler Control=(_,_,_,_)=>120; // ERROR_CALL_NOT_IMPLEMENTED.
     private static int exit=125;
     internal enum FailurePhase:uint
@@ -26,14 +27,14 @@ internal static class SessionZeroCreatorService
         Missing=1,TokenDefault,TokenLogon,TokenDefaultAndLogon,OtherLogonSid,OtherOwner,TokenEvidenceUnavailable
     }
 
-    internal static int Dispatch()
+    internal static int Dispatch(bool recovery=false)
     {
-        var table=new[]{new TableEntry{Name="",Main=Marshal.GetFunctionPointerForDelegate(Callback)},new TableEntry()};
+        var table=new[]{new TableEntry{Name="",Main=Marshal.GetFunctionPointerForDelegate(recovery?RecoveryCallback:Callback)},new TableEntry()};
         if(!StartServiceCtrlDispatcher(table))return Marshal.GetLastWin32Error()==1063?124:126;
         return Volatile.Read(ref exit);
     }
 
-    private static void Run(uint argc,IntPtr argv)
+    private static void Run(uint argc,IntPtr argv,bool recovery)
     {
         if(argc!=1 || argv==IntPtr.Zero)return;
         var name=Marshal.PtrToStringUni(Marshal.ReadIntPtr(argv));
@@ -51,13 +52,15 @@ internal static class SessionZeroCreatorService
             phase=FailurePhase.VerifyToken;
             var creatorSid=SessionZeroCreatorClient.VerifyCurrentService(name,next=>phase=next);
             phase=FailurePhase.ResolveImage;
-            _=AtomicChild.ResolveSessionZeroImage(FixedLayout.FromWindows(),Environment.ProcessPath);
+            var recoveryPlan=recovery?SessionZeroClosedCreatorRecovery.AssertWorkerImage(jobId):null;
+            if(!recovery)_=AtomicChild.ResolveSessionZeroImage(FixedLayout.FromWindows(),Environment.ProcessPath);
             GrantOwnObservation(creatorSid,ref phase);
             phase=FailurePhase.ReportReady;
             status.State=4;status.CheckPoint=0;status.WaitHint=0;
             Publish();
             phase=FailurePhase.OfflineProtocol;
-            SessionZeroCreatorClient.RunOfflineCreator(jobId);
+            if(recoveryPlan is null)SessionZeroCreatorClient.RunOfflineCreator(jobId);
+            else SessionZeroClosedCreatorRecovery.RunWorker(recoveryPlan,creatorSid);
         }
         catch(UnexpectedProcessOwner error) when(phase==FailurePhase.ValidateProcessOwner)
         {

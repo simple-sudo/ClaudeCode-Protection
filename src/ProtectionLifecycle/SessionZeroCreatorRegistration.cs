@@ -61,10 +61,7 @@ internal sealed class SessionZeroCreatorRegistration : IDisposable
             // No SERVICE_STOP or arbitrary service control rights.
             service=CreateService(manager,name,name,0x000f0017,0x10,3,1,command,null,IntPtr.Zero,null,LocalService,null);
             if(service.IsInvalid)throw Error("RegisterFreshCreatorService");
-            var descriptor=new RawSecurityDescriptor("O:BAD:P(A;;0x000f01ff;;;SY)(A;;0x000f01ff;;;BA)");
-            var bytes=new byte[descriptor.BinaryLength];descriptor.GetBinaryForm(bytes,0);
-            if(!SetServiceObjectSecurity(service,5,bytes))throw Error("SealCreatorServiceRegistration");
-            ConfigureIdentity(service);
+            SealRegistration(service);
             AssertConfiguration(service,name,command);
             var sid=(SecurityIdentifier)new NTAccount("NT SERVICE",name).Translate(typeof(SecurityIdentifier));
             return new(state,version,manager,service,id,image,name,command,intentHash,sid);
@@ -212,7 +209,7 @@ internal sealed class SessionZeroCreatorRegistration : IDisposable
         if(!observation.IsInvalid || code!=1060)throw WfpNative.Contract("LegacyCreatorServiceAbsenceUnconfirmed");
     }
 
-    internal static RecoveryRegistration HoldForRecovery(OwnedJobIntent job,string image)
+    internal static RecoveryRegistration HoldForRecovery(OwnedJobIntent job,string image,uint stoppedProtocolCode=0)
     {
         var manager=OpenSCManager(null,null,1);
         ServiceHandle? service=null;
@@ -222,7 +219,7 @@ internal sealed class SessionZeroCreatorRegistration : IDisposable
             var name=SessionZeroCreatorChannel.NameForJob(job.JobId);
             service=OpenService(manager,name,0x30005); // Delete, read control, query config/status only.
             if(service.IsInvalid)throw Error("HoldLegacyCreatorRegistration");
-            var recovery=new RecoveryRegistration(manager,service,name,BuildCommand(image));
+            var recovery=new RecoveryRegistration(manager,service,name,BuildCommand(image),stoppedProtocolCode);
             if(((SecurityIdentifier)new NTAccount("NT SERVICE",name).Translate(typeof(SecurityIdentifier))).Value!=job.CreatorServiceSid)
                 throw WfpNative.Contract("LegacyCreatorServiceSidMismatch");
             recovery.AssertStoppedWithoutStart();
@@ -235,15 +232,16 @@ internal sealed class SessionZeroCreatorRegistration : IDisposable
     {
         private readonly ServiceHandle manager,service;
         private readonly string name,command;
+        private readonly uint stoppedProtocolCode;
         private bool attempted;
-        internal RecoveryRegistration(ServiceHandle manager,ServiceHandle service,string name,string command)
-        {this.manager=manager;this.service=service;this.name=name;this.command=command;}
+        internal RecoveryRegistration(ServiceHandle manager,ServiceHandle service,string name,string command,uint stoppedProtocolCode)
+        {this.manager=manager;this.service=service;this.name=name;this.command=command;this.stoppedProtocolCode=stoppedProtocolCode;}
         internal void AssertStoppedWithoutStart()
         {
             if(attempted)throw WfpNative.Contract("LegacyCreatorServiceRecoveryAlreadyAttempted");
             AssertConfiguration(service,name,command);
             var status=ReadStatus(service);
-            if(status.State!=1 || status.Win32Code!=1077 || status.ServiceCode!=0)
+            if(!MatchesRecoveryStop(status.State,status.Pid,status.Win32Code,status.ServiceCode,stoppedProtocolCode))
                 throw WfpNative.Contract("LegacyCreatorServiceMayHaveStartedSinceBoot");
         }
         internal void Remove()
@@ -255,6 +253,93 @@ internal sealed class SessionZeroCreatorRegistration : IDisposable
             WaitForAbsence(manager,name);
         }
         public void Dispose(){service.Dispose();manager.Dispose();}
+    }
+
+    internal static bool MatchesRecoveryStop(uint state,uint pid,uint win32,uint specific,uint approvedCode)=>
+        state==1 && pid==0 && ((win32==1077 && specific==0) || (approvedCode!=0 && win32==1066 && specific==approvedCode));
+
+    internal sealed class ProfileRecoveryWorker : IDisposable
+    {
+        private readonly ServiceHandle manager,service;
+        private readonly string name,image,command;
+        private SafeProcessHandle? process;
+        private bool started,removed;
+
+        private ProfileRecoveryWorker(ServiceHandle manager,ServiceHandle service,string name,string image,string command)
+        {this.manager=manager;this.service=service;this.name=name;this.image=image;this.command=command;}
+
+        internal static ProfileRecoveryWorker Register(string id,string image)
+        {
+            ProtectedState.RequireAdministrator();
+            var name=SessionZeroCreatorChannel.NameForJob(id);
+            if(image.Contains('"') || Path.GetFileName(image)!="ProtectionBootstrap.exe")
+                throw WfpNative.Contract("ProfileRecoveryWorkerImageInvalid");
+            var command="\""+WindowsPathSeal.Canonical(image)+"\" "+SessionZeroClosedCreatorRecovery.ServiceVerb;
+            var manager=OpenSCManager(null,null,3);
+            ServiceHandle? service=null;
+            try
+            {
+                if(manager.IsInvalid)throw Error("OpenProfileRecoveryServiceManager");
+                AssertRecoveryRegistrationAbsent(id);
+                service=CreateService(manager,name,name,0x000f0017,0x10,3,1,command,null,IntPtr.Zero,null,LocalService,null);
+                if(service.IsInvalid)throw Error("RegisterFreshProfileRecoveryWorker");
+                SealRegistration(service);
+                AssertConfiguration(service,name,command);
+                return new(manager,service,name,image,command);
+            }
+            catch{service?.Dispose();manager.Dispose();throw;}
+        }
+
+        internal SafeProcessHandle StartAndHold()
+        {
+            if(started || removed)throw WfpNative.Contract("ProfileRecoveryWorkerAlreadyUsed");
+            AssertConfiguration(service,name,command);
+            var before=ReadStatus(service);
+            if(!MatchesRecoveryStop(before.State,before.Pid,before.Win32Code,before.ServiceCode,0))
+                throw WfpNative.Contract("ProfileRecoveryWorkerNotFresh");
+            started=true;
+            if(!StartService(service,0,IntPtr.Zero))throw Error("StartProfileRecoveryWorker");
+            var watch=Stopwatch.StartNew();
+            while(watch.ElapsedMilliseconds<10000)
+            {
+                var status=ReadStatus(service);
+                if(status.State==1)throw SessionZeroCreatorService.DescribeStopped(status.Win32Code,status.ServiceCode);
+                if(status.State==4 && status.Pid!=0)
+                {
+                    var held=OpenProcess(0x101000,false,status.Pid);
+                    try
+                    {
+                        if(held.IsInvalid)throw Error("HoldProfileRecoveryWorker");
+                        SessionZeroCreatorChannel.AssertImage(held,image);
+                        var after=ReadStatus(service);
+                        if(after.State!=4 || after.Pid!=status.Pid || WaitForSingleObject(held,0)!=258)
+                            throw WfpNative.Contract("ProfileRecoveryWorkerChanged");
+                        process=held;
+                        return held;
+                    }
+                    catch{held.Dispose();throw;}
+                }
+                Thread.Sleep(25);
+            }
+            throw new TimeoutException("Profile recovery worker did not become ready");
+        }
+
+        internal void RemoveAfterSuccess()
+        {
+            if(removed || process is null || WaitForSingleObject(process,5000)!=0 ||
+                !GetExitCodeProcess(process,out var exit) || exit!=0)
+                throw WfpNative.Contract("ProfileRecoveryWorkerExitUnconfirmed");
+            AssertConfiguration(service,name,command);
+            var status=ReadStatus(service);
+            if(status.State!=1 || status.Pid!=0 || status.Win32Code!=0 || status.ServiceCode!=0)
+                throw WfpNative.Contract("ProfileRecoveryWorkerStopUnconfirmed");
+            removed=true;
+            if(!DeleteService(service))throw Error("RemoveProfileRecoveryWorker");
+            service.Dispose();
+            WaitForAbsence(manager,name);
+        }
+
+        public void Dispose(){process?.Dispose();service.Dispose();manager.Dispose();}
     }
 
     private void AssertOriginal()
@@ -295,6 +380,11 @@ internal sealed class SessionZeroCreatorRegistration : IDisposable
             if(state.ReadOptional(SessionZeroCreatorRecovery.ReceiptLeaf(id)) is not null)
             {
                 _=SessionZeroCreatorRecovery.ReadRetired(state,OwnedJobIntent.Read(state,id));
+                continue;
+            }
+            if(state.ReadOptional(SessionZeroClosedCreatorRecovery.ReceiptLeaf(id)) is not null)
+            {
+                _=SessionZeroClosedCreatorRecovery.ReadRecovered(state,OwnedJobIntent.Read(state,id));
                 continue;
             }
             var done=state.ReadOptional(DoneLeaf(id))??throw WfpNative.Contract("CreatorServiceRegistrationRequiresRecovery");
@@ -343,6 +433,14 @@ internal sealed class SessionZeroCreatorRegistration : IDisposable
         if(record.GetProperty("SchemaVersion").GetInt32()!=1 || StrictJson.Text(record,"IntentSHA256")!=intentHash ||
             (startupFailed && !started) || StrictJson.Text(record,"Disposition")!=expected)
             throw WfpNative.Contract("CreatorServiceRemovalProofMismatch");
+    }
+
+    private static void SealRegistration(ServiceHandle service)
+    {
+        var descriptor=new RawSecurityDescriptor("O:BAD:P(A;;0x000f01ff;;;SY)(A;;0x000f01ff;;;BA)");
+        var bytes=new byte[descriptor.BinaryLength];descriptor.GetBinaryForm(bytes,0);
+        if(!SetServiceObjectSecurity(service,5,bytes))throw Error("SealCreatorServiceRegistration");
+        ConfigureIdentity(service);
     }
 
     private static void ConfigureIdentity(ServiceHandle service)

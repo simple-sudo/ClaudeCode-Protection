@@ -13,5 +13,6 @@
     <ProjectReference Include="../ProtectionLifecycle/ProtectionLifecycle.csproj" />
     <EmbeddedResource Include="ApprovedPackage.json;InactiveUpdateTransition.json" />
     <EmbeddedResource Include="$(CreatorRecoveryApproval)" LogicalName="ProtectionBootstrap.CreatorRecoveryApproval.json" Condition="'$(CreatorRecoveryApproval)' != ''" />
+    <EmbeddedResource Include="$(ClosedCreatorRecoveryApproval)" LogicalName="ProtectionBootstrap.ClosedCreatorRecoveryApproval.json" Condition="'$(ClosedCreatorRecoveryApproval)' != ''" />
   </ItemGroup>
 </Project>

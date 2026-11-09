@@ -1,6 +1,7 @@
-if(args.Length!=1 || args[0] is not ("install-inactive" or "update-inactive" or "recover-reviewed-timezone-read-access" or "recover-reviewed-legacy-creator"))
+if(args is ["session-zero-profile-recovery"])return ProtectionLifecycle.BootstrapInstaller.RunReviewedProfileRecoveryService();
+if(args.Length!=1 || args[0] is not ("install-inactive" or "update-inactive" or "recover-reviewed-timezone-read-access" or "recover-reviewed-legacy-creator" or "recover-reviewed-closed-creator"))
 {
-    Console.Error.WriteLine("Usage: ProtectionBootstrap update-inactive | recover-reviewed-timezone-read-access | recover-reviewed-legacy-creator (reviewed protected bootstrap only)");return 64;
+    Console.Error.WriteLine("Usage: ProtectionBootstrap update-inactive | recover-reviewed-timezone-read-access | recover-reviewed-legacy-creator | recover-reviewed-closed-creator (reviewed protected bootstrap only)");return 64;
 }
 // Human authorization has reopened bounded qualification. Only the existing
 // inactive-update owner is reviewed here: fixed protected host, embedded exact
@@ -16,6 +17,7 @@ try
     var result=args[0] switch {
         "recover-reviewed-timezone-read-access"=>ProtectionLifecycle.BootstrapInstaller.RecoverReviewedTimeZoneReadAccess(),
         "recover-reviewed-legacy-creator"=>ProtectionLifecycle.BootstrapInstaller.RecoverReviewedLegacyCreator(),
+        "recover-reviewed-closed-creator"=>ProtectionLifecycle.BootstrapInstaller.RecoverReviewedClosedCreator(),
         _=>ProtectionLifecycle.BootstrapInstaller.UpdatePinnedInactiveWithFeedback()
     };
     (result.ExitCode==0?Console.Out:Console.Error).WriteLine(result.Report);
@@ -27,6 +29,7 @@ catch(Exception ex)
     var operation=args[0] switch {
         "recover-reviewed-timezone-read-access"=>"Timezone recovery",
         "recover-reviewed-legacy-creator"=>"Creator recovery",
+        "recover-reviewed-closed-creator"=>"Closed creator recovery",
         _=>"Inactive update"
     };
     Console.Error.WriteLine(operation+" not confirmed: "+ex.GetType().Name+"; code="+ex.HResult+"; stage=START");

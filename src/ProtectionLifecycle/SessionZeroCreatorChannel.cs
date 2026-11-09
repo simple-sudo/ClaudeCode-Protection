@@ -19,6 +19,7 @@ internal sealed class SessionZeroCreatorChannel : IDisposable
     private const uint ProfileCreatedMagic=0x314a4343,ProfileRecordedMagic=0x31414343; // CCJ1, CCA1.
     private const int NonceSize=16,ReplySize=44,ObjectIdentityBytes=12;
     internal const int RequestSize=60;
+    internal const int ProfileReplySize=ReplySize;
     internal const int ProfileRecordedSize=4+NonceSize;
     internal const string ServicePrefix="CpcSessionCreator.";
     private readonly SessionZeroCreatorRegistration registration;
@@ -37,20 +38,25 @@ internal sealed class SessionZeroCreatorChannel : IDisposable
 
     internal SessionZeroCreatorChannel(SessionZeroCreatorRegistration registration)
     {
-        ProtectedState.RequireAdministrator();
         this.registration=registration;
+        pipe=CreateOwnerPipe(PipeName,registration.Sid);
+    }
+
+    internal static NamedPipeServerStream CreateOwnerPipe(string name,SecurityIdentifier sid)
+    {
+        ProtectedState.RequireAdministrator();
         // Explicit FILE_READ_ATTRIBUTES; no FILE_CREATE_PIPE_INSTANCE for the
         // client. One overlapped local-only server, refusing any occupied name.
-        var sddl="O:BAG:SYD:P(A;;FA;;;SY)(A;;FA;;;BA)(A;;0x00120083;;;"+registration.Sid.Value+")S:(ML;;NW;;;ME)";
+        var sddl="O:BAG:SYD:P(A;;FA;;;SY)(A;;FA;;;BA)(A;;0x00120083;;;"+sid.Value+")S:(ML;;NW;;;ME)";
         if(!ConvertStringSecurityDescriptorToSecurityDescriptor(sddl,1,out var descriptor,out _))throw Error("CreatorPipeDescriptor");
         try
         {
             var attributes=new KernelJobSeal.SecurityAttributes{Length=Marshal.SizeOf<KernelJobSeal.SecurityAttributes>(),Descriptor=descriptor};
-            var handle=CreateNamedPipe(@"\\.\pipe\"+PipeName,0x40080003,8,1,128,128,0,ref attributes);
+            var handle=CreateNamedPipe(@"\\.\pipe\"+name,0x40080003,8,1,128,128,0,ref attributes);
             try
             {
                 if(handle.IsInvalid)throw Error("CreateFirstLocalCreatorPipe");
-                pipe=new NamedPipeServerStream(PipeDirection.InOut,true,false,handle);
+                return new NamedPipeServerStream(PipeDirection.InOut,true,false,handle);
             }
             catch{handle.Dispose();throw;}
         }
@@ -249,7 +255,7 @@ internal sealed class SessionZeroCreatorChannel : IDisposable
             Convert.ToHexString(value[..4])+":"+Convert.ToHexString(value[4..8])+":"+Convert.ToHexString(value[8..]);
     }
 
-    private static void AssertProfileIdentity(CreatedProfile profile)
+    internal static void AssertProfileIdentity(CreatedProfile profile)
     {
         var parent=Identifiers.ObjectIdentity(profile.ParentIdentity);
         var storage=Identifiers.ObjectIdentity(profile.StorageIdentity);

@@ -19,15 +19,11 @@ internal sealed class SessionZeroCreatorProfile : IDisposable
     internal static SessionZeroCreatorProfile Create(SessionZeroCreatorClient client)
     {
         _=SessionZeroCreatorClient.VerifyCurrentService(SessionZeroCreatorChannel.NameForJob(client.Request.JobId));
-        var windows=Environment.GetFolderPath(Environment.SpecialFolder.Windows);
-        var local=Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-        if(string.IsNullOrEmpty(windows) || !string.Equals(local,WindowsPathSeal.Child(windows,"ServiceProfiles/LocalService/AppData/Local"),StringComparison.OrdinalIgnoreCase))
-            throw WfpNative.Contract("CreatorProfileRootNotLocalService");
         var package=InstallationPackageSid.FromInstallationId(client.Request.InstallationId);
         PathLease? parent=null;
         try
         {
-            parent=WindowsPathSeal.LockCreatorProfileParent(WindowsPathSeal.Child(local,"Packages"));
+            parent=WindowsPathSeal.LockCreatorProfileParent(StorageParentPath(requireLocalService:true));
             var storage=WindowsPathSeal.Child(parent.Path,package.Name);
             try{using var existing=WindowsPathSeal.Open(storage,true,false);throw WfpNative.Contract("CreatorProfileStorageAlreadyPresent");}
             catch(ExactPathAbsentException error)when(string.Equals(error.FailedPath,storage,StringComparison.OrdinalIgnoreCase)){}
@@ -61,12 +57,31 @@ internal sealed class SessionZeroCreatorProfile : IDisposable
         if(cleanupAttempted)throw WfpNative.Contract("CreatorProfileCleanupAlreadyAttempted");
         cleanupAttempted=true;
         parent.AssertHeld();
-        AssertMapping(Package.Value,storage);
+        DeleteVerifiedStorage(Package,storage,identity);
+    }
+
+    internal static string StorageParentPath(bool requireLocalService)
+    {
+        var windows=Environment.GetFolderPath(Environment.SpecialFolder.Windows);
+        var local=WindowsPathSeal.Child(windows,"ServiceProfiles/LocalService/AppData/Local");
+        if(requireLocalService && !string.Equals(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),local,StringComparison.OrdinalIgnoreCase))
+            throw WfpNative.Contract("CreatorProfileRootNotLocalService");
+        return WindowsPathSeal.Child(local,"Packages");
+    }
+
+    internal static void AssertExistingStorage(InstallationPackageSid package,string storage,string identity)
+    {
+        AssertMapping(package.Value,storage);
         if(!SessionProfileRecovery.InspectExactStorage(storage,identity))throw WfpNative.Contract("CreatorProfileStorageDisappearedBeforeCleanup");
-        var status=DeleteAppContainerProfile(Package.Name);
+    }
+
+    internal static void DeleteVerifiedStorage(InstallationPackageSid package,string storage,string identity)
+    {
+        AssertExistingStorage(package,storage,identity);
+        var status=DeleteAppContainerProfile(package.Name);
         if(status!=0)throw new WfpFailure("DeleteExactLocalServiceProfile",unchecked((uint)status));
         if(SessionProfileRecovery.InspectExactStorage(storage,identity))throw WfpNative.Contract("CreatorProfileStorageRemains");
-        AssertMappingAbsent(Package.Value);
+        AssertMappingAbsent(package.Value);
     }
 
     internal static bool MatchesStorage(string storage,string mapped)=>string.Equals(mapped,storage,StringComparison.OrdinalIgnoreCase) ||
