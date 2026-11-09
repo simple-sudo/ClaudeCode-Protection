@@ -314,8 +314,31 @@ internal static class OfflineConsoleQualification
             stage="RegisterCreator";
             using var creator=SessionZeroCreatorRegistration.Create(layout,state,version);
             jobId=creator.JobId;
+            OfflineConsoleHostIdentity host;
+            SessionZeroCreatorChannel preparedChannel;
+            try
+            {
+                stage="CaptureHostIdentity";
+                host=OfflineConsoleHostIdentity.Capture(jobId);
+                stage="PrepareCreatorChannel";
+                preparedChannel=new(creator);
+            }
+            catch(Exception prepareError)
+            {
+                try
+                {
+                    AssertQuarantine();
+                    creator.RemoveNeverStarted();
+                    serviceRemoved=true;
+                }
+                catch(Exception cleanupError)
+                {
+                    throw new AggregateException("Creator preparation and original registration cleanup failed",prepareError,cleanupError);
+                }
+                throw;
+            }
+            using var channel=preparedChannel;
             stage="StartCreator";
-            using var channel=new SessionZeroCreatorChannel(creator);
             try{creator.StartAndHold(channel);}
             catch(Exception startError)
             {
@@ -334,7 +357,6 @@ internal static class OfflineConsoleQualification
             stage="PrepareWorkspace";
             using var job=OwnedKernelJob.CreateForSessionZero(state,version,creator);
             using var workspace=SessionZeroOfflineWorkspace.Create(state,job,creator);
-            var host=OfflineConsoleHostIdentity.Capture(job.JobId);
             ProtectionRuntimeLease? runtime=null;
             AtomicChild? child=null;
             string? failedStage=null;

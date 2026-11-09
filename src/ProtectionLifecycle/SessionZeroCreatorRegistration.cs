@@ -153,6 +153,7 @@ internal sealed class SessionZeroCreatorRegistration : IDisposable
         AssertOriginal();
         if(startAttempted || state.ReadOptional(StartLeaf(JobId)) is not null)
             throw WfpNative.Contract("CreatorServiceMayHaveStarted");
+        AssertNoJobOrWorkspace(state,JobId);
         RemoveVerified(Unstarted);
     }
 
@@ -231,10 +232,10 @@ internal sealed class SessionZeroCreatorRegistration : IDisposable
             var start=state.ReadOptional(StartLeaf(id));
             if(start is not null)ValidateStartProof(start.Bytes,raw.SHA256);
             var failure=state.ReadOptional(StartupFailureLeaf(id));
+            if(start is null || failure is not null)AssertNoJobOrWorkspace(state,id);
             if(failure is not null)
             {
                 if(start is null)throw WfpNative.Contract("CreatorServiceStartupFailureMissingStart");
-                AssertNoJobOrWorkspace(state,id);
                 ValidateStartupFailure(failure.Bytes,raw.SHA256,start.SHA256);
             }
             ValidateRemoval(receipt.RootElement,raw.SHA256,start is not null,failure is not null);
