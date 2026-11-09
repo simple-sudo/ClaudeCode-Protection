@@ -144,7 +144,7 @@ internal sealed class SessionZeroCreatorChannel : IDisposable
         }
     }
 
-    internal (OfflineConsoleOutput Output,OfflineConsoleOutput Error) CloseCreatorProfile(ProtectedState state)
+    internal (OfflineConsoleOutput? Output,OfflineConsoleOutput? Error,Exception? CaptureFailure) CloseCreatorProfile(ProtectedState state)
     {
         var job=boundJob??throw WfpNative.Contract("CreatorProfileCleanupJobUnavailable");
         job.AssertCreatorProfileCleanupAllowed(state);
@@ -154,14 +154,20 @@ internal sealed class SessionZeroCreatorChannel : IDisposable
         var nonce=Interlocked.Exchange(ref cleanupNonce,null)??throw WfpNative.Contract("CreatorProfileCleanupChannelUnavailable");
         using var deadline=new CancellationTokenSource(TimeSpan.FromSeconds(10));
         pipe.WriteAsync(SessionZeroCreatorTerminal.CloseFrame(nonce).AsMemory(),deadline.Token).AsTask().GetAwaiter().GetResult();
-        var result=SessionZeroCreatorTerminal.ReadReceipt(pipe,nonce,deadline.Token);
+        SessionZeroCreatorTerminal.ReadCleaned(pipe,nonce,deadline.Token);
         var completion=state.Read("job-completed-"+job.JobId+".json",8192);
         state.WriteNew("creator-profile-closed-"+job.JobId+".json",JsonSerializer.SerializeToUtf8Bytes(new {
             SchemaVersion=1,state.InstallationId,job.JobId,CreatedSHA256=created.SHA256,JobCompletionSHA256=completion.SHA256,
             Status="ORIGINAL_CREATOR_PROFILE_CLOSED"
         }));
         ProfileCleanupConfirmed=true;
-        return result;
+        try
+        {
+            var result=SessionZeroCreatorTerminal.ReadReceipt(pipe,nonce,deadline.Token);
+            return(result.Output,result.Error,null);
+        }
+        catch(Exception error) when(error is IOException or InvalidDataException or OperationCanceledException or WfpFailure)
+        {return(null,null,error);}
     }
 
     private static string ProfileCreatedLeaf(string jobId)=>"creator-profile-created-"+Identifiers.Hex32(jobId)+".json";

@@ -108,10 +108,22 @@ internal sealed class SessionZeroCreatorClient : IDisposable
             SessionZeroCreatorTerminal.AssertCloseFrame(close,client.Request.Nonce);
             if(WaitForSingleObject(process,0)!=0)throw WfpNative.Contract("CreatorProfileChildNotTerminal");
             profile.CleanupAfterOwnerStop();
-            var output=capture.Output.WaitAsync(deadline.Token).GetAwaiter().GetResult();
-            var error=capture.Error.WaitAsync(deadline.Token).GetAwaiter().GetResult();
-            client.pipe.WriteAsync(SessionZeroCreatorTerminal.CreateReceipt(client.Request.Nonce,output,error).AsMemory(),deadline.Token)
+            using var replyDeadline=new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            var nonce=client.Request.Nonce;
+            client.pipe.WriteAsync(SessionZeroCreatorTerminal.CleanedFrame(nonce).AsMemory(),replyDeadline.Token)
                 .AsTask().GetAwaiter().GetResult();
+            byte[] receipt;
+            try
+            {
+                using var captureDeadline=new CancellationTokenSource(TimeSpan.FromSeconds(3));
+                var results=Task.WhenAll(capture.Output,capture.Error).WaitAsync(captureDeadline.Token).GetAwaiter().GetResult();
+                receipt=SessionZeroCreatorTerminal.CreateReceipt(nonce,results[0],results[1]);
+            }
+            catch(Exception error) when(error is IOException or InvalidDataException or OperationCanceledException)
+            {
+                receipt=SessionZeroCreatorTerminal.CaptureFailure(nonce,unchecked((uint)error.HResult));
+            }
+            client.pipe.WriteAsync(receipt.AsMemory(),replyDeadline.Token).AsTask().GetAwaiter().GetResult();
         }
         catch(Exception failure)
         {

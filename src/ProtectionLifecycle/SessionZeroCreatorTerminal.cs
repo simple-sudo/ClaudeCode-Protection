@@ -7,7 +7,8 @@ internal static class SessionZeroCreatorTerminal
 {
     internal const int CloseSize=20;
     private const int HeaderSize=28;
-    private const uint CloseMagic=0x31534343,CleanedMagic=0x31444343; // CCS1, CCD1.
+    private const uint CloseMagic=0x31534343,CleanedMagic=0x32444343; // CCS1, CCD2.
+    private const uint OutputMagic=0x314f4343,OutputFailureMagic=0x31454343; // CCO1, CCE1.
 
     internal static byte[] CloseFrame(byte[] nonce)
     {
@@ -19,12 +20,35 @@ internal static class SessionZeroCreatorTerminal
     {
         if(frame.Length!=CloseSize || !MatchesBinding(frame,nonce,CloseMagic))throw WfpNative.Contract("CreatorCloseBindingMismatch");
     }
+
+    internal static byte[] CleanedFrame(byte[] nonce)
+    {
+        var frame=new byte[CloseSize];
+        WriteBinding(frame,nonce,CleanedMagic);
+        return frame;
+    }
+
+    internal static void ReadCleaned(Stream stream,byte[] nonce,CancellationToken cancellation)
+    {
+        var frame=new byte[CloseSize];
+        stream.ReadExactlyAsync(frame.AsMemory(),cancellation).AsTask().GetAwaiter().GetResult();
+        if(!MatchesBinding(frame,nonce,CleanedMagic))throw WfpNative.Contract("CreatorCleanupReceiptBindingMismatch");
+    }
+
+    internal static byte[] CaptureFailure(byte[] nonce,uint code)
+    {
+        var frame=new byte[HeaderSize];
+        WriteBinding(frame,nonce,OutputFailureMagic);
+        BinaryPrimitives.WriteUInt32LittleEndian(frame.AsSpan(20),code==0?13u:code);
+        return frame;
+    }
+
     internal static byte[] CreateReceipt(byte[] nonce,OfflineConsoleOutput output,OfflineConsoleOutput error)
     {
         CheckLength(output.Bytes.Length,output.Overflow);
         CheckLength(error.Bytes.Length,error.Overflow);
         var frame=new byte[HeaderSize+output.Bytes.Length+error.Bytes.Length];
-        WriteBinding(frame,nonce,CleanedMagic);
+        WriteBinding(frame,nonce,OutputMagic);
         var flags=(output.Overflow?1u:0u)|(error.Overflow?2u:0u);
         BinaryPrimitives.WriteUInt32LittleEndian(frame.AsSpan(20),flags);
         BinaryPrimitives.WriteUInt16LittleEndian(frame.AsSpan(24),(ushort)output.Bytes.Length);
@@ -37,8 +61,14 @@ internal static class SessionZeroCreatorTerminal
     {
         var header=new byte[HeaderSize];
         stream.ReadExactlyAsync(header.AsMemory(),cancellation).AsTask().GetAwaiter().GetResult();
-        if(!MatchesBinding(header,nonce,CleanedMagic))throw WfpNative.Contract("CreatorCleanupReceiptBindingMismatch");
         var flags=BinaryPrimitives.ReadUInt32LittleEndian(header.AsSpan(20));
+        if(MatchesBinding(header,nonce,OutputFailureMagic))
+        {
+            if(flags==0 || BinaryPrimitives.ReadUInt32LittleEndian(header.AsSpan(24))!=0)
+                throw WfpNative.Contract("CreatorConsoleFailureFrameInvalid");
+            throw new WfpFailure("CreatorConsoleCapture",flags);
+        }
+        if(!MatchesBinding(header,nonce,OutputMagic))throw WfpNative.Contract("CreatorConsoleReceiptBindingMismatch");
         if((flags&~3u)!=0)throw WfpNative.Contract("CreatorConsoleReceiptFlagsInvalid");
         var output=Read(24,(flags&1)!=0);
         var error=Read(26,(flags&2)!=0);

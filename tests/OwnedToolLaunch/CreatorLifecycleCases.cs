@@ -152,6 +152,9 @@ internal static class CreatorLifecycleCases
 
         var close=Method("SessionZeroCreatorTerminal","CloseFrame");
         var assertClose=Method("SessionZeroCreatorTerminal","AssertCloseFrame");
+        var cleaned=Method("SessionZeroCreatorTerminal","CleanedFrame");
+        var readCleaned=Method("SessionZeroCreatorTerminal","ReadCleaned");
+        var captureFailure=Method("SessionZeroCreatorTerminal","CaptureFailure");
         var makeReceipt=Method("SessionZeroCreatorTerminal","CreateReceipt");
         var readReceipt=Method("SessionZeroCreatorTerminal","ReadReceipt");
         var nonce=Enumerable.Repeat((byte)17,16).ToArray();
@@ -166,6 +169,20 @@ internal static class CreatorLifecycleCases
         var frameOutput=new byte[]{1,2,3};
         var frameError=new byte[]{4,5};
         var receipt=(byte[])makeReceipt.Invoke(null,[nonce,Output(frameOutput,false),Output(frameError,false)])!;
+        var cleanProof=(byte[])cleaned.Invoke(null,[nonce])!;
+        void AssertCleaned(byte[] payload,byte[] binding)
+        {
+            using var stream=new MemoryStream(payload,false);
+            _=readCleaned.Invoke(null,[stream,binding,CancellationToken.None]);
+        }
+        AssertCleaned(cleanProof,nonce);Check(true);
+        Refused(()=>AssertCleaned(cleanProof,wrong));
+        Refused(()=>AssertCleaned(cleanProof[..^1],nonce));
+        Refused(()=>AssertCleaned(receipt,nonce));
+        Refused(()=>AssertCleaned(frame,nonce));
+        var legacyReceipt=(byte[])receipt.Clone();
+        "CCD1"u8.CopyTo(legacyReceipt);
+        Refused(()=>AssertCleaned(legacyReceipt,nonce));
         object Read(byte[] payload,byte[] binding)
         {
             using var stream=new MemoryStream(payload,false);
@@ -179,6 +196,17 @@ internal static class CreatorLifecycleCases
             ((byte[])bytesProperty.GetValue(returnedError)!).SequenceEqual(frameError));
         Refused(()=>Read(receipt,wrong));
         Refused(()=>Read(receipt[..^1],nonce));
+        Refused(()=>Read(cleanProof,nonce));
+        var captureProof=(byte[])captureFailure.Invoke(null,[nonce,5u])!;
+        Refused(()=>AssertCleaned(captureProof,nonce));
+        Refused(()=>Read(captureProof,wrong));
+        var captureReported=false;
+        try{_=Read(captureProof,nonce);}
+        catch(TargetInvocationException failure)when(failure.InnerException is { } cause)
+        {captureReported=cause.GetType().Name=="WfpFailure" && cause.GetType().GetProperty("Status",BindingFlags.NonPublic|BindingFlags.Instance)!.GetValue(cause) is 5u;}
+        Check(captureReported);
+        captureProof[24]=1;
+        Refused(()=>Read(captureProof,nonce));
         Refused(()=>makeReceipt.Invoke(null,[nonce,Output(new byte[4097],false),Output([],false)]));
         Refused(()=>makeReceipt.Invoke(null,[nonce,Output(frameOutput,true),Output([],false)]));
         var malformed=(byte[])receipt.Clone();

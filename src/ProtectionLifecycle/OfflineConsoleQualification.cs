@@ -409,8 +409,14 @@ internal static class OfflineConsoleQualification
             if(closed)
             {
                 stage="CloseCreatorProfile";
-                (stdout,stderr)=channel.CloseCreatorProfile(state);
+                var capture=channel.CloseCreatorProfile(state);
                 profileClosed=true;
+                (stdout,stderr)=(capture.Output,capture.Error);
+                if(capture.CaptureFailure is { } captureFailure)
+                {
+                    failedStage??="ReadCreatorConsoleCapture";
+                    failures.Add(captureFailure);
+                }
                 if(child is not null)
                 {
                     stage="SealWorkerEvidence";

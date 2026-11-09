@@ -1,5 +1,11 @@
 # 当前状态与授权摘要
 
+2026-11-09，独立离线链将 profile 关闭证明和控制台输出回执分开。原 Job 已关闭且
+原服务确认映射和磁盘根清理后，Broker 先持久记录 profile 关闭。输出读取失败仍
+保留为运行失败，但可继续按原门禁核验并清理工作区和服务登记。普通构建与回归通过，
+新协议未安装，旧现场仍需从 LocalService 复核注册并单独恢复。
+[协议与验证范围](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#分开记录-profile-关闭和控制台输出)。
+
 2026-11-08，获批的 NTFS 只读核验把旧 LocalService profile 的现有目录对象身份、
 父目录和名称与原操作时间窗里的创建记录关联起来，保留区间内未见身份冲突。
 原 Job 关闭、服务停止和工作区根归属再次核验。当前 profile 注册仍需 LocalService
