@@ -10,7 +10,8 @@ using System.Runtime.InteropServices;
 using Microsoft.Win32.SafeHandles;
 
 var consoleFixture=args.Length==3 && args[0]=="offline-console-streams-worker";
-if(!consoleFixture && (args.Length!=1 || args[0] is not ("offline-console-native" or "creator-job-boundary" or "official-claude-package" or "winsock-provider-policy" or "winsock-provider-metadata" or "gateway-socket-create" or "winsock-transport-policy" or "winsock-transport-metadata" or "winsock-lease-policy" or "winsock-registry-metadata" or "winsock-registry-scope" or "restricting-sid-boundary" or "gpu-report-policy" or "privacy-probe-closure" or "privacy-probe-exit-child" or "timezone-snapshot" or "timezone-policy" or "timezone-metadata" or "gateway-feedback" or "gateway-tls-client-hello" or "gateway-schannel-native" or "gateway-schannel-acquisition" or "gateway-openssl-memory" or "gateway-openssl-revocation" or "gateway-resolver-offline-trust" or "gateway-resolver-timing" or "local-management-boundary" or "gateway-qualification-boundary" or "policy" or "messages" or "handle-transfer" or "fault-mode" or "fault-mode-read" or "partial-output" or "hosted-policy" or "etw-policy" or "tls-transport-policy" or "etw-token-access" or "inactive-transition" or "project-policy" or "project-build" or "privacy-native" or "caller-project-build" or "caller-project-policy" or "self-control-open" or "caller-data-build" or "caller-compile-failure" or "caller-run-failure" or "caller-test-failure" or "caller-output-failure" or "caller-failure-owner" or "control-file-gate" or "caller-multi-edit-build" or "workspace-caller-lifetime" or "workspace-caller-lifetime-child" or "maintenance-identity" or "reset-settings-file" or "resource-release")))return 125;
+var transitionFiles=args.Length==3 && args[0]=="inactive-transition";
+if(!consoleFixture && !transitionFiles && (args.Length!=1 || args[0] is not ("offline-console-native" or "creator-job-boundary" or "official-claude-package" or "winsock-provider-policy" or "winsock-provider-metadata" or "gateway-socket-create" or "winsock-transport-policy" or "winsock-transport-metadata" or "winsock-lease-policy" or "winsock-registry-metadata" or "winsock-registry-scope" or "restricting-sid-boundary" or "gpu-report-policy" or "privacy-probe-closure" or "privacy-probe-exit-child" or "timezone-snapshot" or "timezone-policy" or "timezone-metadata" or "gateway-feedback" or "gateway-tls-client-hello" or "gateway-schannel-native" or "gateway-schannel-acquisition" or "gateway-openssl-memory" or "gateway-openssl-revocation" or "gateway-resolver-offline-trust" or "gateway-resolver-timing" or "local-management-boundary" or "gateway-qualification-boundary" or "policy" or "messages" or "handle-transfer" or "fault-mode" or "fault-mode-read" or "partial-output" or "hosted-policy" or "etw-policy" or "tls-transport-policy" or "etw-token-access" or "inactive-transition" or "project-policy" or "project-build" or "privacy-native" or "caller-project-build" or "caller-project-policy" or "self-control-open" or "caller-data-build" or "caller-compile-failure" or "caller-run-failure" or "caller-test-failure" or "caller-output-failure" or "caller-failure-owner" or "control-file-gate" or "caller-multi-edit-build" or "workspace-caller-lifetime" or "workspace-caller-lifetime-child" or "maintenance-identity" or "reset-settings-file" or "resource-release")))return 125;
 try
 {
 using var identity=WindowsIdentity.GetCurrent();
@@ -317,7 +318,8 @@ if(args[0]=="inactive-transition")
         ("7df61706780c433f9dc5e7ddf5bc6f28","F56348EC6A43DF01D6E79C8F019D08798B7F98B11D961D9FE58BF5690A41232B"),
         ("51039f75b3bd4629b6ab3ea840e9f36a","ADB71B6FCF3656780010B57A3567C5E9E6DA47A37E4EDFDCC3A91F043D11256E"),
         ("a3891b3509a84e759ad5e9161c7dc361","E9ABECF5A18080E66EBFFC8467BF4F74F90D609866EC3E4DA0BFEDE0093BF9BF"),
-        ("74678dbf5d174a4f93c96450193fe3e3","BD60B34716324DC6723AD3D053281944FBADD558F86B0CE1016A63543F055913")})
+        ("74678dbf5d174a4f93c96450193fe3e3","BD60B34716324DC6723AD3D053281944FBADD558F86B0CE1016A63543F055913"),
+        ("ef5580b8cc3b45399a6af4ffd2f98cbd","3D9231BBF343B0DAD80E971F957AF467A0E9E55E7BA24B39A42A26C44D40AFFB")})
     {
         Check(actualRelease,actualManifest,actualRelease,actualManifest,replacementRelease,replacementManifest);
         Deny(()=>Check(replacementRelease,actualManifest,actualRelease,actualManifest,replacementRelease,replacementManifest));
@@ -330,6 +332,8 @@ if(args[0]=="inactive-transition")
     var wrongLegacyRelease=new string('e',32);
     const string legacyCreatorManifest="F56348EC6A43DF01D6E79C8F019D08798B7F98B11D961D9FE58BF5690A41232B";
     Deny(()=>Check(wrongLegacyRelease,legacyCreatorManifest,wrongLegacyRelease,legacyCreatorManifest,replacementRelease,replacementManifest));
+    const string scmOwnerManifest="3D9231BBF343B0DAD80E971F957AF467A0E9E55E7BA24B39A42A26C44D40AFFB";
+    Deny(()=>Check(wrongLegacyRelease,scmOwnerManifest,wrongLegacyRelease,scmOwnerManifest,replacementRelease,replacementManifest));
     var transition=library.GetType("ProtectionLifecycle.InactiveUpdateTransition",true)!;
     const string expectedPrior="41fb2ae4d89843df91c5d08f6a12eec3";
     const string expectedPriorHash="1B092FE1579CE80ABBECE8DE26D846DDE271E4D58E6926730608CDCC3DDCD17F";
@@ -374,18 +378,16 @@ if(args[0]=="inactive-transition")
         DenyExact(()=>ParseTransition(bad.ToJsonString()));
     }
     var testAssembly=Assembly.GetExecutingAssembly();
-    using var candidate=testAssembly.GetManifestResourceStream("Candidate.ApprovedPackage.json")!;
-    using var transitionBytes=testAssembly.GetManifestResourceStream("Candidate.InactiveUpdateTransition.json")!;
-    using var candidateDocument=JsonDocument.Parse(candidate);
-    using var transitionDocument=JsonDocument.Parse(transitionBytes);
-    var exact=transitionDocument.RootElement;
-    var actualPrior=exact.GetProperty("PriorRelease").GetString()!;
-    var actualPriorHash=exact.GetProperty("PriorManifestSHA256").GetString()!;
+    using var candidate=transitionFiles?File.OpenRead(args[1]):testAssembly.GetManifestResourceStream("Candidate.ApprovedPackage.json")!;
+    using var transitionBytes=transitionFiles?File.OpenRead(args[2]):testAssembly.GetManifestResourceStream("Candidate.InactiveUpdateTransition.json")!;
+    if(candidate.Length is <1 or >65536)throw new InvalidDataException("Candidate manifest size refused");
+    var candidateBytes=new byte[(int)candidate.Length];candidate.ReadExactly(candidateBytes);
+    using var candidateDocument=JsonDocument.Parse(candidateBytes);
     var actualNext=candidateDocument.RootElement.GetProperty("Release").GetString()!;
-    candidate.Position=0;
-    var actualNextHash=Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(candidate));
-    transitionBytes.Position=0;
+    var actualNextHash=Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(candidateBytes));
     var exactBinding=Call(transition,"Read",transitionBytes)!;
+    var actualPrior=(string)transition.GetProperty("PriorRelease")!.GetValue(exactBinding)!;
+    var actualPriorHash=(string)transition.GetProperty("PriorManifestSHA256")!.GetValue(exactBinding)!;
     _=transition.GetMethod("Require",BindingFlags.Instance|BindingFlags.NonPublic)!.Invoke(exactBinding,
         new object[]{actualPrior,actualPriorHash,actualNext,actualNextHash});
     Check(actualPrior,actualPriorHash,actualPrior,actualPriorHash,actualNext,actualNextHash);

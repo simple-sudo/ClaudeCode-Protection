@@ -515,7 +515,10 @@ public static class BootstrapInstaller
                 (priorRelease=="a3891b3509a84e759ad5e9161c7dc361" &&
                     priorManifest=="E9ABECF5A18080E66EBFFC8467BF4F74F90D609866EC3E4DA0BFEDE0093BF9BF") ||
                 (priorRelease=="74678dbf5d174a4f93c96450193fe3e3" &&
-                    priorManifest=="BD60B34716324DC6723AD3D053281944FBADD558F86B0CE1016A63543F055913");
+                    priorManifest=="BD60B34716324DC6723AD3D053281944FBADD558F86B0CE1016A63543F055913") ||
+                // The original Broker recovered the service before creating a Job or workspace.
+                (priorRelease=="ef5580b8cc3b45399a6af4ffd2f98cbd" &&
+                    priorManifest=="3D9231BBF343B0DAD80E971F957AF467A0E9E55E7BA24B39A42A26C44D40AFFB");
             if(currentRelease!=priorRelease || currentManifest!=priorManifest ||
                 !(creatorPrior || NoAdmissionManifests.Contains(priorManifest,StringComparer.Ordinal) || OneShotAdmissionManifests.Contains(priorManifest,StringComparer.Ordinal)) ||
                 nextRelease==priorRelease || nextManifest==priorManifest)
