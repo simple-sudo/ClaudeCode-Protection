@@ -977,3 +977,23 @@ DACL 和精确内容。缺失 DACL 与未接受所有者分别给出错误 13、
 读取器证据留在 `work/creator-owner-native-observation-20261108/`。同配置临时
 服务下的读取尚未运行，暂不据此扩大生产所有者接受范围。
 [Windows 原生所有者读取](https://learn.microsoft.com/windows/win32/api/securitybaseapi/nf-securitybaseapi-getsecuritydescriptorowner)
+
+#### 所有者探针遭安全软件终止
+
+固定审查 `43756746406FEB408715CE78C0379976D7A00666555BC779A52340CC486D287D` 已执行一次。
+固定控制器确认外层原进程终态，退出码 `0x40000015`，没有 `terminal.json`。
+设备所有者确认 Kaspersky 终止了进程，Windows 应用日志另有两条新的 `avp` 事件
+34840 和 34841。事后普通只读观察确认该次服务注册表项、暂存和尝试记录仍在。
+原服务启动与停止阶段未知，未取得实际进程所有者、令牌默认所有者或登录 SID。
+不从进程列表空结果推断服务已停止或回收。相关验证已停止，未重跑或回收。
+
+外层回执 `work/creator-owner-native-observation-20261108/receipt.json`，SHA-256
+`BBF7B3EDACDF1613502917CAAFE02FCB9AB44CA6364E7FDF7BD96B21C24DB592`。
+
+设备所有者确认该告警为误报并要求换实现。后续版本在正式 Broker 的原 SCM 启动
+检查中，直接比较实际对象所有者、同一进程令牌默认所有者和 `TokenLogonSid`。
+原服务在拒绝所有者时回传有限分类和原错误 1307，回执区分自身登录 SID、默认
+所有者、两者均匹配、其他登录 SID 和不可用。原值不写入系统事件。分类仅用于
+诊断，现有权限和原登记回收条件保持不变。取消额外探针路径，保留本次失败证据。
+普通构建及编码、错误阶段、无权限登录组和原回收凭证兼容回归通过。未安装，
+原服务令牌下的实际分类仍待验证。独立探针留下的服务登记仍待专门处置。

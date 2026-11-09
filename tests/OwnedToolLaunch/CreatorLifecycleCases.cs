@@ -91,6 +91,29 @@ internal static class CreatorLifecycleCases
         Check(Stopped(1066,0xc5411501u)==("CreatorServiceSealProcess",0x80131501u)); // Existing receipt encoding.
         Check(Stopped(1066,0x80131501u)==("CreatorServiceStoppedBeforeBinding",0x80131501u));
         Check(Stopped(1053,0)==("CreatorServiceStoppedBeforeBinding",1053));
+        var encodeOwner=Method("SessionZeroCreatorService","EncodeOwnerFailure");
+        var relationType=encodeOwner.GetParameters()[0].ParameterType;
+        var startup=Method("SessionZeroCreatorService","IsReportedStartupFailure");
+        foreach(var name in Enum.GetNames(relationType))
+        {
+            var encoded=(uint)encodeOwner.Invoke(null,[Enum.Parse(relationType,name)])!;
+            Check(Stopped(1066,encoded)==("CreatorServiceValidateProcessOwner."+name,1307));
+            Check(startup.Invoke(null,[1066u,encoded]) is true);
+        }
+        Check(startup.Invoke(null,[1066u,0xc5d4ffffu]) is false);
+        Check(startup.Invoke(null,[1066u,0xc5940001u]) is false);
+        var classify=Method("SessionZeroCreatorService","ClassifyOwner");
+        var logonSid=new SecurityIdentifier("S-1-5-5-0-1234");
+        var localService=new SecurityIdentifier("S-1-5-19");
+        (string,uint)[] ownLogon=[(logonSid.Value,0xc0000004u)];
+        string? Classify(SecurityIdentifier owner,SecurityIdentifier? tokenOwner,(string,uint)[] groups)=>
+            classify.Invoke(null,[owner,tokenOwner,groups])?.ToString();
+        Check(Classify(logonSid,localService,ownLogon)=="TokenLogon");
+        Check(Classify(logonSid,logonSid,ownLogon)=="TokenDefaultAndLogon");
+        Check(Classify(logonSid,localService,[(logonSid.Value,0xc0000014u)])=="OtherLogonSid");
+        Check(Classify(logonSid,localService,[])=="OtherLogonSid");
+        Check(Classify(localService,localService,ownLogon)=="TokenDefault");
+        Check(Classify(serviceSid,localService,ownLogon)=="OtherOwner");
         var broker=library.GetType("ProtectionLifecycle.InstalledBroker",true)!;
         Check(broker.GetMethod("RunSessionZeroOfflineCreatorService")!.Invoke(null,null) is 124); // Ordinary SCM refusal.
         var layout=Method("FixedLayout","FromWindows").Invoke(null,null)!;

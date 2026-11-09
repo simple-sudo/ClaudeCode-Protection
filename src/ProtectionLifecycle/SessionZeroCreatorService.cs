@@ -20,6 +20,11 @@ internal static class SessionZeroCreatorService
         OpenProcessSecurity,ValidateProcessOwner
     }
     private const uint FailureTag=0xc5000000;
+    private const uint OwnerEvidenceKind=4;
+    internal enum OwnerRelation:uint
+    {
+        Missing=1,TokenDefault,TokenLogon,TokenDefaultAndLogon,OtherLogonSid,OtherOwner,TokenEvidenceUnavailable
+    }
 
     internal static int Dispatch()
     {
@@ -54,6 +59,10 @@ internal static class SessionZeroCreatorService
             phase=FailurePhase.OfflineProtocol;
             SessionZeroCreatorClient.RunOfflineCreator(jobId);
         }
+        catch(UnexpectedProcessOwner error) when(phase==FailurePhase.ValidateProcessOwner)
+        {
+            result=EncodeOwnerFailure(error.Relation);
+        }
         catch(Exception error)
         {
             result=EncodeFailure(phase,unchecked((uint)(error is Win32Exception native?native.NativeErrorCode:error.HResult)));
@@ -86,6 +95,7 @@ internal static class SessionZeroCreatorService
         if(!TryDecodeFailure(specific,out var phase,out var kind))
             return new("CreatorServiceStoppedBeforeBinding",specific==0?13u:specific);
         var name="CreatorService"+phase;
+        if(kind==OwnerEvidenceKind)return new(name+"."+(OwnerRelation)(specific&0xffff),1307);
         if(kind==15)return new(name+"CodeNotEncoded",specific);
         var prefix=kind switch {0u=>0u,1u=>0x80130000u,2u=>0x80070000u,_=>0x80000000u};
         var code=prefix|(specific&0xffff);
@@ -97,13 +107,20 @@ internal static class SessionZeroCreatorService
 
     private static bool IsKnownPhase(FailurePhase phase)=>phase is >=FailurePhase.ReportStarting and <=FailurePhase.ValidateProcessOwner;
 
+    internal static uint EncodeOwnerFailure(OwnerRelation relation)
+    {
+        if(!Enum.IsDefined(relation))throw new ArgumentOutOfRangeException(nameof(relation));
+        return FailureTag|((uint)FailurePhase.ValidateProcessOwner<<20)|(OwnerEvidenceKind<<16)|(uint)relation;
+    }
+
     private static bool TryDecodeFailure(uint specific,out FailurePhase phase,out uint kind)
     {
         phase=(FailurePhase)((specific>>20)&15);
         kind=(specific>>16)&15;
         var value=specific&0xffff;
         return (specific&0xff000000)==FailureTag && IsKnownPhase(phase) &&
-            (kind switch {0=>value!=0,1 or 2 or 3=>true,15=>value==0,_=>false});
+            (kind switch {0=>value!=0,1 or 2 or 3=>true,OwnerEvidenceKind=>phase==FailurePhase.ValidateProcessOwner &&
+                Enum.IsDefined((OwnerRelation)value),15=>value==0,_=>false});
     }
 
     internal static string JobIdFromServiceName(string name)
@@ -123,7 +140,7 @@ internal static class SessionZeroCreatorService
         if(descriptor.DiscretionaryAcl is null)throw new Win32Exception(13,"CreatorServiceProcessDaclMissing");
         phase=FailurePhase.ValidateProcessOwner;
         if(descriptor.Owner is not { } originalOwner || !IsTrustedCreatorProcessOwner(originalOwner,creatorSid))
-            throw new Win32Exception(1307,"CreatorServiceProcessOwnerUnexpected");
+            throw new UnexpectedProcessOwner(ObserveOwnerRelation(descriptor.Owner));
         var acl=CreateObserverDacl();
         phase=FailurePhase.WriteProcessSecurity;
         KernelJobSeal.WriteProtectedDacl(self,acl);
@@ -142,6 +159,39 @@ internal static class SessionZeroCreatorService
     internal static bool IsTrustedCreatorProcessOwner(SecurityIdentifier owner,SecurityIdentifier exactCreatorSid) =>
         owner.IsWellKnown(WellKnownSidType.LocalServiceSid) || owner.IsWellKnown(WellKnownSidType.LocalSystemSid) ||
         owner.IsWellKnown(WellKnownSidType.BuiltinAdministratorsSid) || owner.Equals(exactCreatorSid);
+
+    private static OwnerRelation ObserveOwnerRelation(SecurityIdentifier? owner)
+    {
+        if(owner is null)return OwnerRelation.Missing;
+        try
+        {
+            using var identity=WindowsIdentity.GetCurrent(TokenAccessLevels.Query);
+            var logon=RestrictingSidToken.ReadGroups(identity.AccessToken,28); // TokenLogonSid.
+            return ClassifyOwner(owner,identity.Owner,logon);
+        }
+        catch(Exception error) when(error is Win32Exception or UnauthorizedAccessException or InvalidDataException)
+        {
+            return OwnerRelation.TokenEvidenceUnavailable;
+        }
+    }
+
+    internal static OwnerRelation ClassifyOwner(SecurityIdentifier owner,SecurityIdentifier? tokenDefault,
+        IReadOnlyList<(string Sid,uint Attributes)> tokenLogon)
+    {
+        const uint logonGroup=0xc0000000,enabled=0x4,denyOnly=0x10;
+        bool isLogon=owner.IsWellKnown(WellKnownSidType.LogonIdsSid);
+        bool defaultMatches=tokenDefault is not null && owner.Equals(tokenDefault);
+        bool logonMatches=isLogon && tokenLogon.Count==1 && tokenLogon[0].Sid==owner.Value &&
+            (tokenLogon[0].Attributes&(logonGroup|enabled|denyOnly))==(logonGroup|enabled);
+        if(logonMatches)return defaultMatches?OwnerRelation.TokenDefaultAndLogon:OwnerRelation.TokenLogon;
+        if(defaultMatches)return OwnerRelation.TokenDefault;
+        return isLogon?OwnerRelation.OtherLogonSid:OwnerRelation.OtherOwner;
+    }
+
+    private sealed class UnexpectedProcessOwner(OwnerRelation relation) : Win32Exception(1307,"CreatorServiceProcessOwnerUnexpected")
+    {
+        internal OwnerRelation Relation {get;}=relation;
+    }
 
     // Keep SCM authority. Elevated Broker observers get only wait/query, and
     // other processes sharing the LocalService user cannot rewrite the DACL.

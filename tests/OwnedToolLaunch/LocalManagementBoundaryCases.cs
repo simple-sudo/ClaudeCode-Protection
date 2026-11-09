@@ -95,7 +95,16 @@ internal static class LocalManagementBoundaryCases
         string? Status(JsonElement route)=>route.GetProperty("Status").GetString();
         var current=Route(snapshot);
         check(Status(current)=="NO_DIRECT_ROUTE_IN_SNAPSHOT" && Flag(current,"Complete") && !Flag(current,"ReachableDirect") &&
-            Flag(current,"ManualDirectChoice") && !current.GetRawText().Contains("private node",StringComparison.Ordinal));
+            Flag(current,"ManualDirectChoice") && Flag(current,"SelectableDirectRoute") && !Flag(current,"AllowsRoutePrecheck") &&
+            !current.GetRawText().Contains("private node",StringComparison.Ordinal));
+        var nestedAlternative=snapshot.Replace("\"chain\",\"DIRECT\"","\"chain\",\"alternate\"",StringComparison.Ordinal)
+            .Replace("\"REJECT\":{","\"alternate\":{\"name\":\"alternate\",\"type\":\"Selector\",\"now\":\"backup\",\"all\":[\"backup\",\"DIRECT\"],\"emptyFallback\":\"REJECT\",\"dialer-proxy\":\"\"},\"REJECT\":{",StringComparison.Ordinal);
+        var nested=Route(nestedAlternative);
+        check(!Flag(nested,"ReachableDirect") && !Flag(nested,"ManualDirectChoice") && Flag(nested,"SelectableDirectRoute") && !Flag(nested,"AllowsRoutePrecheck"));
+        var unknownChoice=Route(snapshot.Replace("\"chain\",\"DIRECT\"","\"chain\",\"missing\"",StringComparison.Ordinal));
+        check(Flag(unknownChoice,"Complete") && !Flag(unknownChoice,"SelectionGraphComplete") && !Flag(unknownChoice,"AllowsRoutePrecheck"));
+        var allSafe=Route(nestedAlternative.Replace("\"backup\",\"DIRECT\"","\"backup\",\"private node\"",StringComparison.Ordinal));
+        check(Flag(allSafe,"Complete") && Flag(allSafe,"SelectionGraphComplete") && Flag(allSafe,"AllowsRoutePrecheck"));
         var emptyFallback=Route(snapshot.Replace("\"emptyFallback\":\"REJECT\"","\"emptyFallback\":\"COMPATIBLE\"",StringComparison.Ordinal));
         check(Flag(emptyFallback,"DirectEmptyFallback") && Flag(emptyFallback,"ReachableDirect"));
         var automatic=Route(snapshot.Replace("\"backup\":{\"name\":\"backup\",\"type\":\"Vless\"",

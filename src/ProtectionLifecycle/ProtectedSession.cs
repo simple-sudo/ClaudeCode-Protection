@@ -765,7 +765,7 @@ internal sealed class ProtectedSession
             upstream=ProxyChannelLease.Open(state);
             if(!IsGatewayQualification || IsLocalManagementBoundary)
                 proxyRoute=ProxyRouteObservation.Capture(upstream).GetAwaiter().GetResult();
-            if(!IsGatewayQualification && proxyRoute is not {Complete:true,ReachableDirect:false})
+            if(!IsGatewayQualification && proxyRoute is not {AllowsRoutePrecheck:true})
                 throw WfpNative.Contract("UpstreamRouteSnapshotRefused");
             if(IsLocalManagementBoundary)
             {
