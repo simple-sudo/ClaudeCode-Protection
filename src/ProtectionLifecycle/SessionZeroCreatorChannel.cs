@@ -20,6 +20,7 @@ internal sealed class SessionZeroCreatorChannel : IDisposable
     private const uint WindowAccessRequestMagic=0x32574343,WindowAccessProofMagic=0x31444343; // CCW2, CCD1.
     private const uint PrivateWindowRequestMagic=0x33574343; // CCW3.
     private const uint PrivateWindowReadControlRequestMagic=0x34574343; // CCW4.
+    private const uint PrivateWindowConsoleRequestMagic=0x314d4343; // CCM1.
     private const uint ProfileCreatedMagic=0x314a4343,ProfileRecordedMagic=0x31414343; // CCJ1, CCA1.
     private const uint TokenProofMagic=0x31544343; // CCT1.
     private const int NonceSize=16,ReplySize=44,ObjectIdentityBytes=12;
@@ -108,12 +109,14 @@ internal sealed class SessionZeroCreatorChannel : IDisposable
         var cancellation=deadline.Token;
         var request=CreateRequest(nonce,state.InstallationId,job.JobId,peer.OwnerPid,peer.OwnerSession);
         var windowAccess=startupWitness && version.Package.SchemaVersion==PackageAssetCatalog.SessionZeroWindowAccessSchema;
-        var privateWindow=startupWitness && SessionZeroStartupWitness.UsesPrivateWindow(version.Package.SchemaVersion);
-        var stationReadControl=version.Package.SchemaVersion==PackageAssetCatalog.SessionZeroPrivateWindowReadControlSchema;
+        var schema=version.Package.SchemaVersion;
+        var privateWindow=startupWitness?SessionZeroStartupWitness.UsesPrivateWindow(schema):SessionZeroWindowPolicy.SupportsConsole(schema);
+        var stationReadControl=SessionZeroWindowPolicy.RequiresStationReadControl(schema);
         if(privateWindow!=(privateWindows is not null))throw WfpNative.Contract("CreatorPrivateWindowLeaseRequired");
         privateWindows?.AssertHeld(job);
         if(startupWitness)BinaryPrimitives.WriteUInt32LittleEndian(request,privateWindow?(stationReadControl?PrivateWindowReadControlRequestMagic:PrivateWindowRequestMagic):
             windowAccess?WindowAccessRequestMagic:StartupWitnessRequestMagic);
+        else if(privateWindow)BinaryPrimitives.WriteUInt32LittleEndian(request,PrivateWindowConsoleRequestMagic);
         AssertQuarantine(state);
         AssertBoundPeer(service,image);
         job.ReserveSessionZeroAdmission(version,registration.Sid);
@@ -269,13 +272,13 @@ internal sealed class SessionZeroCreatorChannel : IDisposable
             throw WfpNative.Contract("CreatorRequestBindingMismatch");
         var magic=BinaryPrimitives.ReadUInt32LittleEndian(frame);
         if(magic!=RequestMagic && (!allowStartupWitness || magic is not (StartupWitnessRequestMagic or WindowAccessRequestMagic or
-            PrivateWindowRequestMagic or PrivateWindowReadControlRequestMagic)))
+            PrivateWindowRequestMagic or PrivateWindowReadControlRequestMagic or PrivateWindowConsoleRequestMagic)))
             throw WfpNative.Contract("CreatorRequestPurposeMismatch");
         return new(Convert.ToHexString(frame.AsSpan(28,16)).ToLowerInvariant(),fixedJobId,frame.AsSpan(12,NonceSize).ToArray()) {
-            StartupWitness=magic!=RequestMagic,
+            StartupWitness=magic is not (RequestMagic or PrivateWindowConsoleRequestMagic),
             ObserveWindowAccess=magic==WindowAccessRequestMagic,
-            UsePrivateWindow=magic is PrivateWindowRequestMagic or PrivateWindowReadControlRequestMagic,
-            PrivateStationReadControl=magic==PrivateWindowReadControlRequestMagic
+            UsePrivateWindow=magic is PrivateWindowRequestMagic or PrivateWindowReadControlRequestMagic or PrivateWindowConsoleRequestMagic,
+            PrivateStationReadControl=magic is PrivateWindowReadControlRequestMagic or PrivateWindowConsoleRequestMagic
         };
     }
 

@@ -23,6 +23,8 @@ internal static class OfflineConsoleNativeCases
         Refuse<UnauthorizedAccessException>(()=>Call(broker.GetMethod("QualifyOfflineConsole")!,null));
         var atomic=library.GetType("ProtectionLifecycle.AtomicChild",true)!;
         Refuse<InvalidDataException>(()=>Call(atomic.GetMethod("AssertOfflineConsoleWorkerIdentity",Static)!,null));
+        var window=library.GetType("ProtectionLifecycle.SessionZeroWindowLease",true)!;
+        Refuse<InvalidDataException>(()=>Call(window.GetMethod("AssertCurrentPrivateDesktop",Static)!,null,new string('a',32)));
         VerifyFailureMetadata(library);
         VerifyWorkspaceEnvironment(library);
         VerifyProjectionEvidence(library);
@@ -51,6 +53,8 @@ internal static class OfflineConsoleNativeCases
         var result=Parse(known)!;
         Require(result.GetType().GetProperty("Stage")!.GetValue(result) as string=="Workspace");
         Require((int)result.GetType().GetProperty("Code")!.GetValue(result)! == -2147024891);
+        var privateDesktop=Parse("CPC_OFFLINE_CONSOLE_FAILURE|PrivateDesktop|CONTRACT|-2146233087\n")!;
+        Require(privateDesktop.GetType().GetProperty("Stage")!.GetValue(privateDesktop) as string=="PrivateDesktop");
         Require(Parse(known,0) is null && Parse(known,overflow:true) is null);
         Require(Parse(known.Replace("Workspace","4",StringComparison.Ordinal)) is null);
         Require(Parse(known.Replace("ACCESS","unreviewed",StringComparison.Ordinal)) is null);

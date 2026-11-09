@@ -103,11 +103,11 @@ internal sealed class SessionZeroWindowLease : IDisposable
 
     private static void AssertObject(SafeHandle handle,SessionZeroWindowPolicy policy,bool stationObject)
     {
-        var name=new StringBuilder(128);
-        if(!GetObjectName(handle,UserObjectName,name,(uint)(name.Capacity*sizeof(char)),out _))throw Error("ReadPrivateWindowObjectName");
-        var flags=ReadObjectFlags(handle.DangerousGetHandle());
+        var value=handle.DangerousGetHandle();
+        var name=ReadObjectName(value);
+        var flags=ReadObjectFlags(value);
         if(flags.Inheritable!=0 || (stationObject && (flags.Flags&Visible)!=0) ||
-            !string.Equals(name.ToString(),stationObject?policy.StationName:SessionZeroWindowPolicy.DesktopName,StringComparison.Ordinal))
+            !string.Equals(name,stationObject?policy.StationName:SessionZeroWindowPolicy.DesktopName,StringComparison.Ordinal))
             throw WfpNative.Contract("PrivateWindowObjectIdentityMismatch");
         var status=GetSecurityInfo(handle,7,0x17,out _,out _,out _,out _,out var native);
         try
@@ -121,6 +121,28 @@ internal sealed class SessionZeroWindowLease : IDisposable
             policy.AssertDescriptor(stationObject,new RawSecurityDescriptor(bytes,0));
         }
         finally{if(native!=IntPtr.Zero)LocalFree(native);}
+    }
+
+    // Borrowed handles from the running workload. No name or handle leaves it.
+    internal static void AssertCurrentPrivateDesktop(string jobId)
+    {
+        var target=SessionZeroWindowPolicy.DesktopPathForJob(jobId);
+        var separator=target.IndexOf('\\');
+        if(GetDesktopWindow()==IntPtr.Zero)throw Error("PrivateConsoleDesktopUnavailable");
+        var station=GetProcessWindowStation();
+        var desktop=GetThreadDesktop(GetCurrentThreadId());
+        if(station==IntPtr.Zero || desktop==IntPtr.Zero || (ReadObjectFlags(station).Flags&Visible)!=0 ||
+            !ReadObjectName(station).AsSpan().SequenceEqual(target.AsSpan(0,separator)) ||
+            !string.Equals(ReadObjectName(desktop),SessionZeroWindowPolicy.DesktopName,StringComparison.Ordinal))
+            throw WfpNative.Contract("PrivateConsoleDesktopMismatch");
+    }
+
+    private static string ReadObjectName(IntPtr handle)
+    {
+        var name=new StringBuilder(128);
+        if(!GetObjectName(handle,UserObjectName,name,(uint)(name.Capacity*sizeof(char)),out var size))throw Error("ReadPrivateWindowObjectName");
+        if(size!=(name.Length+1)*sizeof(char))throw WfpNative.Contract("PrivateWindowObjectNameSizeMismatch");
+        return name.ToString();
     }
 
     private static ObjectFlags ReadObjectFlags(IntPtr handle)
@@ -178,6 +200,7 @@ internal sealed class SessionZeroWindowLease : IDisposable
     [DllImport("kernel32.dll")] private static extern uint GetCurrentThreadId();
     [DllImport("kernel32.dll")] private static extern IntPtr LocalFree(IntPtr value);
     [DllImport("user32.dll",SetLastError=true)] private static extern IntPtr GetProcessWindowStation();
+    [DllImport("user32.dll")] private static extern IntPtr GetDesktopWindow();
     [DllImport("user32.dll",SetLastError=true)] private static extern IntPtr GetThreadDesktop(uint threadId);
     [DllImport("user32.dll",SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)] private static extern bool SetProcessWindowStation(IntPtr station);
     [DllImport("user32.dll",SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)] private static extern bool SetThreadDesktop(IntPtr desktop);
@@ -192,7 +215,7 @@ internal sealed class SessionZeroWindowLease : IDisposable
     [DllImport("user32.dll",SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)] private static extern bool CloseWindowStation(IntPtr station);
     [DllImport("user32.dll",SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)] private static extern bool CloseDesktop(IntPtr desktop);
     [DllImport("user32.dll",EntryPoint="GetUserObjectInformationW",CharSet=CharSet.Unicode,SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)]
-    private static extern bool GetObjectName(SafeHandle handle,uint index,StringBuilder value,uint length,out uint needed);
+    private static extern bool GetObjectName(IntPtr handle,uint index,StringBuilder value,uint length,out uint needed);
     [DllImport("user32.dll",EntryPoint="GetUserObjectInformationW",SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)]
     private static extern bool GetObjectFlags(IntPtr handle,uint index,out ObjectFlags value,uint length,out uint needed);
     [DllImport("advapi32.dll")] private static extern uint GetSecurityDescriptorLength(IntPtr value);

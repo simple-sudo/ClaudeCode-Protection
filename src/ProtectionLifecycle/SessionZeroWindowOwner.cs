@@ -232,7 +232,7 @@ internal sealed class SessionZeroWindowOwner : IDisposable
         var package=PackagePolicy.ParsePinned(manifest.Bytes,job.ManifestSHA256);
         if(package.Release!=job.Release || !SessionZeroStartupWitness.UsesPrivateWindow(package.SchemaVersion))
             throw WfpNative.Contract("PrivateWindowOwnerPackageMismatch");
-        using var lease=SessionZeroWindowLease.Create(job,package.SchemaVersion==PackageAssetCatalog.SessionZeroPrivateWindowReadControlSchema);
+        using var lease=SessionZeroWindowLease.Create(job,SessionZeroWindowPolicy.RequiresStationReadControl(package.SchemaVersion));
         try
         {
             Send(pipe,Frame(request.Nonce,Message.Ready),setup.Token);

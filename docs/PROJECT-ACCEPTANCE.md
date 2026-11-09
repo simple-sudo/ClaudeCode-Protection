@@ -5,6 +5,13 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-09 托管离线负载接入私有窗口链
+
+SOURCE / BUILD / INTEGRATED(固定托管离线负载的私有窗口接入和结果分离)。
+VERIFIED(普通请求边界、真实普通桌面拒绝、流/环境/五项普通真实身份读取回归)。
+NOT_RUN(新版安装、独立受限托管负载、受限五项原值、完整 L3、GPU、网络、正式 Claude)。
+[证据](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#托管离线负载接入私有窗口链)
+
 ## 2026-11-09 独立 LPAC 原生启动实机通过
 
 CAPABILITY_DELIVERED(`73c787b7` 的固定独立 LocalService 零能力 LPAC 原生启动见证与有序回收)。

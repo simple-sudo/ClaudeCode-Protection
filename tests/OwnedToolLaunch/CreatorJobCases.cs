@@ -298,6 +298,12 @@ internal static class CreatorJobCases
         Check(privateMode.GetValue(readControlDecoded) is true && readControlMode.GetValue(readControlDecoded) is true &&
             readControlMode.GetValue(privateDecoded) is false);
         Refused(()=>parseRequest.Invoke(null,[readControlRequest,jobId,12u,7u]));
+        var managedRequest=(byte[])readControlRequest.Clone();
+        "CCM1"u8.CopyTo(managedRequest);
+        var managedDecoded=parseWorkload.Invoke(null,[managedRequest,jobId,12u,7u])!;
+        Check(mode.GetValue(managedDecoded) is false && privateMode.GetValue(managedDecoded) is true && readControlMode.GetValue(managedDecoded) is true);
+        Refused(()=>parseRequest.Invoke(null,[managedRequest,jobId,12u,7u]));
+        Refused(()=>parseWorkload.Invoke(null,[managedRequest,legacyId,12u,7u]));
         var windowType=library.GetType("ProtectionLifecycle.SessionZeroWindowAccess",true)!;
         var parseWindow=channel.GetMethod("ParseWindowAccess",methods)!;
         var writeWindow=channel.GetMethod("CreateWindowAccess",methods)!;

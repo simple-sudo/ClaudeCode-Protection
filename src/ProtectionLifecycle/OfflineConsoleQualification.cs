@@ -5,6 +5,7 @@ using System.Security.Cryptography;
 using System.Security.Principal;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 
 namespace ProtectionLifecycle;
 
@@ -13,10 +14,12 @@ namespace ProtectionLifecycle;
 internal static class OfflineConsoleQualification
 {
     internal const string ChildCommand="offline-console-qualification-child",SessionVariable="CPC_OFFLINE_CONSOLE_SESSION";
+    internal const string PrivateWindowChildCommand="private-window-offline-console-child";
     private const string PackageVariable="CPC_OFFLINE_CONSOLE_PACKAGE";
     private const string DescendantCommand="offline-console-denial-target",OutputLeaf="offline-console-output.txt";
     private const string TempLeaf="offline-console-temp.txt";
     private static ReadOnlySpan<byte> ExpectedOutput=>"CPC_OFFLINE_CONSOLE_STDOUT\n"u8;
+    private static ReadOnlySpan<byte> ExpectedPrivateWindowOutput=>"CPC_OFFLINE_CONSOLE_PRIVATE_DESKTOP\nCPC_OFFLINE_CONSOLE_STDOUT\n"u8;
     private static ReadOnlySpan<byte> ExpectedError=>"CPC_OFFLINE_CONSOLE_STDERR\n"u8;
     private static ReadOnlySpan<byte> ExpectedFile=>"CPC_OFFLINE_CONSOLE_WORKSPACE\n"u8;
     private static ReadOnlySpan<byte> ExpectedTempFile=>"CPC_OFFLINE_CONSOLE_TEMP\n"u8;
@@ -24,7 +27,7 @@ internal static class OfflineConsoleQualification
     {
         Identity, SessionId, ProgramFiles, WorkspacePath, ProfilePath, CurrentDirectory, Temp, Tmp,
         LocalAppData, UserProfile, Home, XdgConfigHome, ClaudeConfigDir, AppData, UnexpectedAuthority,
-        Streams, InputEof, Workspace, TempFile, Descendant, HostIdentity, Output
+        Streams, InputEof, Workspace, TempFile, Descendant, HostIdentity, Output, PrivateDesktop
     }
     private static readonly (string Name,ChildStage Stage)[] WorkspaceVariables=[
         ("USERPROFILE",ChildStage.UserProfile),
@@ -53,10 +56,10 @@ internal static class OfflineConsoleQualification
         foreach(var (name,_) in WorkspaceVariables)environment[name]=workspace;
     }
 
-    internal static int RunChild()
+    internal static int RunChild(bool privateWindow=false)
     {
         var stage=ChildStage.Identity;
-        try{return RunCheckedChild(ref stage);}
+        try{return RunCheckedChild(ref stage,privateWindow);}
         catch(Exception error) when(error is not OutOfMemoryException)
         {
             var kind=error switch {
@@ -70,11 +73,16 @@ internal static class OfflineConsoleQualification
         }
     }
 
-    private static int RunCheckedChild(ref ChildStage stage)
+    private static int RunCheckedChild(ref ChildStage stage,bool privateWindow)
     {
         AtomicChild.AssertOfflineConsoleWorkerIdentity();
         stage=ChildStage.SessionId;
         var session=Identifiers.Hex32(Environment.GetEnvironmentVariable(SessionVariable)??"");
+        if(privateWindow)
+        {
+            stage=ChildStage.PrivateDesktop;
+            SessionZeroWindowLease.AssertCurrentPrivateDesktop(session);
+        }
         // Use the canonical Program Files root chosen by the original owner.
         // The restricted process need not query the shell's known folders.
         stage=ChildStage.ProgramFiles;
@@ -124,7 +132,7 @@ internal static class OfflineConsoleQualification
         stage=ChildStage.HostIdentity;
         OfflineConsoleHostIdentity.Capture(session).Write(workspace);
         stage=ChildStage.Output;
-        using(var stdout=Console.OpenStandardOutput())stdout.Write(ExpectedOutput);
+        using(var stdout=Console.OpenStandardOutput())stdout.Write(privateWindow?ExpectedPrivateWindowOutput:ExpectedOutput);
         using(var stderr=Console.OpenStandardError())stderr.Write(ExpectedError);
         return 0;
     }
@@ -303,8 +311,9 @@ internal static class OfflineConsoleQualification
         var plans=RequireOfflinePrerequisites(state,version);
         var branchWitness=startupWitness && SessionZeroStartupWitness.UsesBranchTrace(version.Package.SchemaVersion);
         var windowAccessWitness=startupWitness && version.Package.SchemaVersion==PackageAssetCatalog.SessionZeroWindowAccessSchema;
-        var privateWindowWitness=startupWitness && SessionZeroStartupWitness.UsesPrivateWindow(version.Package.SchemaVersion);
-        var privateWindowTrace=privateWindowWitness && branchWitness;
+        var privateWindow=startupWitness?SessionZeroStartupWitness.UsesPrivateWindow(version.Package.SchemaVersion):
+            SessionZeroWindowPolicy.SupportsConsole(version.Package.SchemaVersion);
+        var privateWindowTrace=privateWindow && branchWitness;
         using var windowQueryImage=privateWindowTrace?SessionZeroStartupBranchTrace.HoldWindowQueryImage():null;
         using var branchTrace=branchWitness?new SessionZeroStartupBranchTrace():null;
         var fences=new List<PersistentFence>();
@@ -388,7 +397,7 @@ internal static class OfflineConsoleQualification
             AtomicChild? child=null;
             try
             {
-                if(privateWindowWitness)
+                if(privateWindow)
                 {
                     stage="PreparePrivateWindows";
                     privateWindows=SessionZeroWindowOwner.Start(layout,state,version,job);
@@ -504,17 +513,17 @@ internal static class OfflineConsoleQualification
             var observation=SessionZeroStartupWitness.Observe(version.Package.SchemaVersion,exit,stdout,stderr)
                 with {BeforeResumeWin32k=beforeResumeWin32k,BeforeResumeSystemCallFilter=beforeResumeSystemCallFilter,
                     BranchTrace=branchTrace?.Snapshot(),CreatorWindowAccess=creatorWindowAccess,
-                    PrivateWindowOwnerReady=privateWindowWitness?privateWindows is not null:null,
-                    PrivateWindowOwnerClosed=privateWindowWitness?privateWindowsClosed:null};
+                    PrivateWindowOwnerReady=privateWindow?privateWindows is not null:null,
+                    PrivateWindowOwnerClosed=privateWindow?privateWindowsClosed:null};
             var extended=version.Package.SchemaVersion==PackageAssetCatalog.SessionZeroStartupDiagnosticsSchema;
             var terminal=failures.Count==0 && closed && profileClosed && workspaceClosed && serviceRemoved && resumed &&
-                (!privateWindowWitness || privateWindowsClosed && observation.PrivateDesktopMatched==true &&
+                (!privateWindow || privateWindowsClosed && observation.PrivateDesktopMatched==true &&
                     observation.Diagnostics is {Win32kQueryError:0,Win32kBlocked:false,User32FileError:0,User32MapError:0,Win32uLoadError:0,Gdi32LoadError:0,Gdi32FullLoadError:0}) &&
-                observation.Status==(branchWitness && !privateWindowWitness?"FIRST_USER32_LOAD_SUCCEEDED":"ALL_CHECKPOINTS_OBSERVED") &&
+                observation.Status==(branchWitness && !privateWindow?"FIRST_USER32_LOAD_SUCCEEDED":"ALL_CHECKPOINTS_OBSERVED") &&
                 (!branchWitness || observation.BranchTrace is {ExitEventContinued:true,User32Mapped:true,Gdi32FullMapped:true,
                     CsrStatus:0,GdiStatus:0,GdiInit2ReturnedNull:false,FailureValue:null});
             var diagnostic=JsonSerializer.Serialize(new {
-                SchemaVersion=privateWindowTrace?6:privateWindowWitness?5:windowAccessWitness?4:branchWitness?3:extended?2:1,
+                SchemaVersion=privateWindowTrace?6:privateWindow?5:windowAccessWitness?4:branchWitness?3:extended?2:1,
                 Scope=SessionZeroStartupWitness.Scope,state.InstallationId,JobId=jobId,
                 version.Package.Release,version.Package.ManifestHash,
                 Status=terminal?"STARTUP_WITNESS_CLOSED":"STARTUP_WITNESS_NOT_CONFIRMED",
@@ -528,12 +537,13 @@ internal static class OfflineConsoleQualification
             return(terminal?0:3,diagnostic);
         }
         var matched=stdout is {Overflow:false} && stderr is {Overflow:false} &&
-            ExpectedOutput.SequenceEqual(stdout.Bytes) && ExpectedError.SequenceEqual(stderr.Bytes);
+            (privateWindow?ExpectedPrivateWindowOutput:ExpectedOutput).SequenceEqual(stdout.Bytes) && ExpectedError.SequenceEqual(stderr.Bytes);
         var identityObserved=IndependentIdentityObserved(hostIdentity);
-        var complete=failures.Count==0 && closed && profileClosed && workspaceClosed && serviceRemoved && resumed && exit==0 &&
-            filesMatched && matched && identityObserved;
-        var report=JsonSerializer.Serialize(new {
-            SchemaVersion=1,Scope="INSTALLED_FIXED_INDEPENDENT_OFFLINE_CONSOLE",state.InstallationId,JobId=jobId,
+        var functional=failures.Count==0 && closed && profileClosed && workspaceClosed && serviceRemoved && resumed && exit==0 &&
+            filesMatched && matched && (!privateWindow || privateWindowsClosed);
+        var complete=functional && identityObserved;
+        var consoleReport=JsonSerializer.SerializeToNode(new {
+            SchemaVersion=privateWindow?2:1,Scope="INSTALLED_FIXED_INDEPENDENT_OFFLINE_CONSOLE",state.InstallationId,JobId=jobId,
             version.Package.Release,version.Package.ManifestHash,Status=complete?"INDEPENDENT_OFFLINE_CONSOLE_CLOSED":"INDEPENDENT_OFFLINE_CONSOLE_NOT_CONFIRMED",
             LastStage=stage,ProcessResumed=resumed,ChildExit=exit,OriginalJobClosed=closed,ProfileClosed=profileClosed,WorkspaceClosed=workspaceClosed,
             ServiceRemoved=serviceRemoved,StartupFailureRegistrationRemoved=startupFailureRegistrationRemoved,
@@ -542,7 +552,16 @@ internal static class OfflineConsoleQualification
             Output=Summarize(stdout),Error=Summarize(stderr),ChildFailure=ParseChildFailure(exit,stderr),EnvironmentProjection=environmentProjection,
             StopObservation=stopped,Failures=failures.SelectMany(WfpNative.Describe).ToArray(),
             GatewayOpened=false,NetworkQualified=false,LaunchAuthorized=false,FormalAdmissionIssued=false,ClaudeLaunched=false
-        });
+        })!.AsObject();
+        if(privateWindow)
+        {
+            consoleReport["FunctionalConsoleConfirmed"]=functional;
+            consoleReport["PrivateWindowOwnerReady"]=privateWindows is not null;
+            consoleReport["PrivateWindowOwnerClosed"]=privateWindowsClosed;
+            consoleReport["PrivateDesktopMatched"]=stdout is {Overflow:false} && ExpectedPrivateWindowOutput.SequenceEqual(stdout.Bytes)?JsonValue.Create(true):null;
+            consoleReport["CreatorWindowAccess"]=JsonSerializer.SerializeToNode(creatorWindowAccess);
+        }
+        var report=consoleReport.ToJsonString();
         if(jobId is not null)state.WriteNew("independent-offline-console-after-"+jobId+".json",Encoding.UTF8.GetBytes(report));
         return(complete?0:3,report);
 
