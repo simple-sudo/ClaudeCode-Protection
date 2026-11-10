@@ -1774,4 +1774,18 @@ schema 18 在原 LocalService 创建通道增加固定 `CCG1` 请求。可信 Br
 调用前遇到参数类型不匹配，修正后使用新工作区执行。结果在
 `work/session-zero-git-init-20261109-01/ordinary-git-init.json`，SHA-256
 `42167244C1225199CA708E6D28883623640572EAEDD5A3E32B41A57FC8A0966F`。
-新版安装、独立受限 Git、其他 Git 工作流、PowerShell、编译器和 GPU 仍待实机。
+
+本人批准审查 `CFE5E57C7238…` 并确认一次 UAC，核验 70 项输入及 20 项回执检查。
+从 `2376af56` 更新到 `beab4874ba3341f2aabb3d64f2e13bc0` 后保持 INACTIVE。
+安装清单 SHA-256 `721F5DE2DC86BFEB6AD6834C1ED05810EFC710400D63E4BF31D3395F6BB1807D`。
+原 Broker 的恢复前回执匹配真实 Git 映像和创建者绑定的零能力低完整性 LPAC。
+Git 退出 0，确切 HEAD、对象与引用目录均匹配，标准输出和错误流均为零字节。
+原 Job 停止前隔离，最终活动进程归零，私有窗口、profile、工作区和两个服务已回收，
+普通 SCM 独立确认两服务缺席。私有窗口权限回读通过，Git 自身窗口选择未单独观测。
+
+`work/session-zero-git-init-20261109-01/receipt.json` SHA-256
+`C0C4660F2AF66C2924281920D426240754EABD949722E4A80BD22F61431D6E63`。
+原句柄、Broker 与 Git 均退出 0。调用方 PowerShell 透传最后一次 SCM 查询的
+1060（已无该服务），造成外层 shell 非零，原始记录保留。后续冻结控制器应显式
+返回自己的状态，不能把 SCM 预期返回码当成控制器退出码。许可已消耗，无重试、
+外部网络、宿主内容实验或正式 Claude。独立 add/commit、PowerShell、编译器和 GPU 待实机。

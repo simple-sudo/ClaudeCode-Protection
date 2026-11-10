@@ -1,8 +1,10 @@
 # 当前状态与授权摘要
 
-2026-11-09，schema 18 接入独立 LocalService 零能力 LPAC 的固定 `git init`。
-沿用原 Broker、创建者、Job、私有窗口、工作区与回收。普通 Release 构建、
-边界回归和实际固定 Git 命令通过。新版安装和独立受限 Git 尚未执行。
+2026-11-09，schema 18 的 `beab4874` 已实机更新并保持 INACTIVE。原独立
+LocalService 创建的零能力 LPAC Git 退出 0，HEAD 与对象/引用目录符合预期，
+标准流为空。原 Job 在隔离下有序归零，profile、工作区、私有窗口和两个服务
+均回收。许可已消耗。Git 自身选择桌面的观测仍未知，独立 add/commit、PowerShell、
+编译器、GPU、网关外连及正式 Claude 待验收。
 [独立 Git 资格](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#独立链的固定-git-init)
 
 2026-11-09，用户允许直接执行后续外网验证。可信普通身份经现有 FlClash 本地

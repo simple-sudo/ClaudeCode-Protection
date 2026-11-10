@@ -9,7 +9,10 @@
 
 SOURCE / BUILD / INTEGRATED(schema 18 独立固定 Git 创建请求及原链回收)。
 VERIFIED(普通实际固定 Git 建库、HEAD 和目录读回、标准流、协议和授权负向)。
-NOT_RUN(新版安装、受限 Git、独立 add/commit、完整工具链和正式 Claude)。
+VERIFIED(`beab4874` 未激活更新，独立 LocalService 零能力 LPAC 固定 Git 实际建库、
+标准流、Job 有序归零、profile/工作区/窗口回收及两服务缺席)。
+CAPABILITY_DELIVERED(该版本独立链的固定离线 Git 建库)。UNKNOWN(Git 自身窗口选择)。
+NOT_RUN(独立 add/commit、完整工具链和正式 Claude)。
 [证据](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#独立链的固定-git-init)
 
 ## 2026-11-09 可信侧真实外网对照
