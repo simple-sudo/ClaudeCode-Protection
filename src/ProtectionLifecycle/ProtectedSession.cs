@@ -509,7 +509,7 @@ internal sealed class ProtectedSession
     {
         ProtectedState.RequireAdministrator();state.AssertHeld();version.AssertHeld(state);
         if(mode==GatewayMode.ReviewedRouteOpenSslHead && version.Package.SchemaVersion is not
-            (PackageAssetCatalog.ReviewedProxyRouteSchema or PackageAssetCatalog.SessionZeroGitInitSchema or PackageAssetCatalog.SessionZeroCudaSchema or PackageAssetCatalog.SessionZeroCudaSplitInitSchema or PackageAssetCatalog.SessionZeroCudaAccessTraceSchema or PackageAssetCatalog.SessionZeroCudaMappedFaultSchema or PackageAssetCatalog.SessionZeroCudaWddmSchema or PackageAssetCatalog.SessionZeroCudaWddmSelfHandleSchema))
+            (PackageAssetCatalog.ReviewedProxyRouteSchema or PackageAssetCatalog.SessionZeroGitInitSchema or PackageAssetCatalog.SessionZeroCudaSchema or PackageAssetCatalog.SessionZeroCudaSplitInitSchema or PackageAssetCatalog.SessionZeroCudaAccessTraceSchema or PackageAssetCatalog.SessionZeroCudaMappedFaultSchema or PackageAssetCatalog.SessionZeroCudaWddmSchema or PackageAssetCatalog.SessionZeroCudaWddmSelfHandleSchema or PackageAssetCatalog.SessionZeroCudaDeferredPreloadSchema))
             throw WfpNative.Contract("ReviewedRouteRequiresFixedPackageSchema");
         var owner=new ProtectedSession(layout,state,version,mode);
         if(owner.qualification is null)throw WfpNative.Contract("FixedGatewayQualificationRequired");

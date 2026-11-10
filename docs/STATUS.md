@@ -7,6 +7,9 @@
 
 ## 2026-11-09 独立 CUDA 计算与退出取证
 
+schema 25 以进程级 JIT 延迟预载验证是否能越过受限 CUDA 初始化，普通真实计算已通过。
+[延迟预载对照](GPU-HOST-REFERENCE.md#cuda-jit-库延迟预载对照)。
+
 `a1819b10` 完成受限 WDDM，4 个 LUID 与可信侧完全匹配。`cuInit` 写入实际目标
 等于 `0x293C`，原资源回收。[WDDM 实机对照](GPU-HOST-REFERENCE.md#wddm-受限枚举实机结果)。
 

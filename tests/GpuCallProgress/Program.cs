@@ -64,8 +64,9 @@ if(args.Length==2 && args[0]=="host-wddm")
         WrongActorRefused=wrongActorRefused,RestrictedActorExecuted=false}));
     return matches==1 && allClosed && wrongActorRefused?0:3;
 }
-if(args.Length==2 && args[0] is "access-fault-child" or "access-cuda-child")
+if(args.Length==2 && args[0] is "access-fault-child" or "access-cuda-child" or "access-cuda-deferred-child")
 {
+    if(args[0]=="access-cuda-deferred-child")AssertDeferredPreload();
     Console.WriteLine(GetCurrentThreadId());
     Console.Out.Flush();
     TraceType().GetMethod("WaitForObserver",BindingFlags.NonPublic|BindingFlags.Static)!.Invoke(null,null);
@@ -76,11 +77,12 @@ if(args.Length==2 && args[0] is "access-fault-child" or "access-cuda-child")
     }
     args[0]="split-native-child";
 }
-if(args.Length==1 && args[0] is "host-access-trace" or "host-access-cuda")
+if(args.Length==1 && args[0] is "host-access-trace" or "host-access-cuda" or "host-deferred-access-cuda")
 {
-    var actualCuda=args[0]=="host-access-cuda";
+    var deferred=args[0]=="host-deferred-access-cuda";
+    var actualCuda=deferred || args[0]=="host-access-cuda";
     var traceNonce=new string('a',32);
-    using var child=Start(actualCuda?"access-cuda-child":"access-fault-child",traceNonce);
+    using var child=Start(deferred?"access-cuda-deferred-child":actualCuda?"access-cuda-child":"access-fault-child",traceNonce);
     using var trace=(IDisposable)Activator.CreateInstance(TraceType(),nonPublic:true)!;
     var stderr=child.StandardError.ReadToEndAsync();
     var line=await child.StandardOutput.ReadLineAsync().WaitAsync(TimeSpan.FromSeconds(5));
@@ -93,7 +95,7 @@ if(args.Length==1 && args[0] is "host-access-trace" or "host-access-cuda")
     var evidence=TraceType().GetMethod("Snapshot",hidden)!.Invoke(trace,null)!;
     var result=JsonSerializer.SerializeToElement(evidence,evidence.GetType());
     Console.WriteLine(JsonSerializer.Serialize(new{Scope=actualCuda?"ORDINARY_OWN_CUDA_MAPPING_WITH_ACCESS_TRACE":"ORDINARY_OWN_SOFTWARE_RAISED_ACCESS_VIOLATION",ExitCode=(uint)child.ExitCode,
-        StderrLength=(await stderr).Length,Trace=result,RestrictedExecution=false}));
+        StderrLength=(await stderr).Length,Trace=result,DeferredPreloadRequested=deferred,RestrictedExecution=false}));
     if(actualCuda)
     {
         var progressReader=new GpuCallProgressReader(traceNonce,true,splitInit:true);
@@ -275,6 +277,8 @@ Console.WriteLine(JsonSerializer.Serialize(new{Scope="ORDINARY_GPU_PROGRESS_PROT
 
 static string Final(string nonce,int pid)=>JsonSerializer.Serialize(new{SchemaVersion=1,Pid=pid,Nonce=nonce});
 static Type TraceType()=>typeof(InstalledBroker).Assembly.GetType("ProtectionLifecycle.SessionZeroStartupBranchTrace+CudaAccessTrace",true)!;
+static void AssertDeferredPreload()=>typeof(InstalledBroker).Assembly.GetType("ProtectionLifecycle.IndependentGpuWorkload",true)!
+    .GetMethod("AssertDeferredPreload",BindingFlags.NonPublic|BindingFlags.Static)!.Invoke(null,null);
 
 [DllImport("kernel32.dll",ExactSpelling=true)]
 static extern uint GetCurrentThreadId();
@@ -291,5 +295,6 @@ static Process Start(string mode,string nonce)
     var start=new ProcessStartInfo(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),"dotnet","dotnet.exe"))
     {UseShellExecute=false,CreateNoWindow=true,RedirectStandardOutput=true,RedirectStandardError=true,RedirectStandardInput=true};
     start.ArgumentList.Add(typeof(InstalledBroker).Assembly==Assembly.GetExecutingAssembly()?throw new Exception("Test entry required"):Assembly.GetExecutingAssembly().Location);
+    if(mode=="access-cuda-deferred-child")start.Environment["CUDA_FORCE_PRELOAD_LIBRARIES"]="0";
     start.ArgumentList.Add(mode);start.ArgumentList.Add(nonce);return Process.Start(start)??throw new Exception("Own test child did not start");
 }

@@ -431,6 +431,7 @@ internal sealed partial class AtomicChild : IDisposable
             env["DOTNET_ROOT"]=WindowsPathSeal.Child(Path.GetDirectoryName(workspace.Path)!,"dotnet");
             env["DOTNET_ROLL_FORWARD"]="LatestPatch";
             OfflineConsoleQualification.BindEnvironment(env,workspace.Path,profile.Package.Name,session);
+            if(client.Request.Cuda)env[IndependentGpuWorkload.PreloadVariable]="0";
         }
         using var channels=streams.PrepareCreationAttributes();
         using var seal=new KernelJobSeal.SessionObjectDescriptor(localService:true);
@@ -830,7 +831,7 @@ internal sealed partial class AtomicChild : IDisposable
     }
     internal void ObserveCudaAccess(SessionZeroStartupBranchTrace.CudaAccessTrace trace,Action assertHealthy)
     {
-        if(!independentCuda || version.Package.SchemaVersion!=PackageAssetCatalog.SessionZeroCudaWddmSelfHandleSchema ||
+        if(!independentCuda || version.Package.SchemaVersion!=PackageAssetCatalog.SessionZeroCudaDeferredPreloadSchema ||
             disposed || !resumed || !job.ContainsProcess(process))
             throw WfpNative.Contract("CudaTraceRequiresResumedReviewedRoot");
         trace.Observe(process,Pid,initialThreadId,assertHealthy);

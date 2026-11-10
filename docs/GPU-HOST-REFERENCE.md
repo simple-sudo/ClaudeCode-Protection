@@ -186,6 +186,20 @@ SHA-256 `760F15C96CC7A2BFD48386695BE4E1FB8595C7BF2208A37F5B0EB49E2AFF2BBE`。
 `work/session-zero-cuda-wddm-self-handle-20261109-01/receipt.json` SHA-256
 `6292406E8D256DC79929FB1A1EFF6E4F921B83CF0E2A182ED21E7D87EB123EC1`。
 
+### CUDA JIT 库延迟预载对照
+
+schema 25 仅由原 LocalService 创建者在固定诊断载荷的新进程环境块中写入
+`CUDA_FORCE_PRELOAD_LIBRARIES=0`，载荷在 WDDM 和 CUDA 前校验该值。按 NVIDIA
+文档，该选项将 JIT 所需库从预载改为按需加载。原计算仍需要执行真实 CUDA，保留
+WDDM 同一取证范围、首次访问异常观察及原会话资源回收。
+[NVIDIA 初始化接口](https://docs.nvidia.com/cuda/cuda-driver-api/cuda_driver_api/group__CUDA__INITIALIZE.html)。
+
+普通 Windows 新进程已用该选项完成 1 KiB 固定计算，CUDA 调用序列、映像映射、
+退出与清理验证通过。摘要
+`work/session-zero-cuda-deferred-preload-20261110-01/host-deferred-access-cuda-final.log`
+SHA-256 `6604A14E1D7FF01258606FA505BD66831324A6FB95BCC8988F5034F88409D549`。
+受限 `cuInit` 能否越过故障点尚未实测。
+
 ## 2026-11-06 610b正常真实参考已验证
 
 经本人批准73AC9CC7…，安装/原daily/原资格owner/指定新记录reader全终态0。现装

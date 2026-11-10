@@ -41,6 +41,7 @@ internal static class PackageAssetCatalog
     internal const int SessionZeroCudaMappedFaultSchema=22;
     internal const int SessionZeroCudaWddmSchema=23;
     internal const int SessionZeroCudaWddmSelfHandleSchema=24;
+    internal const int SessionZeroCudaDeferredPreloadSchema=25;
     internal const string SessionZeroStartupWitnessId="broker-session-zero-startup-witness";
     internal const string SessionZeroStartupWitnessPath="bin/admin/SessionZeroStartupWitness.exe";
     internal const string OfficialClaudeId="official-claude-offline-exe",OfficialClaudeBinRole="official";
@@ -140,7 +141,7 @@ internal static class PackageAssetCatalog
         SessionZeroStartupBranchSchema or SessionZeroWindowAccessSchema=>WithStartupBranch,
         SessionZeroPrivateWindowSchema=>WithPrivateWindow,
         SessionZeroPrivateWindowTraceSchema or SessionZeroPrivateWindowReadControlSchema or SessionZeroPrivateWindowConsoleSchema or
-        SessionZeroIdentitySurveySchema or SessionZeroNetworkSurveySchema or ReviewedProxyRouteSchema or SessionZeroGitInitSchema or SessionZeroCudaSchema or SessionZeroCudaSplitInitSchema or SessionZeroCudaAccessTraceSchema or SessionZeroCudaMappedFaultSchema or SessionZeroCudaWddmSchema or SessionZeroCudaWddmSelfHandleSchema=>WithPrivateWindowTrace,
+        SessionZeroIdentitySurveySchema or SessionZeroNetworkSurveySchema or ReviewedProxyRouteSchema or SessionZeroGitInitSchema or SessionZeroCudaSchema or SessionZeroCudaSplitInitSchema or SessionZeroCudaAccessTraceSchema or SessionZeroCudaMappedFaultSchema or SessionZeroCudaWddmSchema or SessionZeroCudaWddmSelfHandleSchema or SessionZeroCudaDeferredPreloadSchema=>WithPrivateWindowTrace,
         _=>throw new InvalidDataException("Unknown installed package schema")
     };
     // Map a previously authorized role to a path. Release authorization

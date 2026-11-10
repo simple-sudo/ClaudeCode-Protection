@@ -9,6 +9,14 @@ internal static class IndependentGpuWorkload
 {
     internal const string ChildCommand="private-window-cuda-child";
     internal const string Scope="FIXED_INDEPENDENT_CUDA_FULL_QUARANTINE";
+    internal const string PreloadVariable="CUDA_FORCE_PRELOAD_LIBRARIES";
+    internal const string PreloadPolicy="DEFERRED_JIT_LIBRARIES";
+
+    internal static void AssertDeferredPreload()
+    {
+        if(Environment.GetEnvironmentVariable(PreloadVariable)!="0")
+            throw WfpNative.Contract("CudaDeferredPreloadEnvironmentDiffers");
+    }
 
     internal sealed record Capture(string Status,GpuReportedCall? LastCall,GpuReportedCall? FirstFailedCall,
         bool ReportComplete,bool SuccessfulCallSequence,bool ComputationQualified)
