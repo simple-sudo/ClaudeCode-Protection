@@ -8,6 +8,7 @@ namespace ProtectionLifecycle;
 internal static class IndependentGpuWorkload
 {
     internal const string ChildCommand="private-window-cuda-child";
+    internal const string RegistryPrivacyChildCommand="private-window-cuda-registry-privacy-child";
     internal const string Scope="FIXED_INDEPENDENT_CUDA_FULL_QUARANTINE";
     internal const string PreloadVariable="CUDA_FORCE_PRELOAD_LIBRARIES";
     internal const string PreloadPolicy="DEFERRED_JIT_LIBRARIES";

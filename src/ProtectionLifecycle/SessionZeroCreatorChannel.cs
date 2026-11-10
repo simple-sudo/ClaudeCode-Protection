@@ -25,6 +25,7 @@ internal sealed class SessionZeroCreatorChannel : IDisposable
     private const uint NetworkSurveyRequestMagic=0x314e4343; // CCN1.
     private const uint GitInitRequestMagic=0x31474343; // CCG1.
     private const uint CudaRequestMagic=0x31554343; // CCU1.
+    private const uint CudaRegistryPrivacyRequestMagic=0x32554343; // CCU2.
     private const uint ProfileCreatedMagic=0x314a4343,ProfileRecordedMagic=0x31414343; // CCJ1, CCA1.
     private const uint TokenProofMagic=0x31544343; // CCT1.
     private const int NonceSize=16,ReplySize=44,ObjectIdentityBytes=12;
@@ -124,21 +125,22 @@ internal sealed class SessionZeroCreatorChannel : IDisposable
             windowAccess?WindowAccessRequestMagic:StartupWitnessRequestMagic);
         else if(gitInit)
         {
-            if(schema is not (PackageAssetCatalog.SessionZeroGitInitSchema or PackageAssetCatalog.SessionZeroCudaSchema or PackageAssetCatalog.SessionZeroCudaSplitInitSchema or PackageAssetCatalog.SessionZeroCudaAccessTraceSchema or PackageAssetCatalog.SessionZeroCudaMappedFaultSchema or PackageAssetCatalog.SessionZeroCudaWddmSchema or PackageAssetCatalog.SessionZeroCudaWddmSelfHandleSchema or PackageAssetCatalog.SessionZeroCudaDeferredPreloadSchema or PackageAssetCatalog.SessionZeroCudaInitializationTraceSchema or PackageAssetCatalog.SessionZeroCudaHelperPathSchema or PackageAssetCatalog.SessionZeroCudaRegistryCallsSchema or PackageAssetCatalog.SessionZeroCudaGraphicsReadSchema) || !privateWindow)
+            if(schema is not (PackageAssetCatalog.SessionZeroGitInitSchema or PackageAssetCatalog.SessionZeroCudaSchema or PackageAssetCatalog.SessionZeroCudaSplitInitSchema or PackageAssetCatalog.SessionZeroCudaAccessTraceSchema or PackageAssetCatalog.SessionZeroCudaMappedFaultSchema or PackageAssetCatalog.SessionZeroCudaWddmSchema or PackageAssetCatalog.SessionZeroCudaWddmSelfHandleSchema or PackageAssetCatalog.SessionZeroCudaDeferredPreloadSchema or PackageAssetCatalog.SessionZeroCudaInitializationTraceSchema or PackageAssetCatalog.SessionZeroCudaHelperPathSchema or PackageAssetCatalog.SessionZeroCudaRegistryCallsSchema or PackageAssetCatalog.SessionZeroCudaGraphicsReadSchema or PackageAssetCatalog.SessionZeroCudaGraphicsRootSchema) || !privateWindow)
                 throw WfpNative.Contract("CreatorGitInitRequiresFixedPrivateWindowPackage");
             BinaryPrimitives.WriteUInt32LittleEndian(request,GitInitRequestMagic);
         }
         else if(cuda)
         {
-            if(schema is not (PackageAssetCatalog.SessionZeroCudaDeferredPreloadSchema or PackageAssetCatalog.SessionZeroCudaInitializationTraceSchema or PackageAssetCatalog.SessionZeroCudaHelperPathSchema or PackageAssetCatalog.SessionZeroCudaRegistryCallsSchema or PackageAssetCatalog.SessionZeroCudaGraphicsReadSchema) || !privateWindow)
+            if(schema is not (PackageAssetCatalog.SessionZeroCudaDeferredPreloadSchema or PackageAssetCatalog.SessionZeroCudaInitializationTraceSchema or PackageAssetCatalog.SessionZeroCudaHelperPathSchema or PackageAssetCatalog.SessionZeroCudaRegistryCallsSchema or PackageAssetCatalog.SessionZeroCudaGraphicsReadSchema or PackageAssetCatalog.SessionZeroCudaGraphicsRootSchema) || !privateWindow)
                 throw WfpNative.Contract("CreatorCudaRequiresFixedPrivateWindowPackage");
-            BinaryPrimitives.WriteUInt32LittleEndian(request,CudaRequestMagic);
+            BinaryPrimitives.WriteUInt32LittleEndian(request,schema==PackageAssetCatalog.SessionZeroCudaGraphicsRootSchema?
+                CudaRegistryPrivacyRequestMagic:CudaRequestMagic);
             cudaCapture=true;
         }
         else if(privateWindow)BinaryPrimitives.WriteUInt32LittleEndian(request,schema switch {
             PackageAssetCatalog.SessionZeroIdentitySurveySchema=>IdentitySurveyRequestMagic,
             PackageAssetCatalog.SessionZeroNetworkSurveySchema or PackageAssetCatalog.ReviewedProxyRouteSchema or
-                PackageAssetCatalog.SessionZeroGitInitSchema or PackageAssetCatalog.SessionZeroCudaSchema or PackageAssetCatalog.SessionZeroCudaSplitInitSchema or PackageAssetCatalog.SessionZeroCudaAccessTraceSchema or PackageAssetCatalog.SessionZeroCudaMappedFaultSchema or PackageAssetCatalog.SessionZeroCudaWddmSchema or PackageAssetCatalog.SessionZeroCudaWddmSelfHandleSchema or PackageAssetCatalog.SessionZeroCudaDeferredPreloadSchema or PackageAssetCatalog.SessionZeroCudaInitializationTraceSchema or PackageAssetCatalog.SessionZeroCudaHelperPathSchema or PackageAssetCatalog.SessionZeroCudaRegistryCallsSchema or PackageAssetCatalog.SessionZeroCudaGraphicsReadSchema=>NetworkSurveyRequestMagic,
+                PackageAssetCatalog.SessionZeroGitInitSchema or PackageAssetCatalog.SessionZeroCudaSchema or PackageAssetCatalog.SessionZeroCudaSplitInitSchema or PackageAssetCatalog.SessionZeroCudaAccessTraceSchema or PackageAssetCatalog.SessionZeroCudaMappedFaultSchema or PackageAssetCatalog.SessionZeroCudaWddmSchema or PackageAssetCatalog.SessionZeroCudaWddmSelfHandleSchema or PackageAssetCatalog.SessionZeroCudaDeferredPreloadSchema or PackageAssetCatalog.SessionZeroCudaInitializationTraceSchema or PackageAssetCatalog.SessionZeroCudaHelperPathSchema or PackageAssetCatalog.SessionZeroCudaRegistryCallsSchema or PackageAssetCatalog.SessionZeroCudaGraphicsReadSchema or PackageAssetCatalog.SessionZeroCudaGraphicsRootSchema=>NetworkSurveyRequestMagic,
             _=>PrivateWindowConsoleRequestMagic
         });
         AssertQuarantine(state);
@@ -286,6 +288,7 @@ internal sealed class SessionZeroCreatorChannel : IDisposable
         internal bool NetworkSurvey {get;init;}
         internal bool GitInit {get;init;}
         internal bool Cuda {get;init;}
+        internal bool CudaRegistryPrivacy {get;init;}
     }
     internal static Request ParseRequest(byte[] frame,string fixedJobId,uint serverPid,uint serverSession)
         =>ParseBoundRequest(frame,fixedJobId,serverPid,serverSession,allowStartupWitness:false);
@@ -302,9 +305,9 @@ internal sealed class SessionZeroCreatorChannel : IDisposable
         var magic=BinaryPrimitives.ReadUInt32LittleEndian(frame);
         if(magic!=RequestMagic && (!allowStartupWitness || magic is not (StartupWitnessRequestMagic or WindowAccessRequestMagic or
             PrivateWindowRequestMagic or PrivateWindowReadControlRequestMagic or PrivateWindowConsoleRequestMagic or
-            IdentitySurveyRequestMagic or NetworkSurveyRequestMagic or GitInitRequestMagic or CudaRequestMagic)))
+            IdentitySurveyRequestMagic or NetworkSurveyRequestMagic or GitInitRequestMagic or CudaRequestMagic or CudaRegistryPrivacyRequestMagic)))
             throw WfpNative.Contract("CreatorRequestPurposeMismatch");
-        var consolePrivate=magic is PrivateWindowConsoleRequestMagic or IdentitySurveyRequestMagic or NetworkSurveyRequestMagic or GitInitRequestMagic or CudaRequestMagic;
+        var consolePrivate=magic is PrivateWindowConsoleRequestMagic or IdentitySurveyRequestMagic or NetworkSurveyRequestMagic or GitInitRequestMagic or CudaRequestMagic or CudaRegistryPrivacyRequestMagic;
         return new(Convert.ToHexString(frame.AsSpan(28,16)).ToLowerInvariant(),fixedJobId,frame.AsSpan(12,NonceSize).ToArray()) {
             StartupWitness=magic!=RequestMagic && !consolePrivate,
             ObserveWindowAccess=magic==WindowAccessRequestMagic,
@@ -312,7 +315,8 @@ internal sealed class SessionZeroCreatorChannel : IDisposable
             PrivateStationReadControl=consolePrivate || magic==PrivateWindowReadControlRequestMagic,
             IdentitySurvey=magic is IdentitySurveyRequestMagic or NetworkSurveyRequestMagic,
             NetworkSurvey=magic==NetworkSurveyRequestMagic,
-            GitInit=magic==GitInitRequestMagic,Cuda=magic==CudaRequestMagic
+            GitInit=magic==GitInitRequestMagic,Cuda=magic is CudaRequestMagic or CudaRegistryPrivacyRequestMagic,
+            CudaRegistryPrivacy=magic==CudaRegistryPrivacyRequestMagic
         };
     }
 

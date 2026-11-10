@@ -7,6 +7,10 @@
 
 ## 2026-11-09 独立 CUDA 计算与退出取证
 
+SOURCE / BUILD / INTEGRATED(schema 30 精确双键租约、实际内容对抗和回收)。
+VERIFIED(普通本机根/叶 ACL 可读及拒绝扩大根权限、原生普通 CUDA 计算、现有创建链回归)。
+NOT_RUN(schema 30 受限根映射、真实内容获取、CUDA 计算和双键恢复)。
+
 SOURCE / BUILD / INTEGRATED(schema 29 原 Broker 单键临时只读与专用恢复)。
 VERIFIED(普通真实根键内容、普通子键权限拒绝、精确规则及非授权记录拒绝)。
 VERIFIED(`de3eadc9` 未激活更新、单键授权回读、原 DACL 恢复、内容与子键 ACL 核对、原资源回收)。

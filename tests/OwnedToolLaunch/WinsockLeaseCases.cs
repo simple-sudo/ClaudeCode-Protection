@@ -39,8 +39,21 @@ internal static class WinsockLeaseCases
             catch(InvalidDataException){continue;}
             throw new InvalidDataException("GraphicsDrivers malformed intent accepted");
         }
+        var scope=library.GetType("ProtectionLifecycle.WinsockRegistryScope",true)!;
+        var rootGranted=(string)scope.GetMethod("AddReadAce",hidden)!.Invoke(null,[original,package,0x20000])!;
+        var rootCase=row.DeepClone();rootCase["SchemaVersion"]=5;
+        rootCase["Targets"]!.AsArray().Insert(0,JsonSerializer.SerializeToNode(new{Path="",Access=0x20000,
+            ContentSHA256=(string?)null,OriginalSecurity=original,GrantedSecurity=rootGranted}));
+        Validate(rootCase);
+        foreach(var access in new[]{0x20019,0xf003f})
+        {
+            var broadened=rootCase.DeepClone();broadened["Targets"]![0]!["Access"]=access;
+            try{Validate(broadened);}
+            catch(InvalidDataException){continue;}
+            throw new InvalidDataException("GraphicsDrivers root content access accepted");
+        }
         Console.WriteLine(Call("InspectGraphicsDriversMetadata"));
-        Console.WriteLine("PASS exact package read, six invalid intents and ordinary read-only native GraphicsDrivers inventory");
+        Console.WriteLine("PASS exact package read, root READ_CONTROL, eight invalid intents and ordinary read-only native registry inventory");
     }
 
     internal static void RunProviders(Assembly library,bool metadata)

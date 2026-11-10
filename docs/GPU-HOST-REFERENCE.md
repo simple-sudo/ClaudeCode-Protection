@@ -305,6 +305,19 @@ SHA-256 `A1217161D8559DC6DCAC19D1F8C4596DF694D827536B5F0370FAD6CFBB139305`。
 这些结果支持当前 CUDA 链的下一次根映射对照，当前故障点仍需该链自己的证据。
 [原实机与静态证据](STATUS.md#2026-11-04-区分lpac叶子授权与预定义根映射)
 
+### CUDA 预定义根映射与真实内容对照
+
+schema 30 沿原 Broker 和原 Job 持有两个已审查对象。`HKLM` 根只有 `READ_CONTROL`，
+`GraphicsDrivers` 叶子保留 schema 29 的 `KEY_READ`。两条规则均精确绑定本安装包 SID
+且不继承。先写叶子再写根，原 Job 持久归零后先恢复根再恢复叶子。原规则及叶子六个
+DWORD、12 个直接子键的权限边界继续核对。根规则不授予读取值或枚举子键权限。
+
+原受限载荷在相同授权存续期间尝试读取真实 MachineGuid、登录和 SMBIOS 数据，使用原
+绑定和可信同机内容对照。原值仅存于受保护本机证据，公开回执只带结果分类和封存摘要。
+普通本机只读证据 `work/session-zero-cuda-graphics-root-20261110-01/graphics-drivers-read-policy.log`
+SHA-256 `82FFAA5D4F91067B693EB6225E635521B551CE47175281FE91C7B9778F550079`。
+当前受限根映射、敏感内容结果和恢复尚未运行。
+
 ## 2026-11-06 610b正常真实参考已验证
 
 经本人批准73AC9CC7…，安装/原daily/原资格owner/指定新记录reader全终态0。现装

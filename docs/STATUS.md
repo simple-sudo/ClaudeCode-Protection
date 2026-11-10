@@ -7,6 +7,9 @@
 
 ## 2026-11-09 独立 CUDA 计算与退出取证
 
+schema 30 接入预定义根仅 `READ_CONTROL`、驱动叶子 `KEY_READ` 及独立内容对照。
+普通回归见[根映射对照](GPU-HOST-REFERENCE.md#cuda-预定义根映射与真实内容对照)。
+
 schema 29 接入原 Job 的 `GraphicsDrivers` 单键临时只读和关闭后精确恢复。
 `de3eadc9` 已实测精确恢复，受限驱动打开仍返回 5。
 [只读修复范围](GPU-HOST-REFERENCE.md#cuda-单键临时只读修复)。

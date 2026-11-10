@@ -342,6 +342,15 @@ internal static class CreatorJobCases
         Refused(()=>parseRequest.Invoke(null,[cudaRequest,jobId,12u,7u]));
         Refused(()=>parseWorkload.Invoke(null,[cudaRequest,legacyId,12u,7u]));
         Refused(()=>parseWorkload.Invoke(null,[cudaRequest,jobId,13u,7u]));
+        var cudaRegistryRequest=(byte[])cudaRequest.Clone();
+        "CCU2"u8.CopyTo(cudaRegistryRequest);
+        var cudaRegistryMode=decoded.GetType().GetProperty("CudaRegistryPrivacy",BindingFlags.Instance|BindingFlags.NonPublic)!;
+        var cudaRegistryDecoded=parseWorkload.Invoke(null,[cudaRegistryRequest,jobId,12u,7u])!;
+        Check(cudaRegistryMode.GetValue(cudaDecoded) is false && cudaRegistryMode.GetValue(cudaRegistryDecoded) is true &&
+            cudaMode.GetValue(cudaRegistryDecoded) is true && readControlMode.GetValue(cudaRegistryDecoded) is true &&
+            gitMode.GetValue(cudaRegistryDecoded) is false && networkMode.GetValue(cudaRegistryDecoded) is false);
+        Refused(()=>parseRequest.Invoke(null,[cudaRegistryRequest,jobId,12u,7u]));
+        Refused(()=>parseWorkload.Invoke(null,[cudaRegistryRequest,legacyId,12u,7u]));
         var windowType=library.GetType("ProtectionLifecycle.SessionZeroWindowAccess",true)!;
         var parseWindow=channel.GetMethod("ParseWindowAccess",methods)!;
         var writeWindow=channel.GetMethod("CreateWindowAccess",methods)!;

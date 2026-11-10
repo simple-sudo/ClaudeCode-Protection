@@ -46,6 +46,7 @@ internal static class PackageAssetCatalog
     internal const int SessionZeroCudaHelperPathSchema=27;
     internal const int SessionZeroCudaRegistryCallsSchema=28;
     internal const int SessionZeroCudaGraphicsReadSchema=29;
+    internal const int SessionZeroCudaGraphicsRootSchema=30;
     internal const string SessionZeroStartupWitnessId="broker-session-zero-startup-witness";
     internal const string SessionZeroStartupWitnessPath="bin/admin/SessionZeroStartupWitness.exe";
     internal const string OfficialClaudeId="official-claude-offline-exe",OfficialClaudeBinRole="official";
@@ -145,7 +146,7 @@ internal static class PackageAssetCatalog
         SessionZeroStartupBranchSchema or SessionZeroWindowAccessSchema=>WithStartupBranch,
         SessionZeroPrivateWindowSchema=>WithPrivateWindow,
         SessionZeroPrivateWindowTraceSchema or SessionZeroPrivateWindowReadControlSchema or SessionZeroPrivateWindowConsoleSchema or
-        SessionZeroIdentitySurveySchema or SessionZeroNetworkSurveySchema or ReviewedProxyRouteSchema or SessionZeroGitInitSchema or SessionZeroCudaSchema or SessionZeroCudaSplitInitSchema or SessionZeroCudaAccessTraceSchema or SessionZeroCudaMappedFaultSchema or SessionZeroCudaWddmSchema or SessionZeroCudaWddmSelfHandleSchema or SessionZeroCudaDeferredPreloadSchema or SessionZeroCudaInitializationTraceSchema or SessionZeroCudaHelperPathSchema or SessionZeroCudaRegistryCallsSchema or SessionZeroCudaGraphicsReadSchema=>WithPrivateWindowTrace,
+        SessionZeroIdentitySurveySchema or SessionZeroNetworkSurveySchema or ReviewedProxyRouteSchema or SessionZeroGitInitSchema or SessionZeroCudaSchema or SessionZeroCudaSplitInitSchema or SessionZeroCudaAccessTraceSchema or SessionZeroCudaMappedFaultSchema or SessionZeroCudaWddmSchema or SessionZeroCudaWddmSelfHandleSchema or SessionZeroCudaDeferredPreloadSchema or SessionZeroCudaInitializationTraceSchema or SessionZeroCudaHelperPathSchema or SessionZeroCudaRegistryCallsSchema or SessionZeroCudaGraphicsReadSchema or SessionZeroCudaGraphicsRootSchema=>WithPrivateWindowTrace,
         _=>throw new InvalidDataException("Unknown installed package schema")
     };
     // Map a previously authorized role to a path. Release authorization

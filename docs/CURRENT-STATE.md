@@ -1,5 +1,11 @@
 # 当前状态与授权摘要
 
+2026-11-10，schema 30 为同一固定载荷接入 `HKLM` 根仅 `READ_CONTROL` 与
+`GraphicsDrivers` 叶子 `KEY_READ`，两个权限均限本安装包 SID 且不继承。原链还将
+在授权期间尝试读取真实 MachineGuid、登录信息和 SMBIOS，原值仅封存于本机。
+构建、普通只读和规则回归通过，实机待执行。当前安装仍为 `de3eadc9`。
+[根映射对照](GPU-HOST-REFERENCE.md#cuda-预定义根映射与真实内容对照)
+
 2026-11-10，`de3eadc9` 已更新并保持 INACTIVE。原 Broker 实际添加 `GraphicsDrivers`
 单键非继承 `KEY_READ` 并恢复精确原 DACL，六个 DWORD 和 12 个直接子键的边界核对通过。
 受限驱动打开仍返回 Win32 `5`，回调返回 `999`，`cuInit` 仍异常退出。原资源均回收，
