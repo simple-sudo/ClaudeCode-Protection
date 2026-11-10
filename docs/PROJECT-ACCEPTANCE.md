@@ -9,7 +9,9 @@
 
 SOURCE / BUILD / INTEGRATED(schema 32 原 Job 内的单进程固定 `git commit -a` 与独立对象校验)。
 VERIFIED(普通 Windows 实际 Git、文本和嵌套二进制的提交对象、损坏分支拒绝、创建者帧绑定)。
-NOT_RUN(受限固定提交、原资源回收、用户仓库的任意 Git 工作流)。
+VERIFIED(`f9e8d29d` 未激活更新、原受限固定提交、原 Job 与资源回收)。
+CAPABILITY_DELIVERED(原独立 LocalService／零能力 LPAC 单进程离线暂存并提交已跟踪固定文件)。
+NOT_RUN(用户仓库、新文件 git add、多命令工作流及正式 Claude)。
 
 ## 2026-11-10 网关路由监督
 

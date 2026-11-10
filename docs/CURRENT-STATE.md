@@ -1,8 +1,9 @@
 # 当前状态与授权摘要
 
-2026-11-10，schema 32 接入原 LocalService／零能力 LPAC 链的固定 `git commit -a`。
-普通实机已确认实际 Git 暂存并提交固定文本和嵌套二进制，Broker 校验器拒绝损坏的分支引用。
-现装仍为 `16443852`，受限提交与回收尚待实机。
+2026-11-10，`f9e8d29d` 已更新并保持 INACTIVE。原 LocalService／零能力 LPAC 链的
+单进程 `git commit -a` 实际暂存并提交两个已跟踪文件，Broker 逐字节核对文本和嵌套
+二进制。原 Job 有序归零，工作区、profile、私有窗口和两个临时服务均回收。单次许可
+已消耗。用户仓库、新文件 `git add` 和多命令工作流待验收。
 [独立 Git 固定提交](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#独立链的固定-git-提交)
 
 2026-11-10，原网关接入持续路由快照。打开前须有一次允许结果，运行时快照过期或出现
