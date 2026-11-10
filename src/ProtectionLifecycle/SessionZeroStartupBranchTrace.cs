@@ -242,6 +242,7 @@ internal sealed partial class SessionZeroStartupBranchTrace : IDisposable
         [FieldOffset(16)] internal IntPtr File;
         [FieldOffset(16)] internal uint Code;
         [FieldOffset(24)] internal long ModuleBase;
+        [FieldOffset(24)] internal IntPtr DebugProcess;
         [FieldOffset(32)] internal long Address;
         [FieldOffset(40)] internal uint NumberParameters;
         [FieldOffset(48)] internal ulong AccessOperation;

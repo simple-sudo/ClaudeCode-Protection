@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Reflection.PortableExecutable;
 using System.Runtime.InteropServices;
+using System.Text;
 using Microsoft.Win32.SafeHandles;
 
 namespace ProtectionLifecycle;
@@ -62,6 +63,7 @@ internal sealed partial class SessionZeroStartupBranchTrace
             {
                 var elapsed=Stopwatch.StartNew();
                 var attachBreakSeen=false;
+                IntPtr debugProcess=IntPtr.Zero;
                 for(int count=0;count<256 && elapsed.ElapsedMilliseconds<6500;)
                 {
                     assertHealthy();
@@ -76,6 +78,7 @@ internal sealed partial class SessionZeroStartupBranchTrace
                     try
                     {
                         if(evt.Pid!=pid)throw WfpNative.Contract("CudaTraceEventProcessDiffers");
+                        if(evt.Kind==CreateProcessEvent)debugProcess=evt.DebugProcess;
                         if(evt.Kind==LoadDllEvent && image is {IsInvalid:false} && WindowsPathSeal.Identity(image)==driverIdentity)
                         {
                             if(evt.ModuleBase<0x10000 || mappedBase.HasValue)
@@ -93,6 +96,8 @@ internal sealed partial class SessionZeroStartupBranchTrace
                         if(evt.Kind==ExceptionEvent && evt.Code==AccessViolation)
                         {
                             var fault=DescribeFault(evt.Address,evt.NumberParameters,evt.AccessOperation,evt.AccessAddress,mappedBase,imageSize);
+                            if(fault.InstructionImage=="UNATTRIBUTED")
+                                fault=ReadMappedInstruction(debugProcess,pid,evt.Address,fault);
                             if(evt.FirstChance==1)firstChance??=fault;
                             else lastChance=fault;
                         }
@@ -124,6 +129,40 @@ internal sealed partial class SessionZeroStartupBranchTrace
             return new(access,address,rva.HasValue?"PINNED_NVCUDA":"UNATTRIBUTED",rva);
         }
 
+        private static Fault ReadMappedInstruction(IntPtr debugProcess,uint pid,long instruction,Fault fault)
+        {
+            const uint memImage=0x01000000;
+            using var process=new SafeProcessHandle(debugProcess,ownsHandle:false); // Windows closes its debug-event handle.
+            if(process.IsInvalid || GetProcessId(process)!=pid || instruction<0x10000)return fault;
+            var address=new IntPtr(instruction);
+            var size=(nuint)Marshal.SizeOf<MemoryRegion>();
+            if(VirtualQueryEx(process,address,out var region,size)!=size || region.Type!=memImage)return fault;
+            var offset=instruction-region.AllocationBase;
+            if(offset is <0 or >uint.MaxValue)return fault;
+            var path=new StringBuilder(1024);
+            var length=GetMappedFileName(process,address,path,(uint)path.Capacity);
+            if(length==0 || length>=path.Capacity)return fault;
+            var leaf=Path.GetFileName(path.ToString()).ToLowerInvariant();
+            if(!IsReviewedModuleLeaf(leaf))return fault;
+            return fault with {InstructionImage=leaf,RelativeVirtualAddress=(uint)offset};
+        }
+
+        private static bool IsReviewedModuleLeaf(string leaf)
+        {
+            if(leaf is "ntdll.dll" or "kernelbase.dll" or "kernel32.dll" or "ucrtbase.dll" or "coreclr.dll" or
+                "user32.dll" or "gdi32.dll" or "gdi32full.dll" or "win32u.dll" or "dxgi.dll" or "d3d12.dll")return true;
+            if(!leaf.StartsWith("nv",StringComparison.Ordinal) || !leaf.EndsWith(".dll",StringComparison.Ordinal) ||
+                leaf.Length is <7 or >48)return false;
+            return leaf.All(c=>char.IsAsciiLetterOrDigit(c) || c is '.' or '_' or '-');
+        }
+
+        [StructLayout(LayoutKind.Explicit,Size=48)]
+        private struct MemoryRegion
+        {
+            [FieldOffset(8)] internal long AllocationBase;
+            [FieldOffset(40)] internal uint Type;
+        }
+
         private static FileStream HoldCudaImage()
         {
             var handle=WindowsPathSeal.OpenStartupTraceModule("nvcuda.dll");
@@ -148,5 +187,11 @@ internal sealed partial class SessionZeroStartupBranchTrace
         [DllImport("kernel32.dll",ExactSpelling=true)]
         [return:MarshalAs(UnmanagedType.Bool)]
         private static extern bool IsDebuggerPresent();
+
+        [DllImport("kernel32.dll",ExactSpelling=true)]
+        private static extern nuint VirtualQueryEx(SafeProcessHandle process,IntPtr address,out MemoryRegion info,nuint length);
+
+        [DllImport("kernel32.dll",EntryPoint="K32GetMappedFileNameW",ExactSpelling=true,CharSet=CharSet.Unicode)]
+        private static extern uint GetMappedFileName(SafeProcessHandle process,IntPtr address,StringBuilder path,uint size);
     }
 }

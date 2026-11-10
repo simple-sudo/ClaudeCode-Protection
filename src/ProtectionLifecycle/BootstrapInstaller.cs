@@ -544,6 +544,8 @@ public static class BootstrapInstaller
         private const string IndependentCudaManifest="97AAB25AEB74A7B3E8898647D86C4DF86534DFBB2E6160F5DBB0203A501D5990";
         private const string CudaSplitInitRelease="2643fc0e0cbb4a2389cd774dd201c72f";
         private const string CudaSplitInitManifest="F5CFA334A879BD121EF9B489B7D864E1AF31F057E403502736F26D12341B06A7";
+        private const string CudaAccessTraceRelease="f03ee10c75014bb3bdf366aa3cd402e8";
+        private const string CudaAccessTraceManifest="76676A1A182D5329F7607B6F502AEEF59A069F8F31FDC42FDB671B3E1F2C1D12";
         internal PinnedInactiveUpdateLease(ProtectedState state,BootstrapApproval approval,VerifiedVersion prior,ReviewedPackage next,Action<string>? reportFailureStage)
         {
             this.state=state;this.approval=approval;this.prior=prior;this.next=next;this.reportFailureStage=reportFailureStage;
@@ -571,6 +573,8 @@ public static class BootstrapInstaller
                 throw WfpNative.Contract("IndependentCudaPredecessorRequiresSplitInitPackage");
             if(prior.Package.Release==CudaSplitInitRelease && next.SchemaVersion!=PackageAssetCatalog.SessionZeroCudaAccessTraceSchema)
                 throw WfpNative.Contract("SplitInitPredecessorRequiresCudaAccessTracePackage");
+            if(prior.Package.Release==CudaAccessTraceRelease && next.SchemaVersion!=PackageAssetCatalog.SessionZeroCudaMappedFaultSchema)
+                throw WfpNative.Contract("CudaAccessTracePredecessorRequiresMappedFaultPackage");
             AssertNoOwnedProcesses();
         }
         // Pure selection check used by the actual constructor and ordinary
@@ -593,6 +597,7 @@ public static class BootstrapInstaller
                 (priorRelease==IndependentGitRelease && priorManifest==IndependentGitManifest) ||
                 (priorRelease==IndependentCudaRelease && priorManifest==IndependentCudaManifest) ||
                 (priorRelease==CudaSplitInitRelease && priorManifest==CudaSplitInitManifest) ||
+                (priorRelease==CudaAccessTraceRelease && priorManifest==CudaAccessTraceManifest) ||
                 // The first-load branch diagnostic closed the original Job and creator resources.
                 (priorRelease=="9455e98cf5da489daf88964e0daa6b52" &&
                     priorManifest=="EC2E00DA29027F8FE426995AAD19C050D23A8998FEA9F7E7D6596668F4A58C41") ||

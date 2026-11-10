@@ -109,6 +109,19 @@ System32 驱动相符，且指令位于映像范围内时，才给出 `nvcuda.dl
 服务缺席。`work/session-zero-cuda-access-trace-20261109-01/receipt.json` SHA-256
 `BC8EA54736072A3570E8B3112E19AAB1D2C299C2A876F3ECF3A7A766074E9BC5`。
 
+### 受限故障的映射模块取证
+
+schema 22 在异常事件期间使用 Windows 已交付的原进程句柄。核对 PID 后只查询
+故障指令所在虚拟页的映像类型、分配基址和映射文件名。公开回执只保留有限的
+Windows、运行时和 NVIDIA 模块文件名及相对偏移。无法查询或不在名单内的映像
+仍记录为 `UNATTRIBUTED`。完整路径、绝对地址和进程内存不进入回执。
+[Windows 映射区域查询](https://learn.microsoft.com/en-us/windows/win32/api/memoryapi/nf-memoryapi-virtualqueryex)。
+
+普通自有进程触发的异常正确识别为 `kernelbase.dll` 相对偏移 `793306`。
+同构建的普通 NVIDIA 固定计算及退出通过。`work/session-zero-cuda-mapped-fault-20261109-01/host-access-trace-final.log`
+SHA-256 `F3BAFCF764A172D6BFC2BA2134E6EECE97B1DE8B7D332EF7E43F0B644373646A`。
+受限实机的真实模块和指令偏移尚未观察。
+
 ## 2026-11-06 610b正常真实参考已验证
 
 经本人批准73AC9CC7…，安装/原daily/原资格owner/指定新记录reader全终态0。现装

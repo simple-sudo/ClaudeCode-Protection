@@ -51,7 +51,8 @@ if(args.Length==1 && args[0] is "host-access-trace" or "host-access-cuda")
     return result.GetProperty("ExitEventContinued").GetBoolean() &&
         first.GetProperty("Access").GetString()=="READ" &&
         first.GetProperty("TargetAddressClass").GetString()=="LOW_ADDRESS" &&
-        first.GetProperty("InstructionImage").GetString()=="UNATTRIBUTED"?0:3;
+        first.GetProperty("InstructionImage").GetString()=="kernelbase.dll" &&
+        first.GetProperty("RelativeVirtualAddress").GetUInt32()>0?0:3;
 }
 if(args.Length==2 && args[0]=="host-loader" && args[1] is "default" or "deferred-jit")
 {
