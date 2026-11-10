@@ -118,6 +118,7 @@ internal static class Program
             if(command=="private-window-identity-survey-child")return ProtectionLifecycle.InstalledBroker.RunIdentitySurveyChild();
             if(command=="private-window-cuda-child")return ProtectionLifecycle.InstalledBroker.RunIndependentCudaChild();
             if(command=="private-window-cuda-registry-privacy-child")return ProtectionLifecycle.InstalledBroker.RunIndependentCudaRegistryPrivacyChild();
+            if(command=="private-window-cuda-device-identity-child")return ProtectionLifecycle.InstalledBroker.RunIndependentCudaDeviceIdentityChild();
             if(command=="private-window-network-survey-child")return ProtectionLifecycle.InstalledBroker.RunNetworkSurveyChild();
             if(command=="offline-console-denial-target")return 125;
             if(command=="zero-capability-comparison-child")return ProtectionLifecycle.InstalledBroker.RunZeroCapabilityComparisonCanary();

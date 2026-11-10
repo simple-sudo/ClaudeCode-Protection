@@ -261,9 +261,9 @@ internal sealed class SessionWinsockReadAccess : IDisposable
     }
     internal static SessionWinsockReadAccess PrepareGraphicsDrivers(ProtectedState state,VerifiedVersion version,OwnedKernelJob job)
     {
-        if(version.Package.SchemaVersion is not (PackageAssetCatalog.SessionZeroCudaGraphicsReadSchema or PackageAssetCatalog.SessionZeroCudaGraphicsRootSchema) || job.SessionZeroCreatorSid is null)
+        if(version.Package.SchemaVersion is not (PackageAssetCatalog.SessionZeroCudaGraphicsReadSchema or PackageAssetCatalog.SessionZeroCudaGraphicsRootSchema or PackageAssetCatalog.SessionZeroCudaDeviceIdentitySchema) || job.SessionZeroCreatorSid is null)
             throw WfpNative.Contract("GraphicsDriversAccessRequiresFixedCudaJob");
-        var schema=version.Package.SchemaVersion==PackageAssetCatalog.SessionZeroCudaGraphicsRootSchema?GraphicsDriversRootSchema:GraphicsDriversSchema;
+        var schema=version.Package.SchemaVersion==PackageAssetCatalog.SessionZeroCudaGraphicsReadSchema?GraphicsDriversSchema:GraphicsDriversRootSchema;
         return PrepareCore(state,version,job,job.JobId,schema);
     }
     private static SessionWinsockReadAccess PrepareCore(ProtectedState state,VerifiedVersion version,OwnedKernelJob job,string sessionId,int schema)

@@ -341,6 +341,22 @@ LUID 与四个 WDDM 项中的一个匹配，NVML PCI 地址与 PnP NVIDIA 设备
 直接取得 CUDA UUID、NVML UUID 或 PnP 设备内容的能力仍待实测。
 [Windows PCI 地址属性](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wudfwdm/ne-wudfwdm-device_registry_property)
 
+### CUDA NVML 与 PnP 实际设备标识
+
+schema 31 复用原两个注册表对象的权限和 Job 生命周期。固定载荷先完成既有 CUDA 计算，
+再从 CUDA、PnP 和 NVML 三个原生接口分别记录实际内容。CUDA 含 UUID 两种入口、LUID 和
+PCI 地址。NVML 读 UUID、序列号和 PCI 地址。PnP 枚举在场显示设备并读实例及 PCI 属性。
+每份原始记录绑定原进程、创建时间和 Job。外层只报告原生状态、匹配数量和本机封存摘要。
+[NVML 设备查询](https://docs.nvidia.com/deploy/nvml-api/latest/api/group__nvmlDeviceQueries.html) ·
+[Windows 在场设备枚举](https://learn.microsoft.com/en-us/windows/win32/api/cfgmgr32/nf-cfgmgr32-cm_get_device_id_listw)
+
+普通实机两次原生参考均读到 CUDA/NVML 的同一个 UUID。WDDM LUID、PnP PCI 地址和 NVML
+PCI 地址各唯一匹配，三项 PnP 实例在参考间匹配。NVML 序列号不可用，关闭返回 0。
+`work/session-zero-cuda-device-identity-20261110-01/host-gpu-device-identity-final.log`
+SHA-256 `ED47FC98C1E5720FF73E30B72C2BD14693F7051567CCFE722610E299706FBA3F`。
+原值 `ordinary-native-content-final.json` SHA-256 `41320512889DC640B56EBB2BD4C20CC8CA9D1339CCDF5C4E59A5E52B007668A8`。
+受限对照尚未执行。
+
 ## 2026-11-06 610b正常真实参考已验证
 
 经本人批准73AC9CC7…，安装/原daily/原资格owner/指定新记录reader全终态0。现装

@@ -64,6 +64,26 @@ if(args.Length==2 && args[0]=="host-wddm")
         WrongActorRefused=wrongActorRefused,RestrictedActorExecuted=false}));
     return matches==1 && allClosed && wrongActorRefused?0:3;
 }
+if(args is ["host-gpu-device-identity",var evidencePath])
+{
+    const BindingFlags hidden=BindingFlags.NonPublic|BindingFlags.Static;
+    var library=typeof(InstalledBroker).Assembly;
+    var survey=library.GetType("ProtectionLifecycle.GpuDeviceIdentitySurvey",true)!;
+    var first=survey.GetMethod("CaptureTrusted",hidden)!.Invoke(null,null)!;
+    var second=survey.GetMethod("CaptureTrusted",hidden)!.Invoke(null,null)!;
+    var wddm=library.GetType("ProtectionLifecycle.WddmAdapterProbe",true)!.GetMethod("Read",hidden)!.Invoke(null,null)!;
+    var matches=survey.GetMethod("Compare",hidden)!.Invoke(null,[first,second,wddm])!;
+    var actual=JsonSerializer.SerializeToElement(matches,matches.GetType());
+    using(var raw=new FileStream(evidencePath,FileMode.CreateNew,FileAccess.Write,FileShare.None))
+    {
+        JsonSerializer.Serialize(raw,new{First=first,Second=second,Wddm=wddm});raw.Flush(true);
+    }
+    Console.WriteLine(JsonSerializer.Serialize(new{Scope="ORDINARY_REAL_GPU_DEVICE_IDENTITY",Matches=actual,RestrictedActorExecuted=false}));
+    return actual.GetProperty("CudaUuidHostMatches").GetInt32()==1 && actual.GetProperty("NvmlUuidHostMatches").GetInt32()>=1 &&
+        actual.GetProperty("PnpInstanceHostMatches").GetInt32()>=1 && actual.GetProperty("CrossApiHostUuidMatches").GetInt32()==1 &&
+        actual.GetProperty("CudaLuidHostWddmMatches").GetInt32()==1 && actual.GetProperty("ObservedCudaPnpMatches").GetInt32()==1 &&
+        actual.GetProperty("ObservedCudaNvmlPciMatches").GetInt32()==1 && actual.GetProperty("NvmlShutdownCode").GetInt32()==0?0:3;
+}
 if(args.Length==2 && args[0] is "access-fault-child" or "access-cuda-child" or "access-cuda-deferred-child")
 {
     if(args[0]=="access-cuda-deferred-child")AssertDeferredPreload();

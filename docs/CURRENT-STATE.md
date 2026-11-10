@@ -1,5 +1,9 @@
 # 当前状态与授权摘要
 
+2026-11-10，schema 31 在原 CUDA 计算之后尝试读取 CUDA/NVML UUID、PCI 地址、NVML
+序列号及实际 PnP 显示设备实例。普通实机已关联 UUID、LUID、PCI 和 PnP。受限实机待运行，
+当前安装仍为 `ffad9ffb`。原值只在本机保留。[GPU 标识实测](GPU-HOST-REFERENCE.md#cuda-nvml-与-pnp-实际设备标识)
+
 2026-11-10，`ffad9ffb` 已更新并保持 INACTIVE。schema 30 的原 LocalService/零能力
 LPAC 载荷首次完成固定 1 KiB CUDA 计算。驱动四个检查点全部返回 0，原 Job、profile、
 窗口对象、工作区和两项服务均回收，两个注册表原 DACL 精确恢复。MachineGuid 与 SMBIOS

@@ -7,6 +7,10 @@
 
 ## 2026-11-09 独立 CUDA 计算与退出取证
 
+SOURCE / BUILD / INTEGRATED(schema 31 原受限 GPU 设备标识对抗)。
+VERIFIED(普通原生 CUDA、NVML 与 PnP 内容，UUID、LUID 和 PCI 地址关联)。
+NOT_RUN(schema 31 原受限设备标识和 CUDA 回归)。
+
 SOURCE / BUILD / INTEGRATED(schema 30 精确双键租约、实际内容对抗和回收)。
 VERIFIED(普通本机根/叶 ACL 可读及拒绝扩大根权限、原生普通 CUDA 计算、现有创建链回归)。
 VERIFIED(`ffad9ffb` 未激活更新、受限根映射与四项驱动返回 0、真实 1 KiB 计算、原资源及双键精确恢复)。

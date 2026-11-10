@@ -7,6 +7,9 @@
 
 ## 2026-11-09 独立 CUDA 计算与退出取证
 
+schema 31 在原会话加入 CUDA、NVML 和 PnP 实际标识对照，普通实机原生接口关联通过。
+[GPU 标识实测](GPU-HOST-REFERENCE.md#cuda-nvml-与-pnp-实际设备标识)。
+
 schema 30 接入预定义根仅 `READ_CONTROL`、驱动叶子 `KEY_READ` 及独立内容对照。
 `ffad9ffb` 原受限载荷真实 CUDA 成功，原资源和双键精确恢复，WDDM 四项同次启动标识仍暴露。
 [实机与内容对照](GPU-HOST-REFERENCE.md#cuda-预定义根映射与真实内容对照)。

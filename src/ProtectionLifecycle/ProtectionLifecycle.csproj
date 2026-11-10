@@ -40,7 +40,7 @@
     <Compile Include="GpuHostToken.cs;GpuHostReference.cs;GpuHostReferenceQualification.cs" />
     <Compile Include="GpuReferenceCaller.cs;GpuCallerCreation.cs;GpuReferenceChannel.cs" />
     <Compile Include="../Shared/HostGpuReferenceReply.cs" />
-    <Compile Include="GpuIdentityObservation.cs;WddmAdapterProbe.cs" />
+    <Compile Include="GpuIdentityObservation.cs;GpuDeviceIdentitySurvey.cs;WddmAdapterProbe.cs" />
     <Compile Include="ProcessLocalRevocation.cs" />
     <Compile Include="ProtectionRuntimeLease.cs" />
     <Compile Include="SessionProxy.cs;GatewayDestinationGuard.cs;GatewayChildReport.cs;ProtectedSession.cs;ResolverTlsEvidence.cs;ResolverRequestTiming.cs;UpstreamTunnelAttempt.cs" />

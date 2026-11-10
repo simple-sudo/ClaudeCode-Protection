@@ -12,11 +12,14 @@ internal static class GpuIdentityObservation
 {
     internal sealed record Step(string Api,int? Result,string? ErrorType,int? ErrorCode);
     internal sealed record Observation(string Scope,string AtUtc,int? DriverVersion,int? DeviceCount,string? Name,
-        ulong? TotalMemoryBytes,string? UuidV1,string? UuidV2,string? Luid,uint? NodeMask,Step[] Steps);
+        ulong? TotalMemoryBytes,string? UuidV1,string? UuidV2,string? Luid,uint? NodeMask,Step[] Steps)
+    {
+        public string? PciBusId {get;init;}
+    }
     internal static Observation Read()
     {
         var steps=new List<Step>();int? driver=null,count=null;string? name=null,uuid1=null,uuid2=null,luid=null;
-        ulong? memory=null;uint? nodeMask=null;
+        ulong? memory=null;uint? nodeMask=null;string? pciBusId=null;
         bool Call(string api,Func<int> query)
         {
             try{int code=query();steps.Add(new(api,code,null,null));return code==0;}
@@ -37,9 +40,11 @@ internal static class GpuIdentityObservation
                 var b=new byte[16];if(Call("cuDeviceGetUuid_v2",()=>Cuda.UuidV2(b,device)))uuid2=Uuid(b);
                 var bytes=new byte[8];uint mask=0;
                 if(Call("cuDeviceGetLuid",()=>Cuda.Luid(bytes,out mask,device))){luid=Convert.ToHexString(bytes);nodeMask=mask;}
+                var pci=new StringBuilder(32);if(Call("cuDeviceGetPCIBusId",()=>Cuda.Pci(pci,pci.Capacity,device)))pciBusId=pci.ToString();
             }
         }
-        return new("TRUSTED_ASSURANCE_GPU_METADATA_NOT_COMPUTE_OR_ADMISSION",stamp,driver,count,name,memory,uuid1,uuid2,luid,nodeMask,steps.ToArray());
+        return new("TRUSTED_ASSURANCE_GPU_METADATA_NOT_COMPUTE_OR_ADMISSION",stamp,driver,count,name,memory,uuid1,uuid2,luid,nodeMask,steps.ToArray())
+            {PciBusId=pciBusId};
     }
     private static string Uuid(byte[] bytes)
     {
@@ -58,5 +63,6 @@ internal static class GpuIdentityObservation
         [DllImport("nvcuda.dll",EntryPoint="cuDeviceGetUuid",ExactSpelling=true),DefaultDllImportSearchPaths(DllImportSearchPath.System32)] internal static extern int Uuid([Out]byte[] uuid,int device);
         [DllImport("nvcuda.dll",EntryPoint="cuDeviceGetUuid_v2",ExactSpelling=true),DefaultDllImportSearchPaths(DllImportSearchPath.System32)] internal static extern int UuidV2([Out]byte[] uuid,int device);
         [DllImport("nvcuda.dll",EntryPoint="cuDeviceGetLuid",ExactSpelling=true),DefaultDllImportSearchPaths(DllImportSearchPath.System32)] internal static extern int Luid([Out]byte[] luid,out uint nodeMask,int device);
+        [DllImport("nvcuda.dll",EntryPoint="cuDeviceGetPCIBusId",ExactSpelling=true),DefaultDllImportSearchPaths(DllImportSearchPath.System32)] internal static extern int Pci([Out]StringBuilder id,int length,int device);
     }
 }

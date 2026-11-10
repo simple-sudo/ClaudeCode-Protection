@@ -351,6 +351,15 @@ internal static class CreatorJobCases
             gitMode.GetValue(cudaRegistryDecoded) is false && networkMode.GetValue(cudaRegistryDecoded) is false);
         Refused(()=>parseRequest.Invoke(null,[cudaRegistryRequest,jobId,12u,7u]));
         Refused(()=>parseWorkload.Invoke(null,[cudaRegistryRequest,legacyId,12u,7u]));
+        var cudaIdentityRequest=(byte[])cudaRegistryRequest.Clone();
+        "CCU3"u8.CopyTo(cudaIdentityRequest);
+        var cudaIdentityMode=decoded.GetType().GetProperty("CudaDeviceIdentity",BindingFlags.Instance|BindingFlags.NonPublic)!;
+        var cudaIdentityDecoded=parseWorkload.Invoke(null,[cudaIdentityRequest,jobId,12u,7u])!;
+        Check(cudaIdentityMode.GetValue(cudaIdentityDecoded) is true && cudaIdentityMode.GetValue(cudaRegistryDecoded) is false &&
+            cudaRegistryMode.GetValue(cudaIdentityDecoded) is true && cudaMode.GetValue(cudaIdentityDecoded) is true &&
+            gitMode.GetValue(cudaIdentityDecoded) is false && networkMode.GetValue(cudaIdentityDecoded) is false);
+        Refused(()=>parseRequest.Invoke(null,[cudaIdentityRequest,jobId,12u,7u]));
+        Refused(()=>parseWorkload.Invoke(null,[cudaIdentityRequest,legacyId,12u,7u]));
         var windowType=library.GetType("ProtectionLifecycle.SessionZeroWindowAccess",true)!;
         var parseWindow=channel.GetMethod("ParseWindowAccess",methods)!;
         var writeWindow=channel.GetMethod("CreateWindowAccess",methods)!;

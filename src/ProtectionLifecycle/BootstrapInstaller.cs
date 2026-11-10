@@ -560,6 +560,8 @@ public static class BootstrapInstaller
         private const string CudaRegistryCallsManifest="99D4148A444FFCB278F21F2C66B55D63DD3A3E231D0F60D02A4730B4A36274A4";
         private const string CudaGraphicsReadRelease="de3eadc97e7a4f378e74ddd5689c16d1";
         private const string CudaGraphicsReadManifest="862E30E51B7E5E1EE68D3EFB9046060A5E6714414409A727C004964D73403EC2";
+        private const string CudaGraphicsRootRelease="ffad9ffb8f84458a84fab07d50302fc4";
+        private const string CudaGraphicsRootManifest="22E2D14BFD9E3F56ECB9B12E583ADB29EA64D288969E9C789F269CB5373C443A";
         private const string CudaWddmSelfHandleRelease="a1819b10da524a21b4a91aed8c3eb59a";
         private const string CudaWddmSelfHandleManifest="96A1C6D2640997C0E2F39A2C9F00D64EDE1F0D53B3FD2BAC2F4E1723F8754D7F";
         internal PinnedInactiveUpdateLease(ProtectedState state,BootstrapApproval approval,VerifiedVersion prior,ReviewedPackage next,Action<string>? reportFailureStage)
@@ -607,6 +609,8 @@ public static class BootstrapInstaller
                 throw WfpNative.Contract("CudaRegistryCallsPredecessorRequiresGraphicsReadPackage");
             if(prior.Package.Release==CudaGraphicsReadRelease && next.SchemaVersion!=PackageAssetCatalog.SessionZeroCudaGraphicsRootSchema)
                 throw WfpNative.Contract("CudaGraphicsReadPredecessorRequiresGraphicsRootPackage");
+            if(prior.Package.Release==CudaGraphicsRootRelease && next.SchemaVersion!=PackageAssetCatalog.SessionZeroCudaDeviceIdentitySchema)
+                throw WfpNative.Contract("CudaGraphicsRootPredecessorRequiresDeviceIdentityPackage");
             AssertNoOwnedProcesses();
         }
         // Pure selection check used by the actual constructor and ordinary
@@ -638,6 +642,7 @@ public static class BootstrapInstaller
                 (priorRelease==CudaHelperPathRelease && priorManifest==CudaHelperPathManifest) ||
                 (priorRelease==CudaRegistryCallsRelease && priorManifest==CudaRegistryCallsManifest) ||
                 (priorRelease==CudaGraphicsReadRelease && priorManifest==CudaGraphicsReadManifest) ||
+                (priorRelease==CudaGraphicsRootRelease && priorManifest==CudaGraphicsRootManifest) ||
                 // The first-load branch diagnostic closed the original Job and creator resources.
                 (priorRelease=="9455e98cf5da489daf88964e0daa6b52" &&
                     priorManifest=="EC2E00DA29027F8FE426995AAD19C050D23A8998FEA9F7E7D6596668F4A58C41") ||

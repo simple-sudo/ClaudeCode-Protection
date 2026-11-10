@@ -462,6 +462,7 @@ internal sealed partial class AtomicChild : IDisposable
             environment=Marshal.StringToHGlobalUni(string.Join('\0',env.Select(p=>p.Key+"="+p.Value))+"\0\0");
             var command=gitStart is not null?InheritedToolCommand(image,gitStart.ArgumentList.ToArray()):new StringBuilder("\""+image+"\"");
             if(gitStart is null && !client.Request.StartupWitness)command.Append(' ').Append(client.Request switch {
+                {CudaDeviceIdentity:true}=>IndependentGpuWorkload.DeviceIdentityChildCommand,
                 {CudaRegistryPrivacy:true}=>IndependentGpuWorkload.RegistryPrivacyChildCommand,
                 {Cuda:true}=>IndependentGpuWorkload.ChildCommand,
                 {NetworkSurvey:true}=>OfflineConsoleQualification.NetworkSurveyChildCommand,
@@ -832,7 +833,7 @@ internal sealed partial class AtomicChild : IDisposable
     }
     internal void ObserveCudaAccess(SessionZeroStartupBranchTrace.CudaAccessTrace trace,Action assertHealthy)
     {
-        if(!independentCuda || version.Package.SchemaVersion is not (PackageAssetCatalog.SessionZeroCudaDeferredPreloadSchema or PackageAssetCatalog.SessionZeroCudaInitializationTraceSchema or PackageAssetCatalog.SessionZeroCudaHelperPathSchema or PackageAssetCatalog.SessionZeroCudaRegistryCallsSchema or PackageAssetCatalog.SessionZeroCudaGraphicsReadSchema or PackageAssetCatalog.SessionZeroCudaGraphicsRootSchema) ||
+        if(!independentCuda || version.Package.SchemaVersion is not (PackageAssetCatalog.SessionZeroCudaDeferredPreloadSchema or PackageAssetCatalog.SessionZeroCudaInitializationTraceSchema or PackageAssetCatalog.SessionZeroCudaHelperPathSchema or PackageAssetCatalog.SessionZeroCudaRegistryCallsSchema or PackageAssetCatalog.SessionZeroCudaGraphicsReadSchema or PackageAssetCatalog.SessionZeroCudaGraphicsRootSchema or PackageAssetCatalog.SessionZeroCudaDeviceIdentitySchema) ||
             disposed || !resumed || !job.ContainsProcess(process))
             throw WfpNative.Contract("CudaTraceRequiresResumedReviewedRoot");
         trace.Observe(process,Pid,initialThreadId,assertHealthy);

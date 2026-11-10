@@ -253,6 +253,7 @@ public static partial class InstalledBroker
     public static int RunIdentitySurveyChild()=>OfflineConsoleQualification.RunChild(privateWindow:true,identitySurvey:true);
     public static int RunIndependentCudaChild()=>OfflineConsoleQualification.RunChild(privateWindow:true,cuda:true);
     public static int RunIndependentCudaRegistryPrivacyChild()=>OfflineConsoleQualification.RunChild(privateWindow:true,cuda:true,cudaRegistryPrivacy:true);
+    public static int RunIndependentCudaDeviceIdentityChild()=>OfflineConsoleQualification.RunChild(privateWindow:true,cuda:true,cudaRegistryPrivacy:true,cudaDeviceIdentity:true);
     public static int RunNetworkSurveyChild()=>OfflineConsoleQualification.RunChild(privateWindow:true,identitySurvey:true,networkSurvey:true);
     public static int RunAdmissionCanary()
     {
