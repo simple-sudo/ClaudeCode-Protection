@@ -41,11 +41,12 @@ internal static class GatewayQualificationBoundaryCases
         var route=library.GetType("ProtectionLifecycle.ReviewedProxyRouteEvidence",true)!;
         var routeCovered=route.GetProperty("FixedExchangeCovered",BindingFlags.Instance|BindingFlags.NonPublic)!;
         bool Covered(params object[] counts)=>routeCovered.GetValue(Activator.CreateInstance(route,counts)) is true;
-        Check(Covered(1,1,1,1,1));
-        Check(!Covered(0,1,1,1,1));
-        Check(!Covered(1,1,0,1,1));
-        Check(!Covered(1,1,1,1,0));
-        Check(!Covered(1,1,1,2,1));
+        Check(Covered(1,1,1,1,1,1));
+        Check(!Covered(0,1,1,1,1,1));
+        Check(!Covered(1,1,0,1,1,1));
+        Check(!Covered(1,1,1,1,0,1));
+        Check(!Covered(1,1,1,2,1,1));
+        Check(!Covered(1,1,1,1,1,0));
         var matchRoot=session.GetNestedType("Admission",BindingFlags.NonPublic)!
             .GetMethod("MatchesFixedGatewayRoot",BindingFlags.NonPublic|BindingFlags.Static)!;
         bool Matches((uint,long) peer,uint pid,long time)=>(bool)matchRoot.Invoke(null,new object[]{peer,pid,time})!;

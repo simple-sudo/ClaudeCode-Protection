@@ -13,9 +13,9 @@ using ClaudeCodeProtection.Security;
 namespace ProtectionLifecycle;
 
 internal sealed record ReviewedProxyRouteEvidence(int ActiveControllerHealthChecks,int ResolverBeforeConnect,int ResolverAfterReply,
-    int TargetBeforeConnect,int TargetAfterReply)
+    int TargetBeforeConnect,int TargetAfterReply,int VerifiedRouteSnapshots)
 {
-    internal bool FixedExchangeCovered=>ActiveControllerHealthChecks>0 && ResolverBeforeConnect==1 && ResolverAfterReply==1 &&
+    internal bool FixedExchangeCovered=>ActiveControllerHealthChecks>0 && VerifiedRouteSnapshots>0 && ResolverBeforeConnect==1 && ResolverAfterReply==1 &&
         TargetBeforeConnect==1 && TargetAfterReply==1;
 }
 
@@ -42,11 +42,16 @@ internal sealed class SessionProxy : IDisposable
     private ResolverTlsEvidence? resolverTlsEvidence;
     private UpstreamTunnelEvidence? upstreamTunnelEvidence;
     private int activeControllerHealthChecks,resolverBeforeConnect,resolverAfterReply,targetBeforeConnect,targetAfterReply;
+    private readonly object routeMonitorSync=new();
+    private readonly TaskCompletionSource routeReady=new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private Task? routeMonitor;
+    private long lastVerifiedRoute;
+    private int verifiedRouteSnapshots;
     internal ResolverTlsEvidence? ResolverTls=>Volatile.Read(ref resolverTlsEvidence);
     internal UpstreamTunnelEvidence? TargetTunnel=>Volatile.Read(ref upstreamTunnelEvidence);
     internal ReviewedProxyRouteEvidence? ReviewedRouteEvidence=>requireFreshProxyRoute
         ?new(Volatile.Read(ref activeControllerHealthChecks),Volatile.Read(ref resolverBeforeConnect),Volatile.Read(ref resolverAfterReply),
-            Volatile.Read(ref targetBeforeConnect),Volatile.Read(ref targetAfterReply)):null;
+            Volatile.Read(ref targetBeforeConnect),Volatile.Read(ref targetAfterReply),Volatile.Read(ref verifiedRouteSnapshots)):null;
     // The retained base hash identifies the existing compiled endpoint/WFP
     // policy. Bind the candidate identity separately, rather than pretending
     // an internetClient token is the historical zero-capability identity.
@@ -86,7 +91,7 @@ internal sealed class SessionProxy : IDisposable
         if(fixedResolverTrust is not null)effective+=";fixed-openssl-head-resolver-explicit-offline-revocation;request=HEAD "+
             FixedOpenSslHead.RequestPath+";client="+FixedOpenSslHead.UserAgent;
         if(localManagementBoundary)effective+=";fixed-local-management-boundary;relay=never";
-        if(requireFreshProxyRoute)effective+=";controller-listener-required;controller-route-readback-before-connect-and-after-reply";
+        if(requireFreshProxyRoute)effective+=";controller-listener-required;controller-route-readback-before-connect-and-after-reply;active-route-snapshots";
         EffectivePolicySHA256=Convert.ToHexString(SHA256.HashData(Encoding.ASCII.GetBytes(effective)));
         this.job = job; this.upstream = upstream; this.packageSid = packageSid; this.sessionId = Identifiers.Hex32(sessionId);
         authorization = Encoding.ASCII.GetBytes("Basic " + Convert.ToBase64String(Encoding.ASCII.GetBytes(sessionId + ":" + Secret)));
@@ -106,7 +111,11 @@ internal sealed class SessionProxy : IDisposable
     internal void AssertRuntimeHealthy(bool active)
     {
         AssertHealthy();
-        if(active && requireFreshProxyRoute)Interlocked.Increment(ref activeControllerHealthChecks);
+        if(active && requireFreshProxyRoute)
+        {
+            AssertRouteCurrent();
+            Interlocked.Increment(ref activeControllerHealthChecks);
+        }
     }
     internal void BindAdmission(ProtectedSession.Admission permit)
     {
@@ -121,6 +130,42 @@ internal sealed class SessionProxy : IDisposable
     {
         AssertHealthy();
         (Volatile.Read(ref admission)??throw WfpNative.Contract("GatewayAdmissionMissing")).AssertGatewayOpening();
+        if(!requireFreshProxyRoute)return;
+        lock(routeMonitorSync)
+        {
+            if(disposed || stop.IsCancellationRequested)throw WfpNative.Contract("GatewayRouteMonitorStopped");
+            routeMonitor??=MonitorRoute();
+        }
+        routeReady.Task.WaitAsync(TimeSpan.FromSeconds(4),stop.Token).GetAwaiter().GetResult();
+        AssertHealthy();
+        (Volatile.Read(ref admission)??throw WfpNative.Contract("GatewayAdmissionMissing")).AssertGatewayOpening();
+        AssertRouteCurrent();
+    }
+
+    private async Task MonitorRoute()
+    {
+        try
+        {
+            await ProxyRouteObservation.Supervise(token=>ProxyRouteObservation.Capture(upstream,token),()=>
+            {
+                Volatile.Write(ref lastVerifiedRoute,Stopwatch.GetTimestamp());
+                Interlocked.Increment(ref verifiedRouteSnapshots);
+                routeReady.TrySetResult();
+            },TimeSpan.FromMilliseconds(500),stop.Token).ConfigureAwait(false);
+        }
+        catch(OperationCanceledException) when(stop.IsCancellationRequested){routeReady.TrySetCanceled(stop.Token);}
+        catch(Exception error)
+        {
+            routeReady.TrySetException(error);
+            if(!stop.IsCancellationRequested)Fail(error,"ACTIVE_ROUTE");
+        }
+    }
+
+    private void AssertRouteCurrent()
+    {
+        var timestamp=Volatile.Read(ref lastVerifiedRoute);
+        if(timestamp==0 || Stopwatch.GetElapsedTime(timestamp)>TimeSpan.FromSeconds(4))
+            throw WfpNative.Contract("UpstreamRouteObservationExpired");
     }
     internal void RequireFixedExchange(uint pid,long createdFileTime)
     {
@@ -141,6 +186,7 @@ internal sealed class SessionProxy : IDisposable
     {
         (Volatile.Read(ref admission)??throw WfpNative.Contract("GatewayAdmissionMissing")).AssertForwardingCurrent();
         if(disposed || stop.IsCancellationRequested || failure is not null)throw WfpNative.Contract("GatewayForwardingStopped");
+        if(requireFreshProxyRoute)AssertRouteCurrent();
         destinations.AssertCurrent();
     }
     private async Task Accept()
@@ -517,7 +563,10 @@ internal sealed class SessionProxy : IDisposable
         try
         {
             if (!accept.Wait(TimeSpan.FromSeconds(3))) throw new TimeoutException("GatewayAcceptDrainUnknown");
-            var tasks = clients.Values.Select(entry => entry.Work).ToArray();
+            Task? monitor;
+            lock(routeMonitorSync)monitor=routeMonitor;
+            var tasks = clients.Values.Select(entry => entry.Work);
+            if(monitor is not null)tasks=tasks.Append(monitor);
             drained = Task.WhenAll(tasks).Wait(TimeSpan.FromSeconds(3));
             if (!drained) throw new TimeoutException("GatewayTunnelDrainUnknown");
         }

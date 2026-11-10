@@ -26,6 +26,20 @@ internal sealed record ProxyRouteObservation(string Status,bool ReachableDirect,
             new("CONTROLLER_CONFIG_CHANGED_DURING_SNAPSHOT",false,false,false,false,false,false);
     }
 
+    internal static async Task Supervise(Func<CancellationToken,Task<ProxyRouteObservation>> observe,Action onAllowed,
+        TimeSpan interval,CancellationToken token)
+    {
+        while(true)
+        {
+            token.ThrowIfCancellationRequested();
+            var route=await observe(token).ConfigureAwait(false);
+            token.ThrowIfCancellationRequested();
+            route.RequireAllowed("UpstreamActiveRouteRefused");
+            onAllowed();
+            await Task.Delay(interval,token).ConfigureAwait(false);
+        }
+    }
+
     internal static ProxyRouteObservation Evaluate(byte[] config,byte[] inventory)
     {
         if(config.Length is <2 or >MaxConfigBytes || inventory.Length is <2 or >MaxProxyBytes)return Unavailable;

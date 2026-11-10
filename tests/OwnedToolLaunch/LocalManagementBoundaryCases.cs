@@ -129,6 +129,9 @@ internal static class LocalManagementBoundaryCases
                 refusal.Data["Stage"] is string actual && actual==connectStage){refused=true;}
             check(refused);
         }
+        var badRoute=evaluate.Invoke(null,[global,Encoding.UTF8.GetBytes(snapshot)]);
+        var monitor=typeof(LocalManagementBoundaryCases).GetMethod(nameof(CheckRouteMonitor),Static)!.MakeGenericMethod(routeType);
+        ((Task)monitor.Invoke(null,[routeType.GetMethod("Supervise",Static),safeRoute,badRoute,check])!).GetAwaiter().GetResult();
         var emptyFallback=Route(snapshot.Replace("\"emptyFallback\":\"REJECT\"","\"emptyFallback\":\"COMPATIBLE\"",StringComparison.Ordinal));
         check(Flag(emptyFallback,"DirectEmptyFallback") && Flag(emptyFallback,"ReachableDirect"));
         var automatic=Route(snapshot.Replace("\"backup\":{\"name\":\"backup\",\"type\":\"Vless\"",
@@ -151,5 +154,31 @@ internal static class LocalManagementBoundaryCases
         check(Status(Route(snapshot.Replace("\"name\":\"GLOBAL\"","\"name\":\"GLOBAL\",\"name\":\"GLOBAL\"",StringComparison.Ordinal)))==
             "CONTROLLER_EVIDENCE_UNAVAILABLE");
         check(Status(Route(new string(' ',524289)))=="CONTROLLER_EVIDENCE_UNAVAILABLE");
+    }
+
+    private static async Task CheckRouteMonitor<T>(MethodInfo monitor,T allowed,T denied,Action<bool> check)
+    {
+        var captures=0;
+        var verified=0;
+        Func<CancellationToken,Task<T>> read=_=>Task.FromResult(++captures==1?allowed:denied);
+        var refused=false;
+        try
+        {
+            await ((Task)monitor.Invoke(null,[read,(Action)(()=>verified++),TimeSpan.Zero,CancellationToken.None])!)
+                .WaitAsync(TimeSpan.FromSeconds(2));
+        }
+        catch(InvalidDataException error)when(error.Data["Stage"] as string=="UpstreamActiveRouteRefused"){refused=true;}
+        check(refused && captures==2 && verified==1);
+
+        using var stop=new CancellationTokenSource();
+        read=_=>{stop.Cancel();return Task.FromResult(denied);};
+        var canceled=false;
+        try
+        {
+            await ((Task)monitor.Invoke(null,[read,(Action)(()=>verified++),TimeSpan.Zero,stop.Token])!)
+                .WaitAsync(TimeSpan.FromSeconds(2));
+        }
+        catch(OperationCanceledException)when(stop.IsCancellationRequested){canceled=true;}
+        check(canceled && verified==1);
     }
 }

@@ -5,6 +5,12 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-10 网关路由监督
+
+SOURCE / BUILD / INTEGRATED(原网关持续路由快照与失效时回收)。
+VERIFIED(普通回归的允许→拒绝、取消与证据门，真实普通控制端内容当前拒绝)。
+NOT_RUN(安装版持续监督、合格路线实际 CONNECT 和真实外网)。
+
 ## 2026-11-09 独立 CUDA 计算与退出取证
 
 SOURCE / BUILD / VERIFIED(普通 Windows 的托管和原生 Win32k 禁用对照)。
