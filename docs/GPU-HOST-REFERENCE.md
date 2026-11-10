@@ -198,7 +198,13 @@ WDDM 同一取证范围、首次访问异常观察及原会话资源回收。
 退出与清理验证通过。摘要
 `work/session-zero-cuda-deferred-preload-20261110-01/host-deferred-access-cuda-final.log`
 SHA-256 `6604A14E1D7FF01258606FA505BD66831324A6FB95BCC8988F5034F88409D549`。
-受限 `cuInit` 能否越过故障点尚未实测。
+2026-11-10，`7cbe34a7` 在单次批准 `BEEF5D758944…` 后更新并保持 INACTIVE。
+schema 25 固定载荷校验环境选项后，`cuInit` 仍在 `nvcuda64.dll+0x3A062E`
+向 `0x293C` 写入时异常退出，状态 `0xC0000005`。两侧各枚举 4 个 WDDM 项，
+真实 LUID 全部匹配且关闭调用全为 0。原 Job、profile、私有窗口对象、工作区和两项
+临时服务有序回收。该对照确定进程级设置未避开故障，驱动内部的加载路径和上游故障条件
+仍为 UNKNOWN。固定回执 `work/session-zero-cuda-deferred-preload-20261110-01/receipt.json`
+SHA-256 `E0ED9879AC31B52788222DFA46B361ABC14AA3781E1D742DAB2FA21EF092BE07`。
 
 ## 2026-11-06 610b正常真实参考已验证
 
