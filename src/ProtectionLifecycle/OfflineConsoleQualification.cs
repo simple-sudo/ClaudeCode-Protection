@@ -321,15 +321,15 @@ internal static class OfflineConsoleQualification
 
     internal static (int ExitCode,string Report) RunGitInit(FixedLayout layout,ProtectedState state,VerifiedVersion version)
     {
-        if(version.Package.SchemaVersion is not (PackageAssetCatalog.SessionZeroGitInitSchema or PackageAssetCatalog.SessionZeroCudaSchema or PackageAssetCatalog.SessionZeroCudaSplitInitSchema or PackageAssetCatalog.SessionZeroCudaAccessTraceSchema or PackageAssetCatalog.SessionZeroCudaMappedFaultSchema))
+        if(version.Package.SchemaVersion is not (PackageAssetCatalog.SessionZeroGitInitSchema or PackageAssetCatalog.SessionZeroCudaSchema or PackageAssetCatalog.SessionZeroCudaSplitInitSchema or PackageAssetCatalog.SessionZeroCudaAccessTraceSchema or PackageAssetCatalog.SessionZeroCudaMappedFaultSchema or PackageAssetCatalog.SessionZeroCudaWddmSchema))
             throw WfpNative.Contract("IndependentGitInitRequiresFixedPackageSchema");
         return RunIndependent(layout,state,version,startupWitness:false,gitInit:true);
     }
 
     internal static (int ExitCode,string Report) RunCuda(FixedLayout layout,ProtectedState state,VerifiedVersion version)
     {
-        if(version.Package.SchemaVersion!=PackageAssetCatalog.SessionZeroCudaMappedFaultSchema)
-            throw WfpNative.Contract("IndependentCudaRequiresAccessTraceSchema");
+        if(version.Package.SchemaVersion!=PackageAssetCatalog.SessionZeroCudaWddmSchema)
+            throw WfpNative.Contract("IndependentCudaRequiresWddmSurveySchema");
         return RunIndependent(layout,state,version,startupWitness:false,cuda:true);
     }
 
@@ -341,7 +341,7 @@ internal static class OfflineConsoleQualification
         var windowAccessWitness=startupWitness && version.Package.SchemaVersion==PackageAssetCatalog.SessionZeroWindowAccessSchema;
         var networkSurvey=!startupWitness && !gitInit && !cuda && version.Package.SchemaVersion is
             PackageAssetCatalog.SessionZeroNetworkSurveySchema or PackageAssetCatalog.ReviewedProxyRouteSchema or
-            PackageAssetCatalog.SessionZeroGitInitSchema or PackageAssetCatalog.SessionZeroCudaSchema or PackageAssetCatalog.SessionZeroCudaSplitInitSchema or PackageAssetCatalog.SessionZeroCudaAccessTraceSchema or PackageAssetCatalog.SessionZeroCudaMappedFaultSchema;
+            PackageAssetCatalog.SessionZeroGitInitSchema or PackageAssetCatalog.SessionZeroCudaSchema or PackageAssetCatalog.SessionZeroCudaSplitInitSchema or PackageAssetCatalog.SessionZeroCudaAccessTraceSchema or PackageAssetCatalog.SessionZeroCudaMappedFaultSchema or PackageAssetCatalog.SessionZeroCudaWddmSchema;
         var identitySurvey=networkSurvey || !startupWitness && version.Package.SchemaVersion==PackageAssetCatalog.SessionZeroIdentitySurveySchema;
         var privateWindow=startupWitness?SessionZeroStartupWitness.UsesPrivateWindow(version.Package.SchemaVersion):
             SessionZeroWindowPolicy.SupportsConsole(version.Package.SchemaVersion);
@@ -361,6 +361,7 @@ internal static class OfflineConsoleQualification
         OfflineConsoleNetworkSurvey.Summary? networkContent=null;
         Exception? networkEvidenceFailure=null;
         long childCreated=0;
+        WddmAdapterProbe.Summary? wddm=null;
         uint cudaPid=0;
         SessionZeroWindowOwner? privateWindows=null;
         var privateWindowsClosed=false;
@@ -386,9 +387,15 @@ internal static class OfflineConsoleQualification
             jobId=creator.JobId;
             OfflineConsoleHostIdentity? host=null;
             OfflineConsoleNetworkSurvey? hostNetwork=null;
+            WddmAdapterProbe.Actor? hostWddm=null;
             SessionZeroCreatorChannel preparedChannel;
             try
             {
+                if(cuda)
+                {
+                    stage="CaptureTrustedWddm";
+                    hostWddm=WddmAdapterProbe.Capture(creator.JobId);
+                }
                 if(!startupWitness && !gitInit && !cuda)
                 {
                     stage="CaptureHostIdentity";
@@ -452,7 +459,7 @@ internal static class OfflineConsoleQualification
                 using var root=channel.Exchange(layout,state,version,job,startupWitness,privateWindows,gitInit,cuda);
                 creatorWindowAccess=root.WindowAccess;
                 child=AtomicChild.AdoptSessionZeroOfflineConsole(layout,state,version,job,root,startupWitness,gitInit,cuda);
-                if(networkSurvey)childCreated=child.ExpectedCreatedFileTime;
+                if(networkSurvey || cuda)childCreated=child.ExpectedCreatedFileTime;
                 if(cuda)cudaPid=child.Pid;
                 runtime=ProtectionRuntimeLease.ForFixedOfflineConsole(state,version,job,fences,child,job.JobId);
                 runtime.Activate(10000);
@@ -529,6 +536,16 @@ internal static class OfflineConsoleQualification
                     failedStage??="ReadCreatorConsoleCapture";
                     failures.Add(captureFailure);
                 }
+                if(cuda && resumed && hostWddm is not null)
+                {
+                    stage="SealWddmEvidence";
+                    try
+                    {
+                        workspace.AssertHeld();
+                        wddm=WddmAdapterProbe.Seal(workspace.Path,state,version,job.JobId,cudaPid,childCreated,hostWddm);
+                    }
+                    catch(Exception error){failedStage??=stage;failures.Add(error);}
+                }
                 if(gitInit && exit==0)
                 {
                     stage="VerifyGitRepository";
@@ -590,9 +607,9 @@ internal static class OfflineConsoleQualification
                 nativeTrace is {Attached:true,ExitEventContinued:true,DriverMappingObserved:true,LastChance:null} &&
                 serviceRemoved && observed is {ComputationQualified:true};
             var cudaReport=JsonSerializer.Serialize(new {
-                SchemaVersion=4,Scope=IndependentGpuWorkload.Scope,state.InstallationId,JobId=jobId,
+                SchemaVersion=5,Scope=IndependentGpuWorkload.Scope,state.InstallationId,JobId=jobId,
                 version.Package.Release,version.Package.ManifestHash,Status=qualified?"INDEPENDENT_CUDA_COMPUTATION_OBSERVED":"INDEPENDENT_CUDA_NOT_CONFIRMED",
-                LastStage=stage,ProcessResumed=resumed,ChildExit=exit,Cuda=observed,NativeTrace=nativeTrace,ChildFailure=ParseChildFailure(exit,stderr),
+                LastStage=stage,ProcessResumed=resumed,ChildExit=exit,Cuda=observed,NativeTrace=nativeTrace,Wddm=wddm,ChildFailure=ParseChildFailure(exit,stderr),
                 OriginalJobClosed=closed,ProfileClosed=profileClosed,WorkspaceClosed=workspaceClosed,ServiceRemoved=serviceRemoved,
                 PrivateWindowOwnerReady=privateWindows is not null,PrivateWindowOwnerClosed=privateWindowsClosed,CreatorWindowAccess=creatorWindowAccess,
                 Output=Summarize(stdout),Error=Summarize(stderr),StopObservation=stopped,Failures=failures.SelectMany(WfpNative.Describe).ToArray(),

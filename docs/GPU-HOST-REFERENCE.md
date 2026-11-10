@@ -122,6 +122,36 @@ Windows、运行时和 NVIDIA 模块文件名及相对偏移。无法查询或�
 SHA-256 `F3BAFCF764A172D6BFC2BA2134E6EECE97B1DE8B7D332EF7E43F0B644373646A`。
 受限实机的真实模块和指令偏移尚未观察。
 
+### 映射模块实机结果
+
+本人批准 `09FE66A3E780…` 并确认一次 UAC。`f03ee10c` 更新为 `363bf089`
+并保持 INACTIVE。受限 `cuInit` 中首次低地址写入定位为 `nvcuda64.dll+0x3A062E`，
+进程退出 `0xC0000005`。调试退出继续，原 Job、工作区、profile、窗口和服务均回收。
+`work/session-zero-cuda-mapped-fault-20261109-01/receipt.json` SHA-256
+`0DCB2859F6967A4657046D9AE45346B6B75E71D74CC3D4EE2A4D72FC26407A22`。
+
+本机唯一发现的同名 NVIDIA DriverStore 文件版本为 `32.0.16.1047`，与已配置
+显示驱动版本一致，SHA-256 `8AE9D817499BF3BF7DF7A91A3F57574335DCDE42AFF130F46C86C68F38B27521`。
+本次受限映射只记录模块文件名和 RVA，未对映射文件取同一摘要。候选本机文件
+对应指令先从 `[rsi+0x20]` 取指针，再向 `[rax+0x293c]` 写零。低地址与
+空基址假设吻合，实际访问地址是否正好为 `0x293c` 仍未知。反汇编保存在同目录
+`driver-fault-function.log`，SHA-256 `7D2C8AD02CE340E4A2D94D7F6092927E8A4FD8955B847440DB0E0FD3D2316600`。
+
+### WDDM 适配器对照
+
+schema 23 让原受限根进程在 CUDA 前调用固定的 Windows WDDM 适配器枚举，并关闭
+取得的适配器句柄。原 Broker 采集可信对照，等原 Job 关闭后校验 Job、PID 和进程
+创建时间，再封存双方原值。外层只得到原生状态、计数、交集和关闭结果。适配器 LUID
+用于本次跨 API 对照，其生命周期有限。观察器对同一模块及指令仅增加一项布尔比较，
+确认写入目标是否恰为指令位移。
+[Windows 适配器枚举](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/d3dkmthk/nf-d3dkmthk-d3dkmtenumadapters2)。
+
+普通实机四项原值与同次 CUDA 原值交叉比对，唯一匹配一项，所有句柄已关闭。
+错误 PID 被拒绝。原始真实值保存在本机限定目录。摘要
+`work/session-zero-cuda-wddm-reference-20261109-01/host-wddm-final.log` SHA-256
+`923AB6F2BA6E23E6BFB1837CE6045ECF5C922075CEF765B3B511226C116272C5`。
+受限 WDDM 对照及对 CUDA 故障的解释尚待实测。
+
 ## 2026-11-06 610b正常真实参考已验证
 
 经本人批准73AC9CC7…，安装/原daily/原资格owner/指定新记录reader全终态0。现装

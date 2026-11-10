@@ -7,6 +7,10 @@
 
 ## 2026-11-09 独立 CUDA 计算与退出取证
 
+`363bf089` 实机定位 `nvcuda64.dll+0x3A062E`，原资源有序回收。
+schema 23 普通真实 WDDM 与 CUDA 的适配器 LUID 唯一匹配。
+[映射模块实机结果](GPU-HOST-REFERENCE.md#映射模块实机结果)。
+
 schema 22 使用原调试事件句柄查询故障指令的映射模块，普通正向和异常对照通过。
 [映射模块取证](GPU-HOST-REFERENCE.md#受限故障的映射模块取证)
 

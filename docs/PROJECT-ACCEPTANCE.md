@@ -7,8 +7,14 @@
 
 ## 2026-11-09 独立 CUDA 计算与退出取证
 
+SOURCE / BUILD / INTEGRATED(schema 23 原受限进程 WDDM 枚举、身份绑定及原值封存)。
+VERIFIED(普通真实 WDDM 四项、CUDA LUID 唯一匹配、句柄关闭和错误 PID 拒绝)。
+NOT_RUN(schema 23 受限执行)。
+
 SOURCE / BUILD / INTEGRATED(schema 22 原调试事件的映射模块和相对指令偏移)。
-VERIFIED(普通 Windows 已知模块及真实 NVIDIA 正向对照)。NOT_RUN(schema 22 受限运行)。
+VERIFIED(普通 Windows 已知模块及真实 NVIDIA 正向对照)。
+VERIFIED(`363bf089` 未激活更新，受限异常模块为 `nvcuda64.dll+0x3A062E`，原资源回收)。
+FAIL(受限计算 `0xC0000005`)。UNKNOWN(上游条件)。
 
 SOURCE / BUILD / INTEGRATED(schema 21 原根进程访问异常观察)。
 VERIFIED(普通自有进程异常事件及真实普通 CUDA 映射与计算)。

@@ -124,13 +124,13 @@ internal sealed class SessionZeroCreatorChannel : IDisposable
             windowAccess?WindowAccessRequestMagic:StartupWitnessRequestMagic);
         else if(gitInit)
         {
-            if(schema is not (PackageAssetCatalog.SessionZeroGitInitSchema or PackageAssetCatalog.SessionZeroCudaSchema or PackageAssetCatalog.SessionZeroCudaSplitInitSchema or PackageAssetCatalog.SessionZeroCudaAccessTraceSchema or PackageAssetCatalog.SessionZeroCudaMappedFaultSchema) || !privateWindow)
+            if(schema is not (PackageAssetCatalog.SessionZeroGitInitSchema or PackageAssetCatalog.SessionZeroCudaSchema or PackageAssetCatalog.SessionZeroCudaSplitInitSchema or PackageAssetCatalog.SessionZeroCudaAccessTraceSchema or PackageAssetCatalog.SessionZeroCudaMappedFaultSchema or PackageAssetCatalog.SessionZeroCudaWddmSchema) || !privateWindow)
                 throw WfpNative.Contract("CreatorGitInitRequiresFixedPrivateWindowPackage");
             BinaryPrimitives.WriteUInt32LittleEndian(request,GitInitRequestMagic);
         }
         else if(cuda)
         {
-            if(schema!=PackageAssetCatalog.SessionZeroCudaMappedFaultSchema || !privateWindow)
+            if(schema!=PackageAssetCatalog.SessionZeroCudaWddmSchema || !privateWindow)
                 throw WfpNative.Contract("CreatorCudaRequiresFixedPrivateWindowPackage");
             BinaryPrimitives.WriteUInt32LittleEndian(request,CudaRequestMagic);
             cudaCapture=true;
@@ -138,7 +138,7 @@ internal sealed class SessionZeroCreatorChannel : IDisposable
         else if(privateWindow)BinaryPrimitives.WriteUInt32LittleEndian(request,schema switch {
             PackageAssetCatalog.SessionZeroIdentitySurveySchema=>IdentitySurveyRequestMagic,
             PackageAssetCatalog.SessionZeroNetworkSurveySchema or PackageAssetCatalog.ReviewedProxyRouteSchema or
-                PackageAssetCatalog.SessionZeroGitInitSchema or PackageAssetCatalog.SessionZeroCudaSchema or PackageAssetCatalog.SessionZeroCudaSplitInitSchema or PackageAssetCatalog.SessionZeroCudaAccessTraceSchema or PackageAssetCatalog.SessionZeroCudaMappedFaultSchema=>NetworkSurveyRequestMagic,
+                PackageAssetCatalog.SessionZeroGitInitSchema or PackageAssetCatalog.SessionZeroCudaSchema or PackageAssetCatalog.SessionZeroCudaSplitInitSchema or PackageAssetCatalog.SessionZeroCudaAccessTraceSchema or PackageAssetCatalog.SessionZeroCudaMappedFaultSchema or PackageAssetCatalog.SessionZeroCudaWddmSchema=>NetworkSurveyRequestMagic,
             _=>PrivateWindowConsoleRequestMagic
         });
         AssertQuarantine(state);

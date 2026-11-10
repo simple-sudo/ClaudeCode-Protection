@@ -9,6 +9,40 @@ using ProtectionLifecycle;
 
 using var identity=WindowsIdentity.GetCurrent();
 if(new WindowsPrincipal(identity).IsInRole(WindowsBuiltInRole.Administrator))throw new InvalidOperationException("Ordinary context required");
+if(args.Length==2 && args[0]=="host-wddm")
+{
+    const BindingFlags hidden=BindingFlags.NonPublic|BindingFlags.Static;
+    var library=typeof(InstalledBroker).Assembly;
+    var probe=library.GetType("ProtectionLifecycle.WddmAdapterProbe",true)!;
+    var job=new string('a',32);
+    var actor=probe.GetMethod("Capture",hidden)!.Invoke(null,[job])!;
+    var actorJson=JsonSerializer.SerializeToElement(actor,actor.GetType());
+    var parse=probe.GetMethod("Parse",hidden)!;
+    var created=actorJson.GetProperty("CreatedFileTime").GetInt64();
+    using var stream=new MemoryStream(Encoding.UTF8.GetBytes(actorJson.GetRawText()));
+    _=parse.Invoke(null,[stream,job,(uint)Environment.ProcessId,created]);
+    stream.Position=0;
+    var wrongActorRefused=false;
+    try{_=parse.Invoke(null,[stream,job,(uint)Environment.ProcessId+1,created]);}
+    catch(TargetInvocationException ex)when(ex.InnerException is InvalidDataException){wrongActorRefused=true;}
+    var cuda=library.GetType("ProtectionLifecycle.GpuIdentityObservation",true)!.GetMethod("Read",hidden)!.Invoke(null,null)!;
+    var wddmJson=actorJson.GetProperty("Result");
+    var cudaJson=JsonSerializer.SerializeToElement(cuda,cuda.GetType());
+    var adapters=wddmJson.GetProperty("Adapters").EnumerateArray().ToArray();
+    var luid=cudaJson.GetProperty("Luid").GetString();
+    var matches=luid is null?0:adapters.Count(row=>row.GetProperty("Luid").GetString()==luid);
+    var allClosed=adapters.All(row=>row.GetProperty("CloseStatus").GetInt32()==0);
+    using(var raw=new FileStream(args[1],FileMode.CreateNew,FileAccess.Write,FileShare.None))
+    {
+        JsonSerializer.Serialize(raw,new{Wddm=wddmJson,Cuda=cudaJson});
+        raw.Flush(flushToDisk:true);
+    }
+    Console.WriteLine(JsonSerializer.Serialize(new{Scope="ORDINARY_WDDM_CUDA_REAL_LUID_COMPARISON",
+        Count=adapters.Length,AdapterSizeStatus=wddmJson.GetProperty("SizeStatus"),
+        AdapterReadStatus=wddmJson.GetProperty("ReadStatus"),Matches=matches,AllAdapterHandlesClosed=allClosed,
+        WrongActorRefused=wrongActorRefused,RestrictedActorExecuted=false}));
+    return matches==1 && allClosed && wrongActorRefused?0:3;
+}
 if(args.Length==2 && args[0] is "access-fault-child" or "access-cuda-child")
 {
     Console.WriteLine(GetCurrentThreadId());

@@ -1,8 +1,18 @@
 # 当前状态与授权摘要
 
+2026-11-09，schema 23 接入同一受限根进程的 Windows WDDM 适配器取证和可信
+Broker 对照。普通实机枚举四项，和同次 CUDA 设备 LUID 匹配一项，四个句柄关闭。
+受限实验尚未运行，现装为 `363bf089`。
+[WDDM 取证](GPU-HOST-REFERENCE.md#wddm-适配器对照)
+
+2026-11-09，`363bf089` 已实机更新并保持 INACTIVE。原受限进程在 `cuInit` 中
+首次低地址写入，出错指令位于 `nvcuda64.dll+0x3A062E`。本机候选 DLL 对应指令
+向内部指针加 `0x293C` 的位置写一个字节，指针形成条件仍未知。原 Job、私有窗口、
+工作区、profile 和两项临时服务均回收，本次授权已消耗。
+[映射模块实机结果](GPU-HOST-REFERENCE.md#映射模块实机结果)
+
 2026-11-09，schema 22 接入按异常指令查询映射模块的观察。普通自有进程实测识别出
-`kernelbase.dll` 及相对偏移，普通 NVIDIA 计算对照仍通过。候选尚未安装，
-现装为 `f03ee10c`，受限故障模块待实测。
+`kernelbase.dll` 及相对偏移，普通 NVIDIA 计算对照仍通过。受限实机结果单列。
 [映射模块取证](GPU-HOST-REFERENCE.md#受限故障的映射模块取证)
 
 2026-11-09，`f03ee10c` 已实机更新并保持 INACTIVE。原 CUDA 根进程调试附加及

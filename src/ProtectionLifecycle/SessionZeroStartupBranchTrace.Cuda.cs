@@ -21,7 +21,10 @@ internal sealed partial class SessionZeroStartupBranchTrace
         private bool used,attached,terminal,detached;
         private Fault? firstChance,lastChance;
 
-        internal sealed record Fault(string Access,string TargetAddressClass,string InstructionImage,uint? RelativeVirtualAddress);
+        internal sealed record Fault(string Access,string TargetAddressClass,string InstructionImage,uint? RelativeVirtualAddress)
+        {
+            public bool? MatchesObservedStoreDisplacement {get;init;}
+        }
         internal sealed record Evidence(bool Attached,bool ExitEventContinued,bool Detached,bool DriverMappingObserved,
             Fault? FirstChance,Fault? LastChance);
         private bool driverMapped;
@@ -98,6 +101,8 @@ internal sealed partial class SessionZeroStartupBranchTrace
                             var fault=DescribeFault(evt.Address,evt.NumberParameters,evt.AccessOperation,evt.AccessAddress,mappedBase,imageSize);
                             if(fault.InstructionImage=="UNATTRIBUTED")
                                 fault=ReadMappedInstruction(debugProcess,pid,evt.Address,fault);
+                            if(fault is {Access:"WRITE",InstructionImage:"nvcuda64.dll",RelativeVirtualAddress:0x3a062e})
+                                fault=fault with {MatchesObservedStoreDisplacement=evt.AccessAddress==0x293c};
                             if(evt.FirstChance==1)firstChance??=fault;
                             else lastChance=fault;
                         }
