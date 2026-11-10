@@ -1,3 +1,4 @@
+using System.Buffers.Binary;
 using System.Diagnostics;
 using System.IO.Compression;
 using System.Security.Cryptography;
@@ -17,6 +18,10 @@ internal sealed record GitToolchainReport(bool InputHashMatched,bool InitAddComm
 internal sealed class SessionGitToolchain : IDisposable
 {
     internal const string IndependentInitScope="FIXED_INDEPENDENT_GIT_INIT_FULL_QUARANTINE";
+    internal const string IndependentCommitScope="FIXED_INDEPENDENT_GIT_TRACKED_COMMIT_FULL_QUARANTINE";
+    internal enum Operation { None,Init,TrackedCommit }
+    internal static string Scope(Operation operation)=>operation==Operation.TrackedCommit?IndependentCommitScope:IndependentInitScope;
+    private const string CommitMessage="Controlled offline qualification";
     private static readonly (string Name,string Hash)[] Assets={
         ("git.exe","11CE9BFCB40927767C474326EE87477079E1CC24A9782E69936B3351B6C3C205"),
         ("libiconv-2.dll","FF31FA811F9C07CC7FDAA68C9E8BCA3A7B4FDF6E0A079A58175EA58BA139C7AE"),
@@ -113,7 +118,7 @@ internal sealed class SessionGitToolchain : IDisposable
             var selection=WindowsPathSeal.Child(workspace,"git-selected-paths.bin");
             File.WriteAllBytes(selection,Encoding.ASCII.GetBytes(string.Join('\0',project.Files.Select(f=>f.Path))+"\0"));
             stage="GIT_ADD";Require(Run(workspace,plan.GitDirectory,"--literal-pathspecs","-C",repo,"add","--force","--pathspec-from-file="+selection,"--pathspec-file-nul"));
-            stage="GIT_COMMIT";Require(Run(workspace,plan.GitDirectory,"-C",repo,"commit","--quiet","--no-gpg-sign","-m","Controlled offline qualification"));
+            stage="GIT_COMMIT";Require(Run(workspace,plan.GitDirectory,"-C",repo,"commit","--quiet","--no-gpg-sign","-m",CommitMessage));
             stage="READ_COMMIT";var head=Run(workspace,plan.GitDirectory,"-C",repo,"rev-parse","--verify","HEAD");Require(head);commit=head.Out.Trim();
             if(!IsObjectId(commit))throw WfpNative.Contract("GitHeadMissing");
             // The trusted owner verifies every committed blob and complete
@@ -159,6 +164,84 @@ internal sealed class SessionGitToolchain : IDisposable
     internal static ProcessStartInfo StartIndependentInit(string workspace) =>
         Start(workspace,DirectoryPath,"init","--quiet","--template=","--initial-branch=cpc-offline","git-project");
 
+    internal static ProcessStartInfo StartIndependentCommit(string workspace) =>
+        Start(workspace,DirectoryPath,"-C",WindowsPathSeal.Child(workspace,"git-project"),"commit","--quiet","--no-gpg-sign","-a","-m",CommitMessage);
+
+    private static WorkspaceBundle IndependentCommitFiles()=>WorkspaceBundle.Create(new (string,byte[])[]{
+        ("note.txt","edited by the fixed qualification fixture\n"u8.ToArray()),
+        ("sample/payload.bin",new byte[]{0,13,10,0xff,0x80,1})
+    });
+
+    internal static void PrepareIndependentCommit(string workspace)
+    {
+        var repository=WindowsPathSeal.Child(workspace,"git-project");
+        var metadata=WindowsPathSeal.Child(repository,".git");
+        Directory.CreateDirectory(WindowsPathSeal.Child(metadata,"refs/heads"));
+        WriteNew(WindowsPathSeal.Child(metadata,"HEAD"),"ref: refs/heads/qualification\n"u8);
+        WriteNew(WindowsPathSeal.Child(metadata,"config"),
+            "[core]\n\trepositoryformatversion = 0\n\tfilemode = false\n\tbare = false\n\tlogallrefupdates = false\n"u8);
+
+        // Git index v2 with deliberately stale stat data. Both paths start
+        // tracked at the same baseline blob, then commit -a must stage the
+        // different worktree bytes. This fixture needs only one Git process.
+        var baseline="baseline\n"u8.ToArray();
+        var baselineId=BlobId(baseline);
+        var objectDirectory=Directory.CreateDirectory(WindowsPathSeal.Child(metadata,"objects/"+baselineId[..2])).FullName;
+        using(var output=new FileStream(WindowsPathSeal.Child(objectDirectory,baselineId[2..]),FileMode.CreateNew,FileAccess.Write,FileShare.None))
+        using(var encoder=new ZLibStream(output,CompressionLevel.Fastest))
+        {
+            encoder.Write(Encoding.ASCII.GetBytes("blob "+baseline.Length+"\0"));
+            encoder.Write(baseline);
+        }
+
+        var files=IndependentCommitFiles().Files;
+        using var index=new MemoryStream();
+        index.Write("DIRC"u8);
+        Span<byte> integer=stackalloc byte[4];
+        BinaryPrimitives.WriteUInt32BigEndian(integer,2);
+        index.Write(integer);
+        BinaryPrimitives.WriteInt32BigEndian(integer,files.Length);
+        index.Write(integer);
+        Span<byte> entry=stackalloc byte[62];
+        entry.Clear();
+        BinaryPrimitives.WriteUInt32BigEndian(entry[24..],0x81a4); // regular file, mode 0644
+        BinaryPrimitives.WriteInt32BigEndian(entry[36..],baseline.Length);
+        Convert.FromHexString(baselineId).CopyTo(entry[40..]);
+        foreach(var file in files)
+        {
+            var path=WindowsPathSeal.Child(repository,file.Path);
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            WriteNew(path,file.Content);
+            var name=Encoding.ASCII.GetBytes(file.Path);
+            BinaryPrimitives.WriteUInt16BigEndian(entry[60..],checked((ushort)name.Length));
+            index.Write(entry);
+            index.Write(name);
+            index.Write(new byte[8-(entry.Length+name.Length)%8]);
+        }
+        index.Write(SHA1.HashData(index.GetBuffer().AsSpan(0,checked((int)index.Length))));
+        WriteNew(WindowsPathSeal.Child(metadata,"index"),index.ToArray());
+    }
+
+    private static void WriteNew(string path,ReadOnlySpan<byte> bytes)
+    {
+        using var output=new FileStream(path,FileMode.CreateNew,FileAccess.Write,FileShare.None);
+        output.Write(bytes);
+    }
+
+    internal static bool IndependentCommitObserved(string workspace)
+    {
+        using var repository=WindowsPathSeal.LockDirectory(WindowsPathSeal.Child(workspace,"git-project/.git"),PathPolicy.Source);
+        using var head=new FileStream(WindowsPathSeal.Open(WindowsPathSeal.Child(repository.Path,"HEAD"),false,true),FileAccess.Read);
+        ReadOnlySpan<byte> expected="ref: refs/heads/qualification\n"u8;
+        if(head.Length!=expected.Length)return false;
+        Span<byte> content=stackalloc byte[expected.Length];
+        head.ReadExactly(content);
+        if(!expected.SequenceEqual(content))return false;
+        AssertCommit(workspace,IndependentCommitFiles(),ReadQualificationRef(workspace));
+        repository.AssertHeld();
+        return true;
+    }
+
     internal static bool IndependentInitObserved(string workspace)
     {
         using var repository=WindowsPathSeal.LockDirectory(WindowsPathSeal.Child(workspace,"git-project/.git"),PathPolicy.Source);
@@ -190,6 +273,12 @@ internal sealed class SessionGitToolchain : IDisposable
     internal static void AssertRepository(string workspace,ResourceProbePlan plan,GitToolchainReport report)
     {
         if(!Qualified(report))throw WfpNative.Contract("GitToolchainReportRefused");
+        AssertCommit(workspace,WorkspaceBundle.Parse(plan.ProjectBundle),report.CommitId!);
+        if(ReadQualificationRef(workspace)!=report.CommitId)throw WfpNative.Contract("GitBranchRefMismatch");
+    }
+
+    private static void AssertCommit(string workspace,WorkspaceBundle project,string commitId)
+    {
         var objects=WindowsPathSeal.Child(workspace,"git-project/.git/objects");
         byte[] ReadObject(string id)
         {
@@ -202,7 +291,6 @@ internal sealed class SessionGitToolchain : IDisposable
             while((count=decoder.Read(buffer))>0){if(target.Length+count>WorkspaceBundle.MaxFileBytes+64)throw WfpNative.Contract("GitInflatedObjectBounds");target.Write(buffer,0,count);}
             var bytes=target.ToArray();if(Convert.ToHexString(SHA1.HashData(bytes)).ToLowerInvariant()!=id)throw WfpNative.Contract("GitObjectHashMismatch");return bytes;
         }
-        var project=WorkspaceBundle.Parse(plan.ProjectBundle);
         string VerifyTree(string prefix)
         {
             var entries=new List<(string Name,bool Directory,string Id)>();
@@ -229,18 +317,24 @@ internal sealed class SessionGitToolchain : IDisposable
             if(!ReadObject(treeId).AsSpan().SequenceEqual(expected))throw WfpNative.Contract("GitCommittedTreeMismatch");return treeId;
         }
         var expectedTree=VerifyTree("");
-        var commit=ReadObject(report.CommitId!);var zero=Array.IndexOf(commit,(byte)0);
+        var commit=ReadObject(commitId);var zero=Array.IndexOf(commit,(byte)0);
         if(zero is <1 or >32 || !Encoding.ASCII.GetString(commit,0,zero).Equals("commit "+(commit.Length-zero-1),StringComparison.Ordinal))throw WfpNative.Contract("GitCommitObjectRefused");
         var body=Encoding.UTF8.GetString(commit,zero+1,commit.Length-zero-1);
         if(body.Length<46 || !body.StartsWith("tree ",StringComparison.Ordinal) || body[45]!='\n')throw WfpNative.Contract("GitCommitTreeMissing");
         var stamp=new DateTimeOffset(2026,10,28,0,0,0,TimeSpan.Zero).ToUnixTimeSeconds().ToString(System.Globalization.CultureInfo.InvariantCulture);
         var identity="CPC Qualification <offline@invalid.example> "+stamp+" +0000\n";
-        if(body!="tree "+body.Substring(5,40)+"\nauthor "+identity+"committer "+identity+"\nControlled offline qualification\n")
+        if(body!="tree "+body.Substring(5,40)+"\nauthor "+identity+"committer "+identity+"\n"+CommitMessage+"\n")
             throw WfpNative.Contract("GitCommitIdentityOrMetadataMismatch");
         if(body.Substring(5,40)!=expectedTree)throw WfpNative.Contract("GitCommitWorkspaceTreeMismatch");
+    }
+
+    private static string ReadQualificationRef(string workspace)
+    {
         using var refParent=WindowsPathSeal.LockDirectory(WindowsPathSeal.Child(workspace,"git-project/.git/refs/heads"),PathPolicy.Source);
         using var reference=new FileStream(WindowsPathSeal.Open(WindowsPathSeal.Child(refParent.Path,"qualification"),false,true),FileAccess.Read,128,false);
         if(reference.Length!=41)throw WfpNative.Contract("GitBranchRefBounds");var data=new byte[41];reference.ReadExactly(data);
-        if(Encoding.ASCII.GetString(data)!=report.CommitId+"\n")throw WfpNative.Contract("GitBranchRefMismatch");
+        var id=Encoding.ASCII.GetString(data,0,40);
+        if(data[40]!='\n' || !IsObjectId(id))throw WfpNative.Contract("GitBranchRefMismatch");
+        return id;
     }
 }

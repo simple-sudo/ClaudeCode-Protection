@@ -137,6 +137,7 @@ internal static class Program
                 "qualify-offline-console" => ProtectionLifecycle.InstalledBroker.QualifyOfflineConsole(),
                 "qualify-independent-offline-console" => ProtectionLifecycle.InstalledBroker.QualifyIndependentOfflineConsole(),
                 "qualify-independent-git-init" => ProtectionLifecycle.InstalledBroker.QualifyIndependentGitInit(),
+                "qualify-independent-git-commit" => ProtectionLifecycle.InstalledBroker.QualifyIndependentGitCommit(),
                 "qualify-independent-cuda" => ProtectionLifecycle.InstalledBroker.QualifyIndependentCuda(),
                 "qualify-session-zero-startup-witness" => ProtectionLifecycle.InstalledBroker.QualifySessionZeroStartupWitness(),
                 "qualify-winsock-provider-session-gateway" => ProtectionLifecycle.InstalledBroker.QualifyWinsockProviderSessionGateway(),

@@ -5,6 +5,12 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-10 独立 Git 固定提交
+
+SOURCE / BUILD / INTEGRATED(schema 32 原 Job 内的单进程固定 `git commit -a` 与独立对象校验)。
+VERIFIED(普通 Windows 实际 Git、文本和嵌套二进制的提交对象、损坏分支拒绝、创建者帧绑定)。
+NOT_RUN(受限固定提交、原资源回收、用户仓库的任意 Git 工作流)。
+
 ## 2026-11-10 网关路由监督
 
 SOURCE / BUILD / INTEGRATED(原网关持续路由快照与失效时回收)。

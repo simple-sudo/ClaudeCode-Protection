@@ -324,20 +324,31 @@ internal static class CreatorJobCases
         Refused(()=>parseWorkload.Invoke(null,[networkRequest,legacyId,12u,7u]));
         var gitRequest=(byte[])networkRequest.Clone();
         "CCG1"u8.CopyTo(gitRequest);
-        var gitMode=decoded.GetType().GetProperty("GitInit",BindingFlags.Instance|BindingFlags.NonPublic)!;
+        var gitMode=decoded.GetType().GetProperty("GitOperation",BindingFlags.Instance|BindingFlags.NonPublic)!;
+        string? GitOperation(object request)=>gitMode.GetValue(request)?.ToString();
         var gitDecoded=parseWorkload.Invoke(null,[gitRequest,jobId,12u,7u])!;
         Check(mode.GetValue(gitDecoded) is false && privateMode.GetValue(gitDecoded) is true &&
-            readControlMode.GetValue(gitDecoded) is true && gitMode.GetValue(gitDecoded) is true &&
-            networkMode.GetValue(gitDecoded) is false && gitMode.GetValue(networkDecoded) is false);
+            readControlMode.GetValue(gitDecoded) is true && GitOperation(gitDecoded)=="Init" &&
+            networkMode.GetValue(gitDecoded) is false && GitOperation(networkDecoded)=="None");
         Refused(()=>parseRequest.Invoke(null,[gitRequest,jobId,12u,7u]));
         Refused(()=>parseWorkload.Invoke(null,[gitRequest,legacyId,12u,7u]));
+        var commitRequest=(byte[])gitRequest.Clone();
+        "CCG2"u8.CopyTo(commitRequest);
+        var commitDecoded=parseWorkload.Invoke(null,[commitRequest,jobId,12u,7u])!;
+        Check(GitOperation(commitDecoded)=="TrackedCommit" && mode.GetValue(commitDecoded) is false &&
+            privateMode.GetValue(commitDecoded) is true && readControlMode.GetValue(commitDecoded) is true &&
+            surveyMode.GetValue(commitDecoded) is false && networkMode.GetValue(commitDecoded) is false);
+        Refused(()=>parseRequest.Invoke(null,[commitRequest,jobId,12u,7u]));
+        Refused(()=>parseWorkload.Invoke(null,[commitRequest,legacyId,12u,7u]));
+        Refused(()=>parseWorkload.Invoke(null,[commitRequest,jobId,13u,7u]));
+        Refused(()=>parseWorkload.Invoke(null,[commitRequest,jobId,12u,8u]));
         var cudaRequest=(byte[])gitRequest.Clone();
         "CCU1"u8.CopyTo(cudaRequest);
         var cudaMode=decoded.GetType().GetProperty("Cuda",BindingFlags.Instance|BindingFlags.NonPublic)!;
         var cudaDecoded=parseWorkload.Invoke(null,[cudaRequest,jobId,12u,7u])!;
         Check(mode.GetValue(cudaDecoded) is false && privateMode.GetValue(cudaDecoded) is true &&
             readControlMode.GetValue(cudaDecoded) is true && cudaMode.GetValue(cudaDecoded) is true &&
-            gitMode.GetValue(cudaDecoded) is false && networkMode.GetValue(cudaDecoded) is false &&
+            GitOperation(cudaDecoded)=="None" && networkMode.GetValue(cudaDecoded) is false &&
             surveyMode.GetValue(cudaDecoded) is false && cudaMode.GetValue(gitDecoded) is false);
         Refused(()=>parseRequest.Invoke(null,[cudaRequest,jobId,12u,7u]));
         Refused(()=>parseWorkload.Invoke(null,[cudaRequest,legacyId,12u,7u]));
@@ -348,7 +359,7 @@ internal static class CreatorJobCases
         var cudaRegistryDecoded=parseWorkload.Invoke(null,[cudaRegistryRequest,jobId,12u,7u])!;
         Check(cudaRegistryMode.GetValue(cudaDecoded) is false && cudaRegistryMode.GetValue(cudaRegistryDecoded) is true &&
             cudaMode.GetValue(cudaRegistryDecoded) is true && readControlMode.GetValue(cudaRegistryDecoded) is true &&
-            gitMode.GetValue(cudaRegistryDecoded) is false && networkMode.GetValue(cudaRegistryDecoded) is false);
+            GitOperation(cudaRegistryDecoded)=="None" && networkMode.GetValue(cudaRegistryDecoded) is false);
         Refused(()=>parseRequest.Invoke(null,[cudaRegistryRequest,jobId,12u,7u]));
         Refused(()=>parseWorkload.Invoke(null,[cudaRegistryRequest,legacyId,12u,7u]));
         var cudaIdentityRequest=(byte[])cudaRegistryRequest.Clone();
@@ -357,7 +368,7 @@ internal static class CreatorJobCases
         var cudaIdentityDecoded=parseWorkload.Invoke(null,[cudaIdentityRequest,jobId,12u,7u])!;
         Check(cudaIdentityMode.GetValue(cudaIdentityDecoded) is true && cudaIdentityMode.GetValue(cudaRegistryDecoded) is false &&
             cudaRegistryMode.GetValue(cudaIdentityDecoded) is true && cudaMode.GetValue(cudaIdentityDecoded) is true &&
-            gitMode.GetValue(cudaIdentityDecoded) is false && networkMode.GetValue(cudaIdentityDecoded) is false);
+            GitOperation(cudaIdentityDecoded)=="None" && networkMode.GetValue(cudaIdentityDecoded) is false);
         Refused(()=>parseRequest.Invoke(null,[cudaIdentityRequest,jobId,12u,7u]));
         Refused(()=>parseWorkload.Invoke(null,[cudaIdentityRequest,legacyId,12u,7u]));
         var windowType=library.GetType("ProtectionLifecycle.SessionZeroWindowAccess",true)!;

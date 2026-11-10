@@ -232,6 +232,8 @@ public static partial class InstalledBroker
         =>WithCurrentInstallation(OfflineConsoleQualification.RunIndependent);
     public static (int ExitCode,string Report) QualifyIndependentGitInit()
         =>WithCurrentInstallation(OfflineConsoleQualification.RunGitInit);
+    public static (int ExitCode,string Report) QualifyIndependentGitCommit()
+        =>WithCurrentInstallation(OfflineConsoleQualification.RunGitCommit);
     public static (int ExitCode,string Report) QualifyIndependentCuda()
         =>WithCurrentInstallation(OfflineConsoleQualification.RunCuda);
     public static (int ExitCode,string Report) QualifySessionZeroStartupWitness()

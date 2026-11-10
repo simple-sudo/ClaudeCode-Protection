@@ -23,6 +23,7 @@ internal static class OfflineConsoleNativeCases
         var broker=library.GetType("ProtectionLifecycle.InstalledBroker",true)!;
         Refuse<UnauthorizedAccessException>(()=>Call(broker.GetMethod("QualifyOfflineConsole")!,null));
         Refuse<UnauthorizedAccessException>(()=>Call(broker.GetMethod("QualifyIndependentGitInit")!,null));
+        Refuse<UnauthorizedAccessException>(()=>Call(broker.GetMethod("QualifyIndependentGitCommit")!,null));
         Refuse<UnauthorizedAccessException>(()=>Call(broker.GetMethod("QualifyIndependentCuda")!,null));
         var atomic=library.GetType("ProtectionLifecycle.AtomicChild",true)!;
         Refuse<InvalidDataException>(()=>Call(atomic.GetMethod("AssertOfflineConsoleWorkerIdentity",Static)!,null));
@@ -44,6 +45,30 @@ internal static class OfflineConsoleNativeCases
         }
         foreach(var mode in new[]{"normal","flood","gpu","gpu-flood"})RunChild(library,type,mode);
         Console.WriteLine("PASS native ordinary three-handle inheritance, stdin EOF, distinct output, ordinary and GPU capture bounds, excluded handle and child-creation refusal. LPAC and WFP not executed.");
+    }
+
+    internal static void VerifyGitCommit(Assembly library)
+    {
+        var git=library.GetType("ProtectionLifecycle.SessionGitToolchain",true)!;
+        using var assets=(IDisposable)Call(git.GetMethod("Open",Static)!,null)!;
+        var workspace=Directory.CreateTempSubdirectory("CpcGitCommit-").FullName;
+        Call(git.GetMethod("PrepareIndependentCommit",Static)!,null,workspace);
+        var start=(ProcessStartInfo)Call(git.GetMethod("StartIndependentCommit",Static)!,null,workspace)!;
+        using var child=Process.Start(start)??throw new InvalidOperationException("Fixed Git did not start");
+        child.StandardInput.Close();
+        var stdout=child.StandardOutput.ReadToEndAsync();
+        var stderr=child.StandardError.ReadToEndAsync();
+        Require(child.WaitForExit(8000));
+        var output=stdout.WaitAsync(TimeSpan.FromSeconds(1)).GetAwaiter().GetResult();
+        var error=stderr.WaitAsync(TimeSpan.FromSeconds(1)).GetAwaiter().GetResult();
+        if(child.ExitCode!=0 || output.Length!=0 || error.Length!=0)
+            throw new InvalidOperationException($"Fixed Git failed with exit {child.ExitCode}: {error}");
+        var verify=git.GetMethod("IndependentCommitObserved",Static)!;
+        Require(Call(verify,null,workspace) is true);
+        var reference=Path.Combine(workspace,"git-project",".git","refs","heads","qualification");
+        File.WriteAllText(reference,new string('x',40)+"\n");
+        Refuse<InvalidDataException>(()=>Call(verify,null,workspace));
+        Console.WriteLine("PASS ordinary pinned Git commit -a, exact tracked text and nested binary objects, malformed branch refusal.");
     }
 
     private static void VerifyFailureMetadata(Assembly library)

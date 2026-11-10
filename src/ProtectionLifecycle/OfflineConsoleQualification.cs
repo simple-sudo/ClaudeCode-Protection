@@ -345,39 +345,58 @@ internal static class OfflineConsoleQualification
 
     internal static (int ExitCode,string Report) RunGitInit(FixedLayout layout,ProtectedState state,VerifiedVersion version)
     {
-        if(version.Package.SchemaVersion is not (PackageAssetCatalog.SessionZeroGitInitSchema or PackageAssetCatalog.SessionZeroCudaSchema or PackageAssetCatalog.SessionZeroCudaSplitInitSchema or PackageAssetCatalog.SessionZeroCudaAccessTraceSchema or PackageAssetCatalog.SessionZeroCudaMappedFaultSchema or PackageAssetCatalog.SessionZeroCudaWddmSchema or PackageAssetCatalog.SessionZeroCudaWddmSelfHandleSchema or PackageAssetCatalog.SessionZeroCudaDeferredPreloadSchema or PackageAssetCatalog.SessionZeroCudaInitializationTraceSchema or PackageAssetCatalog.SessionZeroCudaHelperPathSchema or PackageAssetCatalog.SessionZeroCudaRegistryCallsSchema or PackageAssetCatalog.SessionZeroCudaGraphicsReadSchema or PackageAssetCatalog.SessionZeroCudaGraphicsRootSchema or PackageAssetCatalog.SessionZeroCudaDeviceIdentitySchema))
+        if(!SupportsGitInit(version.Package.SchemaVersion))
             throw WfpNative.Contract("IndependentGitInitRequiresFixedPackageSchema");
-        return RunIndependent(layout,state,version,startupWitness:false,gitInit:true);
+        return RunIndependent(layout,state,version,startupWitness:false,gitOperation:SessionGitToolchain.Operation.Init);
+    }
+
+    internal static bool SupportsGitInit(int schema)=>schema is PackageAssetCatalog.SessionZeroGitInitSchema or
+        PackageAssetCatalog.SessionZeroCudaSchema or PackageAssetCatalog.SessionZeroCudaSplitInitSchema or
+        PackageAssetCatalog.SessionZeroCudaAccessTraceSchema or PackageAssetCatalog.SessionZeroCudaMappedFaultSchema or
+        PackageAssetCatalog.SessionZeroCudaWddmSchema or PackageAssetCatalog.SessionZeroCudaWddmSelfHandleSchema or
+        PackageAssetCatalog.SessionZeroCudaDeferredPreloadSchema or PackageAssetCatalog.SessionZeroCudaInitializationTraceSchema or
+        PackageAssetCatalog.SessionZeroCudaHelperPathSchema or PackageAssetCatalog.SessionZeroCudaRegistryCallsSchema or
+        PackageAssetCatalog.SessionZeroCudaGraphicsReadSchema or PackageAssetCatalog.SessionZeroCudaGraphicsRootSchema or
+        PackageAssetCatalog.SessionZeroCudaDeviceIdentitySchema or PackageAssetCatalog.SessionZeroGitTrackedCommitSchema;
+
+    internal static (int ExitCode,string Report) RunGitCommit(FixedLayout layout,ProtectedState state,VerifiedVersion version)
+    {
+        if(version.Package.SchemaVersion!=PackageAssetCatalog.SessionZeroGitTrackedCommitSchema)
+            throw WfpNative.Contract("IndependentGitCommitRequiresFixedPackageSchema");
+        return RunIndependent(layout,state,version,startupWitness:false,gitOperation:SessionGitToolchain.Operation.TrackedCommit);
     }
 
     internal static (int ExitCode,string Report) RunCuda(FixedLayout layout,ProtectedState state,VerifiedVersion version)
     {
-        if(version.Package.SchemaVersion is not (PackageAssetCatalog.SessionZeroCudaDeferredPreloadSchema or PackageAssetCatalog.SessionZeroCudaInitializationTraceSchema or PackageAssetCatalog.SessionZeroCudaHelperPathSchema or PackageAssetCatalog.SessionZeroCudaRegistryCallsSchema or PackageAssetCatalog.SessionZeroCudaGraphicsReadSchema or PackageAssetCatalog.SessionZeroCudaGraphicsRootSchema or PackageAssetCatalog.SessionZeroCudaDeviceIdentitySchema))
+        if(version.Package.SchemaVersion is not (PackageAssetCatalog.SessionZeroCudaDeferredPreloadSchema or PackageAssetCatalog.SessionZeroCudaInitializationTraceSchema or PackageAssetCatalog.SessionZeroCudaHelperPathSchema or PackageAssetCatalog.SessionZeroCudaRegistryCallsSchema or PackageAssetCatalog.SessionZeroCudaGraphicsReadSchema or PackageAssetCatalog.SessionZeroCudaGraphicsRootSchema or PackageAssetCatalog.SessionZeroCudaDeviceIdentitySchema or PackageAssetCatalog.SessionZeroGitTrackedCommitSchema))
             throw WfpNative.Contract("IndependentCudaRequiresWddmSurveySchema");
         return RunIndependent(layout,state,version,startupWitness:false,cuda:true);
     }
 
     private static (int ExitCode,string Report) RunIndependent(FixedLayout layout,ProtectedState state,VerifiedVersion version,
-        bool startupWitness,bool gitInit=false,bool cuda=false)
+        bool startupWitness,SessionGitToolchain.Operation gitOperation=default,bool cuda=false)
     {
+        var gitRequested=gitOperation!=SessionGitToolchain.Operation.None;
+        var gitCommit=gitOperation==SessionGitToolchain.Operation.TrackedCommit;
         var plans=RequireOfflinePrerequisites(state,version);
         var branchWitness=startupWitness && SessionZeroStartupWitness.UsesBranchTrace(version.Package.SchemaVersion);
         var windowAccessWitness=startupWitness && version.Package.SchemaVersion==PackageAssetCatalog.SessionZeroWindowAccessSchema;
-        var networkSurvey=!startupWitness && !gitInit && !cuda && version.Package.SchemaVersion is
+        var networkSurvey=!startupWitness && !gitRequested && !cuda && version.Package.SchemaVersion is
             PackageAssetCatalog.SessionZeroNetworkSurveySchema or PackageAssetCatalog.ReviewedProxyRouteSchema or
-            PackageAssetCatalog.SessionZeroGitInitSchema or PackageAssetCatalog.SessionZeroCudaSchema or PackageAssetCatalog.SessionZeroCudaSplitInitSchema or PackageAssetCatalog.SessionZeroCudaAccessTraceSchema or PackageAssetCatalog.SessionZeroCudaMappedFaultSchema or PackageAssetCatalog.SessionZeroCudaWddmSchema or PackageAssetCatalog.SessionZeroCudaWddmSelfHandleSchema or PackageAssetCatalog.SessionZeroCudaDeferredPreloadSchema or PackageAssetCatalog.SessionZeroCudaInitializationTraceSchema or PackageAssetCatalog.SessionZeroCudaHelperPathSchema or PackageAssetCatalog.SessionZeroCudaRegistryCallsSchema or PackageAssetCatalog.SessionZeroCudaGraphicsReadSchema or PackageAssetCatalog.SessionZeroCudaGraphicsRootSchema or PackageAssetCatalog.SessionZeroCudaDeviceIdentitySchema;
+            PackageAssetCatalog.SessionZeroGitInitSchema or PackageAssetCatalog.SessionZeroCudaSchema or PackageAssetCatalog.SessionZeroCudaSplitInitSchema or PackageAssetCatalog.SessionZeroCudaAccessTraceSchema or PackageAssetCatalog.SessionZeroCudaMappedFaultSchema or PackageAssetCatalog.SessionZeroCudaWddmSchema or PackageAssetCatalog.SessionZeroCudaWddmSelfHandleSchema or PackageAssetCatalog.SessionZeroCudaDeferredPreloadSchema or PackageAssetCatalog.SessionZeroCudaInitializationTraceSchema or PackageAssetCatalog.SessionZeroCudaHelperPathSchema or PackageAssetCatalog.SessionZeroCudaRegistryCallsSchema or PackageAssetCatalog.SessionZeroCudaGraphicsReadSchema or PackageAssetCatalog.SessionZeroCudaGraphicsRootSchema or PackageAssetCatalog.SessionZeroCudaDeviceIdentitySchema or PackageAssetCatalog.SessionZeroGitTrackedCommitSchema;
         var identitySurvey=networkSurvey || !startupWitness && version.Package.SchemaVersion==PackageAssetCatalog.SessionZeroIdentitySurveySchema;
         var privateWindow=startupWitness?SessionZeroStartupWitness.UsesPrivateWindow(version.Package.SchemaVersion):
             SessionZeroWindowPolicy.SupportsConsole(version.Package.SchemaVersion);
         var privateWindowTrace=privateWindow && branchWitness;
-        var cudaDeviceIdentity=cuda && version.Package.SchemaVersion==PackageAssetCatalog.SessionZeroCudaDeviceIdentitySchema;
+        var cudaDeviceIdentity=cuda && version.Package.SchemaVersion is
+            PackageAssetCatalog.SessionZeroCudaDeviceIdentitySchema or PackageAssetCatalog.SessionZeroGitTrackedCommitSchema;
         var cudaRegistryPrivacy=cudaDeviceIdentity || cuda && version.Package.SchemaVersion==PackageAssetCatalog.SessionZeroCudaGraphicsRootSchema;
         var graphicsReadRequired=cudaRegistryPrivacy || cuda && version.Package.SchemaVersion==PackageAssetCatalog.SessionZeroCudaGraphicsReadSchema;
         using var windowQueryImage=privateWindowTrace?SessionZeroStartupBranchTrace.HoldWindowQueryImage():null;
         using var branchTrace=branchWitness?new SessionZeroStartupBranchTrace():null;
         var cudaMode=version.Package.SchemaVersion switch
         {
-            PackageAssetCatalog.SessionZeroCudaRegistryCallsSchema or PackageAssetCatalog.SessionZeroCudaGraphicsReadSchema or PackageAssetCatalog.SessionZeroCudaGraphicsRootSchema or PackageAssetCatalog.SessionZeroCudaDeviceIdentitySchema=>SessionZeroStartupBranchTrace.CudaAccessTrace.Mode.RegistryCalls,
+            PackageAssetCatalog.SessionZeroCudaRegistryCallsSchema or PackageAssetCatalog.SessionZeroCudaGraphicsReadSchema or PackageAssetCatalog.SessionZeroCudaGraphicsRootSchema or PackageAssetCatalog.SessionZeroCudaDeviceIdentitySchema or PackageAssetCatalog.SessionZeroGitTrackedCommitSchema=>SessionZeroStartupBranchTrace.CudaAccessTrace.Mode.RegistryCalls,
             PackageAssetCatalog.SessionZeroCudaHelperPathSchema=>SessionZeroStartupBranchTrace.CudaAccessTrace.Mode.HelperPath,
             PackageAssetCatalog.SessionZeroCudaInitializationTraceSchema=>SessionZeroStartupBranchTrace.CudaAccessTrace.Mode.Initialization,
             _=>SessionZeroStartupBranchTrace.CudaAccessTrace.Mode.AccessOnly
@@ -417,8 +436,8 @@ internal static class OfflineConsoleQualification
         {
             foreach(var plan in plans)fences.Add(PersistentFence.OpenExisting(state,plan.Data.FenceId));
             AssertQuarantine();
-            if(gitInit)stage="OpenGitAssets";
-            using var git=gitInit?SessionGitToolchain.Open():null;
+            if(gitRequested)stage="OpenGitAssets";
+            using var git=gitRequested?SessionGitToolchain.Open():null;
             stage="RegisterCreator";
             using var creator=SessionZeroCreatorRegistration.Create(layout,state,version);
             jobId=creator.JobId;
@@ -436,7 +455,7 @@ internal static class OfflineConsoleQualification
                     if(cudaRegistryPrivacy)host=OfflineConsoleHostIdentity.CaptureSurvey(creator.JobId);
                     if(cudaDeviceIdentity)hostGpuIdentity=GpuDeviceIdentitySurvey.CaptureTrusted();
                 }
-                if(!startupWitness && !gitInit && !cuda)
+                if(!startupWitness && !gitRequested && !cuda)
                 {
                     stage="CaptureHostIdentity";
                     host=identitySurvey?OfflineConsoleHostIdentity.CaptureSurvey(jobId):OfflineConsoleHostIdentity.Capture(jobId);
@@ -496,9 +515,15 @@ internal static class OfflineConsoleQualification
                 }
                 stage="ValidateSuspendedRoot";
                 git?.AssertHeld();
-                using var root=channel.Exchange(layout,state,version,job,startupWitness,privateWindows,gitInit,cuda);
+                using var root=channel.Exchange(layout,state,version,job,startupWitness,privateWindows,gitOperation,cuda);
                 creatorWindowAccess=root.WindowAccess;
-                child=AtomicChild.AdoptSessionZeroOfflineConsole(layout,state,version,job,root,startupWitness,gitInit,cuda);
+                child=AtomicChild.AdoptSessionZeroOfflineConsole(layout,state,version,job,root,startupWitness,gitOperation,cuda);
+                if(gitCommit)
+                {
+                    stage="PrepareTrackedGitFixture";
+                    workspace.AssertHeld();
+                    SessionGitToolchain.PrepareIndependentCommit(workspace.Path);
+                }
                 if(networkSurvey || cuda)childCreated=child.ExpectedCreatedFileTime;
                 if(cuda)cudaPid=child.Pid;
                 runtime=ProtectionRuntimeLease.ForFixedOfflineConsole(state,version,job,fences,child,job.JobId);
@@ -625,18 +650,19 @@ internal static class OfflineConsoleQualification
                     }
                     catch(Exception error){failedStage??=stage;failures.Add(error);}
                 }
-                if(gitInit && exit==0)
+                if(gitRequested && exit==0)
                 {
                     stage="VerifyGitRepository";
                     try
                     {
                         workspace.AssertHeld();
                         git!.AssertHeld();
-                        filesMatched=SessionGitToolchain.IndependentInitObserved(workspace.Path);
+                        filesMatched=gitCommit?SessionGitToolchain.IndependentCommitObserved(workspace.Path):
+                            SessionGitToolchain.IndependentInitObserved(workspace.Path);
                     }
                     catch(Exception error){failedStage??=stage;failures.Add(error);}
                 }
-                if(child is not null && !startupWitness && !gitInit && !cuda)
+                if(child is not null && !startupWitness && !gitRequested && !cuda)
                 {
                     stage="SealWorkerEvidence";
                     try
@@ -712,14 +738,15 @@ internal static class OfflineConsoleQualification
             if(jobId is not null)state.WriteNew("independent-cuda-after-"+jobId+".json",Encoding.UTF8.GetBytes(cudaReport));
             return(qualified?0:3,cudaReport);
         }
-        if(gitInit)
+        if(gitRequested)
         {
             var outputQuiet=stdout is {Overflow:false,Bytes.Length:0} && stderr is {Overflow:false,Bytes.Length:0};
             var qualified=failures.Count==0 && resumed && exit==0 && closed && privateWindowsClosed && profileClosed &&
                 workspaceClosed && serviceRemoved && filesMatched && outputQuiet;
+            var kind=gitCommit?"TRACKED_COMMIT":"INIT";
             var gitReport=JsonSerializer.Serialize(new {
-                SchemaVersion=1,Scope=SessionGitToolchain.IndependentInitScope,state.InstallationId,JobId=jobId,
-                version.Package.Release,version.Package.ManifestHash,Status=qualified?"INDEPENDENT_GIT_INIT_CLOSED":"INDEPENDENT_GIT_INIT_NOT_CONFIRMED",
+                SchemaVersion=1,Scope=SessionGitToolchain.Scope(gitOperation),state.InstallationId,JobId=jobId,
+                version.Package.Release,version.Package.ManifestHash,Status="INDEPENDENT_GIT_"+kind+(qualified?"_CLOSED":"_NOT_CONFIRMED"),
                 ImageSHA256=SessionGitToolchain.ImageSHA256,SessionGitToolchain.AssetSetSHA256,LastStage=stage,
                 ProcessResumed=resumed,ChildExit=exit,RepositoryObserved=filesMatched,QuietStreamsObserved=outputQuiet,
                 OriginalJobClosed=closed,ProfileClosed=profileClosed,WorkspaceClosed=workspaceClosed,ServiceRemoved=serviceRemoved,
@@ -727,7 +754,13 @@ internal static class OfflineConsoleQualification
                 Output=Summarize(stdout),Error=Summarize(stderr),StopObservation=stopped,Failures=failures.SelectMany(WfpNative.Describe).ToArray(),
                 HostIdentityQualified=false,GatewayOpened=false,NetworkQualified=false,LaunchAuthorized=false,FormalAdmissionIssued=false,ClaudeLaunched=false
             });
-            if(jobId is not null)state.WriteNew("independent-git-init-after-"+jobId+".json",Encoding.UTF8.GetBytes(gitReport));
+            var leaf=gitCommit?"independent-git-commit-after-":"independent-git-init-after-";
+            if(jobId is not null)
+            {
+                state.WriteNew(leaf+jobId+".json",Encoding.UTF8.GetBytes(gitReport));
+                if(gitCommit && !qualified && stderr is {Bytes.Length:>0})
+                    state.WriteNew("independent-git-commit-stderr-"+jobId+".bin",stderr.Bytes);
+            }
             return(qualified?0:3,gitReport);
         }
         if(startupWitness)

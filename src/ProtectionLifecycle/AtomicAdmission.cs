@@ -161,7 +161,8 @@ internal sealed partial class AtomicChild : IDisposable
     private readonly OfflineTlsProbe? offlineTls;
     private readonly bool offlineConsole;
     private readonly bool independentOfflineConsole;
-    private readonly bool independentGitInit,independentCuda;
+    private readonly bool independentCuda;
+    private readonly SessionGitToolchain.Operation independentGit;
     private readonly bool startupWitness;
     private readonly SessionZeroCreatorChannel.TokenProof creatorTokenProof;
     private readonly ProtectedSession.Preparation? sessionPreparation;
@@ -370,27 +371,27 @@ internal sealed partial class AtomicChild : IDisposable
         sessionPreparation=preparation;resourceQualification=resources;this.offlineTls=offlineTls;this.offlineConsole=offlineConsole;
     }
     private AtomicChild(ProtectedState state,VerifiedVersion version,OwnedKernelJob job,SessionZeroCreatorChannel.SuspendedRoot root,
-        string image,string sid,bool startupWitness,bool gitInit,bool cuda)
+        string image,string sid,bool startupWitness,SessionGitToolchain.Operation gitOperation,bool cuda)
     {
         this.state=state;this.version=version;this.job=job;this.image=image;packageSid=sid;
         Pid=root.Identity.Pid;initialThreadId=root.Identity.Tid;
         (process,thread)=root.TransferTo(job);
         offlineConsole=true;independentOfflineConsole=true;
-        independentGitInit=gitInit;
+        independentGit=gitOperation;
         independentCuda=cuda;
         this.startupWitness=startupWitness;
         creatorTokenProof=root.LpacProof;
     }
     internal static AtomicChild AdoptSessionZeroOfflineConsole(FixedLayout layout,ProtectedState state,VerifiedVersion version,
-        OwnedKernelJob job,SessionZeroCreatorChannel.SuspendedRoot root,bool startupWitness,bool gitInit=false,bool cuda=false)
+        OwnedKernelJob job,SessionZeroCreatorChannel.SuspendedRoot root,bool startupWitness,SessionGitToolchain.Operation gitOperation,bool cuda)
     {
         ProtectedState.RequireAdministrator();state.AssertHeld();version.AssertHeld(state);
         _=job.SessionZeroCreatorSid;
         job.AssertCreatorSealedBeforeResume();
-        var image=gitInit?SessionGitToolchain.ToolPath:startupWitness?SessionZeroStartupWitness.ReviewedImage(layout,version):
+        var image=gitOperation!=SessionGitToolchain.Operation.None?SessionGitToolchain.ToolPath:startupWitness?SessionZeroStartupWitness.ReviewedImage(layout,version):
             WindowsPathSeal.Child(layout.Version(version.Package.Release),"bin/admin/ProtectionBroker.exe");
         using var package=new InstallationPackageSid(state);
-        return new(state,version,job,root,image,package.Value,startupWitness,gitInit,cuda);
+        return new(state,version,job,root,image,package.Value,startupWitness,gitOperation,cuda);
     }
     internal static AtomicChild CreateCanary(FixedLayout layout,ProtectedState state,VerifiedVersion version,OwnedKernelJob job,InstallationProfileLease profile,
         NetworkProbePlan? network=null,IntPtr output=default,GpuProbePlan? gpu=null)
@@ -407,7 +408,7 @@ internal sealed partial class AtomicChild : IDisposable
         if(!Environment.Is64BitProcess || Marshal.SizeOf<StartupInfoEx>()!=112 || Marshal.SizeOf<SecurityCapabilities>()!=24)
             throw new PlatformNotSupportedException("Creator startup requires the declared x64 layout");
         var brokerImage=ResolveSessionZeroImage(FixedLayout.FromWindows(),Environment.ProcessPath);
-        using var git=client.Request.GitInit?SessionGitToolchain.Open():null;
+        using var git=client.Request.GitOperation!=SessionGitToolchain.Operation.None?SessionGitToolchain.Open():null;
         var image=git is not null?SessionGitToolchain.ToolPath:client.Request.StartupWitness?
             WindowsPathSeal.Child(Path.GetDirectoryName(brokerImage)!,Path.GetFileName(PackageAssetCatalog.SessionZeroStartupWitnessPath)):brokerImage;
         using var imageParent=git is null?WindowsPathSeal.LockDirectory(Path.GetDirectoryName(image)!,PathPolicy.Protected):null;
@@ -415,7 +416,12 @@ internal sealed partial class AtomicChild : IDisposable
         if(heldImage is not null)WindowsPathSeal.AssertAcl(heldImage,true);
         var session=client.Request.JobId;
         using var workspace=WindowsPathSeal.LockDirectory(SessionTaskWorkspace.PathFor(session),PathPolicy.Source);
-        var gitStart=git is null?null:SessionGitToolchain.StartIndependentInit(workspace.Path);
+        var gitStart=client.Request.GitOperation switch
+        {
+            SessionGitToolchain.Operation.Init=>SessionGitToolchain.StartIndependentInit(workspace.Path),
+            SessionGitToolchain.Operation.TrackedCommit=>SessionGitToolchain.StartIndependentCommit(workspace.Path),
+            _=>null
+        };
         var env=new SortedDictionary<string,string>(StringComparer.OrdinalIgnoreCase);
         if(gitStart is not null)
         {
@@ -744,14 +750,14 @@ internal sealed partial class AtomicChild : IDisposable
         AssertHeldInitialThread(process,thread,Pid,initialThreadId);
         var proof=new {SchemaVersion=1,state.InstallationId,job.JobId,Pid,CreatedFileTime=created.ToString("X16"),Token=token,
             ExpectedCapabilitiesSHA256=CapabilityProfile.SHA256,ObservedCapabilities=token.Capabilities?.CopyEntries(),
-            ImageSHA256=independentGitInit?SessionGitToolchain.ImageSHA256:
+            ImageSHA256=independentGit!=SessionGitToolchain.Operation.None?SessionGitToolchain.ImageSHA256:
                 version.Package.Files.Single(f=>f.Asset.Id==(startupWitness?PackageAssetCatalog.SessionZeroStartupWitnessId:"broker-exe")).SHA256,
             Job=snapshot,Fences=observations,
             CreatorLpacAccessCheckBoundToPrimaryToken=independentOfflineConsole?(bool?)true:null,
             Binding="SECURITY_CAPABILITIES_AND_JOB_LIST_AT_CREATION",Status="BEFORE_FIRST_RESUME",NetworkBehaviorQualified=false,
             SessionBindingSHA256=sessionAdmission?.BindingSHA256,
             Scope=sessionAdmission is not null?"AUTHENTICATED_SESSION_GATEWAY":network?.Kind==NetworkProbeKind.Control?"UNFENCED_OWNED_LOOPBACK_CONTROL":proxyOnly?"COMPILED_IPV4_PROXY_ONLY":gpuWorkload?"FIXED_CUDA_FULL_QUARANTINE":startupWitness?SessionZeroStartupWitness.Scope:
-                independentGitInit?SessionGitToolchain.IndependentInitScope:independentCuda?IndependentGpuWorkload.Scope:independentOfflineConsole?"FIXED_INDEPENDENT_CONSOLE_FULL_QUARANTINE":offlineConsole?"FIXED_CONSOLE_FULL_QUARANTINE":
+                independentGit!=SessionGitToolchain.Operation.None?SessionGitToolchain.Scope(independentGit):independentCuda?IndependentGpuWorkload.Scope:independentOfflineConsole?"FIXED_INDEPENDENT_CONSOLE_FULL_QUARANTINE":offlineConsole?"FIXED_CONSOLE_FULL_QUARANTINE":
                 offlineTls switch {OfflineTlsProbe.Schannel=>"FIXED_SCHANNEL_FULL_QUARANTINE",OfflineTlsProbe.OpenSsl=>"FIXED_OPENSSL_FULL_QUARANTINE",_=>"FULL_QUARANTINE"}};
         state.WriteNew("admission-before-resume-"+job.JobId+".json",JsonSerializer.SerializeToUtf8Bytes(proof));
         OfflineConsoleUserSid=tokenUser;
@@ -833,7 +839,7 @@ internal sealed partial class AtomicChild : IDisposable
     }
     internal void ObserveCudaAccess(SessionZeroStartupBranchTrace.CudaAccessTrace trace,Action assertHealthy)
     {
-        if(!independentCuda || version.Package.SchemaVersion is not (PackageAssetCatalog.SessionZeroCudaDeferredPreloadSchema or PackageAssetCatalog.SessionZeroCudaInitializationTraceSchema or PackageAssetCatalog.SessionZeroCudaHelperPathSchema or PackageAssetCatalog.SessionZeroCudaRegistryCallsSchema or PackageAssetCatalog.SessionZeroCudaGraphicsReadSchema or PackageAssetCatalog.SessionZeroCudaGraphicsRootSchema or PackageAssetCatalog.SessionZeroCudaDeviceIdentitySchema) ||
+        if(!independentCuda || version.Package.SchemaVersion is not (PackageAssetCatalog.SessionZeroCudaDeferredPreloadSchema or PackageAssetCatalog.SessionZeroCudaInitializationTraceSchema or PackageAssetCatalog.SessionZeroCudaHelperPathSchema or PackageAssetCatalog.SessionZeroCudaRegistryCallsSchema or PackageAssetCatalog.SessionZeroCudaGraphicsReadSchema or PackageAssetCatalog.SessionZeroCudaGraphicsRootSchema or PackageAssetCatalog.SessionZeroCudaDeviceIdentitySchema or PackageAssetCatalog.SessionZeroGitTrackedCommitSchema) ||
             disposed || !resumed || !job.ContainsProcess(process))
             throw WfpNative.Contract("CudaTraceRequiresResumedReviewedRoot");
         trace.Observe(process,Pid,initialThreadId,assertHealthy);
