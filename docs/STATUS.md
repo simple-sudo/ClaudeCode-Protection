@@ -8,7 +8,8 @@
 ## 2026-11-09 独立 CUDA 计算与退出取证
 
 schema 29 接入原 Job 的 `GraphicsDrivers` 单键临时只读和关闭后精确恢复。
-普通实机只读及规则回归已执行。[只读修复范围](GPU-HOST-REFERENCE.md#cuda-单键临时只读修复)。
+`de3eadc9` 已实测精确恢复，受限驱动打开仍返回 5。
+[只读修复范围](GPU-HOST-REFERENCE.md#cuda-单键临时只读修复)。
 
 schema 28 静态定位 `GraphicsDrivers` 及 `TdrLevel`，普通实机四个原生返回码均为 0。
 `cff88589` 的受限驱动打开注册表返回 Win32 5，随后回调返回 999，原资源回收。

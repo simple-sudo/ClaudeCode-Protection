@@ -9,7 +9,8 @@
 
 SOURCE / BUILD / INTEGRATED(schema 29 原 Broker 单键临时只读与专用恢复)。
 VERIFIED(普通真实根键内容、普通子键权限拒绝、精确规则及非授权记录拒绝)。
-NOT_RUN(受限单键授权、CUDA 初始化、GPU 计算、系统 ACL 恢复)。
+VERIFIED(`de3eadc9` 未激活更新、单键授权回读、原 DACL 恢复、内容与子键 ACL 核对、原资源回收)。
+FAIL(受限驱动仍返回 Win32 5，CUDA 初始化与计算未成功)。UNKNOWN(当前链注册表根映射)。
 
 SOURCE / BUILD / INTEGRATED(schema 28 首次固定回调的原生返回码)。
 VERIFIED(普通实机实际注册表打开、值查询、驱动回调、真实计算)。

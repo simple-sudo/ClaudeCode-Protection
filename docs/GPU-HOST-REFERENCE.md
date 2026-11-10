@@ -291,7 +291,19 @@ schema 29 在原自研 CUDA 载荷所属 Job 已预留、进程仍挂起时，�
 返回 Win32 5。普通结果及六个畸形授权记录拒绝见
 `work/session-zero-cuda-graphics-read-20261110-01/graphics-drivers-read-policy.log`
 SHA-256 `50B1DDC66A3281B2216588A51A797FBC7C6DE71F4778F3E8FC9BDEFBB6EAAF13`。
-此修复限固定自研载荷，实际授权和恢复尚未运行。已经证实的 WDDM 标识关联继续单列 FAIL。
+`de3eadc9` 在单次批准 `7AC9E152BC2D…` 后更新并保持 INACTIVE。原 Broker 实测
+添加并回读单键授权，原 Job 归零后精确恢复。内容和全部直接子键 ACL 指纹一致。
+独立普通终态复查与预检文件字节一致，仍为六个 DWORD、12 个直接子键、两项 ACL 拒绝。
+受限驱动打开仍返回 Win32 5，查询和后续子函数未到达，回调返回 999，`cuInit` 在原处
+退出 `0xC0000005`。原 Job、profile、私有窗口、工作区和两项服务均已回收。
+回执 `work/session-zero-cuda-graphics-read-20261110-01/receipt.json`
+SHA-256 `A1217161D8559DC6DCAC19D1F8C4596DF694D827536B5F0370FAD6CFBB139305`。
+已经证实的 WDDM 标识关联继续单列 FAIL。
+
+历史真实 LPAC 编译器实验证实，精确叶子授权可使绝对 `NtOpenKey` 成功，而预定义根
+的标准调用仍返回 5。本机 KernelBase 静态路径和普通实验证明根映射是独立访问环节。
+这些结果支持当前 CUDA 链的下一次根映射对照，当前故障点仍需该链自己的证据。
+[原实机与静态证据](STATUS.md#2026-11-04-区分lpac叶子授权与预定义根映射)
 
 ## 2026-11-06 610b正常真实参考已验证
 

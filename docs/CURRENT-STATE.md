@@ -1,9 +1,9 @@
 # 当前状态与授权摘要
 
-2026-11-10，schema 29 接入 `GraphicsDrivers` 单键临时只读修复。原 Broker 在受限根进程
-恢复前为本安装的精确包 SID 添加一条非继承 `KEY_READ`，在原 Job 持久归零后回读并恢复
-原 DACL。普通实机验证当前根键的六个 DWORD、12 个直接子键及权限校验，两个子键在普通
-身份下读 ACL 被拒绝。修复的提升执行、CUDA 和恢复均待实机。当前安装仍为 `cff88589`。
+2026-11-10，`de3eadc9` 已更新并保持 INACTIVE。原 Broker 实际添加 `GraphicsDrivers`
+单键非继承 `KEY_READ` 并恢复精确原 DACL，六个 DWORD 和 12 个直接子键的边界核对通过。
+受限驱动打开仍返回 Win32 `5`，回调返回 `999`，`cuInit` 仍异常退出。原资源均回收，
+单次许可已消耗。历史 LPAC 证据显示预定义注册表根可能先拒绝，当前链尚未验证根映射。
 [只读修复范围](GPU-HOST-REFERENCE.md#cuda-单键临时只读修复)
 
 2026-11-10，`cff88589` 已更新并保持 INACTIVE。schema 28 实测受限驱动以 `KEY_READ`
