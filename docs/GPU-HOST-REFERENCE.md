@@ -57,6 +57,19 @@ SOURCE / BUILD / VERIFIED(普通固定拆分观察)。尚未接入受限载荷�
 故障位置或修复。后续通过原 Job 回收后的有界回执带回三个阶段，必要时复用仅原根
 进程的 Windows 调试观察以定位异常模块；不改变驱动权限。
 
+### 原受限链的三阶段观察
+
+schema 20 沿用原私有桌面、LocalService 零能力 LPAC、继承管道、Job 与回收。
+首个 CUDA 调用内增加六个绑定 PID 与 Job nonce 的阶段帧，分别记录加载、导出解析和
+首次调用的进入及返回。正常计算要求首次调用的内外层返回码一致。终止时仅使用上一条
+完整且已绑定的帧。原非独立 CUDA 路径保持原帧格式。
+
+普通 NVIDIA 对照完成 1 KiB、256 元素的结果校验和清理，真实回执 6,139 字节。
+`work/session-zero-cuda-split-20261109-01/host-split-compute.log` SHA-256
+`F18F2619D5755F119F95486AA83919BD9D7352CA3C20B9D1FC0F5F19423A9234`。
+普通负向覆盖缺失、跨进程、错序、错误归属、返回码不一致及撕裂回执。
+SOURCE / BUILD / INTEGRATED / VERIFIED(普通原生和协议范围)。受限实机结果待测。
+
 ## 2026-11-06 610b正常真实参考已验证
 
 经本人批准73AC9CC7…，安装/原daily/原资格owner/指定新记录reader全终态0。现装

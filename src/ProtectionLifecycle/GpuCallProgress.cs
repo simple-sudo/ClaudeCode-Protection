@@ -13,12 +13,22 @@ internal sealed class GpuCallProgressWriter
     private readonly string nonce;
     private readonly int pid;
     private int sequence;
+    private int initSequence;
     internal GpuCallProgressWriter(TextWriter output,string nonce,int pid)
     {GpuCallProgressReader.ValidateIdentity(nonce,pid);this.output=output;this.nonce=nonce;this.pid=pid;}
     internal void Emit(int api,int phase,int? code)
     {
         if(sequence>=32 || api is <0 or >15 || phase is <0 or >2 || (phase==0)!=(code is null))throw new InvalidDataException("GpuProgressWriterContract");
         output.WriteLine(JsonSerializer.Serialize(new{Kind="GPU_CALL_PROGRESS_V1",Nonce=nonce,Pid=pid,Sequence=++sequence,Api=api,Phase=phase,Code=code}));
+        output.Flush();
+    }
+
+    internal void EmitInit(GpuInitLoader.Checkpoint checkpoint)
+    {
+        output.WriteLine(JsonSerializer.Serialize(new {
+            Kind="GPU_INIT_PROGRESS_V1",Nonce=nonce,Pid=pid,Sequence=++initSequence,
+            Phase=(int)checkpoint.Phase,checkpoint.Returned,checkpoint.Code,checkpoint.InDriverImage
+        }));
         output.Flush();
     }
 }
@@ -30,17 +40,21 @@ internal sealed class GpuCallProgressReader
         "cuModuleUnload","cuMemFree_v2","cuCtxDestroy_v2"};
     private readonly string nonce;
     private readonly bool progressRequired;
+    private readonly bool splitInit;
     private readonly object sync=new();
     private int pid,lastApi=-1,sequence;
     private bool pending,final,reportedFailure;
     private uint returnedSuccessfully;
     private GpuReportedCall? latest,firstFailure;
-    internal GpuCallProgressReader(string nonce,bool progressRequired)
-    {ValidateIdentity(nonce,1);this.nonce=nonce;this.progressRequired=progressRequired;}
+    private int initSequence;
+    private GpuInitLoader.Checkpoint? lastInit;
+    internal GpuCallProgressReader(string nonce,bool progressRequired,bool splitInit=false)
+    {ValidateIdentity(nonce,1);this.nonce=nonce;this.progressRequired=progressRequired;this.splitInit=splitInit;}
     internal void Bind(int expectedPid)
     {lock(sync){ValidateIdentity(nonce,expectedPid);if(pid!=0)throw Bad();pid=expectedPid;}}
     internal GpuReportedCall? Snapshot(){lock(sync)return latest;}
     internal GpuReportedCall? FirstFailure(){lock(sync)return firstFailure;}
+    internal GpuInitLoader.Checkpoint? InitSnapshot(){lock(sync)return lastInit;}
     internal bool ReportsCompleteSuccessfulSequence
     {get{lock(sync)return final && !pending && !reportedFailure && returnedSuccessfully==0xffff && sequence==32;}}
     internal static void ValidateIdentity(string nonce,int pid)
@@ -83,7 +97,13 @@ internal sealed class GpuCallProgressReader
                     if(text.Length>16384 || Number(root,"SchemaVersion")!=1 || pending || progressRequired && sequence==0)throw Bad();
                     report=text;final=true;return;
                 }
-                if(!progressRequired || text.Length>512 || kind.ValueKind!=JsonValueKind.String || kind.GetString()!="GPU_CALL_PROGRESS_V1" ||
+                if(!progressRequired || text.Length>512 || kind.ValueKind!=JsonValueKind.String)throw Bad();
+                if(kind.GetString()=="GPU_INIT_PROGRESS_V1")
+                {
+                    ConsumeInit(root);
+                    return;
+                }
+                if(kind.GetString()!="GPU_CALL_PROGRESS_V1" ||
                     root.EnumerateObject().Count()!=7 || root.EnumerateObject().Any(p=>p.Name is not ("Kind" or "Nonce" or "Pid" or "Sequence" or "Api" or "Phase" or "Code")))throw Bad();
                 var next=Number(root,"Sequence");var api=Number(root,"Api");var phase=Number(root,"Phase");
                 var code=Field(root,"Code").ValueKind==JsonValueKind.Null?(int?)null:Number(root,"Code");
@@ -95,7 +115,10 @@ internal sealed class GpuCallProgressReader
                 }
                 else
                 {
-                    if(!pending || api!=lastApi)throw Bad();pending=false;
+                    if(!pending || api!=lastApi)throw Bad();
+                    if(splitInit && api==0 && phase==1 &&
+                        (initSequence!=6 || lastInit?.Code!=code))throw Bad();
+                    pending=false;
                     if(phase==1 && code==0)returnedSuccessfully|=1u<<api;else reportedFailure=true;
                 }
                 sequence=next;latest=new(next,api,Stages[api],phase==0?"ENTERED_NOT_RETURNED":phase==1?"RETURNED":"THREW",code);
@@ -103,6 +126,30 @@ internal sealed class GpuCallProgressReader
             }
         }
     }
+
+    private void ConsumeInit(JsonElement root)
+    {
+        if(!splitInit || !pending || lastApi!=0 || sequence!=1 || initSequence>=6 ||
+            root.EnumerateObject().Count()!=8 || root.EnumerateObject().Any(p=>p.Name is not
+                ("Kind" or "Nonce" or "Pid" or "Sequence" or "Phase" or "Returned" or "Code" or "InDriverImage")))
+            throw Bad();
+        if(initSequence>0 && lastInit is {Returned:true} prior &&
+            (prior.Code!=0 || prior.InDriverImage==false))throw Bad();
+
+        var next=Number(root,"Sequence");
+        var phase=(GpuInitLoader.Phase)Number(root,"Phase");
+        var returned=Boolean(root,"Returned");
+        var code=Field(root,"Code").ValueKind==JsonValueKind.Null?(int?)null:Number(root,"Code");
+        var owned=Field(root,"InDriverImage").ValueKind==JsonValueKind.Null?(bool?)null:Boolean(root,"InDriverImage");
+        if(next!=initSequence+1 || phase!=(GpuInitLoader.Phase)(initSequence/2) || returned!=(initSequence%2==1) ||
+            returned!=code.HasValue || owned.HasValue!=(phase==GpuInitLoader.Phase.Resolve && code==0))throw Bad();
+        initSequence=next;
+        lastInit=new(phase,returned,code,owned);
+    }
+
+    private static bool Boolean(JsonElement root,string name)=>Field(root,name).ValueKind switch {
+        JsonValueKind.True=>true,JsonValueKind.False=>false,_=>throw Bad()
+    };
     private static JsonElement Field(JsonElement root,string name)=>root.TryGetProperty(name,out var item)?item:throw Bad();
     private static int Number(JsonElement root,string name)=>Field(root,name).ValueKind==JsonValueKind.Number && Field(root,name).TryGetInt32(out var value)?value:throw Bad();
     private static string Text(JsonElement root,string name)=>Field(root,name).ValueKind==JsonValueKind.String?Field(root,name).GetString()!:throw Bad();

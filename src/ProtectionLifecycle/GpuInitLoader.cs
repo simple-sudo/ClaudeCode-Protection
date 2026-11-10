@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Runtime.InteropServices;
+using System.Text.Json.Serialization;
 using Microsoft.Win32.SafeHandles;
 
 namespace ProtectionLifecycle;
@@ -8,6 +9,7 @@ namespace ProtectionLifecycle;
 // diagnostic caller supplies only an observer; neither path nor export is input.
 internal sealed class GpuInitLoader : IDisposable
 {
+    [JsonConverter(typeof(JsonStringEnumConverter<Phase>))]
     internal enum Phase { Load,Resolve,Invoke }
     internal sealed record Checkpoint(Phase Phase,bool Returned,int? Code,bool? InDriverImage=null);
 
@@ -32,9 +34,14 @@ internal sealed class GpuInitLoader : IDisposable
             if(address==IntPtr.Zero)throw Failed(Phase.Resolve,observe);
             if(!GetModuleHandleEx(6,address,out var containing))throw Failed(Phase.Resolve,observe); // FROM_ADDRESS | UNCHANGED_REFCOUNT.
             var owned=containing==module.DangerousGetHandle();
-            observe(new(Phase.Resolve,true,0,owned));
-            if(!owned)throw new InvalidDataException("CudaInitExportOutsideRequestedImage");
-            return new(module,Marshal.GetDelegateForFunctionPointer<Init>(address));
+            if(!owned)
+            {
+                observe(new(Phase.Resolve,true,0,false));
+                throw new InvalidDataException("CudaInitExportOutsideRequestedImage");
+            }
+            var init=Marshal.GetDelegateForFunctionPointer<Init>(address);
+            observe(new(Phase.Resolve,true,0,true));
+            return new(module,init);
         }
         catch{module.Dispose();throw;}
     }

@@ -7,6 +7,10 @@
 
 ## 2026-11-09 独立 CUDA 计算与退出取证
 
+SOURCE / BUILD / INTEGRATED(schema 20 原独立 CUDA 三阶段取证)。
+VERIFIED(普通 NVIDIA 计算、资源清理、真实回执长度及阶段负向检查)。
+NOT_RUN(schema 20 安装和受限三阶段运行)。
+
 SOURCE / BUILD / INTEGRATED(schema 19 固定独立 CUDA 载荷、专用回执及原 Job 回收)。
 VERIFIED(普通 Windows 上固定 NVIDIA CUDA 计算、清理、真实管道限额及限定协议拒绝)。
 VERIFIED(`2d759b66` 未激活更新，独立受限 CUDA 进入初始化前缀，原资源在异常退出后有序回收)。

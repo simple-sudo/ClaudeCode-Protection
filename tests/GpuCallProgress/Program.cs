@@ -28,7 +28,7 @@ if(args.Length==2 && args[0]=="host-loader" && args[1] is "default" or "deferred
     try{_=loader.Invoke(ObserveLoader);return 4;}
     catch(InvalidOperationException) when(steps.Count==6){return 0;}
 }
-if(args.Length==2 && args[0] is "fixture-child" or "native-child")
+if(args.Length==2 && args[0] is "fixture-child" or "native-child" or "split-native-child")
 {
     var childNonce=args[1];var childPid=Environment.ProcessId;
     if(args[0]=="fixture-child")
@@ -41,11 +41,12 @@ if(args.Length==2 && args[0] is "fixture-child" or "native-child")
     var plan=Activator.CreateInstance(library.GetType("ProtectionLifecycle.GpuProbePlan",true)!,hidden,null,new object[]{childNonce,1},null)!;
     var progress=Activator.CreateInstance(library.GetType("ProtectionLifecycle.GpuCallProgressWriter",true)!,hidden,null,new object[]{Console.Out,childNonce,childPid},null)!;
     var gpu=library.GetType("ProtectionLifecycle.GpuQualification",true)!;
-    var report=gpu.GetMethod("Compute",BindingFlags.Static|BindingFlags.NonPublic)!.Invoke(null,new[]{plan,"ORDINARY_HOST_GPU_PROGRESS_REFERENCE",progress})!;
+    var method=args[0]=="split-native-child"?"ComputeWithSplitInit":"Compute";
+    var report=gpu.GetMethod(method,BindingFlags.Static|BindingFlags.NonPublic)!.Invoke(null,new[]{plan,"ORDINARY_HOST_GPU_PROGRESS_REFERENCE",progress})!;
     Console.WriteLine(JsonSerializer.Serialize(report,report.GetType()));
     return (bool)gpu.GetMethod("Qualified",BindingFlags.Static|BindingFlags.NonPublic)!.Invoke(null,new[]{report})!?0:3;
 }
-if(args.Length!=1 || args[0] is not ("policy" or "host-compute"))return 64;
+if(args.Length!=1 || args[0] is not ("policy" or "host-compute" or "host-split-compute"))return 64;
 var nonce=new string('a',32);const int pid=42;var checks=0;
 void Check(bool condition,string name){checks++;if(!condition)throw new Exception("FAILED: "+name);}
 GpuCallProgressReader Reader(bool required=true){var value=new GpuCallProgressReader(nonce,required);value.Bind(pid);return value;}
@@ -56,9 +57,11 @@ async Task Reject(string input,string name)
     catch(Exception error)when(error is InvalidDataException or JsonException){checks++;return;}
     throw new Exception("ACCEPTED: "+name);
 }
-if(args[0]=="host-compute")
+if(args[0] is "host-compute" or "host-split-compute")
 {
-    using var child=Start("native-child",nonce);var reader=new GpuCallProgressReader(nonce,true);reader.Bind(child.Id);
+    var split=args[0]=="host-split-compute";
+    using var child=Start(split?"split-native-child":"native-child",nonce);
+    var reader=new GpuCallProgressReader(nonce,true,splitInit:split);reader.Bind(child.Id);
     var text=child.StandardOutput.ReadToEndAsync();var errors=child.StandardError.ReadToEndAsync();
     if(!child.WaitForExit(20000)){Console.Error.WriteLine("HOST_GPU_REFERENCE_STILL_RUNNING_ORIGINAL_HANDLE_HELD");child.WaitForExit();}
     var captured=await text;
@@ -68,12 +71,14 @@ if(args[0]=="host-compute")
     // Preserve the actual native return/cleanup evidence before assertions.
     Console.WriteLine(JsonSerializer.Serialize(new{Scope="ORDINARY_HOST_REAL_CUDA_1KIB_256_ELEMENTS_AND_PROGRESS_PIPE",Checks=4,
         ChildPid=child.Id,ChildExit=child.ExitCode,StderrLength=stderr.Length,CaptureBytes=System.Text.Encoding.UTF8.GetByteCount(captured),
-        FinalReport=final.RootElement,LastReportedCall=last,
+        FinalReport=final.RootElement,LastReportedCall=last,LastInit=reader.InitSnapshot(),
         LpacExecuted=false,OriginalOwnerExecuted=false,SystemPolicyChanged=false}));
     Check(child.ExitCode==0 && stderr.Length==0,"host process completion");
     Check(root.GetProperty("ComputeMatched").GetBoolean() && root.GetProperty("ResourceCleanupSucceeded").GetBoolean(),"real kernel and owned cleanup");
     Check(root.GetProperty("AllocatedBytes").GetInt32()==1024 && root.GetProperty("Elements").GetInt32()==256,"fixed allocation");
     Check(root.GetProperty("Steps").GetArrayLength()==16 && reader.ReportsCompleteSuccessfulSequence && last is {Sequence:32,ApiIndex:15,Phase:"RETURNED",Code:0},"all native call boundaries transported");
+    if(split)Check(Encoding.UTF8.GetByteCount(captured)<=8192 && reader.InitSnapshot() is
+        {Phase:GpuInitLoader.Phase.Invoke,Returned:true,Code:0},"split init succeeded within the product capture limit");
     Console.WriteLine(JsonSerializer.Serialize(new{Scope="ORDINARY_HOST_REAL_CUDA_REFERENCE_ASSERTIONS",Passed=true,Checks=checks}));return 0;
 }
 var full=new StringWriter();var emitter=new GpuCallProgressWriter(full,nonce,pid);
@@ -129,10 +134,32 @@ var fixtureReport=JsonSerializer.Serialize(new{SchemaVersion=1,Pid=pid,Nonce=non
     AllocatedBytes=1024,Elements=256,ResultSHA256=Convert.ToHexString(SHA256.HashData(payload)),ComputeMatched=true,ResourceCleanupSucceeded=true,
     Steps=GpuCallProgressReader.Stages.Select(stage=>new{Stage=stage,Result=0}).ToArray(),FailureType=(string?)null});
 var transcript=full.ToString().Replace(Final(nonce,pid),fixtureReport,StringComparison.Ordinal);
-Check(Observe(transcript).GetProperty("ComputationQualified").GetBoolean(),"bound completed capture accepted");
-Check(!Observe(transcript,3).GetProperty("ComputationQualified").GetBoolean(),"nonzero exit disqualifies completed capture");
-Check(!Observe(transcript,error:"extra").GetProperty("ComputationQualified").GetBoolean(),"nonempty stderr disqualifies completed capture");
-Check(Observe(transcript.Replace(scope,"ORDINARY",StringComparison.Ordinal)).GetProperty("Status").GetString()=="REPORT_BINDING_REFUSED","foreign scope refused");
+var initFrames=new StringWriter{NewLine="\n"};
+var initEmitter=new GpuCallProgressWriter(initFrames,nonce,pid);
+foreach(var phase in Enum.GetValues<GpuInitLoader.Phase>())
+{
+    initEmitter.EmitInit(new(phase,false,null));
+    initEmitter.EmitInit(new(phase,true,0,phase==GpuInitLoader.Phase.Resolve?true:null));
+}
+var splitFrames=initFrames.ToString();
+var firstNewline=transcript.IndexOf('\n')+1;
+var splitTranscript=transcript.Insert(firstNewline,splitFrames);
+Check(Observe(splitTranscript).GetProperty("ComputationQualified").GetBoolean(),"bound completed split capture accepted");
+Check(!Observe(transcript).GetProperty("ComputationQualified").GetBoolean(),"missing split init cannot qualify");
+Check(!Observe(splitTranscript.Replace("\"Phase\":2,\"Returned\":true,\"Code\":0","\"Phase\":2,\"Returned\":true,\"Code\":1",StringComparison.Ordinal))
+    .GetProperty("ComputationQualified").GetBoolean(),"disagreeing initializer result refused");
+var initPartial=Observe(Frame(1,0,0)+string.Join('\n',splitFrames.Split('\n').Take(5))+"\n{\"Kind\":",0xc0000005);
+Check(initPartial.GetProperty("Status").GetString()=="BOUND_PROGRESS_ONLY" &&
+    initPartial.GetProperty("LastInit").GetProperty("Phase").GetString()=="Invoke" &&
+    !initPartial.GetProperty("LastInit").GetProperty("Returned").GetBoolean(),"torn capture retains entered driver call");
+Check(Observe(Frame(1,0,0)+splitFrames.Replace(nonce,new string('c',32),StringComparison.Ordinal),3).GetProperty("Status").GetString()
+    =="CAPTURE_PROTOCOL_REFUSED","foreign init checkpoints refused");
+Check(Observe(splitFrames+transcript).GetProperty("Status").GetString()=="CAPTURE_PROTOCOL_REFUSED","init checkpoints outside first call refused");
+Check(Observe(splitTranscript.Replace("\"InDriverImage\":true","\"InDriverImage\":false",StringComparison.Ordinal)).GetProperty("Status").GetString()
+    =="CAPTURE_PROTOCOL_REFUSED","invoke after foreign module address refused");
+Check(!Observe(splitTranscript,3).GetProperty("ComputationQualified").GetBoolean(),"nonzero exit disqualifies completed capture");
+Check(!Observe(splitTranscript,error:"extra").GetProperty("ComputationQualified").GetBoolean(),"nonempty stderr disqualifies completed capture");
+Check(Observe(splitTranscript.Replace(scope,"ORDINARY",StringComparison.Ordinal)).GetProperty("Status").GetString()=="REPORT_BINDING_REFUSED","foreign scope refused");
 Check(Observe(Frame(1,0,0),3).GetProperty("Status").GetString()=="BOUND_PROGRESS_ONLY","bound partial progress retained without success");
 Check(Observe(transcript,overflow:true).GetProperty("Status").GetString()=="CAPTURE_OVERFLOW","truncated capture refused");
 using(var child=Start("fixture-child",nonce))

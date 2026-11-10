@@ -44,14 +44,21 @@ internal static class GpuQualification
         }
         """;
     internal static GpuChildReport Compute(GpuProbePlan plan,string scope,GpuCallProgressWriter? progress=null)
+        =>ComputeCore(plan,scope,progress,splitInit:false);
+
+    internal static GpuChildReport ComputeWithSplitInit(GpuProbePlan plan,string scope,GpuCallProgressWriter progress)
+        =>ComputeCore(plan,scope,progress,splitInit:true);
+
+    private static GpuChildReport ComputeCore(GpuProbePlan plan,string scope,GpuCallProgressWriter? progress,bool splitInit)
     {
         plan.Validate();var steps=new List<CudaStep>();IntPtr context=IntPtr.Zero,module=IntPtr.Zero,host=IntPtr.Zero,arg=IntPtr.Zero,args=IntPtr.Zero,ptx=IntPtr.Zero;
         ulong deviceMemory=0;int? driver=null;string? deviceName=null,hash=null,failure=null;var allocated=0;var matched=false;var clean=true;
         var previousCache=Environment.GetEnvironmentVariable("CUDA_CACHE_DISABLE");
+        GpuInitLoader? loader=null;
         try
         {
             Environment.SetEnvironmentVariable("CUDA_CACHE_DISABLE","1");
-            Check("cuInit",()=>Cuda.Init(0));int version=0;Check("cuDriverGetVersion",()=>Cuda.DriverVersion(out version));driver=version;
+            Check("cuInit",Initialize);int version=0;Check("cuDriverGetVersion",()=>Cuda.DriverVersion(out version));driver=version;
             int count=0;Check("cuDeviceGetCount",()=>Cuda.DeviceCount(out count));if(count<1)throw new InvalidOperationException("NoCudaDevice");
             int device=0;Check("cuDeviceGet",()=>Cuda.DeviceGet(out device,0));var name=new StringBuilder(128);Check("cuDeviceGetName",()=>Cuda.DeviceName(name,128,device));deviceName=name.ToString();
             Check("cuCtxCreate_v2",()=>Cuda.ContextCreate(out context,0,device));Check("cuMemAlloc_v2",()=>Cuda.Allocate(out deviceMemory,(nuint)Bytes));allocated=Bytes;
@@ -74,9 +81,17 @@ internal static class GpuQualification
             if(deviceMemory!=0)Release("cuMemFree_v2",()=>Cuda.Free(deviceMemory));
             if(context!=IntPtr.Zero)Release("cuCtxDestroy_v2",()=>Cuda.ContextDestroy(context));
             foreach(var pointer in new[]{host,arg,args,ptx})if(pointer!=IntPtr.Zero)Marshal.FreeHGlobal(pointer);
+            loader?.Dispose();
             Environment.SetEnvironmentVariable("CUDA_CACHE_DISABLE",previousCache);
         }
         return new(1,Environment.ProcessId,plan.Nonce,scope,driver,deviceName,allocated,Count,hash,matched,clean,steps.ToArray(),failure);
+        int Initialize()
+        {
+            if(!splitInit)return Cuda.Init(0);
+            var report=progress!.EmitInit;
+            loader=GpuInitLoader.Open(report);
+            return loader.Invoke(report);
+        }
         bool Notify(string stage,int phase,int? code)
         {try{progress?.Emit(Array.IndexOf(GpuCallProgressReader.Stages,stage),phase,code);return true;}catch{failure??="GpuProgressWriteFailed";return false;}}
         int Call(string stage,Func<int> call,bool cleanup)

@@ -540,6 +540,8 @@ public static class BootstrapInstaller
         private const string ReviewedRouteManifest="B534E42F40754606E8DAD848ADB8D87A46C4DA8E59E985147AC05834F98845FA";
         private const string IndependentGitRelease="beab4874ba3341f2aabb3d64f2e13bc0";
         private const string IndependentGitManifest="721F5DE2DC86BFEB6AD6834C1ED05810EFC710400D63E4BF31D3395F6BB1807D";
+        private const string IndependentCudaRelease="2d759b660b2b4a7aacdc90a9021134ae";
+        private const string IndependentCudaManifest="97AAB25AEB74A7B3E8898647D86C4DF86534DFBB2E6160F5DBB0203A501D5990";
         internal PinnedInactiveUpdateLease(ProtectedState state,BootstrapApproval approval,VerifiedVersion prior,ReviewedPackage next,Action<string>? reportFailureStage)
         {
             this.state=state;this.approval=approval;this.prior=prior;this.next=next;this.reportFailureStage=reportFailureStage;
@@ -563,6 +565,8 @@ public static class BootstrapInstaller
                 throw WfpNative.Contract("ReviewedRoutePredecessorRequiresIndependentGitPackage");
             if(prior.Package.Release==IndependentGitRelease && next.SchemaVersion!=PackageAssetCatalog.SessionZeroCudaSchema)
                 throw WfpNative.Contract("IndependentGitPredecessorRequiresIndependentCudaPackage");
+            if(prior.Package.Release==IndependentCudaRelease && next.SchemaVersion!=PackageAssetCatalog.SessionZeroCudaSplitInitSchema)
+                throw WfpNative.Contract("IndependentCudaPredecessorRequiresSplitInitPackage");
             AssertNoOwnedProcesses();
         }
         // Pure selection check used by the actual constructor and ordinary
@@ -583,6 +587,7 @@ public static class BootstrapInstaller
                 (priorRelease==NetworkSurveyRelease && priorManifest==NetworkSurveyManifest) ||
                 (priorRelease==ReviewedRouteRelease && priorManifest==ReviewedRouteManifest) ||
                 (priorRelease==IndependentGitRelease && priorManifest==IndependentGitManifest) ||
+                (priorRelease==IndependentCudaRelease && priorManifest==IndependentCudaManifest) ||
                 // The first-load branch diagnostic closed the original Job and creator resources.
                 (priorRelease=="9455e98cf5da489daf88964e0daa6b52" &&
                     priorManifest=="EC2E00DA29027F8FE426995AAD19C050D23A8998FEA9F7E7D6596668F4A58C41") ||
