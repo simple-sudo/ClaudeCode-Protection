@@ -42,6 +42,21 @@ SHA-256 `02031F7B77353787B5024A389E790C9FABAF8F967B52D59CA4881959188E99ED`。
 同目录 `windows-fault-events.json` SHA-256 `9F63270CAA1AAB50FA546DF0BDD47C989D7299FE9B36A73D841AC64AAC92AC6E`。
 未重试，未改驱动、AV、外网或正式 Claude。正常受限 CUDA、GPU 标识跨来源及 PyTorch 仍未验收。
 
+### 拆分 DLL 加载、导出与调用
+
+原帧从托管 P/Invoke 包装前发出。新增固定 System32 `nvcuda.dll` 加载、`cuInit`
+导出解析、地址归属校验和一次 `cuInit(0)` 调用，各阶段分别报告进入与返回，不公开
+指针。普通 Windows 的两个独立进程分别在默认设置和仅进程内显式关闭 JIT 库预加载
+设置下通过；未测此设置是否改变了实际加载的模块。调用返回均为 0，第二次调用被
+同一控制器拒绝。依据：[NVIDIA CUDA 初始化接口](https://docs.nvidia.com/cuda/cuda-driver-api/cuda_driver_api/group__CUDA__INITIALIZE.html)。
+
+`work/session-zero-gpu-capture-20261109-01/ordinary-loader-split/` 的
+`product-loader-default.jsonl` SHA-256 `0CB2CEB3D195DCBEC30C8CC8F2F7D8725B701EEEAC11FCB5A607E00CE5A5F479`，
+`product-loader-deferred-jit.jsonl` SHA-256 `EC685B5FB6C49C4AEA13A907E05A88A88BEABA3F2257960B51EE24E793E3A0C8`。
+SOURCE / BUILD / VERIFIED(普通固定拆分观察)。尚未接入受限载荷，无法推断受限
+故障位置或修复。后续通过原 Job 回收后的有界回执带回三个阶段，必要时复用仅原根
+进程的 Windows 调试观察以定位异常模块；不改变驱动权限。
+
 ## 2026-11-06 610b正常真实参考已验证
 
 经本人批准73AC9CC7…，安装/原daily/原资格owner/指定新记录reader全终态0。现装

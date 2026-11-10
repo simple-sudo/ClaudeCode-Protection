@@ -4,6 +4,8 @@
 零能力 LPAC 与固定工作区的启动检查。首帧记录即将调用 `cuInit`，没有返回帧，
 进程以 `0xC0000005` 退出。故障尚不能区分驱动 DLL 加载、导出解析或函数体。
 原 Job 有序归零，窗口、profile、工作区和两项服务回收。该授权已消耗，GPU 仍 FAIL。
+已用普通 Windows 实测拆分 DLL 加载、导出解析和 `cuInit` 三阶段，三步成功；拆分探针
+尚未接入独立受限链。该对照没有改变产品或驱动设置。
 [受限 CUDA 实机结果](GPU-HOST-REFERENCE.md#受限-cuda-首次初始化故障)
 
 2026-11-09，schema 19 将固定 CUDA 计算接入原独立 LocalService/LPAC、私有桌面、

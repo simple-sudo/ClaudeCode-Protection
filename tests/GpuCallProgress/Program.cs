@@ -8,6 +8,26 @@ using ProtectionLifecycle;
 
 using var identity=WindowsIdentity.GetCurrent();
 if(new WindowsPrincipal(identity).IsInRole(WindowsBuiltInRole.Administrator))throw new InvalidOperationException("Ordinary context required");
+if(args.Length==2 && args[0]=="host-loader" && args[1] is "default" or "deferred-jit")
+{
+    var optOut=args[1]=="deferred-jit";
+    Environment.SetEnvironmentVariable("CUDA_FORCE_PRELOAD_LIBRARIES",optOut?"0":null);
+    var steps=new List<GpuInitLoader.Checkpoint>();
+    void ObserveLoader(GpuInitLoader.Checkpoint step)
+    {
+        steps.Add(step);
+        Console.WriteLine(JsonSerializer.Serialize(new{Actor="ORDINARY_REFERENCE",Phase=step.Phase.ToString(),step.Returned,step.Code,
+            step.InDriverImage,ProcessLocalPreloadOptOut=optOut}));
+        Console.Out.Flush();
+    }
+    using var loader=GpuInitLoader.Open(ObserveLoader);
+    if(loader.Invoke(ObserveLoader)!=0 || !steps.SequenceEqual(new GpuInitLoader.Checkpoint[]{
+        new(GpuInitLoader.Phase.Load,false,null),new(GpuInitLoader.Phase.Load,true,0),
+        new(GpuInitLoader.Phase.Resolve,false,null),new(GpuInitLoader.Phase.Resolve,true,0,true),
+        new(GpuInitLoader.Phase.Invoke,false,null),new(GpuInitLoader.Phase.Invoke,true,0)}))return 3;
+    try{_=loader.Invoke(ObserveLoader);return 4;}
+    catch(InvalidOperationException) when(steps.Count==6){return 0;}
+}
 if(args.Length==2 && args[0] is "fixture-child" or "native-child")
 {
     var childNonce=args[1];var childPid=Environment.ProcessId;

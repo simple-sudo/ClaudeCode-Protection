@@ -11,6 +11,7 @@ SOURCE / BUILD / INTEGRATED(schema 19 固定独立 CUDA 载荷、专用回执及
 VERIFIED(普通 Windows 上固定 NVIDIA CUDA 计算、清理、真实管道限额及限定协议拒绝)。
 VERIFIED(`2d759b66` 未激活更新，独立受限 CUDA 进入初始化前缀，原资源在异常退出后有序回收)。
 FAIL(受限 CUDA 计算，`0xC0000005`，无返回帧)。UNKNOWN(确切故障模块、指令、访问类型)。
+VERIFIED(普通固定 DLL 加载、导出解析、归属检查和一次初始化的独立回读)。
 NOT_RUN(GPU 身份隔离、监督器主动故障停止和正式 Claude)。
 [证据](GPU-HOST-REFERENCE.md#独立链的固定-cuda-计算与退出取证)
 

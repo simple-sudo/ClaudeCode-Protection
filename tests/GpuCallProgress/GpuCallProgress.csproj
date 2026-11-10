@@ -5,7 +5,7 @@
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="Program.cs;../../src/ProtectionLifecycle/GpuCallProgress.cs" />
+    <Compile Include="Program.cs;../../src/ProtectionLifecycle/GpuCallProgress.cs;../../src/ProtectionLifecycle/GpuInitLoader.cs" />
     <ProjectReference Include="../../src/ProtectionLifecycle/ProtectionLifecycle.csproj" />
   </ItemGroup>
 </Project>
