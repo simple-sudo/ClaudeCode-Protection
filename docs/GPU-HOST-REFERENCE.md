@@ -97,6 +97,18 @@ System32 驱动相符，且指令位于映像范围内时，才给出 `nvcuda.dl
 `host-access-cuda-final.log` SHA-256 `79E6FE382322EB1E78A2C20BFAF17A996FC2EE6E8CF8FF0C1F8D6323F1B1E136`。
 受限原根进程的附加、异常指令和实际回收待测。
 
+### 受限访问异常实机结果
+
+本人批准 `D6A4667E2D14…` 并确认一次 UAC。`2643fc0e` 更新到 `f03ee10c`，
+保持 INACTIVE。Broker 成功附加到原根进程并核对 System32 `nvcuda.dll` 映射。
+`cuInit` 调用进入后未返回，首次异常为低地址写入，故障指令超出该已核验映像范围。
+观察器未收到末次机会访问异常事件，原进程退出 `0xC0000005`，调试退出事件正常继续。
+具体故障模块、指令偏移及导致低地址写入的上游条件仍 UNKNOWN。
+
+原 Job 停止前隔离且最终归零，私有窗口、profile、工作区闭合，普通 SCM 复核两项
+服务缺席。`work/session-zero-cuda-access-trace-20261109-01/receipt.json` SHA-256
+`BC8EA54736072A3570E8B3112E19AAB1D2C299C2A876F3ECF3A7A766074E9BC5`。
+
 ## 2026-11-06 610b正常真实参考已验证
 
 经本人批准73AC9CC7…，安装/原daily/原资格owner/指定新记录reader全终态0。现装

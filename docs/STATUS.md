@@ -10,6 +10,9 @@
 schema 21 限定原根进程访问异常观察，普通异常和真实驱动映射对照通过。
 [观察边界与对照](GPU-HOST-REFERENCE.md#cuda-访问异常的原根进程观察)
 
+`f03ee10c` 实机观察到首次低地址写入异常，原 Job 和服务完整回收。
+[受限异常事件](GPU-HOST-REFERENCE.md#受限访问异常实机结果)
+
 schema 20 接入三阶段观察。普通完整计算及回执边界通过。
 [拆分观察](GPU-HOST-REFERENCE.md#原受限链的三阶段观察)
 

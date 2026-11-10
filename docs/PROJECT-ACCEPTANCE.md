@@ -9,7 +9,8 @@
 
 SOURCE / BUILD / INTEGRATED(schema 21 原根进程访问异常观察)。
 VERIFIED(普通自有进程异常事件及真实普通 CUDA 映射与计算)。
-NOT_RUN(schema 21 安装及受限故障取证)。
+VERIFIED(`f03ee10c` 未激活更新，受限根进程附加、首次低地址写入异常、原调试退出和回收)。
+FAIL(受限计算，`0xC0000005`)。UNKNOWN(故障指令实际模块与偏移)。
 
 SOURCE / BUILD / INTEGRATED(schema 20 原独立 CUDA 三阶段取证)。
 VERIFIED(普通 NVIDIA 计算、资源清理、真实回执长度及阶段负向检查)。
