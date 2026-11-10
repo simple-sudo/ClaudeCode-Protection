@@ -246,7 +246,13 @@ schema 27 复用原观察者和四个硬件断点槽。进入已核对的调用�
 不读取目标内存。普通 Windows 自有载荷观察 65 条边、返回 0、基址非空，真实 1 KiB
 计算与退出成功。证据 `work/session-zero-cuda-helper-path-20261110-01/host-cuda-helper-path.log`
 SHA-256 `0379397D79D63BDE4D1792943B50850E8BD3783B13BF0C387C784C4594FB1273`。
-受限对照尚未执行。
+`c09e706b` 在单次批准 `EB1E8C4F5008…` 后更新并保持 INACTIVE。受限载荷实际
+观察 16 条边，`0x207D64` 间接调用后的非零分支 `0x207D6E` 跳到 `0x20844F`，
+辅助函数返回 `999`。静态指令显示该分支前将调用返回码保留到辅助函数返回。
+最终基址为空，精确映像在 `0x3A062E` 写入 `0x293C`，退出 `0xC0000005`。
+双侧 WDDM 四项匹配，原 Job、profile、私有窗口、工作区和两项服务均回收。
+回执 `work/session-zero-cuda-helper-path-20261110-01/receipt.json`
+SHA-256 `74CACEDEB0B5FB2B2A822F1BF561E9B043706550E871BAB77CBA20BA404A3EAE`。
 
 ## 2026-11-06 610b正常真实参考已验证
 
