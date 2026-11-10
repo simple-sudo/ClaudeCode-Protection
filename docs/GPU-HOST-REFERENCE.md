@@ -330,6 +330,17 @@ SHA-256 `82FFAA5D4F91067B693EB6225E635521B551CE47175281FE91C7B9778F550079`。
 外层回执 `work/session-zero-cuda-graphics-root-20261110-01/receipt.json`
 SHA-256 `46E4A4A9B1B9589DD878C51E0BEFAEA30EE2FAD02E5367B68BC56F8B898E992F`。
 
+同机同次启动的普通可信参考把实际 CUDA UUID V1/V2 与 NVML UUID 唯一匹配，CUDA
+LUID 与四个 WDDM 项中的一个匹配，NVML PCI 地址与 PnP NVIDIA 设备唯一匹配。NVML
+序列号不可用。首份原始记录因本地化位置格式及带括号的不可用标记，初步的 PnP/序列号
+分类有误。原记录保留，结论以非本地化 PnP 数值属性及修正状态分类为准。
+原值仅留本机 `trusted-cuda-wddm-content.json`、`trusted-gpu-cross-source-content.json`
+和 `trusted-gpu-pci-property-join.json`，后一证据 SHA-256
+`33933C9DDFB04640B857963D53F0C2E74D6D9B083C1E47547920DCEC05EA8B34`。
+已知关联可将同次启动的 WDDM 线索连接到可信侧稳定 GPU UUID 和 PnP 设备，但受限进程
+直接取得 CUDA UUID、NVML UUID 或 PnP 设备内容的能力仍待实测。
+[Windows PCI 地址属性](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wudfwdm/ne-wudfwdm-device_registry_property)
+
 ## 2026-11-06 610b正常真实参考已验证
 
 经本人批准73AC9CC7…，安装/原daily/原资格owner/指定新记录reader全终态0。现装
