@@ -238,6 +238,8 @@ public static partial class InstalledBroker
         =>WithCurrentInstallation(OfflineConsoleQualification.RunStartupWitness);
     public static (int ExitCode,string Report) InspectWinsockReadAccess()=>WithCurrentInstallation((_,state,_)=>SessionWinsockReadAccess.Inspect(state),forManifestAccessRecovery:true);
     public static (int ExitCode,string Report) RecoverWinsockReadAccess()=>WithCurrentInstallation((_,state,_)=>SessionWinsockReadAccess.Recover(state),forManifestAccessRecovery:true);
+    public static (int ExitCode,string Report) InspectGraphicsDriversReadAccess()=>WithCurrentInstallation((_,state,_)=>SessionWinsockReadAccess.Inspect(state,graphicsDrivers:true),forManifestAccessRecovery:true);
+    public static (int ExitCode,string Report) RecoverGraphicsDriversReadAccess()=>WithCurrentInstallation((_,state,_)=>SessionWinsockReadAccess.Recover(state,graphicsDrivers:true),forManifestAccessRecovery:true);
     public static int RunGatewayQualificationCanary()=>AtomicChild.RunGatewayQualificationCanary();
     public static int RunInternetClientGatewayQualificationCanary()=>AtomicChild.RunInternetClientGatewayQualificationCanary();
     public static int RunZeroCapabilityComparisonCanary()=>AtomicChild.RunZeroCapabilityComparisonCanary();

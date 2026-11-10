@@ -7,8 +7,14 @@
 
 ## 2026-11-09 独立 CUDA 计算与退出取证
 
+SOURCE / BUILD / INTEGRATED(schema 29 原 Broker 单键临时只读与专用恢复)。
+VERIFIED(普通真实根键内容、普通子键权限拒绝、精确规则及非授权记录拒绝)。
+NOT_RUN(受限单键授权、CUDA 初始化、GPU 计算、系统 ACL 恢复)。
+
 SOURCE / BUILD / INTEGRATED(schema 28 首次固定回调的原生返回码)。
-VERIFIED(普通实机实际注册表打开、值查询、驱动回调、真实计算)。NOT_RUN(schema 28 受限对照)。
+VERIFIED(普通实机实际注册表打开、值查询、驱动回调、真实计算)。
+VERIFIED(`cff88589` 未激活更新、原驱动注册表打开返回 Win32 5、原资源回收)。
+FAIL(受限 `GraphicsDrivers` 读取拒绝，`cuInit` 仍异常退出)。NOT_RUN(单键只读修复实机)。
 
 SOURCE / BUILD / INTEGRATED(schema 27 固定 CUDA 辅助函数分支与返回码)。
 VERIFIED(普通实机 65 条边、返回 0、真实计算和有序退出)。

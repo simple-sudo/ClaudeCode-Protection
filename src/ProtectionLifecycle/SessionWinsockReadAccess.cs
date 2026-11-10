@@ -19,6 +19,7 @@ internal sealed class SessionWinsockReadAccess : IDisposable
     internal const string IntentPrefix="winsock-access-intent-";
     private const string ClosedPrefix="winsock-access-closed-";
     private const int MaxIntentBytes=262144;
+    private const int GraphicsDriversSchema=4;
     private readonly ProtectedState state;
     private readonly WinsockReadIntent intent;
     private readonly SafeRegistryHandle[] keys;
@@ -66,6 +67,8 @@ internal sealed class SessionWinsockReadAccess : IDisposable
         using var view=View(key);
         var names=view.GetValueNames().Order(StringComparer.Ordinal).ToArray();
         var children=view.GetSubKeyNames().Order(StringComparer.Ordinal).ToArray();
+        if(path.EndsWith(@"\Control\GraphicsDrivers",StringComparison.Ordinal))
+            return GraphicsDriversContent(view,path,names,children);
         if(names.Length>16 || children.Length>16 || names.Any(n=>n.Length>64))throw WfpNative.Contract("WinsockCatalogInventoryBounds");
         string[] allowed;
         string[] expectedChildren;
@@ -151,6 +154,72 @@ internal sealed class SessionWinsockReadAccess : IDisposable
         }
         return Convert.ToHexString(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(new{Children=children,Values=values})));
     }
+
+    private static string GraphicsDriversPath(int controlSet)
+    {
+        if(controlSet is <1 or >999)throw WfpNative.Contract("GraphicsDriversControlSetRefused");
+        return @"SYSTEM\ControlSet"+controlSet.ToString("D3",System.Globalization.CultureInfo.InvariantCulture)+@"\Control\GraphicsDrivers";
+    }
+
+    private static int[] GraphicsDriversValues(RegistryKey view,string[] names,string[] children)
+    {
+        string[] expectedValues=["DxgKrnlVersion","HwSchMode","MinDxgKrnlVersion","PlatformSupportMiracast","TdrDelay","TdrLevel"];
+        string[] expectedChildren=["AdditionalModeLists","BasicDisplay","BlockList","Configuration","Connectivity","DCI",
+            "FeatureSetUsage","InternalMonEdid","MonitorDataStore","ScaleFactors","TdrWatch","UseNewKey"];
+        if(!names.SequenceEqual(expectedValues,StringComparer.Ordinal) || !children.SequenceEqual(expectedChildren,StringComparer.Ordinal))
+            throw WfpNative.Contract("GraphicsDriversInventoryChanged");
+        var values=new int[names.Length];
+        for(var i=0;i<names.Length;i++)
+        {
+            if(view.GetValueKind(names[i])!=RegistryValueKind.DWord || view.GetValue(names[i]) is not int value)
+                throw WfpNative.Contract("GraphicsDriversDwordRequired");
+            values[i]=value;
+        }
+        return values;
+    }
+
+    private static string GraphicsDriversContent(RegistryKey view,string path,string[] names,string[] children)
+    {
+        var values=GraphicsDriversValues(view,names,children);
+        var childSecurity=new string[children.Length];
+        for(var i=0;i<children.Length;i++)
+        {
+            using var child=Open(path+"\\"+children[i],false);
+            childSecurity[i]=SessionManifestReadAccess.ReadObjectSecurity(child);
+        }
+        return Convert.ToHexString(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(new{names,values,children,childSecurity})));
+    }
+
+    internal static string InspectGraphicsDriversMetadata()
+    {
+        var controlSet=CurrentControlSet();var path=GraphicsDriversPath(controlSet);
+        using var key=Open(path,false);
+        var original=SessionManifestReadAccess.ReadObjectSecurity(key);
+        _=GraphicsDriversGrant(original,"S-1-15-2-1-2-3-4-5-6-7");
+        using var view=View(key);
+        var names=view.GetValueNames().Order(StringComparer.Ordinal).ToArray();
+        var children=view.GetSubKeyNames().Order(StringComparer.Ordinal).ToArray();
+        var values=GraphicsDriversValues(view,names,children);
+        var childAclDenied=0;
+        foreach(var childName in children)
+        {
+            try
+            {
+                using var child=Open(path+"\\"+childName,false);
+                _=SessionManifestReadAccess.ReadObjectSecurity(child);
+            }
+            catch(Win32Exception ex)when(ex.NativeErrorCode==5){childAclDenied++;}
+        }
+        if(CurrentControlSet()!=controlSet)throw WfpNative.Contract("GraphicsDriversControlSetChanged");
+        return JsonSerializer.Serialize(new{Scope="FIXED_GRAPHICS_DRIVERS_METADATA",ValueCount=values.Length,ChildCount=children.Length,ChildAclDenied=childAclDenied,
+            SecuritySHA256=Convert.ToHexString(SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(original))),RegistryModified=false});
+    }
+
+    private static string GraphicsDriversGrant(string original,string packageSid)
+    {
+        WinsockRegistryScope.RequireSupportedRootSecurity(original);
+        return WinsockRegistryScope.AddReadAce(original,packageSid,WinsockRegistryScope.CatalogAccess);
+    }
     internal static string InspectCurrentMetadata()
         =>InspectMetadata(false);
     internal static string InspectTransportMetadata()
@@ -175,26 +244,42 @@ internal sealed class SessionWinsockReadAccess : IDisposable
     }
     internal static SessionWinsockReadAccess Prepare(ProtectedState state,VerifiedVersion version,OwnedKernelJob job,string sessionId,bool transports=false,bool providers=false)
     {
-        ProtectedState.RequireAdministrator();state.AssertHeld();version.AssertHeld(state);AssertNoPending(state);
         if(providers && !transports)throw WfpNative.Contract("WinsockProviderRequiresTransportScope");
+        return PrepareCore(state,version,job,sessionId,providers?3:transports?2:1);
+    }
+    internal static SessionWinsockReadAccess PrepareGraphicsDrivers(ProtectedState state,VerifiedVersion version,OwnedKernelJob job)
+    {
+        if(version.Package.SchemaVersion!=PackageAssetCatalog.SessionZeroCudaGraphicsReadSchema || job.SessionZeroCreatorSid is null)
+            throw WfpNative.Contract("GraphicsDriversAccessRequiresFixedCudaJob");
+        return PrepareCore(state,version,job,job.JobId,GraphicsDriversSchema);
+    }
+    private static SessionWinsockReadAccess PrepareCore(ProtectedState state,VerifiedVersion version,OwnedKernelJob job,string sessionId,int schema)
+    {
+        ProtectedState.RequireAdministrator();state.AssertHeld();version.AssertHeld(state);AssertNoPending(state);
         if(!job.AtomicAdmissionReserved)throw WfpNative.Contract("WinsockAccessRequiresOriginalAtomicJob");
         var controlSet=CurrentControlSet();using var package=new InstallationPackageSid(state);
         var opened=new List<SafeRegistryHandle>();var targets=new List<WinsockReadTarget>();
         try
         {
-            foreach(var target in providers?WinsockRegistryScope.ProviderTargets(controlSet):
-                transports?WinsockRegistryScope.TransportTargets(controlSet):WinsockRegistryScope.Targets(controlSet))
+            var scope=schema switch
+            {
+                GraphicsDriversSchema=>new[]{new WinsockRegistryScope.Target(GraphicsDriversPath(controlSet),WinsockRegistryScope.CatalogAccess)},
+                3=>WinsockRegistryScope.ProviderTargets(controlSet),
+                2=>WinsockRegistryScope.TransportTargets(controlSet),
+                _=>WinsockRegistryScope.Targets(controlSet)
+            };
+            foreach(var target in scope)
             {
                 var key=Open(target.Path,true);opened.Add(key);
                 var original=SessionManifestReadAccess.ReadObjectSecurity(key);
                 if(target.Path.Length==0)WinsockRegistryScope.RequireSupportedRootSecurity(original);
-                var granted=WinsockRegistryScope.AddReadAce(original,package.Value,target.Access);
+                var granted=schema==GraphicsDriversSchema?GraphicsDriversGrant(original,package.Value):WinsockRegistryScope.AddReadAce(original,package.Value,target.Access);
                 if(new RawSecurityDescriptor(granted).BinaryLength>SessionManifestReadAccess.MaxSecurityDescriptorBytes)
                     throw WfpNative.Contract("WinsockGrantedSecurityBounds");
                 targets.Add(new(target.Path,target.Access,Content(key,target.Path),original,granted));
             }
             if(CurrentControlSet()!=controlSet)throw WfpNative.Contract("WinsockControlSetChangedBeforeIntent");
-            var intent=new WinsockReadIntent(providers?3:transports?2:1,state.InstallationId,Identifiers.Hex32(sessionId),job.JobId,version.Package.Release,
+            var intent=new WinsockReadIntent(schema,state.InstallationId,Identifiers.Hex32(sessionId),job.JobId,version.Package.Release,
                 version.Package.ManifestHash,package.Value,controlSet,targets.ToArray());
             Validate(intent,state.InstallationId,package.Value);
             var bytes=JsonSerializer.SerializeToUtf8Bytes(intent);if(bytes.Length>MaxIntentBytes)throw WfpNative.Contract("WinsockIntentBounds");
@@ -249,6 +334,11 @@ internal sealed class SessionWinsockReadAccess : IDisposable
             throw WfpNative.Contract("WinsockRestoreRequiresOriginalJobZero");
         Restore(state,intent,IntentSHA256,keys);restored=true;
     }
+    internal void AssertGraphicsDriversBoundary()
+    {
+        if(intent.SchemaVersion!=GraphicsDriversSchema || !restored)throw WfpNative.Contract("GraphicsDriversRestoreNotVerified");
+        AssertContent();
+    }
     private static void Restore(ProtectedState state,WinsockReadIntent intent,string hash,SafeRegistryHandle[] keys)
     {
         ProtectedState.RequireAdministrator();state.AssertHeld();
@@ -262,26 +352,32 @@ internal sealed class SessionWinsockReadAccess : IDisposable
         for(var i=0;i<keys.Length;i++)if(Decide(i)=="REMOVE_EXACT_OWN_READ_GRANT")Write(keys[i],intent.Targets[i].OriginalSecurity);
         for(var i=0;i<keys.Length;i++)if(Read(i)!=intent.Targets[i].OriginalSecurity)throw WfpNative.Contract("WinsockOriginalSecurityNotRestored");
         state.WriteNew(ClosedPrefix+intent.SessionId+".json",JsonSerializer.SerializeToUtf8Bytes(new{SchemaVersion=1,state.InstallationId,
-            intent.SessionId,intent.JobId,IntentSHA256=hash,Status="EXACT_ORIGINAL_WINSOCK_DACLS_AFTER_CLOSED_JOB"}));
+            intent.SessionId,intent.JobId,IntentSHA256=hash,Status=ClosedStatus(intent)}));
     }
+    private static string ClosedStatus(WinsockReadIntent intent)=>intent.SchemaVersion==GraphicsDriversSchema?
+        "EXACT_ORIGINAL_GRAPHICS_DRIVERS_DACL_AFTER_CLOSED_JOB":"EXACT_ORIGINAL_WINSOCK_DACLS_AFTER_CLOSED_JOB";
     internal static void Validate(WinsockReadIntent intent,string installation,string package)
     {
-        if(intent.SchemaVersion is not (1 or 2 or 3) || intent.InstallationId!=installation || intent.PackageSid!=package ||
-            intent.Targets is null || intent.Targets.Length!=(intent.SchemaVersion==1?25:intent.SchemaVersion==2?28:31))
+        if(intent.SchemaVersion is not (1 or 2 or 3 or GraphicsDriversSchema) || intent.InstallationId!=installation || intent.PackageSid!=package ||
+            intent.Targets is null || intent.Targets.Length!=(intent.SchemaVersion switch {1=>25,2=>28,3=>31,_=>1}))
             throw WfpNative.Contract("WinsockIntentScopeMismatch");
         _=Identifiers.Hex32(intent.SessionId);_=Identifiers.Hex32(intent.JobId);_=Identifiers.Hex32(intent.Release);_=Identifiers.Hash(intent.ManifestSHA256);
         if(intent.Targets.Any(t=>t is null))throw WfpNative.Contract("WinsockIntentTargetMissing");
         var targets=intent.Targets.Select(t=>new WinsockRegistryScope.Target(t.Path,t.Access)).ToArray();
         if(intent.SchemaVersion==1)WinsockRegistryScope.RequireExactTargets(intent.ControlSet,targets);
         else if(intent.SchemaVersion==2)WinsockRegistryScope.RequireExactTransportTargets(intent.ControlSet,targets);
-        else WinsockRegistryScope.RequireExactProviderTargets(intent.ControlSet,targets);
+        else if(intent.SchemaVersion==3)WinsockRegistryScope.RequireExactProviderTargets(intent.ControlSet,targets);
+        else if(intent.SessionId!=intent.JobId || targets[0]!=new WinsockRegistryScope.Target(GraphicsDriversPath(intent.ControlSet),WinsockRegistryScope.CatalogAccess))
+            throw WfpNative.Contract("GraphicsDriversIntentScopeMismatch");
         foreach(var target in intent.Targets)
         {
             if(target.Path.Length==0)WinsockRegistryScope.RequireSupportedRootSecurity(target.OriginalSecurity);
             if(target.Path.Length==0?target.ContentSHA256 is not null:target.ContentSHA256 is null)
                 throw WfpNative.Contract("WinsockIntentContentScopeMismatch");
             if(target.ContentSHA256 is not null)_=Identifiers.Hash(target.ContentSHA256);
-            if(WinsockRegistryScope.AddReadAce(target.OriginalSecurity,package,target.Access)!=target.GrantedSecurity)
+            var granted=intent.SchemaVersion==GraphicsDriversSchema?GraphicsDriversGrant(target.OriginalSecurity,package):
+                WinsockRegistryScope.AddReadAce(target.OriginalSecurity,package,target.Access);
+            if(granted!=target.GrantedSecurity)
                 throw WfpNative.Contract("WinsockIntentGrantMismatch");
         }
     }
@@ -306,25 +402,28 @@ internal sealed class SessionWinsockReadAccess : IDisposable
             StrictJson.Fields(r,"SchemaVersion","InstallationId","SessionId","JobId","IntentSHA256","Status");
             if(r.GetProperty("SchemaVersion").GetInt32()!=1 || StrictJson.Text(r,"InstallationId")!=state.InstallationId ||
                 StrictJson.Text(r,"SessionId")!=intent.SessionId || StrictJson.Text(r,"JobId")!=intent.JobId || StrictJson.Text(r,"IntentSHA256")!=raw.SHA256 ||
-                StrictJson.Text(r,"Status")!="EXACT_ORIGINAL_WINSOCK_DACLS_AFTER_CLOSED_JOB")throw WfpNative.Contract("WinsockRestorationReceiptMismatch");
+                StrictJson.Text(r,"Status")!=ClosedStatus(intent))throw WfpNative.Contract("WinsockRestorationReceiptMismatch");
         }
         if(pending.Count>1)throw WfpNative.Contract("WinsockOverlappingIntentsRefused");return pending;
     }
     internal static void AssertNoPending(ProtectedState state)
     {if(Pending(state).Count!=0)throw WfpNative.Contract("WinsockAccessRequiresExplicitRecovery");}
-    internal static (int ExitCode,string Report) Inspect(ProtectedState state)
+    internal static (int ExitCode,string Report) Inspect(ProtectedState state,bool graphicsDrivers=false)
     {
-        var pending=Pending(state);
-        return(pending.Count==0?0:2,JsonSerializer.Serialize(new{SchemaVersion=1,Status=pending.Count==0?"NO_PENDING_WINSOCK_READ_ACCESS":"WINSOCK_READ_RECOVERY_DECISION_REQUIRED",
+        var pending=Pending(state).Where(item=>(item.Intent.SchemaVersion==GraphicsDriversSchema)==graphicsDrivers).ToArray();
+        var name=graphicsDrivers?"GRAPHICS_DRIVERS":"WINSOCK";
+        return(pending.Length==0?0:2,JsonSerializer.Serialize(new{SchemaVersion=1,Status=pending.Length==0?"NO_PENDING_"+name+"_READ_ACCESS":name+"_READ_RECOVERY_DECISION_REQUIRED",
             Pending=pending.Select(p=>new{p.Intent.SessionId,p.Intent.JobId,KeyCount=p.Intent.Targets.Length}),StateModified=false,RegistryModified=false}));
     }
-    internal static (int ExitCode,string Report) Recover(ProtectedState state)
+    internal static (int ExitCode,string Report) Recover(ProtectedState state,bool graphicsDrivers=false)
     {
         ProtectedState.RequireAdministrator();state.AssertHeld();InstallationLoopbackLease.AssertClosedHistory(state);
         foreach(var job in OwnedJobIntent.ReadAll(state))if(!SessionZeroCreatorRecovery.IsAdmissionResolved(state,job))throw WfpNative.Contract("WinsockRecoveryRequiresAllAdmissionsClosed");
         var plans=FencePlan.ReadAll(state);if(plans.Count==0)throw WfpNative.Contract("WinsockRecoveryRequiresQuarantine");
         foreach(var plan in plans){using var fence=PersistentFence.OpenExisting(state,plan.Data.FenceId);if(!fence.Observe().FullQuarantineObserved)throw WfpNative.Contract("WinsockRecoveryRequiresQuarantine");}
         var pending=Pending(state);
+        if(pending.Any(item=>(item.Intent.SchemaVersion==GraphicsDriversSchema)!=graphicsDrivers))
+            throw WfpNative.Contract("RegistryRecoveryRequiresMatchingScope");
         foreach(var item in pending)
         {
             var opened=new List<SafeRegistryHandle>();
@@ -332,7 +431,8 @@ internal sealed class SessionWinsockReadAccess : IDisposable
             finally{foreach(var key in opened)key.Dispose();}
         }
         AssertNoPending(state);
-        return(0,JsonSerializer.Serialize(new{SchemaVersion=1,Status="EXACT_WINSOCK_READ_ACCESS_RECOVERED",Count=pending.Count,JobCreated=false,ProcessCreated=false,NetworkPolicyModified=false}));
+        return(0,JsonSerializer.Serialize(new{SchemaVersion=1,Status=graphicsDrivers?"EXACT_GRAPHICS_DRIVERS_READ_ACCESS_RECOVERED":"EXACT_WINSOCK_READ_ACCESS_RECOVERED",
+            Count=pending.Count,JobCreated=false,ProcessCreated=false,NetworkPolicyModified=false}));
     }
     public void Dispose()
     {

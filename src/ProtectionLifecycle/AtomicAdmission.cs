@@ -831,7 +831,7 @@ internal sealed partial class AtomicChild : IDisposable
     }
     internal void ObserveCudaAccess(SessionZeroStartupBranchTrace.CudaAccessTrace trace,Action assertHealthy)
     {
-        if(!independentCuda || version.Package.SchemaVersion is not (PackageAssetCatalog.SessionZeroCudaDeferredPreloadSchema or PackageAssetCatalog.SessionZeroCudaInitializationTraceSchema or PackageAssetCatalog.SessionZeroCudaHelperPathSchema or PackageAssetCatalog.SessionZeroCudaRegistryCallsSchema) ||
+        if(!independentCuda || version.Package.SchemaVersion is not (PackageAssetCatalog.SessionZeroCudaDeferredPreloadSchema or PackageAssetCatalog.SessionZeroCudaInitializationTraceSchema or PackageAssetCatalog.SessionZeroCudaHelperPathSchema or PackageAssetCatalog.SessionZeroCudaRegistryCallsSchema or PackageAssetCatalog.SessionZeroCudaGraphicsReadSchema) ||
             disposed || !resumed || !job.ContainsProcess(process))
             throw WfpNative.Contract("CudaTraceRequiresResumedReviewedRoot");
         trace.Observe(process,Pid,initialThreadId,assertHealthy);

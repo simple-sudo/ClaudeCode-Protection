@@ -271,7 +271,27 @@ schema 28 在同一精确驱动、原根线程的实际 `0x207D64` 调用点启�
 均返回 0，固定 1 KiB 计算和退出成功。日志
 `work/session-zero-cuda-registry-calls-20261110-01/host-cuda-registry-calls.log`
 SHA-256 `A7ABBAEDFFC26D61D20DBAE5E8A2BADB2937FA1FD284A21D1C09E73C94E6FCE8`。
-未执行受限对照或注册表变更。
+`cff88589` 在单次批准 `A6621FF73C17…` 后更新并保持 INACTIVE。受限回调内打开
+`GraphicsDrivers` 返回 Win32 5，值查询和后续驱动子函数均未到达，外层回调返回 999。
+随后 `cuInit` 在精确驱动 `0x3A062E` 写入 `0x293C`，退出 `0xC0000005`。两侧 WDDM
+仍有四项完全匹配，原资源有序回收。本次为只读取证。回执
+`work/session-zero-cuda-registry-calls-20261110-01/receipt.json`
+SHA-256 `5E22272BAD68E3471BCE26B2F09EBA24D0B61D80D4FE9610753C80B7DFDEB7EE`。
+
+### CUDA 单键临时只读修复
+
+schema 29 在原自研 CUDA 载荷所属 Job 已预留、进程仍挂起时，为当前控制集的
+`GraphicsDrivers` 根键添加一条面向本安装精确包 SID 的非继承 `KEY_READ`。该权限
+包含查询根值、枚举直接子键名称、通知和读权限描述符。现行范围固定六个 DWORD
+名称和 12 个子键名称，写入前须完整核对全部直接子键的 ACL，持续验证根规则、内容和
+子键 ACL。原 Job 持久关闭归零后才恢复精确原 DACL。待恢复记录阻止后续运行，恢复
+仍须原 Job、隔离证据和独立维护决定。 [Windows 注册表权限](https://learn.microsoft.com/en-us/windows/win32/sysinfo/registry-key-security-and-access-rights)
+
+普通权限下读取实际根键和十个直接子键 ACL，`Configuration` 和 `Connectivity`
+返回 Win32 5。普通结果及六个畸形授权记录拒绝见
+`work/session-zero-cuda-graphics-read-20261110-01/graphics-drivers-read-policy.log`
+SHA-256 `50B1DDC66A3281B2216588A51A797FBC7C6DE71F4778F3E8FC9BDEFBB6EAAF13`。
+此修复限固定自研载荷，实际授权和恢复尚未运行。已经证实的 WDDM 标识关联继续单列 FAIL。
 
 ## 2026-11-06 610b正常真实参考已验证
 

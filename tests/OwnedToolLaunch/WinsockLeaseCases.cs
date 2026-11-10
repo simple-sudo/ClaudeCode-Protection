@@ -6,6 +6,43 @@ using System.Text.Json.Nodes;
 
 internal static class WinsockLeaseCases
 {
+    internal static void RunGraphicsDrivers(Assembly library)
+    {
+        var lease=library.GetType("ProtectionLifecycle.SessionWinsockReadAccess",true)!;
+        var intent=library.GetType("ProtectionLifecycle.WinsockReadIntent",true)!;
+        const BindingFlags hidden=BindingFlags.Static|BindingFlags.NonPublic;
+        const string package="S-1-15-2-1-2-3-4-5-6-7",original="O:SYD:AI(A;CIID;KA;;;SY)(A;CIID;KR;;;BU)";
+        object? Call(string method,params object?[] args)
+        {
+            try{return lease.GetMethod(method,hidden)!.Invoke(null,args);}
+            catch(TargetInvocationException e)when(e.InnerException is not null){ExceptionDispatchInfo.Capture(e.InnerException).Throw();throw;}
+        }
+        var granted=(string)Call("GraphicsDriversGrant",original,package)!;
+        var acl=new RawSecurityDescriptor(granted).DiscretionaryAcl!;
+        if(acl.Count!=3 || acl[0] is not CommonAce read || read.SecurityIdentifier.Value!=package ||
+            read.AceFlags!=AceFlags.None || read.AccessMask!=0x20019 || read.AceQualifier!=AceQualifier.AccessAllowed)
+            throw new InvalidDataException("GraphicsDrivers test ACE differs");
+        var id=new string('a',32);
+        var row=JsonSerializer.SerializeToNode(new{SchemaVersion=4,InstallationId=id,SessionId=id,JobId=id,Release=id,
+            ManifestSHA256=new string('A',64),PackageSid=package,ControlSet=1,Targets=new[]{new{
+                Path=@"SYSTEM\ControlSet001\Control\GraphicsDrivers",Access=0x20019,ContentSHA256=new string('B',64),
+                OriginalSecurity=original,GrantedSecurity=granted}}})!;
+        void Validate(JsonNode value)=>Call("Validate",JsonSerializer.Deserialize(value.ToJsonString(),intent)!,id,package);
+        Validate(row);
+        foreach(var change in new Action<JsonNode>[] {
+            j=>j["ControlSet"]=2,j=>j["JobId"]=new string('b',32),j=>j["Targets"]![0]!["Access"]=0xf003f,
+            j=>j["Targets"]![0]!["Path"]=@"SYSTEM\ControlSet001\Control\GraphicsDrivers\Configuration",
+            j=>j["Targets"]![0]!["ContentSHA256"]=null,j=>j["Targets"]![0]!["GrantedSecurity"]=original})
+        {
+            var changed=row.DeepClone();change(changed);
+            try{Validate(changed);}
+            catch(InvalidDataException){continue;}
+            throw new InvalidDataException("GraphicsDrivers malformed intent accepted");
+        }
+        Console.WriteLine(Call("InspectGraphicsDriversMetadata"));
+        Console.WriteLine("PASS exact package read, six invalid intents and ordinary read-only native GraphicsDrivers inventory");
+    }
+
     internal static void RunProviders(Assembly library,bool metadata)
     {
         var lease=library.GetType("ProtectionLifecycle.SessionWinsockReadAccess",true)!;

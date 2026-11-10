@@ -142,6 +142,8 @@ internal static class Program
                 "qualify-winsock-session-gateway" => ProtectionLifecycle.InstalledBroker.QualifyWinsockSessionGateway(),
                 "inspect-winsock-read-access" => ProtectionLifecycle.InstalledBroker.InspectWinsockReadAccess(),
                 "recover-winsock-read-access" => ProtectionLifecycle.InstalledBroker.RecoverWinsockReadAccess(),
+                "inspect-graphics-drivers-read-access" => ProtectionLifecycle.InstalledBroker.InspectGraphicsDriversReadAccess(),
+                "recover-graphics-drivers-read-access" => ProtectionLifecycle.InstalledBroker.RecoverGraphicsDriversReadAccess(),
                 "qualify-session-gateway" => ProtectionLifecycle.InstalledBroker.QualifySessionGateway(),
                 "qualify-toolchain" => ProtectionLifecycle.InstalledBroker.QualifyToolchain(),
                 "recover-session-resources" => ProtectionLifecycle.InstalledBroker.RecoverSessionResources(),
