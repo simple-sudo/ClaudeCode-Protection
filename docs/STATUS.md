@@ -7,6 +7,10 @@
 
 ## 2026-11-09 独立 CUDA 计算与退出取证
 
+`715535b1` 在 WDDM 准备返回 Win32 5 后有序回收。普通复现按 PID 重新打开
+失败后，schema 24 接入伪句柄读取和分段回执。
+[WDDM 受限失败与修正](GPU-HOST-REFERENCE.md#wddm-受限准备失败与修正)。
+
 `363bf089` 实机定位 `nvcuda64.dll+0x3A062E`，原资源有序回收。
 schema 23 普通真实 WDDM 与 CUDA 的适配器 LUID 唯一匹配。
 [映射模块实机结果](GPU-HOST-REFERENCE.md#映射模块实机结果)。

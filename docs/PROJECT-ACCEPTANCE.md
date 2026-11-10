@@ -7,9 +7,15 @@
 
 ## 2026-11-09 独立 CUDA 计算与退出取证
 
+SOURCE / BUILD / INTEGRATED(schema 24 当前进程伪句柄绑定和分段故障回执)。
+VERIFIED(普通自有进程按 PID 重开返回 5，伪句柄创建时间不变，真实 WDDM/CUDA 对照)。
+NOT_RUN(schema 24 受限运行)。
+
 SOURCE / BUILD / INTEGRATED(schema 23 原受限进程 WDDM 枚举、身份绑定及原值封存)。
 VERIFIED(普通真实 WDDM 四项、CUDA LUID 唯一匹配、句柄关闭和错误 PID 拒绝)。
-NOT_RUN(schema 23 受限执行)。
+VERIFIED(`715535b1` 未激活更新，受限进程调试终态和原资源回收)。
+FAIL(受限 WDDM 准备返回 Win32 5)。UNKNOWN(受限枚举状态、适配器交集)。
+NOT_RUN(schema 23 CUDA 调用)。
 
 SOURCE / BUILD / INTEGRATED(schema 22 原调试事件的映射模块和相对指令偏移)。
 VERIFIED(普通 Windows 已知模块及真实 NVIDIA 正向对照)。

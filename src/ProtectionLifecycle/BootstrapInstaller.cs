@@ -548,6 +548,8 @@ public static class BootstrapInstaller
         private const string CudaAccessTraceManifest="76676A1A182D5329F7607B6F502AEEF59A069F8F31FDC42FDB671B3E1F2C1D12";
         private const string CudaMappedFaultRelease="363bf089680b4327bd9069ecd1991a1a";
         private const string CudaMappedFaultManifest="4E731B9FF19C8D669016C1BE38EC7A2EA7814E4D20629C5E633B1854D8215304";
+        private const string CudaWddmRelease="715535b135324635a513c28012e5ff43";
+        private const string CudaWddmManifest="3252E016E56A6758D6D32584983BBF714433017CF20F64543D5FAF27352B7C37";
         internal PinnedInactiveUpdateLease(ProtectedState state,BootstrapApproval approval,VerifiedVersion prior,ReviewedPackage next,Action<string>? reportFailureStage)
         {
             this.state=state;this.approval=approval;this.prior=prior;this.next=next;this.reportFailureStage=reportFailureStage;
@@ -579,6 +581,8 @@ public static class BootstrapInstaller
                 throw WfpNative.Contract("CudaAccessTracePredecessorRequiresMappedFaultPackage");
             if(prior.Package.Release==CudaMappedFaultRelease && next.SchemaVersion!=PackageAssetCatalog.SessionZeroCudaWddmSchema)
                 throw WfpNative.Contract("CudaMappedFaultPredecessorRequiresWddmPackage");
+            if(prior.Package.Release==CudaWddmRelease && next.SchemaVersion!=PackageAssetCatalog.SessionZeroCudaWddmSelfHandleSchema)
+                throw WfpNative.Contract("CudaWddmPredecessorRequiresSelfHandlePackage");
             AssertNoOwnedProcesses();
         }
         // Pure selection check used by the actual constructor and ordinary
@@ -603,6 +607,7 @@ public static class BootstrapInstaller
                 (priorRelease==CudaSplitInitRelease && priorManifest==CudaSplitInitManifest) ||
                 (priorRelease==CudaAccessTraceRelease && priorManifest==CudaAccessTraceManifest) ||
                 (priorRelease==CudaMappedFaultRelease && priorManifest==CudaMappedFaultManifest) ||
+                (priorRelease==CudaWddmRelease && priorManifest==CudaWddmManifest) ||
                 // The first-load branch diagnostic closed the original Job and creator resources.
                 (priorRelease=="9455e98cf5da489daf88964e0daa6b52" &&
                     priorManifest=="EC2E00DA29027F8FE426995AAD19C050D23A8998FEA9F7E7D6596668F4A58C41") ||

@@ -1,5 +1,4 @@
 using System.Buffers.Binary;
-using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text.Json;
 
@@ -17,11 +16,18 @@ internal static class WddmAdapterProbe
     internal sealed record Summary(string ReceiptSHA256,int RestrictedSizeStatus,int? RestrictedReadStatus,uint? RestrictedCount,
         int TrustedSizeStatus,int? TrustedReadStatus,uint? TrustedCount,int SharedLuidCount,int RestrictedCloseFailures,int TrustedCloseFailures);
 
-    internal static Actor Capture(string job)
+    internal static long CurrentCreationTime()
     {
-        using var process=Process.GetCurrentProcess();
-        return new(1,Identifiers.Hex32(job),process.Id,process.StartTime.ToFileTimeUtc(),Read());
+        if(!GetProcessTimes(GetCurrentProcess(),out var created,out _,out _,out _))
+            throw WindowsPathSeal.Error("WddmReadCurrentCreationTime");
+        if(created<=0)throw WfpNative.Contract("WddmCurrentCreationTimeRefused");
+        return created;
     }
+
+    internal static Actor Capture(string job)=>CaptureWithCreationTime(job,CurrentCreationTime());
+
+    internal static Actor CaptureWithCreationTime(string job,long created)
+        =>new(1,Identifiers.Hex32(job),Environment.ProcessId,created,Read());
 
     internal static void Write(string workspace,Actor actor)
     {
@@ -128,6 +134,13 @@ internal static class WddmAdapterProbe
     private struct AdapterInfo {internal uint Handle,LuidLow;internal int LuidHigh;internal uint PresentSources,PrecisePresentRegions;}
     [StructLayout(LayoutKind.Sequential)]
     private struct CloseAdapter {internal uint Handle;}
+
+    [DllImport("kernel32.dll",ExactSpelling=true)]
+    private static extern IntPtr GetCurrentProcess();
+
+    [DllImport("kernel32.dll",ExactSpelling=true,SetLastError=true)]
+    [return:MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetProcessTimes(IntPtr process,out long created,out long exit,out long kernel,out long user);
 
     [DllImport("gdi32.dll",EntryPoint="D3DKMTEnumAdapters2",ExactSpelling=true)]
     [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]

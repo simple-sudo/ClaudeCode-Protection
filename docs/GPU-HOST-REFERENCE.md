@@ -152,6 +152,26 @@ schema 23 让原受限根进程在 CUDA 前调用固定的 Windows WDDM 适配�
 `923AB6F2BA6E23E6BFB1837CE6045ECF5C922075CEF765B3B511226C116272C5`。
 受限 WDDM 对照及对 CUDA 故障的解释尚待实测。
 
+### WDDM 受限准备失败与修正
+
+本人批准 `F32735B8637F…` 并确认一次 UAC。`363bf089` 更新到 `715535b1`，
+保持 INACTIVE。观察器附加并正常继续退出事件。载荷在 CUDA 开始前返回 Win32
+错误 5，进程退出 125。受限文件未生成，WDDM 状态和标识交集未知，本轮未进入
+`cuInit`。原 Job、工作区、profile、窗口和两项服务回收。回执
+`work/session-zero-cuda-wddm-reference-20261109-01/receipt.json` SHA-256
+`218311BB9C1D8E2F37F177C2E81627A35C47BB5466783ABA8D2916FA7B94395E`。
+
+原取证在调用 WDDM 前经托管 `Process.StartTime` 按 PID 重新取得查询句柄。
+普通自有进程对照仅拒绝其自身对象的重新打开，实际复现 Win32 错误 5。改用
+Windows 当前进程伪句柄后仍取得同一创建时间。schema 24 接入此路径，并为身份、
+枚举和写入分别提供回执阶段。由于 schema 23 未细分这些步骤，重新打开失败是
+有实证的解释，受限现场还未独立证实。
+[.NET 实现](https://github.com/dotnet/runtime/blob/main/src/libraries/System.Diagnostics.Process/src/System/Diagnostics/Process.Windows.cs)。
+
+普通对照 `work/session-zero-cuda-wddm-self-handle-20261109-01/self-creation-dacl.log`
+SHA-256 `760F15C96CC7A2BFD48386695BE4E1FB8595C7BF2208A37F5B0EB49E2AFF2BBE`。
+实际普通 WDDM/CUDA LUID 比对和资源回收亦通过。受限修正待测。
+
 ## 2026-11-06 610b正常真实参考已验证
 
 经本人批准73AC9CC7…，安装/原daily/原资格owner/指定新记录reader全终态0。现装

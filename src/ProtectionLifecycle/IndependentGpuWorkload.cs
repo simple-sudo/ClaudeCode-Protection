@@ -18,8 +18,6 @@ internal static class IndependentGpuWorkload
 
     internal static int RunChild(string job)
     {
-        SessionZeroStartupBranchTrace.CudaAccessTrace.WaitForObserver();
-        WddmAdapterProbe.Write(Environment.CurrentDirectory,WddmAdapterProbe.Capture(job));
         var plan=new GpuProbePlan(job,1);
         using var output=new StreamWriter(Console.OpenStandardOutput(),new UTF8Encoding(false,true)){NewLine="\n"};
         var progress=new GpuCallProgressWriter(output,job,Environment.ProcessId);

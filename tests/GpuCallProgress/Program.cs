@@ -1,6 +1,8 @@
 using System.Diagnostics;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using System.ComponentModel;
+using System.Security.AccessControl;
 using System.Security.Cryptography;
 using System.Security.Principal;
 using System.Text;
@@ -9,6 +11,25 @@ using ProtectionLifecycle;
 
 using var identity=WindowsIdentity.GetCurrent();
 if(new WindowsPrincipal(identity).IsInRole(WindowsBuiltInRole.Administrator))throw new InvalidOperationException("Ordinary context required");
+if(args is ["self-creation-dacl"])
+{
+    var read=typeof(InstalledBroker).Assembly.GetType("ProtectionLifecycle.WddmAdapterProbe",true)!
+        .GetMethod("CurrentCreationTime",BindingFlags.NonPublic|BindingFlags.Static)!;
+    var expected=(long)read.Invoke(null,null)!;
+    var sid=identity.User?.Value??throw new InvalidOperationException("No test user");
+    var security=new RawSecurityDescriptor($"D:(D;;0x1000;;;{sid})(A;;GA;;;{sid})");
+    var buffer=new byte[security.BinaryLength];
+    security.GetBinaryForm(buffer,0);
+    if(!SetKernelObjectSecurity(GetCurrentProcess(),4,buffer))throw new Win32Exception(Marshal.GetLastWin32Error());
+    int? error=null;
+    using var current=Process.GetCurrentProcess();
+    try{_=current.StartTime;}
+    catch(Win32Exception e){error=e.NativeErrorCode;}
+    var same=(long)read.Invoke(null,null)! == expected;
+    Console.WriteLine(JsonSerializer.Serialize(new{Scope="ORDINARY_OWN_PROCESS_QUERY_DACL_CONTROL",
+        ManagedReopenError=error,PseudoHandleMatches=same,RestrictedActorExecuted=false}));
+    return error==5 && same?0:3;
+}
 if(args.Length==2 && args[0]=="host-wddm")
 {
     const BindingFlags hidden=BindingFlags.NonPublic|BindingFlags.Static;
@@ -257,6 +278,11 @@ static Type TraceType()=>typeof(InstalledBroker).Assembly.GetType("ProtectionLif
 
 [DllImport("kernel32.dll",ExactSpelling=true)]
 static extern uint GetCurrentThreadId();
+[DllImport("kernel32.dll",ExactSpelling=true)]
+static extern IntPtr GetCurrentProcess();
+[DllImport("advapi32.dll",ExactSpelling=true,SetLastError=true)]
+[return:MarshalAs(UnmanagedType.Bool)]
+static extern bool SetKernelObjectSecurity(IntPtr handle,uint information,byte[] descriptor);
 [DllImport("kernel32.dll",ExactSpelling=true)]
 static extern void RaiseException(uint code,uint flags,uint count,nuint[] arguments);
 
