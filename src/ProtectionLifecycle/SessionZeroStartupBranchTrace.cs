@@ -163,7 +163,7 @@ internal sealed partial class SessionZeroStartupBranchTrace : IDisposable
 
     // x64 CONTEXT uses 16-byte alignment. Only the debug register portion
     // is written. Returned instruction and accumulator values are read only.
-    private sealed class Breakpoints(SafeWaitHandle thread) : IDisposable
+    internal sealed class Breakpoints(SafeWaitHandle thread) : IDisposable
     {
         private const int ContextFlags=48,Dr0=72,Dr6=104,Dr7=112,Rax=120,Rip=248;
         private const int DebugRegisters=0x100010,ControlAndInteger=3;

@@ -77,19 +77,20 @@ if(args.Length==2 && args[0] is "access-fault-child" or "access-cuda-child" or "
     }
     args[0]="split-native-child";
 }
-if(args.Length==1 && args[0] is "host-access-trace" or "host-access-cuda" or "host-deferred-access-cuda")
+if(args.Length==1 && args[0] is "host-access-trace" or "host-access-cuda" or "host-deferred-access-cuda" or "host-cuda-initialization-trace")
 {
-    var deferred=args[0]=="host-deferred-access-cuda";
+    var observeInitialization=args[0]=="host-cuda-initialization-trace";
+    var deferred=observeInitialization || args[0]=="host-deferred-access-cuda";
     var actualCuda=deferred || args[0]=="host-access-cuda";
     var traceNonce=new string('a',32);
     using var child=Start(deferred?"access-cuda-deferred-child":actualCuda?"access-cuda-child":"access-fault-child",traceNonce);
-    using var trace=(IDisposable)Activator.CreateInstance(TraceType(),nonPublic:true)!;
+    const BindingFlags hidden=BindingFlags.NonPublic|BindingFlags.Instance;
+    using var trace=(IDisposable)Activator.CreateInstance(TraceType(),hidden,null,[observeInitialization],null)!;
     var stderr=child.StandardError.ReadToEndAsync();
     var line=await child.StandardOutput.ReadLineAsync().WaitAsync(TimeSpan.FromSeconds(5));
     var thread=uint.Parse(line!,System.Globalization.CultureInfo.InvariantCulture);
     var stdout=child.StandardOutput.ReadToEndAsync();
     var health=(Action)(()=>{});
-    const BindingFlags hidden=BindingFlags.NonPublic|BindingFlags.Instance;
     TraceType().GetMethod("Observe",hidden)!.Invoke(trace,[child.SafeHandle,(uint)child.Id,thread,health]);
     await child.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(5));
     var evidence=TraceType().GetMethod("Snapshot",hidden)!.Invoke(trace,null)!;
@@ -101,6 +102,17 @@ if(args.Length==1 && args[0] is "host-access-trace" or "host-access-cuda" or "ho
         var progressReader=new GpuCallProgressReader(traceNonce,true,splitInit:true);
         progressReader.Bind(child.Id);
         var report=await progressReader.ReadClosedCaptureAsync(new StringReader(await stdout));
+        if(observeInitialization)
+        {
+            var checkpoints=result.GetProperty("Initialization");
+            if(!checkpoints.GetProperty("ExactImageMapped").GetBoolean() ||
+                checkpoints.GetProperty("AllocatorReturnedNull").ValueKind!=JsonValueKind.False ||
+                checkpoints.GetProperty("CallbackReturnedZero").ValueKind!=JsonValueKind.True ||
+                checkpoints.GetProperty("HelperReturnedZero").ValueKind!=JsonValueKind.True ||
+                checkpoints.GetProperty("StoreBaseWasNull").ValueKind!=JsonValueKind.False ||
+                result.GetProperty("FirstChance").ValueKind!=JsonValueKind.Null ||
+                result.GetProperty("LastChance").ValueKind!=JsonValueKind.Null)return 4;
+        }
         return report is not null && progressReader.ReportsCompleteSuccessfulSequence && child.ExitCode==0 &&
             result.GetProperty("DriverMappingObserved").GetBoolean() && result.GetProperty("ExitEventContinued").GetBoolean()?0:3;
     }

@@ -7,6 +7,10 @@
 
 ## 2026-11-09 独立 CUDA 计算与退出取证
 
+SOURCE / BUILD / INTEGRATED(schema 26 原受限 CUDA 观察者的四个固定驱动检查点)。
+VERIFIED(普通进程精确驱动映射、四点取证、真实计算及终态，软件访问异常仍如实交付)。
+NOT_RUN(schema 26 受限对照)。
+
 SOURCE / BUILD / INTEGRATED(schema 25 固定受限 CUDA 进程级 JIT 延迟预载)。
 VERIFIED(普通真实 NVIDIA 计算和清理)。
 VERIFIED(`7cbe34a7` 未激活更新、受限 WDDM 四项匹配及原资源回收)。

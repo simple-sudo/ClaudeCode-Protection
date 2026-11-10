@@ -118,9 +118,13 @@ internal static class WindowsPathSeal
     }
     internal static SafeFileHandle OpenStartupTraceModule(string leaf)
     {
-        if(leaf is not ("user32.dll" or "gdi32full.dll" or "win32u.dll" or "nvcuda.dll"))
-            throw new InvalidDataException("Fixed startup trace module required");
-        var path=Child(Environment.GetFolderPath(Environment.SpecialFolder.System),leaf);
+        var relative=leaf switch
+        {
+            "user32.dll" or "gdi32full.dll" or "win32u.dll" or "nvcuda.dll"=>leaf,
+            "nvcuda64.dll"=>"DriverStore/FileRepository/nvltsi.inf_amd64_2ce37f1bf94224ed/nvcuda64.dll",
+            _=>throw new InvalidDataException("Fixed startup trace module required")
+        };
+        var path=Child(Environment.GetFolderPath(Environment.SpecialFolder.System),relative);
         var handle=CreateFile(path,ReadControl|ReadAttributes|0x80000000u,1,IntPtr.Zero,3,OpenReparse,IntPtr.Zero);
         if(handle.IsInvalid){var error=Error("OpenStartupTraceModule");handle.Dispose();throw error;}
         try{VerifyObjectCore(handle,path,false,true);AssertAcl(handle,false,true);return handle;}

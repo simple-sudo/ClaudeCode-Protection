@@ -206,6 +206,27 @@ schema 25 固定载荷校验环境选项后，`cuInit` 仍在 `nvcuda64.dll+0x3A
 仍为 UNKNOWN。固定回执 `work/session-zero-cuda-deferred-preload-20261110-01/receipt.json`
 SHA-256 `E0ED9879AC31B52788222DFA46B361ABC14AA3781E1D742DAB2FA21EF092BE07`。
 
+### CUDA 驱动检查点对照
+
+schema 26 继续使用原 Broker 的固定 CUDA 观察者。只在本机 DriverStore 对应
+`nvcuda64.dll` 的持有文件及实际映射身份一致时，在受限根线程上启用硬件执行断点。
+持有文件 SHA-256 `8AE9D817499BF3BF7DF7A91A3F57574335DCDE42AFF130F46C86C68F38B27521`。
+只记录每个检查点首次命中的零值判断，不保存指针、内存内容、适配器标识或原寄存器值。
+实际访问异常继续交给原进程处理，卸载或中途分离前清除已设置的断点。
+
+| 驱动相对位置 | 观测 | 普通本机参考 |
+| --- | --- | --- |
+| `0x39FF31` | 分配返回指针是否为空 | 否 |
+| `0x39FFBE` | 间接调用低 32 位返回值是否为零 | 是 |
+| `0x3A04D8` | 辅助函数低 32 位返回值是否为零 | 是 |
+| `0x3A062E` | 写入基址是否为空 | 否 |
+
+普通 Windows 自有载荷在真实 NVIDIA 驱动上完成固定 1 KiB 计算、退出和清理。
+证据 `work/session-zero-cuda-initialization-trace-20261110-01/host-cuda-initialization-trace.log`
+SHA-256 `45017B4CE66C282A46A5D4207B960D1E7942F26A727930C1DF8688868C5F7EF9`。
+各点的控制流位置来自本机映像静态分析。尚无受限对照，也未确定内部回调的语义。
+硬件断点属于此固定诊断。 [Microsoft Windows 调试事件循环](https://learn.microsoft.com/en-us/windows/win32/debug/writing-the-debugger-s-main-loop)。
+
 ## 2026-11-06 610b正常真实参考已验证
 
 经本人批准73AC9CC7…，安装/原daily/原资格owner/指定新记录reader全终态0。现装
