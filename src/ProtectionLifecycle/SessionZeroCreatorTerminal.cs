@@ -8,7 +8,7 @@ internal static class SessionZeroCreatorTerminal
     internal const int CloseSize=20;
     private const int HeaderSize=28;
     private const uint CloseMagic=0x31534343,CleanedMagic=0x32444343; // CCS1, CCD2.
-    private const uint OutputMagic=0x314f4343,OutputFailureMagic=0x31454343; // CCO1, CCE1.
+    private const uint OutputMagic=0x314f4343,OutputFailureMagic=0x31454343,GpuOutputMagic=0x324f4343; // CCO1, CCE1, CCO2.
 
     internal static byte[] CloseFrame(byte[] nonce)
     {
@@ -44,11 +44,17 @@ internal static class SessionZeroCreatorTerminal
     }
 
     internal static byte[] CreateReceipt(byte[] nonce,OfflineConsoleOutput output,OfflineConsoleOutput error)
+        =>EncodeReceipt(nonce,output,error,gpuOutput:false);
+
+    internal static byte[] CreateGpuReceipt(byte[] nonce,OfflineConsoleOutput output,OfflineConsoleOutput error)
+        =>EncodeReceipt(nonce,output,error,gpuOutput:true);
+
+    private static byte[] EncodeReceipt(byte[] nonce,OfflineConsoleOutput output,OfflineConsoleOutput error,bool gpuOutput)
     {
-        CheckLength(output.Bytes.Length,output.Overflow);
-        CheckLength(error.Bytes.Length,error.Overflow);
+        CheckLength(output.Bytes.Length,output.Overflow,gpuOutput?OfflineConsoleStreams.GpuOutputMaximumBytes:OfflineConsoleStreams.MaximumBytes);
+        CheckLength(error.Bytes.Length,error.Overflow,OfflineConsoleStreams.MaximumBytes);
         var frame=new byte[HeaderSize+output.Bytes.Length+error.Bytes.Length];
-        WriteBinding(frame,nonce,OutputMagic);
+        WriteBinding(frame,nonce,gpuOutput?GpuOutputMagic:OutputMagic);
         var flags=(output.Overflow?1u:0u)|(error.Overflow?2u:0u);
         BinaryPrimitives.WriteUInt32LittleEndian(frame.AsSpan(20),flags);
         BinaryPrimitives.WriteUInt16LittleEndian(frame.AsSpan(24),(ushort)output.Bytes.Length);
@@ -58,6 +64,12 @@ internal static class SessionZeroCreatorTerminal
         return frame;
     }
     internal static (OfflineConsoleOutput Output,OfflineConsoleOutput Error) ReadReceipt(Stream stream,byte[] nonce,CancellationToken cancellation)
+        =>DecodeReceipt(stream,nonce,cancellation,gpuOutput:false);
+
+    internal static (OfflineConsoleOutput Output,OfflineConsoleOutput Error) ReadGpuReceipt(Stream stream,byte[] nonce,CancellationToken cancellation)
+        =>DecodeReceipt(stream,nonce,cancellation,gpuOutput:true);
+
+    private static (OfflineConsoleOutput Output,OfflineConsoleOutput Error) DecodeReceipt(Stream stream,byte[] nonce,CancellationToken cancellation,bool gpuOutput)
     {
         var header=new byte[HeaderSize];
         stream.ReadExactlyAsync(header.AsMemory(),cancellation).AsTask().GetAwaiter().GetResult();
@@ -68,24 +80,24 @@ internal static class SessionZeroCreatorTerminal
                 throw WfpNative.Contract("CreatorConsoleFailureFrameInvalid");
             throw new WfpFailure("CreatorConsoleCapture",flags);
         }
-        if(!MatchesBinding(header,nonce,OutputMagic))throw WfpNative.Contract("CreatorConsoleReceiptBindingMismatch");
+        if(!MatchesBinding(header,nonce,gpuOutput?GpuOutputMagic:OutputMagic))throw WfpNative.Contract("CreatorConsoleReceiptBindingMismatch");
         if((flags&~3u)!=0)throw WfpNative.Contract("CreatorConsoleReceiptFlagsInvalid");
-        var output=Read(24,(flags&1)!=0);
-        var error=Read(26,(flags&2)!=0);
+        var output=Read(24,(flags&1)!=0,gpuOutput?OfflineConsoleStreams.GpuOutputMaximumBytes:OfflineConsoleStreams.MaximumBytes);
+        var error=Read(26,(flags&2)!=0,OfflineConsoleStreams.MaximumBytes);
         return(output,error);
 
-        OfflineConsoleOutput Read(int offset,bool overflow)
+        OfflineConsoleOutput Read(int offset,bool overflow,int maximum)
         {
             var length=BinaryPrimitives.ReadUInt16LittleEndian(header.AsSpan(offset));
-            CheckLength(length,overflow);
+            CheckLength(length,overflow,maximum);
             var bytes=new byte[length];
             stream.ReadExactlyAsync(bytes.AsMemory(),cancellation).AsTask().GetAwaiter().GetResult();
             return new(bytes,overflow);
         }
     }
-    private static void CheckLength(int length,bool overflow)
+    private static void CheckLength(int length,bool overflow,int maximum)
     {
-        if(length>OfflineConsoleStreams.MaximumBytes || overflow && length!=OfflineConsoleStreams.MaximumBytes)
+        if(length>maximum || overflow && length!=maximum)
             throw WfpNative.Contract("CreatorConsoleReceiptLengthInvalid");
     }
     private static void WriteBinding(byte[] frame,byte[] nonce,uint magic)

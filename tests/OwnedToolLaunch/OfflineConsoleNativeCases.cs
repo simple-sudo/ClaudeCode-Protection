@@ -23,6 +23,7 @@ internal static class OfflineConsoleNativeCases
         var broker=library.GetType("ProtectionLifecycle.InstalledBroker",true)!;
         Refuse<UnauthorizedAccessException>(()=>Call(broker.GetMethod("QualifyOfflineConsole")!,null));
         Refuse<UnauthorizedAccessException>(()=>Call(broker.GetMethod("QualifyIndependentGitInit")!,null));
+        Refuse<UnauthorizedAccessException>(()=>Call(broker.GetMethod("QualifyIndependentCuda")!,null));
         var atomic=library.GetType("ProtectionLifecycle.AtomicChild",true)!;
         Refuse<InvalidDataException>(()=>Call(atomic.GetMethod("AssertOfflineConsoleWorkerIdentity",Static)!,null));
         var window=library.GetType("ProtectionLifecycle.SessionZeroWindowLease",true)!;
@@ -41,9 +42,8 @@ internal static class OfflineConsoleNativeCases
             var result=Result((Task)Call(read,null,bytes)!);
             Require(result.Bytes.Length==length && !result.Overflow);
         }
-        RunChild(library,type,false);
-        RunChild(library,type,true);
-        Console.WriteLine("PASS native ordinary three-handle inheritance, stdin EOF, distinct output, overflow, excluded handle and child-creation refusal. LPAC and WFP not executed.");
+        foreach(var mode in new[]{"normal","flood","gpu","gpu-flood"})RunChild(library,type,mode);
+        Console.WriteLine("PASS native ordinary three-handle inheritance, stdin EOF, distinct output, ordinary and GPU capture bounds, excluded handle and child-creation refusal. LPAC and WFP not executed.");
     }
 
     private static void VerifyFailureMetadata(Assembly library)
@@ -264,7 +264,7 @@ internal static class OfflineConsoleNativeCases
         Console.WriteLine("PASS actual ordinary adapter and dual-stack TCP content and actor-bound network survey validation.");
     }
 
-    private static void RunChild(Assembly library,Type type,bool flood)
+    private static void RunChild(Assembly library,Type type,string mode)
     {
         using var transport=(IDisposable)Activator.CreateInstance(type,nonPublic:true)!;
         using var binding=(IDisposable)Call(type.GetMethod("PrepareCreationAttributes",Instance)!,transport)!;
@@ -272,7 +272,7 @@ internal static class OfflineConsoleNativeCases
         using var excluded=new EventWaitHandle(false,EventResetMode.ManualReset);
         if(!SetHandleInformation(excluded.SafeWaitHandle,1,1))throw Error("MakeFixtureEventInheritable");
         var image=Environment.ProcessPath!;
-        var mode=flood?"flood":"normal";
+        var gpu=mode is "gpu" or "gpu-flood";
         var value=excluded.SafeWaitHandle.DangerousGetHandle().ToInt64().ToString(CultureInfo.InvariantCulture);
         var command=new StringBuilder($"\"{image}\" offline-console-streams-worker {mode} {value}");
         var jobType=library.GetType("ProtectionLifecycle.SafeJobHandle",true)!;
@@ -337,7 +337,7 @@ internal static class OfflineConsoleNativeCases
                 Require(observed.GetType().GetProperty("PackageAccess")!.GetValue(observed) is 3u);
                 Refuse<InvalidDataException>(()=>Call(atomic.GetMethod("AssertCreatorLpacBinding",Static)!,null,observed,tokenBinding));
             }
-            var captures=(ITuple)Call(type.GetMethod("ReadAfterCreate",Instance)!,transport)!;
+            var captures=(ITuple)Call(type.GetMethod(gpu?"ReadGpuAfterCreate":"ReadAfterCreate",Instance)!,transport)!;
             Refuse<InvalidDataException>(()=>Call(type.GetMethod("ReadAfterCreate",Instance)!,transport));
             Require(ResumeThread(thread)==1);
             var wait=WaitForSingleObject(process,6000);
@@ -348,8 +348,12 @@ internal static class OfflineConsoleNativeCases
             if(exit!=0)throw new InvalidDataException($"Ordinary console fixture exit {exit}, stderr bytes {stderr.Bytes.Length}");
             Refuse<InvalidDataException>(()=>Call(checkInitialThread,null,process,thread,native.Pid,native.Tid));
             Require(!stderr.Overflow && stderr.Bytes.AsSpan().SequenceEqual("fixture-stderr\n"u8));
-            Require(flood?stdout.Overflow && stdout.Bytes.Length==4096 && stdout.Bytes.All(value=>value==65):
-                !stdout.Overflow && stdout.Bytes.AsSpan().SequenceEqual("fixture-stdout\n"u8));
+            Require(mode switch {
+                "flood"=>stdout.Overflow && stdout.Bytes.Length==4096 && stdout.Bytes.All(value=>value==65),
+                "gpu"=>!stdout.Overflow && stdout.Bytes.Length==5185 && stdout.Bytes.All(value=>value==65),
+                "gpu-flood"=>stdout.Overflow && stdout.Bytes.Length==8192 && stdout.Bytes.All(value=>value==65),
+                _=>!stdout.Overflow && stdout.Bytes.AsSpan().SequenceEqual("fixture-stdout\n"u8)
+            });
             Require(!excluded.WaitOne(0));
         }
         finally
@@ -364,7 +368,7 @@ internal static class OfflineConsoleNativeCases
 
     internal static int Worker(string mode,string eventValue)
     {
-        if(mode is not ("normal" or "flood") || !long.TryParse(eventValue,NumberStyles.None,CultureInfo.InvariantCulture,out var raw) ||
+        if(mode is not ("normal" or "flood" or "gpu" or "gpu-flood") || !long.TryParse(eventValue,NumberStyles.None,CultureInfo.InvariantCulture,out var raw) ||
             raw<=0 || !Console.IsInputRedirected || !Console.IsOutputRedirected || !Console.IsErrorRedirected)return 120;
         using(var input=Console.OpenStandardInput())
             if(input.ReadByte()!=-1)return 121;
@@ -376,7 +380,7 @@ internal static class OfflineConsoleNativeCases
         using(var stdout=Console.OpenStandardOutput())
         {
             if(mode=="normal")stdout.Write("fixture-stdout\n"u8);
-            else stdout.Write(Enumerable.Repeat((byte)65,4097).ToArray());
+            else stdout.Write(Enumerable.Repeat((byte)65,mode switch {"gpu"=>5185,"gpu-flood"=>8193,_=>4097}).ToArray());
         }
         using(var stderr=Console.OpenStandardError())stderr.Write("fixture-stderr\n"u8);
         return 0;

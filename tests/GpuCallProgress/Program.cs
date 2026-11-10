@@ -1,6 +1,8 @@
 using System.Diagnostics;
 using System.Reflection;
+using System.Security.Cryptography;
 using System.Security.Principal;
+using System.Text;
 using System.Text.Json;
 using ProtectionLifecycle;
 
@@ -37,13 +39,16 @@ async Task Reject(string input,string name)
 if(args[0]=="host-compute")
 {
     using var child=Start("native-child",nonce);var reader=new GpuCallProgressReader(nonce,true);reader.Bind(child.Id);
-    var text=reader.ReadAsync(child.StandardOutput);var errors=child.StandardError.ReadToEndAsync();
+    var text=child.StandardOutput.ReadToEndAsync();var errors=child.StandardError.ReadToEndAsync();
     if(!child.WaitForExit(20000)){Console.Error.WriteLine("HOST_GPU_REFERENCE_STILL_RUNNING_ORIGINAL_HANDLE_HELD");child.WaitForExit();}
-    var finalText=await text;var stderr=await errors;using var final=JsonDocument.Parse(finalText);
+    var captured=await text;
+    var finalText=await reader.ReadClosedCaptureAsync(new StringReader(captured))??throw new InvalidDataException("ClosedCaptureFinalMissing");
+    var stderr=await errors;using var final=JsonDocument.Parse(finalText);
     var root=final.RootElement;var last=reader.Snapshot();
     // Preserve the actual native return/cleanup evidence before assertions.
     Console.WriteLine(JsonSerializer.Serialize(new{Scope="ORDINARY_HOST_REAL_CUDA_1KIB_256_ELEMENTS_AND_PROGRESS_PIPE",Checks=4,
-        ChildPid=child.Id,ChildExit=child.ExitCode,StderrLength=stderr.Length,FinalReport=final.RootElement,LastReportedCall=last,
+        ChildPid=child.Id,ChildExit=child.ExitCode,StderrLength=stderr.Length,CaptureBytes=System.Text.Encoding.UTF8.GetByteCount(captured),
+        FinalReport=final.RootElement,LastReportedCall=last,
         LpacExecuted=false,OriginalOwnerExecuted=false,SystemPolicyChanged=false}));
     Check(child.ExitCode==0 && stderr.Length==0,"host process completion");
     Check(root.GetProperty("ComputeMatched").GetBoolean() && root.GetProperty("ResourceCleanupSucceeded").GetBoolean(),"real kernel and owned cleanup");
@@ -71,9 +76,45 @@ await Reject(new string('x',16385),"line bound");await Reject("\n","empty frame"
 await Reject(Frame(1,0,0)+Frame(2,0,1,0)+Final(nonce,pid)+"\n"+Frame(3,1,0),"data after final");
 var abrupt=Reader();try{_=await abrupt.ReadAsync(new StringReader(Frame(1,0,0)));}catch(InvalidDataException){}
 Check(abrupt.Snapshot() is {Sequence:1,Api:"cuInit",Phase:"ENTERED_NOT_RETURNED"},"last entered call retained after EOF failure");
+var closedPartial=Reader();
+Check(await closedPartial.ReadClosedCaptureAsync(new StringReader(Frame(1,0,0)+"{\"Kind\":")) is null &&
+    closedPartial.Snapshot() is {Api:"cuInit",Phase:"ENTERED_NOT_RETURNED"} && !closedPartial.ReportsCompleteSuccessfulSequence,
+    "a stopped child's complete frames survive a torn last frame");
+var closedTornFinal=Reader();var truncated=full.ToString().TrimEnd('\r','\n');
+Check(await closedTornFinal.ReadClosedCaptureAsync(new StringReader(truncated)) is null &&
+    closedTornFinal.Snapshot() is {Sequence:32,ApiIndex:15,Code:0} && !closedTornFinal.ReportsCompleteSuccessfulSequence,
+    "even complete call progress does not qualify without a terminated final frame");
+var closedComplete=Reader();
+Check(await closedComplete.ReadClosedCaptureAsync(new StringReader(full.ToString()))==Final(nonce,pid) &&
+    closedComplete.ReportsCompleteSuccessfulSequence,"complete closed capture retains bound final report");
+try{_=await Reader().ReadClosedCaptureAsync(new StringReader(full+"extra"));throw new Exception("ACCEPTED: closed capture tail after final");}
+catch(InvalidDataException){checks++;}
 var cleanup=Reader();_=await cleanup.ReadAsync(new StringReader(Frame(1,0,0)+Frame(2,0,2,-1)+Frame(3,15,0)+Frame(4,15,1,0)+Final(nonce,pid)));
 Check(cleanup.Snapshot() is {ApiIndex:15,Code:0},"cleanup after failure retained");
+Check(cleanup.FirstFailure() is {ApiIndex:0,Code:-1,Phase:"THREW"},"successful cleanup does not erase the initial native failure");
 Check(!cleanup.ReportsCompleteSuccessfulSequence && !abrupt.ReportsCompleteSuccessfulSequence,"failure or missing calls cannot become successful sequence");
+var product=typeof(InstalledBroker).Assembly;
+var productOutput=product.GetType("ProtectionLifecycle.OfflineConsoleOutput",true)!;
+var observe=product.GetType("ProtectionLifecycle.IndependentGpuWorkload",true)!.GetMethod("Observe",BindingFlags.NonPublic|BindingFlags.Static)!;
+JsonElement Observe(string transcript,uint childExit=0,string error="",bool overflow=false)
+{
+    object Capture(string text,bool truncated=false)=>Activator.CreateInstance(productOutput,Encoding.UTF8.GetBytes(text),truncated)!;
+    var result=observe.Invoke(null,new[]{nonce,(object)(uint)pid,childExit,Capture(transcript,overflow),Capture(error)})!;
+    return JsonSerializer.SerializeToElement(result,result.GetType());
+}
+var values=Enumerable.Range(0,256).Select(i=>i*3+7).ToArray();var payload=new byte[1024];
+Buffer.BlockCopy(values,0,payload,0,payload.Length);
+const string scope="LPAC_LOW_ZERO_CAPABILITIES";
+var fixtureReport=JsonSerializer.Serialize(new{SchemaVersion=1,Pid=pid,Nonce=nonce,Scope=scope,DriverVersion=13030,Device="fixture-device",
+    AllocatedBytes=1024,Elements=256,ResultSHA256=Convert.ToHexString(SHA256.HashData(payload)),ComputeMatched=true,ResourceCleanupSucceeded=true,
+    Steps=GpuCallProgressReader.Stages.Select(stage=>new{Stage=stage,Result=0}).ToArray(),FailureType=(string?)null});
+var transcript=full.ToString().Replace(Final(nonce,pid),fixtureReport,StringComparison.Ordinal);
+Check(Observe(transcript).GetProperty("ComputationQualified").GetBoolean(),"bound completed capture accepted");
+Check(!Observe(transcript,3).GetProperty("ComputationQualified").GetBoolean(),"nonzero exit disqualifies completed capture");
+Check(!Observe(transcript,error:"extra").GetProperty("ComputationQualified").GetBoolean(),"nonempty stderr disqualifies completed capture");
+Check(Observe(transcript.Replace(scope,"ORDINARY",StringComparison.Ordinal)).GetProperty("Status").GetString()=="REPORT_BINDING_REFUSED","foreign scope refused");
+Check(Observe(Frame(1,0,0),3).GetProperty("Status").GetString()=="BOUND_PROGRESS_ONLY","bound partial progress retained without success");
+Check(Observe(transcript,overflow:true).GetProperty("Status").GetString()=="CAPTURE_OVERFLOW","truncated capture refused");
 using(var child=Start("fixture-child",nonce))
 {
     var reader=new GpuCallProgressReader(nonce,true);reader.Bind(child.Id);var task=reader.ReadAsync(child.StandardOutput);

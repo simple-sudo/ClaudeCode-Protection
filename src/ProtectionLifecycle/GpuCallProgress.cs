@@ -34,19 +34,28 @@ internal sealed class GpuCallProgressReader
     private int pid,lastApi=-1,sequence;
     private bool pending,final,reportedFailure;
     private uint returnedSuccessfully;
-    private GpuReportedCall? latest;
+    private GpuReportedCall? latest,firstFailure;
     internal GpuCallProgressReader(string nonce,bool progressRequired)
     {ValidateIdentity(nonce,1);this.nonce=nonce;this.progressRequired=progressRequired;}
     internal void Bind(int expectedPid)
     {lock(sync){ValidateIdentity(nonce,expectedPid);if(pid!=0)throw Bad();pid=expectedPid;}}
     internal GpuReportedCall? Snapshot(){lock(sync)return latest;}
+    internal GpuReportedCall? FirstFailure(){lock(sync)return firstFailure;}
     internal bool ReportsCompleteSuccessfulSequence
     {get{lock(sync)return final && !pending && !reportedFailure && returnedSuccessfully==0xffff && sequence==32;}}
     internal static void ValidateIdentity(string nonce,int pid)
     {if(pid<=0 || nonce.Length!=32 || nonce.Any(c=>!char.IsAsciiHexDigitLower(c)))throw Bad();}
     private static InvalidDataException Bad()=>new("GpuProgressPipeContract");
 
-    internal async Task<string> ReadAsync(TextReader input)
+    internal async Task<string> ReadAsync(TextReader input)=>
+        await ReadCoreAsync(input,requireFinal:true).ConfigureAwait(false)??throw Bad();
+
+    // The independent creator retains the original stream after stopping the
+    // Job. A missing final report may still leave complete, bound call frames.
+    // A torn final line never becomes a report in this capture mode.
+    internal Task<string?> ReadClosedCaptureAsync(TextReader input)=>ReadCoreAsync(input,requireFinal:false);
+
+    private async Task<string?> ReadCoreAsync(TextReader input,bool requireFinal)
     {
         var line=new StringBuilder();var character=new char[1];var total=0;string? report=null;
         // Read a character at a time so an entered-call frame becomes visible
@@ -57,8 +66,9 @@ internal sealed class GpuCallProgressReader
             if(value=='\n'){Consume(line.ToString().TrimEnd('\r'));line.Clear();}
             else {if(line.Length>=16384)throw Bad();line.Append(value);}
         }
-        if(line.Length!=0)Consume(line.ToString()); // legacy complete final JSON
-        if(report is null)throw Bad();return report;
+        if(line.Length!=0 && requireFinal)Consume(line.ToString()); // legacy complete final JSON
+        if(line.Length!=0 && !requireFinal && report is not null)throw Bad();
+        if(report is null && requireFinal)throw Bad();return report;
 
         void Consume(string text)
         {
@@ -89,6 +99,7 @@ internal sealed class GpuCallProgressReader
                     if(phase==1 && code==0)returnedSuccessfully|=1u<<api;else reportedFailure=true;
                 }
                 sequence=next;latest=new(next,api,Stages[api],phase==0?"ENTERED_NOT_RETURNED":phase==1?"RETURNED":"THREW",code);
+                if(phase!=0 && (phase!=1 || code!=0))firstFailure??=latest;
             }
         }
     }

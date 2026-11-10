@@ -137,7 +137,7 @@ internal sealed class SessionZeroCreatorClient : IDisposable
             using var process=root.Process;
             using var thread=root.Thread;
             stage=SessionZeroCreatorChannel.CreationFailure.Streams;
-            var capture=streams.ReadAfterCreate();
+            var capture=client.Request.Cuda?streams.ReadGpuAfterCreate():streams.ReadAfterCreate();
             client.CompleteCreation(process,thread);
             client.ReportTokenProof(process);
             using var deadline=new CancellationTokenSource(TimeSpan.FromSeconds(35));
@@ -155,7 +155,8 @@ internal sealed class SessionZeroCreatorClient : IDisposable
             {
                 using var captureDeadline=new CancellationTokenSource(TimeSpan.FromSeconds(3));
                 var results=Task.WhenAll(capture.Output,capture.Error).WaitAsync(captureDeadline.Token).GetAwaiter().GetResult();
-                receipt=SessionZeroCreatorTerminal.CreateReceipt(nonce,results[0],results[1]);
+                receipt=client.Request.Cuda?SessionZeroCreatorTerminal.CreateGpuReceipt(nonce,results[0],results[1]):
+                    SessionZeroCreatorTerminal.CreateReceipt(nonce,results[0],results[1]);
             }
             catch(Exception error) when(error is IOException or InvalidDataException or OperationCanceledException)
             {

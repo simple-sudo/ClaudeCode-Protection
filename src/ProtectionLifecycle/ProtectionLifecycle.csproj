@@ -35,7 +35,7 @@
     <Compile Include="WinsockRegistryScope.cs" />
     <Compile Include="SessionWinsockReadAccess.cs" />
     <Compile Include="ProxyChannel.cs;NetworkQualification.cs;ProxyRouteObservation.cs" />
-    <Compile Include="GpuQualification.cs" />
+    <Compile Include="GpuQualification.cs;IndependentGpuWorkload.cs" />
     <Compile Include="GpuCallProgress.cs" />
     <Compile Include="GpuHostToken.cs;GpuHostReference.cs;GpuHostReferenceQualification.cs" />
     <Compile Include="GpuReferenceCaller.cs;GpuCallerCreation.cs;GpuReferenceChannel.cs" />

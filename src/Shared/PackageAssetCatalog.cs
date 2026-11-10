@@ -35,6 +35,7 @@ internal static class PackageAssetCatalog
     internal const int SessionZeroNetworkSurveySchema=16;
     internal const int ReviewedProxyRouteSchema=17;
     internal const int SessionZeroGitInitSchema=18;
+    internal const int SessionZeroCudaSchema=19;
     internal const string SessionZeroStartupWitnessId="broker-session-zero-startup-witness";
     internal const string SessionZeroStartupWitnessPath="bin/admin/SessionZeroStartupWitness.exe";
     internal const string OfficialClaudeId="official-claude-offline-exe",OfficialClaudeBinRole="official";
@@ -134,7 +135,7 @@ internal static class PackageAssetCatalog
         SessionZeroStartupBranchSchema or SessionZeroWindowAccessSchema=>WithStartupBranch,
         SessionZeroPrivateWindowSchema=>WithPrivateWindow,
         SessionZeroPrivateWindowTraceSchema or SessionZeroPrivateWindowReadControlSchema or SessionZeroPrivateWindowConsoleSchema or
-        SessionZeroIdentitySurveySchema or SessionZeroNetworkSurveySchema or ReviewedProxyRouteSchema or SessionZeroGitInitSchema=>WithPrivateWindowTrace,
+        SessionZeroIdentitySurveySchema or SessionZeroNetworkSurveySchema or ReviewedProxyRouteSchema or SessionZeroGitInitSchema or SessionZeroCudaSchema=>WithPrivateWindowTrace,
         _=>throw new InvalidDataException("Unknown installed package schema")
     };
     // Map a previously authorized role to a path. Release authorization

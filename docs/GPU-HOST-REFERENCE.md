@@ -4,6 +4,28 @@
 VERIFIED(普通只读/fixture、9bbbb与4588安装及失败Job闭合)，GPU运行仍未通过。
 安装、运行与授权以 [CURRENT-STATE](CURRENT-STATE.md) 为准。
 
+## 独立链的固定 CUDA 计算与退出取证
+
+2026-11-09，schema 19 的 `qualify-independent-cuda` 沿用原 Broker、独立
+LocalService、私有桌面、零能力 LPAC、Job 和完整网络隔离。固定 `CCU1` 请求只启动
+安装内的自研 Broker 载荷。工作进程先核对实际私有桌面、受限身份、工作区环境和标准流，
+再复用原 CUDA Driver API 的 1 KiB、256 元素固定 kernel。无外部 PTX、模型、CPU 回退、
+设备权限变更或正式 Claude。活动时限为十秒，原 owner 先关准入并在隔离下停止原 Job，
+再按原链关闭私有窗口、profile、工作区与临时服务。
+
+原输出的 32 帧进度加最终回执在本机普通 CUDA 实测为 5,185 字节，原 4 KiB 会截断。
+新 `CCO2` 回执只对固定 CUDA stdout 提供 8 KiB 上限，stderr 和其他负载仍为 4 KiB。
+停止后只接受绑定 Job、PID、顺序且完整的帧。终止时可保留最后进入的调用和首次错误；
+缺最终行、截断、非零退出、错误流或回收未确认都不能成为成功。公开摘要不含 GPU 型号。
+这记录子进程调用边界，不是内核调用栈、设备身份隔离或任意 CUDA 应用资格。
+
+普通实测完成计算、回读结果和模块、显存、context 清理，16 个调用均返回 0。
+`work/session-zero-gpu-capture-20261109-01/schema19-r2-host-compute.log`，SHA-256
+`CBD87984D82365681EDC8509E8D400DF4CBF7CDB244B309EE0C165552AB6468E`。
+同目录保留 39 项协议用例、普通身份拒绝进入 CUDA 载荷，以及两种输出限额的真实
+Windows 管道试验。早期构建缺编译项、测试变量重名和普通测试反射遇到重载歧义的日志均保留。
+候选尚未安装，受限 CUDA、GPU 标识跨来源、PyTorch、异常停止及正式 Claude 仍待验证。
+
 ## 2026-11-06 610b正常真实参考已验证
 
 经本人批准73AC9CC7…，安装/原daily/原资格owner/指定新记录reader全终态0。现装

@@ -216,6 +216,28 @@ internal static class CreatorLifecycleCases
         malformed=(byte[])receipt.Clone();
         BinaryPrimitives.WriteUInt16LittleEndian(malformed.AsSpan(24),4097);
         Refused(()=>Read(malformed,nonce));
+        var makeGpuReceipt=Method("SessionZeroCreatorTerminal","CreateGpuReceipt");
+        var readGpuReceipt=Method("SessionZeroCreatorTerminal","ReadGpuReceipt");
+        object ReadGpu(byte[] payload,byte[] binding)
+        {
+            using var stream=new MemoryStream(payload,false);
+            return readGpuReceipt.Invoke(null,[stream,binding,CancellationToken.None])!;
+        }
+        var cudaBytes=Enumerable.Repeat((byte)0x41,5185).ToArray(); // Actual ordinary transcript size.
+        var cuda=(byte[])makeGpuReceipt.Invoke(null,[nonce,Output(cudaBytes,false),Output([],false)])!;
+        var cudaResult=ReadGpu(cuda,nonce);
+        var cudaOutput=cudaResult.GetType().GetField("Item1")!.GetValue(cudaResult)!;
+        Check(((byte[])bytesProperty.GetValue(cudaOutput)!).SequenceEqual(cudaBytes));
+        Refused(()=>Read(cuda,nonce));
+        Refused(()=>ReadGpu(receipt,nonce));
+        Refused(()=>ReadGpu(cuda,wrong));
+        Refused(()=>ReadGpu(cuda[..^1],nonce));
+        Refused(()=>makeGpuReceipt.Invoke(null,[nonce,Output(new byte[8193],false),Output([],false)]));
+        Refused(()=>makeGpuReceipt.Invoke(null,[nonce,Output(cudaBytes,false),Output(new byte[4097],false)]));
+        Refused(()=>makeGpuReceipt.Invoke(null,[nonce,Output(cudaBytes,true),Output([],false)]));
+        var capped=(byte[])makeGpuReceipt.Invoke(null,[nonce,Output(new byte[8192],true),Output([],false)])!;
+        var cappedResult=ReadGpu(capped,nonce);
+        Check(outputType.GetProperty("Overflow")!.GetValue(cappedResult.GetType().GetField("Item1")!.GetValue(cappedResult)) is true);
         Console.WriteLine($"PASS {count} creator lifecycle checks; actual SCM rejection outside service, fixed image and profile paths, observer rights, terminal and bounded output frames. No service registration, profile mutation, process creation or WFP.");
         var previous=count;
         var intent=Method("SessionZeroCreatorRegistration","ValidateIntent");

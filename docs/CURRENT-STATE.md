@@ -1,5 +1,11 @@
 # 当前状态与授权摘要
 
+2026-11-09，schema 19 将固定 CUDA 计算接入原独立 LocalService/LPAC、私有桌面、
+Job 和回收链。普通 NVIDIA 实测完成 1 KiB、256 元素计算和清理，16 个驱动调用成功。
+实测回执超过原 4 KiB，已增加专用限额和停止后的不完整调用诊断。该候选未安装，
+受限 GPU 计算与故障回收尚未实机验证。现装仍是 `beab4874`。
+[独立 CUDA 诊断与证据](GPU-HOST-REFERENCE.md#独立链的固定-cuda-计算与退出取证)
+
 2026-11-09，schema 18 的 `beab4874` 已实机更新并保持 INACTIVE。原独立
 LocalService 创建的零能力 LPAC Git 退出 0，HEAD 与对象/引用目录符合预期，
 标准流为空。原 Job 在隔离下有序归零，profile、工作区、私有窗口和两个服务

@@ -24,6 +24,7 @@ internal sealed class SessionZeroCreatorChannel : IDisposable
     private const uint IdentitySurveyRequestMagic=0x31534343; // CCS1.
     private const uint NetworkSurveyRequestMagic=0x314e4343; // CCN1.
     private const uint GitInitRequestMagic=0x31474343; // CCG1.
+    private const uint CudaRequestMagic=0x31554343; // CCU1.
     private const uint ProfileCreatedMagic=0x314a4343,ProfileRecordedMagic=0x31414343; // CCJ1, CCA1.
     private const uint TokenProofMagic=0x31544343; // CCT1.
     private const int NonceSize=16,ReplySize=44,ObjectIdentityBytes=12;
@@ -36,6 +37,7 @@ internal sealed class SessionZeroCreatorChannel : IDisposable
     private readonly NamedPipeServerStream pipe;
     private BoundPeer? boundPeer;
     private int consumed;
+    private bool cudaCapture;
     private byte[]? cleanupNonce;
     private string? profileCreatedHash;
     internal bool ProfileCleanupConfirmed {get;private set;}
@@ -97,8 +99,9 @@ internal sealed class SessionZeroCreatorChannel : IDisposable
     // The caller must retain the original Job and close it through the
     // existing offline stop path if a granted exchange fails.
     internal SuspendedRoot Exchange(FixedLayout layout,ProtectedState state,VerifiedVersion version,OwnedKernelJob job,bool startupWitness,
-        SessionZeroWindowOwner? privateWindows=null,bool gitInit=false)
+        SessionZeroWindowOwner? privateWindows=null,bool gitInit=false,bool cuda=false)
     {
+        if(startupWitness && (gitInit || cuda) || gitInit && cuda)throw WfpNative.Contract("CreatorFixedPurposeConflict");
         var service=registration.AssertReadyForJob(state,version,this);
         var peer=boundPeer??throw WfpNative.Contract("CreatorPipePeerBindingMissingOrChanged");
         if(job.JobId!=registration.JobId || job.SessionZeroCreatorSid!=registration.Sid.Value)
@@ -121,14 +124,21 @@ internal sealed class SessionZeroCreatorChannel : IDisposable
             windowAccess?WindowAccessRequestMagic:StartupWitnessRequestMagic);
         else if(gitInit)
         {
-            if(schema!=PackageAssetCatalog.SessionZeroGitInitSchema || !privateWindow)
+            if(schema is not (PackageAssetCatalog.SessionZeroGitInitSchema or PackageAssetCatalog.SessionZeroCudaSchema) || !privateWindow)
                 throw WfpNative.Contract("CreatorGitInitRequiresFixedPrivateWindowPackage");
             BinaryPrimitives.WriteUInt32LittleEndian(request,GitInitRequestMagic);
+        }
+        else if(cuda)
+        {
+            if(schema!=PackageAssetCatalog.SessionZeroCudaSchema || !privateWindow)
+                throw WfpNative.Contract("CreatorCudaRequiresFixedPrivateWindowPackage");
+            BinaryPrimitives.WriteUInt32LittleEndian(request,CudaRequestMagic);
+            cudaCapture=true;
         }
         else if(privateWindow)BinaryPrimitives.WriteUInt32LittleEndian(request,schema switch {
             PackageAssetCatalog.SessionZeroIdentitySurveySchema=>IdentitySurveyRequestMagic,
             PackageAssetCatalog.SessionZeroNetworkSurveySchema or PackageAssetCatalog.ReviewedProxyRouteSchema or
-                PackageAssetCatalog.SessionZeroGitInitSchema=>NetworkSurveyRequestMagic,
+                PackageAssetCatalog.SessionZeroGitInitSchema or PackageAssetCatalog.SessionZeroCudaSchema=>NetworkSurveyRequestMagic,
             _=>PrivateWindowConsoleRequestMagic
         });
         AssertQuarantine(state);
@@ -216,7 +226,8 @@ internal sealed class SessionZeroCreatorChannel : IDisposable
         ProfileCleanupConfirmed=true;
         try
         {
-            var result=SessionZeroCreatorTerminal.ReadReceipt(pipe,nonce,deadline.Token);
+            var result=cudaCapture?SessionZeroCreatorTerminal.ReadGpuReceipt(pipe,nonce,deadline.Token):
+                SessionZeroCreatorTerminal.ReadReceipt(pipe,nonce,deadline.Token);
             return(result.Output,result.Error,null);
         }
         catch(Exception error) when(error is IOException or InvalidDataException or OperationCanceledException or WfpFailure)
@@ -274,6 +285,7 @@ internal sealed class SessionZeroCreatorChannel : IDisposable
         internal bool IdentitySurvey {get;init;}
         internal bool NetworkSurvey {get;init;}
         internal bool GitInit {get;init;}
+        internal bool Cuda {get;init;}
     }
     internal static Request ParseRequest(byte[] frame,string fixedJobId,uint serverPid,uint serverSession)
         =>ParseBoundRequest(frame,fixedJobId,serverPid,serverSession,allowStartupWitness:false);
@@ -290,9 +302,9 @@ internal sealed class SessionZeroCreatorChannel : IDisposable
         var magic=BinaryPrimitives.ReadUInt32LittleEndian(frame);
         if(magic!=RequestMagic && (!allowStartupWitness || magic is not (StartupWitnessRequestMagic or WindowAccessRequestMagic or
             PrivateWindowRequestMagic or PrivateWindowReadControlRequestMagic or PrivateWindowConsoleRequestMagic or
-            IdentitySurveyRequestMagic or NetworkSurveyRequestMagic or GitInitRequestMagic)))
+            IdentitySurveyRequestMagic or NetworkSurveyRequestMagic or GitInitRequestMagic or CudaRequestMagic)))
             throw WfpNative.Contract("CreatorRequestPurposeMismatch");
-        var consolePrivate=magic is PrivateWindowConsoleRequestMagic or IdentitySurveyRequestMagic or NetworkSurveyRequestMagic or GitInitRequestMagic;
+        var consolePrivate=magic is PrivateWindowConsoleRequestMagic or IdentitySurveyRequestMagic or NetworkSurveyRequestMagic or GitInitRequestMagic or CudaRequestMagic;
         return new(Convert.ToHexString(frame.AsSpan(28,16)).ToLowerInvariant(),fixedJobId,frame.AsSpan(12,NonceSize).ToArray()) {
             StartupWitness=magic!=RequestMagic && !consolePrivate,
             ObserveWindowAccess=magic==WindowAccessRequestMagic,
@@ -300,7 +312,7 @@ internal sealed class SessionZeroCreatorChannel : IDisposable
             PrivateStationReadControl=consolePrivate || magic==PrivateWindowReadControlRequestMagic,
             IdentitySurvey=magic is IdentitySurveyRequestMagic or NetworkSurveyRequestMagic,
             NetworkSurvey=magic==NetworkSurveyRequestMagic,
-            GitInit=magic==GitInitRequestMagic
+            GitInit=magic==GitInitRequestMagic,Cuda=magic==CudaRequestMagic
         };
     }
 

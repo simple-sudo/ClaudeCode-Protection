@@ -538,6 +538,8 @@ public static class BootstrapInstaller
         private const string NetworkSurveyManifest="884E9736990A3AA00BFAC706F06FDBC799F0885666DF85CDDE78B647B95B9DB5";
         private const string ReviewedRouteRelease="2376af56d15942eb8a48be57ae691330";
         private const string ReviewedRouteManifest="B534E42F40754606E8DAD848ADB8D87A46C4DA8E59E985147AC05834F98845FA";
+        private const string IndependentGitRelease="beab4874ba3341f2aabb3d64f2e13bc0";
+        private const string IndependentGitManifest="721F5DE2DC86BFEB6AD6834C1ED05810EFC710400D63E4BF31D3395F6BB1807D";
         internal PinnedInactiveUpdateLease(ProtectedState state,BootstrapApproval approval,VerifiedVersion prior,ReviewedPackage next,Action<string>? reportFailureStage)
         {
             this.state=state;this.approval=approval;this.prior=prior;this.next=next;this.reportFailureStage=reportFailureStage;
@@ -559,6 +561,8 @@ public static class BootstrapInstaller
                 throw WfpNative.Contract("NetworkSurveyPredecessorRequiresReviewedProxyRoutePackage");
             if(prior.Package.Release==ReviewedRouteRelease && next.SchemaVersion!=PackageAssetCatalog.SessionZeroGitInitSchema)
                 throw WfpNative.Contract("ReviewedRoutePredecessorRequiresIndependentGitPackage");
+            if(prior.Package.Release==IndependentGitRelease && next.SchemaVersion!=PackageAssetCatalog.SessionZeroCudaSchema)
+                throw WfpNative.Contract("IndependentGitPredecessorRequiresIndependentCudaPackage");
             AssertNoOwnedProcesses();
         }
         // Pure selection check used by the actual constructor and ordinary
@@ -578,6 +582,7 @@ public static class BootstrapInstaller
                 (priorRelease==IdentitySurveyRelease && priorManifest==IdentitySurveyManifest) ||
                 (priorRelease==NetworkSurveyRelease && priorManifest==NetworkSurveyManifest) ||
                 (priorRelease==ReviewedRouteRelease && priorManifest==ReviewedRouteManifest) ||
+                (priorRelease==IndependentGitRelease && priorManifest==IndependentGitManifest) ||
                 // The first-load branch diagnostic closed the original Job and creator resources.
                 (priorRelease=="9455e98cf5da489daf88964e0daa6b52" &&
                     priorManifest=="EC2E00DA29027F8FE426995AAD19C050D23A8998FEA9F7E7D6596668F4A58C41") ||

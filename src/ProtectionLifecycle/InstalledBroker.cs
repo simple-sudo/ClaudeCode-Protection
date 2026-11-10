@@ -232,6 +232,8 @@ public static partial class InstalledBroker
         =>WithCurrentInstallation(OfflineConsoleQualification.RunIndependent);
     public static (int ExitCode,string Report) QualifyIndependentGitInit()
         =>WithCurrentInstallation(OfflineConsoleQualification.RunGitInit);
+    public static (int ExitCode,string Report) QualifyIndependentCuda()
+        =>WithCurrentInstallation(OfflineConsoleQualification.RunCuda);
     public static (int ExitCode,string Report) QualifySessionZeroStartupWitness()
         =>WithCurrentInstallation(OfflineConsoleQualification.RunStartupWitness);
     public static (int ExitCode,string Report) InspectWinsockReadAccess()=>WithCurrentInstallation((_,state,_)=>SessionWinsockReadAccess.Inspect(state),forManifestAccessRecovery:true);
@@ -247,6 +249,7 @@ public static partial class InstalledBroker
     public static int RunOfflineConsoleChild()=>OfflineConsoleQualification.RunChild();
     public static int RunPrivateWindowOfflineConsoleChild()=>OfflineConsoleQualification.RunChild(privateWindow:true);
     public static int RunIdentitySurveyChild()=>OfflineConsoleQualification.RunChild(privateWindow:true,identitySurvey:true);
+    public static int RunIndependentCudaChild()=>OfflineConsoleQualification.RunChild(privateWindow:true,cuda:true);
     public static int RunNetworkSurveyChild()=>OfflineConsoleQualification.RunChild(privateWindow:true,identitySurvey:true,networkSurvey:true);
     public static int RunAdmissionCanary()
     {

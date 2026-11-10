@@ -116,6 +116,7 @@ internal static class Program
             if(command=="offline-console-qualification-child")return ProtectionLifecycle.InstalledBroker.RunOfflineConsoleChild();
             if(command=="private-window-offline-console-child")return ProtectionLifecycle.InstalledBroker.RunPrivateWindowOfflineConsoleChild();
             if(command=="private-window-identity-survey-child")return ProtectionLifecycle.InstalledBroker.RunIdentitySurveyChild();
+            if(command=="private-window-cuda-child")return ProtectionLifecycle.InstalledBroker.RunIndependentCudaChild();
             if(command=="private-window-network-survey-child")return ProtectionLifecycle.InstalledBroker.RunNetworkSurveyChild();
             if(command=="offline-console-denial-target")return 125;
             if(command=="zero-capability-comparison-child")return ProtectionLifecycle.InstalledBroker.RunZeroCapabilityComparisonCanary();
@@ -134,6 +135,7 @@ internal static class Program
                 "qualify-offline-console" => ProtectionLifecycle.InstalledBroker.QualifyOfflineConsole(),
                 "qualify-independent-offline-console" => ProtectionLifecycle.InstalledBroker.QualifyIndependentOfflineConsole(),
                 "qualify-independent-git-init" => ProtectionLifecycle.InstalledBroker.QualifyIndependentGitInit(),
+                "qualify-independent-cuda" => ProtectionLifecycle.InstalledBroker.QualifyIndependentCuda(),
                 "qualify-session-zero-startup-witness" => ProtectionLifecycle.InstalledBroker.QualifySessionZeroStartupWitness(),
                 "qualify-winsock-provider-session-gateway" => ProtectionLifecycle.InstalledBroker.QualifyWinsockProviderSessionGateway(),
                 "qualify-winsock-transport-session-gateway" => ProtectionLifecycle.InstalledBroker.QualifyWinsockTransportSessionGateway(),

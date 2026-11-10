@@ -29,7 +29,7 @@ internal static class OfflineConsoleQualification
     {
         Identity, SessionId, ProgramFiles, WorkspacePath, ProfilePath, CurrentDirectory, Temp, Tmp,
         LocalAppData, UserProfile, Home, XdgConfigHome, ClaudeConfigDir, AppData, UnexpectedAuthority,
-        Streams, InputEof, Workspace, TempFile, Descendant, HostIdentity, Output, PrivateDesktop, NetworkContent
+        Streams, InputEof, Workspace, TempFile, Descendant, HostIdentity, Output, PrivateDesktop, NetworkContent, CudaWorkload
     }
     private static readonly (string Name,ChildStage Stage)[] WorkspaceVariables=[
         ("USERPROFILE",ChildStage.UserProfile),
@@ -58,10 +58,10 @@ internal static class OfflineConsoleQualification
         foreach(var (name,_) in WorkspaceVariables)environment[name]=workspace;
     }
 
-    internal static int RunChild(bool privateWindow=false,bool identitySurvey=false,bool networkSurvey=false)
+    internal static int RunChild(bool privateWindow=false,bool identitySurvey=false,bool networkSurvey=false,bool cuda=false)
     {
         var stage=ChildStage.Identity;
-        try{return RunCheckedChild(ref stage,privateWindow,identitySurvey,networkSurvey);}
+        try{return RunCheckedChild(ref stage,privateWindow,identitySurvey,networkSurvey,cuda);}
         catch(Exception error) when(error is not OutOfMemoryException)
         {
             var kind=error switch {
@@ -75,7 +75,7 @@ internal static class OfflineConsoleQualification
         }
     }
 
-    private static int RunCheckedChild(ref ChildStage stage,bool privateWindow,bool identitySurvey,bool networkSurvey)
+    private static int RunCheckedChild(ref ChildStage stage,bool privateWindow,bool identitySurvey,bool networkSurvey,bool cuda)
     {
         AtomicChild.AssertOfflineConsoleWorkerIdentity();
         stage=ChildStage.SessionId;
@@ -112,6 +112,12 @@ internal static class OfflineConsoleQualification
         stage=ChildStage.InputEof;
         using(var stdin=Console.OpenStandardInput())
             if(stdin.ReadByte()!=-1)throw WfpNative.Contract("OfflineConsoleInputMustBeEof");
+        if(cuda)
+        {
+            stage=ChildStage.CudaWorkload;
+            if(!privateWindow || identitySurvey || networkSurvey)throw WfpNative.Contract("CudaWorkerPurposeDiffers");
+            return IndependentGpuWorkload.RunChild(session);
+        }
         stage=ChildStage.Workspace;
         using(var file=new FileStream(WindowsPathSeal.Child(workspace,OutputLeaf),FileMode.CreateNew,FileAccess.Write,FileShare.None))
         {file.Write(ExpectedFile);file.Flush(true);}
@@ -315,19 +321,27 @@ internal static class OfflineConsoleQualification
 
     internal static (int ExitCode,string Report) RunGitInit(FixedLayout layout,ProtectedState state,VerifiedVersion version)
     {
-        if(version.Package.SchemaVersion!=PackageAssetCatalog.SessionZeroGitInitSchema)
+        if(version.Package.SchemaVersion is not (PackageAssetCatalog.SessionZeroGitInitSchema or PackageAssetCatalog.SessionZeroCudaSchema))
             throw WfpNative.Contract("IndependentGitInitRequiresFixedPackageSchema");
         return RunIndependent(layout,state,version,startupWitness:false,gitInit:true);
     }
 
+    internal static (int ExitCode,string Report) RunCuda(FixedLayout layout,ProtectedState state,VerifiedVersion version)
+    {
+        if(version.Package.SchemaVersion!=PackageAssetCatalog.SessionZeroCudaSchema)
+            throw WfpNative.Contract("IndependentCudaRequiresFixedPackageSchema");
+        return RunIndependent(layout,state,version,startupWitness:false,cuda:true);
+    }
+
     private static (int ExitCode,string Report) RunIndependent(FixedLayout layout,ProtectedState state,VerifiedVersion version,
-        bool startupWitness,bool gitInit=false)
+        bool startupWitness,bool gitInit=false,bool cuda=false)
     {
         var plans=RequireOfflinePrerequisites(state,version);
         var branchWitness=startupWitness && SessionZeroStartupWitness.UsesBranchTrace(version.Package.SchemaVersion);
         var windowAccessWitness=startupWitness && version.Package.SchemaVersion==PackageAssetCatalog.SessionZeroWindowAccessSchema;
-        var networkSurvey=!startupWitness && !gitInit && version.Package.SchemaVersion is
-            PackageAssetCatalog.SessionZeroNetworkSurveySchema or PackageAssetCatalog.ReviewedProxyRouteSchema or PackageAssetCatalog.SessionZeroGitInitSchema;
+        var networkSurvey=!startupWitness && !gitInit && !cuda && version.Package.SchemaVersion is
+            PackageAssetCatalog.SessionZeroNetworkSurveySchema or PackageAssetCatalog.ReviewedProxyRouteSchema or
+            PackageAssetCatalog.SessionZeroGitInitSchema or PackageAssetCatalog.SessionZeroCudaSchema;
         var identitySurvey=networkSurvey || !startupWitness && version.Package.SchemaVersion==PackageAssetCatalog.SessionZeroIdentitySurveySchema;
         var privateWindow=startupWitness?SessionZeroStartupWitness.UsesPrivateWindow(version.Package.SchemaVersion):
             SessionZeroWindowPolicy.SupportsConsole(version.Package.SchemaVersion);
@@ -346,6 +360,7 @@ internal static class OfflineConsoleQualification
         OfflineConsoleNetworkSurvey.Summary? networkContent=null;
         Exception? networkEvidenceFailure=null;
         long childCreated=0;
+        uint cudaPid=0;
         SessionZeroWindowOwner? privateWindows=null;
         var privateWindowsClosed=false;
         RuntimeStop? stopped=null;
@@ -373,7 +388,7 @@ internal static class OfflineConsoleQualification
             SessionZeroCreatorChannel preparedChannel;
             try
             {
-                if(!startupWitness && !gitInit)
+                if(!startupWitness && !gitInit && !cuda)
                 {
                     stage="CaptureHostIdentity";
                     host=identitySurvey?OfflineConsoleHostIdentity.CaptureSurvey(jobId):OfflineConsoleHostIdentity.Capture(jobId);
@@ -433,10 +448,11 @@ internal static class OfflineConsoleQualification
                 }
                 stage="ValidateSuspendedRoot";
                 git?.AssertHeld();
-                using var root=channel.Exchange(layout,state,version,job,startupWitness,privateWindows,gitInit);
+                using var root=channel.Exchange(layout,state,version,job,startupWitness,privateWindows,gitInit,cuda);
                 creatorWindowAccess=root.WindowAccess;
-                child=AtomicChild.AdoptSessionZeroOfflineConsole(layout,state,version,job,root,startupWitness,gitInit);
+                child=AtomicChild.AdoptSessionZeroOfflineConsole(layout,state,version,job,root,startupWitness,gitInit,cuda);
                 if(networkSurvey)childCreated=child.ExpectedCreatedFileTime;
+                if(cuda)cudaPid=child.Pid;
                 runtime=ProtectionRuntimeLease.ForFixedOfflineConsole(state,version,job,fences,child,job.JobId);
                 runtime.Activate(10000);
                 stage="RunWorker";
@@ -517,7 +533,7 @@ internal static class OfflineConsoleQualification
                     }
                     catch(Exception error){failedStage??=stage;failures.Add(error);}
                 }
-                if(child is not null && !startupWitness && !gitInit)
+                if(child is not null && !startupWitness && !gitInit && !cuda)
                 {
                     stage="SealWorkerEvidence";
                     try
@@ -558,6 +574,24 @@ internal static class OfflineConsoleQualification
             foreach(var fence in fences)try{fence.Dispose();}catch(Exception error){failures.Add(error);}
         }
         stage=failedStage??stage;
+        if(cuda)
+        {
+            var observed=jobId is null?null:IndependentGpuWorkload.Observe(jobId,cudaPid,exit,stdout,stderr);
+            var ordered=jobId is not null && stopped?.ConfirmsClosedOfflineConsole(jobId,jobId)==true;
+            var qualified=failures.Count==0 && resumed && ordered && privateWindowsClosed && profileClosed && workspaceClosed &&
+                serviceRemoved && observed is {ComputationQualified:true};
+            var cudaReport=JsonSerializer.Serialize(new {
+                SchemaVersion=1,Scope=IndependentGpuWorkload.Scope,state.InstallationId,JobId=jobId,
+                version.Package.Release,version.Package.ManifestHash,Status=qualified?"INDEPENDENT_CUDA_COMPUTATION_OBSERVED":"INDEPENDENT_CUDA_NOT_CONFIRMED",
+                LastStage=stage,ProcessResumed=resumed,ChildExit=exit,Cuda=observed,ChildFailure=ParseChildFailure(exit,stderr),
+                OriginalJobClosed=closed,ProfileClosed=profileClosed,WorkspaceClosed=workspaceClosed,ServiceRemoved=serviceRemoved,
+                PrivateWindowOwnerReady=privateWindows is not null,PrivateWindowOwnerClosed=privateWindowsClosed,CreatorWindowAccess=creatorWindowAccess,
+                Output=Summarize(stdout),Error=Summarize(stderr),StopObservation=stopped,Failures=failures.SelectMany(WfpNative.Describe).ToArray(),
+                HostIdentityQualified=false,GatewayOpened=false,NetworkQualified=false,LaunchAuthorized=false,FormalAdmissionIssued=false,ClaudeLaunched=false
+            });
+            if(jobId is not null)state.WriteNew("independent-cuda-after-"+jobId+".json",Encoding.UTF8.GetBytes(cudaReport));
+            return(qualified?0:3,cudaReport);
+        }
         if(gitInit)
         {
             var outputQuiet=stdout is {Overflow:false,Bytes.Length:0} && stderr is {Overflow:false,Bytes.Length:0};

@@ -5,6 +5,13 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-09 独立 CUDA 计算与退出取证
+
+SOURCE / BUILD / INTEGRATED(schema 19 固定独立 CUDA 载荷、专用回执及原 Job 回收)。
+VERIFIED(普通 Windows 上固定 NVIDIA CUDA 计算、清理、真实管道限额及限定协议拒绝)。
+NOT_RUN(安装、受限 CUDA、GPU 身份隔离、异常停止和正式 Claude)。
+[证据](GPU-HOST-REFERENCE.md#独立链的固定-cuda-计算与退出取证)
+
 ## 2026-11-09 独立链的固定 Git init
 
 SOURCE / BUILD / INTEGRATED(schema 18 独立固定 Git 创建请求及原链回收)。

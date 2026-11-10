@@ -10,6 +10,7 @@ internal sealed record OfflineConsoleOutput(byte[] Bytes,bool Overflow);
 internal sealed class OfflineConsoleStreams : IDisposable
 {
     internal const int MaximumBytes=4096;
+    internal const int GpuOutputMaximumBytes=8192;
     // DETACHED_PROCESS. This workload gets its console I/O only from the
     // three pipes. Do not allocate or inherit a Windows console.
     internal const uint DetachedCreationFlag=0x00000008;
@@ -47,19 +48,25 @@ internal sealed class OfflineConsoleStreams : IDisposable
 
     internal CreationAttributes PrepareCreationAttributes()=>new(ChildHandles());
 
-    internal (Task<OfflineConsoleOutput> Output,Task<OfflineConsoleOutput> Error) ReadAfterCreate()
+    internal (Task<OfflineConsoleOutput> Output,Task<OfflineConsoleOutput> Error) ReadAfterCreate()=>CaptureAfterCreate(false);
+
+    internal (Task<OfflineConsoleOutput> Output,Task<OfflineConsoleOutput> Error) ReadGpuAfterCreate()=>CaptureAfterCreate(true);
+
+    private (Task<OfflineConsoleOutput> Output,Task<OfflineConsoleOutput> Error) CaptureAfterCreate(bool gpuOutput)
     {
         if(released || disposed)throw WfpNative.Contract("OfflineConsoleCaptureAlreadyStarted");
         released=true;
         input.DisposeLocalCopyOfClientHandle();
         output.DisposeLocalCopyOfClientHandle();
         error.DisposeLocalCopyOfClientHandle();
-        return (ReadBounded(output),ReadBounded(error));
+        return (ReadCapture(output,gpuOutput?GpuOutputMaximumBytes:MaximumBytes),ReadCapture(error,MaximumBytes));
     }
 
-    internal static async Task<OfflineConsoleOutput> ReadBounded(Stream stream)
+    internal static Task<OfflineConsoleOutput> ReadBounded(Stream stream)=>ReadCapture(stream,MaximumBytes);
+
+    private static async Task<OfflineConsoleOutput> ReadCapture(Stream stream,int maximum)
     {
-        var buffer=new byte[MaximumBytes+1];
+        var buffer=new byte[maximum+1];
         try
         {
             int used=0;
@@ -69,7 +76,7 @@ internal sealed class OfflineConsoleStreams : IDisposable
                 if(count==0)return new(buffer[..used],false);
                 used+=count;
             }
-            return new(buffer[..MaximumBytes],true);
+            return new(buffer[..maximum],true);
         }
         finally{Array.Clear(buffer);}
     }

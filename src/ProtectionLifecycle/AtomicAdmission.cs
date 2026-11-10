@@ -161,7 +161,7 @@ internal sealed partial class AtomicChild : IDisposable
     private readonly OfflineTlsProbe? offlineTls;
     private readonly bool offlineConsole;
     private readonly bool independentOfflineConsole;
-    private readonly bool independentGitInit;
+    private readonly bool independentGitInit,independentCuda;
     private readonly bool startupWitness;
     private readonly SessionZeroCreatorChannel.TokenProof creatorTokenProof;
     private readonly ProtectedSession.Preparation? sessionPreparation;
@@ -370,18 +370,19 @@ internal sealed partial class AtomicChild : IDisposable
         sessionPreparation=preparation;resourceQualification=resources;this.offlineTls=offlineTls;this.offlineConsole=offlineConsole;
     }
     private AtomicChild(ProtectedState state,VerifiedVersion version,OwnedKernelJob job,SessionZeroCreatorChannel.SuspendedRoot root,
-        string image,string sid,bool startupWitness,bool gitInit)
+        string image,string sid,bool startupWitness,bool gitInit,bool cuda)
     {
         this.state=state;this.version=version;this.job=job;this.image=image;packageSid=sid;
         Pid=root.Identity.Pid;initialThreadId=root.Identity.Tid;
         (process,thread)=root.TransferTo(job);
         offlineConsole=true;independentOfflineConsole=true;
         independentGitInit=gitInit;
+        independentCuda=cuda;
         this.startupWitness=startupWitness;
         creatorTokenProof=root.LpacProof;
     }
     internal static AtomicChild AdoptSessionZeroOfflineConsole(FixedLayout layout,ProtectedState state,VerifiedVersion version,
-        OwnedKernelJob job,SessionZeroCreatorChannel.SuspendedRoot root,bool startupWitness,bool gitInit=false)
+        OwnedKernelJob job,SessionZeroCreatorChannel.SuspendedRoot root,bool startupWitness,bool gitInit=false,bool cuda=false)
     {
         ProtectedState.RequireAdministrator();state.AssertHeld();version.AssertHeld(state);
         _=job.SessionZeroCreatorSid;
@@ -389,7 +390,7 @@ internal sealed partial class AtomicChild : IDisposable
         var image=gitInit?SessionGitToolchain.ToolPath:startupWitness?SessionZeroStartupWitness.ReviewedImage(layout,version):
             WindowsPathSeal.Child(layout.Version(version.Package.Release),"bin/admin/ProtectionBroker.exe");
         using var package=new InstallationPackageSid(state);
-        return new(state,version,job,root,image,package.Value,startupWitness,gitInit);
+        return new(state,version,job,root,image,package.Value,startupWitness,gitInit,cuda);
     }
     internal static AtomicChild CreateCanary(FixedLayout layout,ProtectedState state,VerifiedVersion version,OwnedKernelJob job,InstallationProfileLease profile,
         NetworkProbePlan? network=null,IntPtr output=default,GpuProbePlan? gpu=null)
@@ -460,6 +461,7 @@ internal sealed partial class AtomicChild : IDisposable
             environment=Marshal.StringToHGlobalUni(string.Join('\0',env.Select(p=>p.Key+"="+p.Value))+"\0\0");
             var command=gitStart is not null?InheritedToolCommand(image,gitStart.ArgumentList.ToArray()):new StringBuilder("\""+image+"\"");
             if(gitStart is null && !client.Request.StartupWitness)command.Append(' ').Append(client.Request switch {
+                {Cuda:true}=>IndependentGpuWorkload.ChildCommand,
                 {NetworkSurvey:true}=>OfflineConsoleQualification.NetworkSurveyChildCommand,
                 {IdentitySurvey:true}=>OfflineConsoleQualification.IdentitySurveyChildCommand,
                 {UsePrivateWindow:true}=>OfflineConsoleQualification.PrivateWindowChildCommand,
@@ -746,7 +748,7 @@ internal sealed partial class AtomicChild : IDisposable
             Binding="SECURITY_CAPABILITIES_AND_JOB_LIST_AT_CREATION",Status="BEFORE_FIRST_RESUME",NetworkBehaviorQualified=false,
             SessionBindingSHA256=sessionAdmission?.BindingSHA256,
             Scope=sessionAdmission is not null?"AUTHENTICATED_SESSION_GATEWAY":network?.Kind==NetworkProbeKind.Control?"UNFENCED_OWNED_LOOPBACK_CONTROL":proxyOnly?"COMPILED_IPV4_PROXY_ONLY":gpuWorkload?"FIXED_CUDA_FULL_QUARANTINE":startupWitness?SessionZeroStartupWitness.Scope:
-                independentGitInit?SessionGitToolchain.IndependentInitScope:independentOfflineConsole?"FIXED_INDEPENDENT_CONSOLE_FULL_QUARANTINE":offlineConsole?"FIXED_CONSOLE_FULL_QUARANTINE":
+                independentGitInit?SessionGitToolchain.IndependentInitScope:independentCuda?IndependentGpuWorkload.Scope:independentOfflineConsole?"FIXED_INDEPENDENT_CONSOLE_FULL_QUARANTINE":offlineConsole?"FIXED_CONSOLE_FULL_QUARANTINE":
                 offlineTls switch {OfflineTlsProbe.Schannel=>"FIXED_SCHANNEL_FULL_QUARANTINE",OfflineTlsProbe.OpenSsl=>"FIXED_OPENSSL_FULL_QUARANTINE",_=>"FULL_QUARANTINE"}};
         state.WriteNew("admission-before-resume-"+job.JobId+".json",JsonSerializer.SerializeToUtf8Bytes(proof));
         OfflineConsoleUserSid=tokenUser;
