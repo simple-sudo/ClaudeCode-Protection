@@ -12,6 +12,7 @@ internal sealed partial class SessionZeroStartupBranchTrace
     // root thread's hardware debug registers. Driver exceptions go to the child.
     internal sealed class CudaAccessTrace : IDisposable
     {
+        internal enum Mode { AccessOnly, Initialization, HelperPath, RegistryCalls }
         private const uint AccessViolation=0xc0000005;
         private const uint UnloadDllEvent=7;
         private readonly FileStream driver=HoldCudaImage("nvcuda.dll",8*1024*1024,
@@ -37,9 +38,9 @@ internal sealed partial class SessionZeroStartupBranchTrace
         }
         private bool driverMapped;
 
-        internal CudaAccessTrace():this(false){}
+        internal CudaAccessTrace():this(Mode.AccessOnly){}
 
-        internal CudaAccessTrace(bool observeInitialization,bool observeHelperPath=false)
+        internal CudaAccessTrace(Mode mode)
         {
             try
             {
@@ -48,8 +49,7 @@ internal sealed partial class SessionZeroStartupBranchTrace
                 var size=pe.PEHeaders.PEHeader?.SizeOfImage??0;
                 if(size<=0 || size>32*1024*1024)throw WfpNative.Contract("CudaTraceImageSizeRefused");
                 imageSize=(uint)size;
-                if(observeHelperPath && !observeInitialization)throw WfpNative.Contract("CudaHelperRequiresExactInitializationTrace");
-                if(observeInitialization)initialization=new CudaInitializationTrace(observeHelperPath);
+                if(mode!=Mode.AccessOnly)initialization=new CudaInitializationTrace(mode);
             }
             catch{driver.Dispose();throw;}
         }
@@ -236,25 +236,33 @@ internal sealed partial class SessionZeroStartupBranchTrace
         {
             // Return sites for the allocator, indirect callback and helper, followed by the store.
             private static readonly int[] Locations=[0x39ff31,0x39ffbe,0x3a04d8,0x3a062e];
+            // RegOpenKeyExA, RegQueryValueExA, the next driver helper and the enclosing callback.
+            private static readonly int[] RegistryReturns=[0x39f46c,0x39f4fb,0x39f5d3,0x207d6a];
+            private const int RegistryCallbackCall=0x207d64;
             private readonly FileStream image=HoldCudaImage("nvcuda64.dll",64*1024*1024,
                 "8AE9D817499BF3BF7DF7A91A3F57574335DCDE42AFF130F46C86C68F38B27521");
             private readonly string identity;
             private readonly uint size;
             private readonly bool?[] zero=new bool?[4];
             private readonly SessionZeroCudaHelperPath? helper;
+            private readonly uint?[]? registryCodes;
             private long? mapping;
-            private bool observed;
+            private bool observed,registryCallbackEntered;
 
             internal sealed record Evidence(bool ExactImageMapped,bool? AllocatorReturnedNull,bool? CallbackReturnedZero,
                 bool? HelperReturnedZero,bool? StoreBaseWasNull)
             {
                 [System.Text.Json.Serialization.JsonIgnore(Condition=System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
                 public SessionZeroCudaHelperPath.Evidence? HelperPath {get;init;}
+                [System.Text.Json.Serialization.JsonIgnore(Condition=System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+                public RegistryEvidence? RegistryCalls {get;init;}
             }
+
+            internal sealed record RegistryEvidence(bool CallbackEntered,uint? OpenCode,uint? QueryCode,uint? LaterHelperCode,uint? CallbackCode);
 
             internal bool ObservesHelperPath=>helper is not null;
 
-            internal CudaInitializationTrace(bool observeHelperPath)
+            internal CudaInitializationTrace(Mode mode)
             {
                 try
                 {
@@ -264,7 +272,8 @@ internal sealed partial class SessionZeroStartupBranchTrace
                     if(pe.PEHeaders.CoffHeader.Machine!=Machine.Amd64 || imageSize<=Locations[^1] || imageSize>64*1024*1024)
                         throw WfpNative.Contract("CudaInitializationTraceImageRefused");
                     size=(uint)imageSize;
-                    if(observeHelperPath)helper=new SessionZeroCudaHelperPath();
+                    if(mode==Mode.HelperPath)helper=new SessionZeroCudaHelperPath();
+                    if(mode==Mode.RegistryCalls)registryCodes=new uint?[RegistryReturns.Length];
                 }
                 catch{image.Dispose();throw;}
             }
@@ -275,6 +284,11 @@ internal sealed partial class SessionZeroStartupBranchTrace
                 if(observed || address<0x10000)throw WfpNative.Contract("CudaInitializationTraceMappingDiffers");
                 mapping=address;
                 observed=true;
+                if(registryCodes is not null)
+                {
+                    context.Arm(0,checked(address+RegistryCallbackCall));
+                    return;
+                }
                 if(helper is not null)context.Arm(0,checked(address+SessionZeroCudaHelperPath.Caller));
                 for(var slot=helper is null?0:2;slot<Locations.Length;slot++)context.Arm(slot,checked(address+Locations[slot]));
             }
@@ -288,6 +302,20 @@ internal sealed partial class SessionZeroStartupBranchTrace
 
             internal void Record(Breakpoints context,long address,int slot,long value)
             {
+                if(registryCodes is not null)
+                {
+                    if(registryCallbackEntered)registryCodes[slot]=unchecked((uint)value);
+                    else
+                    {
+                        if(slot!=0 || mapping is not { } start || ImplementationRva(address)!=RegistryCallbackCall)
+                            throw WfpNative.Contract("CudaRegistryCallbackUnbound");
+                        registryCallbackEntered=true;
+                        for(var i=0;i<RegistryReturns.Length;i++)context.Arm(i,checked(start+RegistryReturns[i]));
+                    }
+                    // Later callbacks must never supply an earlier invocation's missing status.
+                    if(slot==3)context.ClearWhileStopped();
+                    return;
+                }
                 if(helper is not null && slot<2)
                 {
                     if(mapping is not { } start || ImplementationRva(address) is not { } rva)
@@ -300,7 +328,11 @@ internal sealed partial class SessionZeroStartupBranchTrace
             }
             internal uint? ImplementationRva(long address)=>mapping is { } start && address>=start && (ulong)(address-start)<size
                 ?(uint)(address-start):null;
-            internal Evidence Snapshot()=>new(observed,zero[0],zero[1],zero[2],zero[3]){HelperPath=helper?.Snapshot()};
+            internal Evidence Snapshot()=>new(observed,zero[0],zero[1],zero[2],zero[3])
+            {
+                HelperPath=helper?.Snapshot(),
+                RegistryCalls=registryCodes is null?null:new(registryCallbackEntered,registryCodes[0],registryCodes[1],registryCodes[2],registryCodes[3])
+            };
             public void Dispose()=>image.Dispose();
         }
 

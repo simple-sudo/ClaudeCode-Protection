@@ -254,6 +254,25 @@ SHA-256 `0379397D79D63BDE4D1792943B50850E8BD3783B13BF0C387C784C4594FB1273`。
 回执 `work/session-zero-cuda-helper-path-20261110-01/receipt.json`
 SHA-256 `74CACEDEB0B5FB2B2A822F1BF561E9B043706550E871BAB77CBA20BA404A3EAE`。
 
+### CUDA 驱动注册表调用对照
+
+同一固定驱动字节的静态映射中，`0x39E0A0` 将首回调设置为 `0x39F0F0`。回调以
+`KEY_READ` 打开 `HKLM\SYSTEM\CurrentControlSet\Control\GraphicsDrivers`，随后查询
+`TdrLevel`。打开失败且错误不为 2、或查询失败且错误不为 2，均可使回调返回 `999`。
+之后调用的驱动子函数也能传回非零结果，故需要实际返回码区分分支。
+
+可信普通身份读取了该键当前真实内容。根键为六个 DWORD，`TdrLevel` 存在。真实配置值
+只留本机 `work/session-zero-cuda-registry-calls-20261110-01/graphics-drivers-trusted.json`
+SHA-256 `848D3016BB65B21D4D53C3A784B5E276FC720D5EBBA0878256185B9377EBF1E5`。
+根键含普通应用容器 ACE，未见受限应用容器组 ACE。该观察未判定受限键访问结果。
+
+schema 28 在同一精确驱动、原根线程的实际 `0x207D64` 调用点启用四个返回点，只记录
+实际状态码。首回调返回时即清除剩余观察点。普通参考的打开、查询、后续子函数和回调
+均返回 0，固定 1 KiB 计算和退出成功。日志
+`work/session-zero-cuda-registry-calls-20261110-01/host-cuda-registry-calls.log`
+SHA-256 `A7ABBAEDFFC26D61D20DBAE5E8A2BADB2937FA1FD284A21D1C09E73C94E6FCE8`。
+未执行受限对照或注册表变更。
+
 ## 2026-11-06 610b正常真实参考已验证
 
 经本人批准73AC9CC7…，安装/原daily/原资格owner/指定新记录reader全终态0。现装

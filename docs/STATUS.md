@@ -7,6 +7,9 @@
 
 ## 2026-11-09 独立 CUDA 计算与退出取证
 
+schema 28 静态定位 `GraphicsDrivers` 及 `TdrLevel`，普通实机记录四个原生返回码并
+完成真实 CUDA。[驱动注册表调用对照](GPU-HOST-REFERENCE.md#cuda-驱动注册表调用对照)。
+
 schema 27 普通实机沿固定辅助函数观察 65 条分支边并完成真实 CUDA。`c09e706b`
 受限实机在第 16 条边进入清理，前一个回调返回 `999`，原资源有序回收。
 [辅助函数路径对照](GPU-HOST-REFERENCE.md#cuda-辅助函数路径对照)。

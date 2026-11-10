@@ -77,16 +77,19 @@ if(args.Length==2 && args[0] is "access-fault-child" or "access-cuda-child" or "
     }
     args[0]="split-native-child";
 }
-if(args.Length==1 && args[0] is "host-access-trace" or "host-access-cuda" or "host-deferred-access-cuda" or "host-cuda-initialization-trace" or "host-cuda-helper-path")
+if(args.Length==1 && args[0] is "host-access-trace" or "host-access-cuda" or "host-deferred-access-cuda" or "host-cuda-initialization-trace" or "host-cuda-helper-path" or "host-cuda-registry-calls")
 {
     var observeHelperPath=args[0]=="host-cuda-helper-path";
-    var observeInitialization=observeHelperPath || args[0]=="host-cuda-initialization-trace";
+    var observeRegistry=args[0]=="host-cuda-registry-calls";
+    var observeInitialization=observeHelperPath || observeRegistry || args[0]=="host-cuda-initialization-trace";
     var deferred=observeInitialization || args[0]=="host-deferred-access-cuda";
     var actualCuda=deferred || args[0]=="host-access-cuda";
     var traceNonce=new string('a',32);
     using var child=Start(deferred?"access-cuda-deferred-child":actualCuda?"access-cuda-child":"access-fault-child",traceNonce);
     const BindingFlags hidden=BindingFlags.NonPublic|BindingFlags.Instance;
-    using var trace=(IDisposable)Activator.CreateInstance(TraceType(),hidden,null,[observeInitialization,observeHelperPath],null)!;
+    var mode=Enum.Parse(TraceType().GetNestedType("Mode",BindingFlags.NonPublic)!,
+        observeRegistry?"RegistryCalls":observeHelperPath?"HelperPath":observeInitialization?"Initialization":"AccessOnly");
+    using var trace=(IDisposable)Activator.CreateInstance(TraceType(),hidden,null,[mode],null)!;
     var stderr=child.StandardError.ReadToEndAsync();
     var line=await child.StandardOutput.ReadLineAsync().WaitAsync(TimeSpan.FromSeconds(5));
     var thread=uint.Parse(line!,System.Globalization.CultureInfo.InvariantCulture);
@@ -107,11 +110,17 @@ if(args.Length==1 && args[0] is "host-access-trace" or "host-access-cuda" or "ho
         {
             var checkpoints=result.GetProperty("Initialization");
             if(!checkpoints.GetProperty("ExactImageMapped").GetBoolean() ||
-                checkpoints.GetProperty("HelperReturnedZero").ValueKind!=JsonValueKind.True ||
-                checkpoints.GetProperty("StoreBaseWasNull").ValueKind!=JsonValueKind.False ||
                 result.GetProperty("FirstChance").ValueKind!=JsonValueKind.Null ||
                 result.GetProperty("LastChance").ValueKind!=JsonValueKind.Null)return 4;
-            if(observeHelperPath)
+            if(observeRegistry)
+            {
+                var registry=checkpoints.GetProperty("RegistryCalls");
+                if(!registry.GetProperty("CallbackEntered").GetBoolean() || registry.GetProperty("OpenCode").GetUInt32()!=0 ||
+                    registry.GetProperty("QueryCode").GetUInt32()!=0 || registry.GetProperty("CallbackCode").GetUInt32()!=0)return 4;
+            }
+            else if(checkpoints.GetProperty("HelperReturnedZero").ValueKind!=JsonValueKind.True ||
+                checkpoints.GetProperty("StoreBaseWasNull").ValueKind!=JsonValueKind.False)return 4;
+            else if(observeHelperPath)
             {
                 var path=checkpoints.GetProperty("HelperPath");
                 if(!path.GetProperty("ReachedReviewedExit").GetBoolean() || path.GetProperty("ObservedEdges").GetInt32() is <1 or >96 ||
