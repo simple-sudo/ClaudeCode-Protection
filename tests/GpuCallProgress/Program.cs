@@ -11,6 +11,8 @@ using ProtectionLifecycle;
 
 using var identity=WindowsIdentity.GetCurrent();
 if(new WindowsPrincipal(identity).IsInRole(WindowsBuiltInRole.Administrator))throw new InvalidOperationException("Ordinary context required");
+if(args is ["host-gpu-win32k",var timing,var workload,var rawPath])return GpuWin32kBoundary.Run(timing,workload,rawPath);
+if(args is ["host-gpu-win32k-create",var fixedWorkload,var contentPath])return GpuWin32kBoundary.RunAtCreation(fixedWorkload,contentPath);
 if(args is ["self-creation-dacl"])
 {
     var read=typeof(InstalledBroker).Assembly.GetType("ProtectionLifecycle.WddmAdapterProbe",true)!

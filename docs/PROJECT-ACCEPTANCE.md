@@ -7,6 +7,10 @@
 
 ## 2026-11-09 独立 CUDA 计算与退出取证
 
+SOURCE / BUILD / VERIFIED(普通 Windows 的托管和原生 Win32k 禁用对照)。
+FAIL(进程级 Win32k 禁用导致托管入口失败、原生 CUDA/NVML 无设备或驱动，且真实 PnP 实例仍可读)。
+NOT_RUN(把该策略安装到受限产品链)。
+
 SOURCE / BUILD / INTEGRATED(schema 31 原受限 GPU 设备标识对抗)。
 VERIFIED(普通原生 CUDA、NVML 与 PnP 内容，UUID、LUID 和 PCI 地址关联)。
 VERIFIED(`16443852` 未激活更新、原受限 CUDA 计算、设备标识内容对照、两键和原资源恢复)。

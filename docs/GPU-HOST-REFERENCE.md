@@ -369,6 +369,27 @@ SHA-256 `260C96B7A5BA4830BF5785833F53C9B3F1941BE426DBC6F8001E1C2BC60BAE26`。
 三源原值仅封存于受保护本机，SHA-256
 `58C12F68C4573BD71F563B8FDC5A3FA7A084A1856F057D7993E6EA6F60087CDD`。
 
+### Win32k 限制与原生设备路径
+
+在本机以普通权限测试 `DisallowWin32kSystemCalls`，每个托管用例使用独立自有进程。
+普通参考取得四项 WDDM LUID、真实 CUDA/NVML UUID、三个 PnP 实例，并完成 1 KiB 计算。
+托管进程在调用前和预热后尝试自行设置，均返回 Win32 19，读回禁用位为 0。由父进程
+在创建时设置同一禁用位并在恢复前读回为 1 后，五个子进程全部在应用入口前退出
+`0xC0000142`。这些终态属于启动失败，未形成各接口的拒绝证据。
+[Windows 进程系统调用策略](https://learn.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-process_mitigation_system_call_disable_policy)
+
+原生对照只静态导入 Kernel32，先在进程入口读回有效策略，再分别访问 ConfigMgr、NVML、
+CUDA 及 `win32u` 的直接枚举入口。普通参考四项 LUID 均可读且关闭成功。禁用后原生进程
+仍完成测试，WDDM 状态 `0xC000001C`，`cuInit` 返回 `100`，NVML 初始化返回 `9`，
+三个 PnP 显示设备实例仍与普通参考逐项一致。第一版原生正对照未准备 GUI 线程，直接
+WDDM 调用前后出现异常终态。该失败证据保留，修订版在直接枚举前增加 USER32 和桌面
+线程准备，并完成普通正对照。未将这个只影响自有测试进程的策略加入产品启动链。
+
+`work/gpu-win32k-boundary-20261110-01/creation-summary.json` SHA-256
+`A476DECF3658D989FF469AE6EA282BAC699A78CC25A4330197791A5A2641007C`。
+`native-r3/native-summary.json` SHA-256 `759B54FCE87EF7AACF204666C1CF52521B9EF9D793930D6950175855C5DEF36C`。
+`native-r3/pnp-comparison.json` SHA-256 `59B3A93B28FA4564F1B10F5889DD4D685EF5B6DDB0F8BDE64E30240C73992189`。
+
 ## 2026-11-06 610b正常真实参考已验证
 
 经本人批准73AC9CC7…，安装/原daily/原资格owner/指定新记录reader全终态0。现装

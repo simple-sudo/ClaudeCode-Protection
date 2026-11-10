@@ -7,6 +7,9 @@
 
 ## 2026-11-09 独立 CUDA 计算与退出取证
 
+普通 Windows 对照实测 Win32k 禁用使 CUDA 不可用，但三个实际 PnP 实例仍匹配。
+[进程级限制对照](GPU-HOST-REFERENCE.md#win32k-限制与原生设备路径)。
+
 schema 31 的 `16443852` 实测原受限 CUDA 正向通过。CUDA、NVML 和 PnP 实际内容可跨源
 关联，原 ACL 与会话资源有序恢复。
 [GPU 标识实测](GPU-HOST-REFERENCE.md#cuda-nvml-与-pnp-实际设备标识)。
