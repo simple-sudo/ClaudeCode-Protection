@@ -316,7 +316,19 @@ DWORD、12 个直接子键的权限边界继续核对。根规则不授予读取
 绑定和可信同机内容对照。原值仅存于受保护本机证据，公开回执只带结果分类和封存摘要。
 普通本机只读证据 `work/session-zero-cuda-graphics-root-20261110-01/graphics-drivers-read-policy.log`
 SHA-256 `82FFAA5D4F91067B693EB6225E635521B551CE47175281FE91C7B9778F550079`。
-当前受限根映射、敏感内容结果和恢复尚未运行。
+`ffad9ffb` 在单次批准 `E471808A0FCB…` 后更新并保持 INACTIVE。原零能力 LPAC
+载荷的 `GraphicsDrivers` 打开、查询、后续驱动子调用及回调均返回 0，`cuInit` 返回 0。
+固定 1 KiB/256 元素计算结果一致，16 项 CUDA 调用、32 帧均成功，`cuCtxDestroy_v2`
+返回 0。原 Job 有序关闭、profile、工作区、窗口和两项服务均回收。两个原 DACL 精确
+恢复，叶子内容和直接子键权限边界一致，终态普通只读复查与预检文件逐字节一致。
+
+同次受限真实 MachineGuid、SMBIOS UUID 与序列号均被拒绝，登录名不可用。原始内容证据
+封存在本机，SHA-256 `30974D071406AE796AF2E5FF87B38C5D526F3350355640E068FA4646E5CD6FDF`。
+可信与受限 WDDM 的四个真实 LUID 仍全部匹配，同次启动跨身份关联为 FAIL。固定功能证据
+不涵盖框架兼容性、长期 GPU 任务或其他 GPU 身份接口。
+
+外层回执 `work/session-zero-cuda-graphics-root-20261110-01/receipt.json`
+SHA-256 `46E4A4A9B1B9589DD878C51E0BEFAEA30EE2FAD02E5367B68BC56F8B898E992F`。
 
 ## 2026-11-06 610b正常真实参考已验证
 

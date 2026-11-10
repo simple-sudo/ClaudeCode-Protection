@@ -1,9 +1,10 @@
 # 当前状态与授权摘要
 
-2026-11-10，schema 30 为同一固定载荷接入 `HKLM` 根仅 `READ_CONTROL` 与
-`GraphicsDrivers` 叶子 `KEY_READ`，两个权限均限本安装包 SID 且不继承。原链还将
-在授权期间尝试读取真实 MachineGuid、登录信息和 SMBIOS，原值仅封存于本机。
-构建、普通只读和规则回归通过，实机待执行。当前安装仍为 `de3eadc9`。
+2026-11-10，`ffad9ffb` 已更新并保持 INACTIVE。schema 30 的原 LocalService/零能力
+LPAC 载荷首次完成固定 1 KiB CUDA 计算。驱动四个检查点全部返回 0，原 Job、profile、
+窗口对象、工作区和两项服务均回收，两个注册表原 DACL 精确恢复。MachineGuid 与 SMBIOS
+UUID/序列号被拒绝，登录名不可用。两侧四个 WDDM LUID 仍全部匹配，正式 GPU 隐私、
+代表性框架和正式 Claude 仍待验收。单次许可已消耗。
 [根映射对照](GPU-HOST-REFERENCE.md#cuda-预定义根映射与真实内容对照)
 
 2026-11-10，`de3eadc9` 已更新并保持 INACTIVE。原 Broker 实际添加 `GraphicsDrivers`

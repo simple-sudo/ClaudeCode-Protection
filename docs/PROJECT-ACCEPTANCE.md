@@ -9,7 +9,10 @@
 
 SOURCE / BUILD / INTEGRATED(schema 30 精确双键租约、实际内容对抗和回收)。
 VERIFIED(普通本机根/叶 ACL 可读及拒绝扩大根权限、原生普通 CUDA 计算、现有创建链回归)。
-NOT_RUN(schema 30 受限根映射、真实内容获取、CUDA 计算和双键恢复)。
+VERIFIED(`ffad9ffb` 未激活更新、受限根映射与四项驱动返回 0、真实 1 KiB 计算、原资源及双键精确恢复)。
+CAPABILITY_DELIVERED(固定离线自研 CUDA 计算经原 LocalService/LPAC/Job 完成并回收)。
+VERIFIED(同一授权下实际 MachineGuid、SMBIOS UUID/序列号拒绝)。UNKNOWN(不可用登录名、其他接口)。
+FAIL(四个 WDDM LUID 同次启动跨身份匹配)。NOT_RUN(代表性 CUDA 框架与完整 GPU 身份隔离)。
 
 SOURCE / BUILD / INTEGRATED(schema 29 原 Broker 单键临时只读与专用恢复)。
 VERIFIED(普通真实根键内容、普通子键权限拒绝、精确规则及非授权记录拒绝)。
