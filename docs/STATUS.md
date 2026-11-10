@@ -8,7 +8,8 @@
 ## 2026-11-09 独立 CUDA 计算与退出取证
 
 schema 26 固定本机 NVIDIA 实现 DLL 的文件身份和内容，普通实机通过四个检查点及
-真实 CUDA 计算。[驱动检查点对照](GPU-HOST-REFERENCE.md#cuda-驱动检查点对照)。
+真实 CUDA 计算。`08c6ee19` 受限实机首处分歧为辅助函数返回非零，之后出现空基址写入。
+原资源有序回收。[驱动检查点对照](GPU-HOST-REFERENCE.md#cuda-驱动检查点对照)。
 
 schema 25 的普通真实计算通过。`7cbe34a7` 受限载荷设置进程级 JIT 延迟预载后，
 `cuInit` 在同一低地址写入异常退出。四项 WDDM LUID 仍匹配，原资源有序回收。
