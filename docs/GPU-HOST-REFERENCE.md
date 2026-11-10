@@ -24,7 +24,23 @@ LocalService、私有桌面、零能力 LPAC、Job 和完整网络隔离。固�
 `CBD87984D82365681EDC8509E8D400DF4CBF7CDB244B309EE0C165552AB6468E`。
 同目录保留 39 项协议用例、普通身份拒绝进入 CUDA 载荷，以及两种输出限额的真实
 Windows 管道试验。早期构建缺编译项、测试变量重名和普通测试反射遇到重载歧义的日志均保留。
-候选尚未安装，受限 CUDA、GPU 标识跨来源、PyTorch、异常停止及正式 Claude 仍待验证。
+
+## 受限 CUDA 首次初始化故障
+
+2026-11-09，本人批准 `BF4574F17772…` 并确认一次 UAC。67 个审查输入及 20 项
+回执检查通过。`beab4874` 更新为 `2d759b660b2b4a7aacdc90a9021134ae` 并保持
+INACTIVE，安装清单 SHA-256 `97AAB25AEB74A7B3E8898647D86C4DF86534DFBB2E6160F5DBB0203A501D5990`。
+恢复前 LPAC 与原映像绑定，实际私有桌面等前置检查已越过，才会写出 CUDA 首帧。
+最后完整帧为 `cuInit` 即将进入，无返回，无最终计算回执。退出 `0xC0000005`，
+没有超时。该帧位于 P/Invoke 前，不能区分 DLL 加载、导出解析和驱动函数体。
+原有界 stderr 为 1,229 字节，只保留长度及摘要。限定时窗的公开 Windows 应用程序
+错误事件未返回匹配，故障模块、异常地址及访问类型仍未知。
+
+原 Job 停止前隔离且最终归零，私有窗口、profile、工作区均闭合。普通 SCM 复核
+两个原服务均缺席，Broker 和控制器退出 3。`work/session-zero-gpu-capture-20261109-01/receipt.json`
+SHA-256 `02031F7B77353787B5024A389E790C9FABAF8F967B52D59CA4881959188E99ED`。
+同目录 `windows-fault-events.json` SHA-256 `9F63270CAA1AAB50FA546DF0BDD47C989D7299FE9B36A73D841AC64AAC92AC6E`。
+未重试，未改驱动、AV、外网或正式 Claude。正常受限 CUDA、GPU 标识跨来源及 PyTorch 仍未验收。
 
 ## 2026-11-06 610b正常真实参考已验证
 
