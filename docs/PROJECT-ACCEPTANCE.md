@@ -9,7 +9,9 @@
 
 SOURCE / BUILD / INTEGRATED(schema 24 当前进程伪句柄绑定和分段故障回执)。
 VERIFIED(普通自有进程按 PID 重开返回 5，伪句柄创建时间不变，真实 WDDM/CUDA 对照)。
-NOT_RUN(schema 24 受限运行)。
+VERIFIED(`a1819b10` 未激活更新、受限伪句柄、真实 WDDM 枚举、原资源回收)。
+FAIL(同次启动 4 个 WDDM LUID 均可跨身份关联，CUDA 仍在 `cuInit` 异常退出)。
+UNKNOWN(跨重启关联、受限物理设备唯一标识和 CUDA 上游故障条件)。
 
 SOURCE / BUILD / INTEGRATED(schema 23 原受限进程 WDDM 枚举、身份绑定及原值封存)。
 VERIFIED(普通真实 WDDM 四项、CUDA LUID 唯一匹配、句柄关闭和错误 PID 拒绝)。

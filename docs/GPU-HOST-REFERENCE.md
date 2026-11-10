@@ -172,6 +172,20 @@ Windows 当前进程伪句柄后仍取得同一创建时间。schema 24 接入�
 SHA-256 `760F15C96CC7A2BFD48386695BE4E1FB8595C7BF2208A37F5B0EB49E2AFF2BBE`。
 实际普通 WDDM/CUDA LUID 比对和资源回收亦通过。受限修正待测。
 
+### WDDM 受限枚举实机结果
+
+本人批准 `57C11A2886D3…` 并确认一次 UAC。`715535b1` 更新到 `a1819b10` 后
+保持 INACTIVE。原根进程通过伪句柄绑定、WDDM 枚举及证据写入，Broker 在原 Job
+关闭后封存双方实际原值。可信和受限各 4 个 LUID 全部匹配，双方关闭失败计数均为零。
+该结果证明受限进程可在同次启动中用 WDDM 关联真实宿主适配器。不同重启间是否稳定、
+物理设备唯一 GUID 和 GPU UUID 的受限可见性仍未知。
+
+同一载荷随后进入 `cuInit`，在 `nvcuda64.dll+0x3A062E` 写入 `0x293C` 时
+以 `0xC0000005` 退出。现有静态反汇编和目标地址吻合，支持该指令处基址为零，
+上游形成条件仍未知。原 Job、profile、窗口、工作区和两项服务均回收。
+`work/session-zero-cuda-wddm-self-handle-20261109-01/receipt.json` SHA-256
+`6292406E8D256DC79929FB1A1EFF6E4F921B83CF0E2A182ED21E7D87EB123EC1`。
+
 ## 2026-11-06 610b正常真实参考已验证
 
 经本人批准73AC9CC7…，安装/原daily/原资格owner/指定新记录reader全终态0。现装
