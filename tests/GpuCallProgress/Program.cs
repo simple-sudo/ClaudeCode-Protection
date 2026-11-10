@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Security.Principal;
 using System.Text;
@@ -8,6 +9,50 @@ using ProtectionLifecycle;
 
 using var identity=WindowsIdentity.GetCurrent();
 if(new WindowsPrincipal(identity).IsInRole(WindowsBuiltInRole.Administrator))throw new InvalidOperationException("Ordinary context required");
+if(args.Length==2 && args[0] is "access-fault-child" or "access-cuda-child")
+{
+    Console.WriteLine(GetCurrentThreadId());
+    Console.Out.Flush();
+    TraceType().GetMethod("WaitForObserver",BindingFlags.NonPublic|BindingFlags.Static)!.Invoke(null,null);
+    if(args[0]=="access-fault-child")
+    {
+        RaiseException(0xc0000005,1,2,[0,16]);
+        return 125;
+    }
+    args[0]="split-native-child";
+}
+if(args.Length==1 && args[0] is "host-access-trace" or "host-access-cuda")
+{
+    var actualCuda=args[0]=="host-access-cuda";
+    var traceNonce=new string('a',32);
+    using var child=Start(actualCuda?"access-cuda-child":"access-fault-child",traceNonce);
+    using var trace=(IDisposable)Activator.CreateInstance(TraceType(),nonPublic:true)!;
+    var stderr=child.StandardError.ReadToEndAsync();
+    var line=await child.StandardOutput.ReadLineAsync().WaitAsync(TimeSpan.FromSeconds(5));
+    var thread=uint.Parse(line!,System.Globalization.CultureInfo.InvariantCulture);
+    var stdout=child.StandardOutput.ReadToEndAsync();
+    var health=(Action)(()=>{});
+    const BindingFlags hidden=BindingFlags.NonPublic|BindingFlags.Instance;
+    TraceType().GetMethod("Observe",hidden)!.Invoke(trace,[child.SafeHandle,(uint)child.Id,thread,health]);
+    await child.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(5));
+    var evidence=TraceType().GetMethod("Snapshot",hidden)!.Invoke(trace,null)!;
+    var result=JsonSerializer.SerializeToElement(evidence,evidence.GetType());
+    Console.WriteLine(JsonSerializer.Serialize(new{Scope=actualCuda?"ORDINARY_OWN_CUDA_MAPPING_WITH_ACCESS_TRACE":"ORDINARY_OWN_SOFTWARE_RAISED_ACCESS_VIOLATION",ExitCode=(uint)child.ExitCode,
+        StderrLength=(await stderr).Length,Trace=result,RestrictedExecution=false}));
+    if(actualCuda)
+    {
+        var progressReader=new GpuCallProgressReader(traceNonce,true,splitInit:true);
+        progressReader.Bind(child.Id);
+        var report=await progressReader.ReadClosedCaptureAsync(new StringReader(await stdout));
+        return report is not null && progressReader.ReportsCompleteSuccessfulSequence && child.ExitCode==0 &&
+            result.GetProperty("DriverMappingObserved").GetBoolean() && result.GetProperty("ExitEventContinued").GetBoolean()?0:3;
+    }
+    var first=result.GetProperty("FirstChance");
+    return result.GetProperty("ExitEventContinued").GetBoolean() &&
+        first.GetProperty("Access").GetString()=="READ" &&
+        first.GetProperty("TargetAddressClass").GetString()=="LOW_ADDRESS" &&
+        first.GetProperty("InstructionImage").GetString()=="UNATTRIBUTED"?0:3;
+}
 if(args.Length==2 && args[0]=="host-loader" && args[1] is "default" or "deferred-jit")
 {
     var optOut=args[1]=="deferred-jit";
@@ -173,6 +218,13 @@ using(var child=Start("fixture-child",nonce))
 Console.WriteLine(JsonSerializer.Serialize(new{Scope="ORDINARY_GPU_PROGRESS_PROTOCOL_AND_LIVE_PIPE_FIXTURE",Checks=checks,Passed=true,NativeGpuExecuted=false,Installed=false}));return 0;
 
 static string Final(string nonce,int pid)=>JsonSerializer.Serialize(new{SchemaVersion=1,Pid=pid,Nonce=nonce});
+static Type TraceType()=>typeof(InstalledBroker).Assembly.GetType("ProtectionLifecycle.SessionZeroStartupBranchTrace+CudaAccessTrace",true)!;
+
+[DllImport("kernel32.dll",ExactSpelling=true)]
+static extern uint GetCurrentThreadId();
+[DllImport("kernel32.dll",ExactSpelling=true)]
+static extern void RaiseException(uint code,uint flags,uint count,nuint[] arguments);
+
 static Process Start(string mode,string nonce)
 {
     var start=new ProcessStartInfo(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),"dotnet","dotnet.exe"))

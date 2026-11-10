@@ -81,6 +81,22 @@ SOURCE / BUILD / INTEGRATED / VERIFIED(普通原生和协议范围)。受限实�
 `work/session-zero-cuda-split-20261109-01/receipt.json` SHA-256
 `1530A08F50A9080AF9FFCEDCB124D39DEE5ACB7715AEDBD004A351EE73D7169B`。
 
+### CUDA 访问异常的原根进程观察
+
+schema 21 沿用现有 Windows 调试事件机制。原 Broker 只在恢复后确认根进程仍属于
+本次 Job，再附加到该进程。固定载荷在首次驱动调用前最多等待观察器两秒。观察器记录
+首个和末次机会的访问异常、读写执行分类、目标地址类别。只有事件映射的文件身份与固定
+System32 驱动相符，且指令位于映像范围内时，才给出 `nvcuda.dll` 相对偏移。
+它不读取子进程内存，不保留绝对地址，也不代替子进程处理访问异常。
+[Windows 异常记录](https://learn.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-exception_record)。
+
+普通自有软件触发的异常实测读低地址，进程原退出码 `0xC0000005`，调试退出事件正常继续。
+另一普通原生对照用同一观察器核验固定 NVIDIA 驱动映射并完成原 CUDA 计算和清理。
+证据 `work/session-zero-cuda-access-trace-20261109-01/host-access-trace-final.log` SHA-256
+`98FE6C5BCA9E2C733909AEBDDBF0AE25ACD42994B2D72BEFAD546F6A66956F61`，同目录
+`host-access-cuda-final.log` SHA-256 `79E6FE382322EB1E78A2C20BFAF17A996FC2EE6E8CF8FF0C1F8D6323F1B1E136`。
+受限原根进程的附加、异常指令和实际回收待测。
+
 ## 2026-11-06 610b正常真实参考已验证
 
 经本人批准73AC9CC7…，安装/原daily/原资格owner/指定新记录reader全终态0。现装

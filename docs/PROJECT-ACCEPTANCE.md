@@ -7,6 +7,10 @@
 
 ## 2026-11-09 独立 CUDA 计算与退出取证
 
+SOURCE / BUILD / INTEGRATED(schema 21 原根进程访问异常观察)。
+VERIFIED(普通自有进程异常事件及真实普通 CUDA 映射与计算)。
+NOT_RUN(schema 21 安装及受限故障取证)。
+
 SOURCE / BUILD / INTEGRATED(schema 20 原独立 CUDA 三阶段取证)。
 VERIFIED(普通 NVIDIA 计算、资源清理、真实回执长度及阶段负向检查)。
 VERIFIED(`2643fc0e` 未激活更新，受限驱动加载、导出归属、调用进入及原资源回收)。

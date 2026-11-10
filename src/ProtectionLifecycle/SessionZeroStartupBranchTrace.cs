@@ -7,7 +7,7 @@ namespace ProtectionLifecycle;
 
 // One diagnostic, only on the original fixed startup witness after admission.
 // The file pins bind the x64 RVAs to the exact System32 images under observation.
-internal sealed class SessionZeroStartupBranchTrace : IDisposable
+internal sealed partial class SessionZeroStartupBranchTrace : IDisposable
 {
     private const uint ExceptionEvent=1,CreateProcessEvent=3,ExitProcessEvent=5,LoadDllEvent=6;
     private const uint Continue=0x10002,ExceptionNotHandled=0x80010001;
@@ -243,6 +243,9 @@ internal sealed class SessionZeroStartupBranchTrace : IDisposable
         [FieldOffset(16)] internal uint Code;
         [FieldOffset(24)] internal long ModuleBase;
         [FieldOffset(32)] internal long Address;
+        [FieldOffset(40)] internal uint NumberParameters;
+        [FieldOffset(48)] internal ulong AccessOperation;
+        [FieldOffset(56)] internal ulong AccessAddress;
         [FieldOffset(168)] internal uint FirstChance;
     }
 

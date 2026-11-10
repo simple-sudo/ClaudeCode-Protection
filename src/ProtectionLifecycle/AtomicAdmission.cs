@@ -828,6 +828,13 @@ internal sealed partial class AtomicChild : IDisposable
             throw WfpNative.Contract("StartupTraceRequiresResumedReviewedWitness");
         trace.Observe(process,Pid,initialThreadId,assertHealthy);
     }
+    internal void ObserveCudaAccess(SessionZeroStartupBranchTrace.CudaAccessTrace trace,Action assertHealthy)
+    {
+        if(!independentCuda || version.Package.SchemaVersion!=PackageAssetCatalog.SessionZeroCudaAccessTraceSchema ||
+            disposed || !resumed || !job.ContainsProcess(process))
+            throw WfpNative.Contract("CudaTraceRequiresResumedReviewedRoot");
+        trace.Observe(process,Pid,initialThreadId,assertHealthy);
+    }
     internal uint? ObserveOfflineConsoleExit()
     {
         if(!offlineConsole)throw WfpNative.Contract("OfflineConsoleWorkloadRequired");
