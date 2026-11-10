@@ -9,7 +9,8 @@
 
 SOURCE / BUILD / INTEGRATED(schema 20 原独立 CUDA 三阶段取证)。
 VERIFIED(普通 NVIDIA 计算、资源清理、真实回执长度及阶段负向检查)。
-NOT_RUN(schema 20 安装和受限三阶段运行)。
+VERIFIED(`2643fc0e` 未激活更新，受限驱动加载、导出归属、调用进入及原资源回收)。
+FAIL(调用进入后 `0xC0000005`)。UNKNOWN(故障指令、访问类型和异常模块)。
 
 SOURCE / BUILD / INTEGRATED(schema 19 固定独立 CUDA 载荷、专用回执及原 Job 回收)。
 VERIFIED(普通 Windows 上固定 NVIDIA CUDA 计算、清理、真实管道限额及限定协议拒绝)。

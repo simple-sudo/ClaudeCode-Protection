@@ -70,6 +70,17 @@ schema 20 沿用原私有桌面、LocalService 零能力 LPAC、继承管道、J
 普通负向覆盖缺失、跨进程、错序、错误归属、返回码不一致及撕裂回执。
 SOURCE / BUILD / INTEGRATED / VERIFIED(普通原生和协议范围)。受限实机结果待测。
 
+### 受限调用阶段的实机结果
+
+本人批准 `E58068E09FCB…` 并确认一次 UAC。`2d759b66` 更新到 `2643fc0e`，
+保持 INACTIVE。受限回执 916 字节，最后一个完整阶段为 `Invoke` 已进入，
+尚未返回。前序协议只有在 DLL 加载成功并确认导出属于该映像后才允许该帧。
+原 Job 先隔离再归零，私有窗口、profile、工作区闭合，普通 SCM 复核原两项服务缺席。
+载荷退出 `0xC0000005`，计算仍 FAIL。此回执不含故障指令地址或操作类型。
+
+`work/session-zero-cuda-split-20261109-01/receipt.json` SHA-256
+`1530A08F50A9080AF9FFCEDCB124D39DEE5ACB7715AEDBD004A351EE73D7169B`。
+
 ## 2026-11-06 610b正常真实参考已验证
 
 经本人批准73AC9CC7…，安装/原daily/原资格owner/指定新记录reader全终态0。现装
