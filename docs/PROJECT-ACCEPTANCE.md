@@ -9,7 +9,9 @@
 
 SOURCE / BUILD / INTEGRATED(schema 31 原受限 GPU 设备标识对抗)。
 VERIFIED(普通原生 CUDA、NVML 与 PnP 内容，UUID、LUID 和 PCI 地址关联)。
-NOT_RUN(schema 31 原受限设备标识和 CUDA 回归)。
+VERIFIED(`16443852` 未激活更新、原受限 CUDA 计算、设备标识内容对照、两键和原资源恢复)。
+FAIL(受限 CUDA/NVML 同一真实 UUID、三项 PnP 实例、PCI 三来源关联及四项 WDDM LUID 可见)。
+UNKNOWN(设备序列号未取得的其他读取路径)。
 
 SOURCE / BUILD / INTEGRATED(schema 30 精确双键租约、实际内容对抗和回收)。
 VERIFIED(普通本机根/叶 ACL 可读及拒绝扩大根权限、原生普通 CUDA 计算、现有创建链回归)。

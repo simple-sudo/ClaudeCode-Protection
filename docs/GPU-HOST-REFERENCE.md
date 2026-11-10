@@ -355,7 +355,19 @@ PCI 地址各唯一匹配，三项 PnP 实例在参考间匹配。NVML 序列号
 `work/session-zero-cuda-device-identity-20261110-01/host-gpu-device-identity-final.log`
 SHA-256 `ED47FC98C1E5720FF73E30B72C2BD14693F7051567CCFE722610E299706FBA3F`。
 原值 `ordinary-native-content-final.json` SHA-256 `41320512889DC640B56EBB2BD4C20CC8CA9D1339CCDF5C4E59A5E52B007668A8`。
-受限对照尚未执行。
+`16443852` 在单次批准 `41BD2B181E1E…` 后更新并保持 INACTIVE。原零能力 LPAC
+进程完成固定计算，16 次 CUDA 调用、32 帧、上下文释放均成功。CUDA/NVML 各返回一个
+真实 UUID，两者与可信侧同一设备匹配。PnP 三个实例均与可信侧匹配。受限 CUDA PCI
+地址分别匹配一项 PnP 和一项 NVML，CUDA LUID 匹配可信 WDDM，四项 WDDM LUID
+仍跨身份全匹配。NVML 正常初始化及关闭，序列号无可用值。MachineGuid 和 SMBIOS
+UUID/序列号拒绝，登录名不可用。这些数据记录为 GPU 隐私 FAIL，单独保留计算成功。
+
+原 Job、profile、窗口、工作区、两项服务及双键原权限均已回收或恢复。独立只读终态
+复查与普通预检文件逐字节一致。外层回执
+`work/session-zero-cuda-device-identity-20261110-01/receipt.json`
+SHA-256 `260C96B7A5BA4830BF5785833F53C9B3F1941BE426DBC6F8001E1C2BC60BAE26`。
+三源原值仅封存于受保护本机，SHA-256
+`58C12F68C4573BD71F563B8FDC5A3FA7A084A1856F057D7993E6EA6F60087CDD`。
 
 ## 2026-11-06 610b正常真实参考已验证
 

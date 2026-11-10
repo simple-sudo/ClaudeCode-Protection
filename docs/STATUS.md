@@ -7,7 +7,8 @@
 
 ## 2026-11-09 独立 CUDA 计算与退出取证
 
-schema 31 在原会话加入 CUDA、NVML 和 PnP 实际标识对照，普通实机原生接口关联通过。
+schema 31 的 `16443852` 实测原受限 CUDA 正向通过。CUDA、NVML 和 PnP 实际内容可跨源
+关联，原 ACL 与会话资源有序恢复。
 [GPU 标识实测](GPU-HOST-REFERENCE.md#cuda-nvml-与-pnp-实际设备标识)。
 
 schema 30 接入预定义根仅 `READ_CONTROL`、驱动叶子 `KEY_READ` 及独立内容对照。

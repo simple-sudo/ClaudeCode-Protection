@@ -1,8 +1,10 @@
 # 当前状态与授权摘要
 
-2026-11-10，schema 31 在原 CUDA 计算之后尝试读取 CUDA/NVML UUID、PCI 地址、NVML
-序列号及实际 PnP 显示设备实例。普通实机已关联 UUID、LUID、PCI 和 PnP。受限实机待运行，
-当前安装仍为 `ffad9ffb`。原值只在本机保留。[GPU 标识实测](GPU-HOST-REFERENCE.md#cuda-nvml-与-pnp-实际设备标识)
+2026-11-10，`16443852` 已更新并保持 INACTIVE。原受限 1 KiB CUDA 计算通过，两个
+原 DACL 和会话资源均已恢复。受限 CUDA/NVML 各读到一个与可信侧相同的 GPU UUID，三个
+PnP 实例均匹配，受限 PCI 地址可跨三来源关联，同次启动四个 WDDM LUID 仍完全匹配。
+NVML 序列号未取得。真实 MachineGuid 和 SMBIOS UUID/序列号仍拒绝。原值封存于本机，
+单次许可已消耗。GPU 个体身份隔离为 FAIL。[GPU 标识实测](GPU-HOST-REFERENCE.md#cuda-nvml-与-pnp-实际设备标识)
 
 2026-11-10，`ffad9ffb` 已更新并保持 INACTIVE。schema 30 的原 LocalService/零能力
 LPAC 载荷首次完成固定 1 KiB CUDA 计算。驱动四个检查点全部返回 0，原 Job、profile、
