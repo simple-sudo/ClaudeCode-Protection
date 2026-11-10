@@ -77,15 +77,16 @@ if(args.Length==2 && args[0] is "access-fault-child" or "access-cuda-child" or "
     }
     args[0]="split-native-child";
 }
-if(args.Length==1 && args[0] is "host-access-trace" or "host-access-cuda" or "host-deferred-access-cuda" or "host-cuda-initialization-trace")
+if(args.Length==1 && args[0] is "host-access-trace" or "host-access-cuda" or "host-deferred-access-cuda" or "host-cuda-initialization-trace" or "host-cuda-helper-path")
 {
-    var observeInitialization=args[0]=="host-cuda-initialization-trace";
+    var observeHelperPath=args[0]=="host-cuda-helper-path";
+    var observeInitialization=observeHelperPath || args[0]=="host-cuda-initialization-trace";
     var deferred=observeInitialization || args[0]=="host-deferred-access-cuda";
     var actualCuda=deferred || args[0]=="host-access-cuda";
     var traceNonce=new string('a',32);
     using var child=Start(deferred?"access-cuda-deferred-child":actualCuda?"access-cuda-child":"access-fault-child",traceNonce);
     const BindingFlags hidden=BindingFlags.NonPublic|BindingFlags.Instance;
-    using var trace=(IDisposable)Activator.CreateInstance(TraceType(),hidden,null,[observeInitialization],null)!;
+    using var trace=(IDisposable)Activator.CreateInstance(TraceType(),hidden,null,[observeInitialization,observeHelperPath],null)!;
     var stderr=child.StandardError.ReadToEndAsync();
     var line=await child.StandardOutput.ReadLineAsync().WaitAsync(TimeSpan.FromSeconds(5));
     var thread=uint.Parse(line!,System.Globalization.CultureInfo.InvariantCulture);
@@ -106,12 +107,19 @@ if(args.Length==1 && args[0] is "host-access-trace" or "host-access-cuda" or "ho
         {
             var checkpoints=result.GetProperty("Initialization");
             if(!checkpoints.GetProperty("ExactImageMapped").GetBoolean() ||
-                checkpoints.GetProperty("AllocatorReturnedNull").ValueKind!=JsonValueKind.False ||
-                checkpoints.GetProperty("CallbackReturnedZero").ValueKind!=JsonValueKind.True ||
                 checkpoints.GetProperty("HelperReturnedZero").ValueKind!=JsonValueKind.True ||
                 checkpoints.GetProperty("StoreBaseWasNull").ValueKind!=JsonValueKind.False ||
                 result.GetProperty("FirstChance").ValueKind!=JsonValueKind.Null ||
                 result.GetProperty("LastChance").ValueKind!=JsonValueKind.Null)return 4;
+            if(observeHelperPath)
+            {
+                var path=checkpoints.GetProperty("HelperPath");
+                if(!path.GetProperty("ReachedReviewedExit").GetBoolean() || path.GetProperty("ObservedEdges").GetInt32() is <1 or >96 ||
+                    path.GetProperty("FailureBranchRva").ValueKind!=JsonValueKind.Null ||
+                    path.GetProperty("FailureLandingRva").ValueKind!=JsonValueKind.Null || path.GetProperty("HelperReturnCode").GetUInt32()!=0)return 4;
+            }
+            else if(checkpoints.GetProperty("AllocatorReturnedNull").ValueKind!=JsonValueKind.False ||
+                checkpoints.GetProperty("CallbackReturnedZero").ValueKind!=JsonValueKind.True)return 4;
         }
         return report is not null && progressReader.ReportsCompleteSuccessfulSequence && child.ExitCode==0 &&
             result.GetProperty("DriverMappingObserved").GetBoolean() && result.GetProperty("ExitEventContinued").GetBoolean()?0:3;

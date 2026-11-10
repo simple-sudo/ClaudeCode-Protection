@@ -202,6 +202,19 @@ internal sealed partial class SessionZeroStartupBranchTrace : IDisposable
             return(slot,value);
         }
 
+        internal void Disarm(int slot)
+        {
+            var bit=1L<<(slot*2);
+            if((enabled&bit)==0)return;
+            Read();
+            var flags=Marshal.ReadInt64(Buffer,Dr7);
+            if((flags&0xff)!=enabled)throw WfpNative.Contract("StartupTraceDebugRegisterStateDiffers");
+            var next=enabled&~bit;
+            Marshal.WriteInt64(Buffer,Dr7,(flags&~0xffL)|next);
+            Write();
+            enabled=next;
+        }
+
         internal void ClearBeforeDetach()
         {
             if(enabled==0 || WaitForSingleObject(thread,0)==0)return;

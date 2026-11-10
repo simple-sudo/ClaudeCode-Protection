@@ -552,6 +552,8 @@ public static class BootstrapInstaller
         private const string CudaWddmManifest="3252E016E56A6758D6D32584983BBF714433017CF20F64543D5FAF27352B7C37";
         private const string CudaDeferredPreloadRelease="7cbe34a703404bada4bf7cc5836c84eb";
         private const string CudaDeferredPreloadManifest="45CB00F6004B872B590A88C3935449AD579F62D9824C8022C67EDCAD5B86DA8C";
+        private const string CudaInitializationTraceRelease="08c6ee19f5054f31a241cb3150310015";
+        private const string CudaInitializationTraceManifest="92D5FD52EF9A1E3DD4EB497726CC6CE8C17EAB9072E99520C978ADE377977385";
         private const string CudaWddmSelfHandleRelease="a1819b10da524a21b4a91aed8c3eb59a";
         private const string CudaWddmSelfHandleManifest="96A1C6D2640997C0E2F39A2C9F00D64EDE1F0D53B3FD2BAC2F4E1723F8754D7F";
         internal PinnedInactiveUpdateLease(ProtectedState state,BootstrapApproval approval,VerifiedVersion prior,ReviewedPackage next,Action<string>? reportFailureStage)
@@ -591,6 +593,8 @@ public static class BootstrapInstaller
                 throw WfpNative.Contract("CudaWddmSelfHandlePredecessorRequiresDeferredPreloadPackage");
             if(prior.Package.Release==CudaDeferredPreloadRelease && next.SchemaVersion!=PackageAssetCatalog.SessionZeroCudaInitializationTraceSchema)
                 throw WfpNative.Contract("CudaDeferredPreloadPredecessorRequiresInitializationTracePackage");
+            if(prior.Package.Release==CudaInitializationTraceRelease && next.SchemaVersion!=PackageAssetCatalog.SessionZeroCudaHelperPathSchema)
+                throw WfpNative.Contract("CudaInitializationTracePredecessorRequiresHelperPathPackage");
             AssertNoOwnedProcesses();
         }
         // Pure selection check used by the actual constructor and ordinary
@@ -618,6 +622,7 @@ public static class BootstrapInstaller
                 (priorRelease==CudaWddmRelease && priorManifest==CudaWddmManifest) ||
                 (priorRelease==CudaWddmSelfHandleRelease && priorManifest==CudaWddmSelfHandleManifest) ||
                 (priorRelease==CudaDeferredPreloadRelease && priorManifest==CudaDeferredPreloadManifest) ||
+                (priorRelease==CudaInitializationTraceRelease && priorManifest==CudaInitializationTraceManifest) ||
                 // The first-load branch diagnostic closed the original Job and creator resources.
                 (priorRelease=="9455e98cf5da489daf88964e0daa6b52" &&
                     priorManifest=="EC2E00DA29027F8FE426995AAD19C050D23A8998FEA9F7E7D6596668F4A58C41") ||

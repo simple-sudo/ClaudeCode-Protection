@@ -7,6 +7,9 @@
 
 ## 2026-11-09 独立 CUDA 计算与退出取证
 
+SOURCE / BUILD / INTEGRATED(schema 27 固定 CUDA 辅助函数分支与返回码)。
+VERIFIED(普通实机 65 条边、返回 0、真实计算和有序退出)。NOT_RUN(schema 27 受限对照)。
+
 SOURCE / BUILD / INTEGRATED(schema 26 原受限 CUDA 观察者的四个固定驱动检查点)。
 VERIFIED(普通进程精确驱动映射、四点取证、真实计算及终态，软件访问异常仍如实交付)。
 VERIFIED(`08c6ee19` 未激活更新、精确受限驱动映射、四点对照、WDDM 四项匹配和原资源回收)。

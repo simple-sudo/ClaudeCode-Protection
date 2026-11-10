@@ -39,7 +39,7 @@ internal sealed partial class SessionZeroStartupBranchTrace
 
         internal CudaAccessTrace():this(false){}
 
-        internal CudaAccessTrace(bool observeInitialization)
+        internal CudaAccessTrace(bool observeInitialization,bool observeHelperPath=false)
         {
             try
             {
@@ -48,7 +48,8 @@ internal sealed partial class SessionZeroStartupBranchTrace
                 var size=pe.PEHeaders.PEHeader?.SizeOfImage??0;
                 if(size<=0 || size>32*1024*1024)throw WfpNative.Contract("CudaTraceImageSizeRefused");
                 imageSize=(uint)size;
-                if(observeInitialization)initialization=new CudaInitializationTrace();
+                if(observeHelperPath && !observeInitialization)throw WfpNative.Contract("CudaHelperRequiresExactInitializationTrace");
+                if(observeInitialization)initialization=new CudaInitializationTrace(observeHelperPath);
             }
             catch{driver.Dispose();throw;}
         }
@@ -83,7 +84,8 @@ internal sealed partial class SessionZeroStartupBranchTrace
                 var elapsed=Stopwatch.StartNew();
                 var attachBreakSeen=false;
                 IntPtr debugProcess=IntPtr.Zero;
-                for(int count=0;count<256 && elapsed.ElapsedMilliseconds<6500;)
+                var maxEvents=initialization?.ObservesHelperPath==true?384:256;
+                for(int count=0;count<maxEvents && elapsed.ElapsedMilliseconds<6500;)
                 {
                     assertHealthy();
                     if(!WaitForDebugEventEx(out var evt,50))
@@ -124,7 +126,7 @@ internal sealed partial class SessionZeroStartupBranchTrace
                         if(evt.Kind==ExceptionEvent && evt.FirstChance==1 && evt.Code==SingleStep && evt.Tid==tid &&
                             context?.Take(evt.Address) is { } hit)
                         {
-                            initialization!.Record(hit.Slot,hit.ReturnValue);
+                            initialization!.Record(context,evt.Address,hit.Slot,hit.ReturnValue);
                             disposition=Continue;
                         }
                         if(evt.Kind==ExceptionEvent && evt.Code==AccessViolation)
@@ -239,13 +241,20 @@ internal sealed partial class SessionZeroStartupBranchTrace
             private readonly string identity;
             private readonly uint size;
             private readonly bool?[] zero=new bool?[4];
+            private readonly SessionZeroCudaHelperPath? helper;
             private long? mapping;
             private bool observed;
 
             internal sealed record Evidence(bool ExactImageMapped,bool? AllocatorReturnedNull,bool? CallbackReturnedZero,
-                bool? HelperReturnedZero,bool? StoreBaseWasNull);
+                bool? HelperReturnedZero,bool? StoreBaseWasNull)
+            {
+                [System.Text.Json.Serialization.JsonIgnore(Condition=System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+                public SessionZeroCudaHelperPath.Evidence? HelperPath {get;init;}
+            }
 
-            internal CudaInitializationTrace()
+            internal bool ObservesHelperPath=>helper is not null;
+
+            internal CudaInitializationTrace(bool observeHelperPath)
             {
                 try
                 {
@@ -255,6 +264,7 @@ internal sealed partial class SessionZeroStartupBranchTrace
                     if(pe.PEHeaders.CoffHeader.Machine!=Machine.Amd64 || imageSize<=Locations[^1] || imageSize>64*1024*1024)
                         throw WfpNative.Contract("CudaInitializationTraceImageRefused");
                     size=(uint)imageSize;
+                    if(observeHelperPath)helper=new SessionZeroCudaHelperPath();
                 }
                 catch{image.Dispose();throw;}
             }
@@ -265,7 +275,8 @@ internal sealed partial class SessionZeroStartupBranchTrace
                 if(observed || address<0x10000)throw WfpNative.Contract("CudaInitializationTraceMappingDiffers");
                 mapping=address;
                 observed=true;
-                for(var slot=0;slot<Locations.Length;slot++)context.Arm(slot,checked(address+Locations[slot]));
+                if(helper is not null)context.Arm(0,checked(address+SessionZeroCudaHelperPath.Caller));
+                for(var slot=helper is null?0:2;slot<Locations.Length;slot++)context.Arm(slot,checked(address+Locations[slot]));
             }
 
             internal void OnUnmapping(Breakpoints context,long address)
@@ -275,10 +286,21 @@ internal sealed partial class SessionZeroStartupBranchTrace
                 mapping=null;
             }
 
-            internal void Record(int slot,long value)=>zero[slot]=slot is 1 or 2?unchecked((uint)value)==0:value==0;
+            internal void Record(Breakpoints context,long address,int slot,long value)
+            {
+                if(helper is not null && slot<2)
+                {
+                    if(mapping is not { } start || ImplementationRva(address) is not { } rva)
+                        throw WfpNative.Contract("CudaHelperMappingUnavailable");
+                    helper.Advance(context,start,slot,checked((int)rva));
+                    return;
+                }
+                zero[slot]=slot is 1 or 2?unchecked((uint)value)==0:value==0;
+                if(helper is not null && slot==2)helper.ReturnCode=unchecked((uint)value);
+            }
             internal uint? ImplementationRva(long address)=>mapping is { } start && address>=start && (ulong)(address-start)<size
                 ?(uint)(address-start):null;
-            internal Evidence Snapshot()=>new(observed,zero[0],zero[1],zero[2],zero[3]);
+            internal Evidence Snapshot()=>new(observed,zero[0],zero[1],zero[2],zero[3]){HelperPath=helper?.Snapshot()};
             public void Dispose()=>image.Dispose();
         }
 

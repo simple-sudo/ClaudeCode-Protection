@@ -233,6 +233,21 @@ WDDM 双侧四项完全匹配且关闭调用成功，原 Job、profile、窗口�
 SHA-256 `AD469A28E9C82F2584F162B8EBEB3CB624D896C439123E5604A7FE9AE6E5D573`。
 硬件断点属于此固定诊断。 [Microsoft Windows 调试事件循环](https://learn.microsoft.com/en-us/windows/win32/debug/writing-the-debugger-s-main-loop)。
 
+### CUDA 辅助函数路径对照
+
+固定映像中，`0x207A40` 辅助函数的多个失败分支汇合到 `0x20844F`；调用者
+`0x3A04DA` 在非零时转入公共路径。静态分支图由同一映像的完整辅助函数反汇编核对，
+`work/session-zero-cuda-initialization-trace-20261110-01/driver-helper-complete.log`
+SHA-256 `69E95AA0D0926E6774BB9C588A2199BFDFF02530CAD7140397204980978703A4`。
+
+schema 27 复用原观察者和四个硬件断点槽。进入已核对的调用位置后，两个槽在同一函数内
+跟随跳转的可能目的地，另外两个保留返回值和最终写入基址观测。最多跟随 96 条边。
+仅保留观测边数、固定失败入口的来路、驱动返回码和原异常元数据。函数调用体不进入，
+不读取目标内存。普通 Windows 自有载荷观察 65 条边、返回 0、基址非空，真实 1 KiB
+计算与退出成功。证据 `work/session-zero-cuda-helper-path-20261110-01/host-cuda-helper-path.log`
+SHA-256 `0379397D79D63BDE4D1792943B50850E8BD3783B13BF0C387C784C4594FB1273`。
+受限对照尚未执行。
+
 ## 2026-11-06 610b正常真实参考已验证
 
 经本人批准73AC9CC7…，安装/原daily/原资格owner/指定新记录reader全终态0。现装
