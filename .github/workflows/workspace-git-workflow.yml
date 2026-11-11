@@ -54,12 +54,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           dotnet build tests/OwnedToolLaunch/OwnedToolLaunch.csproj --configuration Release --nologo
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-      - name: Run workspace data contract tests
-        shell: pwsh
-        run: |
-          dotnet run --no-build --project tests/WorkspaceTransfer/WorkspaceTransfer.csproj --configuration Release
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-      - name: Run Git owner policy tests as a standard user
+      - name: Run workspace and Git policy tests as a standard user
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
@@ -69,45 +64,76 @@ jobs:
           [System.Security.Cryptography.RandomNumberGenerator]::Fill($bytes)
           $password = ConvertTo-SecureString ('Aa1!' + [Convert]::ToBase64String($bytes)) -AsPlainText -Force
           $stage = Join-Path $env:ProgramData ("cpc-git-policy-" + $user)
-          $app = Join-Path $stage 'app'
+          $workspaceApp = Join-Path $stage 'workspace-app'
+          $ownedApp = Join-Path $stage 'owned-app'
+          $fixture = Join-Path $stage 'fixture'
+          $source = Join-Path $fixture 'source'
+          $task = Join-Path $fixture 'task'
+          $outside = Join-Path $fixture 'outside'
           $temp = Join-Path $stage 'temp'
+          $sourceRedirect = Join-Path $source 'redirect'
+          $redirectOutput = Join-Path $fixture 'redirect-output'
           try {
-            New-LocalUser -Name $user -Password $password -PasswordNeverExpires -AccountNeverExpires -Description 'Ephemeral non-admin Git policy test account' | Out-Null
+            New-LocalUser -Name $user -Password $password -PasswordNeverExpires -AccountNeverExpires -Description 'Ephemeral non-admin managed test account' | Out-Null
             New-Item -ItemType Directory -Path $stage -Force | Out-Null
-            New-Item -ItemType Directory -Path $app,$temp -Force | Out-Null
-            Copy-Item -Path (Join-Path $env:GITHUB_WORKSPACE 'tests/OwnedToolLaunch/bin/Release/net8.0-windows/*') -Destination $app -Recurse -Force
+            New-Item -ItemType Directory -Path $workspaceApp,$ownedApp,$fixture,$source,$task,$outside,$temp,(Join-Path $source 'src') -Force | Out-Null
+            Copy-Item -Path (Join-Path $env:GITHUB_WORKSPACE 'tests/WorkspaceTransfer/bin/Release/net8.0-windows/*') -Destination $workspaceApp -Recurse -Force
+            Copy-Item -Path (Join-Path $env:GITHUB_WORKSPACE 'tests/OwnedToolLaunch/bin/Release/net8.0-windows/*') -Destination $ownedApp -Recurse -Force
             & icacls $stage /grant "${account}:(OI)(CI)RX" /T /C | Out-Null
-            if ($LASTEXITCODE -ne 0) { throw 'Could not grant the standard test account read/execute access to the isolated test copy' }
+            if ($LASTEXITCODE -ne 0) { throw 'Could not grant the standard test account read/execute access to isolated test binaries' }
+            & icacls $fixture /grant "${account}:(OI)(CI)M" /T /C | Out-Null
+            if ($LASTEXITCODE -ne 0) { throw 'Could not grant the standard test account workspace fixture access' }
             & icacls $temp /grant "${account}:(OI)(CI)M" /T /C | Out-Null
             if ($LASTEXITCODE -ne 0) { throw 'Could not grant the standard test account temporary-directory access' }
-            $psi = [System.Diagnostics.ProcessStartInfo]::new()
-            $psi.FileName = (Get-Command dotnet).Source
-            $psi.Arguments = '"OwnedToolLaunch.dll" workspace-git-workflow-policy'
-            $psi.WorkingDirectory = $app
-            $psi.UserName = $user
-            $psi.Domain = $env:COMPUTERNAME
-            $psi.Password = $password
-            $psi.LoadUserProfile = $true
-            $psi.UseShellExecute = $false
-            $psi.CreateNoWindow = $true
-            $psi.RedirectStandardOutput = $true
-            $psi.RedirectStandardError = $true
-            $psi.Environment['TEMP'] = $temp
-            $psi.Environment['TMP'] = $temp
-            $psi.Environment['DOTNET_CLI_HOME'] = $temp
-            $psi.Environment['DOTNET_SKIP_FIRST_TIME_EXPERIENCE'] = '1'
-            $psi.Environment['DOTNET_CLI_TELEMETRY_OPTOUT'] = '1'
-            $process = [System.Diagnostics.Process]::Start($psi)
-            $stdoutTask = $process.StandardOutput.ReadToEndAsync()
-            $stderrTask = $process.StandardError.ReadToEndAsync()
-            $process.WaitForExit()
-            $stdout = $stdoutTask.GetAwaiter().GetResult()
-            $stderr = $stderrTask.GetAwaiter().GetResult()
-            if ($stdout) { Write-Host $stdout }
-            if ($stderr) { Write-Host $stderr }
-            if ($process.ExitCode -ne 0) { throw "Non-admin Git policy test failed with exit code $($process.ExitCode)" }
+
+            [System.IO.File]::WriteAllText((Join-Path $source 'src/main.txt'),'before',[System.Text.UTF8Encoding]::new($false))
+            [System.IO.File]::WriteAllBytes((Join-Path $source 'raw.bin'),[byte[]]@(0,255,1,128))
+            [System.IO.File]::WriteAllBytes((Join-Path $source 'empty.txt'),[byte[]]@())
+            [System.IO.File]::WriteAllText((Join-Path $outside 'outside.txt'),'outside',[System.Text.UTF8Encoding]::new($false))
+            New-Item -ItemType HardLink -Path (Join-Path $source 'hardlink.txt') -Target (Join-Path $source 'src/main.txt') -ErrorAction Stop | Out-Null
+            $mkSourceJunction = 'mklink /J "{0}" "{1}"' -f $sourceRedirect,$outside
+            & $env:ComSpec /d /c $mkSourceJunction
+            if ($LASTEXITCODE -ne 0) { throw 'Could not create the source reparse-point fixture' }
+            $mkOutputJunction = 'mklink /J "{0}" "{1}"' -f $redirectOutput,$outside
+            & $env:ComSpec /d /c $mkOutputJunction
+            if ($LASTEXITCODE -ne 0) { throw 'Could not create the output reparse-point fixture' }
+
+            function Invoke-StandardUserTest([string]$App,[string[]]$Arguments,[string]$Label) {
+              $psi = [System.Diagnostics.ProcessStartInfo]::new()
+              $psi.FileName = (Get-Command dotnet).Source
+              foreach ($argument in $Arguments) { $psi.ArgumentList.Add($argument) }
+              $psi.WorkingDirectory = $App
+              $psi.UserName = $user
+              $psi.Domain = $env:COMPUTERNAME
+              $psi.Password = $password
+              $psi.LoadUserProfile = $true
+              $psi.UseShellExecute = $false
+              $psi.CreateNoWindow = $true
+              $psi.RedirectStandardOutput = $true
+              $psi.RedirectStandardError = $true
+              $psi.Environment['TEMP'] = $temp
+              $psi.Environment['TMP'] = $temp
+              $psi.Environment['DOTNET_CLI_HOME'] = $temp
+              $psi.Environment['DOTNET_SKIP_FIRST_TIME_EXPERIENCE'] = '1'
+              $psi.Environment['DOTNET_CLI_TELEMETRY_OPTOUT'] = '1'
+              $process = [System.Diagnostics.Process]::Start($psi)
+              $stdoutTask = $process.StandardOutput.ReadToEndAsync()
+              $stderrTask = $process.StandardError.ReadToEndAsync()
+              $process.WaitForExit()
+              $stdout = $stdoutTask.GetAwaiter().GetResult()
+              $stderr = $stderrTask.GetAwaiter().GetResult()
+              Write-Host "===== $Label ====="
+              if ($stdout) { Write-Host $stdout }
+              if ($stderr) { Write-Host $stderr }
+              if ($process.ExitCode -ne 0) { throw "$Label failed with exit code $($process.ExitCode)" }
+            }
+
+            Invoke-StandardUserTest $workspaceApp @('WorkspaceTransfer.dll',$fixture) 'WorkspaceTransfer contract and NTFS fixture tests'
+            Invoke-StandardUserTest $ownedApp @('OwnedToolLaunch.dll','workspace-git-workflow-policy') 'Offline Git owner policy tests'
           }
           finally {
+            if (Test-Path -LiteralPath $sourceRedirect) { & $env:ComSpec /d /c ('rmdir "{0}"' -f $sourceRedirect) | Out-Null }
+            if (Test-Path -LiteralPath $redirectOutput) { & $env:ComSpec /d /c ('rmdir "{0}"' -f $redirectOutput) | Out-Null }
             Remove-LocalUser -Name $user -ErrorAction SilentlyContinue
             if (Test-Path $stage) { Remove-Item $stage -Recurse -Force -ErrorAction SilentlyContinue }
           }
