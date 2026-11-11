@@ -153,7 +153,7 @@ internal sealed record WorkspaceBundle(int SchemaVersion,string Scope,string? Ba
         if(actual.Length!=expected.Length || actual.Distinct(StringComparer.Ordinal).Count()!=actual.Length ||
             actual.Except(expected,StringComparer.Ordinal).Any())throw new InvalidDataException("Workspace JSON fields refused");
     }
-    internal static WorkspaceBundle CreateGitWorkflow(byte[] dataBytes,string commitMessage)
+    internal static byte[] CreateGitWorkflow(byte[] dataBytes,string commitMessage)
     {
         var data=Parse(dataBytes);
         if(data.SchemaVersion!=1 || data.BaseSHA256 is not null || data.Files.Length==0)
