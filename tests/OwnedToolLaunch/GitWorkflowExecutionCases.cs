@@ -22,6 +22,7 @@ internal static class GitWorkflowExecutionCases
         var nonce=Guid.NewGuid().ToString("N");
         var root=Path.Combine(Path.GetTempPath(),"cpc-git-workflow-execution-"+nonce);
         string? privateFixture=null,allPackagesFixture=null;
+        Exception? primaryFailure=null;
         try
         {
             Directory.CreateDirectory(root);
@@ -205,12 +206,35 @@ internal static class GitWorkflowExecutionCases
 
             Console.WriteLine("PASS ordinary-user real Git execution using the hosted runner Git executable and its runtime PATH: hash-object/init/add/diff-check/numstat/commit/log/status/fsck and both denial controls; independent owner commit/tree/blob/ref verification and exact GitReceipt binding; CRLF, binary, empty and ignored selected files preserved. ORDINARY-USER COMMAND/VERIFIER EVIDENCE ONLY: runner Git semantics, not product pinned-asset qualification; no product Broker, Owned Job, LPAC, UAC, host policy or Claude execution.");
         }
+        catch(Exception error)
+        {
+            primaryFailure=error;
+            Console.Error.WriteLine("Git workflow primary failure: "+error.GetType().Name+"; code="+error.HResult+"; "+error.Message);
+            throw;
+        }
         finally
         {
-            foreach(var path in new[]{privateFixture,allPackagesFixture})
-                if(path is not null && File.Exists(path))
-                    try{SetReadAllowed(path,owner);}catch{}
-            if(Directory.Exists(root))Directory.Delete(root,true);
+            Exception? cleanupFailure=null;
+            foreach(var fixturePath in new[]{privateFixture,allPackagesFixture})
+                if(fixturePath is not null && File.Exists(fixturePath))
+                    try{SetReadAllowed(fixturePath,owner);}catch(Exception error){cleanupFailure??=error;}
+            if(Directory.Exists(root))
+            {
+                try
+                {
+                    var readOnlyFiles=Directory.EnumerateFiles(root,"*",SearchOption.AllDirectories)
+                        .Where(file=>(File.GetAttributes(file)&FileAttributes.ReadOnly)!=0).ToArray();
+                    Console.WriteLine("Git workflow fixture cleanup read-only files: "+readOnlyFiles.Length);
+                    foreach(var file in readOnlyFiles)File.SetAttributes(file,FileAttributes.Normal);
+                    Directory.Delete(root,true);
+                }
+                catch(Exception error){cleanupFailure??=error;}
+            }
+            if(cleanupFailure is not null)
+            {
+                Console.Error.WriteLine("Git workflow fixture cleanup failure: "+cleanupFailure.GetType().Name+"; code="+cleanupFailure.HResult);
+                if(primaryFailure is null)throw cleanupFailure;
+            }
         }
     }
 
