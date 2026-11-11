@@ -320,7 +320,7 @@ internal sealed class SessionGitToolchain : IDisposable
     {
         var path=WindowsPathSeal.Child(workspace,"git-selected-paths.bin");
         var expected=Encoding.ASCII.GetBytes(string.Join('\0',project.Files.Select(f=>f.Path))+"\0");
-        using var file=new FileStream(WindowsPathSeal.Open(path,false,true),FileAccess.Read,4096,false);
+        using var file=new FileStream(WindowsPathSeal.OpenReadUnderWriteLease(path),FileAccess.Read,4096,false);
         if(file.Length!=expected.Length)return false;
         var actual=new byte[expected.Length];file.ReadExactly(actual);return actual.AsSpan().SequenceEqual(expected);
     }

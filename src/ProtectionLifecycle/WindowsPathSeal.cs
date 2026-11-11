@@ -58,6 +58,12 @@ internal static class WindowsPathSeal
     }
     internal static SafeFileHandle Open(string path, bool directory, bool readData, bool writable = false)
         =>OpenBound(path,directory,readData,writable,shareWrite:false);
+    // Read-only inspection handle for an object whose owner already holds a
+    // write-capable handle with FILE_SHARE_READ only. This handle must allow
+    // the owner's existing write access to coexist; the owner's share mode
+    // continues to deny every foreign writer and neither handle shares delete.
+    internal static SafeFileHandle OpenReadUnderWriteLease(string path)
+        =>OpenBound(path,directory:false,readData:true,writable:false,shareWrite:true);
     private static SafeFileHandle OpenBound(string path,bool directory,bool readData,bool writable,bool shareWrite)
     {
         var access = ReadControl | ReadAttributes | (readData ? 0x80000000u : 0u) | (writable ? 0x40000000u : 0u);
