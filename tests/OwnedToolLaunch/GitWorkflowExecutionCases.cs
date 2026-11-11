@@ -128,8 +128,13 @@ internal static class GitWorkflowExecutionCases
 
             var add=Run(StartRunnerWorkflow(commands[2]));
             Require(add.Exit==0 && add.Out.Length==0 && add.Error.Length==0,"real Git add accepts exact NUL pathspec");
-            var diffCheck=Run(StartRunnerWorkflow(commands[3]));
-            Require(diffCheck.Exit==0 && diffCheck.Out.Length==0 && diffCheck.Error.Length==0,"real Git diff --cached --check succeeds");
+            var diffCheckStart=StartRunnerWorkflow(commands[3]);
+            Require(diffCheckStart.ArgumentList.Contains("core.whitespace=cr-at-eol"),"fixed CRLF-aware whitespace validation policy");
+            var diffCheck=Run(diffCheckStart);
+            if(diffCheck.Exit!=0 || diffCheck.Out.Length!=0 || diffCheck.Error.Length!=0)
+                throw new InvalidDataException("real Git diff --cached --check failed: exit="+diffCheck.Exit+
+                    "; stdout="+diffCheck.Out[..Math.Min(diffCheck.Out.Length,512)]+
+                    "; stderr="+diffCheck.Error[..Math.Min(diffCheck.Error.Length,512)]);
             var numstat=Run(StartRunnerWorkflow(commands[4]));
             Require(numstat.Exit==0 && numstat.Error.Length==0,"real Git diff --cached --numstat succeeds");
             var metrics=InvokeStatic(gitType,"ParseNumstat",numstat.Out,project)!;
