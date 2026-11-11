@@ -251,10 +251,11 @@ internal static class GitWorkflowExecutionCases
     {
         var descriptorType=library.GetType("ProtectionLifecycle.GitWorkspaceDescriptor",true)!;
         var packageSid="S-1-15-2-1234567890-2345678901-3456789012";
-        var projectDacl=(string)InvokeStatic(descriptorType,"BuildDaclSddl",owner.Value,packageSid,true)!;
-        var controlDacl=(string)InvokeStatic(descriptorType,"BuildDaclSddl",owner.Value,packageSid,false)!;
+        var projectDacl=(string)InvokeStatic(descriptorType,"BuildDaclSddl",packageSid,true)!;
+        var controlDacl=(string)InvokeStatic(descriptorType,"BuildDaclSddl",packageSid,false)!;
         var project=new RawSecurityDescriptor(projectDacl);var control=new RawSecurityDescriptor(controlDacl);
-        Require(project.Owner?.Value==owner.Value && control.Owner?.Value==owner.Value,"private Git directories are owned by the interactive user");
+        Require(project.Owner?.Value=="S-1-5-32-544" && control.Owner?.Value=="S-1-5-32-544",
+            "private Git directory roots are owned by the elevated Administrators principal");
         Require(project.Group?.Value=="S-1-5-18" && control.Group?.Value=="S-1-5-18","private Git directories use the fixed SYSTEM group");
         Require(project.ControlFlags.HasFlag(ControlFlags.DiscretionaryAclProtected) &&
             control.ControlFlags.HasFlag(ControlFlags.DiscretionaryAclProtected),"private Git DACLs block parent ACL inheritance");

@@ -89,7 +89,7 @@ internal sealed class SessionResources : IDisposable
     private readonly ProtectedState state;
     private readonly PathLease folder;
     private readonly PathLease? gitProjectDirectory,gitControlDirectory;
-    private readonly string? gitOwnerSid,gitPackageSid;
+    private readonly string? gitPackageSid;
     private readonly FileStream input,allPackagesFixture;
     private readonly SessionPowerShellToolchain? tool;
     private readonly SessionGitToolchain? git;
@@ -101,12 +101,12 @@ internal sealed class SessionResources : IDisposable
     internal ResourceProbePlan Plan {get;}
     internal string Workspace=>folder.Path;
     private SessionResources(ProtectedState state,PathLease folder,PathLease? gitProjectDirectory,PathLease? gitControlDirectory,
-        string? gitOwnerSid,string? gitPackageSid,FileStream input,SessionPowerShellToolchain? tool,ResourceProbePlan plan,
+        string? gitPackageSid,FileStream input,SessionPowerShellToolchain? tool,ResourceProbePlan plan,
         SessionGitToolchain? git,FileStream? projectInput,FileStream? gitPathspec,FileStream allPackagesFixture,
         HostPrivacyProbe? privacy,WorkspaceBundle? workspaceBundle)
     {
         this.state=state;this.folder=folder;this.gitProjectDirectory=gitProjectDirectory;this.gitControlDirectory=gitControlDirectory;
-        this.gitOwnerSid=gitOwnerSid;this.gitPackageSid=gitPackageSid;this.input=input;this.tool=tool;Plan=plan;this.git=git;
+        this.gitPackageSid=gitPackageSid;this.input=input;this.tool=tool;Plan=plan;this.git=git;
         this.projectInput=projectInput;this.gitPathspec=gitPathspec;this.allPackagesFixture=allPackagesFixture;
         this.privacy=privacy;this.workspaceBundle=workspaceBundle;
     }
@@ -119,7 +119,7 @@ internal sealed class SessionResources : IDisposable
         var callerTask=callerProject?CSharpProjectTask.Parse(workspaceInput!):null;
         var tool=workspaceInput is null || developProject?SessionPowerShellToolchain.Open():null;
         PathLease? directory=null,gitProjectDirectory=null,gitControlDirectory=null;
-        string? gitOwnerSid=null,gitPackageSid=null;
+        string? gitPackageSid=null;
         FileStream? input=null,projectInput=null,gitPathspec=null,allPackagesFixture=null;SessionGitToolchain? git=null;
         HostPrivacyProbe? privacy=null;
         try
@@ -148,9 +148,9 @@ internal sealed class SessionResources : IDisposable
             if(includeGit)
             {
                 directory=CreateOwnedTaskDirectory(state,profile,nonce);
-                gitOwnerSid=owner;gitPackageSid=sid.Value;
-                gitProjectDirectory=GitWorkspaceDescriptor.Create(directory,"git-project",owner,sid.Value,true);
-                gitControlDirectory=GitWorkspaceDescriptor.Create(directory,"git-control",owner,sid.Value,false);
+                gitPackageSid=sid.Value;
+                gitProjectDirectory=GitWorkspaceDescriptor.Create(directory,"git-project",sid.Value,true);
+                gitControlDirectory=GitWorkspaceDescriptor.Create(directory,"git-control",sid.Value,false);
             }
             else
             {
@@ -196,7 +196,7 @@ internal sealed class SessionResources : IDisposable
             // An existing, readable positive host control prevents absence from
             // being mistaken for a restricted child's access-denied result.
             _=state.Read("resource-fixture-"+nonce+".json",4096);
-            return new(state,directory,gitProjectDirectory,gitControlDirectory,gitOwnerSid,gitPackageSid,
+            return new(state,directory,gitProjectDirectory,gitControlDirectory,gitPackageSid,
                 input,tool,plan,git,projectInput,gitPathspec,allPackagesFixture,privacy,project);
         }
         catch(Exception error)
@@ -219,13 +219,13 @@ internal sealed class SessionResources : IDisposable
         }
         git?.AssertHeld();
         if((git is null)!=(gitProjectDirectory is null) || (git is null)!=(gitControlDirectory is null) ||
-            (git is null)!=(gitOwnerSid is null) || (git is null)!=(gitPackageSid is null))
+            (git is null)!=(gitPackageSid is null))
             throw WfpNative.Contract("GitWorkspaceLeasePresenceMismatch");
         if(gitProjectDirectory is not null)
         {
             gitProjectDirectory.AssertHeld();gitControlDirectory!.AssertHeld();
-            GitWorkspaceDescriptor.AssertPath(gitProjectDirectory.Path,gitOwnerSid!,gitPackageSid!,true);
-            GitWorkspaceDescriptor.AssertPath(gitControlDirectory.Path,gitOwnerSid!,gitPackageSid!,false);
+            GitWorkspaceDescriptor.AssertPath(gitProjectDirectory.Path,gitPackageSid!,true);
+            GitWorkspaceDescriptor.AssertPath(gitControlDirectory.Path,gitPackageSid!,false);
             SessionGitToolchain.AssertGitControlReady(Workspace,gitPathspec is not null);
         }
         if((workspaceBundle?.GitPlan is not null)!=(gitPathspec is not null))throw WfpNative.Contract("GitPathspecLeasePresenceMismatch");

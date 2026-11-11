@@ -19,19 +19,18 @@ internal sealed class GitWorkspaceDescriptor : IDisposable
         Length=Marshal.SizeOf<KernelJobSeal.SecurityAttributes>(),Descriptor=descriptor,Inherit=0
     };
 
-    internal static string BuildDaclSddl(string ownerSid,string packageSid,bool packageWrite)
+    internal static string BuildDaclSddl(string packageSid,bool packageWrite)
     {
-        var owner=new SecurityIdentifier(ownerSid).Value;
         var package=new SecurityIdentifier(packageSid).Value;
         if(!package.StartsWith("S-1-15-2-",StringComparison.Ordinal))
             throw new InvalidDataException("AppContainer package SID required for private Git workspace");
         var packageMask=packageWrite?"0x001301bf":"GRGX";
-        return "O:"+owner+"G:SYD:P(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)(A;OICI;"+packageMask+";;;"+package+")(A;OICI;RC;;;S-1-3-4)";
+        return "O:BAG:SYD:P(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)(A;OICI;"+packageMask+";;;"+package+")(A;OICI;RC;;;S-1-3-4)";
     }
 
-    private GitWorkspaceDescriptor(string ownerSid,string packageSid,bool packageWrite)
+    private GitWorkspaceDescriptor(string packageSid,bool packageWrite)
     {
-        var dacl=BuildDaclSddl(ownerSid,packageSid,packageWrite);
+        var dacl=BuildDaclSddl(packageSid,packageWrite);
         expected=new RawSecurityDescriptor(dacl+"S:(ML;OICI;NW;;;LW)");
         if(!ConvertStringSecurityDescriptorToSecurityDescriptor(dacl,1,out descriptor,out _))
             throw new Win32Exception(Marshal.GetLastWin32Error(),"Build private Git workspace DACL");
@@ -42,13 +41,13 @@ internal sealed class GitWorkspaceDescriptor : IDisposable
         }
     }
 
-    internal static PathLease Create(PathLease parent,string leaf,string ownerSid,string packageSid,bool packageWrite)
+    internal static PathLease Create(PathLease parent,string leaf,string packageSid,bool packageWrite)
     {
         if(leaf is not ("git-project" or "git-control") || (leaf=="git-project")!=packageWrite)
             throw new InvalidDataException("Fixed private Git directory role required");
         parent.AssertHeld();
         var path=WindowsPathSeal.Child(parent.Path,leaf);
-        using var grant=new GitWorkspaceDescriptor(ownerSid,packageSid,packageWrite);
+        using var grant=new GitWorkspaceDescriptor(packageSid,packageWrite);
         var attributes=grant.Attributes;
         if(!CreateDirectory(path,ref attributes))
             throw new Win32Exception(Marshal.GetLastWin32Error(),"Create private Git workspace directory");
@@ -57,9 +56,9 @@ internal sealed class GitWorkspaceDescriptor : IDisposable
         catch{lease.Dispose();throw;}
     }
 
-    internal static void AssertPath(string path,string ownerSid,string packageSid,bool packageWrite)
+    internal static void AssertPath(string path,string packageSid,bool packageWrite)
     {
-        using var grant=new GitWorkspaceDescriptor(ownerSid,packageSid,packageWrite);
+        using var grant=new GitWorkspaceDescriptor(packageSid,packageWrite);
         using var handle=WindowsPathSeal.Open(path,true,false);
         grant.AssertApplied(handle);
     }
