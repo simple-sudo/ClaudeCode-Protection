@@ -5,6 +5,14 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-11 schema 2 多命令 Git 工作流：托管编译与普通用户策略验证
+
+SOURCE / INTEGRATED(显式 `workspace-git-pack` schema 2 接入既有 daily→Broker→ProtectedSession→Owned Job→LPAC 数据链；固定 `main`、NUL pathspec、受限 Git 命令序列、Owner 独立对象/引用核验及成果闭合)。
+BUILD(Windows hosted Run #16：全部产品与专项测试编译成功；Run #17：全部产品编译成功且未运行受保护代码；Run #20：daily CLI 编译成功)。
+VERIFIED(普通用户 Run #16 的工作区/Git策略专项：固定命令、环境、顺序、路径清单及拒绝边界通过；Run #20 纯托管策略 smoke 通过)。
+NOT_RUN(新版本真实 Git 进程执行、Broker/Owned Job/LPAC 端到端运行、真实 commit/tree/blob/fsck、故障/取消时的实际 Job 归零与成果拒绝导出)。
+不得将本节 CI 证据与 `f9e8d29d` 既有单进程 LPAC `commit -a` 证据合并解释为 schema 2 多命令产品验收。
+
 ## 2026-11-10 独立 Git 固定提交
 
 SOURCE / BUILD / INTEGRATED(schema 32 原 Job 内的单进程固定 `git commit -a` 与独立对象校验)。
