@@ -11,6 +11,8 @@ on:
       - 'src/ProtectionCenter/**'
       - 'tests/WorkspaceTransfer/**'
       - 'tests/OwnedToolLaunch/**'
+      - 'tests/WorkspacePipe/**'
+      - 'tests/CenterResults/**'
       - 'docs/WORKSPACE-TRANSFER.md'
   workflow_dispatch:
 
@@ -54,6 +56,10 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           dotnet build tests/OwnedToolLaunch/OwnedToolLaunch.csproj --configuration Release --nologo
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          dotnet build tests/WorkspacePipe/WorkspacePipe.csproj --configuration Release --nologo
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          dotnet build tests/CenterResults/CenterResults.csproj --configuration Release --nologo
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Run workspace and Git policy tests as a standard user
         shell: pwsh
         run: |
@@ -66,6 +72,8 @@ jobs:
           $stage = Join-Path $env:ProgramData ("cpc-git-policy-" + $user)
           $workspaceApp = Join-Path $stage 'workspace-app'
           $ownedApp = Join-Path $stage 'owned-app'
+          $workspacePipeApp = Join-Path $stage 'workspace-pipe-app'
+          $centerApp = Join-Path $stage 'center-results-app'
           $fixture = Join-Path $stage 'fixture'
           $source = Join-Path $fixture 'source'
           $task = Join-Path $fixture 'task'
@@ -98,9 +106,11 @@ jobs:
             $roamingAppData = Join-Path $profilePath 'AppData/Roaming'
             New-Item -ItemType Directory -Path $profilePath,$localAppData,$roamingAppData -Force | Out-Null
             New-Item -ItemType Directory -Path $stage -Force | Out-Null
-            New-Item -ItemType Directory -Path $workspaceApp,$ownedApp,$fixture,$source,$task,$outside,$temp,(Join-Path $source 'src') -Force | Out-Null
+            New-Item -ItemType Directory -Path $workspaceApp,$ownedApp,$workspacePipeApp,$centerApp,$fixture,$source,$task,$outside,$temp,(Join-Path $source 'src') -Force | Out-Null
             Copy-Item -Path (Join-Path $env:GITHUB_WORKSPACE 'tests/WorkspaceTransfer/bin/Release/net8.0-windows/*') -Destination $workspaceApp -Recurse -Force
             Copy-Item -Path (Join-Path $env:GITHUB_WORKSPACE 'tests/OwnedToolLaunch/bin/Release/net8.0-windows/*') -Destination $ownedApp -Recurse -Force
+            Copy-Item -Path (Join-Path $env:GITHUB_WORKSPACE 'tests/WorkspacePipe/bin/Release/net8.0-windows/*') -Destination $workspacePipeApp -Recurse -Force
+            Copy-Item -Path (Join-Path $env:GITHUB_WORKSPACE 'tests/CenterResults/bin/Release/net8.0-windows/*') -Destination $centerApp -Recurse -Force
             & icacls $stage /grant "${account}:(OI)(CI)RX" /T /C | Out-Null
             if ($LASTEXITCODE -ne 0) { throw 'Could not grant the standard test account read/execute access to isolated test binaries' }
             & icacls $fixture /grant "${account}:(OI)(CI)M" /T /C | Out-Null
@@ -156,6 +166,15 @@ jobs:
 
             Invoke-StandardUserTest $workspaceApp @('WorkspaceTransfer.dll',$fixture) 'WorkspaceTransfer contract and NTFS fixture tests'
             Invoke-StandardUserTest $ownedApp @('OwnedToolLaunch.dll','workspace-git-workflow-policy') 'Offline Git owner policy tests'
+            $workspacePipeCases = @(
+              'worker-feedback','frames','local-pipe','output','snapshot','token-membership',
+              'reply','project-contract','privacy-contract','privacy-execution-gate',
+              'caller-csharp','caller-data','project-failure'
+            )
+            foreach ($case in $workspacePipeCases) {
+              Invoke-StandardUserTest $workspacePipeApp @('WorkspacePipe.dll',$case) "WorkspacePipe $case"
+            }
+            Invoke-StandardUserTest $centerApp @('CenterResults.dll') 'Protection Center workspace review and project-flow tests'
           }
           finally {
             if (Test-Path -LiteralPath $sourceRedirect) { & $env:ComSpec /d /c ('rmdir "{0}"' -f $sourceRedirect) | Out-Null }
