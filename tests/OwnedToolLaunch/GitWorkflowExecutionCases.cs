@@ -32,7 +32,7 @@ internal static class GitWorkflowExecutionCases
             var sourceGitRoot=FindGitRoot();
             var gitDirectory=Path.Combine(root,"Git","mingw64","bin");
             Directory.CreateDirectory(gitDirectory);
-            var sourceDirectories=new[]{Path.Combine(sourceGitRoot,"mingw64","bin"),Path.Combine(sourceGitRoot,"bin")};
+            var sourceDirectories=new[]{Path.Combine(sourceGitRoot,"mingw64","bin"),Path.Combine(sourceGitRoot,"bin"),Path.Combine(sourceGitRoot,"usr","bin")};
             var requiredAssets=new[]{"git.exe","libiconv-2.dll","libintl-8.dll","libpcre2-8-0.dll","libwinpthread-1.dll","zlib1.dll"};
             foreach(var asset in requiredAssets)
             {
