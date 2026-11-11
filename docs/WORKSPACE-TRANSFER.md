@@ -3,11 +3,12 @@
 > 文档效力（2026-11-02）：工作区数据机制与各版本证据。旧“当前62e”等按当时解释，v3 DATA仍是无代码能力。日常Claude授权工作区不默认包括保护源码/敏感内部资料；可信维护授权另审，不由Broker任意读取宿主路径。
 > 最新状态/授权只见[CURRENT-STATE](CURRENT-STATE.md)，正式目标与术语见[SECURITY-REQUIREMENTS](SECURITY-REQUIREMENTS.md)。以下旧状态与操作许可不自动延续。
 
-## 2026-11-10：显式离线 Git 工作流 schema 2（源码接入，尚未验收）
+## 2026-11-10/11：显式离线 Git 工作流 schema 2（源码接入；托管编译与策略测试通过；LPAC待验收）
 
 本节描述当前开发分支新增的源码能力，不覆盖上方历史安装证据。当前安装仍以
-[CURRENT-STATE](CURRENT-STATE.md)记录为准；本节代码尚未完成托管构建、同版本安装、
-LPAC 实机运行或本机验收，不得标记为 PASS。
+[CURRENT-STATE](CURRENT-STATE.md)记录为准。GitHub Actions Run #16（43009603203）已完成全部产品编译、专项测试编译及普通用户工作区/Git策略测试；Run #17（43009602970）完成全部产品编译但不运行受保护代码；Run #20（43009603161）完成纯托管策略 smoke 与 daily CLI 编译。三次均成功。
+
+**证据边界：** Run #16 的 `workspace-git-workflow-policy` 只执行策略/参数/环境/顺序/pathspec测试，其输出明确说明没有启动 Git 进程，也没有执行 Broker、Job 或 LPAC。当前 schema 2 真实 Git 多命令执行、同版本安装、新版本 LPAC 实机运行、本机验收仍 NOT_RUN，不得标记为 PASS。此前 `f9e8d29d` 的单进程 `git commit -a` LPAC 证据继续保留，但不覆盖本节的多命令工作流。
 
 普通用户可先运行：
 
