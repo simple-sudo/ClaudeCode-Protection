@@ -112,7 +112,7 @@ jobs:
             [System.IO.File]::WriteAllBytes((Join-Path $source 'raw.bin'),[byte[]]@(0,255,1,128))
             [System.IO.File]::WriteAllBytes((Join-Path $source 'empty.txt'),[byte[]]@())
             [System.IO.File]::WriteAllText((Join-Path $outside 'outside.txt'),'outside',[System.Text.UTF8Encoding]::new($false))
-            New-Item -ItemType HardLink -Path (Join-Path $source 'hardlink.txt') -Target (Join-Path $source 'src/main.txt') -ErrorAction Stop | Out-Null
+            New-Item -ItemType HardLink -Path (Join-Path $source 'hardlink.txt') -Target (Join-Path $outside 'outside.txt') -ErrorAction Stop | Out-Null
             $mkSourceJunction = 'mklink /J "{0}" "{1}"' -f $sourceRedirect,$outside
             & $env:ComSpec /d /c $mkSourceJunction
             if ($LASTEXITCODE -ne 0) { throw 'Could not create the source reparse-point fixture' }
