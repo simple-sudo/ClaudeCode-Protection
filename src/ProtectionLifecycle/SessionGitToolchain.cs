@@ -4,12 +4,20 @@ using System.IO.Compression;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using ClaudeCodeProtection.Workspaces;
 
 namespace ProtectionLifecycle;
 
+internal sealed record GitWorkflowObservation(string PlanSHA256,string BranchName,string CommitId,string TreeId,string CommitMessage,
+    string AuthorName,string AuthorEmail,long CommitUnixTime,int FileCount,int AddedLines,int DeletedLines,int BinaryFileCount,
+    bool CleanAfterCommit,bool ObjectIntegrityObserved);
 internal sealed record GitToolchainReport(bool InputHashMatched,bool InitAddCommitObserved,string? CommitId,
-    bool PrivateFixtureReadRefused,int? DenialExit,bool AllPackagesFixtureReadRefused,int? AllPackagesDenialExit,string? FailureStage,string? FailureType,int? FailureCode);
+    bool PrivateFixtureReadRefused,int? DenialExit,bool AllPackagesFixtureReadRefused,int? AllPackagesDenialExit,string? FailureStage,string? FailureType,int? FailureCode)
+{
+    [JsonIgnore(Condition=JsonIgnoreCondition.WhenWritingNull)]
+    public GitWorkflowObservation? Workflow {get;init;}
+}
 
 // Personal-machine deployment assumption, like the current FlClash path.
 // Only these reviewed installed Git bytes are allowed; an update requires new
@@ -66,7 +74,13 @@ internal sealed class SessionGitToolchain : IDisposable
     }
     public void Dispose(){foreach(var file in files)file.Dispose();directory.Dispose();}
     internal static bool Qualified(GitToolchainReport value)=>value.InputHashMatched && value.InitAddCommitObserved && IsObjectId(value.CommitId) &&
-        value.PrivateFixtureReadRefused && value.DenialExit==128 && value.AllPackagesFixtureReadRefused && value.AllPackagesDenialExit==128 && value.FailureStage is null && value.FailureType is null && value.FailureCode is null;
+        value.PrivateFixtureReadRefused && value.DenialExit==128 && value.AllPackagesFixtureReadRefused && value.AllPackagesDenialExit==128 &&
+        value.FailureStage is null && value.FailureType is null && value.FailureCode is null &&
+        (value.Workflow is null || value.Workflow is {BranchName:"main",CommitMessage.Length:>0,AuthorName:WorkspaceGitPlan.AuthorName,
+            AuthorEmail:WorkspaceGitPlan.AuthorEmail,CommitUnixTime:>=0,FileCount:>0 and <=WorkspaceBundle.MaxFiles,
+            AddedLines:>=0,DeletedLines:>=0,BinaryFileCount:>=0,CleanAfterCommit:true,ObjectIntegrityObserved:true} &&
+            WorkspaceBundle.IsHash(value.Workflow.PlanSHA256) && IsObjectId(value.Workflow.TreeId) &&
+            value.Workflow.CommitId==value.CommitId);
     private static bool IsObjectId(string? value)=>value?.Length==40 && value.All(c=>c is >= '0' and <= '9' or >= 'a' and <= 'f');
     internal static string BlobId(byte[] input)=>Convert.ToHexString(SHA1.HashData(Encoding.ASCII.GetBytes("blob "+input.Length+"\0").Concat(input).ToArray())).ToLowerInvariant();
     internal static GitToolchainReport RunChild(ResourceProbePlan plan,string workspace)
@@ -82,6 +96,8 @@ internal sealed class SessionGitToolchain : IDisposable
                 using var file=File.OpenRead(WindowsPathSeal.Child(plan.GitDirectory,asset.Name));
                 if(file.Length is <1 or >16*1024*1024 || Convert.ToHexString(SHA256.HashData(file))!=asset.Hash)throw WfpNative.Contract("ChildGitAssetChanged");
             }
+            var selectedProject=WorkspaceBundle.Parse(plan.ProjectBundle);
+            if(selectedProject.GitPlan is { } workflow)return RunWorkflowChild(plan,workspace,selectedProject,workflow);
             stage="HASH_INPUT_WITH_INSPECTED_GIT";
             using(var process=AtomicChild.StartInheritedTool(Start(workspace,plan.GitDirectory,"hash-object","--stdin")))
             {
@@ -134,6 +150,118 @@ internal sealed class SessionGitToolchain : IDisposable
         }
         catch(Exception ex){return new(hashMatched,committed,commit,denied,denialExit,allPackagesDenied,allPackagesExit,stage+(ex.Data["Stage"] is string nativeStage?"/"+nativeStage:""),ex.GetType().Name,ex is System.ComponentModel.Win32Exception native?native.NativeErrorCode:ex.HResult);}
     }
+    private static GitToolchainReport RunWorkflowChild(ResourceProbePlan plan,string workspace,WorkspaceBundle project,WorkspaceGitPlan workflow)
+    {
+        bool hashMatched=false,committed=false,denied=false,allPackagesDenied=false;string? commitId=null;
+        int? denialExit=null,allPackagesExit=null;var stage="VERIFY_GIT_WORKFLOW_INPUT";
+        try
+        {
+            var commands=WorkflowCommands(plan,workspace,workflow);
+            stage="HASH_INPUT_WITH_INSPECTED_GIT";
+            using(var process=AtomicChild.StartInheritedTool(StartWorkflow(workspace,plan.GitDirectory,workflow,commands[0])))
+            {
+                var stdout=ReadBounded(process.StandardOutput,4096);var stderr=ReadBounded(process.StandardError,4096);
+                Signal(workspace,"git-ready",plan.Nonce);var clock=Stopwatch.StartNew();
+                while(!File.Exists(WindowsPathSeal.Child(workspace,"git-go.signal")))
+                {
+                    if(process.HasExited){RecordResult(workspace,Finish(process,stdout,stderr));throw WfpNative.Contract("GitExitedBeforeInputAdmission");}
+                    if(clock.ElapsedMilliseconds>=8000)throw WfpNative.Contract("GitInspectionGateExpired");Thread.Sleep(20);
+                }
+                if(File.ReadAllText(WindowsPathSeal.Child(workspace,"git-go.txt"))!=plan.Nonce)throw WfpNative.Contract("GitGateBindingMismatch");
+                process.StandardInput.Write(Encoding.UTF8.GetString(plan.Input));process.StandardInput.Close();
+                var result=Finish(process,stdout,stderr);RecordResult(workspace,result);Require(result);
+                hashMatched=result.Exit==0 && result.Out.Trim()==BlobId(plan.Input) && result.Error.Length==0;
+                if(!hashMatched)throw WfpNative.Contract("GitInputHashMismatch");
+            }
+            var repo=WindowsPathSeal.Child(workspace,"git-project");
+            Directory.CreateDirectory(WindowsPathSeal.Child(workspace,"empty-git-template"));
+            Directory.CreateDirectory(WindowsPathSeal.Child(workspace,"empty-git-hooks"));
+            foreach(var file in project.Files)
+                if(!File.ReadAllBytes(WindowsPathSeal.Child(repo,file.Path)).AsSpan().SequenceEqual(file.Content))
+                    throw WfpNative.Contract("GitProjectInputChanged");
+            if(!SelectedPathspecMatches(workspace,project))throw WfpNative.Contract("GitPathspecInputMismatch");
+            stage="GIT_INIT";RequireWorkflow(RunWorkflow(workspace,plan.GitDirectory,workflow,commands[1]));
+            stage="GIT_PREPARE_ATTRIBUTES";
+            var info=WindowsPathSeal.Child(repo,".git/info");Directory.CreateDirectory(info);
+            File.WriteAllText(WindowsPathSeal.Child(info,"attributes"),"* -text -filter -ident -working-tree-encoding\n",new UTF8Encoding(false));
+            stage="GIT_ADD";RequireWorkflow(RunWorkflow(workspace,plan.GitDirectory,workflow,commands[2]));
+            stage="GIT_DIFF_CHECK";var check=RunWorkflow(workspace,plan.GitDirectory,workflow,commands[3]);RequireWorkflow(check);
+            if(check.Out.Length!=0)throw WfpNative.Contract("GitWhitespaceCheckOutputUnexpected");
+            stage="GIT_DIFF_NUMSTAT";var numstat=RunWorkflow(workspace,plan.GitDirectory,workflow,commands[4]);RequireWorkflow(numstat);
+            var metrics=ParseNumstat(numstat.Out,project);
+            stage="GIT_COMMIT";var commit=RunWorkflow(workspace,plan.GitDirectory,workflow,commands[5]);RequireWorkflow(commit);
+            if(commit.Out.Length!=0)throw WfpNative.Contract("GitCommitOutputUnexpected");
+            stage="GIT_LOG";var log=RunWorkflow(workspace,plan.GitDirectory,workflow,commands[6]);RequireWorkflow(log);
+            var fields=log.Out.TrimEnd('\r','\n').Split('\0');
+            if(fields.Length!=6 || !IsObjectId(fields[0]) || !IsObjectId(fields[1]) ||
+                fields[2]!=WorkspaceGitPlan.AuthorName || fields[3]!=WorkspaceGitPlan.AuthorEmail ||
+                !long.TryParse(fields[4],System.Globalization.NumberStyles.None,System.Globalization.CultureInfo.InvariantCulture,out var commitTime) ||
+                commitTime!=workflow.CommitUnixTime || fields[5]!=workflow.CommitMessage)
+                throw WfpNative.Contract("GitWorkflowCommitMetadataMismatch");
+            commitId=fields[0];var treeId=fields[1];committed=true;
+            stage="GIT_STATUS_AFTER_COMMIT";var after=RunWorkflow(workspace,plan.GitDirectory,workflow,commands[7]);RequireWorkflow(after);
+            var clean=after.Out.Length==0;
+            if(!clean)throw WfpNative.Contract("GitWorkflowWorktreeNotClean");
+            stage="GIT_OBJECT_INTEGRITY";var fsck=RunWorkflow(workspace,plan.GitDirectory,workflow,commands[8]);RequireWorkflow(fsck);
+            if(fsck.Out.Length!=0 || fsck.Error.Length!=0)throw WfpNative.Contract("GitObjectIntegrityOutputUnexpected");
+            stage="GIT_PRIVATE_FIXTURE_DENIAL";var negative=RunWorkflow(workspace,plan.GitDirectory,workflow,commands[9]);denialExit=negative.Exit;
+            denied=negative.Exit==128 && negative.Out.Length==0 && negative.Error.TrimEnd().EndsWith(": Permission denied",StringComparison.Ordinal);
+            if(!denied)throw WfpNative.Contract("GitPrivateFixtureDenialNotConfirmed");
+            stage="GIT_ALL_PACKAGES_FIXTURE_DENIAL";var aap=RunWorkflow(workspace,plan.GitDirectory,workflow,commands[10]);allPackagesExit=aap.Exit;
+            allPackagesDenied=aap.Exit==128 && aap.Out.Length==0 && aap.Error.TrimEnd().EndsWith(": Permission denied",StringComparison.Ordinal);
+            if(!allPackagesDenied)throw WfpNative.Contract("GitAllPackagesFixtureDenialNotConfirmed");
+            var observation=new GitWorkflowObservation(WorkspaceBundle.GitPlanHash(workflow),workflow.BranchName,commitId,treeId,
+                workflow.CommitMessage,WorkspaceGitPlan.AuthorName,WorkspaceGitPlan.AuthorEmail,commitTime,project.Files.Length,
+                metrics.AddedLines,metrics.DeletedLines,metrics.BinaryFiles,clean,true);
+            return new(hashMatched,committed,commitId,denied,denialExit,allPackagesDenied,allPackagesExit,null,null,null){Workflow=observation};
+        }
+        catch(Exception ex)
+        {
+            return new(hashMatched,committed,commitId,denied,denialExit,allPackagesDenied,allPackagesExit,
+                stage+(ex.Data["Stage"] is string nativeStage?"/"+nativeStage:""),ex.GetType().Name,
+                ex is System.ComponentModel.Win32Exception native?native.NativeErrorCode:ex.HResult);
+        }
+    }
+    private static (int AddedLines,int DeletedLines,int BinaryFiles) ParseNumstat(string output,WorkspaceBundle project)
+    {
+        var records=output.Split('\0',StringSplitOptions.RemoveEmptyEntries);
+        if(records.Length!=project.Files.Length)throw WfpNative.Contract("GitNumstatInventoryMismatch");
+        var expected=project.Files.Select(f=>f.Path).ToHashSet(StringComparer.Ordinal);
+        int added=0,deleted=0,binary=0;
+        foreach(var record in records)
+        {
+            var first=record.IndexOf('\t');var second=first<0?-1:record.IndexOf('\t',first+1);
+            if(first<1 || second<=first+1 || second==record.Length-1)throw WfpNative.Contract("GitNumstatRecordMalformed");
+            var add=record[..first];var remove=record[(first+1)..second];var path=record[(second+1)..];
+            if(!expected.Remove(path))throw WfpNative.Contract("GitNumstatPathMismatch");
+            if(add=="-" && remove=="-"){binary++;continue;}
+            if(!int.TryParse(add,System.Globalization.NumberStyles.None,System.Globalization.CultureInfo.InvariantCulture,out var a) ||
+                !int.TryParse(remove,System.Globalization.NumberStyles.None,System.Globalization.CultureInfo.InvariantCulture,out var d) ||
+                a<0 || d<0 || added>100000000-a || deleted>100000000-d)throw WfpNative.Contract("GitNumstatCountBounds");
+            added+=a;deleted+=d;
+        }
+        if(expected.Count!=0)throw WfpNative.Contract("GitNumstatFilesMissing");
+        return(added,deleted,binary);
+    }
+    private static (int Exit,string Out,string Error) RunWorkflow(string workspace,string directory,WorkspaceGitPlan workflow,params string[] args)
+    {
+        using var process=AtomicChild.StartInheritedTool(StartWorkflow(workspace,directory,workflow,args));process.StandardInput.Close();
+        var result=Finish(process,ReadBounded(process.StandardOutput,256*1024),ReadBounded(process.StandardError,64*1024));
+        RecordResult(workspace,result);return result;
+    }
+    private static async Task<string> ReadBounded(StreamReader reader,int maximum)
+    {
+        var text=new StringBuilder();var buffer=new char[4096];
+        while(true)
+        {
+            var count=await reader.ReadAsync(buffer.AsMemory());
+            if(count==0)return text.ToString();
+            if(text.Length+count>maximum)throw WfpNative.Contract("GitWorkflowOutputBounds");
+            text.Append(buffer,0,count);
+        }
+    }
+    private static void RequireWorkflow((int Exit,string Out,string Error) result)
+    {if(result.Exit!=0 || result.Error.Length!=0)throw WfpNative.Contract("GitWorkflowCommandFailed");}
     private static void Signal(string workspace,string stem,string nonce)
     {
         File.WriteAllText(WindowsPathSeal.Child(workspace,stem+".txt"),nonce,new UTF8Encoding(false));
@@ -157,9 +285,62 @@ internal sealed class SessionGitToolchain : IDisposable
         foreach(var name in new[]{"GIT_AUTHOR_DATE","GIT_COMMITTER_DATE"})start.Environment[name]="2026-10-28T00:00:00+00:00";
         start.Environment["LC_ALL"]="C";start.Environment["LANG"]="C";
         foreach(var arg in new[]{"--no-pager","-c","credential.helper=","-c","protocol.allow=never","-c","core.autocrlf=false","-c","core.filemode=false",
-            "-c","core.fsmonitor=false","-c","maintenance.auto=false","-c","gc.auto=0","-c","commit.gpgsign=false",
+            "-c","core.fsmonitor=false","-c","maintenance.auto=false","-c","gc.auto=0","-c","commit.gpgsign=false","-c","i18n.commitEncoding=UTF-8",
             "-c","core.hooksPath="+WindowsPathSeal.Child(workspace,"empty-git-hooks"),"-c","safe.directory="+WindowsPathSeal.Child(workspace,"git-project")}.Concat(arguments))start.ArgumentList.Add(arg);
         return start;
+    }
+    internal static ProcessStartInfo StartWorkflow(string workspace,string directory,WorkspaceGitPlan workflow,params string[] arguments)
+    {
+        workflow.Validate();var start=Start(workspace,directory,arguments);
+        foreach(var name in new[]{"GIT_AUTHOR_NAME","GIT_COMMITTER_NAME"})start.Environment[name]=WorkspaceGitPlan.AuthorName;
+        foreach(var name in new[]{"GIT_AUTHOR_EMAIL","GIT_COMMITTER_EMAIL"})start.Environment[name]=WorkspaceGitPlan.AuthorEmail;
+        foreach(var name in new[]{"GIT_AUTHOR_DATE","GIT_COMMITTER_DATE"})start.Environment[name]=workflow.CommitDateUtc;
+        return start;
+    }
+    internal static string[][] WorkflowCommands(ResourceProbePlan plan,string workspace,WorkspaceGitPlan workflow)
+    {
+        workflow.Validate();var repo=WindowsPathSeal.Child(workspace,"git-project");
+        var template=WindowsPathSeal.Child(workspace,"empty-git-template");
+        var selection=WindowsPathSeal.Child(workspace,"git-selected-paths.bin");
+        return new[]{
+            new[]{"hash-object","--stdin"},
+            new[]{"init","--quiet","--initial-branch=main","--object-format=sha1","--template="+template,repo},
+            new[]{"--literal-pathspecs","-C",repo,"add","--force","--pathspec-from-file="+selection,"--pathspec-file-nul"},
+            new[]{"-C",repo,"diff","--cached","--check","--no-ext-diff","--no-color"},
+            new[]{"-C",repo,"diff","--cached","--numstat","-z","--no-ext-diff","--no-color"},
+            new[]{"-C",repo,"commit","--quiet","--no-gpg-sign","-m",workflow.CommitMessage},
+            new[]{"-C",repo,"log","-1","--format=%H%x00%T%x00%an%x00%ae%x00%at%x00%s","HEAD"},
+            new[]{"-C",repo,"status","--porcelain=v2","-z","--untracked-files=all"},
+            new[]{"-C",repo,"fsck","--full","--strict","--no-reflogs","--no-progress"},
+            new[]{"hash-object","--",plan.Fixture},
+            new[]{"hash-object","--",WindowsPathSeal.Child(workspace,"all-packages-only.json")}
+        };
+    }
+    internal static bool SelectedPathspecMatches(string workspace,WorkspaceBundle project)
+    {
+        var path=WindowsPathSeal.Child(workspace,"git-selected-paths.bin");
+        var expected=Encoding.ASCII.GetBytes(string.Join('\0',project.Files.Select(f=>f.Path))+"\0");
+        using var file=new FileStream(WindowsPathSeal.Open(path,false,true),FileAccess.Read,4096,false);
+        if(file.Length!=expected.Length)return false;
+        var actual=new byte[expected.Length];file.ReadExactly(actual);return actual.AsSpan().SequenceEqual(expected);
+    }
+    internal static bool WorkflowCommandAllowed(ResourceProbePlan plan,string workspace,string[] tail)
+    {
+        var project=WorkspaceBundle.Parse(plan.ProjectBundle);var workflow=project.GitPlan;
+        if(workflow is null)return false;
+        var commands=WorkflowCommands(plan,workspace,workflow);
+        if(!commands.Any(command=>command.SequenceEqual(tail)))return false;
+        return !commands[2].SequenceEqual(tail) || SelectedPathspecMatches(workspace,project);
+    }
+    internal static bool WorkflowSequenceMatches(ResourceProbePlan plan,string workspace,int sequence,string[] arguments)
+    {
+        var project=WorkspaceBundle.Parse(plan.ProjectBundle);var workflow=project.GitPlan;
+        if(workflow is null)return true;
+        var prefix=StartWorkflow(workspace,plan.GitDirectory,workflow).ArgumentList.ToArray();
+        if(arguments.Length<prefix.Length || !arguments.Take(prefix.Length).SequenceEqual(prefix))return false;
+        var tail=arguments.Skip(prefix.Length).ToArray();var commands=WorkflowCommands(plan,workspace,workflow);
+        return sequence>=1 && sequence<=commands.Length && commands[sequence-1].SequenceEqual(tail) &&
+            WorkflowCommandAllowed(plan,workspace,tail);
     }
     internal static ProcessStartInfo StartIndependentInit(string workspace) =>
         Start(workspace,DirectoryPath,"init","--quiet","--template=","--initial-branch=cpc-offline","git-project");
@@ -262,7 +443,9 @@ internal sealed class SessionGitToolchain : IDisposable
         RecordResult(workspace,result);return result;
     }
     private static void RecordResult(string workspace,(int Exit,string Out,string Error) result)=>
-        File.WriteAllText(WindowsPathSeal.Child(workspace,"git-last-result.json"),JsonSerializer.Serialize(new {ExitCode=result.Exit,Stdout=result.Out,Stderr=result.Error}),new UTF8Encoding(false));
+        File.WriteAllText(WindowsPathSeal.Child(workspace,"git-last-result.json"),JsonSerializer.Serialize(new {
+            ExitCode=result.Exit,Stdout=result.Out[..Math.Min(result.Out.Length,8192)],Stderr=result.Error[..Math.Min(result.Error.Length,8192)],
+            StdoutLength=result.Out.Length,StderrLength=result.Error.Length,Truncated=result.Out.Length>8192 || result.Error.Length>8192}),new UTF8Encoding(false));
     private static (int Exit,string Out,string Error) Finish(AtomicChild.InheritedTool process,Task<string> stdout,Task<string> stderr)
     {
         if(!process.WaitForExit(8000))throw WfpNative.Contract("FixedGitDeadlineExpired");
@@ -270,14 +453,34 @@ internal sealed class SessionGitToolchain : IDisposable
     }
     private static void Require((int Exit,string Out,string Error) result)
     {if(result.Exit!=0 || result.Error.Length!=0)throw WfpNative.Contract("FixedGitCommandFailed");}
-    internal static void AssertRepository(string workspace,ResourceProbePlan plan,GitToolchainReport report)
+    internal static WorkspaceGitReceipt? AssertRepository(string workspace,ResourceProbePlan plan,GitToolchainReport report)
     {
         if(!Qualified(report))throw WfpNative.Contract("GitToolchainReportRefused");
-        AssertCommit(workspace,WorkspaceBundle.Parse(plan.ProjectBundle),report.CommitId!);
+        var project=WorkspaceBundle.Parse(plan.ProjectBundle);
+        if(project.GitPlan is { } workflow)
+        {
+            var observed=report.Workflow??throw WfpNative.Contract("GitWorkflowObservationMissing");
+            if(observed.PlanSHA256!=WorkspaceBundle.GitPlanHash(workflow) || observed.BranchName!=workflow.BranchName ||
+                observed.CommitId!=report.CommitId || observed.CommitMessage!=workflow.CommitMessage ||
+                observed.AuthorName!=WorkspaceGitPlan.AuthorName || observed.AuthorEmail!=WorkspaceGitPlan.AuthorEmail ||
+                observed.CommitUnixTime!=workflow.CommitUnixTime || observed.FileCount!=project.Files.Length ||
+                !observed.CleanAfterCommit || !observed.ObjectIntegrityObserved)
+                throw WfpNative.Contract("GitWorkflowObservationBindingMismatch");
+            var verifiedTree=AssertCommit(workspace,project,report.CommitId!,workflow);
+            if(observed.TreeId!=verifiedTree || ReadHead(workspace)!="ref: refs/heads/"+workflow.BranchName+"\n" ||
+                ReadBranchRef(workspace,workflow.BranchName)!=report.CommitId)throw WfpNative.Contract("GitWorkflowBranchRefMismatch");
+            var receipt=new WorkspaceGitReceipt(1,observed.PlanSHA256,observed.BranchName,observed.CommitId,observed.TreeId,
+                observed.CommitMessage,observed.AuthorName,observed.AuthorEmail,observed.CommitUnixTime,observed.FileCount,
+                observed.AddedLines,observed.DeletedLines,observed.BinaryFileCount,true,true);
+            receipt.Validate();return receipt;
+        }
+        if(report.Workflow is not null)throw WfpNative.Contract("UnexpectedGitWorkflowObservation");
+        AssertCommit(workspace,project,report.CommitId!);
         if(ReadQualificationRef(workspace)!=report.CommitId)throw WfpNative.Contract("GitBranchRefMismatch");
+        return null;
     }
 
-    private static void AssertCommit(string workspace,WorkspaceBundle project,string commitId)
+    private static string AssertCommit(string workspace,WorkspaceBundle project,string commitId,WorkspaceGitPlan? workflow=null)
     {
         var objects=WindowsPathSeal.Child(workspace,"git-project/.git/objects");
         byte[] ReadObject(string id)
@@ -321,20 +524,32 @@ internal sealed class SessionGitToolchain : IDisposable
         if(zero is <1 or >32 || !Encoding.ASCII.GetString(commit,0,zero).Equals("commit "+(commit.Length-zero-1),StringComparison.Ordinal))throw WfpNative.Contract("GitCommitObjectRefused");
         var body=Encoding.UTF8.GetString(commit,zero+1,commit.Length-zero-1);
         if(body.Length<46 || !body.StartsWith("tree ",StringComparison.Ordinal) || body[45]!='\n')throw WfpNative.Contract("GitCommitTreeMissing");
-        var stamp=new DateTimeOffset(2026,10,28,0,0,0,TimeSpan.Zero).ToUnixTimeSeconds().ToString(System.Globalization.CultureInfo.InvariantCulture);
-        var identity="CPC Qualification <offline@invalid.example> "+stamp+" +0000\n";
-        if(body!="tree "+body.Substring(5,40)+"\nauthor "+identity+"committer "+identity+"\n"+CommitMessage+"\n")
+        var stamp=(workflow?.CommitUnixTime??new DateTimeOffset(2026,10,28,0,0,0,TimeSpan.Zero).ToUnixTimeSeconds()).ToString(System.Globalization.CultureInfo.InvariantCulture);
+        var author=workflow is null?"CPC Qualification":WorkspaceGitPlan.AuthorName;
+        var email=workflow is null?"offline@invalid.example":WorkspaceGitPlan.AuthorEmail;
+        var message=workflow?.CommitMessage??CommitMessage;
+        var identity=author+" <"+email+"> "+stamp+" +0000\n";
+        if(body!="tree "+body.Substring(5,40)+"\nauthor "+identity+"committer "+identity+"\n"+message+"\n")
             throw WfpNative.Contract("GitCommitIdentityOrMetadataMismatch");
         if(body.Substring(5,40)!=expectedTree)throw WfpNative.Contract("GitCommitWorkspaceTreeMismatch");
+        return expectedTree;
     }
 
-    private static string ReadQualificationRef(string workspace)
+    private static string ReadQualificationRef(string workspace)=>ReadBranchRef(workspace,"qualification");
+    private static string ReadBranchRef(string workspace,string branch)
     {
+        if(branch is not ("qualification" or "main"))throw WfpNative.Contract("GitBranchNameRefused");
         using var refParent=WindowsPathSeal.LockDirectory(WindowsPathSeal.Child(workspace,"git-project/.git/refs/heads"),PathPolicy.Source);
-        using var reference=new FileStream(WindowsPathSeal.Open(WindowsPathSeal.Child(refParent.Path,"qualification"),false,true),FileAccess.Read,128,false);
+        using var reference=new FileStream(WindowsPathSeal.Open(WindowsPathSeal.Child(refParent.Path,branch),false,true),FileAccess.Read,128,false);
         if(reference.Length!=41)throw WfpNative.Contract("GitBranchRefBounds");var data=new byte[41];reference.ReadExactly(data);
         var id=Encoding.ASCII.GetString(data,0,40);
         if(data[40]!='\n' || !IsObjectId(id))throw WfpNative.Contract("GitBranchRefMismatch");
         return id;
+    }
+    private static string ReadHead(string workspace)
+    {
+        using var head=new FileStream(WindowsPathSeal.Open(WindowsPathSeal.Child(workspace,"git-project/.git/HEAD"),false,true),FileAccess.Read,128,false);
+        if(head.Length is <1 or >64)throw WfpNative.Contract("GitHeadBounds");
+        using var reader=new StreamReader(head,Encoding.ASCII,false,128,true);return reader.ReadToEnd();
     }
 }

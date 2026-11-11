@@ -35,6 +35,20 @@ internal sealed class WorkspaceResultSession
         text.AppendLine();
         text.AppendLine("输入摘要：" + BaselineSHA256);
         text.AppendLine("结果摘要：" + ResultSHA256);
+        var git=WorkspaceBundle.Parse(result).GitReceipt;
+        if(git is not null)
+        {
+            text.AppendLine();
+            text.AppendLine("结果包记录的隔离 Git 摘要（未导入原 .git 历史；未验证结果包来源）：");
+            text.AppendLine("分支：" + git.BranchName);
+            text.AppendLine("提交：" + git.CommitId);
+            text.AppendLine("提交说明：" + git.CommitMessage);
+            text.AppendLine("作者：" + git.AuthorName + " <" + git.AuthorEmail + ">");
+            text.AppendLine("提交文件数：" + git.FileCount + "；新增行：" + git.AddedLines + "；删除行：" + git.DeletedLines + "；二进制文件：" + git.BinaryFileCount);
+            text.AppendLine("提交后工作树：" + (git.CleanAfterCommit ? "干净" : "未确认干净"));
+            text.AppendLine("结果包记录的对象完整性状态：" + (git.ObjectIntegrityVerified ? "已核验" : "未核验"));
+            text.AppendLine("说明：此摘要不包含 .git 对象或可跨会话恢复的提交历史，也不是签名或正式准入证明。");
+        }
         ReviewText = text.ToString();
     }
 

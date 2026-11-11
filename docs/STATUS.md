@@ -11,6 +11,15 @@ schema 32 接入一个真实 Git 进程的已跟踪文件暂存及提交，普�
 `f9e8d29d` 的原受限 Job 实测提交并有序回收。原句柄退出与服务缺席的外层返回码分开记录。
 [独立 Git 固定提交](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#独立链的固定-git-提交)。
 
+## 2026-11-10 显式离线 Git 工作流 schema 2（源码候选）
+
+开发分支新增 `workspace-git-pack` 和 schema 2 `GitPlan/GitReceipt`，沿用现有
+`workspace-process` 管道与 Owner 生命周期，固定执行新仓库 `main` 的 init/add/diff/
+commit/log/status/fsck，并独立核对 Git 对象与引用。原 `.git`、历史、remote 和用户
+配置不导入，项目代码不执行。源码、构建、安装、普通测试和真实 LPAC 证据分开记账；
+本节写入时尚未构建或实机验收，不能替代上一节 `f9e8d29d` 的单次实测。
+[设计和操作边界](WORKSPACE-TRANSFER.md)。
+
 ## 2026-11-10 网关路由监督
 
 原网关新增持续路由快照，普通回归通过。真实普通 FlClash 控制端当前仍含可达及可选

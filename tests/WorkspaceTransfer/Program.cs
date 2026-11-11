@@ -33,6 +33,24 @@ Require(changes.Select(c=>c.Kind).Order().SequenceEqual(new[]{"ADD","DELETE","MO
 Refuse(()=>WorkspaceBundle.Compare(original,original),"unbound result");
 Refuse(()=>WorkspaceBundle.Compare(result,result),"result cannot be baseline");
 Refuse(()=>WorkspaceBundle.Compare(original,WorkspaceBundle.Create(new[]{("EMPTY.txt",Array.Empty<byte>())},WorkspaceBundle.Hash(original)).Serialize()),"case-only rename");
+var gitTask=WorkspaceBundle.CreateGitWorkflow(original,"Initial offline import");
+var parsedGit=WorkspaceBundle.Parse(gitTask);var gitPlan=parsedGit.GitPlan??throw new InvalidDataException("Git plan missing");
+Require(parsedGit.SchemaVersion==2 && gitPlan.BranchName=="main" && parsedGit.Files.Length==3,"explicit Git workflow schema and selected files");
+Refuse(()=>WorkspaceBundle.CreateGitWorkflow(original,"bad\nmessage"),"multiline Git commit message");
+Refuse(()=>WorkspaceBundle.CreateGitWorkflow(original,"bad\u2028message"),"Unicode line separator commit message");
+Refuse(()=>WorkspaceBundle.CreateGitWorkflow(original,"bad\u2029message"),"Unicode paragraph separator commit message");
+Refuse(()=>WorkspaceBundle.CreateGitWorkflow(original,new string('x',161)),"oversized Git commit message");
+var gitFiles=WorkspaceBundle.Create(parsedGit.Files.Select(f=>(f.Path,f.Content)),WorkspaceBundle.Hash(gitTask)).Serialize();
+Refuse(()=>WorkspaceBundle.Compare(gitTask,gitFiles),"Git result without verified workflow receipt");
+var gitReceipt=new WorkspaceGitReceipt(1,WorkspaceBundle.GitPlanHash(gitPlan),"main",new string('a',40),new string('b',40),
+    gitPlan.CommitMessage,WorkspaceGitPlan.AuthorName,WorkspaceGitPlan.AuthorEmail,gitPlan.CommitUnixTime,
+    parsedGit.Files.Length,12,0,1,true,true);
+var gitResult=WorkspaceBundle.AttachGitReceipt(gitFiles,gitTask,gitReceipt);
+Require(WorkspaceBundle.Compare(gitTask,gitResult).Length==0 && WorkspaceBundle.Parse(gitResult).GitReceipt?.CommitId==gitReceipt.CommitId,
+    "Git receipt binds exact plan, branch, message, timestamp and file inventory");
+var wrongGitReceipt=gitReceipt with {PlanSHA256=new string('C',64)};
+Refuse(()=>WorkspaceBundle.AttachGitReceipt(gitFiles,gitTask,wrongGitReceipt),"foreign Git plan receipt");
+Refuse(()=>WorkspaceBundle.Compare(original,gitResult),"Git receipt cannot be attached to data-only baseline");
 var reordered=Bytes(Encoding.UTF8.GetString(original)+" ");
 Refuse(()=>WorkspaceBundle.Compare(reordered,result),"different exact baseline bytes");
 

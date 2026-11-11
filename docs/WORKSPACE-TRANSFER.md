@@ -3,9 +3,52 @@
 > 文档效力（2026-11-02）：工作区数据机制与各版本证据。旧“当前62e”等按当时解释，v3 DATA仍是无代码能力。日常Claude授权工作区不默认包括保护源码/敏感内部资料；可信维护授权另审，不由Broker任意读取宿主路径。
 > 最新状态/授权只见[CURRENT-STATE](CURRENT-STATE.md)，正式目标与术语见[SECURITY-REQUIREMENTS](SECURITY-REQUIREMENTS.md)。以下旧状态与操作许可不自动延续。
 
+## 2026-11-10：显式离线 Git 工作流 schema 2（源码接入，尚未验收）
+
+本节描述当前开发分支新增的源码能力，不覆盖上方历史安装证据。当前安装仍以
+[CURRENT-STATE](CURRENT-STATE.md)记录为准；本节代码尚未完成托管构建、同版本安装、
+LPAC 实机运行或本机验收，不得标记为 PASS。
+
+普通用户可先运行：
+
+`workspace-git-pack ROOT SELECTION_JSON COMMIT_MESSAGE NEW_BUNDLE`
+
+它只捕获显式清单中的文件，并将固定分支 `main`、单行提交说明及 UTC 提交时间写入
+schema 2 的 `GitPlan`。然后运行既有入口：
+
+`workspace-process BASE_BUNDLE NEW_RESULT_BUNDLE`
+
+输入包仍经原普通 daily、本人 UAC、已安装 Broker、原管道、原 Owner、Job 和 LPAC
+资源生命周期处理；没有新增提权入口、执行器或 IPC 命令字段。Git 计划不是命令行、
+脚本或任意参数集合。
+
+schema 2 的固定顺序为：输入摘要核对、在新目录初始化 SHA-1 `main`、按 Owner 预先
+创建并持有的 NUL 路径清单执行显式 `git add --force`、暂存差异空白检查、numstat、
+单次提交、提交元数据读取、工作树清洁检查、`git fsck`，最后执行既有两项私有对象
+拒绝对照。Broker 对命令序列和参数逐项限定；不接受 clone/fetch/push/remote、任意
+config、脚本、hook、filter 或宿主路径。Git 配置、环境、身份、hook 路径和对象格式
+均固定；作者为 `Local Workspace <local@invalid.example>`，不读取或导入宿主 Git
+身份配置。提交日期绑定数据包创建时间。
+
+Owner 在 Job 归零后独立核对 commit、tree、每个 blob、`HEAD`、`refs/heads/main`
+及提交身份，再附加与精确输入包哈希绑定的 `GitReceipt`。普通 `workspace-review`
+可显示提交摘要；`workspace-extract` 仍只提取项目文件，不写回原项目。
+
+**明确边界：** 只创建全新的隔离仓库，不导入原项目的 `.git`、历史、remote、凭据或
+配置；结果不导出 `.git` 对象，因此此第一阶段的提交历史不会跨会话持久化。它是一次
+受限的初始化提交工作流，不是可替代完整 Git 客户端的任意交互式终端。项目文件和
+Git 结果仍是未加密数据包；哈希是内容绑定，不是签名、准入或授权。全过程不执行
+项目代码、测试、MSBuild、Git hooks 或 filter，不开放网络、不启动 Claude。
+
+包的文件数量、单文件、总内容和路径边界沿用原 workspace 限制。CommitMessage 只允许
+1–160 字符、单行、无控制字符的有效 UTF-8。失败不导出部分成果；原工作区、输入包和
+私有失败证据按原恢复流程保留。后续若需要跨会话历史，必须另行设计并审计专用 Git
+bundle 导入/导出，不能把 `.git` 目录直接放入普通文件包。
+
+
 当前62eab36f（INACTIVE）已实际通过严格LPAC的Git数据处理：此前已选择的四文件数据包，经普通daily→本人UAC的原Broker→同一Job/LPAC固定离线Git→原所有者闭合/精确清理/成功权威→普通review/extract，新目录四文件字节独立一致。输入BA1C5764...D4138，结果AA2F0DFD...43483，未改原项目，未执行项目代码、未开放网络。证据work/git-data-direct-control/workflow-r2；这是已安装可复用的数据能力，不是PowerShell/编译或完整开发准入通过。
 
-仅已验证的非空工作区数据包走Git数据范围，该范围明确拒绝PowerShell请求，不以PowerShell自有编译样本为前置，也不持有/查询其资产和GPO。无输入数据的完整工具资格仍要求PowerShell与编译；其最近原生结果仍失败。现有四命令、普通用户维护、本人工具UAC、固定Git参数/环境、同一管道、身份/Job/五根拒绝和Git自身两拒绝、独立仓库核对及成果权威均保留。没有新执行器或协议字段。
+仅已验证的非空工作区数据包走Git数据范围，该范围明确拒绝PowerShell请求，不以PowerShell自有编译样本为前置，也不持有/查询其资产和GPO。无输入数据的完整工具资格仍要求PowerShell与编译；其最近原生结果仍失败。原有四命令、普通用户维护、本人工具UAC、固定Git参数/环境、同一管道、身份/Job/五根拒绝和Git自身两拒绝、独立仓库核对及成果权威均保留。该历史版本未新增执行器或IPC协议字段；schema 2数据包扩展见本页后续章节。
 
 已安装入口`workspace-process BASE_BUNDLE NEW_RESULT_BUNDLE`：普通用户daily先核对并持有安装资产、创建新的输出文件，然后请求本人UAC启动同版本固定Broker。仅本人SID可访问的本地管道传入确切数据字节；双方核对内核进程PID，Broker还核对普通调用者映像及本人SID。复用原ProcessWorkspaceData/ProtectedSession，成功闭Job与精确清理后再导出绑定原包的成果。没有特权宿主路径、脚本、任意命令或通用提升入口。取消/失败保留新建的空/部分输出供检查，不能覆盖已有结果。ac570b47已实测四份本仓库文件的pack→process→review→extract完整往返；仅process请求UAC，其余日常维护始终普通用户。v2失败回执仅返回固定阶段/异常类型/错误码及可选会话编号，不返回原始异常消息或私有路径，不自动重试。
 

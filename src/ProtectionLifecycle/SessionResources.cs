@@ -92,11 +92,13 @@ internal sealed class SessionResources : IDisposable
     private readonly SessionPowerShellToolchain? tool;
     private readonly SessionGitToolchain? git;
     private readonly FileStream? projectInput;
+    private readonly FileStream? gitPathspec;
     private readonly HostPrivacyProbe? privacy;
+    private WorkspaceGitReceipt? gitReceipt;
     internal ResourceProbePlan Plan {get;}
     internal string Workspace=>folder.Path;
-    private SessionResources(ProtectedState state,PathLease folder,FileStream input,SessionPowerShellToolchain? tool,ResourceProbePlan plan,SessionGitToolchain? git,FileStream? projectInput,FileStream allPackagesFixture,HostPrivacyProbe? privacy)
-    {this.state=state;this.folder=folder;this.input=input;this.tool=tool;Plan=plan;this.git=git;this.projectInput=projectInput;this.allPackagesFixture=allPackagesFixture;this.privacy=privacy;}
+    private SessionResources(ProtectedState state,PathLease folder,FileStream input,SessionPowerShellToolchain? tool,ResourceProbePlan plan,SessionGitToolchain? git,FileStream? projectInput,FileStream? gitPathspec,FileStream allPackagesFixture,HostPrivacyProbe? privacy)
+    {this.state=state;this.folder=folder;this.input=input;this.tool=tool;Plan=plan;this.git=git;this.projectInput=projectInput;this.gitPathspec=gitPathspec;this.allPackagesFixture=allPackagesFixture;this.privacy=privacy;}
     internal static SessionResources Create(ProtectedState state,VerifiedVersion version,InstallationProfileLease profile,string nonce,bool includeGit=false,byte[]? workspaceInput=null,bool developProject=false,bool callerProject=false)
     {
         state.AssertHeld();version.AssertHeld(state);
@@ -105,7 +107,7 @@ internal sealed class SessionResources : IDisposable
         if(developProject && (!includeGit || workspaceInput is null || !callerProject && WorkspaceBundle.Hash(workspaceInput)!=BundledProjectDevelopment.BaselineHash))throw WfpNative.Contract("ExplicitBundledProjectTaskRequired");
         var callerTask=callerProject?CSharpProjectTask.Parse(workspaceInput!):null;
         var tool=workspaceInput is null || developProject?SessionPowerShellToolchain.Open():null;
-        PathLease? directory=null;FileStream? input=null,projectInput=null,allPackagesFixture=null;SessionGitToolchain? git=null;
+        PathLease? directory=null;FileStream? input=null,projectInput=null,gitPathspec=null,allPackagesFixture=null;SessionGitToolchain? git=null;
         HostPrivacyProbe? privacy=null;
         try
         {
@@ -117,9 +119,10 @@ internal sealed class SessionResources : IDisposable
                 WindowsPathSeal.Canonical(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles))){DevelopProject=developProject,HostPrivacySHA256=privacy?.SHA256,CallerProjectKind=callerTask?.Definition.Kind};plan.Validate();
             if(!string.Equals(plan.ExpectedChildImage,Environment.ProcessPath,StringComparison.OrdinalIgnoreCase) || includeGit && plan.Workspace("")!=SessionTaskWorkspace.PathFor(nonce))
                 throw WfpNative.Contract("ResourceRuntimePathsDifferFromInstalledOwner");
+            WorkspaceBundle? project=null;
             if(workspaceInput is not null)
             {
-                var project=WorkspaceBundle.Parse(workspaceInput);
+                project=WorkspaceBundle.Parse(workspaceInput);
                 if(project.BaseSHA256 is not null || project.Files.Length==0)throw WfpNative.Contract("NonemptyWorkspaceBaselineRequired");
                 // Preflight all destination paths before creating profile/task data.
                 foreach(var file in project.Files)_=WindowsPathSeal.Child(WindowsPathSeal.Child(SessionTaskWorkspace.PathFor(nonce),"git-project"),file.Path);
@@ -152,6 +155,14 @@ internal sealed class SessionResources : IDisposable
                 }
                 using(var empty=new FileStream(WindowsPathSeal.Child(path,"empty-git-config"),FileMode.CreateNew,FileAccess.Write,FileShare.None)){empty.Flush(true);}
                 WorkspaceFiles.MaterializeNew(path,"git-project",plan.ProjectBundle);
+                if(project is {GitPlan:not null} gitProject)
+                {
+                    var selectedPathspec=WindowsPathSeal.Child(path,"git-selected-paths.bin");
+                    gitPathspec=new FileStream(selectedPathspec,FileMode.CreateNew,FileAccess.ReadWrite,FileShare.Read);
+                    var names=Encoding.ASCII.GetBytes(string.Join('\0',gitProject.Files.Select(f=>f.Path))+"\0");
+                    gitPathspec.Write(names);gitPathspec.Flush(true);gitPathspec.Position=0;
+                    if(gitPathspec.Length is <1 or >128*1024)throw WfpNative.Contract("GitPathspecLeaseBounds");
+                }
                 if(workspaceInput is null)state.WriteNew("workspace-input-"+nonce+".json",plan.ProjectBundle);
                 else state.StoreWorkspaceData(nonce,false,workspaceInput);
             }
@@ -160,11 +171,11 @@ internal sealed class SessionResources : IDisposable
             // An existing, readable positive host control prevents absence from
             // being mistaken for a restricted child's access-denied result.
             _=state.Read("resource-fixture-"+nonce+".json",4096);
-            return new(state,directory,input,tool,plan,git,projectInput,allPackagesFixture,privacy);
+            return new(state,directory,input,tool,plan,git,projectInput,gitPathspec,allPackagesFixture,privacy);
         }
         catch(Exception error)
         {
-            var cleanup=Release(privacy,allPackagesFixture,projectInput,git,input,directory,tool);
+            var cleanup=Release(privacy,allPackagesFixture,projectInput,gitPathspec,git,input,directory,tool);
             if(cleanup.Count!=0){cleanup.Insert(0,error);throw new AggregateException(cleanup);}
             throw;
         }
@@ -181,10 +192,24 @@ internal sealed class SessionResources : IDisposable
             tool.AssertHeld();if(Plan.RequiresPowerShell)PowerShellPolicySnapshot.AssertActuallyAbsent();
         }
         git?.AssertHeld();
+        var workspaceBundle=Plan.WorkspaceInputSHA256 is null?null:WorkspaceBundle.Parse(Plan.ProjectBundle);
+        if((workspaceBundle?.GitPlan is not null)!=(gitPathspec is not null))throw WfpNative.Contract("GitPathspecLeasePresenceMismatch");
+        if(gitPathspec is not null)
+        {
+            if(gitPathspec.SafeFileHandle.IsClosed)throw WfpNative.Contract("GitPathspecLeaseLost");
+            WindowsPathSeal.VerifyObject(gitPathspec.SafeFileHandle,WindowsPathSeal.Child(Workspace,"git-selected-paths.bin"),false);
+            if(!SessionGitToolchain.SelectedPathspecMatches(Workspace,workspaceBundle!))
+                throw WfpNative.Contract("GitPathspecLeaseContentMismatch");
+        }
         if(allPackagesFixture.SafeFileHandle.IsClosed)throw WfpNative.Contract("AllPackagesFixtureLeaseLost");
         WindowsPathSeal.VerifyObject(allPackagesFixture.SafeFileHandle,WindowsPathSeal.Child(Workspace,"all-packages-only.json"),false);
         using(var human=WindowsIdentity.GetCurrent())AssertAllPackagesFixture(allPackagesFixture.SafeFileHandle,human.User!.Value);
-        if(Plan.WorkspaceInputSHA256 is not null && (projectInput is null || projectInput.SafeFileHandle.IsClosed))throw WfpNative.Contract("WorkspaceDataLeaseLost");
+        if(Plan.WorkspaceInputSHA256 is not null)
+        {
+            if(projectInput is null || projectInput.SafeFileHandle.IsClosed)throw WfpNative.Contract("WorkspaceDataLeaseLost");
+            WindowsPathSeal.VerifyObject(projectInput.SafeFileHandle,WindowsPathSeal.Child(Workspace,"project-input.json"),false);
+        }
+        else if(projectInput is not null)throw WfpNative.Contract("UnexpectedWorkspaceDataLease");
     }
     internal void AssertOutput(ResourceChildReport observed)
     {
@@ -206,7 +231,7 @@ internal sealed class SessionResources : IDisposable
             using(var assembly=new FileStream(WindowsPathSeal.Open(WindowsPathSeal.Child(Workspace,"owned-build.dll"),false,true),FileAccess.Read,4096,false))
                 if(assembly.Length is <512 or >1024*1024)throw WfpNative.Contract("OwnedCompilationArtifactBounds");
         }
-        if(git is not null)SessionGitToolchain.AssertRepository(Workspace,Plan,observed.Git??throw WfpNative.Contract("GitOutputEvidenceMissing"));
+        if(git is not null)gitReceipt=SessionGitToolchain.AssertRepository(Workspace,Plan,observed.Git??throw WfpNative.Contract("GitOutputEvidenceMissing"));
     }
     internal HostPrivacySummary ReadClosedHostPrivacy(int rootPid,int? toolPid)
         =>(privacy??throw WfpNative.Contract("HostPrivacyOwnerMissing")).ReadClosed(Workspace,rootPid,toolPid);
@@ -271,6 +296,7 @@ internal sealed class SessionResources : IDisposable
         else if(Plan.DevelopProject)
             foreach(var path in BundledProjectDevelopment.OutputPaths)limits.Add(path,WorkspaceBundle.MaxFileBytes);
         var bytes=WorkspaceFiles.SnapshotSelectedResult(Workspace,"git-project",baseline.Bytes,limits);
+        if(gitReceipt is not null)bytes=WorkspaceBundle.AttachGitReceipt(bytes,baseline.Bytes,gitReceipt);
         if(callerProject is not null)callerProject.VerifyResult(bytes);
         else if(Plan.DevelopProject)BundledProjectDevelopment.VerifyResult(bytes);
         else if(WorkspaceBundle.Compare(baseline.Bytes,bytes).Length!=0)throw WfpNative.Contract("FixedGitWorkspaceUnexpectedChanges");
@@ -515,7 +541,7 @@ internal sealed class SessionResources : IDisposable
     }
     public void Dispose()
     {
-        var failures=Release(privacy,allPackagesFixture,projectInput,git,input,folder,tool);
+        var failures=Release(privacy,allPackagesFixture,projectInput,gitPathspec,git,input,folder,tool);
         if(failures.Count!=0)throw new AggregateException(failures);
     }
     // A failed release does not suppress the remaining owned releases or the

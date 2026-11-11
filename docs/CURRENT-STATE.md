@@ -6,6 +6,15 @@
 已消耗。用户仓库、新文件 `git add` 和多命令工作流待验收。
 [独立 Git 固定提交](OFFICIAL-CLAUDE-OFFLINE-QUALIFICATION.md#独立链的固定-git-提交)
 
+2026-11-10，开发分支 `chatgpt/complete-git-workflow-20261110` 新增 schema 2 的显式
+离线 Git 工作流源码：`workspace-git-pack` 生成固定 `main` 单次提交计划，既有
+`workspace-process` 经原 Broker/Owner/Job/LPAC 链执行，Broker 独立核对 commit/tree/blob
+和分支引用，结果包携带绑定输入的 Git 摘要。原 `.git`、历史、remote、凭据和宿主配置
+不导入；不执行项目代码、不开放网络。**此为源码候选，当前尚未托管构建、安装或本机
+实测，不改变当前 INACTIVE 安装，也不扩展 `f9e8d29d` 的实机证据范围。**
+[工作区 schema 2 设计与限制](WORKSPACE-TRANSFER.md)
+
+
 2026-11-10，原网关接入持续路由快照。打开前须有一次允许结果，运行时快照过期或出现
 可达/可选直连即拒绝，原 CONNECT 前后复核继续生效。构建和回归通过，现装版未更新。
 本机 FlClash 控制端只读内容对照仍观察到当前可达直连及可选直连。产品正向网络实测

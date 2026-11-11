@@ -11,7 +11,7 @@ using Microsoft.Win32.SafeHandles;
 
 var consoleFixture=args.Length==3 && args[0]=="offline-console-streams-worker";
 var transitionFiles=args.Length==3 && args[0]=="inactive-transition";
-if(!consoleFixture && !transitionFiles && (args.Length!=1 || args[0] is not ("offline-console-native" or "independent-git-commit" or "graphics-drivers-read-policy" or "creator-job-boundary" or "official-claude-package" or "winsock-provider-policy" or "winsock-provider-metadata" or "gateway-socket-create" or "winsock-transport-policy" or "winsock-transport-metadata" or "winsock-lease-policy" or "winsock-registry-metadata" or "winsock-registry-scope" or "restricting-sid-boundary" or "gpu-report-policy" or "privacy-probe-closure" or "privacy-probe-exit-child" or "timezone-snapshot" or "timezone-policy" or "timezone-metadata" or "gateway-feedback" or "gateway-tls-client-hello" or "gateway-schannel-native" or "gateway-schannel-acquisition" or "gateway-openssl-memory" or "gateway-openssl-revocation" or "gateway-resolver-offline-trust" or "gateway-resolver-timing" or "local-management-boundary" or "gateway-qualification-boundary" or "policy" or "messages" or "handle-transfer" or "fault-mode" or "fault-mode-read" or "partial-output" or "hosted-policy" or "etw-policy" or "tls-transport-policy" or "etw-token-access" or "inactive-transition" or "project-policy" or "project-build" or "privacy-native" or "caller-project-build" or "caller-project-policy" or "self-control-open" or "caller-data-build" or "caller-compile-failure" or "caller-run-failure" or "caller-test-failure" or "caller-output-failure" or "caller-failure-owner" or "control-file-gate" or "caller-multi-edit-build" or "workspace-caller-lifetime" or "workspace-caller-lifetime-child" or "maintenance-identity" or "reset-settings-file" or "resource-release")))return 125;
+if(!consoleFixture && !transitionFiles && (args.Length!=1 || args[0] is not ("offline-console-native" or "independent-git-commit" or "graphics-drivers-read-policy" or "creator-job-boundary" or "official-claude-package" or "winsock-provider-policy" or "winsock-provider-metadata" or "gateway-socket-create" or "winsock-transport-policy" or "winsock-transport-metadata" or "winsock-lease-policy" or "winsock-registry-metadata" or "winsock-registry-scope" or "restricting-sid-boundary" or "gpu-report-policy" or "privacy-probe-closure" or "privacy-probe-exit-child" or "timezone-snapshot" or "timezone-policy" or "timezone-metadata" or "gateway-feedback" or "gateway-tls-client-hello" or "gateway-schannel-native" or "gateway-schannel-acquisition" or "gateway-openssl-memory" or "gateway-openssl-revocation" or "gateway-resolver-offline-trust" or "gateway-resolver-timing" or "local-management-boundary" or "gateway-qualification-boundary" or "policy" or "messages" or "handle-transfer" or "fault-mode" or "fault-mode-read" or "partial-output" or "hosted-policy" or "etw-policy" or "tls-transport-policy" or "etw-token-access" or "inactive-transition" or "project-policy" or "project-build" or "privacy-native" or "caller-project-build" or "caller-project-policy" or "self-control-open" or "caller-data-build" or "caller-compile-failure" or "caller-run-failure" or "caller-test-failure" or "caller-output-failure" or "caller-failure-owner" or "control-file-gate" or "caller-multi-edit-build" or "workspace-caller-lifetime" or "workspace-caller-lifetime-child" or "maintenance-identity" or "reset-settings-file" or "resource-release" or "workspace-git-workflow-policy")))return 125;
 try
 {
 using var identity=WindowsIdentity.GetCurrent();
@@ -590,6 +590,118 @@ if(args[0]=="handle-transfer")
     outputSource.WriteByte(79);outputSource.Flush();Require(output.ReadByte()==79,"stdout endpoint direction");
     errorSource.WriteByte(69);errorSource.Flush();Require(error.ReadByte()==69,"stderr endpoint direction");
     Console.WriteLine("PASS production handle transfer on own ordinary process/local anonymous pipes: native process granted mask exactly101000, four non-inheritable handles and all stdio directions; no other process, Job/profile or elevated execution");return 0;
+}
+if(args[0]=="workspace-git-workflow-policy")
+{
+    var gitWorkflowBundleType=library.GetType("ClaudeCodeProtection.Workspaces.WorkspaceBundle",true)!;
+    var gitWorkflowTool=library.GetType("ProtectionLifecycle.SessionGitToolchain",true)!;
+    var gitWorkflowData=Call(gitWorkflowBundleType,"Create",new (string,byte[])[]{
+        ("README.md",Encoding.UTF8.GetBytes("offline Git workflow fixture\n")),
+        ("src/main.cs",Encoding.UTF8.GetBytes("public static class MainSource {}\n"))},null)!;
+    var gitWorkflowDataBytes=(byte[])gitWorkflowBundleType.GetMethod("Serialize",BindingFlags.Instance|BindingFlags.NonPublic)!.Invoke(gitWorkflowData,null)!;
+    var gitWorkflowTaskBytes=(byte[])Call(gitWorkflowBundleType,"CreateGitWorkflow",gitWorkflowDataBytes,"Initial offline import")!;
+    var gitWorkflowParsed=Call(gitWorkflowBundleType,"Parse",gitWorkflowTaskBytes)!;
+    var gitWorkflowDefinition=gitWorkflowParsed.GetType().GetProperty("GitPlan")!.GetValue(gitWorkflowParsed)!;
+    var gitWorkflowNonce=Guid.NewGuid().ToString("N");
+    var gitWorkflowRoot=Path.Combine(Path.GetTempPath(),"cpc-git-workflow-policy-"+gitWorkflowNonce);Directory.CreateDirectory(gitWorkflowRoot);
+    Directory.CreateDirectory(Path.Combine(gitWorkflowRoot,"Git","mingw64","bin"));
+    Directory.CreateDirectory(Path.Combine(gitWorkflowRoot,"ClaudeCodeProtection-State"));
+    try
+    {
+        var gitWorkflowPlanType=library.GetType("ProtectionLifecycle.ResourceProbePlan",true)!;
+        var gitWorkflowAssetHash=(string)gitWorkflowTool.GetProperty("AssetSetSHA256",flags)!.GetValue(null)!;
+        var gitWorkflowInputHash=Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(gitWorkflowTaskBytes));
+        var gitWorkflowPlan=Activator.CreateInstance(gitWorkflowPlanType,3,gitWorkflowNonce,new string('b',32),new string('c',32),Environment.ProcessId,
+            new string('A',64),gitWorkflowAssetHash,gitWorkflowInputHash,Path.GetFullPath(gitWorkflowRoot))!;
+        var gitWorkflowTaskRoot=(string)gitWorkflowPlanType.GetMethod("Workspace",BindingFlags.Instance|BindingFlags.NonPublic)!.Invoke(gitWorkflowPlan,new object[]{""})!;
+        Directory.CreateDirectory(gitWorkflowTaskRoot);File.WriteAllBytes(Path.Combine(gitWorkflowTaskRoot,"project-input.json"),gitWorkflowTaskBytes);
+        var gitWorkflowWorkspace=Path.Combine(gitWorkflowRoot,"owner-workspace");Directory.CreateDirectory(gitWorkflowWorkspace);
+        File.WriteAllBytes(Path.Combine(gitWorkflowWorkspace,"empty-git-config"),Array.Empty<byte>());
+        Directory.CreateDirectory(Path.Combine(gitWorkflowWorkspace,"empty-git-hooks"));
+        Directory.CreateDirectory(Path.Combine(gitWorkflowWorkspace,"empty-git-template"));
+        var gitWorkflowFiles=(Array)gitWorkflowParsed.GetType().GetProperty("Files")!.GetValue(gitWorkflowParsed)!;
+        var gitWorkflowPaths=gitWorkflowFiles.Cast<object>().Select(file=>(string)file.GetType().GetProperty("Path")!.GetValue(file)!).ToArray();
+        var gitWorkflowPathspec=Path.Combine(gitWorkflowWorkspace,"git-selected-paths.bin");
+        File.WriteAllBytes(gitWorkflowPathspec,Encoding.ASCII.GetBytes(string.Join('\0',gitWorkflowPaths)+"\0"));
+        var gitWorkflowCommands=(string[][])Call(gitWorkflowTool,"WorkflowCommands",gitWorkflowPlan,gitWorkflowWorkspace,gitWorkflowDefinition)!;
+        Require(gitWorkflowCommands.Length==11,"fixed bounded Git workflow command count");
+        var gitWorkflowDirectory=(string)gitWorkflowPlanType.GetProperty("GitDirectory",BindingFlags.Instance|BindingFlags.NonPublic)!.GetValue(gitWorkflowPlan)!;
+        for(var i=0;i<gitWorkflowCommands.Length;i++)
+        {
+            var gitWorkflowStart=(ProcessStartInfo)Call(gitWorkflowTool,"StartWorkflow",gitWorkflowWorkspace,gitWorkflowDirectory,gitWorkflowDefinition,gitWorkflowCommands[i])!;
+            var gitWorkflowArguments=gitWorkflowStart.ArgumentList.ToArray();
+            Require((bool)Call(gitWorkflowTool,"WorkflowSequenceMatches",gitWorkflowPlan,gitWorkflowWorkspace,i+1,gitWorkflowArguments)!,"exact ordered Git operation "+(i+1));
+        }
+        var gitWorkflowFirstStart=(ProcessStartInfo)Call(gitWorkflowTool,"StartWorkflow",gitWorkflowWorkspace,gitWorkflowDirectory,gitWorkflowDefinition,gitWorkflowCommands[0])!;
+        var gitWorkflowFirstArguments=gitWorkflowFirstStart.ArgumentList.ToArray();
+        Require(!(bool)Call(gitWorkflowTool,"WorkflowSequenceMatches",gitWorkflowPlan,gitWorkflowWorkspace,0,gitWorkflowFirstArguments)!,"zero Git sequence refused");
+        Require(!(bool)Call(gitWorkflowTool,"WorkflowSequenceMatches",gitWorkflowPlan,gitWorkflowWorkspace,12,gitWorkflowFirstArguments)!,"out-of-range Git sequence refused");
+        var gitWorkflowPrefixTamper=(string[])gitWorkflowFirstArguments.Clone();gitWorkflowPrefixTamper[0]="--paginate";
+        Require(!(bool)Call(gitWorkflowTool,"WorkflowSequenceMatches",gitWorkflowPlan,gitWorkflowWorkspace,1,gitWorkflowPrefixTamper)!,"Git executable configuration prefix tamper refused");
+        var gitWorkflowOutOfOrder=(ProcessStartInfo)Call(gitWorkflowTool,"StartWorkflow",gitWorkflowWorkspace,gitWorkflowDirectory,gitWorkflowDefinition,gitWorkflowCommands[1])!;
+        Require(!(bool)Call(gitWorkflowTool,"WorkflowSequenceMatches",gitWorkflowPlan,gitWorkflowWorkspace,1,gitWorkflowOutOfOrder.ArgumentList.ToArray())!,"out-of-order Git operation refused");
+        var gitWorkflowOwner=library.GetType("ProtectionLifecycle.OwnedToolLaunch",true)!;
+        var gitWorkflowApprovedHash=(string)Call(gitWorkflowOwner,"StartHash",gitWorkflowFirstStart)!;
+        _=Call(gitWorkflowOwner,"ValidateStart",gitWorkflowPlan,gitWorkflowWorkspace,"git",gitWorkflowFirstArguments,gitWorkflowApprovedHash);
+        gitWorkflowFirstStart.Environment["GIT_CONFIG_NOSYSTEM"]="0";
+        var gitWorkflowTamperedHash=(string)Call(gitWorkflowOwner,"StartHash",gitWorkflowFirstStart)!;
+        var gitWorkflowEnvironmentTamperRefused=false;
+        try{_=Call(gitWorkflowOwner,"ValidateStart",gitWorkflowPlan,gitWorkflowWorkspace,"git",gitWorkflowFirstArguments,gitWorkflowTamperedHash);}
+        catch(InvalidDataException){gitWorkflowEnvironmentTamperRefused=true;}
+        Require(gitWorkflowEnvironmentTamperRefused,"Git environment configuration tamper refused");
+        var gitWorkflowAltered=(string[])gitWorkflowCommands[5].Clone();gitWorkflowAltered[^1]="unapproved commit";
+        Require(!(bool)Call(gitWorkflowTool,"WorkflowCommandAllowed",gitWorkflowPlan,gitWorkflowWorkspace,gitWorkflowAltered)!,"unapproved commit message refused");
+        Require(!(bool)Call(gitWorkflowTool,"WorkflowCommandAllowed",gitWorkflowPlan,gitWorkflowWorkspace,new[]{"clone","https://example.invalid/repo"})!,"remote Git command refused");
+        var gitWorkflowPathspecWriteBlocked=false;
+        using(var gitWorkflowPathspecLease=new FileStream(gitWorkflowPathspec,FileMode.Open,FileAccess.ReadWrite,FileShare.Read))
+        {
+            try{File.WriteAllText(gitWorkflowPathspec,"unselected.txt\0",new UTF8Encoding(false));}
+            catch(IOException){gitWorkflowPathspecWriteBlocked=true;}
+            Require((bool)Call(gitWorkflowTool,"SelectedPathspecMatches",gitWorkflowWorkspace,gitWorkflowParsed)!,
+                "owner-held NUL pathspec remains exact while leased");
+        }
+        Require(gitWorkflowPathspecWriteBlocked,"owner-held NUL pathspec denies concurrent write");
+        File.WriteAllText(gitWorkflowPathspec,"unselected.txt\0",new UTF8Encoding(false));
+        var gitWorkflowAdd=(ProcessStartInfo)Call(gitWorkflowTool,"StartWorkflow",gitWorkflowWorkspace,gitWorkflowDirectory,gitWorkflowDefinition,gitWorkflowCommands[2])!;
+        Require(!(bool)Call(gitWorkflowTool,"WorkflowSequenceMatches",gitWorkflowPlan,gitWorkflowWorkspace,3,gitWorkflowAdd.ArgumentList.ToArray())!,"tampered NUL pathspec refused");
+    }
+    finally{Directory.Delete(gitWorkflowRoot,true);}
+    Console.WriteLine("PASS offline Git workflow owner policy: fixed ordered init/add/diff/commit/log/status/fsck and denial commands; altered message, remote, command prefix, environment, sequence bounds, reordering and tampered pathspec refused; no Git process, Broker, Job or LPAC execution");
+    return 0;
+}
+var planType=library.GetType("ProtectionLifecycle.ResourceProbePlan",true)!;
+        var assetHash=(string)git.GetProperty("AssetSetSHA256",flags)!.GetValue(null)!;
+        var inputHash=Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(taskBytes));
+        var plan=Activator.CreateInstance(planType,3,nonce,new string('b',32),new string('c',32),Environment.ProcessId,
+            new string('A',64),assetHash,inputHash,Path.GetFullPath(root))!;
+        var taskRoot=(string)planType.GetMethod("Workspace",flags)!.Invoke(plan,new object[]{""})!;
+        Directory.CreateDirectory(taskRoot);File.WriteAllBytes(Path.Combine(taskRoot,"project-input.json"),taskBytes);
+        var workspace=Path.Combine(root,"owner-workspace");Directory.CreateDirectory(workspace);
+        var files=(Array)parsed.GetType().GetProperty("Files")!.GetValue(parsed)!;
+        var paths=files.Cast<object>().Select(file=>(string)file.GetType().GetProperty("Path")!.GetValue(file)!).ToArray();
+        var pathspec=Path.Combine(workspace,"git-selected-paths.bin");
+        File.WriteAllBytes(pathspec,Encoding.ASCII.GetBytes(string.Join('\0',paths)+"\0"));
+        var commands=(string[][])Call(git,"WorkflowCommands",plan,workspace,workflow)!;
+        Require(commands.Length==11,"fixed bounded Git workflow command count");
+        var directory=(string)planType.GetProperty("GitDirectory",flags)!.GetValue(plan)!;
+        for(var i=0;i<commands.Length;i++)
+        {
+            var start=(ProcessStartInfo)Call(git,"StartWorkflow",workspace,directory,workflow,commands[i])!;
+            var arguments=start.ArgumentList.ToArray();
+            Require((bool)Call(git,"WorkflowSequenceMatches",plan,workspace,i+1,arguments)!,"exact ordered Git operation "+(i+1));
+        }
+        var outOfOrder=(ProcessStartInfo)Call(git,"StartWorkflow",workspace,directory,workflow,commands[1])!;
+        Require(!(bool)Call(git,"WorkflowSequenceMatches",plan,workspace,1,outOfOrder.ArgumentList.ToArray())!,"out-of-order Git operation refused");
+        var altered=(string[])commands[5].Clone();altered[^1]="unapproved commit";
+        Require(!(bool)Call(git,"WorkflowCommandAllowed",plan,workspace,altered)!,"unapproved commit message refused");
+        Require(!(bool)Call(git,"WorkflowCommandAllowed",plan,workspace,new[]{"clone","https://example.invalid/repo"})!,"remote Git command refused");
+        File.WriteAllText(pathspec,"unselected.txt\0",new UTF8Encoding(false));
+        var add=(ProcessStartInfo)Call(git,"StartWorkflow",workspace,directory,workflow,commands[2])!;
+        Require(!(bool)Call(git,"WorkflowSequenceMatches",plan,workspace,3,add.ArgumentList.ToArray())!,"tampered NUL pathspec refused");
+    }
+    finally{Directory.Delete(root,true);}
+    Console.WriteLine("PASS offline Git workflow owner policy: fixed ordered init/add/diff/commit/log/status/fsck and denial commands; altered message, remote, reordering and tampered pathspec refused; no Git process, Broker, Job or LPAC execution");
+    return 0;
 }
 var planType=library.GetType("ProtectionLifecycle.ResourceProbePlan",true)!;
 var resources=library.GetType("ProtectionLifecycle.SessionResources",true)!;

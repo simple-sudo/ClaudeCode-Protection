@@ -100,8 +100,8 @@ internal static class WorkspaceProcessing
             FileCount=WorkspaceBundle.Parse(result).Files.Length,Changes=changes,OriginalProjectModified=false,ProjectCodeExecuted=true,
             reply.HostPrivacy,FormalAdmissionIssued=false,NetworkOpened=false,UACAutoConfirmed=false});
         return (0,new {Status=developProject?"BUNDLED_PROJECT_RESULT_RECEIVED":"WORKSPACE_DATA_RESULT_RECEIVED",SessionId=session,BaseSHA256=expected,ResultSHA256=resultHash,
-            FileCount=WorkspaceBundle.Parse(result).Files.Length,Changes=changes,OriginalProjectModified=false,ProjectCodeExecuted=developProject,
-            FormalAdmissionIssued=false,NetworkOpened=false,UACAutoConfirmed=false});
+            FileCount=WorkspaceBundle.Parse(result).Files.Length,Changes=changes,Git=WorkspaceBundle.Parse(result).GitReceipt,
+            OriginalProjectModified=false,ProjectCodeExecuted=developProject,FormalAdmissionIssued=false,NetworkOpened=false,UACAutoConfirmed=false});
     }
     private static Process StartBroker(ProcessStartInfo start)
     {

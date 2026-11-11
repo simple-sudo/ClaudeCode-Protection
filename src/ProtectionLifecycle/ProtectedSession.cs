@@ -62,6 +62,7 @@ internal sealed class ProtectedSession
     private readonly string id = Guid.NewGuid().ToString("N"), pointerSHA256;
     private readonly Stopwatch clock = Stopwatch.StartNew();
     private readonly DateTimeOffset startedUtc=DateTimeOffset.UtcNow;
+    private int resourceDurationMs=30000;
     private IReadOnlyList<EnvironmentEvidence> environment;
     private readonly EnvironmentExpectations? expectations;
     private readonly string? expectationsSHA256;
@@ -118,7 +119,7 @@ internal sealed class ProtectedSession
         internal void AssertCurrent()
         {
             owner.state.AssertHeld();owner.version.AssertHeld(owner.state);
-            if(Volatile.Read(ref phase)==3 || owner.clock.ElapsedMilliseconds>=30000 || owner.job is null || owner.resources is null ||
+            if(Volatile.Read(ref phase)==3 || owner.clock.ElapsedMilliseconds>=owner.resourceDurationMs || owner.job is null || owner.resources is null ||
                 owner.admission is not null || owner.preparation is not null || owner.gateway is not null || owner.sid is null ||
                 owner.state.Read("current.json",4096).SHA256!=owner.pointerSHA256 || owner.fences.Count==0 ||
                 owner.fences.Any(f=>!f.Observe().FullQuarantineObserved))throw WfpNative.Contract("OfflineResourceScopeExpiredChangedOrUnconfined");
@@ -196,6 +197,8 @@ internal sealed class ProtectedSession
     private (int ExitCode,string Report) ExecuteResourceQualification(bool deferCleanup=false,bool includeGit=false,byte[]? workspaceInput=null,bool developProject=false,bool callerProject=false,Action? assertCaller=null)
     {
         InstallationProfileLease? profile=null;AtomicChild? child=null;
+        var gitWorkflow=workspaceInput is not null && WorkspaceBundle.Parse(workspaceInput).GitPlan is not null;
+        resourceDurationMs=gitWorkflow?60000:30000;
         var (powerShellRequired,compilerRequired)=ResourceProbePlan.ToolRequirements(developProject,workspaceInput is not null);
         System.IO.Pipes.AnonymousPipeServerStream? pipe=null;StreamReader? reader=null;
         ResourceQualification? permit=null;ResourceChildReport? observed=null;Task<uint>? exited=null;Task<string>? text=null;
@@ -230,7 +233,7 @@ internal sealed class ProtectedSession
             // mutation; keep its journal inspection/recovery for old runs.
             runtime=new ProtectionRuntimeLease(state,version,job,fences,null,resources:permit,assertCaller:assertCaller);
             assertCaller?.Invoke();
-            _=child.ResumeQuarantined();resumed=true;runtime.Activate(20000);exited=Task.Run(child.WaitForCanaryExit);
+            _=child.ResumeQuarantined();resumed=true;runtime.Activate(gitWorkflow?60000:20000);exited=Task.Run(child.WaitForCanaryExit);
             while(!exited.Wait(100))
             {
                 runtime.AssertHealthy();

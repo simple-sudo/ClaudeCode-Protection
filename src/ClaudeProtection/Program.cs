@@ -51,13 +51,25 @@ internal static class Program
                     Console.WriteLine(JsonSerializer.Serialize(new {Status="WORKSPACE_DATA_PACKED",SHA256=WorkspaceBundle.Hash(bundle),
                         FileCount=WorkspaceBundle.Parse(bundle).Files.Length,AdmissionIssued=false,HostAclChanged=false,CodeExecuted=false}));
                     return 0;
+                case "workspace-git-pack":
+                    if(args.Length!=5)return 64;
+                    WorkspaceFiles.RequireOrdinaryUser();
+                    var gitFiles=WorkspaceFiles.Capture(args[1],WorkspaceFiles.ReadSelection(args[2]));
+                    var gitTask=WorkspaceBundle.CreateGitWorkflow(gitFiles,args[3]);
+                    WorkspaceFiles.WriteBundleNew(args[4],gitTask);
+                    var gitPlan=WorkspaceBundle.Parse(gitTask).GitPlan??throw new InvalidDataException("Git workflow plan missing");
+                    Console.WriteLine(JsonSerializer.Serialize(new {Status="WORKSPACE_GIT_TASK_PACKED",SHA256=WorkspaceBundle.Hash(gitTask),
+                        FileCount=WorkspaceBundle.Parse(gitTask).Files.Length,Branch=gitPlan.BranchName,CommitMessage=gitPlan.CommitMessage,
+                        OriginalGitHistoryImported=false,RemoteConfigured=false,CodeExecuted=false}));
+                    return 0;
                 case "workspace-review":
                     if(args.Length!=3)return 64;
                     WorkspaceFiles.RequireOrdinaryUser();
                     var baseline=WorkspaceFiles.ReadBundle(args[1]);var result=WorkspaceFiles.ReadBundle(args[2]);
                     var changes=WorkspaceBundle.Compare(baseline,result);
                     Console.WriteLine(JsonSerializer.Serialize(new {Status="WORKSPACE_RESULT_COMPARED",BaseSHA256=WorkspaceBundle.Hash(baseline),
-                        ResultSHA256=WorkspaceBundle.Hash(result),Changes=changes,HostFilesModified=false,AdmissionIssued=false}));
+                        ResultSHA256=WorkspaceBundle.Hash(result),Changes=changes,Git=WorkspaceBundle.Parse(result).GitReceipt,
+                        HostFilesModified=false,AdmissionIssued=false}));
                     return 0;
                 case "workspace-extract":
                     if(args.Length!=4)return 64;
@@ -109,9 +121,9 @@ internal static class Program
                 default:
                     Console.WriteLine("ClaudeProtection daily | audit [--online] | preflight [--online] | system-proxy-baseline | process-identity PID | transport | repair-proxy-plan | repair-proxy SHA256 | restore-proxy");
                     Console.WriteLine("Real Claude launch is deferred. Engineering commands are excluded from this build.");
-                    Console.WriteLine("workspace-pack ROOT SELECTION_JSON NEW_BUNDLE | workspace-review BASE_BUNDLE RESULT_BUNDLE (data transfer only; no launch or host writeback)");
+                    Console.WriteLine("workspace-pack ROOT SELECTION_JSON NEW_BUNDLE | workspace-git-pack ROOT SELECTION_JSON COMMIT_MESSAGE NEW_BUNDLE (fresh isolated Git repository; selected files only; no .git import, remote or code execution) | workspace-review BASE_BUNDLE RESULT_BUNDLE (data transfer only; no launch or host writeback)");
                     Console.WriteLine("workspace-extract BASE_BUNDLE RESULT_BUNDLE NEW_DIRECTORY (new files only; no merge or overwrite)");
-                    Console.WriteLine("workspace-process BASE_BUNDLE NEW_RESULT_BUNDLE (installed Broker, human UAC; fixed offline Git data processing only)");
+                    Console.WriteLine("workspace-process BASE_BUNDLE NEW_RESULT_BUNDLE (installed Broker, human UAC; offline Git init/status/add/diff/commit/log/fsck; no project code execution)");
                     Console.WriteLine("workspace-sample NEW_BASE_BUNDLE | workspace-develop BASE_BUNDLE NEW_RESULT_BUNDLE (TextSummary sample only; human UAC, protected source edit/build/run/six tests)");
                     Console.WriteLine("workspace-check-csharp BASE_BUNDLE (validate cpc-project.json, no execution) | workspace-build-csharp BASE_BUNDLE NEW_RESULT_BUNDLE (explicit caller C# edits/build/run/tests; installed Broker, human UAC)");
                     return args.Length == 0 ? 0 : 64;

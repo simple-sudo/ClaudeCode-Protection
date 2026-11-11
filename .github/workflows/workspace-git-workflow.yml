@@ -1,0 +1,113 @@
+name: Offline workspace Git workflow verification
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/workspace-git-workflow.yml'
+      - 'src/Shared/WorkspaceBundle.cs'
+      - 'src/Shared/WorkspaceFiles.cs'
+      - 'src/ProtectionLifecycle/**'
+      - 'src/ClaudeProtection/**'
+      - 'src/ProtectionCenter/**'
+      - 'tests/WorkspaceTransfer/**'
+      - 'tests/OwnedToolLaunch/**'
+      - 'docs/WORKSPACE-TRANSFER.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows-managed-verification:
+    name: Build products and run offline Git policy tests
+    runs-on: windows-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Compile all product projects
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $projects = @(
+            'src/ClaudeProtection/ClaudeProtection.csproj',
+            'src/ClaudeProtection.Engineering/ClaudeProtection.Engineering.csproj',
+            'src/ProtectionBroker/ProtectionBroker.csproj',
+            'src/ProtectionCenter/ProtectionCenter.csproj',
+            'src/ProtectionBootstrap/ProtectionBootstrap.csproj'
+          )
+          foreach ($project in $projects) {
+            dotnet build $project --configuration Release --nologo
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+      - name: Compile focused managed test harnesses
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          dotnet build tests/WorkspaceTransfer/WorkspaceTransfer.csproj --configuration Release --nologo
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          dotnet build tests/OwnedToolLaunch/OwnedToolLaunch.csproj --configuration Release --nologo
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Run workspace data contract tests
+        shell: pwsh
+        run: |
+          dotnet run --no-build --project tests/WorkspaceTransfer/WorkspaceTransfer.csproj --configuration Release
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Run Git owner policy tests as a standard user
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $user = 'cpcgit' + [Guid]::NewGuid().ToString('N').Substring(0, 8)
+          $account = "$env:COMPUTERNAME\$user"
+          $bytes = [byte[]]::new(32)
+          [System.Security.Cryptography.RandomNumberGenerator]::Fill($bytes)
+          $password = ConvertTo-SecureString ('Aa1!' + [Convert]::ToBase64String($bytes)) -AsPlainText -Force
+          $stage = Join-Path $env:RUNNER_TEMP ("cpc-git-policy-" + $user)
+          $app = Join-Path $stage 'app'
+          $temp = Join-Path $stage 'temp'
+          try {
+            New-LocalUser -Name $user -Password $password -PasswordNeverExpires -AccountNeverExpires -Description 'Ephemeral non-admin Git policy test account' | Out-Null
+            New-Item -ItemType Directory -Path $stage -Force | Out-Null
+            New-Item -ItemType Directory -Path $app,$temp -Force | Out-Null
+            Copy-Item -Path (Join-Path $env:GITHUB_WORKSPACE 'tests/OwnedToolLaunch/bin/Release/net8.0-windows/*') -Destination $app -Recurse -Force
+            & icacls $stage /grant "${account}:(OI)(CI)RX" /T /C | Out-Null
+            if ($LASTEXITCODE -ne 0) { throw 'Could not grant the standard test account read/execute access to the isolated test copy' }
+            & icacls $temp /grant "${account}:(OI)(CI)M" /T /C | Out-Null
+            if ($LASTEXITCODE -ne 0) { throw 'Could not grant the standard test account temporary-directory access' }
+            $psi = [System.Diagnostics.ProcessStartInfo]::new()
+            $psi.FileName = (Get-Command dotnet).Source
+            $psi.Arguments = '"OwnedToolLaunch.dll" workspace-git-workflow-policy'
+            $psi.WorkingDirectory = $app
+            $psi.UserName = $user
+            $psi.Domain = $env:COMPUTERNAME
+            $psi.Password = $password
+            $psi.LoadUserProfile = $true
+            $psi.UseShellExecute = $false
+            $psi.CreateNoWindow = $true
+            $psi.RedirectStandardOutput = $true
+            $psi.RedirectStandardError = $true
+            $psi.Environment['TEMP'] = $temp
+            $psi.Environment['TMP'] = $temp
+            $psi.Environment['DOTNET_CLI_HOME'] = $temp
+            $psi.Environment['DOTNET_SKIP_FIRST_TIME_EXPERIENCE'] = '1'
+            $psi.Environment['DOTNET_CLI_TELEMETRY_OPTOUT'] = '1'
+            $process = [System.Diagnostics.Process]::Start($psi)
+            $stdoutTask = $process.StandardOutput.ReadToEndAsync()
+            $stderrTask = $process.StandardError.ReadToEndAsync()
+            $process.WaitForExit()
+            $stdout = $stdoutTask.GetAwaiter().GetResult()
+            $stderr = $stderrTask.GetAwaiter().GetResult()
+            if ($stdout) { Write-Host $stdout }
+            if ($stderr) { Write-Host $stderr }
+            if ($process.ExitCode -ne 0) { throw "Non-admin Git policy test failed with exit code $($process.ExitCode)" }
+          }
+          finally {
+            Remove-LocalUser -Name $user -ErrorAction SilentlyContinue
+            if (Test-Path $stage) { Remove-Item $stage -Recurse -Force -ErrorAction SilentlyContinue }
+          }
