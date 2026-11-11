@@ -214,6 +214,22 @@ internal static class WorkspaceFiles
             using var file=held.NewFile(path);file.Write(entry.Content);file.Flush(true);
         }
     }
+    // The Broker creates this directory with a package-only DACL before any
+    // project bytes are materialized. Never replace or adopt an existing tree.
+    internal static void MaterializeContentsNew(string root,byte[] bytes)
+    {
+        var bundle=WorkspaceBundle.Parse(bytes);var path=Local(root);
+        if(bundle.Files.Length==0)throw new InvalidDataException("Nonempty private Git workspace required");
+        using var held=new HeldPaths();held.DirectoryChain(path);
+        using(var scan=Open(path,true,true,false))
+            if(WindowsDirectoryNames.Read(scan,1).Length!=0)throw new InvalidDataException("Fresh private Git directory required");
+        foreach(var entry in bundle.Files)
+        {
+            var destination=Child(path,entry.Path);var relativeDirectory=Path.GetDirectoryName(destination)!;
+            held.NewDescendants(path,relativeDirectory);
+            using var file=held.NewFile(destination);file.Write(entry.Content);file.Flush(true);
+        }
+    }
     internal static string[] ReadSelection(string path)
     {
         RequireOrdinaryUser();using var held=new HeldPaths();held.DirectoryChain(Path.GetDirectoryName(Local(path))!);

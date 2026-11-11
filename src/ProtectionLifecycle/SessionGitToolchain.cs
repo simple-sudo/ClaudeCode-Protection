@@ -98,6 +98,7 @@ internal sealed class SessionGitToolchain : IDisposable
             }
             var selectedProject=WorkspaceBundle.Parse(plan.ProjectBundle);
             if(selectedProject.GitPlan is { } workflow)return RunWorkflowChild(plan,workspace,selectedProject,workflow);
+            AssertGitControlReady(workspace,false);
             stage="HASH_INPUT_WITH_INSPECTED_GIT";
             using(var process=AtomicChild.StartInheritedTool(Start(workspace,plan.GitDirectory,"hash-object","--stdin")))
             {
@@ -117,12 +118,11 @@ internal sealed class SessionGitToolchain : IDisposable
                 if(!hashMatched)throw WfpNative.Contract("GitInputHashMismatch");
             }
             var repo=WindowsPathSeal.Child(workspace,"git-project");
-            Directory.CreateDirectory(WindowsPathSeal.Child(workspace,"empty-git-template"));
-            Directory.CreateDirectory(WindowsPathSeal.Child(workspace,"empty-git-hooks"));
+            var template=GitControlPath(workspace,"empty-git-template");
             var project=WorkspaceBundle.Parse(plan.ProjectBundle);
             foreach(var file in project.Files)
                 if(!File.ReadAllBytes(WindowsPathSeal.Child(repo,file.Path)).AsSpan().SequenceEqual(file.Content))throw WfpNative.Contract("GitProjectInputChanged");
-            stage="GIT_INIT";Require(Run(workspace,plan.GitDirectory,"init","--quiet","--initial-branch=qualification","--template="+WindowsPathSeal.Child(workspace,"empty-git-template"),repo));
+            stage="GIT_INIT";Require(Run(workspace,plan.GitDirectory,"init","--quiet","--initial-branch=qualification","--template="+template,repo));
             // Highest-precedence info attributes override project-controlled
             // transformations. Data processing preserves exact selected bytes,
             // independent of .gitattributes or .gitignore in the source bundle.
@@ -131,7 +131,7 @@ internal sealed class SessionGitToolchain : IDisposable
             // NUL pathspec input avoids Windows command-line length limits
             // for a real multi-file project. Validated ASCII names cannot
             // contain NUL or Git pathspec magic; no expansion is performed.
-            var selection=WindowsPathSeal.Child(workspace,"git-selected-paths.bin");
+            var selection=WindowsPathSeal.Child(WindowsPathSeal.Child(repo,".git"),"cpc-selected-paths.bin");
             File.WriteAllBytes(selection,Encoding.ASCII.GetBytes(string.Join('\0',project.Files.Select(f=>f.Path))+"\0"));
             stage="GIT_ADD";Require(Run(workspace,plan.GitDirectory,"--literal-pathspecs","-C",repo,"add","--force","--pathspec-from-file="+selection,"--pathspec-file-nul"));
             stage="GIT_COMMIT";Require(Run(workspace,plan.GitDirectory,"-C",repo,"commit","--quiet","--no-gpg-sign","-m",CommitMessage));
@@ -156,6 +156,7 @@ internal sealed class SessionGitToolchain : IDisposable
         int? denialExit=null,allPackagesExit=null;var stage="VERIFY_GIT_WORKFLOW_INPUT";
         try
         {
+            AssertGitControlReady(workspace,true);
             var commands=WorkflowCommands(plan,workspace,workflow);
             stage="HASH_INPUT_WITH_INSPECTED_GIT";
             using(var process=AtomicChild.StartInheritedTool(StartWorkflow(workspace,plan.GitDirectory,workflow,commands[0])))
@@ -174,8 +175,6 @@ internal sealed class SessionGitToolchain : IDisposable
                 if(!hashMatched)throw WfpNative.Contract("GitInputHashMismatch");
             }
             var repo=WindowsPathSeal.Child(workspace,"git-project");
-            Directory.CreateDirectory(WindowsPathSeal.Child(workspace,"empty-git-template"));
-            Directory.CreateDirectory(WindowsPathSeal.Child(workspace,"empty-git-hooks"));
             foreach(var file in project.Files)
                 if(!File.ReadAllBytes(WindowsPathSeal.Child(repo,file.Path)).AsSpan().SequenceEqual(file.Content))
                     throw WfpNative.Contract("GitProjectInputChanged");
@@ -277,7 +276,7 @@ internal sealed class SessionGitToolchain : IDisposable
         foreach(var name in new[]{"TEMP","TMP","HOME","USERPROFILE","LOCALAPPDATA","XDG_CONFIG_HOME"})start.Environment[name]=workspace;
         start.Environment["PATH"]=directory+";"+Environment.SystemDirectory;
         start.Environment["GIT_EXEC_PATH"]=directory;start.Environment["GIT_CONFIG_NOSYSTEM"]="1";start.Environment["GIT_ATTR_NOSYSTEM"]="1";
-        start.Environment["GIT_CONFIG_GLOBAL"]=WindowsPathSeal.Child(workspace,"empty-git-config");start.Environment["GIT_CONFIG_COUNT"]="0";
+        start.Environment["GIT_CONFIG_GLOBAL"]=GitControlPath(workspace,"empty-git-config");start.Environment["GIT_CONFIG_COUNT"]="0";
         start.Environment["GIT_CEILING_DIRECTORIES"]=workspace;start.Environment["GIT_DISCOVERY_ACROSS_FILESYSTEM"]="0";
         start.Environment["GIT_TERMINAL_PROMPT"]="0";start.Environment["GCM_INTERACTIVE"]="never";start.Environment["GIT_NO_LAZY_FETCH"]="1";
         foreach(var name in new[]{"GIT_AUTHOR_NAME","GIT_COMMITTER_NAME"})start.Environment[name]="CPC Qualification";
@@ -286,7 +285,7 @@ internal sealed class SessionGitToolchain : IDisposable
         start.Environment["LC_ALL"]="C";start.Environment["LANG"]="C";
         foreach(var arg in new[]{"--no-pager","-c","credential.helper=","-c","protocol.allow=never","-c","core.autocrlf=false","-c","core.whitespace=cr-at-eol","-c","core.filemode=false",
             "-c","core.fsmonitor=false","-c","maintenance.auto=false","-c","gc.auto=0","-c","commit.gpgsign=false","-c","i18n.commitEncoding=UTF-8",
-            "-c","core.hooksPath="+WindowsPathSeal.Child(workspace,"empty-git-hooks"),"-c","safe.directory="+WindowsPathSeal.Child(workspace,"git-project")}.Concat(arguments))start.ArgumentList.Add(arg);
+            "-c","core.hooksPath="+GitControlPath(workspace,"empty-git-hooks"),"-c","safe.directory="+WindowsPathSeal.Child(workspace,"git-project")}.Concat(arguments))start.ArgumentList.Add(arg);
         return start;
     }
     internal static ProcessStartInfo StartWorkflow(string workspace,string directory,WorkspaceGitPlan workflow,params string[] arguments)
@@ -297,11 +296,46 @@ internal sealed class SessionGitToolchain : IDisposable
         foreach(var name in new[]{"GIT_AUTHOR_DATE","GIT_COMMITTER_DATE"})start.Environment[name]=workflow.CommitDateUtc;
         return start;
     }
+    internal static string GitControlDirectory(string workspace)=>WindowsPathSeal.Child(workspace,"git-control");
+    internal static string GitControlPath(string workspace,string leaf)
+    {
+        if(leaf is not ("empty-git-config" or "empty-git-hooks" or "empty-git-template" or "git-selected-paths.bin"))
+            throw new InvalidDataException("Fixed Git control leaf required");
+        return WindowsPathSeal.Child(GitControlDirectory(workspace),leaf);
+    }
+    internal static void AssertGitControlReady(string workspace,bool hasPathspec)
+    {
+        var root=GitControlDirectory(workspace);
+        using(var held=WindowsPathSeal.Open(root,true,false))
+        {
+            var actual=WindowsPathSeal.EnumerateNames(held,root,8);
+            var expected=hasPathspec
+                ?new[]{"empty-git-config","empty-git-hooks","empty-git-template","git-selected-paths.bin"}
+                :new[]{"empty-git-config","empty-git-hooks","empty-git-template"};
+            if(actual.Length!=expected.Length || actual.Any(name=>!expected.Contains(name,StringComparer.Ordinal)))
+                throw WfpNative.Contract("GitControlInventoryMismatch");
+        }
+        foreach(var leaf in new[]{"empty-git-hooks","empty-git-template"})
+        {
+            var path=GitControlPath(workspace,leaf);
+            using var directory=WindowsPathSeal.Open(path,true,false);
+            if(WindowsPathSeal.EnumerateNames(directory,path,1).Length!=0)
+                throw WfpNative.Contract("GitControlDirectoryNotEmpty");
+        }
+        var config=GitControlPath(workspace,"empty-git-config");
+        using(var file=new FileStream(WindowsPathSeal.Open(config,false,true),FileAccess.Read,64,false))
+            if(file.Length!=0)throw WfpNative.Contract("GitGlobalConfigNotEmpty");
+        if(hasPathspec)
+        {
+            using var file=new FileStream(WindowsPathSeal.Open(GitControlPath(workspace,"git-selected-paths.bin"),false,true),FileAccess.Read,128*1024,false);
+            if(file.Length is <1 or >128*1024)throw WfpNative.Contract("GitPathspecBounds");
+        }
+    }
     internal static string[][] WorkflowCommands(ResourceProbePlan plan,string workspace,WorkspaceGitPlan workflow)
     {
         workflow.Validate();var repo=WindowsPathSeal.Child(workspace,"git-project");
-        var template=WindowsPathSeal.Child(workspace,"empty-git-template");
-        var selection=WindowsPathSeal.Child(workspace,"git-selected-paths.bin");
+        var template=GitControlPath(workspace,"empty-git-template");
+        var selection=GitControlPath(workspace,"git-selected-paths.bin");
         return new[]{
             new[]{"hash-object","--stdin"},
             new[]{"init","--quiet","--initial-branch=main","--object-format=sha1","--template="+template,repo},
@@ -318,7 +352,7 @@ internal sealed class SessionGitToolchain : IDisposable
     }
     internal static bool SelectedPathspecMatches(string workspace,WorkspaceBundle project)
     {
-        var path=WindowsPathSeal.Child(workspace,"git-selected-paths.bin");
+        var path=GitControlPath(workspace,"git-selected-paths.bin");
         var expected=Encoding.ASCII.GetBytes(string.Join('\0',project.Files.Select(f=>f.Path))+"\0");
         using var file=new FileStream(WindowsPathSeal.OpenReadUnderWriteLease(path),FileAccess.Read,4096,false);
         if(file.Length!=expected.Length)return false;
@@ -328,6 +362,7 @@ internal sealed class SessionGitToolchain : IDisposable
     {
         var project=WorkspaceBundle.Parse(plan.ProjectBundle);var workflow=project.GitPlan;
         if(workflow is null)return false;
+        AssertGitControlReady(workspace,true);
         var commands=WorkflowCommands(plan,workspace,workflow);
         if(!commands.Any(command=>command.SequenceEqual(tail)))return false;
         return !commands[2].SequenceEqual(tail) || SelectedPathspecMatches(workspace,project);

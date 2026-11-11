@@ -88,6 +88,8 @@ internal sealed class SessionResources : IDisposable
 {
     private readonly ProtectedState state;
     private readonly PathLease folder;
+    private readonly PathLease? gitProjectDirectory,gitControlDirectory;
+    private readonly string? gitOwnerSid,gitPackageSid;
     private readonly FileStream input,allPackagesFixture;
     private readonly SessionPowerShellToolchain? tool;
     private readonly SessionGitToolchain? git;
@@ -98,8 +100,16 @@ internal sealed class SessionResources : IDisposable
     private WorkspaceGitReceipt? gitReceipt;
     internal ResourceProbePlan Plan {get;}
     internal string Workspace=>folder.Path;
-    private SessionResources(ProtectedState state,PathLease folder,FileStream input,SessionPowerShellToolchain? tool,ResourceProbePlan plan,SessionGitToolchain? git,FileStream? projectInput,FileStream? gitPathspec,FileStream allPackagesFixture,HostPrivacyProbe? privacy,WorkspaceBundle? workspaceBundle)
-    {this.state=state;this.folder=folder;this.input=input;this.tool=tool;Plan=plan;this.git=git;this.projectInput=projectInput;this.gitPathspec=gitPathspec;this.allPackagesFixture=allPackagesFixture;this.privacy=privacy;this.workspaceBundle=workspaceBundle;}
+    private SessionResources(ProtectedState state,PathLease folder,PathLease? gitProjectDirectory,PathLease? gitControlDirectory,
+        string? gitOwnerSid,string? gitPackageSid,FileStream input,SessionPowerShellToolchain? tool,ResourceProbePlan plan,
+        SessionGitToolchain? git,FileStream? projectInput,FileStream? gitPathspec,FileStream allPackagesFixture,
+        HostPrivacyProbe? privacy,WorkspaceBundle? workspaceBundle)
+    {
+        this.state=state;this.folder=folder;this.gitProjectDirectory=gitProjectDirectory;this.gitControlDirectory=gitControlDirectory;
+        this.gitOwnerSid=gitOwnerSid;this.gitPackageSid=gitPackageSid;this.input=input;this.tool=tool;Plan=plan;this.git=git;
+        this.projectInput=projectInput;this.gitPathspec=gitPathspec;this.allPackagesFixture=allPackagesFixture;
+        this.privacy=privacy;this.workspaceBundle=workspaceBundle;
+    }
     internal static SessionResources Create(ProtectedState state,VerifiedVersion version,InstallationProfileLease profile,string nonce,bool includeGit=false,byte[]? workspaceInput=null,bool developProject=false,bool callerProject=false)
     {
         state.AssertHeld();version.AssertHeld(state);
@@ -108,7 +118,9 @@ internal sealed class SessionResources : IDisposable
         if(developProject && (!includeGit || workspaceInput is null || !callerProject && WorkspaceBundle.Hash(workspaceInput)!=BundledProjectDevelopment.BaselineHash))throw WfpNative.Contract("ExplicitBundledProjectTaskRequired");
         var callerTask=callerProject?CSharpProjectTask.Parse(workspaceInput!):null;
         var tool=workspaceInput is null || developProject?SessionPowerShellToolchain.Open():null;
-        PathLease? directory=null;FileStream? input=null,projectInput=null,gitPathspec=null,allPackagesFixture=null;SessionGitToolchain? git=null;
+        PathLease? directory=null,gitProjectDirectory=null,gitControlDirectory=null;
+        string? gitOwnerSid=null,gitPackageSid=null;
+        FileStream? input=null,projectInput=null,gitPathspec=null,allPackagesFixture=null;SessionGitToolchain? git=null;
         HostPrivacyProbe? privacy=null;
         try
         {
@@ -126,12 +138,20 @@ internal sealed class SessionResources : IDisposable
                 project=WorkspaceBundle.Parse(workspaceInput);
                 if(project.BaseSHA256 is not null || project.Files.Length==0)throw WfpNative.Contract("NonemptyWorkspaceBaselineRequired");
                 // Preflight all destination paths before creating profile/task data.
-                foreach(var file in project.Files)_=WindowsPathSeal.Child(WindowsPathSeal.Child(SessionTaskWorkspace.PathFor(nonce),"git-project"),file.Path);
+                var taskRoot=SessionTaskWorkspace.PathFor(nonce);
+                _=WindowsPathSeal.Child(taskRoot,"git-project");_=WindowsPathSeal.Child(taskRoot,"git-control");
+                foreach(var file in project.Files)_=WindowsPathSeal.Child(WindowsPathSeal.Child(taskRoot,"git-project"),file.Path);
             }
             var path=plan.Workspace(sid.Value);
             using var identity=WindowsIdentity.GetCurrent();
             var owner=identity.User?.Value??throw WfpNative.Contract("WorkspaceHumanOwnerMissing");
-            if(includeGit)directory=CreateOwnedTaskDirectory(state,profile,nonce);
+            if(includeGit)
+            {
+                directory=CreateOwnedTaskDirectory(state,profile,nonce);
+                gitOwnerSid=owner;gitPackageSid=sid.Value;
+                gitProjectDirectory=GitWorkspaceDescriptor.Create(directory,"git-project",owner,sid.Value,true);
+                gitControlDirectory=GitWorkspaceDescriptor.Create(directory,"git-control",owner,sid.Value,false);
+            }
             else
             {
                 using var parent=WindowsPathSeal.LockDirectory(profile.WorkspaceRoot(),PathPolicy.Source);
@@ -154,11 +174,15 @@ internal sealed class SessionResources : IDisposable
                     projectInput=new FileStream(WindowsPathSeal.Open(dataPath,false,true),FileAccess.Read);
                     if(WorkspaceBundle.Hash(plan.ProjectBundle)!=plan.WorkspaceInputSHA256)throw WfpNative.Contract("WorkspaceDataPublishChanged");
                 }
-                using(var empty=new FileStream(WindowsPathSeal.Child(path,"empty-git-config"),FileMode.CreateNew,FileAccess.Write,FileShare.None)){empty.Flush(true);}
-                WorkspaceFiles.MaterializeNew(path,"git-project",plan.ProjectBundle);
+                var control=gitControlDirectory?.Path??throw WfpNative.Contract("GitControlDirectoryMissing");
+                var projectRoot=gitProjectDirectory?.Path??throw WfpNative.Contract("GitProjectDirectoryMissing");
+                using(var empty=new FileStream(WindowsPathSeal.Child(control,"empty-git-config"),FileMode.CreateNew,FileAccess.Write,FileShare.None)){empty.Flush(true);}
+                Directory.CreateDirectory(WindowsPathSeal.Child(control,"empty-git-template"));
+                Directory.CreateDirectory(WindowsPathSeal.Child(control,"empty-git-hooks"));
+                WorkspaceFiles.MaterializeContentsNew(projectRoot,plan.ProjectBundle);
                 if(project is {GitPlan:not null} gitProject)
                 {
-                    var selectedPathspec=WindowsPathSeal.Child(path,"git-selected-paths.bin");
+                    var selectedPathspec=WindowsPathSeal.Child(control,"git-selected-paths.bin");
                     gitPathspec=new FileStream(selectedPathspec,FileMode.CreateNew,FileAccess.ReadWrite,FileShare.Read);
                     var names=Encoding.ASCII.GetBytes(string.Join('\0',gitProject.Files.Select(f=>f.Path))+"\0");
                     gitPathspec.Write(names);gitPathspec.Flush(true);gitPathspec.Position=0;
@@ -172,11 +196,12 @@ internal sealed class SessionResources : IDisposable
             // An existing, readable positive host control prevents absence from
             // being mistaken for a restricted child's access-denied result.
             _=state.Read("resource-fixture-"+nonce+".json",4096);
-            return new(state,directory,input,tool,plan,git,projectInput,gitPathspec,allPackagesFixture,privacy,project);
+            return new(state,directory,gitProjectDirectory,gitControlDirectory,gitOwnerSid,gitPackageSid,
+                input,tool,plan,git,projectInput,gitPathspec,allPackagesFixture,privacy,project);
         }
         catch(Exception error)
         {
-            var cleanup=Release(privacy,allPackagesFixture,projectInput,gitPathspec,git,input,directory,tool);
+            var cleanup=Release(privacy,allPackagesFixture,projectInput,gitPathspec,git,gitControlDirectory,gitProjectDirectory,input,directory,tool);
             if(cleanup.Count!=0){cleanup.Insert(0,error);throw new AggregateException(cleanup);}
             throw;
         }
@@ -193,11 +218,21 @@ internal sealed class SessionResources : IDisposable
             tool.AssertHeld();if(Plan.RequiresPowerShell)PowerShellPolicySnapshot.AssertActuallyAbsent();
         }
         git?.AssertHeld();
+        if((git is null)!=(gitProjectDirectory is null) || (git is null)!=(gitControlDirectory is null) ||
+            (git is null)!=(gitOwnerSid is null) || (git is null)!=(gitPackageSid is null))
+            throw WfpNative.Contract("GitWorkspaceLeasePresenceMismatch");
+        if(gitProjectDirectory is not null)
+        {
+            gitProjectDirectory.AssertHeld();gitControlDirectory!.AssertHeld();
+            GitWorkspaceDescriptor.AssertPath(gitProjectDirectory.Path,gitOwnerSid!,gitPackageSid!,true);
+            GitWorkspaceDescriptor.AssertPath(gitControlDirectory.Path,gitOwnerSid!,gitPackageSid!,false);
+            SessionGitToolchain.AssertGitControlReady(Workspace,gitPathspec is not null);
+        }
         if((workspaceBundle?.GitPlan is not null)!=(gitPathspec is not null))throw WfpNative.Contract("GitPathspecLeasePresenceMismatch");
         if(gitPathspec is not null)
         {
             if(gitPathspec.SafeFileHandle.IsClosed)throw WfpNative.Contract("GitPathspecLeaseLost");
-            WindowsPathSeal.VerifyObject(gitPathspec.SafeFileHandle,WindowsPathSeal.Child(Workspace,"git-selected-paths.bin"),false);
+            WindowsPathSeal.VerifyObject(gitPathspec.SafeFileHandle,SessionGitToolchain.GitControlPath(Workspace,"git-selected-paths.bin"),false);
             if(!SessionGitToolchain.SelectedPathspecMatches(Workspace,workspaceBundle!))
                 throw WfpNative.Contract("GitPathspecLeaseContentMismatch");
         }
@@ -541,7 +576,7 @@ internal sealed class SessionResources : IDisposable
     }
     public void Dispose()
     {
-        var failures=Release(privacy,allPackagesFixture,projectInput,gitPathspec,git,input,folder,tool);
+        var failures=Release(privacy,allPackagesFixture,projectInput,gitPathspec,git,gitControlDirectory,gitProjectDirectory,input,folder,tool);
         if(failures.Count!=0)throw new AggregateException(failures);
     }
     // A failed release does not suppress the remaining owned releases or the

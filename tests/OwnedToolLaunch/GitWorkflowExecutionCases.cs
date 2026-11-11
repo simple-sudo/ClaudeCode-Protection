@@ -86,12 +86,16 @@ internal static class GitWorkflowExecutionCases
             var projectFiles=(Array)Get(project,"Files")!;
             Require(projectFiles.Length==dataFiles.Length,"all selected project files materialized");
 
-            Directory.CreateDirectory(Path.Combine(workspace,"empty-git-template"));
-            Directory.CreateDirectory(Path.Combine(workspace,"empty-git-hooks"));
-            File.WriteAllBytes(Path.Combine(workspace,"empty-git-config"),Array.Empty<byte>());
+            var control=Path.Combine(workspace,"git-control");Directory.CreateDirectory(control);
+            Directory.CreateDirectory(Path.Combine(control,"empty-git-template"));
+            Directory.CreateDirectory(Path.Combine(control,"empty-git-hooks"));
+            File.WriteAllBytes(Path.Combine(control,"empty-git-config"),Array.Empty<byte>());
             var selectedPaths=projectFiles.Cast<object>().Select(file=>(string)Get(file,"Path")!).ToArray();
-            var pathspec=Path.Combine(workspace,"git-selected-paths.bin");
+            var pathspec=Path.Combine(control,"git-selected-paths.bin");
             File.WriteAllBytes(pathspec,Encoding.ASCII.GetBytes(string.Join('\0',selectedPaths)+"\0"));
+            VerifyGitWorkspaceBoundary(library,owner);
+            InvokeStatic(gitType,"AssertGitControlReady",workspace,true);
+            VerifyGitControlMutationGuards(gitType,workspace);
             foreach(var file in projectFiles)
             {
                 var relative=(string)Get(file,"Path")!;
@@ -241,6 +245,62 @@ internal static class GitWorkflowExecutionCases
                 if(primaryFailure is null)throw cleanupFailure;
             }
         }
+    }
+
+    private static void VerifyGitWorkspaceBoundary(Assembly library,SecurityIdentifier owner)
+    {
+        var descriptorType=library.GetType("ProtectionLifecycle.GitWorkspaceDescriptor",true)!;
+        var packageSid="S-1-15-2-1234567890-2345678901-3456789012";
+        var projectDacl=(string)InvokeStatic(descriptorType,"BuildDaclSddl",owner.Value,packageSid,true)!;
+        var controlDacl=(string)InvokeStatic(descriptorType,"BuildDaclSddl",owner.Value,packageSid,false)!;
+        var project=new RawSecurityDescriptor(projectDacl);var control=new RawSecurityDescriptor(controlDacl);
+        Require(project.Owner?.Value==owner.Value && control.Owner?.Value==owner.Value,"private Git directories are owned by the interactive user");
+        Require(project.Group?.Value=="S-1-5-18" && control.Group?.Value=="S-1-5-18","private Git directories use the fixed SYSTEM group");
+        Require(project.ControlFlags.HasFlag(ControlFlags.DiscretionaryAclProtected) &&
+            control.ControlFlags.HasFlag(ControlFlags.DiscretionaryAclProtected),"private Git DACLs block parent ACL inheritance");
+        var projectPackage=project.DiscretionaryAcl!.OfType<CommonAce>().Single(ace=>ace.SecurityIdentifier.Value==packageSid);
+        var controlPackage=control.DiscretionaryAcl!.OfType<CommonAce>().Single(ace=>ace.SecurityIdentifier.Value==packageSid);
+        var ownerRights=project.DiscretionaryAcl.OfType<CommonAce>().Single(ace=>ace.SecurityIdentifier.Value=="S-1-3-4");
+        Require(projectPackage.AccessMask==0x001301bf && (projectPackage.AccessMask&0x000c0000)==0 &&
+            (projectPackage.AccessMask&0x00000006)==0x00000006,
+            "LPAC project access permits file/directory mutation but excludes WRITE_DAC and WRITE_OWNER");
+        Require(controlPackage.AccessMask==unchecked((int)0xA0000000u),"LPAC Git control access is generic read/execute only");
+        Require(ownerRights.AccessMask==0x00020000 &&
+            (ownerRights.AceFlags&(AceFlags.ObjectInherit|AceFlags.ContainerInherit))==(AceFlags.ObjectInherit|AceFlags.ContainerInherit),
+            "inherited OWNER RIGHTS ACE removes implicit WRITE_DAC from file and directory owners");
+        Require(!project.DiscretionaryAcl.OfType<CommonAce>().Any(ace=>ace.SecurityIdentifier.Value==owner.Value) &&
+            !control.DiscretionaryAcl!.OfType<CommonAce>().Any(ace=>ace.SecurityIdentifier.Value==owner.Value),
+            "ordinary user receives no direct Git project/control access grant");
+        Require(project.DiscretionaryAcl.OfType<CommonAce>().Any(ace=>ace.SecurityIdentifier.Value=="S-1-5-18" && ace.AccessMask==0x001f01ff) &&
+            project.DiscretionaryAcl.OfType<CommonAce>().Any(ace=>ace.SecurityIdentifier.Value=="S-1-5-32-544" && ace.AccessMask==0x001f01ff),
+            "SYSTEM and elevated Broker retain full management access");
+    }
+
+    private static void VerifyGitControlMutationGuards(Type gitType,string workspace)
+    {
+        var hooks=Path.Combine(workspace,"git-control","empty-git-hooks");
+        var config=Path.Combine(workspace,"git-control","empty-git-config");
+        var extra=Path.Combine(workspace,"git-control","unexpected-control");
+        var hook=Path.Combine(hooks,"pre-commit");
+        File.WriteAllText(hook,"#!/bin/sh\nexit 0\n");
+        var hookRefused=false;
+        try{InvokeStatic(gitType,"AssertGitControlReady",workspace,true);}
+        catch(InvalidDataException){hookRefused=true;}
+        finally{File.Delete(hook);}
+        Require(hookRefused,"non-empty hooks directory fails closed");
+        File.WriteAllText(config,"[filter \"attack\"]\nclean = cmd.exe /c whoami\n");
+        var configRefused=false;
+        try{InvokeStatic(gitType,"AssertGitControlReady",workspace,true);}
+        catch(InvalidDataException){configRefused=true;}
+        finally{File.WriteAllBytes(config,Array.Empty<byte>());}
+        Require(configRefused,"non-empty global Git config fails closed");
+        File.WriteAllText(extra,"unexpected");
+        var extraRefused=false;
+        try{InvokeStatic(gitType,"AssertGitControlReady",workspace,true);}
+        catch(InvalidDataException){extraRefused=true;}
+        finally{File.Delete(extra);}
+        Require(extraRefused,"unexpected Git control entry fails closed");
+        InvokeStatic(gitType,"AssertGitControlReady",workspace,true);
     }
 
     private static string FindGitRoot()

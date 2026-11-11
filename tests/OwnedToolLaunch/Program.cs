@@ -617,15 +617,20 @@ if(args[0]=="workspace-git-workflow-policy")
         var gitWorkflowTaskRoot=(string)gitWorkflowPlanType.GetMethod("Workspace",BindingFlags.Instance|BindingFlags.NonPublic)!.Invoke(gitWorkflowPlan,new object[]{""})!;
         Directory.CreateDirectory(gitWorkflowTaskRoot);File.WriteAllBytes(Path.Combine(gitWorkflowTaskRoot,"project-input.json"),gitWorkflowTaskBytes);
         var gitWorkflowWorkspace=Path.Combine(gitWorkflowRoot,"owner-workspace");Directory.CreateDirectory(gitWorkflowWorkspace);
-        File.WriteAllBytes(Path.Combine(gitWorkflowWorkspace,"empty-git-config"),Array.Empty<byte>());
-        Directory.CreateDirectory(Path.Combine(gitWorkflowWorkspace,"empty-git-hooks"));
-        Directory.CreateDirectory(Path.Combine(gitWorkflowWorkspace,"empty-git-template"));
+        var gitWorkflowControl=Path.Combine(gitWorkflowWorkspace,"git-control");Directory.CreateDirectory(gitWorkflowControl);
+        File.WriteAllBytes(Path.Combine(gitWorkflowControl,"empty-git-config"),Array.Empty<byte>());
+        Directory.CreateDirectory(Path.Combine(gitWorkflowControl,"empty-git-hooks"));
+        Directory.CreateDirectory(Path.Combine(gitWorkflowControl,"empty-git-template"));
         var gitWorkflowFiles=(Array)gitWorkflowParsed.GetType().GetProperty("Files")!.GetValue(gitWorkflowParsed)!;
         var gitWorkflowPaths=gitWorkflowFiles.Cast<object>().Select(file=>(string)file.GetType().GetProperty("Path")!.GetValue(file)!).ToArray();
-        var gitWorkflowPathspec=Path.Combine(gitWorkflowWorkspace,"git-selected-paths.bin");
+        var gitWorkflowPathspec=Path.Combine(gitWorkflowControl,"git-selected-paths.bin");
         File.WriteAllBytes(gitWorkflowPathspec,Encoding.ASCII.GetBytes(string.Join('\0',gitWorkflowPaths)+"\0"));
         var gitWorkflowCommands=(string[][])Call(gitWorkflowTool,"WorkflowCommands",gitWorkflowPlan,gitWorkflowWorkspace,gitWorkflowDefinition)!;
+        Call(gitWorkflowTool,"AssertGitControlReady",gitWorkflowWorkspace,true);
         Require(gitWorkflowCommands.Length==11,"fixed bounded Git workflow command count");
+        Require(gitWorkflowCommands[1].Contains(Path.Combine(gitWorkflowControl,"empty-git-template")) &&
+            gitWorkflowCommands[2].Contains("--pathspec-from-file="+gitWorkflowPathspec),
+            "Git init and add use the isolated control directory");
         var gitWorkflowDirectory=(string)gitWorkflowPlanType.GetProperty("GitDirectory",BindingFlags.Instance|BindingFlags.NonPublic)!.GetValue(gitWorkflowPlan)!;
         for(var i=0;i<gitWorkflowCommands.Length;i++)
         {

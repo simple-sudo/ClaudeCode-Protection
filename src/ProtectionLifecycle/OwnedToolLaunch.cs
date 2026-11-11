@@ -103,8 +103,8 @@ internal sealed class OwnedToolLaunch
                 if(arguments.Length<prefix.Length || !arguments.Take(prefix.Length).SequenceEqual(prefix))throw WfpNative.Contract("OwnedGitConfigurationRequired");
                 var tail=arguments.Skip(prefix.Length).ToArray();var repo=WindowsPathSeal.Child(workspace,"git-project");
                 var allowed=new[]{new[]{"hash-object","--stdin"},
-                    new[]{"init","--quiet","--initial-branch=qualification","--template="+WindowsPathSeal.Child(workspace,"empty-git-template"),repo},
-                    new[]{"--literal-pathspecs","-C",repo,"add","--force","--pathspec-from-file="+WindowsPathSeal.Child(workspace,"git-selected-paths.bin"),"--pathspec-file-nul"},
+                    new[]{"init","--quiet","--initial-branch=qualification","--template="+SessionGitToolchain.GitControlPath(workspace,"empty-git-template"),repo},
+                    new[]{"--literal-pathspecs","-C",repo,"add","--force","--pathspec-from-file="+WindowsPathSeal.Child(WindowsPathSeal.Child(repo,".git"),"cpc-selected-paths.bin"),"--pathspec-file-nul"},
                     new[]{"-C",repo,"commit","--quiet","--no-gpg-sign","-m","Controlled offline qualification"},
                     new[]{"-C",repo,"rev-parse","--verify","HEAD"},new[]{"hash-object","--",plan.Fixture},
                     new[]{"hash-object","--",WindowsPathSeal.Child(workspace,"all-packages-only.json")}};
