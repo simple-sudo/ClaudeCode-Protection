@@ -670,40 +670,6 @@ if(args[0]=="workspace-git-workflow-policy")
     return 0;
 }
 var planType=library.GetType("ProtectionLifecycle.ResourceProbePlan",true)!;
-        var assetHash=(string)git.GetProperty("AssetSetSHA256",flags)!.GetValue(null)!;
-        var inputHash=Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(taskBytes));
-        var plan=Activator.CreateInstance(planType,3,nonce,new string('b',32),new string('c',32),Environment.ProcessId,
-            new string('A',64),assetHash,inputHash,Path.GetFullPath(root))!;
-        var taskRoot=(string)planType.GetMethod("Workspace",flags)!.Invoke(plan,new object[]{""})!;
-        Directory.CreateDirectory(taskRoot);File.WriteAllBytes(Path.Combine(taskRoot,"project-input.json"),taskBytes);
-        var workspace=Path.Combine(root,"owner-workspace");Directory.CreateDirectory(workspace);
-        var files=(Array)parsed.GetType().GetProperty("Files")!.GetValue(parsed)!;
-        var paths=files.Cast<object>().Select(file=>(string)file.GetType().GetProperty("Path")!.GetValue(file)!).ToArray();
-        var pathspec=Path.Combine(workspace,"git-selected-paths.bin");
-        File.WriteAllBytes(pathspec,Encoding.ASCII.GetBytes(string.Join('\0',paths)+"\0"));
-        var commands=(string[][])Call(git,"WorkflowCommands",plan,workspace,workflow)!;
-        Require(commands.Length==11,"fixed bounded Git workflow command count");
-        var directory=(string)planType.GetProperty("GitDirectory",flags)!.GetValue(plan)!;
-        for(var i=0;i<commands.Length;i++)
-        {
-            var start=(ProcessStartInfo)Call(git,"StartWorkflow",workspace,directory,workflow,commands[i])!;
-            var arguments=start.ArgumentList.ToArray();
-            Require((bool)Call(git,"WorkflowSequenceMatches",plan,workspace,i+1,arguments)!,"exact ordered Git operation "+(i+1));
-        }
-        var outOfOrder=(ProcessStartInfo)Call(git,"StartWorkflow",workspace,directory,workflow,commands[1])!;
-        Require(!(bool)Call(git,"WorkflowSequenceMatches",plan,workspace,1,outOfOrder.ArgumentList.ToArray())!,"out-of-order Git operation refused");
-        var altered=(string[])commands[5].Clone();altered[^1]="unapproved commit";
-        Require(!(bool)Call(git,"WorkflowCommandAllowed",plan,workspace,altered)!,"unapproved commit message refused");
-        Require(!(bool)Call(git,"WorkflowCommandAllowed",plan,workspace,new[]{"clone","https://example.invalid/repo"})!,"remote Git command refused");
-        File.WriteAllText(pathspec,"unselected.txt\0",new UTF8Encoding(false));
-        var add=(ProcessStartInfo)Call(git,"StartWorkflow",workspace,directory,workflow,commands[2])!;
-        Require(!(bool)Call(git,"WorkflowSequenceMatches",plan,workspace,3,add.ArgumentList.ToArray())!,"tampered NUL pathspec refused");
-    }
-    finally{Directory.Delete(root,true);}
-    Console.WriteLine("PASS offline Git workflow owner policy: fixed ordered init/add/diff/commit/log/status/fsck and denial commands; altered message, remote, reordering and tampered pathspec refused; no Git process, Broker, Job or LPAC execution");
-    return 0;
-}
-var planType=library.GetType("ProtectionLifecycle.ResourceProbePlan",true)!;
 var resources=library.GetType("ProtectionLifecycle.SessionResources",true)!;
 var git=library.GetType("ProtectionLifecycle.SessionGitToolchain",true)!;
 var nonce=new string('a',32);var programFiles=Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
