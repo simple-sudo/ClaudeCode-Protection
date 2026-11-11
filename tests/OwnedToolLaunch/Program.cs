@@ -634,6 +634,7 @@ if(args[0]=="workspace-git-workflow-policy")
             Require((bool)Call(gitWorkflowTool,"WorkflowSequenceMatches",gitWorkflowPlan,gitWorkflowWorkspace,i+1,gitWorkflowArguments)!,"exact ordered Git operation "+(i+1));
         }
         var gitWorkflowFirstStart=(ProcessStartInfo)Call(gitWorkflowTool,"StartWorkflow",gitWorkflowWorkspace,gitWorkflowDirectory,gitWorkflowDefinition,gitWorkflowCommands[0])!;
+        Require(gitWorkflowFirstStart.ArgumentList.Contains("core.whitespace=cr-at-eol"),"fixed CRLF-aware Git whitespace policy");
         var gitWorkflowFirstArguments=gitWorkflowFirstStart.ArgumentList.ToArray();
         Require(!(bool)Call(gitWorkflowTool,"WorkflowSequenceMatches",gitWorkflowPlan,gitWorkflowWorkspace,0,gitWorkflowFirstArguments)!,"zero Git sequence refused");
         Require(!(bool)Call(gitWorkflowTool,"WorkflowSequenceMatches",gitWorkflowPlan,gitWorkflowWorkspace,12,gitWorkflowFirstArguments)!,"out-of-range Git sequence refused");
