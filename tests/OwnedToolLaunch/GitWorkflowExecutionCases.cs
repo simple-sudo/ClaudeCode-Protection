@@ -5,7 +5,6 @@ using System.Security.AccessControl;
 using System.Security.Principal;
 using System.Security.Cryptography;
 using System.Text;
-using System.Text.Json;
 
 internal static class GitWorkflowExecutionCases
 {
@@ -121,10 +120,12 @@ internal static class GitWorkflowExecutionCases
             var log=Run(StartWorkflow(gitType,workspace,plan,workflow,commands[6]));
             Require(log.Exit==0 && log.Error.Length==0,"real Git log returns commit metadata");
             var fields=log.Out.TrimEnd('\r','\n').Split('\0');
-            Require(fields.Length==6 && fields[2]=="Local Workspace" && fields[3]=="local@invalid.example" &&
-                long.TryParse(fields[4],System.Globalization.NumberStyles.None,System.Globalization.CultureInfo.InvariantCulture,out var commitTime) &&
-                commitTime==(long)Get(workflow,"CommitUnixTime")! && fields[5]==(string)Get(workflow,"CommitMessage")!,
-                "real Git log identity, date and exact message match the immutable plan");
+            Require(fields.Length==6,"real Git log returns the six fixed metadata fields");
+            Require(fields[2]=="Local Workspace" && fields[3]=="local@invalid.example" && fields[5]==(string)Get(workflow,"CommitMessage")!,
+                "real Git log identity and exact message match the immutable plan");
+            if(!long.TryParse(fields[4],System.Globalization.NumberStyles.None,System.Globalization.CultureInfo.InvariantCulture,out var commitTime))
+                throw new InvalidDataException("Git workflow execution: commit timestamp is malformed");
+            Require(commitTime==(long)Get(workflow,"CommitUnixTime")!,"real Git commit timestamp matches the immutable plan");
             var commitId=fields[0];
             var treeId=fields[1];
             var status=Run(StartWorkflow(gitType,workspace,plan,workflow,commands[7]));
@@ -145,22 +146,18 @@ internal static class GitWorkflowExecutionCases
                 "real Git cannot read the all-packages-only fixture");
 
             var planHash=(string)InvokeStatic(gitType,"GitPlanHash",workflow)!;
-            var reportJson=JsonSerializer.Serialize(new
+            var observationType=library.GetType("ProtectionLifecycle.GitWorkflowObservation",true)!;
+            var observation=Activator.CreateInstance(observationType,InstanceFlags,null,new object?[]
             {
-                InputHashMatched=true,InitAddCommitObserved=true,CommitId=commitId,
-                PrivateFixtureReadRefused=true,DenialExit=privateDenial.Exit,
-                AllPackagesFixtureReadRefused=true,AllPackagesDenialExit=allPackagesDenial.Exit,
-                FailureStage=(string?)null,FailureType=(string?)null,FailureCode=(int?)null,
-                Workflow=new
-                {
-                    PlanSHA256=planHash,BranchName=(string)Get(workflow,"BranchName")!,CommitId=commitId,TreeId=treeId,
-                    CommitMessage=(string)Get(workflow,"CommitMessage")!,AuthorName="Local Workspace",AuthorEmail="local@invalid.example",
-                    CommitUnixTime=commitTime,FileCount=projectFiles.Length,AddedLines=added,DeletedLines=deleted,
-                    BinaryFileCount=binary,CleanAfterCommit=true,ObjectIntegrityObserved=true
-                }
-            });
+                planHash,(string)Get(workflow,"BranchName")!,commitId,treeId,(string)Get(workflow,"CommitMessage")!,
+                "Local Workspace","local@invalid.example",commitTime,projectFiles.Length,added,deleted,binary,true,true
+            },null)??throw new InvalidOperationException("Git workflow observation construction failed");
             var reportType=library.GetType("ProtectionLifecycle.GitToolchainReport",true)!;
-            var report=JsonSerializer.Deserialize(reportJson,reportType)??throw new InvalidDataException("Git report deserialization failed");
+            var report=Activator.CreateInstance(reportType,InstanceFlags,null,new object?[]
+            {
+                true,true,commitId,true,privateDenial.Exit,true,allPackagesDenial.Exit,null,null,null
+            },null)??throw new InvalidOperationException("Git toolchain report construction failed");
+            reportType.GetProperty("Workflow",InstanceFlags)!.SetValue(report,observation);
             var receipt=InvokeStatic(gitType,"AssertRepository",workspace,plan,report)!;
 
             var resultData=InvokeStatic(bundleType,"Create",dataFiles,Hash(taskBytes))!;
