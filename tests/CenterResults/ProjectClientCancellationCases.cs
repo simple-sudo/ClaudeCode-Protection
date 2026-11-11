@@ -106,7 +106,12 @@ internal static class ProjectClientCancellationCases
         using(var complete=Start("complete"))
         {
             var result=await BackendClient.WaitProjectClient(complete,originalHost,CancellationToken.None);
-            Require(WaitForSignaled(complete,0) && ReadSignaledExitCode(complete)==259 && result.Output.Trim()=="OWN_CLIENT_COMPLETE" && result.Error.Length==0,"signaled process handle preserves natural exit259 and output without cancellation");
+            var signaled=WaitForSignaled(complete,0);
+            int? nativeExit=signaled?ReadSignaledExitCode(complete):null;
+            var output=result.Output.Trim();
+            var details=$"signaled={signaled}; backendExit={result.ExitCode}; nativeExit={(nativeExit?.ToString()??"UNKNOWN")}; stdoutChars={result.Output.Length}; stdout=[{output}]; stderrChars={result.Error.Length}; stderr=[{result.Error.Trim()}]";
+            Require(signaled && result.ExitCode==259 && nativeExit==259 && output=="OWN_CLIENT_COMPLETE" && result.Error.Length==0,
+                "natural exit259 diagnostics: "+details);
         }
         using(var excessive=Start("overflow"))
         {
