@@ -25,22 +25,20 @@ internal static class GitWorkflowExecutionCases
         try
         {
             Directory.CreateDirectory(root);
-            // GitHub-hosted Windows images expose Git from Git\\bin, while the
-            // product's reviewed runtime layout is Git\\mingw64\\bin. Stage only
-            // the six runtime files needed by this ordinary-user semantics test.
-            // This does not qualify or replace the product's pinned asset hashes.
+            // This is an ordinary-user Git semantics test, not product asset
+            // qualification. Stage the runner's actual git.exe and keep its
+            // installation runtime directories on this test process PATH so
+            // Windows can resolve that distribution's own DLL dependencies.
+            // Product execution still requires the separately pinned six-file set.
             var sourceGitRoot=FindGitRoot();
             var gitDirectory=Path.Combine(root,"Git","mingw64","bin");
             Directory.CreateDirectory(gitDirectory);
-            var sourceDirectories=new[]{Path.Combine(sourceGitRoot,"mingw64","bin"),Path.Combine(sourceGitRoot,"bin"),Path.Combine(sourceGitRoot,"usr","bin")};
-            var requiredAssets=new[]{"git.exe","libiconv-2.dll","libintl-8.dll","libpcre2-8-0.dll","libwinpthread-1.dll","zlib1.dll"};
-            foreach(var asset in requiredAssets)
-            {
-                var source=sourceDirectories.Select(directory=>Path.Combine(directory,asset)).FirstOrDefault(File.Exists);
-                if(source is null)throw new FileNotFoundException("Git runner asset was not found: "+asset+"; checked "+string.Join("; ",sourceDirectories));
-                File.Copy(source,Path.Combine(gitDirectory,asset),true);
-            }
-            Require(requiredAssets.All(asset=>File.Exists(Path.Combine(gitDirectory,asset))),"all six staged Git runtime assets");
+            var sourceDirectories=new[]{Path.Combine(sourceGitRoot,"mingw64","bin"),Path.Combine(sourceGitRoot,"bin"),
+                Path.Combine(sourceGitRoot,"usr","bin"),Path.Combine(sourceGitRoot,"cmd")}.Where(Directory.Exists).ToArray();
+            var sourceGitExecutable=sourceDirectories.Select(directory=>Path.Combine(directory,"git.exe")).FirstOrDefault(File.Exists)
+                ??throw new FileNotFoundException("Git runner executable was not found under "+sourceGitRoot);
+            File.Copy(sourceGitExecutable,Path.Combine(gitDirectory,"git.exe"),true);
+            Require(File.Exists(Path.Combine(gitDirectory,"git.exe")),"staged runner Git executable");
 
             var bundleType=library.GetType("ClaudeCodeProtection.Workspaces.WorkspaceBundle",true)!;
             var gitType=library.GetType("ProtectionLifecycle.SessionGitToolchain",true)!;
@@ -60,6 +58,12 @@ internal static class GitWorkflowExecutionCases
             var taskBytes=(byte[])InvokeStatic(bundleType,"CreateGitWorkflow",dataBytes,"Offline workspace import #42")!;
             var task=InvokeStatic(bundleType,"Parse",taskBytes)!;
             var workflow=Get(task,"GitPlan")??throw new InvalidDataException("GitPlan missing");
+            ProcessStartInfo StartRunnerWorkflow(string[] command)
+            {
+                var start=StartWorkflow(gitType,workspace,plan,workflow,command);
+                start.Environment["PATH"]=string.Join(Path.PathSeparator,new[]{gitDirectory}.Concat(sourceDirectories).Append(Environment.SystemDirectory));
+                return start;
+            }
             var assetSet=(string)GetStatic(gitType,"AssetSetSHA256")!;
             var plan=Activator.CreateInstance(planType,InstanceFlags,null,new object?[]
             {
@@ -102,22 +106,22 @@ internal static class GitWorkflowExecutionCases
             Require(commands.Length==11,"fixed bounded 11-command workflow");
 
             var input=(byte[])Get(plan,"Input")!;
-            var hashInput=Run(StartWorkflow(gitType,workspace,plan,workflow,commands[0]),input);
+            var hashInput=Run(StartRunnerWorkflow(commands[0]),input);
             Require(hashInput.Exit==0 && hashInput.Error.Length==0,"real Git hash-object --stdin succeeds");
             var expectedBlob=(string)InvokeStatic(gitType,"BlobId",input)!;
             Require(hashInput.Out.Trim()==expectedBlob,"real Git input blob digest matches production calculation");
 
-            var init=Run(StartWorkflow(gitType,workspace,plan,workflow,commands[1]));
+            var init=Run(StartRunnerWorkflow(commands[1]));
             Require(init.Exit==0 && init.Out.Length==0 && init.Error.Length==0,"real Git init creates fresh SHA-1 main repository");
             var info=Path.Combine(repository,".git","info");
             Directory.CreateDirectory(info);
             File.WriteAllText(Path.Combine(info,"attributes"),"* -text -filter -ident -working-tree-encoding\n",new UTF8Encoding(false));
 
-            var add=Run(StartWorkflow(gitType,workspace,plan,workflow,commands[2]));
+            var add=Run(StartRunnerWorkflow(commands[2]));
             Require(add.Exit==0 && add.Out.Length==0 && add.Error.Length==0,"real Git add accepts exact NUL pathspec");
-            var diffCheck=Run(StartWorkflow(gitType,workspace,plan,workflow,commands[3]));
+            var diffCheck=Run(StartRunnerWorkflow(commands[3]));
             Require(diffCheck.Exit==0 && diffCheck.Out.Length==0 && diffCheck.Error.Length==0,"real Git diff --cached --check succeeds");
-            var numstat=Run(StartWorkflow(gitType,workspace,plan,workflow,commands[4]));
+            var numstat=Run(StartRunnerWorkflow(commands[4]));
             Require(numstat.Exit==0 && numstat.Error.Length==0,"real Git diff --cached --numstat succeeds");
             var metrics=InvokeStatic(gitType,"ParseNumstat",numstat.Out,project)!;
             var added=(int)metrics.GetType().GetField("Item1")!.GetValue(metrics)!;
@@ -125,9 +129,9 @@ internal static class GitWorkflowExecutionCases
             var binary=(int)metrics.GetType().GetField("Item3")!.GetValue(metrics)!;
             Require(binary==1,"binary file is reported as binary, not text-transformed");
 
-            var commit=Run(StartWorkflow(gitType,workspace,plan,workflow,commands[5]));
+            var commit=Run(StartRunnerWorkflow(commands[5]));
             Require(commit.Exit==0 && commit.Out.Length==0 && commit.Error.Length==0,"real Git commit succeeds with fixed identity/date");
-            var log=Run(StartWorkflow(gitType,workspace,plan,workflow,commands[6]));
+            var log=Run(StartRunnerWorkflow(commands[6]));
             Require(log.Exit==0 && log.Error.Length==0,"real Git log returns commit metadata");
             var fields=log.Out.TrimEnd('\r','\n').Split('\0');
             Require(fields.Length==6,"real Git log returns the six fixed metadata fields");
@@ -138,19 +142,19 @@ internal static class GitWorkflowExecutionCases
             Require(commitTime==(long)Get(workflow,"CommitUnixTime")!,"real Git commit timestamp matches the immutable plan");
             var commitId=fields[0];
             var treeId=fields[1];
-            var status=Run(StartWorkflow(gitType,workspace,plan,workflow,commands[7]));
+            var status=Run(StartRunnerWorkflow(commands[7]));
             Require(status.Exit==0 && status.Out.Length==0 && status.Error.Length==0,"real Git status confirms a clean worktree");
-            var fsck=Run(StartWorkflow(gitType,workspace,plan,workflow,commands[8]));
+            var fsck=Run(StartRunnerWorkflow(commands[8]));
             Require(fsck.Exit==0 && fsck.Out.Length==0 && fsck.Error.Length==0,"real Git fsck --full --strict succeeds");
 
             SetReadDenied(privateFixture,owner);
             SetReadDenied(allPackagesFixture,owner);
             Require(AccessDenied(privateFixture) && AccessDenied(allPackagesFixture),"both negative-control fixtures deny ordinary reads");
-            var privateDenial=Run(StartWorkflow(gitType,workspace,plan,workflow,commands[9]));
+            var privateDenial=Run(StartRunnerWorkflow(commands[9]));
             Require(privateDenial.Exit==128 && privateDenial.Out.Length==0 &&
                 privateDenial.Error.TrimEnd().EndsWith(": Permission denied",StringComparison.Ordinal),
                 "real Git cannot read the private-state fixture");
-            var allPackagesDenial=Run(StartWorkflow(gitType,workspace,plan,workflow,commands[10]));
+            var allPackagesDenial=Run(StartRunnerWorkflow(commands[10]));
             Require(allPackagesDenial.Exit==128 && allPackagesDenial.Out.Length==0 &&
                 allPackagesDenial.Error.TrimEnd().EndsWith(": Permission denied",StringComparison.Ordinal),
                 "real Git cannot read the all-packages-only fixture");
@@ -191,7 +195,7 @@ internal static class GitWorkflowExecutionCases
             finally{File.WriteAllText(branchRef,originalRef,new UTF8Encoding(false));}
             Require(refTamperRefused,"owner verifier refuses a branch ref that no longer names the verified commit");
 
-            Console.WriteLine("PASS ordinary-user real Git execution using the hosted runner Git distribution: hash-object/init/add/diff-check/numstat/commit/log/status/fsck and both denial controls; independent owner commit/tree/blob/ref verification and exact GitReceipt binding; CRLF, binary, empty and ignored selected files preserved. ORDINARY-USER COMMAND/VERIFIER EVIDENCE ONLY: runner Git semantics, not product pinned-asset qualification; no product Broker, Owned Job, LPAC, UAC, host policy or Claude execution.");
+            Console.WriteLine("PASS ordinary-user real Git execution using the hosted runner Git executable and its runtime PATH: hash-object/init/add/diff-check/numstat/commit/log/status/fsck and both denial controls; independent owner commit/tree/blob/ref verification and exact GitReceipt binding; CRLF, binary, empty and ignored selected files preserved. ORDINARY-USER COMMAND/VERIFIER EVIDENCE ONLY: runner Git semantics, not product pinned-asset qualification; no product Broker, Owned Job, LPAC, UAC, host policy or Claude execution.");
         }
         finally
         {
