@@ -628,7 +628,7 @@ if(args[0]=="workspace-git-workflow-policy")
         var gitWorkflowCommands=(string[][])Call(gitWorkflowTool,"WorkflowCommands",gitWorkflowPlan,gitWorkflowWorkspace,gitWorkflowDefinition)!;
         Call(gitWorkflowTool,"AssertGitControlReady",gitWorkflowWorkspace,true);
         Require(gitWorkflowCommands.Length==11,"fixed bounded Git workflow command count");
-        Require(gitWorkflowCommands[1].Contains(Path.Combine(gitWorkflowControl,"empty-git-template")) &&
+        Require(gitWorkflowCommands[1].Contains("--template="+Path.Combine(gitWorkflowControl,"empty-git-template")) &&
             gitWorkflowCommands[2].Contains("--pathspec-from-file="+gitWorkflowPathspec),
             "Git init and add use the isolated control directory");
         var gitWorkflowDirectory=(string)gitWorkflowPlanType.GetProperty("GitDirectory",BindingFlags.Instance|BindingFlags.NonPublic)!.GetValue(gitWorkflowPlan)!;
@@ -640,6 +640,9 @@ if(args[0]=="workspace-git-workflow-policy")
         }
         var gitWorkflowFirstStart=(ProcessStartInfo)Call(gitWorkflowTool,"StartWorkflow",gitWorkflowWorkspace,gitWorkflowDirectory,gitWorkflowDefinition,gitWorkflowCommands[0])!;
         Require(gitWorkflowFirstStart.ArgumentList.Contains("core.whitespace=cr-at-eol"),"fixed CRLF-aware Git whitespace policy");
+        Require(gitWorkflowFirstStart.Environment["GIT_CONFIG_GLOBAL"]==Path.Combine(gitWorkflowControl,"empty-git-config") &&
+            gitWorkflowFirstStart.ArgumentList.Contains("core.hooksPath="+Path.Combine(gitWorkflowControl,"empty-git-hooks")),
+            "Git process uses the isolated empty global config and hooks directory");
         var gitWorkflowFirstArguments=gitWorkflowFirstStart.ArgumentList.ToArray();
         Require(!(bool)Call(gitWorkflowTool,"WorkflowSequenceMatches",gitWorkflowPlan,gitWorkflowWorkspace,0,gitWorkflowFirstArguments)!,"zero Git sequence refused");
         Require(!(bool)Call(gitWorkflowTool,"WorkflowSequenceMatches",gitWorkflowPlan,gitWorkflowWorkspace,12,gitWorkflowFirstArguments)!,"out-of-range Git sequence refused");
