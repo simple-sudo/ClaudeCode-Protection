@@ -258,9 +258,11 @@ internal static class GitWorkflowExecutionCases
         Require(project.Group?.Value=="S-1-5-18" && control.Group?.Value=="S-1-5-18","private Git directories use the fixed SYSTEM group");
         Require(project.ControlFlags.HasFlag(ControlFlags.DiscretionaryAclProtected) &&
             control.ControlFlags.HasFlag(ControlFlags.DiscretionaryAclProtected),"private Git DACLs block parent ACL inheritance");
-        var projectPackage=project.DiscretionaryAcl!.OfType<CommonAce>().Single(ace=>ace.SecurityIdentifier.Value==packageSid);
-        var controlPackage=control.DiscretionaryAcl!.OfType<CommonAce>().Single(ace=>ace.SecurityIdentifier.Value==packageSid);
-        var ownerRights=project.DiscretionaryAcl.OfType<CommonAce>().Single(ace=>ace.SecurityIdentifier.Value=="S-1-3-4");
+        var projectAcl=project.DiscretionaryAcl??throw new InvalidDataException("Project DACL missing");
+        var controlAcl=control.DiscretionaryAcl??throw new InvalidDataException("Control DACL missing");
+        var projectPackage=projectAcl.OfType<CommonAce>().Single(ace=>ace.SecurityIdentifier.Value==packageSid);
+        var controlPackage=controlAcl.OfType<CommonAce>().Single(ace=>ace.SecurityIdentifier.Value==packageSid);
+        var ownerRights=projectAcl.OfType<CommonAce>().Single(ace=>ace.SecurityIdentifier.Value=="S-1-3-4");
         Require(projectPackage.AccessMask==0x001301bf && (projectPackage.AccessMask&0x000c0000)==0 &&
             (projectPackage.AccessMask&0x00000006)==0x00000006,
             "LPAC project access permits file/directory mutation but excludes WRITE_DAC and WRITE_OWNER");
@@ -268,11 +270,11 @@ internal static class GitWorkflowExecutionCases
         Require(ownerRights.AccessMask==0x00020000 &&
             (ownerRights.AceFlags&(AceFlags.ObjectInherit|AceFlags.ContainerInherit))==(AceFlags.ObjectInherit|AceFlags.ContainerInherit),
             "inherited OWNER RIGHTS ACE removes implicit WRITE_DAC from file and directory owners");
-        Require(!project.DiscretionaryAcl.OfType<CommonAce>().Any(ace=>ace.SecurityIdentifier.Value==owner.Value) &&
-            !control.DiscretionaryAcl!.OfType<CommonAce>().Any(ace=>ace.SecurityIdentifier.Value==owner.Value),
+        Require(!projectAcl.OfType<CommonAce>().Any(ace=>ace.SecurityIdentifier.Value==owner.Value) &&
+            !controlAcl.OfType<CommonAce>().Any(ace=>ace.SecurityIdentifier.Value==owner.Value),
             "ordinary user receives no direct Git project/control access grant");
-        Require(project.DiscretionaryAcl.OfType<CommonAce>().Any(ace=>ace.SecurityIdentifier.Value=="S-1-5-18" && ace.AccessMask==0x001f01ff) &&
-            project.DiscretionaryAcl.OfType<CommonAce>().Any(ace=>ace.SecurityIdentifier.Value=="S-1-5-32-544" && ace.AccessMask==0x001f01ff),
+        Require(projectAcl.OfType<CommonAce>().Any(ace=>ace.SecurityIdentifier.Value=="S-1-5-18" && ace.AccessMask==0x001f01ff) &&
+            projectAcl.OfType<CommonAce>().Any(ace=>ace.SecurityIdentifier.Value=="S-1-5-32-544" && ace.AccessMask==0x001f01ff),
             "SYSTEM and elevated Broker retain full management access");
     }
 
