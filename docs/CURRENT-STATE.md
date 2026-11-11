@@ -1,5 +1,7 @@
 # 当前状态与授权摘要
 
+2026-11-11，schema 2 显式离线 Git 工作流源码已通过 GitHub Actions 托管 Windows 产品编译及普通用户策略测试，但尚未安装或执行新版本 LPAC 实机验收。开发分支 `chatgpt/complete-git-workflow-20261110` 的交接基线 `17d8f9d0d28e419fb1d402ab0f7848f94779a3a6` 保持在 Draft PR #3；Run #16（43009603203）编译全部产品、编译专项托管测试并以标准用户运行工作区/Git策略测试；Run #17（43009602970）编译全部产品但不运行受保护代码；Run #20（43009603161）通过纯托管策略 smoke 并编译 daily CLI。三次均为 SUCCESS。Run #16 的 Git policy 测试明确没有启动 Git 进程，也没有执行 Broker、Job 或 LPAC。故当前仅记 SOURCE / BUILD / INTEGRATED / VERIFIED(普通用户策略测试范围)，schema 2 真实 Git 多命令执行和新版本 LPAC 产品链仍为 NOT_RUN。当前安装仍按本页既有 `f9e8d29d` INACTIVE 记录；其单进程 `git commit -a` 证据不扩展为 schema 2 的 `init/add/diff/commit/log/status/fsck` 验收。下一步需准备同版本安装候选，再由本机原 daily→UAC→Broker→Owned Job→LPAC 链完成真实工作流、失败/取消和清理验收。
+
 2026-11-10，`f9e8d29d` 已更新并保持 INACTIVE。原 LocalService／零能力 LPAC 链的
 单进程 `git commit -a` 实际暂存并提交两个已跟踪文件，Broker 逐字节核对文本和嵌套
 二进制。原 Job 有序归零，工作区、profile、私有窗口和两个临时服务均回收。单次许可
