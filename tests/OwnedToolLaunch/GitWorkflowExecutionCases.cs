@@ -37,8 +37,9 @@ internal static class GitWorkflowExecutionCases
                 Path.Combine(sourceGitRoot,"usr","bin"),Path.Combine(sourceGitRoot,"cmd")}.Where(Directory.Exists).ToArray();
             var sourceGitExecutable=sourceDirectories.Select(directory=>Path.Combine(directory,"git.exe")).FirstOrDefault(File.Exists)
                 ??throw new FileNotFoundException("Git runner executable was not found under "+sourceGitRoot);
-            File.Copy(sourceGitExecutable,Path.Combine(gitDirectory,"git.exe"),true);
-            Require(File.Exists(Path.Combine(gitDirectory,"git.exe")),"staged runner Git executable");
+            var sourceExecPath=new[]{Path.Combine(sourceGitRoot,"mingw64","libexec","git-core"),
+                Path.Combine(sourceGitRoot,"libexec","git-core")}.FirstOrDefault(Directory.Exists)
+                ??Path.GetDirectoryName(sourceGitExecutable)!;
 
             var bundleType=library.GetType("ClaudeCodeProtection.Workspaces.WorkspaceBundle",true)!;
             var gitType=library.GetType("ProtectionLifecycle.SessionGitToolchain",true)!;
@@ -70,7 +71,11 @@ internal static class GitWorkflowExecutionCases
             ProcessStartInfo StartRunnerWorkflow(string[] command)
             {
                 var start=StartWorkflow(gitType,workspace,plan,workflow,command);
-                start.Environment["PATH"]=string.Join(Path.PathSeparator,new[]{gitDirectory}.Concat(sourceDirectories).Append(Environment.SystemDirectory));
+                // Execute the original in-place image: moving Git for Windows
+                // changes its loader-relative layout and can break DLL binding.
+                start.FileName=sourceGitExecutable;
+                start.Environment["GIT_EXEC_PATH"]=sourceExecPath;
+                start.Environment["PATH"]=string.Join(Path.PathSeparator,sourceDirectories.Append(Environment.SystemDirectory));
                 return start;
             }
             File.WriteAllBytes(Path.Combine(workspace,"project-input.json"),taskBytes);
@@ -107,9 +112,12 @@ internal static class GitWorkflowExecutionCases
 
             var input=(byte[])Get(plan,"Input")!;
             var hashInput=Run(StartRunnerWorkflow(commands[0]),input);
-            Require(hashInput.Exit==0 && hashInput.Error.Length==0,"real Git hash-object --stdin succeeds");
             var expectedBlob=(string)InvokeStatic(gitType,"BlobId",input)!;
-            Require(hashInput.Out.Trim()==expectedBlob,"real Git input blob digest matches production calculation");
+            if(hashInput.Exit!=0 || hashInput.Error.Length!=0 || hashInput.Out.Trim()!=expectedBlob)
+                throw new InvalidDataException("real Git hash-object failed: exit="+hashInput.Exit+
+                    "; stdout="+hashInput.Out[..Math.Min(hashInput.Out.Length,512)]+
+                    "; stderr="+hashInput.Error[..Math.Min(hashInput.Error.Length,512)]+
+                    "; expected="+expectedBlob);
 
             var init=Run(StartRunnerWorkflow(commands[1]));
             Require(init.Exit==0 && init.Out.Length==0 && init.Error.Length==0,"real Git init creates fresh SHA-1 main repository");
