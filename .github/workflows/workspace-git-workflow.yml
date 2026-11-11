@@ -75,6 +75,37 @@ jobs:
           $redirectOutput = Join-Path $fixture 'redirect-output'
           try {
             New-LocalUser -Name $user -Password $password -PasswordNeverExpires -AccountNeverExpires -Description 'Ephemeral non-admin managed test account' | Out-Null
+            Add-Type -TypeDefinition @'
+          using System;
+          using System.Runtime.InteropServices;
+          using System.Text;
+          public static class CpcUserProfileNative {
+            [DllImport("advapi32.dll", CharSet=CharSet.Unicode, SetLastError=true)]
+            public static extern bool ConvertStringSidToSid(string stringSid, out IntPtr sid);
+            [DllImport("userenv.dll", CharSet=CharSet.Unicode)]
+            public static extern int CreateProfile(IntPtr sid, string userName, StringBuilder profilePath, uint cchProfilePath);
+            [DllImport("kernel32.dll")]
+            public static extern IntPtr LocalFree(IntPtr memory);
+          }
+          '@
+            $sid = (Get-LocalUser -Name $user).SID.Value
+            $sidPointer = [IntPtr]::Zero
+            if (-not [CpcUserProfileNative]::ConvertStringSidToSid($sid,[ref]$sidPointer)) {
+              throw [System.ComponentModel.Win32Exception]::new([Runtime.InteropServices.Marshal]::GetLastWin32Error())
+            }
+            try {
+              $profileBuffer = [System.Text.StringBuilder]::new(512)
+              $profileResult = [CpcUserProfileNative]::CreateProfile($sidPointer,$user,$profileBuffer,[uint32]$profileBuffer.Capacity)
+              if ($profileResult -ne 0) { throw ('CreateProfile failed with HRESULT 0x{0}' -f $profileResult.ToString('X8')) }
+              $profilePath = $profileBuffer.ToString()
+            }
+            finally {
+              if ($sidPointer -ne [IntPtr]::Zero) { [void][CpcUserProfileNative]::LocalFree($sidPointer) }
+            }
+            if ([string]::IsNullOrWhiteSpace($profilePath)) { throw 'CreateProfile returned an empty profile path' }
+            $localAppData = Join-Path $profilePath 'AppData/Local'
+            $roamingAppData = Join-Path $profilePath 'AppData/Roaming'
+            New-Item -ItemType Directory -Path $profilePath,$localAppData,$roamingAppData -Force | Out-Null
             New-Item -ItemType Directory -Path $stage -Force | Out-Null
             New-Item -ItemType Directory -Path $workspaceApp,$ownedApp,$fixture,$source,$task,$outside,$temp,(Join-Path $source 'src') -Force | Out-Null
             Copy-Item -Path (Join-Path $env:GITHUB_WORKSPACE 'tests/WorkspaceTransfer/bin/Release/net8.0-windows/*') -Destination $workspaceApp -Recurse -Force
@@ -111,6 +142,10 @@ jobs:
               $psi.CreateNoWindow = $true
               $psi.RedirectStandardOutput = $true
               $psi.RedirectStandardError = $true
+              $psi.Environment['USERPROFILE'] = $profilePath
+              $psi.Environment['LOCALAPPDATA'] = $localAppData
+              $psi.Environment['APPDATA'] = $roamingAppData
+              $psi.Environment['ProgramFiles'] = $env:ProgramFiles
               $psi.Environment['TEMP'] = $temp
               $psi.Environment['TMP'] = $temp
               $psi.Environment['DOTNET_CLI_HOME'] = $temp
@@ -135,5 +170,6 @@ jobs:
             if (Test-Path -LiteralPath $sourceRedirect) { & $env:ComSpec /d /c ('rmdir "{0}"' -f $sourceRedirect) | Out-Null }
             if (Test-Path -LiteralPath $redirectOutput) { & $env:ComSpec /d /c ('rmdir "{0}"' -f $redirectOutput) | Out-Null }
             Remove-LocalUser -Name $user -ErrorAction SilentlyContinue
+            if ($profilePath -and (Test-Path $profilePath)) { Remove-Item $profilePath -Recurse -Force -ErrorAction SilentlyContinue }
             if (Test-Path $stage) { Remove-Item $stage -Recurse -Force -ErrorAction SilentlyContinue }
           }
