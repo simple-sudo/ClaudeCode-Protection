@@ -25,12 +25,22 @@ internal static class GitWorkflowExecutionCases
         try
         {
             Directory.CreateDirectory(root);
-            var sourceBin=FindGitBin();
+            // GitHub-hosted Windows images expose Git from Git\\bin, while the
+            // product's reviewed runtime layout is Git\\mingw64\\bin. Stage only
+            // the six runtime files needed by this ordinary-user semantics test.
+            // This does not qualify or replace the product's pinned asset hashes.
+            var sourceGitRoot=FindGitRoot();
             var gitDirectory=Path.Combine(root,"Git","mingw64","bin");
             Directory.CreateDirectory(gitDirectory);
-            foreach(var file in Directory.EnumerateFiles(sourceBin))
-                File.Copy(file,Path.Combine(gitDirectory,Path.GetFileName(file)),true);
-            Require(File.Exists(Path.Combine(gitDirectory,"git.exe")),"copied Git executable");
+            var sourceDirectories=new[]{Path.Combine(sourceGitRoot,"mingw64","bin"),Path.Combine(sourceGitRoot,"bin")};
+            var requiredAssets=new[]{"git.exe","libiconv-2.dll","libintl-8.dll","libpcre2-8-0.dll","libwinpthread-1.dll","zlib1.dll"};
+            foreach(var asset in requiredAssets)
+            {
+                var source=sourceDirectories.Select(directory=>Path.Combine(directory,asset)).FirstOrDefault(File.Exists);
+                if(source is null)throw new FileNotFoundException("Git runner asset was not found: "+asset+"; checked "+string.Join("; ",sourceDirectories));
+                File.Copy(source,Path.Combine(gitDirectory,asset),true);
+            }
+            Require(requiredAssets.All(asset=>File.Exists(Path.Combine(gitDirectory,asset))),"all six staged Git runtime assets");
 
             var bundleType=library.GetType("ClaudeCodeProtection.Workspaces.WorkspaceBundle",true)!;
             var gitType=library.GetType("ProtectionLifecycle.SessionGitToolchain",true)!;
@@ -181,7 +191,7 @@ internal static class GitWorkflowExecutionCases
             finally{File.WriteAllText(branchRef,originalRef,new UTF8Encoding(false));}
             Require(refTamperRefused,"owner verifier refuses a branch ref that no longer names the verified commit");
 
-            Console.WriteLine("PASS ordinary-user real Git execution: hash-object/init/add/diff-check/numstat/commit/log/status/fsck and both denial controls; independent owner commit/tree/blob/ref verification and exact GitReceipt binding; CRLF, binary, empty and ignored selected files preserved. ORDINARY-USER COMMAND/VERIFIER EVIDENCE ONLY: no product Broker, Owned Job, LPAC, UAC, host policy or Claude execution.");
+            Console.WriteLine("PASS ordinary-user real Git execution using the hosted runner Git distribution: hash-object/init/add/diff-check/numstat/commit/log/status/fsck and both denial controls; independent owner commit/tree/blob/ref verification and exact GitReceipt binding; CRLF, binary, empty and ignored selected files preserved. ORDINARY-USER COMMAND/VERIFIER EVIDENCE ONLY: runner Git semantics, not product pinned-asset qualification; no product Broker, Owned Job, LPAC, UAC, host policy or Claude execution.");
         }
         finally
         {
@@ -192,16 +202,29 @@ internal static class GitWorkflowExecutionCases
         }
     }
 
-    private static string FindGitBin()
+    private static string FindGitRoot()
     {
         var roots=new[]{Environment.GetEnvironmentVariable("ProgramFiles"),Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
             Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86)}.Where(p=>!string.IsNullOrWhiteSpace(p)).Distinct(StringComparer.OrdinalIgnoreCase);
         foreach(var root in roots)
         {
-            var candidate=Path.Combine(root!,"Git","mingw64","bin");
-            if(File.Exists(Path.Combine(candidate,"git.exe")))return candidate;
+            var candidate=Path.Combine(root!,"Git");
+            if(File.Exists(Path.Combine(candidate,"mingw64","bin","git.exe")) ||
+                File.Exists(Path.Combine(candidate,"bin","git.exe")))return candidate;
         }
-        throw new FileNotFoundException("Git for Windows mingw64/bin was not found in the standard Program Files locations");
+        var path=Environment.GetEnvironmentVariable("PATH")??"";
+        foreach(var entry in path.Split(Path.PathSeparator,StringSplitOptions.RemoveEmptyEntries))
+        {
+            var directory=entry.Trim().Trim('"');
+            if(!File.Exists(Path.Combine(directory,"git.exe")))continue;
+            DirectoryInfo? current;
+            try{current=new DirectoryInfo(Path.GetFullPath(directory));}catch{continue;}
+            for(var depth=0;current is not null && depth<6;depth++,current=current.Parent)
+                if(string.Equals(current.Name,"Git",StringComparison.OrdinalIgnoreCase) &&
+                    (Directory.Exists(Path.Combine(current.FullName,"bin")) || Directory.Exists(Path.Combine(current.FullName,"mingw64","bin"))))
+                    return current.FullName;
+        }
+        throw new FileNotFoundException("Git for Windows root was not found under Program Files\\Git or any PATH entry containing git.exe");
     }
 
     private static ProcessStartInfo StartWorkflow(Type gitType,string workspace,object plan,object workflow,string[] command)
