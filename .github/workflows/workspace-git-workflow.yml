@@ -68,7 +68,7 @@ jobs:
           $bytes = [byte[]]::new(32)
           [System.Security.Cryptography.RandomNumberGenerator]::Fill($bytes)
           $password = ConvertTo-SecureString ('Aa1!' + [Convert]::ToBase64String($bytes)) -AsPlainText -Force
-          $stage = Join-Path $env:RUNNER_TEMP ("cpc-git-policy-" + $user)
+          $stage = Join-Path $env:ProgramData ("cpc-git-policy-" + $user)
           $app = Join-Path $stage 'app'
           $temp = Join-Path $stage 'temp'
           try {
