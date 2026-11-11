@@ -93,12 +93,13 @@ internal sealed class SessionResources : IDisposable
     private readonly SessionGitToolchain? git;
     private readonly FileStream? projectInput;
     private readonly FileStream? gitPathspec;
+    private readonly WorkspaceBundle? workspaceBundle;
     private readonly HostPrivacyProbe? privacy;
     private WorkspaceGitReceipt? gitReceipt;
     internal ResourceProbePlan Plan {get;}
     internal string Workspace=>folder.Path;
-    private SessionResources(ProtectedState state,PathLease folder,FileStream input,SessionPowerShellToolchain? tool,ResourceProbePlan plan,SessionGitToolchain? git,FileStream? projectInput,FileStream? gitPathspec,FileStream allPackagesFixture,HostPrivacyProbe? privacy)
-    {this.state=state;this.folder=folder;this.input=input;this.tool=tool;Plan=plan;this.git=git;this.projectInput=projectInput;this.gitPathspec=gitPathspec;this.allPackagesFixture=allPackagesFixture;this.privacy=privacy;}
+    private SessionResources(ProtectedState state,PathLease folder,FileStream input,SessionPowerShellToolchain? tool,ResourceProbePlan plan,SessionGitToolchain? git,FileStream? projectInput,FileStream? gitPathspec,FileStream allPackagesFixture,HostPrivacyProbe? privacy,WorkspaceBundle? workspaceBundle)
+    {this.state=state;this.folder=folder;this.input=input;this.tool=tool;Plan=plan;this.git=git;this.projectInput=projectInput;this.gitPathspec=gitPathspec;this.allPackagesFixture=allPackagesFixture;this.privacy=privacy;this.workspaceBundle=workspaceBundle;}
     internal static SessionResources Create(ProtectedState state,VerifiedVersion version,InstallationProfileLease profile,string nonce,bool includeGit=false,byte[]? workspaceInput=null,bool developProject=false,bool callerProject=false)
     {
         state.AssertHeld();version.AssertHeld(state);
@@ -171,7 +172,7 @@ internal sealed class SessionResources : IDisposable
             // An existing, readable positive host control prevents absence from
             // being mistaken for a restricted child's access-denied result.
             _=state.Read("resource-fixture-"+nonce+".json",4096);
-            return new(state,directory,input,tool,plan,git,projectInput,gitPathspec,allPackagesFixture,privacy);
+            return new(state,directory,input,tool,plan,git,projectInput,gitPathspec,allPackagesFixture,privacy,project);
         }
         catch(Exception error)
         {
@@ -192,7 +193,6 @@ internal sealed class SessionResources : IDisposable
             tool.AssertHeld();if(Plan.RequiresPowerShell)PowerShellPolicySnapshot.AssertActuallyAbsent();
         }
         git?.AssertHeld();
-        var workspaceBundle=Plan.WorkspaceInputSHA256 is null?null:WorkspaceBundle.Parse(Plan.ProjectBundle);
         if((workspaceBundle?.GitPlan is not null)!=(gitPathspec is not null))throw WfpNative.Contract("GitPathspecLeasePresenceMismatch");
         if(gitPathspec is not null)
         {
