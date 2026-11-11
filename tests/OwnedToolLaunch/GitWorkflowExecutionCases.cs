@@ -58,12 +58,6 @@ internal static class GitWorkflowExecutionCases
             var taskBytes=(byte[])InvokeStatic(bundleType,"CreateGitWorkflow",dataBytes,"Offline workspace import #42")!;
             var task=InvokeStatic(bundleType,"Parse",taskBytes)!;
             var workflow=Get(task,"GitPlan")??throw new InvalidDataException("GitPlan missing");
-            ProcessStartInfo StartRunnerWorkflow(string[] command)
-            {
-                var start=StartWorkflow(gitType,workspace,plan,workflow,command);
-                start.Environment["PATH"]=string.Join(Path.PathSeparator,new[]{gitDirectory}.Concat(sourceDirectories).Append(Environment.SystemDirectory));
-                return start;
-            }
             var assetSet=(string)GetStatic(gitType,"AssetSetSHA256")!;
             var plan=Activator.CreateInstance(planType,InstanceFlags,null,new object?[]
             {
@@ -73,6 +67,12 @@ internal static class GitWorkflowExecutionCases
             InvokeInstance(plan,"Validate");
             var workspace=(string)InvokeInstance(plan,"Workspace","")!;
             Directory.CreateDirectory(workspace);
+            ProcessStartInfo StartRunnerWorkflow(string[] command)
+            {
+                var start=StartWorkflow(gitType,workspace,plan,workflow,command);
+                start.Environment["PATH"]=string.Join(Path.PathSeparator,new[]{gitDirectory}.Concat(sourceDirectories).Append(Environment.SystemDirectory));
+                return start;
+            }
             File.WriteAllBytes(Path.Combine(workspace,"project-input.json"),taskBytes);
             var projectBytes=(byte[])Get(plan,"ProjectBundle")!;
             Require(projectBytes.AsSpan().SequenceEqual(taskBytes),"exact input bundle remains byte-bound");
