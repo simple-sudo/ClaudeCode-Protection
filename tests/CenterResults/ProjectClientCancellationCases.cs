@@ -34,13 +34,16 @@ internal static class ProjectClientCancellationCases
 
     internal static async Task<int> RunCooperative()
     {
-        var host=@"C:\Program Files\dotnet\dotnet.exe";
+        var host=Environment.ProcessPath??throw new InvalidDataException("Current .NET host path missing");
         var start=new ProcessStartInfo(host){UseShellExecute=false,CreateNoWindow=true,WorkingDirectory=AppContext.BaseDirectory,
             RedirectStandardInput=true,StandardInputEncoding=new System.Text.UTF8Encoding(false),RedirectStandardOutput=true,RedirectStandardError=true};
         start.Environment.Clear();
         foreach(var name in new[]{"SystemRoot","windir","SystemDrive","TEMP","TMP"})
             if(Environment.GetEnvironmentVariable(name) is string value)start.Environment[name]=value;
-        foreach(var argument in new[]{"exec","--fx-version","8.0.28",Assembly.GetExecutingAssembly().Location,"--own-project-client","cooperative-stop"})
+        var dotnetRoot=Path.GetDirectoryName(host)??throw new InvalidDataException("Current .NET root missing");
+        start.Environment["DOTNET_ROOT"]=dotnetRoot;start.Environment["DOTNET_ROOT_X64"]=dotnetRoot;
+        start.Environment["DOTNET_ROLL_FORWARD"]="LatestPatch";
+        foreach(var argument in new[]{"exec",Assembly.GetExecutingAssembly().Location,"--own-project-client","cooperative-stop"})
             start.ArgumentList.Add(argument);
         using var child=Process.Start(start)??throw new IOException("Ordinary stop fixture did not start");
         try
@@ -86,7 +89,7 @@ internal static class ProjectClientCancellationCases
     {
         var checks=0;
         void Require(bool condition,string reason){if(!condition)throw new InvalidDataException(reason);checks++;}
-        var originalHost=@"C:\Program Files\dotnet\dotnet.exe";
+        var originalHost=Environment.ProcessPath??throw new InvalidDataException("Current .NET host path missing");
         Require(BackendClient.SameProjectClientImage(originalHost,originalHost.Replace('\\','/')),"mixed fixed image separators normalize");
         Require(BackendClient.SameProjectClientImage(originalHost.ToUpperInvariant(),originalHost),"Windows image case is canonical");
         Require(!BackendClient.SameProjectClientImage(originalHost+".other",originalHost) && !BackendClient.SameProjectClientImage("dotnet.exe",originalHost) && !BackendClient.SameProjectClientImage(null,originalHost),"relative/foreign/missing image cannot authorize stop");
@@ -100,7 +103,10 @@ internal static class ProjectClientCancellationCases
         {
             var info=new ProcessStartInfo(originalHost){UseShellExecute=false,CreateNoWindow=true,WorkingDirectory=AppContext.BaseDirectory,RedirectStandardInput=true,RedirectStandardOutput=true,RedirectStandardError=true};
             info.Environment.Clear();foreach(var name in new[]{"SystemRoot","windir","SystemDrive","TEMP","TMP"})if(Environment.GetEnvironmentVariable(name) is string value)info.Environment[name]=value;
-            foreach(var arg in new[]{"exec","--fx-version","8.0.28",Assembly.GetExecutingAssembly().Location,"--own-project-client",mode})info.ArgumentList.Add(arg);
+            var dotnetRoot=Path.GetDirectoryName(originalHost)??throw new InvalidDataException("Current .NET root missing");
+            info.Environment["DOTNET_ROOT"]=dotnetRoot;info.Environment["DOTNET_ROOT_X64"]=dotnetRoot;
+            info.Environment["DOTNET_ROLL_FORWARD"]="LatestPatch";
+            foreach(var arg in new[]{"exec",Assembly.GetExecutingAssembly().Location,"--own-project-client",mode})info.ArgumentList.Add(arg);
             return Process.Start(info)??throw new IOException("Own ordinary child not created");
         }
         using(var complete=Start("complete"))
