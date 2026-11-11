@@ -173,7 +173,7 @@ internal static class GitWorkflowExecutionCases
                 allPackagesDenial.Error.TrimEnd().EndsWith(": Permission denied",StringComparison.Ordinal),
                 "real Git cannot read the all-packages-only fixture");
 
-            var planHash=(string)InvokeStatic(gitType,"GitPlanHash",workflow)!;
+            var planHash=(string)InvokeStatic(bundleType,"GitPlanHash",workflow)!;
             var observationType=library.GetType("ProtectionLifecycle.GitWorkflowObservation",true)!;
             var observation=Activator.CreateInstance(observationType,InstanceFlags,null,new object?[]
             {
