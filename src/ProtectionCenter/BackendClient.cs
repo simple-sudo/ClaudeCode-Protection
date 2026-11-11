@@ -1,6 +1,10 @@
+using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
+using System.Runtime.InteropServices;
+using System.Text;
 using System.Text.Json;
+using Microsoft.Win32.SafeHandles;
 using ClaudeCodeProtection.Workspaces;
 
 namespace ProtectionCenter;
@@ -72,9 +76,87 @@ internal static class BackendClient
     }
     // Only receives the process returned by the immediately preceding ordinary
     // Start. No PID lookup/tree stop or elevated-owner management is provided.
+    // WaitHandle adapter that borrows the exact Process.Start handle without
+    // transferring ownership. DangerousAddRef keeps it valid through the
+    // registered wait; disposing this adapter never closes the process handle.
+    private sealed class BorrowedProcessWaitHandle : WaitHandle
+    {
+        private readonly SafeProcessHandle owner;
+        private bool ownerReference;
+        internal BorrowedProcessWaitHandle(SafeProcessHandle owner)
+        {
+            this.owner=owner;
+            owner.DangerousAddRef(ref ownerReference);
+            try{SafeWaitHandle=new SafeWaitHandle(owner.DangerousGetHandle(),ownsHandle:false);}
+            catch{if(ownerReference){ownerReference=false;owner.DangerousRelease();}throw;}
+        }
+        protected override void Dispose(bool disposing)
+        {
+            base.Dispose(disposing);
+            if(ownerReference){ownerReference=false;owner.DangerousRelease();}
+        }
+    }
+    private static async Task WaitForProcessExitAsync(SafeProcessHandle process,CancellationToken cancellation)
+    {
+        using var waitHandle=new BorrowedProcessWaitHandle(process);
+        var completion=new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        RegisteredWaitHandle? registration=null;
+        try
+        {
+            registration=ThreadPool.RegisterWaitForSingleObject(waitHandle,
+                static (state,timedOut)=>{if(!timedOut)((TaskCompletionSource)state!).TrySetResult();},
+                completion,Timeout.Infinite,executeOnlyOnce:true);
+            using var cancellationRegistration=cancellation.Register(()=>completion.TrySetCanceled(cancellation));
+            await completion.Task.ConfigureAwait(false);
+        }
+        finally{registration?.Unregister(null);}
+    }
+    private static bool WaitForProcessSignal(SafeProcessHandle process,uint milliseconds)
+    {
+        if(process.IsClosed || process.IsInvalid)throw new ObjectDisposedException(nameof(process));
+        var result=WaitForSingleObject(process,milliseconds);
+        if(result==0)return true;
+        if(result==258)return false;
+        throw new Win32Exception(Marshal.GetLastWin32Error(),"Wait for the original project-client handle");
+    }
+    private static long ProcessCreationFileTime(SafeProcessHandle process)
+    {
+        if(!GetProcessTimes(process,out var created,out _,out _,out _))
+            throw new Win32Exception(Marshal.GetLastWin32Error(),"Read original project-client creation time");
+        return created;
+    }
+    private static string ProcessImagePath(SafeProcessHandle process)
+    {
+        var path=new StringBuilder(32768);uint length=(uint)path.Capacity;
+        if(!QueryFullProcessImageName(process,0,path,ref length))
+            throw new Win32Exception(Marshal.GetLastWin32Error(),"Read original project-client image path");
+        return path.ToString();
+    }
+    private static int ReadSignaledExitCode(SafeProcessHandle process)
+    {
+        if(!WaitForProcessSignal(process,0))throw new InvalidOperationException("ProjectClientHandleNotSignaled");
+        if(!GetExitCodeProcess(process,out var code))
+            throw new Win32Exception(Marshal.GetLastWin32Error(),"Read signaled project-client exit code");
+        return unchecked((int)code);
+    }
+    private static void TerminateOwnedProjectClient(SafeProcessHandle process)
+    {
+        if(!TerminateProcess(process,0xC000013A))
+        {
+            var error=Marshal.GetLastWin32Error();
+            if(WaitForProcessSignal(process,250))return;
+            throw new Win32Exception(error,"Terminate the original owned project client");
+        }
+        if(!WaitForProcessSignal(process,3000))
+            throw new TimeoutException("Original owned project client did not signal after termination");
+    }
     internal static async Task<BackendResult> WaitProjectClient(Process process,string executable,CancellationToken cancellation,bool cooperativeStop=false)
     {
-        var created=process.StartTime.ToFileTimeUtc();_=process.SafeHandle;
+        // Avoid Process.StartTime/ExitCode/HasExited/WaitForExitAsync/Kill.
+        // .NET 8 ProcessManager initialization can adjust SeDebugPrivilege, and
+        // exit code 259 is not a reliable liveness indicator.
+        var processHandle=process.SafeHandle;
+        var created=ProcessCreationFileTime(processHandle);
         using var signalLifetime=CancellationTokenSource.CreateLinkedTokenSource(cancellation);
         async Task SendStop()
         {
@@ -94,14 +176,12 @@ internal static class BackendClient
         {
             async Task<string> ReadBounded(StreamReader reader,int maximum)
             {
-                var text=new System.Text.StringBuilder();var buffer=new char[4096];
+                var text=new StringBuilder();var buffer=new char[4096];
                 while(true){var count=await reader.ReadAsync(buffer);if(count==0)return text.ToString();if(text.Length+count>maximum)throw new IOException("项目调用输出超出上限");text.Append(buffer,0,count);}
             }
             var output=ReadBounded(process.StandardOutput,65536);var error=ReadBounded(process.StandardError,16384);
             using var deadline=CancellationTokenSource.CreateLinkedTokenSource(cooperativeStop?CancellationToken.None:cancellation);deadline.CancelAfter(TimeSpan.FromSeconds(180));
-            var exited=process.WaitForExitAsync(deadline.Token);
-            // Stop on a failed drain while the client is still running. Once a
-            // pipe exceeds its bound, further writes can block that client.
+            var exited=WaitForProcessExitAsync(processHandle,deadline.Token);
             var first=await Task.WhenAny(exited,output,error);
             await first;
             if(first!=exited)
@@ -111,73 +191,59 @@ internal static class BackendClient
                 await second;
             }
             await exited;
-            // A completed wait on the process handle is authoritative even
-            // when GetExitCodeProcess reports STILL_ACTIVE (259) as the final
-            // application exit code. Never infer liveness from HasExited.
             exitObserved=true;
             if(!cooperativeStop)cancellation.ThrowIfCancellationRequested();
             var stdout=await output.WaitAsync(TimeSpan.FromSeconds(1));var stderr=await error.WaitAsync(TimeSpan.FromSeconds(1));
-            return new(process.ExitCode,stdout,stderr);
+            return new(ReadSignaledExitCode(processHandle),stdout,stderr);
         }
         finally
         {
             signalLifetime.Cancel();
             await stopRequest;
-            if(!exitObserved)
-            {
-                // Cancellation, timeout, or a failed output drain can race a
-                // natural exit. Observe the process handle before considering
-                // cleanup; this also handles a legitimate final exit code 259.
-                using var observation=new CancellationTokenSource(TimeSpan.FromMilliseconds(250));
-                try{await process.WaitForExitAsync(observation.Token);exitObserved=true;}
-                catch(OperationCanceledException)when(observation.IsCancellationRequested){}
-            }
+            if(!exitObserved)exitObserved=WaitForProcessSignal(processHandle,250);
             if(!exitObserved)
             {
                 bool identityMatches;
                 try
                 {
-                    identityMatches=process.StartTime.ToFileTimeUtc()==created &&
-                        SameProjectClientImage(process.MainModule?.FileName,executable);
+                    identityMatches=ProcessCreationFileTime(processHandle)==created &&
+                        SameProjectClientImage(ProcessImagePath(processHandle),executable);
                 }
-                catch(Exception identityError)when(identityError is InvalidOperationException or System.ComponentModel.Win32Exception)
+                catch(Exception identityError)when(identityError is InvalidOperationException or Win32Exception)
                 {
-                    // The process may have exited between the bounded wait and
-                    // identity read. Confirm through its signaled handle first.
-                    using var raceObservation=new CancellationTokenSource(TimeSpan.FromMilliseconds(250));
-                    try{await process.WaitForExitAsync(raceObservation.Token);exitObserved=true;}
-                    catch(OperationCanceledException)when(raceObservation.IsCancellationRequested)
-                    {throw new IOException("普通调用身份无法核对，未结束任何进程。",identityError);}
+                    if(WaitForProcessSignal(processHandle,250))exitObserved=true;
+                    else throw new IOException("普通调用身份无法核对，未结束任何进程。",identityError);
                     identityMatches=false;
                 }
                 if(!exitObserved && !identityMatches)
                     throw new IOException("普通调用身份无法核对，未结束任何进程。");
                 if(!exitObserved)
                 {
-                    // Only this held ordinary client, never the elevated owner
-                    // or a process tree. A concurrent natural exit is resolved
-                    // by waiting on the same process handle after a Kill race.
-                    try{process.Kill();}
-                    catch(Exception killError)when(killError is InvalidOperationException or System.ComponentModel.Win32Exception)
-                    {
-                        using var raceObservation=new CancellationTokenSource(TimeSpan.FromMilliseconds(250));
-                        try{await process.WaitForExitAsync(raceObservation.Token);exitObserved=true;}
-                        catch(OperationCanceledException)when(raceObservation.IsCancellationRequested)
-                        {
-                            System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(killError).Throw();
-                            throw;
-                        }
-                    }
-                    if(!exitObserved)
-                    {
-                        using var drain=new CancellationTokenSource(TimeSpan.FromSeconds(3));
-                        await process.WaitForExitAsync(drain.Token);
-                        exitObserved=true;
-                    }
+                    TerminateOwnedProjectClient(processHandle);
+                    exitObserved=true;
                 }
             }
         }
     }
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
+    [DllImport("kernel32.dll",SetLastError=true)]
+    private static extern uint WaitForSingleObject(SafeProcessHandle process,uint milliseconds);
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
+    [DllImport("kernel32.dll",SetLastError=true)]
+    [return:MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetProcessTimes(SafeProcessHandle process,out long created,out long exited,out long kernel,out long user);
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
+    [DllImport("kernel32.dll",EntryPoint="QueryFullProcessImageNameW",CharSet=CharSet.Unicode,SetLastError=true)]
+    [return:MarshalAs(UnmanagedType.Bool)]
+    private static extern bool QueryFullProcessImageName(SafeProcessHandle process,uint flags,StringBuilder path,ref uint length);
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
+    [DllImport("kernel32.dll",SetLastError=true)]
+    [return:MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetExitCodeProcess(SafeProcessHandle process,out uint exitCode);
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
+    [DllImport("kernel32.dll",SetLastError=true)]
+    [return:MarshalAs(UnmanagedType.Bool)]
+    private static extern bool TerminateProcess(SafeProcessHandle process,uint exitCode);
     internal static bool SameProjectClientImage(string? actual,string expected)
         =>actual is not null && Path.IsPathFullyQualified(actual) && Path.IsPathFullyQualified(expected) &&
             string.Equals(Path.GetFullPath(actual),Path.GetFullPath(expected),StringComparison.OrdinalIgnoreCase);
