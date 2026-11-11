@@ -5,6 +5,12 @@
 历史页的“当前/待执行/暂停/DELIVERABLE”按段落日期及限定范围解释，不是今天的状态或操作许可。
 不在本页复制当前安装和授权摘要。
 
+## 2026-11-11 显式 Git 工作流 schema 2：托管编译与策略测试
+
+开发分支 `chatgpt/complete-git-workflow-20261110`，交接提交 `17d8f9d0d28e419fb1d402ab0f7848f94779a3a6`，Draft PR #3 保持 OPEN / DRAFT。
+GitHub Actions：Run #16（43009603203）全部产品编译、专项托管测试编译、普通用户工作区/Git策略测试通过；Run #17（43009602970）全部产品编译通过且不运行受保护代码；Run #20（43009603161）纯托管策略 smoke 与 daily CLI 编译通过。三次均 SUCCESS。
+Run #16 的 `workspace-git-workflow-policy` 明确只验证固定命令/环境/顺序/pathspec拒绝，测试结尾声明没有 Git 进程、Broker、Job 或 LPAC 执行。故这组证据不属于真实 Git 执行或产品 LPAC 验收。schema 2 源码已接入既有 `workspace-process`→Broker→ProtectedSession→Owned Job→LPAC 链，但新版本实际 Git 命令、对象核验、异常退出、取消及清理仍 NOT_RUN；不得扩大此前 `f9e8d29d` 的单进程 `commit -a` 实测范围。
+
 ## 2026-11-10 独立 Git 固定提交
 
 schema 32 接入一个真实 Git 进程的已跟踪文件暂存及提交，普通实机逐字节校验提交对象。
