@@ -29,7 +29,7 @@ internal static class ProjectClientCancellationCases
         }
         finally
         {
-            if(!child.HasExited){child.StandardInput.Close();if(!child.WaitForExit(5000))throw new IOException("Ordinary stop fixture not terminal");}
+            if(!child.WaitForExit(0)){child.StandardInput.Close();if(!child.WaitForExit(5000))throw new IOException("Ordinary stop fixture not terminal");}
         }
         var pipeName="CpcProjectStopTest-"+Guid.NewGuid().ToString("N");
         using var server=new NamedPipeServerStream(pipeName,PipeDirection.InOut,1,PipeTransmissionMode.Byte,PipeOptions.Asynchronous|PipeOptions.CurrentUserOnly);
@@ -81,7 +81,7 @@ internal static class ProjectClientCancellationCases
         using(var complete=Start("complete"))
         {
             var result=await BackendClient.WaitProjectClient(complete,originalHost,CancellationToken.None);
-            Require(result.ExitCode==259 && result.Output.Trim()=="OWN_CLIENT_COMPLETE" && result.Error.Length==0,"natural exit259 and output preserved without cancellation");
+            Require(complete.WaitForExit(0) && result.ExitCode==259 && result.Output.Trim()=="OWN_CLIENT_COMPLETE" && result.Error.Length==0,"signaled process handle preserves natural exit259 and output without cancellation");
         }
         using(var excessive=Start("overflow"))
         {
@@ -91,9 +91,9 @@ internal static class ProjectClientCancellationCases
                 var rejected=false;
                 try{await BackendClient.WaitProjectClient(excessive,originalHost,limit.Token);}
                 catch(IOException error)when(error.Message=="项目调用输出超出上限"){rejected=true;}
-                Require(rejected && excessive.HasExited,"overflow stops the held own client before its exit deadline");
+                Require(rejected && excessive.WaitForExit(0),"overflow stops the held own client before its exit deadline");
             }
-            finally{if(!excessive.HasExited){excessive.StandardInput.Close();if(!excessive.WaitForExit(5000))throw new IOException("Own child not terminal; retained for exact observation");}}
+            finally{if(!excessive.WaitForExit(0)){excessive.StandardInput.Close();if(!excessive.WaitForExit(5000))throw new IOException("Own child not terminal; retained for exact observation");}}
         }
         using(var owned=Start("wait"))
         {
@@ -102,9 +102,9 @@ internal static class ProjectClientCancellationCases
                 Require(await owned.StandardOutput.ReadLineAsync().WaitAsync(TimeSpan.FromSeconds(5))=="OWN_CLIENT_READY","only this newly started ordinary child is ready");
                 using var cancel=new CancellationTokenSource(TimeSpan.FromMilliseconds(100));var cancelled=false;
                 try{await BackendClient.WaitProjectClient(owned,originalHost.Replace('\\','/'),cancel.Token);}catch(OperationCanceledException)when(cancel.IsCancellationRequested){cancelled=true;}
-                Require(cancelled && owned.HasExited,"requested cancellation ends the held own ordinary client with canonical image binding");
+                Require(cancelled && owned.WaitForExit(0),"requested cancellation ends the held own ordinary client with canonical image binding");
             }
-            finally{if(!owned.HasExited){owned.StandardInput.Close();if(!owned.WaitForExit(5000))throw new IOException("Own child not terminal; retained for exact observation");}}
+            finally{if(!owned.WaitForExit(0)){owned.StandardInput.Close();if(!owned.WaitForExit(5000))throw new IOException("Own child not terminal; retained for exact observation");}}
         }
         using(var refused=Start("wait"))
         {
@@ -113,11 +113,11 @@ internal static class ProjectClientCancellationCases
                 Require(await refused.StandardOutput.ReadLineAsync().WaitAsync(TimeSpan.FromSeconds(5))=="OWN_CLIENT_READY","foreign-image refusal fixture ready");
                 using var cancel=new CancellationTokenSource();cancel.Cancel();var denied=false;
                 try{await BackendClient.WaitProjectClient(refused,originalHost+".other",cancel.Token);}catch(IOException error)when(error.Message=="普通调用身份无法核对，未结束任何进程。"){denied=true;}
-                Require(denied && !refused.HasExited,"wrong image refuses stop and does not terminate even this own child");
+                Require(denied && !refused.WaitForExit(0),"wrong image refuses stop and does not terminate even this own child");
                 refused.StandardInput.WriteLine("finish");refused.StandardInput.Close();
                 Require(refused.WaitForExit(5000) && refused.ExitCode==0,"refused child exits only through own fixed stdin completion");
             }
-            finally{if(!refused.HasExited){refused.StandardInput.Close();if(!refused.WaitForExit(5000))throw new IOException("Own child not terminal; retained for exact observation");}}
+            finally{if(!refused.WaitForExit(0)){refused.StandardInput.Close();if(!refused.WaitForExit(5000))throw new IOException("Own child not terminal; retained for exact observation");}}
         }
         var cancellationReport=BackendClient.CancelledProjectResult();using var json=JsonDocument.Parse(cancellationReport.Output);
         Require(cancellationReport.ExitCode==130 && !json.RootElement.GetProperty("OwnerClosureConfirmed").GetBoolean() && !json.RootElement.GetProperty("ResultAutomaticallyExtracted").GetBoolean() && !json.RootElement.GetProperty("AutomaticRetry").GetBoolean(),"cancellation metadata never grants closure, extraction, retry or success");

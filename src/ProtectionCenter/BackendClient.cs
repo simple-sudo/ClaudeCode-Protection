@@ -89,6 +89,7 @@ internal static class BackendClient
             catch(Exception error)when(error is IOException or InvalidOperationException){}
         }
         var stopRequest=cooperativeStop?SendStop():Task.CompletedTask;
+        var exitObserved=false;
         try
         {
             async Task<string> ReadBounded(StreamReader reader,int maximum)
@@ -110,6 +111,10 @@ internal static class BackendClient
                 await second;
             }
             await exited;
+            // A completed wait on the process handle is authoritative even
+            // when GetExitCodeProcess reports STILL_ACTIVE (259) as the final
+            // application exit code. Never infer liveness from HasExited.
+            exitObserved=true;
             if(!cooperativeStop)cancellation.ThrowIfCancellationRequested();
             var stdout=await output.WaitAsync(TimeSpan.FromSeconds(1));var stderr=await error.WaitAsync(TimeSpan.FromSeconds(1));
             return new(process.ExitCode,stdout,stderr);
@@ -118,13 +123,58 @@ internal static class BackendClient
         {
             signalLifetime.Cancel();
             await stopRequest;
-            if(!process.HasExited)
+            if(!exitObserved)
             {
-                if(process.StartTime.ToFileTimeUtc()!=created || !SameProjectClientImage(process.MainModule?.FileName,executable))
+                // Cancellation, timeout, or a failed output drain can race a
+                // natural exit. Observe the process handle before considering
+                // cleanup; this also handles a legitimate final exit code 259.
+                using var observation=new CancellationTokenSource(TimeSpan.FromMilliseconds(250));
+                try{await process.WaitForExitAsync(observation.Token);exitObserved=true;}
+                catch(OperationCanceledException)when(observation.IsCancellationRequested){}
+            }
+            if(!exitObserved)
+            {
+                bool identityMatches;
+                try
+                {
+                    identityMatches=process.StartTime.ToFileTimeUtc()==created &&
+                        SameProjectClientImage(process.MainModule?.FileName,executable);
+                }
+                catch(Exception identityError)when(identityError is InvalidOperationException or System.ComponentModel.Win32Exception)
+                {
+                    // The process may have exited between the bounded wait and
+                    // identity read. Confirm through its signaled handle first.
+                    using var raceObservation=new CancellationTokenSource(TimeSpan.FromMilliseconds(250));
+                    try{await process.WaitForExitAsync(raceObservation.Token);exitObserved=true;}
+                    catch(OperationCanceledException)when(raceObservation.IsCancellationRequested)
+                    {throw new IOException("普通调用身份无法核对，未结束任何进程。",identityError);}
+                    identityMatches=false;
+                }
+                if(!exitObserved && !identityMatches)
                     throw new IOException("普通调用身份无法核对，未结束任何进程。");
-                // Only this held ordinary client, never the elevated owner or
-                // a process tree. Its disappearance does not prove Job closure.
-                process.Kill();using var drain=new CancellationTokenSource(TimeSpan.FromSeconds(3));await process.WaitForExitAsync(drain.Token);
+                if(!exitObserved)
+                {
+                    // Only this held ordinary client, never the elevated owner
+                    // or a process tree. A concurrent natural exit is resolved
+                    // by waiting on the same process handle after a Kill race.
+                    try{process.Kill();}
+                    catch(Exception killError)when(killError is InvalidOperationException or System.ComponentModel.Win32Exception)
+                    {
+                        using var raceObservation=new CancellationTokenSource(TimeSpan.FromMilliseconds(250));
+                        try{await process.WaitForExitAsync(raceObservation.Token);exitObserved=true;}
+                        catch(OperationCanceledException)when(raceObservation.IsCancellationRequested)
+                        {
+                            System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(killError).Throw();
+                            throw;
+                        }
+                    }
+                    if(!exitObserved)
+                    {
+                        using var drain=new CancellationTokenSource(TimeSpan.FromSeconds(3));
+                        await process.WaitForExitAsync(drain.Token);
+                        exitObserved=true;
+                    }
+                }
             }
         }
     }
