@@ -80,27 +80,23 @@ jobs:
           using System.Runtime.InteropServices;
           using System.Text;
           public static class CpcUserProfileNative {
-            [DllImport("advapi32.dll", CharSet=CharSet.Unicode, SetLastError=true)]
-            public static extern bool ConvertStringSidToSid(string stringSid, out IntPtr sid);
             [DllImport("userenv.dll", CharSet=CharSet.Unicode)]
             public static extern int CreateProfile(IntPtr sid, string userName, StringBuilder profilePath, uint cchProfilePath);
-            [DllImport("kernel32.dll")]
-            public static extern IntPtr LocalFree(IntPtr memory);
           }
           '@
-            $sid = (Get-LocalUser -Name $user).SID.Value
-            $sidPointer = [IntPtr]::Zero
-            if (-not [CpcUserProfileNative]::ConvertStringSidToSid($sid,[ref]$sidPointer)) {
-              throw [System.ComponentModel.Win32Exception]::new([Runtime.InteropServices.Marshal]::GetLastWin32Error())
-            }
+            $sid = (Get-LocalUser -Name $user).SID
+            $sidBytes = [byte[]]::new($sid.BinaryLength)
+            $sid.GetBinaryForm($sidBytes,0)
+            $sidPointer = [Runtime.InteropServices.Marshal]::AllocHGlobal($sidBytes.Length)
             try {
+              [Runtime.InteropServices.Marshal]::Copy($sidBytes,0,$sidPointer,$sidBytes.Length)
               $profileBuffer = [System.Text.StringBuilder]::new(512)
               $profileResult = [CpcUserProfileNative]::CreateProfile($sidPointer,$user,$profileBuffer,[uint32]$profileBuffer.Capacity)
               if ($profileResult -ne 0) { throw ('CreateProfile failed with HRESULT 0x{0}' -f $profileResult.ToString('X8')) }
               $profilePath = $profileBuffer.ToString()
             }
             finally {
-              if ($sidPointer -ne [IntPtr]::Zero) { [void][CpcUserProfileNative]::LocalFree($sidPointer) }
+              [Runtime.InteropServices.Marshal]::FreeHGlobal($sidPointer)
             }
             if ([string]::IsNullOrWhiteSpace($profilePath)) { throw 'CreateProfile returned an empty profile path' }
             $localAppData = Join-Path $profilePath 'AppData/Local'
