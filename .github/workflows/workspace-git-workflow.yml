@@ -21,7 +21,7 @@ permissions:
 
 jobs:
   windows-managed-verification:
-    name: Build products and run offline Git policy tests
+    name: Build products and verify offline Git workflow
     runs-on: windows-latest
     timeout-minutes: 20
     permissions:
@@ -60,7 +60,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           dotnet build tests/CenterResults/CenterResults.csproj --configuration Release --nologo
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-      - name: Run workspace and Git policy tests as a standard user
+      - name: Run workspace, policy and real Git tests as a standard user
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
@@ -166,6 +166,7 @@ jobs:
 
             Invoke-StandardUserTest $workspaceApp @('WorkspaceTransfer.dll',$fixture) 'WorkspaceTransfer contract and NTFS fixture tests'
             Invoke-StandardUserTest $ownedApp @('OwnedToolLaunch.dll','workspace-git-workflow-policy') 'Offline Git owner policy tests'
+            Invoke-StandardUserTest $ownedApp @('OwnedToolLaunch.dll','workspace-git-workflow-execution') 'Ordinary-user real Git execution and owner object verification (not LPAC)'
             $workspacePipeCases = @(
               'worker-feedback','frames','local-pipe','output','snapshot','token-membership',
               'reply','project-contract','privacy-contract','privacy-execution-gate',
