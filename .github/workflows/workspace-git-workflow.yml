@@ -80,24 +80,19 @@ jobs:
           using System.Runtime.InteropServices;
           using System.Text;
           public static class CpcUserProfileNative {
-            [DllImport("userenv.dll", CharSet=CharSet.Unicode)]
-            public static extern int CreateProfile(IntPtr sid, string userName, StringBuilder profilePath, uint cchProfilePath);
+            [DllImport("userenv.dll", CharSet=CharSet.Unicode, ExactSpelling=true)]
+            public static extern int CreateProfile(
+              [MarshalAs(UnmanagedType.LPWStr)] string userSid,
+              [MarshalAs(UnmanagedType.LPWStr)] string userName,
+              [Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder profilePath,
+              uint cchProfilePath);
           }
           '@
-            $sid = (Get-LocalUser -Name $user).SID
-            $sidBytes = [byte[]]::new($sid.BinaryLength)
-            $sid.GetBinaryForm($sidBytes,0)
-            $sidPointer = [Runtime.InteropServices.Marshal]::AllocHGlobal($sidBytes.Length)
-            try {
-              [Runtime.InteropServices.Marshal]::Copy($sidBytes,0,$sidPointer,$sidBytes.Length)
-              $profileBuffer = [System.Text.StringBuilder]::new(512)
-              $profileResult = [CpcUserProfileNative]::CreateProfile($sidPointer,$user,$profileBuffer,[uint32]$profileBuffer.Capacity)
-              if ($profileResult -ne 0) { throw ('CreateProfile failed with HRESULT 0x{0}' -f $profileResult.ToString('X8')) }
-              $profilePath = $profileBuffer.ToString()
-            }
-            finally {
-              [Runtime.InteropServices.Marshal]::FreeHGlobal($sidPointer)
-            }
+            $sid = (Get-LocalUser -Name $user).SID.Value
+            $profileBuffer = [System.Text.StringBuilder]::new(260)
+            $profileResult = [CpcUserProfileNative]::CreateProfile($sid,$user,$profileBuffer,[uint32]$profileBuffer.Capacity)
+            if ($profileResult -ne 0) { throw ('CreateProfile failed with HRESULT 0x{0}' -f $profileResult.ToString('X8')) }
+            $profilePath = $profileBuffer.ToString()
             if ([string]::IsNullOrWhiteSpace($profilePath)) { throw 'CreateProfile returned an empty profile path' }
             $localAppData = Join-Path $profilePath 'AppData/Local'
             $roamingAppData = Join-Path $profilePath 'AppData/Roaming'
