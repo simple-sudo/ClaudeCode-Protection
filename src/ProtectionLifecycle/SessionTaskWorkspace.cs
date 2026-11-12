@@ -207,7 +207,7 @@ internal static class SessionTaskWorkspace
         AssertAuthority();
         native.AssertAbsent(path);
         state.WriteNew(ClosedLeaf(profile.ProfileId),JsonSerializer.SerializeToUtf8Bytes(new {SchemaVersion=2,state.InstallationId,profile.ProfileId,
-            IntentSHA256=intent.Raw.SHA256,ProfileCleanupIntentSHA256=cleanupIntent.SHA256,
+            IntentSHA256=intent.Raw.SHA256,ProfileCleanupIntentSHA256=cleanupIntentSHA256,
             Status="UNRECORDED_EMPTY_TASK_DIRECTORY_ABSENCE_OBSERVED",RootAbsent=true,RemovedEntries=removed,WorkspaceIdentity=identity}));
     }
     internal static void Cleanup(ProtectedState state,ProfileStorageReceipt profile)
