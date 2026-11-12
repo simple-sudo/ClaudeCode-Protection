@@ -41,6 +41,8 @@ internal static class NativeGitWorkspaceCases
                 var controlPath=Path.Combine(root,"git-control");
                 GitWorkspaceDescriptor.AssertPath(projectPath,package.Value,true);
                 GitWorkspaceDescriptor.AssertPath(controlPath,package.Value,false);
+                Console.WriteLine("NATIVE GIT project-root descriptor flags="+ReadDescriptor(projectPath,true).ControlFlags);
+                Console.WriteLine("NATIVE GIT control-root descriptor flags="+ReadDescriptor(controlPath,true).ControlFlags);
 
                 var nestedProject=Path.Combine(projectPath,"nested");
                 Directory.CreateDirectory(nestedProject);
