@@ -116,8 +116,8 @@ internal sealed class SessionGitToolchain : IDisposable
             if(content.AsSpan(0,Math.Min(content.Length,binaryProbeBytes)).IndexOf((byte)0)>=0)
             {binary++;continue;}
             var lines=0;
-            foreach(var valueByte in content)if(valueByte==(byte)'\\n')lines++;
-            if(content.Length>0 && content[^1]!=(byte)'\\n')lines++;
+            foreach(var valueByte in content)if(valueByte==(byte)'\n')lines++;
+            if(content.Length>0 && content[^1]!=(byte)'\n')lines++;
             added=checked(added+lines);
         }
         return(added,0,binary);
