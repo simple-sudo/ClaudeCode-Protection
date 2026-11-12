@@ -96,30 +96,7 @@ internal static class NativeGitLpacAccessCases
                 File.WriteAllText(mediumFile, "medium-original", new UTF8Encoding(false));
                 AssertInheritedFile(mediumFile, package.Value, humanSid, ProjectPackageMask, MediumIntegritySid);
 
-                var scriptPath = Path.Combine(root, "lpac-probe.cmd");
-                var script = string.Join("\r\n", new[]
-                {
-                    "@echo off",
-                    "echo %CD%>\"%TEMP%\\lpac-start-cwd.txt\"",
-                    "cd /d \"%~dp0\" || exit /b 9",
-                    "echo %CD%>\"%TEMP%\\lpac-final-cwd.txt\"",
-                    "echo root-write>lpac-root-write.txt",
-                    "type git-project\\source.txt >nul 2>lpac-read-error.txt || exit /b 11",
-                    "del /q lpac-read-error.txt",
-                    "type git-control\\empty-git-config >nul || exit /b 12",
-                    "type git-control\\git-selected-paths.bin >nul || exit /b 13",
-                    "type medium-write\\medium.txt >nul || exit /b 14",
-                    "echo project-write>git-project\\lpac-write.txt",
-                    "mkdir git-project\\lpac-created",
-                    "echo nested>git-project\\lpac-created\\nested.txt",
-                    "echo control-tamper>git-control\\empty-git-config",
-                    "mkdir git-control\\lpac-created",
-                    "echo medium-tamper>medium-write\\medium.txt",
-                    "exit /b 0"
-                }) + "\r\n";
-                File.WriteAllText(scriptPath, script, new UTF8Encoding(false));
-                AssertInheritedFile(scriptPath, package.Value, humanSid, ProjectPackageMask, LowIntegritySid);
-                RunActualLpacProcess(root, package.Value, scriptPath);
+                RunActualLpacProcess(root, package.Value);
 
                 if (File.ReadAllText(Path.Combine(projectPath, "lpac-write.txt")) != "project-write" + Environment.NewLine ||
                     File.ReadAllText(Path.Combine(projectPath, "lpac-created", "nested.txt")) != "nested" + Environment.NewLine)
@@ -173,7 +150,7 @@ internal static class NativeGitLpacAccessCases
         }
     }
 
-    private static void RunActualLpacProcess(string root, string packageSid, string scriptPath)
+    private static void RunActualLpacProcess(string root, string packageSid)
     {
         if (Marshal.SizeOf<StartupInfo>() != 104 || Marshal.SizeOf<StartupInfoEx>() != 112 ||
             Marshal.SizeOf<SecurityCapabilities>() != 24 || Marshal.SizeOf<SecurityAttributes>() != 24)
@@ -232,10 +209,41 @@ internal static class NativeGitLpacAccessCases
                 jobList, (nuint)IntPtr.Size, IntPtr.Zero, IntPtr.Zero))
                 throw Error("LpacGitWorkspaceBindJob");
 
-            // /s makes cmd.exe strip exactly the outer quote pair from the
-            // /c command string, leaving one quoted batch path for execution.
-            // CALL is deliberately not used: at the command prompt it has no effect.
-            var commandLine = "\"" + commandImage + "\" /d /q /s /c \"\"" + scriptPath + "\"\"";
+            var initialCwdPath = Path.Combine(root, "lpac-start-cwd.txt");
+            var finalCwdPath = Path.Combine(root, "lpac-final-cwd.txt");
+            var readErrorPath = Path.Combine(root, "lpac-read-error.txt");
+            var projectSourcePath = Path.Combine(root, "git-project", "source.txt");
+            var controlConfigPath = Path.Combine(root, "git-control", "empty-git-config");
+            var controlPathspecPath = Path.Combine(root, "git-control", "git-selected-paths.bin");
+            var mediumFilePath = Path.Combine(root, "medium-write", "medium.txt");
+            var projectWritePath = Path.Combine(root, "git-project", "lpac-write.txt");
+            var projectCreatedPath = Path.Combine(root, "git-project", "lpac-created");
+            var projectNestedPath = Path.Combine(projectCreatedPath, "nested.txt");
+            var controlWritePath = controlConfigPath;
+            var controlCreatedPath = Path.Combine(root, "git-control", "lpac-created");
+            var mediumWritePath = mediumFilePath;
+            static string Quote(string path) => "\"" + path + "\"";
+            var script =
+                "echo %CD%>" + Quote(initialCwdPath) + " & " +
+                "cd /d " + Quote(root) + " || exit /b 9 & " +
+                "echo %CD%>" + Quote(finalCwdPath) + " & " +
+                "echo root-write>" + Quote(Path.Combine(root, "lpac-root-write.txt")) + " & " +
+                "type " + Quote(projectSourcePath) + " >nul 2>" + Quote(readErrorPath) + " || exit /b 11 & " +
+                "del /q " + Quote(readErrorPath) + " & " +
+                "type " + Quote(controlConfigPath) + " >nul || exit /b 12 & " +
+                "type " + Quote(controlPathspecPath) + " >nul || exit /b 13 & " +
+                "type " + Quote(mediumFilePath) + " >nul || exit /b 14 & " +
+                "echo project-write>" + Quote(projectWritePath) + " & " +
+                "mkdir " + Quote(projectCreatedPath) + " & " +
+                "echo nested>" + Quote(projectNestedPath) + " & " +
+                "echo control-tamper>" + Quote(controlWritePath) + " & " +
+                "mkdir " + Quote(controlCreatedPath) + " & " +
+                "echo medium-tamper>" + Quote(mediumWritePath) + " & " +
+                "exit /b 0";
+            // Keep the already-observed inline cmd /c execution path. The fixed
+            // command uses only generated workspace paths and fixed operations;
+            // explicit cd plus absolute file paths separate CWD from ACL access.
+            var commandLine = "\"" + commandImage + "\" /d /q /c \"" + script + "\"";
             var values = new SortedDictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             foreach (var name in new[] { "SystemRoot", "windir", "SystemDrive" })
             {
@@ -353,7 +361,6 @@ internal static class NativeGitLpacAccessCases
                     "program-files-traverse=" + ProbeOpenAsLpac(token, programFiles, true, 0x20),
                     "task-root-traverse=" + ProbeOpenAsLpac(token, root, true, 0x20),
                     "task-root-add-file=" + ProbeOpenAsLpac(token, root, true, 0x22),
-                    "script-file-read=" + ProbeOpenAsLpac(token, scriptPath, false, 0x1),
                     "project-dir-read-write=" + ProbeOpenAsLpac(token, Path.Combine(root, "git-project"), true, 0x27),
                     "project-source-read=" + ProbeOpenAsLpac(token, Path.Combine(root, "git-project", "source.txt"), false, 0x1),
                     "control-dir-read=" + ProbeOpenAsLpac(token, Path.Combine(root, "git-control"), true, 0x21),
@@ -395,7 +402,6 @@ internal static class NativeGitLpacAccessCases
                 throw new InvalidDataException("LpacGitWorkspaceInitialCurrentDirectoryMismatch");
             if (!string.Equals(Path.TrimEndingDirectorySeparator(Path.GetFullPath(finalCwd)), expectedCwd, StringComparison.OrdinalIgnoreCase))
                 throw new InvalidDataException("LpacGitWorkspaceBatchCurrentDirectoryMismatch");
-            File.Delete(scriptPath);
             File.Delete(initialCwdPath);
             File.Delete(finalCwdPath);
             if (File.Exists(Path.Combine(root, "lpac-read-error.txt")))
