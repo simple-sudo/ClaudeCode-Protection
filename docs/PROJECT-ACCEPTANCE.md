@@ -5,11 +5,11 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
-## 2026-11-12 schema 2 多命令 Git 工作流：计划绑定报告与对抗配置验证
+## 2026-11-12 schema 2 多命令 Git 工作流：对抗配置、独立指标与结果快照验收
 
-SOURCE / INTEGRATED(显式 `workspace-git-pack` schema 2 接入既有 daily→Broker→ProtectedSession→Owned Job→LPAC 数据链；固定 `main`、NUL pathspec、受限 Git 命令序列、Owner 独立对象/引用核验及成果闭合；新增独立项目/控制目录 DACL、plan-aware Git report qualification)。
-BUILD(Windows hosted 43130955467：全部产品编译成功且不运行；43130955570：daily CLI 编译与纯托管策略 smoke 成功；43130955544：全部产品/专项测试编译成功)。
-VERIFIED(标准用户 43130955544 实际执行 Runner Git 的 hash-object/init/add/diff-check/numstat/commit/log/status/fsck、两个拒绝对照及独立 commit/tree/blob/ref/GitReceipt 核验；CRLF、二进制、空文件和显式选择的 ignored 文件保留。仓库本地恶意 clean filter 与 hooksPath 配置被固定策略压制；schema 2 缺失 WorkflowObservation、失败阶段/类型/代码报告被 plan-aware 资格门拒绝)。
+SOURCE / INTEGRATED(显式 `workspace-git-pack` schema 2 接入既有 daily→Broker→ProtectedSession→Owned Job→LPAC 数据链；固定 `main`、NUL pathspec、受限 Git 命令序列、Owner 独立对象/引用核验、项目/控制目录 DACL、plan-aware 报告资格和精确结果快照/receipt 闭合)。
+BUILD(Windows hosted 43137292096：全部产品与专项测试编译成功；43137292097：全部产品编译成功且不执行受保护代码；43137292087：daily CLI 编译及纯托管策略 smoke 成功)。
+VERIFIED(标准用户 43137292096 实际执行 Runner Git 的 hash-object/init/add/diff-check/numstat/commit/log/status/fsck、两个拒绝对照及独立 commit/tree/blob/ref/GitReceipt 核验；clean filter、hooksPath 和 textconv 对抗配置被固定策略压制；CRLF、未终止文本、二进制、空文件、ignored 文件及首 8000 字节 NUL 分类边界通过。Owner 独立重算新增/删除/二进制指标；NTFS fixture 验证 schema 2 快照逐项逐字节一致、篡改拒绝和 receipt 绑定；Windows DOS 设备名扩展名前空格别名拒绝)。
 NOT_RUN(真实 Broker 创建目录的 DACL/继承访问检查、产品固定 Git 资产在 LPAC 中执行、Broker/Owned Job/LPAC 端到端运行、受限 token 的真实 Git 命令、故障/取消时的 Job 归零与成果拒绝导出)。
 本机 Build* 入口仍受 `SECURITY_REVIEW_REQUIRED` 硬停止，旧的一次性离线构建授权已消耗；本轮未绕过、构建、安装或执行产品。不得将本节普通用户 Git 证据与 `f9e8d29d` 既有单进程 LPAC `commit -a` 证据合并解释为 schema 2 多命令产品验收。
 

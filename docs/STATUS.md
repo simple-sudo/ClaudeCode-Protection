@@ -5,12 +5,13 @@
 历史页的“当前/待执行/暂停/DELIVERABLE”按段落日期及限定范围解释，不是今天的状态或操作许可。
 不在本页复制当前安装和授权摘要。
 
-## 2026-11-12 显式 Git 工作流 schema 2：计划绑定报告、对抗配置回归与托管验证
+## 2026-11-12 显式 Git 工作流 schema 2：对抗配置、独立指标与结果快照验收
 
-开发分支 `chatgpt/complete-git-workflow-20261110`，当前头 `9d7871e969ed5dff7933eab8cc2738ec404ae7f5`，Draft PR #3 保持 OPEN / DRAFT，未合并。
-GitHub Actions：43130955467 全部产品编译且不执行受保护代码；43130955570 纯托管策略 smoke 与 daily CLI 编译；43130955544 全部产品/专项测试编译及标准用户真实 Git 工作流。三组均 SUCCESS。
-新增 `QualifiedForPlan`，按输入包是否含 schema 2 GitPlan，强制报告必须恰有对应的 WorkflowObservation；缺少 schema 2 观察、或存在失败阶段/类型/代码时均拒绝。child 与 Owner 的 AssertRepository 共用此计划形状门。普通用户真实 Git 回归另注入仓库本地 clean filter 与恶意 hooksPath：固定 info attributes 和命令行 hooksPath 生效，原始选定文件字节、提交和 Owner 对象核验保持通过。
-证据边界仍为托管编译、普通用户 Runner Git 和策略 fixture；没有运行产品 Broker、Owned Job、LPAC、UAC 或 Claude。Git 项目/控制目录 DACL 描述符及控制项 fixture 仍未替代真实 Broker 目录 ACL 继承/LPAC访问检查。现有本机 Build* 脚本仍被 `Assert-ProjectSecurityClearance.ps1` 的 `SECURITY_REVIEW_REQUIRED` 硬停止；旧的一次性离线构建脚本固定于旧提交/输入且已消耗，本轮不绕过或替代它。
+开发分支 `chatgpt/complete-git-workflow-20261110`，当前头 `316248272d37aa3a85ffa71b437960fbd03207cd`，Draft PR #3 保持 OPEN / DRAFT，未合并。
+GitHub Actions：43137292096 完成全部产品/专项测试编译及标准用户真实 Git 工作流；43137292097 完成全部产品编译但不运行受保护代码；43137292087 通过纯托管策略 smoke 并编译 daily CLI。三组均 SUCCESS。
+真实 Git 回归执行 hash-object/init/add/diff-check/numstat/commit/log/status/fsck、两项私有对象拒绝对照及独立 commit/tree/blob/ref/GitReceipt 核验。恶意仓库本地 clean filter、hooksPath 与 textconv 对抗配置均被固定 info attributes、外置 hooksPath 及 `--no-ext-diff --no-textconv` 策略压制；样本覆盖 CRLF、未终止文本、二进制、空文件、ignored 文件和首 8000 字节 NUL 分类边界。Owner 不再直接信任 child 的 numstat 数字，而是根据不可变输入重算新增/删除/二进制指标，并把指标绑定到 plan-aware Git 报告资格。
+修复 schema 2 结果快照路径：预 receipt 快照必须与 GitPlan 的文件清单及每个文件字节完全一致；AttachGitReceipt 拒绝修改后的结果，SessionResources 仅在精确快照验证后输出。标准用户 NTFS fixture 正向快照、篡改拒绝及 workspace transfer 测试通过。另加强 Windows DOS 设备名检测，拒绝 `CON .txt` 等扩展名前空格别名。
+证据边界：以上是托管构建、标准用户 Runner Git 和普通 NTFS fixture 证据，不是产品固定 Git 资产或 LPAC 证据。真实 Broker 创建目录的 DACL 继承/访问检查、Broker→Owned Job→LPAC 多命令执行、受限 token 真实 Git、Job 归零、失败/取消和清理仍 NOT_RUN。现有本机 Build* 入口仍由 `SECURITY_REVIEW_REQUIRED` 硬停止；不移除或绕过该门禁。
 
 ## 2026-11-10 显式离线 Git 工作流 schema 2（源码候选）
 
