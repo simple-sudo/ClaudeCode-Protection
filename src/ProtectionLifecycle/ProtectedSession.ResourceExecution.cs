@@ -12,36 +12,6 @@ namespace ProtectionLifecycle;
 internal sealed partial class ProtectedSession
 {
     internal static (int ExitCode,string Report) QualifyResources(FixedLayout layout,ProtectedState state,VerifiedVersion version)
-        =>new ProtectedSession(layout,state,version).ExecuteResourceQualification();
-    internal static (int ExitCode,string Report) QualifyToolchain(FixedLayout layout,ProtectedState state,VerifiedVersion version)
-        =>new ProtectedSession(layout,state,version).ExecuteResourceQualification(includeGit:true);
-    internal static (int ExitCode,string Report) DevelopBundledProject(FixedLayout layout,ProtectedState state,VerifiedVersion version)
-        =>new ProtectedSession(layout,state,version).ExecuteResourceQualification(includeGit:true,workspaceInput:BundledProjectDevelopment.Baseline(),developProject:true);
-    internal static (int ExitCode,string Report) DevelopBundledProjectForCaller(FixedLayout layout,ProtectedState state,VerifiedVersion version,Action assertCaller)
-    {
-        ArgumentNullException.ThrowIfNull(assertCaller);
-        return new ProtectedSession(layout,state,version).ExecuteResourceQualification(includeGit:true,workspaceInput:BundledProjectDevelopment.Baseline(),developProject:true,assertCaller:assertCaller);
-    }
-    internal static (int ExitCode,string Report) BuildCallerProject(FixedLayout layout,ProtectedState state,VerifiedVersion version,byte[] bytes,Action assertCaller)
-    {
-        ArgumentNullException.ThrowIfNull(assertCaller);
-        return new ProtectedSession(layout,state,version).ExecuteResourceQualification(includeGit:true,workspaceInput:bytes,developProject:true,callerProject:true,assertCaller:assertCaller);
-    }
-    // A data-only operation on the existing owner and fixed offline Git
-    // program. Source/test/build files in the bundle are NEVER executed.
-    internal static (int ExitCode,string Report) ProcessWorkspaceData(FixedLayout layout,ProtectedState state,VerifiedVersion version,byte[] bytes)
-        =>new ProtectedSession(layout,state,version).ExecuteResourceQualification(includeGit:true,workspaceInput:bytes);
-    internal static (int ExitCode,string Report) ProcessWorkspaceDataForCaller(FixedLayout layout,ProtectedState state,VerifiedVersion version,byte[] bytes,Action assertCaller)
-    {
-        ArgumentNullException.ThrowIfNull(assertCaller);
-        return new ProtectedSession(layout,state,version).ExecuteResourceQualification(includeGit:true,workspaceInput:bytes,assertCaller:assertCaller);
-    }
-    internal static (int ExitCode,string Report) QualifyResourceRecovery(FixedLayout layout,ProtectedState state,VerifiedVersion version)
-        // Deliberately EXIT this installed owner with a durable cleanup
-        // checkpoint. The NEXT installed invocation performs real journal
-        // recovery; no live in-memory profile object is transferred to it.
-        =>new ProtectedSession(layout,state,version).ExecuteResourceQualification(true);
-    internal static (int ExitCode,string Report) QualifyResources(FixedLayout layout,ProtectedState state,VerifiedVersion version)
         =>new ProtectedSession(layout,state,version).ExecuteResourceQualification(ResourceExecutionIntent.ForWorkspaceQualification());
     internal static (int ExitCode,string Report) QualifyToolchain(FixedLayout layout,ProtectedState state,VerifiedVersion version)
         =>new ProtectedSession(layout,state,version).ExecuteResourceQualification(ResourceExecutionIntent.ForGitToolchainQualification());
