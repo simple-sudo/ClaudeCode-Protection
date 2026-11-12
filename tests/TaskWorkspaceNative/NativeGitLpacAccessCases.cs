@@ -349,6 +349,9 @@ internal static class NativeGitLpacAccessCases
                 var actualPackageSid = ReadTokenSid(token, 31);
                 var capabilityCount = ReadTokenCount(token, 30);
                 var integritySid = ReadTokenSid(token, 25);
+                // TokenMandatoryPolicy is TOKEN_INFORMATION_CLASS 27.
+                // Integrity SID alone does not prove NO_WRITE_UP is active.
+                var mandatoryPolicy = ReadTokenDword(token, 27);
                 var packageAccess = ProbeApplicationPackageAccess(token);
                 if (!isAppContainer || actualPackageSid != packageSid || capabilityCount != 0 ||
                     integritySid != LowIntegritySid || packageAccess != 2)
@@ -368,6 +371,10 @@ internal static class NativeGitLpacAccessCases
                     "control-dir-read=" + ProbeOpenAsLpac(token, Path.Combine(root, "git-control"), true, 0x21),
                     "control-dir-add-file=" + ProbeOpenAsLpac(token, Path.Combine(root, "git-control"), true, 0x22)
                 };
+                pathProbes = pathProbes.Append("medium-file-write-data=" +
+                    ProbeOpenAsLpac(token, Path.Combine(root, "medium-write", "medium.txt"), false, 0x2)).ToArray();
+                Console.WriteLine("INFO LPAC token mandatory policy: 0x" +
+                    mandatoryPolicy.ToString("X8", System.Globalization.CultureInfo.InvariantCulture));
                 Console.WriteLine("INFO LPAC path access probes (actual token impersonation): " + string.Join(";", pathProbes));
             }
 
