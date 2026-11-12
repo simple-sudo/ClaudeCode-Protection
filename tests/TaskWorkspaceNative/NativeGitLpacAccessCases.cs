@@ -401,11 +401,13 @@ internal static class NativeGitLpacAccessCases
                 throw new InvalidDataException("LpacGitWorkspaceInitialCurrentDirectoryMismatch");
             if (!string.Equals(Path.TrimEndingDirectorySeparator(Path.GetFullPath(finalCwd)), expectedCwd, StringComparison.OrdinalIgnoreCase))
                 throw new InvalidDataException("LpacGitWorkspaceChildCurrentDirectoryMismatch");
-            if (!File.ReadAllBytes(projectReadCopyPath).SequenceEqual(File.ReadAllBytes(projectSourcePath)) ||
-                !File.ReadAllBytes(controlConfigReadCopyPath).SequenceEqual(File.ReadAllBytes(controlConfigPath)) ||
-                !File.ReadAllBytes(controlPathspecReadCopyPath).SequenceEqual(File.ReadAllBytes(controlPathspecPath)) ||
-                !File.ReadAllBytes(mediumReadCopyPath).SequenceEqual(File.ReadAllBytes(mediumFilePath)))
-                throw new InvalidDataException("LpacGitWorkspaceReadCopyContentMismatch");
+            var readMismatches = new List<string>();
+            CheckReadCopy("project", projectSourcePath, projectReadCopyPath, readMismatches);
+            CheckReadCopy("control-config", controlConfigPath, controlConfigReadCopyPath, readMismatches);
+            CheckReadCopy("control-pathspec", controlPathspecPath, controlPathspecReadCopyPath, readMismatches);
+            CheckReadCopy("medium", mediumFilePath, mediumReadCopyPath, readMismatches);
+            if (readMismatches.Count != 0)
+                throw new InvalidDataException("LpacGitWorkspaceReadCopyContentMismatch:" + string.Join(";", readMismatches));
             File.Delete(projectReadCopyPath);
             File.Delete(controlConfigReadCopyPath);
             File.Delete(controlPathspecReadCopyPath);
@@ -437,6 +439,14 @@ internal static class NativeGitLpacAccessCases
             if (threadDescriptor != IntPtr.Zero) _ = LocalFree(threadDescriptor);
             if (processDescriptor != IntPtr.Zero) _ = LocalFree(processDescriptor);
         }
+    }
+
+    private static void CheckReadCopy(string label, string sourcePath, string copyPath, List<string> mismatches)
+    {
+        var source = File.ReadAllBytes(sourcePath);
+        var copy = File.ReadAllBytes(copyPath);
+        if (!source.AsSpan().SequenceEqual(copy))
+            mismatches.Add(label + ":source=" + Convert.ToHexString(source) + ":copy=" + Convert.ToHexString(copy));
     }
 
     private static string ProbeOpenAsLpac(SafeAccessTokenHandle primaryToken, string path, bool directory, uint access)
