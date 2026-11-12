@@ -107,36 +107,11 @@ internal sealed class GitWorkspaceDescriptor : IDisposable
             if((actual.ControlFlags&relevant)!=(expected.ControlFlags&relevant))
                 throw new InvalidDataException("PrivateGitAclProtectionFlagsMismatch");
             if(!Same(actual.DiscretionaryAcl,expected.DiscretionaryAcl))
-                throw new InvalidDataException("PrivateGitDaclMismatch: actual="+DescribeAcl(actual.DiscretionaryAcl)+
-                    "; expected="+DescribeAcl(expected.DiscretionaryAcl));
+                throw new InvalidDataException("PrivateGitDaclMismatch");
             if(!Same(actual.SystemAcl,expected.SystemAcl))
                 throw new InvalidDataException("PrivateGitMandatoryLabelMismatch");
         }
         finally{if(value!=IntPtr.Zero)LocalFree(value);}
-    }
-
-    private static string DescribeAcl(RawAcl? acl)
-    {
-        if(acl is null)return "<null>";
-        var entries=new List<string>(acl.Count);
-        for(var i=0;i<acl.Count;i++)
-        {
-            var ace=acl[i];
-            if(ace is CommonAce common)
-                entries.Add(i+":type="+common.AceType+";qualifier="+common.AceQualifier+
-                    ";mask=0x"+common.AccessMask.ToString("X8",System.Globalization.CultureInfo.InvariantCulture)+
-                    ";flags="+common.AceFlags+";sid="+common.SecurityIdentifier.Value+
-                    ";callback="+common.IsCallback);
-            else entries.Add(i+":type="+ace.AceType+";flags="+ace.AceFlags+";bytes="+Convert.ToHexString(AceBytes(ace)));
-        }
-        return string.Join("|",entries);
-    }
-
-    private static byte[] AceBytes(GenericAce ace)
-    {
-        var bytes=new byte[ace.BinaryLength];
-        ace.GetBinaryForm(bytes,0);
-        return bytes;
     }
 
     private static bool Same(RawAcl? left,RawAcl? right)
