@@ -27,6 +27,10 @@ Hosted CI 对该脚本的 PASS 只证明当前文本边界满足这些断言。H
 
 用户报告此前已清理且 Kaspersky 当前显示正常；该用户观察被保留，但不等同于厂商样本鉴定。检测原因、规则、调用栈、旧时载入的 DLL/依赖和完整 AV 告警覆盖仍 UNKNOWN。
 
+## Bootstrap 批准清单差异
+
+静态读取当前源码的 `ApprovedPackage.json` 得到 schema 6、Release `7df61706780c433f9dc5e7ddf5bc6f28`、24 项资产。当前安装基线由用户只读核实为 schema 32、25 项资产；schema 32 的 `PackageAssetCatalog` 额外包含固定 `broker-session-zero-startup-witness`（`bin/admin/SessionZeroStartupWitness.exe`，8192 bytes，固定 SHA256）。因此不能仅修改 Release/Transition 字段，也不能把 24 项历史批准清单当作当前 schema 32 的批准包。候选包必须按 schema32 完整资产集合重新构建、逐项计算长度/SHA256，并解决 Bootstrap 自引用/内嵌清单的一致性后再建立 transition。
+
 ## 明确保持的硬停止
 
 - 本机 `Build*` / 安装 / 产品执行入口继续被 `SECURITY_REVIEW_REQUIRED` 阻断。
