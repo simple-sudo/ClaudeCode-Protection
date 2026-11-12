@@ -29,7 +29,7 @@ internal sealed class GitWorkspaceDescriptor : IDisposable
         var packageMask=packageWrite?"0x001301bf":"0x001200a9";
         // P blocks inherited grants from ProgramData; AR asks NTFS to propagate
         // these OI/CI ACEs to newly created child files and directories.
-        return "O:BAG:SYD:PAR(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)(A;OICI;"+packageMask+";;;"+package+")(A;OICI;RC;;;S-1-3-4)";
+        return "O:BAG:SYD:PAI(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)(A;OICI;"+packageMask+";;;"+package+")(A;OICI;RC;;;S-1-3-4)";
     }
 
     private GitWorkspaceDescriptor(string packageSid,bool packageWrite)
@@ -95,7 +95,7 @@ internal sealed class GitWorkspaceDescriptor : IDisposable
             if(actual.Group?.Value!=expected.Group?.Value)
                 throw new InvalidDataException("PrivateGitGroupMismatch");
             const ControlFlags relevant=ControlFlags.DiscretionaryAclPresent|ControlFlags.DiscretionaryAclProtected|
-                ControlFlags.SystemAclPresent|ControlFlags.SystemAclProtected;
+                ControlFlags.DiscretionaryAclAutoInherited|ControlFlags.SystemAclPresent|ControlFlags.SystemAclProtected;
             if((actual.ControlFlags&relevant)!=(expected.ControlFlags&relevant))
                 throw new InvalidDataException("PrivateGitAclProtectionFlagsMismatch");
             if(!Same(actual.DiscretionaryAcl,expected.DiscretionaryAcl))
