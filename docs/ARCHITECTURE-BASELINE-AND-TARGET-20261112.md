@@ -337,6 +337,15 @@ Machine Network Lease 和 Session lease 是不同生命周期。Broker/Owner 是
 
 如果拆分暴露隐式所有权或测试不能证明等价，暂停该微阶段并先补契约，不用接口重命名掩盖问题。
 
+### A1.1 完成记录：Profile lease 与 Job completion receipt 文件级提取（2026-11-12）
+
+- 提交：`74a3a5908308ef31b098dbcccf6b0ec94fa7d1fc`。
+- 新增 `InstallationProfileLease.cs`（Profile 创建、Job 绑定、Job-zero 后清理及恢复 checkpoint）与 `AtomicJobCompletion.cs`（one-shot Job completion receipt 解析/验证）。
+- `AtomicAdmission.cs` 从 1,442 行缩减为 1,317 行；`ProtectionLifecycle.csproj` 显式 Compile 清单同步更新。
+- 仅移动既有类型/代码，不改变命名空间、可见性、方法签名、状态 JSON schema、SHA 绑定、清理门槛、资源所有权、调用顺序、程序集或安装资产。
+- 三组 Actions 全部 SUCCESS：Hosted Windows compile `43213673926`、Safe managed policy smoke `43213673933`、Offline workspace Git workflow `43213673931`。产品项目、六个聚焦 harness 编译通过；普通用户策略/Runner Git 和 elevated NTFS fixture 通过。
+- 证据范围仅为源码重构与 CI；未执行本机 Build、安装、提权、Broker → Owned Job → LPAC 产品链或真实 Claude。
+
 ## 13. 持续维护规则
 
 - 新模块先写职责/输入输出/失败/资源释放/测试合同，再实现。
