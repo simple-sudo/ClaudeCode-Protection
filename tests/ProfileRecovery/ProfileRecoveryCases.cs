@@ -3,9 +3,10 @@ using System.Security.Principal;
 using System.Text.Json;
 using Microsoft.Win32.SafeHandles;
 
-// Source-link the real profile journal reader. Only the protected-state/kernel
-// collaborators are fakes. Every native mutation/storage collaborator throws:
-// these cases cannot execute profile deletion, WFP, Job or process admission.
+// Source-link the real profile and task-workspace recovery control flow.
+// Protected-state, kernel and native filesystem boundaries are faked: tests
+// execute the real decisions/receipt code against simulated native operations,
+// never host filesystem deletion, AppContainer deletion, WFP, Job or processes.
 namespace ProtectionLifecycle;
 
 internal static class ProfileRecoveryCases
@@ -153,10 +154,15 @@ internal static class ProfileRecoveryCases
         Require(wrongParentOps.OpenCount==0 && wrongParentOps.DeleteCount==0,"changed Program Files parent identity blocks filesystem access");
 
         var boundState=BuildTaskState();
-        boundState.Set("profile-job-"+id+".json",new {SchemaVersion=1,JobId=job});
+        boundState.Closed=true;
+        boundState.Set("job-completed-"+job+".json",new {Status="FAKE_CLOSED_ZERO_FOR_READER_CASE_ONLY"});
+        boundState.Set("profile-job-"+id+".json",new {SchemaVersion=1,boundState.InstallationId,ProfileId=id,
+            CreatedSHA256=boundState.Read(created).SHA256,JobId=job});
+        SessionProfileRecovery.WriteCleanupIntent(boundState,record);
         var boundOps=new FakeTaskWorkspaceRecoveryOps{DirectoryExists=true,ParentIdentity=record.ParentIdentity};
         ExpectAny(()=>SessionTaskWorkspace.Cleanup(boundState,record,boundOps));
-        Require(boundOps.OpenCount==0 && boundOps.DeleteCount==0,"a profile with a process binding cannot use unrecorded-empty recovery");
+        Require(boundOps.OpenCount==0 && boundOps.DeleteCount==0,
+            "even a durably closed process binding cannot use unrecorded-empty recovery");
 
         var deleteFailureState=BuildTaskState();
         var deleteFailureOps=new FakeTaskWorkspaceRecoveryOps{DirectoryExists=true,ParentIdentity=record.ParentIdentity,DeleteSucceeds=false};
