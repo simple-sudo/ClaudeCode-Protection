@@ -5,11 +5,13 @@
 历史页的“当前/待执行/暂停/DELIVERABLE”按段落日期及限定范围解释，不是今天的状态或操作许可。
 不在本页复制当前安装和授权摘要。
 
-## 2026-11-11 显式 Git 工作流 schema 2：托管编译与策略测试
+## 2026-11-11 显式 Git 工作流 schema 2：托管构建、普通用户真实 Git 与隔离控制面
 
-开发分支 `chatgpt/complete-git-workflow-20261110`，交接提交 `17d8f9d0d28e419fb1d402ab0f7848f94779a3a6`，Draft PR #3 保持 OPEN / DRAFT。
-GitHub Actions：Run #16（43009603203）全部产品编译、专项托管测试编译、普通用户工作区/Git策略测试通过；Run #17（43009602970）全部产品编译通过且不运行受保护代码；Run #20（43009603161）纯托管策略 smoke 与 daily CLI 编译通过。三次均 SUCCESS。
-Run #16 的 `workspace-git-workflow-policy` 明确只验证固定命令/环境/顺序/pathspec拒绝，测试结尾声明没有 Git 进程、Broker、Job 或 LPAC 执行。故这组证据不属于真实 Git 执行或产品 LPAC 验收。schema 2 源码已接入既有 `workspace-process`→Broker→ProtectedSession→Owned Job→LPAC 链，但新版本实际 Git 命令、对象核验、异常退出、取消及清理仍 NOT_RUN；不得扩大此前 `f9e8d29d` 的单进程 `commit -a` 实测范围。
+开发分支 `chatgpt/complete-git-workflow-20261110`，当前头 `232e2aba50536732eb24beb03bb6da9747ebfc75`，Draft PR #3 保持 OPEN / DRAFT，未合并。
+GitHub Actions：43046933980 编译全部产品和专项测试，并以标准用户实际执行 Git 工作流；43046933934 编译全部产品但不执行受保护代码；43046934127 通过纯托管策略 smoke 并编译 daily CLI。三组均 SUCCESS。
+43046933980 的标准用户实测实际运行 hash-object/init/add/diff-check/numstat/commit/log/status/fsck、两个拒绝对照，并由独立 Owner 核验 commit/tree/blob/ref 与 GitReceipt 绑定；CRLF、二进制、空文件及显式选择的 ignored 文件保留。证据只证明 Runner 普通用户的真实 Git 行为，不证明产品固定 Git 资产、Broker、Owned Job、LPAC、UAC、宿主隐私或 Claude 执行。
+源码新增 Git 项目/控制目录分离：项目目录授予指定 LPAC 写入，控制目录仅授予 LPAC 读取；目录 DACL 固定 Owner=Administrators、Group=SYSTEM、受保护 DACL、OWNER RIGHTS 仅 READ_CONTROL，并施加低完整性标签。控制目录承载空全局配置、Hooks、Template 和 Owner 预建 pathspec；Owner 在资源持有检查中核对目录 DACL、低完整性标签、控制项清单和 pathspec 内容。自动化测试覆盖 DACL 描述符与控制项篡改拒绝，但真实 Broker 创建目录的 ACL 继承/访问检查及 LPAC 实测仍 NOT_RUN。
+故当前记 SOURCE / BUILD / INTEGRATED / VERIFIED(普通用户真实 Git、独立对象核验及限定策略/fixture 测试范围)；新版本 Broker→Owned Job→LPAC 多命令执行、真实受限 Git 进程、失败/取消时 Job 归零、成果拒绝导出和清理仍 NOT_RUN。不得扩大此前 `f9e8d29d` 单进程 `commit -a` 实测范围。
 
 ## 2026-11-10 独立 Git 固定提交
 
