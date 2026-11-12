@@ -7,7 +7,7 @@ using Microsoft.Win32.SafeHandles;
 
 namespace ProtectionLifecycle;
 
-// Hosted-only integration fixture. It creates a real LPAC process with the
+// Elevated Windows integration fixture. It creates a real LPAC process with the
 // same three creation attributes used by AtomicAdmission: package SID,
 // ALL_APPLICATION_PACKAGES_POLICY=OPT_OUT, and Job assignment at creation.
 // It then exercises the production GitWorkspaceDescriptor on real NTFS.
@@ -44,7 +44,7 @@ internal static class NativeGitLpacAccessCases
 
         using var identity = WindowsIdentity.GetCurrent();
         if (!new WindowsPrincipal(identity).IsInRole(WindowsBuiltInRole.Administrator))
-            throw new InvalidOperationException("LpacGitWorkspaceRequiresElevatedHostedFixture");
+            throw new InvalidOperationException("LpacGitWorkspaceRequiresElevatedFixture");
 
         var profileStatus = CreateAppContainerProfile(packageName, "ClaudeCodeProtection Git workspace LPAC fixture",
             "Ephemeral hosted NTFS and LPAC access qualification", IntPtr.Zero, 0, out var profileSid);
