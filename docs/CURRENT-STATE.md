@@ -91,7 +91,7 @@
 
 ## 8. 全项目架构治理（2026-11-12）
 
-架构基线与目标设计见 [ARCHITECTURE-BASELINE-AND-TARGET-20261112](ARCHITECTURE-BASELINE-AND-TARGET-20261112.md)。本轮审查基于源码 HEAD `74578e903c2584628d853598ef8f1910adf7da5b`，确认当前开发分支仍为 PR #3 的 OPEN / DRAFT 分支，领先目标分支 237、落后 0。最新三组 Actions（Token 职责提取提交）为 43214439565、43214439543、43214439759，均 SUCCESS；其证据边界仍限于托管编译、策略/工作区测试和限定 NTFS fixture。
+架构基线与目标设计见 [ARCHITECTURE-BASELINE-AND-TARGET-20261112](ARCHITECTURE-BASELINE-AND-TARGET-20261112.md)。本轮审查基于源码 HEAD `74578e903c2584628d853598ef8f1910adf7da5b`，确认当前开发分支仍为 PR #3 的 OPEN / DRAFT 分支，领先目标分支 237、落后 0。最新三组 Actions（工具启动职责提取最终修复提交）为 43215792139、43215792288、43215792160，均 SUCCESS；其证据边界仍限于托管编译、策略/工作区测试和限定 NTFS fixture。
 
 当前工程清单为 5 个产品项目、24 个 C# 测试项目、16 个脚本条目、3 个 Actions workflow；src Git Tree 共 193 个条目。主要架构问题是 ProtectionLifecycle 单程序集聚合过多领域、AtomicAdmission/ProtectedSession/SessionResources/InstalledBroker/BootstrapInstaller/SessionGitToolchain/HostPrivacyProbe 等大型类职责混合，以及 Shared 源码重复编译和测试 source-link 边界需要治理。没有证据证明产品项目存在 ProjectReference 环；ProtectedLifecycleCoordinator 只在测试项目编译，不是当前生产第二授权中心。
 
