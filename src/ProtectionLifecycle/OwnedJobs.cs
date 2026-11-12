@@ -1,3 +1,9 @@
+using System.ComponentModel;
+using System.Runtime.InteropServices;
+using Microsoft.Win32.SafeHandles;
+
+namespace ProtectionLifecycle;
+
 // Concrete kernel owner. Atomic admission reserves one creation using JOB_LIST;
 // there is no post-creation Assign or PID-based termination fallback.
 internal sealed partial class OwnedKernelJob : IDisposable
