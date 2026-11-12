@@ -219,11 +219,18 @@ internal static class NativeGitLpacAccessCases
                 var value = Environment.GetEnvironmentVariable(name);
                 if (value is not null) values[name] = value;
             }
+            var driveRoot = Path.GetPathRoot(root);
+            if (driveRoot is null || driveRoot.Length < 2 || driveRoot[1] != ':')
+                throw new InvalidDataException("LpacGitWorkspaceCurrentDriveInvalid");
+            values["=" + driveRoot[..2]] = root;
             values["ComSpec"] = commandImage;
             values["PATH"] = Environment.SystemDirectory;
             values["TEMP"] = Path.Combine(root, "git-project");
             values["TMP"] = Path.Combine(root, "git-project");
-            var block = string.Join('\0', values.Select(pair => pair.Key + "=" + pair.Value)) + "\0\0";
+            // Include the =X: current-directory entry required for a custom
+            // CreateProcess environment. The string's trailing NUL plus
+            // StringToHGlobalUni's terminator form exactly the two UTF-16 NULs.
+            var block = string.Join('\0', values.Select(pair => pair.Key + "=" + pair.Value)) + "\0";
             environment = Marshal.StringToHGlobalUni(block);
 
             const string sessionObjectSddl = "O:BAD:P(A;;0x001fffff;;;SY)(A;;0x001fffff;;;BA)";
