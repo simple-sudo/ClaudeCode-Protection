@@ -14,6 +14,7 @@
 | 启停生命周期 | [PROTECTED-STARTUP-SHUTDOWN-LIFECYCLE-V1](PROTECTED-STARTUP-SHUTDOWN-LIFECYCLE-V1.md) | 网络模式与 Claude 会话的两个状态机 |
 | 真实数据实验 | [REAL-DATA-ADVERSARIAL-ASSURANCE](REAL-DATA-ADVERSARIAL-ASSURANCE.md) | Claude 信息访问限制、真实内容对抗实验和数据流边界 |
 | 自评/画像 | [ASSURANCE-AND-EXPOSURE-PROFILING](ASSURANCE-AND-EXPOSURE-PROFILING.md) | 可信自评、泄露字段和画像推断合同 |
+| 证据治理 | [EVIDENCE-GOVERNANCE](EVIDENCE-GOVERNANCE.md) | 真实敏感数据、原始证据、GitHub 保存、溯源与认证秘密边界 |
 | 过程索引 | [STATUS](STATUS.md) | 按时间组织的开发过程、修复和失败记录 |
 | 验收账本 | [PROJECT-ACCEPTANCE](PROJECT-ACCEPTANCE.md) | 按能力和范围记录 PASS/FAIL/UNKNOWN/NOT_RUN |
 | 文档地图 | 本页 | 文件分类、历史文档使用规则和公开内容治理 |
@@ -76,7 +77,9 @@
 - GPU-HOST-REFERENCE.md
 - OWNED-OBJECT-DEFAULT-DACL-CANDIDATE-20261105.md
 
-### 2.4 本机验证、源码审查与许可证
+### 2.4 本机验证、证据治理、源码审查与许可证
+
+- EVIDENCE-GOVERNANCE.md — 真实主机证据、敏感字段、Public GitHub 保存、原始材料溯源和凭据边界。
 
 - LOCAL-OPERATING-BASELINE.md — 2026-11-04 本机网络操作基线，已被全机公网出口模式取代。
 - LOCAL-VALIDATION-PLAN.md — 本机分阶段验证和系统操作边界历史计划。
@@ -119,7 +122,8 @@
 
 本仓库当前为 Public。历史文档部分形成于私有研发阶段，可能含有本机环境观察、历史路径、对象摘要和当时的个人操作上下文。**本次文档重组不等于完整公开内容审计，也不证明全部历史提交、PR、Actions 日志和 Artifacts 适合公开。**
 
-- 新增公开文档不得包含真实公网 IP、MAC/BSSID、SSID、设备 UUID/序列号、个人路径、代理凭据、认证令牌或原始连接/崩溃日志。
+- 设备所有者已明确接受必要真实主机证据进入 Public GitHub 仓库；真实 IP/IPv6、MAC/BSSID、SSID、设备 UUID/序列号、私人路径、SID/ACL、代理/远控元数据、原始日志和故障回执不应被默认禁止或脱敏，按 EVIDENCE-GOVERNANCE.md 记录来源和范围。
+- 有效密码、Token、Cookie、私钥、签名密钥和可重放代理认证凭据不属于普通主机证据，必须单独管理；真实读取测试仍须覆盖。
 - SECURITY-REVIEW-20261112 是静态产品构建边界检查，不是 Secret Scanning、完整历史审计或公开发布审计。
 - 根目录未发现 LICENSE；在完成所有权、依赖和上游许可证核查前，不宣称本仓库已获 MIT/Apache 等许可。
 - 如需清除已提交的真实秘密或个人标识，必须单独制定凭据轮换、历史重写、分支/PR/缓存/Artifacts 清理方案；仅删除当前文件不等于从公开历史移除。

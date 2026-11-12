@@ -91,8 +91,10 @@ FlClash 由用户管理。Protection 不擅自切换节点或关闭代理。用�
 
 使用 REQUIREMENT_ONLY / DESIGN、SOURCE、BUILD、INTEGRATED、VERIFIED(scope)、CAPABILITY_DELIVERED(scope) 和 PRODUCT_DELIVERY_ACCEPTED 区分设计、源码、构建、接线、限定实测和完整产品交付。普通用户测试、管理员 NTFS fixture、实际 LPAC token、产品 Broker 和真实 Claude 会话不可相互冒充。
 
-不要将真实主机 IP、MAC、SSID、设备 UUID/序列号、代理订阅、认证令牌、原始日志或私人路径写入公开源码、文档、Issue、PR、Actions 日志或 Artifacts。公开仓库的源码本身不再是保密资产；本机安装目录、可信管理面、凭据和个人运行证据仍须由产品隔离保护。
+真实主机 IP/IPv6、MAC/BSSID、SSID、设备标识、私人路径、SID/ACL、代理/远控元数据、原始命令输出、日志和失败回执，均可能是必要的研发证据；设备所有者已明确接受将必要真实证据写入当前 Public GitHub 仓库。不得以默认脱敏替代真实实验，也不得将真实值伪装成合成结果。原始证据、来源、时间、执行身份、工件 SHA、哈希和分析结论应可追溯。可直接认证或重放的密码、Token、Cookie、私钥、签名密钥和代理订阅凭据仍须独立管理，不作为普通证据原值提交。研发者获准分析真实证据，不意味着 Claude 受限执行域获准访问。完整规则见 [EVIDENCE-GOVERNANCE](docs/EVIDENCE-GOVERNANCE.md)。
 
 ## 8. 文档入口
+
+真实开发证据与敏感信息的采集、GitHub 保存、原值审阅和凭据边界见 [EVIDENCE-GOVERNANCE](docs/EVIDENCE-GOVERNANCE.md)。
 
 从 [文档索引](docs/DOCUMENTATION-INDEX.md) 开始。正式需求以 [SECURITY-REQUIREMENTS](docs/SECURITY-REQUIREMENTS.md) 为准；网络设计以 [NETWORK-SCOPE](docs/NETWORK-SCOPE.md) 为准；启动/退出设计见 [PROTECTED-STARTUP-SHUTDOWN-LIFECYCLE-V1](docs/PROTECTED-STARTUP-SHUTDOWN-LIFECYCLE-V1.md)。历史记录不能覆盖最新需求，也不能授予操作许可。
