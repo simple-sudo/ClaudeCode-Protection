@@ -24,6 +24,10 @@ internal static class GitWorkflowExecutionCases
         // it requires the exact fresh profile intent, no process binding,
         // unchanged Program Files parent, exact path and cleanup checkpoint.
         var taskWorkspaceType=library.GetType("ProtectionLifecycle.SessionTaskWorkspace",true)!;
+        var cleanupAccess=Convert.ToUInt32(GetStatic(taskWorkspaceType,"CleanupEntryAccess"));
+        Require((cleanupAccess&0x00010000u)!=0 && (cleanupAccess&0x00020000u)!=0 &&
+            (cleanupAccess&0x00000080u)!=0 && (cleanupAccess&0x00000100u)!=0,
+            "exact task cleanup handle explicitly requests DELETE, READ_CONTROL, FILE_READ_ATTRIBUTES and SYNCHRONIZE");
         InvokeStatic(taskWorkspaceType,"RequireUnrecordedWorkspaceRecoveryAuthority",true,true,true,true,true);
         var authorityEvidence=new object?[]{true,true,true,true,true};
         var authorityNames=new[]{"profile ownership","absence of a process binding","original parent identity",
