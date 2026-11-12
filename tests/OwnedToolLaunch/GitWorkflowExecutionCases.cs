@@ -163,11 +163,13 @@ internal static class GitWorkflowExecutionCases
                 // Prove the hostile textconv driver is live when both defenses
                 // are deliberately removed in this test-only control.
                 File.WriteAllText(attributesPath,"* -text -filter -ident -working-tree-encoding\n",new UTF8Encoding(false));
-                var unguardedArguments=commands[4].Where(argument=>argument!="--no-textconv").Append("--textconv").ToArray();
-                var unguardedNumstat=Run(StartRunnerWorkflow(unguardedArguments));
-                Require(unguardedNumstat.Exit==0 && unguardedNumstat.Out.Contains("assets/payload.bin",StringComparison.Ordinal) &&
-                    !unguardedNumstat.Out.Contains("-\t-\tassets/payload.bin",StringComparison.Ordinal),
-                    "adversarial textconv control demonstrates that the configured converter would execute");
+                var diffAttribute=Run(StartRunnerWorkflow(new[]{"-C",repository,"check-attr","-z","diff","--","assets/payload.bin"}));
+                Require(diffAttribute.Exit==0 && diffAttribute.Out.Contains("must-not-run",StringComparison.Ordinal),
+                    "unguarded control restores the project-selected diff driver");
+                var unguardedDiff=Run(StartRunnerWorkflow(new[]{"-C",repository,"diff","--cached","--textconv","--no-ext-diff","--no-color"}));
+                Require(unguardedDiff.Exit==0 && unguardedDiff.Out.Contains("TEXTCONV_EXECUTED",StringComparison.Ordinal),
+                    "adversarial textconv control demonstrates that the configured converter would execute (exit "+
+                    unguardedDiff.Exit+", stderr="+unguardedDiff.Error+")");
             }
             finally{File.WriteAllBytes(attributesPath,safeAttributes);}
 
