@@ -3,11 +3,13 @@
 > 文档效力（2026-11-02）：工作区数据机制与各版本证据。旧“当前62e”等按当时解释，v3 DATA仍是无代码能力。日常Claude授权工作区不默认包括保护源码/敏感内部资料；可信维护授权另审，不由Broker任意读取宿主路径。
 > 最新状态/授权只见[CURRENT-STATE](CURRENT-STATE.md)，正式目标与术语见[SECURITY-REQUIREMENTS](SECURITY-REQUIREMENTS.md)。以下旧状态与操作许可不自动延续。
 
-## 2026-11-10/11：显式离线 Git 工作流 schema 2（源码接入；托管构建与普通用户真实 Git验证通过；LPAC待验收）
+## 2026-11-10/12：显式离线 Git 工作流 schema 2（源码接入；托管构建、普通用户真实 Git及对抗配置验证通过；LPAC待验收）
 
-本节描述开发分支 `chatgpt/complete-git-workflow-20261110` 当前源码能力，不覆盖上方历史安装证据。当前头为 `232e2aba50536732eb24beb03bb6da9747ebfc75`，Draft PR #3 保持开放且未合并；当前安装仍以[CURRENT-STATE](CURRENT-STATE.md)为准。GitHub Actions 43046933980 完成全部产品/专项测试编译，并以标准用户实际执行 Git 工作流；43046933934 编译全部产品但不运行受保护代码；43046934127 通过纯托管策略 smoke 并编译 daily CLI。三组均 SUCCESS。
+本节描述开发分支 `chatgpt/complete-git-workflow-20261110` 当前源码能力，不覆盖上方历史安装证据。当前头为 `9d7871e969ed5dff7933eab8cc2738ec404ae7f5`，Draft PR #3 保持开放且未合并；当前安装仍以[CURRENT-STATE](CURRENT-STATE.md)为准。GitHub Actions 43130955467 完成全部产品编译但不运行；43130955570 通过纯托管策略 smoke 并编译 daily CLI；43130955544 完成全部产品/专项测试编译并以标准用户实际执行 Git 工作流。三组均 SUCCESS。
 
-**证据边界：** 43046933980 的普通用户测试实际启动 Runner Git，执行 hash-object/init/add/diff-check/numstat/commit/log/status/fsck、两个私有对象拒绝对照及 Owner 独立 commit/tree/blob/ref/GitReceipt 核验；CRLF、二进制、空文件和显式选择的 ignored 文件均保留。它是 Runner 普通用户真实 Git 证据，不是产品 LPAC 证据。新建 Git 项目/控制目录的 DACL 描述符、OWNER RIGHTS、低完整性标签和控制项篡改拒绝已有源码与自动化检查，但尚未在真实 Broker 创建的目录及 LPAC token 下核验。当前 schema 2 产品 Git 多命令、Broker/Owned Job/LPAC 端到端执行、故障/取消时 Job 归零、成果拒绝导出和清理仍 NOT_RUN。此前 `f9e8d29d` 单进程 `git commit -a` LPAC 证据继续保留，但不覆盖本节多命令工作流。
+**证据边界：** 43130955544 的普通用户测试实际启动 Runner Git，执行 hash-object/init/add/diff-check/numstat/commit/log/status/fsck、两个私有对象拒绝对照及 Owner 独立 commit/tree/blob/ref/GitReceipt 核验；CRLF、二进制、空文件和显式选择的 ignored 文件均保留。它还在本地 `.git/config` 注入 clean filter 与恶意 hooksPath，验证固定 info attributes 和命令行 hooksPath 阻止其生效。新增 plan-aware 报告资格拒绝 schema 2 缺失 WorkflowObservation 和带失败元数据的报告。以上是 Runner 普通用户真实 Git、Owner 验证及托管编译证据，不是产品 LPAC 证据。新建 Git 项目/控制目录的 DACL 描述符、OWNER RIGHTS、低完整性标签和控制项篡改拒绝已有源码与自动化检查，但尚未在真实 Broker 创建的目录及 LPAC token 下核验。当前 schema 2 产品 Git 多命令、Broker/Owned Job/LPAC 端到端执行、故障/取消时 Job 归零、成果拒绝导出和清理仍 NOT_RUN。此前 `f9e8d29d` 单进程 `git commit -a` LPAC 证据继续保留，但不覆盖本节多命令工作流。
+
+**本机验证门禁：** 当前 Build* 脚本仍由 `Assert-ProjectSecurityClearance.ps1` 硬停止；旧的一次性 Broker/S1 离线构建脚本固定在更早提交/输入且授权已消耗。不得通过删除停止脚本、环境开关、重命名或新建旁路构建入口来获取本机测试资格。当前只继续使用托管 CI；真实 Broker/LPAC 实机验证须待该门禁通过独立审查并具备对应候选后再安排。
 
 普通用户可先运行：
 
