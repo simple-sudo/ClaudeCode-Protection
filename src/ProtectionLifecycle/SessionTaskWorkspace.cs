@@ -19,6 +19,9 @@ internal static class SessionTaskWorkspace
     private static string IntentLeaf(string profile)=>"task-workspace-intent-"+Identifiers.Hex32(profile)+".json";
     private static string CreatedLeaf(string profile)=>"task-workspace-created-"+Identifiers.Hex32(profile)+".json";
     private static string ClosedLeaf(string profile)=>"task-workspace-closed-"+Identifiers.Hex32(profile)+".json";
+    // READ_CONTROL | DELETE | FILE_READ_ATTRIBUTES | SYNCHRONIZE.
+    // The exact-entry handle must carry DELETE for FileDispositionInfoEx.
+    internal const uint CleanupEntryAccess=0x00030180;
     internal static void Plan(ProtectedState state,ProfileStorageReceipt profile,string session)
     {
         state.AssertHeld();if(profile.Control)throw WfpNative.Contract("ControlProfileCannotOwnTaskWorkspace");
@@ -265,7 +268,7 @@ internal static class SessionTaskWorkspace
     private static SafeFileHandle Open(string path,bool directory)
     {
         path=WindowsPathSeal.Canonical(path);
-        var handle=CreateFile(path,0x00030180,1,IntPtr.Zero,3,0x00200000u|(directory?0x02000000u:0u),IntPtr.Zero);
+        var handle=CreateFile(path,CleanupEntryAccess,1,IntPtr.Zero,3,0x00200000u|(directory?0x02000000u:0u),IntPtr.Zero);
         if(handle.IsInvalid)
         {
             var error=Marshal.GetLastWin32Error();handle.Dispose();
