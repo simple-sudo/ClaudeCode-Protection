@@ -2929,3 +2929,11 @@ Compile/Run/Tests失败和正常DataReport通过；最终library/Broker及77a1�
 - 完成首个渐进式拆分：`InstallationProfileLease` 从 `AtomicAdmission.cs` 移至 `InstallationProfileLease.cs`；`AtomicJobCompletion` 移至 `AtomicJobCompletion.cs`；更新 Lifecycle 显式编译清单。未改变类型可见性/命名空间/方法签名、持久状态格式、Job-zero 清理条件、所有权、程序集或安装资产。
 - 产品源码提交：`74a3a5908308ef31b098dbcccf6b0ec94fa7d1fc`。三组 Actions 均 SUCCESS：`43213673926` Hosted Windows compile、`43213673933` Safe managed policy smoke、`43213673931` Offline workspace Git workflow。产品编译和六个专项 harness 编译通过，普通用户策略/Runner Git 与 elevated NTFS fixture 通过。
 - 证据边界：没有本机 Build/安装/UAC/产品执行；没有 Broker → Owned Job → LPAC 完整链或真实 Claude 验收。SECURITY_REVIEW_REQUIRED 保持有效，PR #3 保持 OPEN / DRAFT。
+
+
+## 2026-11-12：AtomicChild Token 观察边界提取
+
+- 在前一阶段 Profile lease / Job completion receipt 提取基础上，将 `AdmissionToken`、`ResourceBootstrapFailure`、`OwnedMemberInspection` 移至 `AtomicAdmissionEvidence.cs`；将 AtomicChild 的 Token 读取、快照、LPAC AccessCheck 与 ETW token access observation 移至 `AtomicChild.Token.cs`。
+- `AtomicAdmission.cs` 从 1,317 行降至 1,201 行；显式编译清单同步。未改变 namespace/可见性/方法签名、Token AccessCheck 语义、进程创建/Resume 顺序、Job/Profile owner、持久协议、程序集或安装资产。
+- 提交：`7613c4e681b57ce17fdd0ff6efed747ce85435f9`。Hosted Windows compile `43214439565`、Safe managed policy smoke `43214439543`、Offline workspace Git workflow `43214439759` 全部 SUCCESS；产品与六个专项 harness 编译通过，普通用户策略/Runner Git 和 elevated NTFS fixture 通过。
+- 无本机 Build、安装、UAC、Broker → Owned Job → LPAC 完整产品执行或真实 Claude 测试；SECURITY_REVIEW_REQUIRED 保持有效。
