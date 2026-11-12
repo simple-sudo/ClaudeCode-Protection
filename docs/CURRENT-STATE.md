@@ -10,7 +10,7 @@
 | 可见性 | Public |
 | 默认分支 | main |
 | 当前线上开发分支 | chatgpt/complete-git-workflow-20261110 |
-| 当前产品源码重构提交 | 74a3a5908308ef31b098dbcccf6b0ec94fa7d1fc |
+| 当前产品源码重构提交 | 7613c4e681b57ce17fdd0ff6efed747ce85435f9 |
 | 架构审查源码基线 | 74578e903c2584628d853598ef8f1910adf7da5b |
 | 真实证据政策更新前 HEAD | 80a300f760a22b94060e598874b196f3e967dfef |
 | 文档整理与语义修正验证基线 | 2a5e4a5bf26d0f723d4cbb08d59bd4419111a4fa（文档变更；产品源码未变） |
@@ -91,10 +91,12 @@
 
 ## 8. 全项目架构治理（2026-11-12）
 
-架构基线与目标设计见 [ARCHITECTURE-BASELINE-AND-TARGET-20261112](ARCHITECTURE-BASELINE-AND-TARGET-20261112.md)。本轮审查基于源码 HEAD `74578e903c2584628d853598ef8f1910adf7da5b`，确认当前开发分支仍为 PR #3 的 OPEN / DRAFT 分支，领先目标分支 237、落后 0。最新三组 Actions 为 43190088230、43190088178、43190088173，均 SUCCESS；其证据边界仍限于托管编译、策略/工作区测试和限定 NTFS fixture。
+架构基线与目标设计见 [ARCHITECTURE-BASELINE-AND-TARGET-20261112](ARCHITECTURE-BASELINE-AND-TARGET-20261112.md)。本轮审查基于源码 HEAD `74578e903c2584628d853598ef8f1910adf7da5b`，确认当前开发分支仍为 PR #3 的 OPEN / DRAFT 分支，领先目标分支 237、落后 0。最新三组 Actions（Token 职责提取提交）为 43214439565、43214439543、43214439759，均 SUCCESS；其证据边界仍限于托管编译、策略/工作区测试和限定 NTFS fixture。
 
 当前工程清单为 5 个产品项目、24 个 C# 测试项目、16 个脚本条目、3 个 Actions workflow；src Git Tree 共 193 个条目。主要架构问题是 ProtectionLifecycle 单程序集聚合过多领域、AtomicAdmission/ProtectedSession/SessionResources/InstalledBroker/BootstrapInstaller/SessionGitToolchain/HostPrivacyProbe 等大型类职责混合，以及 Shared 源码重复编译和测试 source-link 边界需要治理。没有证据证明产品项目存在 ProjectReference 环；ProtectedLifecycleCoordinator 只在测试项目编译，不是当前生产第二授权中心。
 
-本轮先建立架构设计文档并更新文档索引/状态，随后完成首个文件级源码重构；未修改安装资产、DLL 输出布局或安全门禁。架构文档提交：`31dd2d1e08e40d3a720521328dc2d1a9562278a0`；索引提交：`7d0ae519e406cb47d2161cc8a6bca3d5d8797607`。
+本轮先建立架构设计文档并更新文档索引/状态，随后连续完成两个 Admission 文件级重构微阶段；未修改安装资产、DLL 输出布局或安全门禁。架构文档提交：`31dd2d1e08e40d3a720521328dc2d1a9562278a0`；索引提交：`7d0ae519e406cb47d2161cc8a6bca3d5d8797607`。
 
-首个重构微阶段已完成：从 AtomicAdmission.cs 提取 InstallationProfileLease 与 AtomicJobCompletion 到独立源码文件，AtomicAdmission 从 1,442 行降至 1,317 行；显式 Compile 清单已更新。代码提交 74a3a5908308ef31b098dbcccf6b0ec94fa7d1fc 的 Hosted Windows compile、Safe managed policy smoke、Offline workspace Git workflow 三组 Actions 均 SUCCESS（43213673926、43213673933、43213673931）。产品/六个专项 harness 编译通过，普通用户与 elevated NTFS/Git fixture 通过。此阶段仅为文件级职责提取，不改变持久协议、资源所有权、调用顺序或安装资产；不是产品 Broker/LPAC 实机验收。下一步继续拆分 AtomicChild 的 token/process/tool launch 职责。全机网络模式仍为 REQUIREMENT_ONLY / DESIGN；本机 `SECURITY_REVIEW_REQUIRED` 硬停止仍有效。
+A1.1 已完成：从 AtomicAdmission.cs 提取 InstallationProfileLease 与 AtomicJobCompletion；AtomicAdmission 从 1,442 行降至 1,317 行。提交 74a3a5908308ef31b098dbcccf6b0ec94fa7d1fc 的三组 Actions 均 SUCCESS（43213673926、43213673933、43213673931）。
+
+A1.2 已完成：将 AdmissionToken、ResourceBootstrapFailure、OwnedMemberInspection 移至 AtomicAdmissionEvidence.cs；将 AtomicChild 的 Token 读取、快照和 AccessCheck 方法移至 AtomicChild.Token.cs。AtomicAdmission 从 1,317 行降至 1,201 行。提交 7613c4e681b57ce17fdd0ff6efed747ce85435f9 的三组 Actions 均 SUCCESS（43214439565、43214439543、43214439759），产品与六个专项 harness 编译通过，普通用户策略/Runner Git 和 elevated NTFS fixture 通过。两个微阶段均未改变持久协议、资源所有权、调用顺序或安装资产；均不构成产品 Broker/LPAC 实机验收。下一步处理 AtomicChild 的受限工具创建与句柄交接职责。全机网络模式仍为 REQUIREMENT_ONLY / DESIGN；本机 `SECURITY_REVIEW_REQUIRED` 硬停止仍有效。
