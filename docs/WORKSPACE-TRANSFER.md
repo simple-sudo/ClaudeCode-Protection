@@ -11,12 +11,6 @@
 
 **结果快照与 receipt：** Job 关闭后，Owner 的文件系统快照先以 schema 2 GitPlan 为基线，验证结果包的路径清单、文件数和每个文件字节完全一致，再允许附加 GitReceipt。改变任一选中文件、增加/删除文件或使用错误 baseline 均拒绝。普通用户 NTFS fixture 已覆盖精确快照正向、工作区文件篡改拒绝、篡改结果不得附加 receipt；这不是产品 Broker/LPAC 端到端验收。
 
-Owner 在 Job 归零后独立核对 commit、tree、每个 blob、`HEAD`、`refs/heads/main` 及提交身份，再附加与精确输入包哈希绑定的 `GitReceipt`。普通 `workspace-review` 可显示提交摘要；`workspace-extract` 仍只提取项目文件，不写回原项目。
-
-**明确边界：** 只创建全新的隔离仓库，不导入原项目的 `.git`、历史、remote、凭据或配置；结果不导出 `.git` 对象，因此此第一阶段的提交历史不会跨会话持久化。它是一次受限的初始化提交工作流，不是可替代完整 Git 客户端的任意交互式终端。项目文件和 Git 结果仍是未加密数据包；哈希是内容绑定，不是签名、准入或授权。全过程不执行项目代码、测试、MSBuild、Git hooks 或 filter，不开放网络、不启动 Claude。
-
-包的文件数量、单文件、总内容和路径边界沿用原 workspace 限制。CommitMessage 只允许 1–160 字符、单行、无控制字符的有效 UTF-8；路径验证额外拒绝在扩展名前含空格的 DOS 设备名别名。失败不导出部分成果；原工作区、输入包和私有失败证据按原恢复流程保留。后续若需要跨会话历史，必须另行设计并审计专用 Git bundle 导入/导出，不能把 `.git` 目录直接放入普通文件包。
-
 普通用户可先运行：
 
 `workspace-git-pack ROOT SELECTION_JSON COMMIT_MESSAGE NEW_BUNDLE`
