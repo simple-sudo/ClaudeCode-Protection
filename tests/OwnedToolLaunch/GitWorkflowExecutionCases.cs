@@ -423,13 +423,18 @@ internal static class GitWorkflowExecutionCases
         using var built=(IDisposable)constructor.Invoke(new object[]{packageSid,true});
         var expected=(RawSecurityDescriptor)(descriptorType.GetField("expected",InstanceFlags)?.GetValue(built)
             ??throw new InvalidDataException("Expected Git descriptor missing"));
-        var labels=expected.SystemAcl?.OfType<CommonAce>().ToArray()??Array.Empty<CommonAce>();
-        var labelSummary=string.Join("|",labels.Select(label=>
-            $"{label.AceType}:{label.SecurityIdentifier.Value}:{label.AccessMask:X8}:{label.AceFlags}"));
-        Require(labels.Length==1 && labels[0].SecurityIdentifier.Value=="S-1-16-4096" &&
-            labels[0].AccessMask==1 && (labels[0].AceFlags&inherited)==inherited,
-            "private Git directories carry an inherited low-integrity no-write-up mandatory label (count="+
-            labels.Length+", "+labelSummary+")");
+        var labels=expected.SystemAcl?.Cast<GenericAce>().ToArray()??Array.Empty<GenericAce>();
+        var labelBytes=labels.Length==1?new byte[labels[0].BinaryLength]:Array.Empty<byte>();
+        if(labels.Length==1)labels[0].GetBinaryForm(labelBytes,0);
+        var labelSid=labelBytes.Length>=8?new SecurityIdentifier(labelBytes,8):null;
+        var labelFlags=labelBytes.Length>=2?(AceFlags)labelBytes[1]:AceFlags.None;
+        var labelMask=labelBytes.Length>=8?BitConverter.ToInt32(labelBytes,4):0;
+        var labelSummary=labels.Length==1
+            ?$"type=0x{labelBytes[0]:X2}, sid={labelSid?.Value}, mask=0x{labelMask:X8}, flags={labelFlags}"
+            :"count="+labels.Length;
+        Require(labels.Length==1 && labelBytes[0]==0x11 && labelSid?.Value=="S-1-16-4096" &&
+            labelMask==1 && (labelFlags&inherited)==inherited,
+            "private Git directories carry an inherited low-integrity no-write-up mandatory label ("+labelSummary+")");
     }
 
     private static void VerifyGitControlMutationGuards(Type gitType,string workspace)
