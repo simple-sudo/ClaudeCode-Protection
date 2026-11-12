@@ -76,7 +76,7 @@ internal sealed class OwnedToolLaunch
         ProcessStartInfo start;
         if(kind=="powershell")
         {
-            start=SessionResources.PowerShellStart(plan,workspace);
+            start=ResourceChildRunner.PowerShellStart(plan,workspace);
             if(!start.ArgumentList.SequenceEqual(arguments))throw WfpNative.Contract("OwnedPowerShellCompiledProgramRequired");
         }
         else if(kind is "project" or "project-probe")

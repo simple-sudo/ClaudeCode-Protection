@@ -20,6 +20,7 @@ internal static class GitWorkflowExecutionCases
             throw new InvalidOperationException("Ordinary-user Git execution test must not run elevated");
         VerifyResourceExecutionIntent(library);
         VerifyWorkspaceLeaseOwnership(library);
+        VerifyResourceChildRunnerBoundary(library);
 
         // Recovery of a task directory created before its durable identity
         // receipt is intentionally narrower than normal recursive cleanup:
@@ -583,6 +584,22 @@ internal static class GitWorkflowExecutionCases
         Require(lease.IsSealed && typeof(IDisposable).IsAssignableFrom(lease),
             "SessionWorkspaceLease has one explicit disposable lifetime");
         Console.WriteLine("PASS SessionWorkspaceLease ownership boundary: workspace paths/files/Git lease have one owner; SessionResources only composes leases");
+    }
+
+    private static void VerifyResourceChildRunnerBoundary(Assembly library)
+    {
+        var resources=library.GetType("ProtectionLifecycle.SessionResources",true)!;
+        var runner=library.GetType("ProtectionLifecycle.ResourceChildRunner",true)!;
+        Require(runner.IsAbstract && runner.IsSealed && runner.GetFields(InstanceFlags).Length==0,
+            "ResourceChildRunner is stateless and has no second resource owner");
+        foreach(var method in new[]{"RunChild","PowerShellStart","Qualified","OpenExecutableForProbe"})
+        {
+            Require(runner.GetMethod(method,StaticFlags) is not null,"ResourceChildRunner owns "+method);
+            Require(resources.GetMethod(method,StaticFlags) is null,"SessionResources no longer owns "+method);
+        }
+        Require(runner.GetProperty("ToolPath",StaticFlags) is not null && resources.GetProperty("ToolPath",StaticFlags) is null,
+            "fixed child-tool path policy belongs to ResourceChildRunner");
+        Console.WriteLine("PASS ResourceChildRunner boundary: child execution, fixed PowerShell launch and report qualification are separate from resource coordination");
     }
 
     private static void VerifyGitWorkspaceBoundary(Assembly library,SecurityIdentifier owner)

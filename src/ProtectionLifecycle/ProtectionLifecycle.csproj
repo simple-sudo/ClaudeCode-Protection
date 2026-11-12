@@ -44,7 +44,7 @@
     <Compile Include="ProcessLocalRevocation.cs" />
     <Compile Include="RuntimeStop.cs;ProtectionRuntimeLease.cs;WatchdogMemberPolicy.cs;WatchdogQualification.cs" />
     <Compile Include="ReviewedProxyRouteEvidence.cs;SessionProxy.cs;SessionProxy.Listener.cs;SessionProxy.Tunnel.cs;SessionProxy.FixedClient.cs;GatewayDestinationGuard.cs;GatewayChildReport.cs;ProtectedSession.GatewayQualification.cs;ProtectedSession.ResourceQualification.cs;ProtectedSession.Preparation.cs;ProtectedSession.Admission.cs;ProtectedSession.ResourceExecution.cs;ProtectedSession.Environment.cs;ProtectedSession.GatewayExecution.cs;ProtectedSession.Reporting.cs;ProtectedSession.cs;ResolverTlsEvidence.cs;ResolverRequestTiming.cs;UpstreamTunnelAttempt.cs" />
-    <Compile Include="ResourceExecutionIntent.cs;ResourceProbePlan.cs;ResourceChildReport.cs;SessionWorkspaceLease.cs;SessionResources.cs;SessionResources.Workspace.cs;GitWorkspaceDescriptor.cs;HostPrivacyControlFiles.cs" />
+    <Compile Include="ResourceExecutionIntent.cs;ResourceProbePlan.cs;ResourceChildReport.cs;ResourceChildRunner.cs;SessionWorkspaceLease.cs;SessionResources.cs;SessionResources.Workspace.cs;GitWorkspaceDescriptor.cs;HostPrivacyControlFiles.cs" />
     <Compile Include="WorkspaceDescriptor.cs" />
     <Compile Include="BundledProjectDevelopment.cs;../Shared/TextSummarySource.cs" />
     <Compile Include="CallerCSharpProject.cs;../Shared/CSharpProjectTask.cs;../Shared/ProjectFailure.cs" />

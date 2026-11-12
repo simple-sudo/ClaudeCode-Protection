@@ -255,7 +255,7 @@ internal sealed partial class AtomicChild
             using var current=new SafeProcessHandle((IntPtr)(-1),false);var token=ReadToken(current,false);
             if(!token.IsAppContainer || token.CapabilityCount!=0 || token.IntegritySid!="S-1-16-4096" || token.PackageSid is null)
                 throw WfpNative.Contract("RestrictedResourceChildTokenMismatch");
-            phase="resource-input";return SessionResources.RunChild(token.PackageSid);
+            phase="resource-input";return ResourceChildRunner.RunChild(token.PackageSid);
         }
         catch(Exception ex)
         {

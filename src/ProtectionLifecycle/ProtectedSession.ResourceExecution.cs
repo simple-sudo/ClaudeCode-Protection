@@ -177,7 +177,7 @@ internal sealed partial class ProtectedSession
                     bootstrapFailure=failure;throw WfpNative.Contract("ResourceChildBootstrapFailed");
                 }
             observed=JsonSerializer.Deserialize<ResourceChildReport>(childText)??throw WfpNative.Contract("ResourceChildReportMissing");
-            if(exit!=0 || observed.Pid!=child.Pid || observed.Nonce!=id || !SessionResources.Qualified(observed,compilerRequired) || compilerRequired && !toolObserved ||
+            if(exit!=0 || observed.Pid!=child.Pid || observed.Nonce!=id || !ResourceChildRunner.Qualified(observed,compilerRequired) || compilerRequired && !toolObserved ||
                 intent.IncludeGit && (!gitObserved || observed.Git is null) || !intent.IncludeGit && observed.Git is not null || intent.DevelopProject && !resources.ProjectExecutionReleased)
                 throw WfpNative.Contract("OfflineResourceOrInheritedToolBoundaryNotQualified");
         }
@@ -219,7 +219,7 @@ internal sealed partial class ProtectedSession
             foreach(var owned in new IDisposable?[]{child,reader,pipe,resources})try{owned?.Dispose();}catch(Exception ex){failures.Add(ex);}
             try
             {
-                if(intent.DeferCleanup && failures.Count==0 && profile is not null && zero?.ObservedZero==true && observed is not null && SessionResources.Qualified(observed,powerShellRequired))
+                if(intent.DeferCleanup && failures.Count==0 && profile is not null && zero?.ObservedZero==true && observed is not null && ResourceChildRunner.Qualified(observed,powerShellRequired))
                 {profile.DeferCleanupForRecovery();cleanupDeferred=true;}
                 else profile?.Dispose();
             }
@@ -233,7 +233,7 @@ internal sealed partial class ProtectedSession
         // late disconnect stays private and must not get a success receipt.
         if(workspaceResultSHA256 is not null && failures.Count==0)
             try{intent.AssertCaller?.Invoke();}catch(Exception ex){failures.Add(ex);}
-        var success=observed is not null && SessionResources.Qualified(observed,compilerRequired) && (!compilerRequired || toolObserved) && (!intent.IncludeGit || gitObserved && observed.Git is not null && workspaceResultSHA256 is not null) && zero?.ObservedZero==true && failures.Count==0;
+        var success=observed is not null && ResourceChildRunner.Qualified(observed,compilerRequired) && (!compilerRequired || toolObserved) && (!intent.IncludeGit || gitObserved && observed.Git is not null && workspaceResultSHA256 is not null) && zero?.ObservedZero==true && failures.Count==0;
         var report=JsonSerializer.Serialize(new {SchemaVersion=1,state.InstallationId,SessionId=id,version.Package.Release,version.Package.ManifestHash,
             Status=success?(intent.CallerProject?"CALLER_CSHARP_PROJECT_BUILT_AND_CLEANED":intent.DevelopProject?"BUNDLED_PROJECT_DEVELOPED_AND_CLEANED":workspaceInput is not null?"WORKSPACE_DATA_PROCESSED_AND_CLEANED":cleanupDeferred?"OFFLINE_RESOURCE_CLOSED_JOB_CLEANUP_DEFERRED":intent.IncludeGit?"FIXED_OFFLINE_GIT_TOOLCHAIN_AND_DENIAL_OBSERVED":"FIXED_OFFLINE_WORKSPACE_TOOL_AND_DENIAL_OBSERVED"):"OFFLINE_RESOURCE_SESSION_NOT_CONFIRMED",
             Scope=intent.CallerProject?WorkspacePipe.CallerProjectScope:intent.DevelopProject?"EXPLICIT_TEXTSUMMARY_SOURCE_EDIT_BUILD_RUN_TEST":workspaceInput is not null?"CALLER_BYTE_PINNED_DATA_FIXED_OFFLINE_GIT_ONLY_NO_PROJECT_CODE_EXECUTION":intent.IncludeGit?"FIXED_OFFLINE_GIT_INIT_ADD_COMMIT_AND_DENIAL_ONLY":"FIXED_PROFILE_WORKSPACE_WINDOWS_POWERSHELL_AND_NON_SECRET_DENIAL_FIXTURE_ONLY",

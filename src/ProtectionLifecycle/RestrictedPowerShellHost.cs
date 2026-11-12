@@ -21,7 +21,7 @@ internal static class RestrictedPowerShellHost
             if(actualPackage!=package.Value || Environment.GetEnvironmentVariable("CPC_POWERSHELL_POLICY_NONCE")!=plan.Nonce ||
                 !string.Equals(Environment.ProcessPath,plan.PowerShellLaunchImage,StringComparison.OrdinalIgnoreCase))
                 throw WfpNative.Contract("PowerShellOriginalOwnerBindingMissing");
-            var expected=SessionResources.PowerShellStart(plan,plan.Workspace(package.Value)).ArgumentList.Skip(1).ToArray();
+            var expected=ResourceChildRunner.PowerShellStart(plan,plan.Workspace(package.Value)).ArgumentList.Skip(1).ToArray();
             if(!expected.SequenceEqual(arguments))throw WfpNative.Contract("PowerShellCompiledProgramRequired");
             return InvokeConfirmedAbsentPolicies(plan.PowerShellDirectory,arguments);
         }
