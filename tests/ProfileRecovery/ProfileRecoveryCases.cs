@@ -76,7 +76,7 @@ internal static class ProfileRecoveryCases
             return taskState;
         }
         var taskPath=SessionTaskWorkspace.PathFor(session);
-        SessionTaskWorkspace.AssertClosed(BuildTaskState());
+        SessionTaskWorkspace.AssertClosed(BuildTaskState(),record);
         foreach(var invalid in new[]{
             BuildTaskState(rootAbsent:false),
             BuildTaskState(removed:1),
