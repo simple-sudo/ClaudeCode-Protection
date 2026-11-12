@@ -2910,3 +2910,14 @@ Compile/Run/Tests失败和正常DataReport通过；最终library/Broker及77a1�
 - 设备所有者明确接受将研发必要的真实主机信息、敏感字段、私人路径、设备/网络/代理/远控元数据、原始日志和失败回执纳入 Public GitHub 仓库。新增 EVIDENCE-GOVERNANCE.md，要求原始证据、来源、时间、身份、工件版本、哈希和分析结论可追溯；不以默认脱敏或合成值替代真实证据。有效认证凭据仍单独管理，真实读取路径仍须测试。
 - 更新 README、AGENTS、SECURITY-REQUIREMENTS、NETWORK-SCOPE、CURRENT-STATE、REAL-DATA-ADVERSARIAL-ASSURANCE、ASSURANCE-AND-EXPOSURE-PROFILING 和 DOCUMENTATION-INDEX 的现行语义；旧 IPv4-only/IPv6 临时门方案保留为历史决策，不再覆盖新目标。
 - 本轮仅更新规范、证据治理与文档导航，不修改产品可执行源码，不进行本机安装/UAC/网络设置/真实 Claude 启动或故障注入。主要提交：真实证据治理 `a93edb0cf077265839a3435c38572443020976a1`；完整文档索引与历史范围语义修正 `f2ae2ac878a4a978ecaf73d0451318910e4b4f56`。当前实现缺口和实机状态仍按 CURRENT-STATE / PROJECT-ACCEPTANCE 记录。
+
+## 2026-11-12：文档整理、真实证据政策和历史语义收敛
+
+本轮文档变更提交链：`a93edb0cf077265839a3435c38572443020976a1`（真实证据治理）、`f2ae2ac878a4a978ecaf73d0451318910e4b4f56`（完整文档索引与历史网络范围语义）、`2a5e4a5bf26d0f723d4cbb08d59bd4419111a4fa`（当前状态和历史证据注释）。
+
+- 设备所有者明确允许必要真实主机信息、敏感字段、私人路径、网络/设备/代理/远控元数据、原始日志和失败回执进入 Public GitHub 仓库；不再把“默认脱敏/少写”当作研发目标。真实证据需保留来源、时间、身份、工件版本、原始内容和分析链。有效认证凭据仍单独管理；研发者证据权限不传递给正式 Claude。
+- 新增 `docs/EVIDENCE-GOVERNANCE.md`，明确真实证据类型、目录建议、溯源元数据、原始证据与分析分离、GitHub/CI/PR/Claude 的不同数据边界。
+- 重建 `docs/DOCUMENTATION-INDEX.md`，列出 docs 目录内全部 68 份 Markdown 文档及上游许可证文本；链接检查无缺失目标。
+- 将 2026-11-12 全机公网出口强制代理设为现行网络范围；旧 IPv4-only/全机 IPv6 临时门方案作为历史设计保留，不再覆盖当前要求。为 2026-11-02 宿主隐私交接补充历史政策注释，不改写当时记录。
+- 三组 GitHub Actions 在文档验证基线 `2a5e4a5bf26d0f723d4cbb08d59bd4419111a4fa` 全部 SUCCESS：Safe managed policy smoke `43189433446`、Hosted Windows compile only `43189433267`、Offline workspace Git workflow verification `43189433650`。
+- 本轮只改文档，没有产品可执行源码改动、用户主机安装/UAC/网络变更、真实 Claude 启动或故障注入。以上 CI 只证明各自 workflow 覆盖的编译和测试范围，不扩大产品实机验收结论。

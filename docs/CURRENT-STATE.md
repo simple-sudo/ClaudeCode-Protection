@@ -11,12 +11,13 @@
 | 默认分支 | main |
 | 当前线上开发分支 | chatgpt/complete-git-workflow-20261110 |
 | 真实证据政策更新前 HEAD | 80a300f760a22b94060e598874b196f3e967dfef |
+| 文档整理与语义修正验证基线 | 2a5e4a5bf26d0f723d4cbb08d59bd4419111a4fa（文档变更；产品源码未变） |
 | 产品源码最近修订 | 2c3fb1646cf64da0817d777215d4efbf9ad4db1b（移除 Git ACL 失败诊断中的原始 SID/ACE 字符串） |
 | PR | #3，OPEN / DRAFT |
 | PR 目标分支 | codex/integrate-privacy-admission-20261027 |
 | PR 目标基线 | 8d56b0c40ef92d384b572bb168eec6bcd8a44d4e |
 
-真实证据治理提交：a93edb0cf077265839a3435c38572443020976a1；完整文档索引与历史范围语义修正提交：f2ae2ac878a4a978ecaf73d0451318910e4b4f56。本轮只更新当前线上开发分支，不合并 PR #3，不推进 main，不改变仓库设置或可见性。
+真实证据治理提交：a93edb0cf077265839a3435c38572443020976a1；完整文档索引与历史范围语义修正提交：f2ae2ac878a4a978ecaf73d0451318910e4b4f56；历史证据政策注释及验收状态更新：2a5e4a5bf26d0f723d4cbb08d59bd4419111a4fa。本轮只更新当前线上开发分支，不合并 PR #3，不推进 main，不改变仓库设置或可见性。
 
 ## 2. 最新云端验证
 
@@ -68,9 +69,12 @@
 ## 6. 文档治理与最新验证状态（2026-11-12）
 
 - 新增 [EVIDENCE-GOVERNANCE](EVIDENCE-GOVERNANCE.md)：设备所有者明确允许必要真实主机信息、敏感字段和原始证据进入 Public GitHub 仓库；不再默认脱敏或以合成数据替代真实证据。有效认证凭据仍独立管理，Claude 执行域不继承研发者证据权限。
-- 重建 [DOCUMENTATION-INDEX](DOCUMENTATION-INDEX.md)：覆盖当前 docs 目录内 68 份 Markdown 文档及上游许可证文本，链接目标核对无缺失；历史方案保留并标注历史效力。
-- 修正 SECURITY-REQUIREMENTS 中旧 IPv4-only / IPv6 临时门范围，明确由 2026-11-12 全机公网代理目标取代。
-- 文档基线 `f2ae2ac878a4a978ecaf73d0451318910e4b4f56` 的 Actions：Safe managed policy smoke `43188798980` SUCCESS；Hosted Windows compile `43188798999` 与 Offline workspace Git workflow `43188798991` 在本次快照时仍运行中，完成后再记录结论。
+- 重建 [DOCUMENTATION-INDEX](DOCUMENTATION-INDEX.md)：覆盖 docs 目录内 68 份 Markdown 文档及上游许可证文本；检查到的索引链接目标均存在。历史方案保留并标注历史效力。
+- 修正 SECURITY-REQUIREMENTS 中旧 IPv4-only / IPv6 临时门范围，明确由 2026-11-12 全机公网代理目标取代；对 2026-11-02 宿主隐私交接补充历史效力说明，不改写当时事实。
+- 在文档验证基线 `2a5e4a5bf26d0f723d4cbb08d59bd4419111a4fa` 上，GitHub Actions 三组均 SUCCESS：
+  - Safe managed policy smoke：`43189433446`
+  - Hosted Windows compile only：`43189433267`
+  - Offline workspace Git workflow verification：`43189433650`
 - 本轮只变更文档，不修改产品可执行源码，不构成实机安装、网络更改或正式 Claude 启动授权。
 
 ## 7. 下一步开发重点
