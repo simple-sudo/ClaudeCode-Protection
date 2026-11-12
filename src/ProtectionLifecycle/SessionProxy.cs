@@ -10,6 +10,8 @@ using System.Text;
 using System.Text.Json;
 using ClaudeCodeProtection.Security;
 
+namespace ProtectionLifecycle;
+
 internal sealed partial class SessionProxy : IDisposable
 {
     internal const int Port = 17891;
