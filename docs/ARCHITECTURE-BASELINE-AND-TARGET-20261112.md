@@ -403,3 +403,93 @@ Machine Network Lease 和 Session lease 是不同生命周期。Broker/Owner 是
 - 真实数据实验按 EVIDENCE-GOVERNANCE 保存真实来源、身份、时间、工件和哈希；不以合成数据替代 L3。
 - SECURITY_REVIEW_REQUIRED 是硬停止，任何新入口、CI、脚本或重命名均不得绕过。
 - PR #3 保持 OPEN / DRAFT；不得合并、修改目标分支或 force-push。
+
+
+## 13. 2026-11-12 branch-head re-audit and current implementation map
+
+This section supersedes only the *current-source observations* in the earlier review. Sections 1–12 preserve the original review baseline and A1 history.
+
+### 13.1 Verified Git and CI baseline
+
+- Repository: `simple-sudo/ClaudeCode-Protection`; branch: `chatgpt/complete-git-workflow-20261110`.
+- Current audited HEAD: `9c944d10a1b24bc88b3099091ea93a0d564b9484`.
+- PR #3 remains OPEN / DRAFT, targeting `codex/integrate-privacy-admission-20261027`; the branch is 299 commits ahead and 0 behind the target.
+- The handoff SHA `573c36271d0839d223317309ccda1e4a71446f47` was confirmed as the branch HEAD before this repair. Its Hosted compile and Offline Git workflows failed with 31 CS0246 errors originating in `PersistentFence.cs`. The primary partial declaration lacked `namespace ProtectionLifecycle;`, while the split partial files and referenced WFP/session types were in that namespace.
+- Commit `9c944d10a1b24bc88b3099091ea93a0d564b9484` restores the file-scoped namespace only. It does not change WFP policy, filter definitions, access masks, ownership, recovery or product behavior.
+- All three workflows for `9c944d1` completed SUCCESS: Hosted Windows compile only `43230310511`, Offline workspace Git workflow verification `43230310544`, and Safe managed policy smoke `43230310614`. The offline workflow compiled all six focused harnesses and completed its standard-user policy/real Git and elevated native NTFS fixture steps.
+- The failed `573c362` run remains a real failure record; it is not overwritten by the later success.
+
+### 13.2 Current repository and project map
+
+The recursive Git tree at the audited baseline contains 529 entries (479 blobs and 50 tree entries). The `src/` subtree contains 254 entries (246 files and 8 directories).
+
+| Source area | Files | C# files | Actual boundary |
+|---|---:|---:|---|
+| `src/ProtectionLifecycle` | 188 | 182 | One `ProtectionLifecycle.dll` project; the dominant management assembly |
+| `src/Shared` | 22 | 22 | Source-linked contracts and pure logic; no Shared assembly |
+| `src/ClaudeProtection` | 18 | 17 | Daily user-level CLI |
+| `src/ProtectionCenter` | 8 | 7 | WPF user interface and ordinary-process backend |
+| `src/ProtectionBootstrap` | 4 | 1 | Install/update/recovery entry point |
+| `src/ProtectionBroker` | 2 | 1 | Trusted management entry point |
+| `src/ClaudeProtection.Engineering` | 2 | 1 | Separate engineering/experiment build |
+| `src/NativeFence` | 2 | 0 | Native C/C++ WFP experiment, built by script rather than as a managed product project |
+
+The six managed project files have explicit compile lists because `EnableDefaultCompileItems=false`. Their current Compile Include counts are: Daily CLI 28, Engineering 13, Center 21, Broker 1, Bootstrap 1, and Lifecycle 202. The Lifecycle list comprises its 182 local C# files plus 20 source-linked Shared files. A path audit found no missing or duplicate Compile Include paths in these six projects. Bootstrap also has two property-driven EmbeddedResource entries; their values are build inputs rather than literal repository paths, and the current Hosted product compile succeeded.
+
+Project references and process boundaries:
+
+- Broker and Bootstrap each reference the entire Lifecycle project.
+- Daily CLI and Center do not ProjectReference Lifecycle; they source-link selected Shared contracts and communicate through the existing process/IPC boundaries.
+- Engineering reuses selected CLI source files in a separate output and does not reference the daily product assembly.
+- Shared is deliberately source-linked into multiple processes; it is not a separately deployed DLL. Its serialized contracts must remain versioned and compatible.
+- NativeFence remains a script-driven experiment, not a product asset.
+
+There are 24 C# test projects. Nine ProjectReference Lifecycle: CenterResults, DirectoryNames, FailedProjectInspection, GatewayCapabilityBoundary, GpuCallProgress, GpuHostReference, LpacBoundary, ManifestReadAccess and OwnedToolLaunch. The other fifteen are standalone or source-linked harnesses. Current Actions execute three distinct test/build paths: all product-project compiles, PolicySmoke, and six focused offline-workflow harnesses (WorkspaceTransfer, OwnedToolLaunch, WorkspacePipe, CenterResults, ProfileRecovery and TaskWorkspaceNative). The remaining test projects are not all compiled by every current workflow; CI coverage should be expanded deliberately without conflating fixture scope with product integration.
+
+The repository also contains 16 scripts, 3 GitHub Actions workflows, 70 files under `docs/`, 14 sample files and 3 tool files. Root command wrappers and PowerShell entry points remain part of the product/developer interface and must be included in future entrypoint reviews.
+
+### 13.3 What the completed file splits do—and do not—establish
+
+A1.1–A1.7 and the subsequent 2026-11-12 splits are present in the current tree: Job intent/snapshot/retirement, OwnedKernelJob admission/creation/observation/native methods, ProtectedSession qualification/preparation/admission/execution/reporting, runtime/watchdog, resource/workspace/recovery, Git process/policy/receipt, HostPrivacy probe concerns, ProxyChannel and SessionProxy concerns, WFP native/readback/definitions, and network probe contracts/receivers/qualification.
+
+These changes substantially reduce several original source files, but they do not automatically create independent modules. The following remain *one C# type/owner split across partial files*:
+
+- `OwnedKernelJob` and `AtomicChild`: these are cohesive native resource owners; their partial files may remain as source organization as long as each underlying handle still has one owner.
+- `PersistentFence`: it owns one exact WFP engine/package identity/fence plan; readback and native definition partials are implementation regions of that owner. It must not be split into competing owners.
+- `ProtectedSession`: the root file is now small, but gateway/environment/resource workflows and nested `Preparation`, `Admission` and `ResourceQualification` permits still belong to the same session owner. Keep the permits owner-bound; extract only pure policy or a service with an explicit non-owning/lease contract.
+- `SessionResources`: it still holds workspace path/file handles together with Git, PowerShell and HostPrivacy leases. The `Workspace` partial is still the same class, not an independently owned workspace lease.
+- `SessionProxy`: listener, accepted-client supervision, tunnel, fixed-client and route-health concerns remain one class across partial files.
+- `SessionGitToolchain`: asset lease, command policy, process execution and repository/receipt verification remain one class across partial files.
+- `HostPrivacyProbe`: lifecycle, restricted runner, compiler control and native methods remain one class across partial files.
+
+Thus the file splits are a useful transitional organization, not completion of low coupling. Future work must introduce actual composition or pure policy boundaries only where they reduce shared mutable state, clarify ownership, or create an independently testable contract. Do not extract cohesive single-owner native handles merely to eliminate partial classes.
+
+### 13.4 Remaining large source areas to review
+
+The largest current source files by repository blob size include:
+
+| File | Bytes | Review focus |
+|---|---:|---|
+| `BootstrapInstaller.cs` | 62,500 | Package approval, asset verification, update transaction and recovery ownership |
+| `OfflineConsoleQualification.cs` | 56,887 | Qualification plan, native observations, TLS/network evidence and reporting |
+| `InstalledBroker.cs` | 41,672 | Command parsing, caller/request admission, endpoint routing and data channels |
+| `SessionZeroCreatorChannel.cs` | 38,326 | Creator IPC framing, caller identity and channel lifetime |
+| `SessionZeroCreatorRegistration.cs` | 33,697 | Service registration, identity and recovery boundaries |
+| `SessionWinsockReadAccess.cs` | 32,297 | Winsock catalog observation and read-access lifetime |
+| `SessionZeroClosedCreatorRecovery.cs` | 31,833 | Durable creator closure and recovery |
+| `ExactUninstall.cs` | 31,563 | Exact uninstall authority and resource closure |
+
+Size is a review signal, not a split instruction. Each file must first be classified by state ownership, OS handles, durable receipts, error/recovery responsibility and tests. Some may be cohesive protocol implementations and should remain single owners.
+
+### 13.5 Updated migration focus
+
+The next A2 work remains inside the current Lifecycle assembly and must not change the package asset set:
+
+1. Replace the resource execution path's loosely coupled boolean combinations with a typed, immutable resource-operation intent. Make invalid combinations unrepresentable and preserve every existing caller/owner recheck.
+2. Extract a real `SessionWorkspaceLease` only after mapping every workspace path, file handle, directory lease, Git pathspec, result snapshot and disposal order. `SessionResources` should become a coordinator that owns the workspace lease and the existing tool/privacy leases, not a second owner of their handles.
+3. Add focused tests for request validation, workspace lease lifetime and cleanup refusal; retain the existing Git, recovery and native NTFS fixtures.
+4. Continue A3/A4 by extracting actual Git command policy/receipt verification and HostPrivacy reference/probe/evidence boundaries from their partial classes, without moving their native handles to a second owner.
+5. Keep SessionProxy and PersistentFence as distinct session-network/WFP owners. Remove direct cross-domain dependencies only through a shared immutable network-policy contract; do not mistake this for Machine Network Protection.
+6. Continue A7 review of Broker/Bootstrap and A6 GPU identity/compute only after the earlier owner boundaries are stable.
+
+No new DLL, namespace-wide migration, install asset, Manifest/Bootstrap approval, product runtime behavior or local security-stop change is implied by this plan. Full Machine Network Protection remains REQUIREMENT_ONLY / DESIGN; `SECURITY_REVIEW_REQUIRED` remains effective.
