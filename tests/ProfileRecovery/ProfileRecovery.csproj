@@ -8,6 +8,6 @@
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="Program.cs;ProfileRecoveryCases.cs;../../src/ProtectionLifecycle/SessionProfileRecovery.cs;../../src/ProtectionLifecycle/SessionTaskWorkspace.cs;../../src/ProtectionLifecycle/SessionTaskWorkspace.Recovery.cs" />
+    <Compile Include="Program.cs;ProfileRecoveryCases.cs;../../src/ProtectionLifecycle/ProfileStorageReceipt.cs;../../src/ProtectionLifecycle/SessionProfileRecovery.cs;../../src/ProtectionLifecycle/SessionProfileRecovery.Cleanup.cs;../../src/ProtectionLifecycle/SessionTaskWorkspace.cs;../../src/ProtectionLifecycle/SessionTaskWorkspace.Recovery.cs" />
   </ItemGroup>
 </Project>
