@@ -2921,3 +2921,11 @@ Compile/Run/Tests失败和正常DataReport通过；最终library/Broker及77a1�
 - 将 2026-11-12 全机公网出口强制代理设为现行网络范围；旧 IPv4-only/全机 IPv6 临时门方案作为历史设计保留，不再覆盖当前要求。为 2026-11-02 宿主隐私交接补充历史政策注释，不改写当时记录。
 - 三组 GitHub Actions 在文档验证基线 `2a5e4a5bf26d0f723d4cbb08d59bd4419111a4fa` 全部 SUCCESS：Safe managed policy smoke `43189433446`、Hosted Windows compile only `43189433267`、Offline workspace Git workflow verification `43189433650`。
 - 本轮只改文档，没有产品可执行源码改动、用户主机安装/UAC/网络变更、真实 Claude 启动或故障注入。以上 CI 只证明各自 workflow 覆盖的编译和测试范围，不扩大产品实机验收结论。
+
+
+## 2026-11-12：全项目架构基线与首个源码重构微阶段
+
+- 新增 `docs/ARCHITECTURE-BASELINE-AND-TARGET-20261112.md`，记录基于源码 HEAD `74578e903c2584628d853598ef8f1910adf7da5b` 的工程清单、产品/测试依赖图、资源所有权、主要架构问题和 A0—A8 迁移计划；同步更新文档索引与 CURRENT-STATE。
+- 完成首个渐进式拆分：`InstallationProfileLease` 从 `AtomicAdmission.cs` 移至 `InstallationProfileLease.cs`；`AtomicJobCompletion` 移至 `AtomicJobCompletion.cs`；更新 Lifecycle 显式编译清单。未改变类型可见性/命名空间/方法签名、持久状态格式、Job-zero 清理条件、所有权、程序集或安装资产。
+- 产品源码提交：`74a3a5908308ef31b098dbcccf6b0ec94fa7d1fc`。三组 Actions 均 SUCCESS：`43213673926` Hosted Windows compile、`43213673933` Safe managed policy smoke、`43213673931` Offline workspace Git workflow。产品编译和六个专项 harness 编译通过，普通用户策略/Runner Git 与 elevated NTFS fixture 通过。
+- 证据边界：没有本机 Build/安装/UAC/产品执行；没有 Broker → Owned Job → LPAC 完整链或真实 Claude 验收。SECURITY_REVIEW_REQUIRED 保持有效，PR #3 保持 OPEN / DRAFT。
