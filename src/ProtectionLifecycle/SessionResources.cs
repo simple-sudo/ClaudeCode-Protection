@@ -706,7 +706,8 @@ internal sealed class SessionResources : IDisposable
                 if(value==IntPtr.Zero)throw WfpNative.Contract("WorkspaceDescriptorMissing");
                 var size=GetSecurityDescriptorLength(value);if(size is <20 or >65536)throw WfpNative.Contract("WorkspaceDescriptorBounds");
                 var bytes=new byte[checked((int)size)];Marshal.Copy(value,bytes,0,bytes.Length);var actual=new RawSecurityDescriptor(bytes,0);
-                var labelMatches=Same(actual.SystemAcl,expected.SystemAcl) || allowMissingLowLabel && actual.SystemAcl is null;
+                var labelMatches=Same(actual.SystemAcl,expected.SystemAcl) || allowMissingLowLabel && actual.SystemAcl is null &&
+                    (actual.ControlFlags&ControlFlags.SystemAclPresent)==0;
                 if(actual.Owner?.Value!=expected.Owner?.Value || actual.Group?.Value!=expected.Group?.Value ||
                     (actual.ControlFlags&ControlFlags.DiscretionaryAclProtected)==0 ||
                     !Same(actual.DiscretionaryAcl,expected.DiscretionaryAcl) || !labelMatches)
