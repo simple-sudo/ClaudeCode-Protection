@@ -259,8 +259,8 @@ internal static class NativeGitLpacAccessCases
                 "echo nested>" + Quote(projectNestedPath) + " & " +
                 "echo control-tamper>" + Quote(controlWritePath) + " & " +
                 "mkdir " + Quote(controlCreatedPath) + " & " +
-                "copy /b /y " + Quote(mediumWritePayloadPath) + " " + Quote(mediumWritePath) + " >nul & " +
-                "copy /b /y " + Quote(mediumWritePayloadPath) + " " + Quote(mediumReadOnlyFilePath) + " >nul & " +
+                "type " + Quote(mediumWritePayloadPath) + " > " + Quote(mediumWritePath) + " & " +
+                "type " + Quote(mediumWritePayloadPath) + " > " + Quote(mediumReadOnlyFilePath) + " & " +
                 "exit /b 0";
             // Keep the already-observed inline cmd /c execution path. The fixed
             // command uses only generated workspace paths and fixed operations;
@@ -392,10 +392,12 @@ internal static class NativeGitLpacAccessCases
                     "control-dir-read=" + ProbeOpenAsLpac(token, Path.Combine(root, "git-control"), true, 0x21),
                     "control-dir-add-file=" + ProbeOpenAsLpac(token, Path.Combine(root, "git-control"), true, 0x22)
                 };
+                var mediumPayloadReadProbe = ProbeOpenAsLpac(token, mediumWritePayloadPath, false, 0x1);
                 var mediumWriteProbe = ProbeOpenAsLpac(token, Path.Combine(root, "medium-write", "medium.txt"), false, 0x2);
                 var mediumReadOnlyReadProbe = ProbeOpenAsLpac(token, mediumReadOnlyFilePath, false, 0x1);
                 var mediumReadOnlyWriteProbe = ProbeOpenAsLpac(token, mediumReadOnlyFilePath, false, 0x2);
-                pathProbes = pathProbes.Append("medium-file-write-data=" + mediumWriteProbe)
+                pathProbes = pathProbes.Append("medium-payload-read-data=" + mediumPayloadReadProbe)
+                    .Append("medium-file-write-data=" + mediumWriteProbe)
                     .Append("medium-readonly-file-read-data=" + mediumReadOnlyReadProbe)
                     .Append("medium-readonly-file-write-data=" + mediumReadOnlyWriteProbe).ToArray();
                 Console.WriteLine("INFO LPAC token mandatory policy: 0x" +
@@ -403,7 +405,7 @@ internal static class NativeGitLpacAccessCases
                 if ((mandatoryPolicy & 0x1) == 0 || (mandatoryPolicy & ~0x3) != 0)
                     throw new InvalidDataException("LpacGitWorkspaceMandatoryPolicyMismatch:0x" +
                         mandatoryPolicy.ToString("X8", System.Globalization.CultureInfo.InvariantCulture));
-                if (mediumWriteProbe != "PASS" || mediumReadOnlyReadProbe != "PASS" ||
+                if (mediumPayloadReadProbe != "PASS" || mediumWriteProbe != "PASS" || mediumReadOnlyReadProbe != "PASS" ||
                     mediumReadOnlyWriteProbe != "Win32=0x00000005")
                     throw new InvalidDataException("LpacGitWorkspaceMediumIntegrityDaclProbeMismatch:" + string.Join(";", pathProbes));
                 Console.WriteLine("INFO LPAC path access probes (actual token impersonation): " + string.Join(";", pathProbes));
@@ -448,10 +450,15 @@ internal static class NativeGitLpacAccessCases
             CheckReadCopy("medium-readonly", mediumReadOnlyFilePath, mediumReadOnlyReadCopyPath, readMismatches);
             if (readMismatches.Count != 0)
                 throw new InvalidDataException("LpacGitWorkspaceReadCopyContentMismatch:" + string.Join(";", readMismatches));
-            if (!File.ReadAllBytes(mediumFilePath).SequenceEqual(Encoding.ASCII.GetBytes("medium-tamper")) ||
-                File.ReadAllText(mediumReadCopyPath) != "medium-original" ||
-                File.ReadAllText(mediumReadOnlyFilePath) != "medium-readonly-original")
-                throw new InvalidDataException("LpacGitWorkspaceLowBoxMediumAccessResultMismatch");
+            var mediumActual = File.ReadAllBytes(mediumFilePath);
+            var mediumCopy = File.ReadAllBytes(mediumReadCopyPath);
+            var mediumReadOnlyActual = File.ReadAllBytes(mediumReadOnlyFilePath);
+            if (!mediumActual.AsSpan().SequenceEqual(Encoding.ASCII.GetBytes("medium-tamper")) ||
+                !mediumCopy.AsSpan().SequenceEqual(Encoding.ASCII.GetBytes("medium-original")) ||
+                !mediumReadOnlyActual.AsSpan().SequenceEqual(Encoding.ASCII.GetBytes("medium-readonly-original")))
+                throw new InvalidDataException("LpacGitWorkspaceLowBoxMediumAccessResultMismatch:medium=" +
+                    Convert.ToHexString(mediumActual) + ";copy=" + Convert.ToHexString(mediumCopy) +
+                    ";readOnly=" + Convert.ToHexString(mediumReadOnlyActual));
             File.Delete(mediumWritePayloadPath);
             File.Delete(projectReadCopyPath);
             File.Delete(controlConfigReadCopyPath);
