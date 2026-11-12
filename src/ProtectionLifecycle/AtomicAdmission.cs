@@ -700,28 +700,6 @@ internal sealed partial class AtomicChild : IDisposable
             !ReferenceEquals(version,exactVersion) || !ReferenceEquals(job,exactJob) || !job.ContainsProcess(process))
             throw WfpNative.Contract("OfflineConsoleRuntimeRequiresExactSuspendedChild");
     }
-    internal SecurityIdentifier? OfflineConsoleUserSid { get;private set; }
-    internal SessionZeroStartupWitness.Win32kObservation? BeforeResumeWin32k {get;private set;}
-    internal SessionZeroStartupWitness.SystemCallFilterObservation? BeforeResumeSystemCallFilter {get;private set;}
-    internal void ObserveStartupBranch(SessionZeroStartupBranchTrace trace,Action assertHealthy)
-    {
-        if(!startupWitness || !SessionZeroStartupWitness.UsesBranchTrace(version.Package.SchemaVersion) ||
-            disposed || !resumed || !job.ContainsProcess(process))
-            throw WfpNative.Contract("StartupTraceRequiresResumedReviewedWitness");
-        trace.Observe(process,Pid,initialThreadId,assertHealthy);
-    }
-    internal void ObserveCudaAccess(SessionZeroStartupBranchTrace.CudaAccessTrace trace,Action assertHealthy)
-    {
-        if(!independentCuda || version.Package.SchemaVersion is not (PackageAssetCatalog.SessionZeroCudaDeferredPreloadSchema or PackageAssetCatalog.SessionZeroCudaInitializationTraceSchema or PackageAssetCatalog.SessionZeroCudaHelperPathSchema or PackageAssetCatalog.SessionZeroCudaRegistryCallsSchema or PackageAssetCatalog.SessionZeroCudaGraphicsReadSchema or PackageAssetCatalog.SessionZeroCudaGraphicsRootSchema or PackageAssetCatalog.SessionZeroCudaDeviceIdentitySchema or PackageAssetCatalog.SessionZeroGitTrackedCommitSchema) ||
-            disposed || !resumed || !job.ContainsProcess(process))
-            throw WfpNative.Contract("CudaTraceRequiresResumedReviewedRoot");
-        trace.Observe(process,Pid,initialThreadId,assertHealthy);
-    }
-    internal uint? ObserveOfflineConsoleExit()
-    {
-        if(!offlineConsole)throw WfpNative.Contract("OfflineConsoleWorkloadRequired");
-        return ObserveCanaryExit(100);
-    }
     private static void AssertNoChildCreation(SafeProcessHandle process)
     {
         if(!GetProcessMitigationPolicy(process,13,out var flags,sizeof(uint)))throw Error("OfflineConsoleReadChildPolicy");
