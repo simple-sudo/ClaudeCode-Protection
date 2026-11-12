@@ -145,7 +145,7 @@ internal static class NativeGitLpacAccessCases
     private static void RunActualLpacProcess(string root, string packageSid)
     {
         if (Marshal.SizeOf<StartupInfo>() != 104 || Marshal.SizeOf<StartupInfoEx>() != 112 ||
-            Marshal.SizeOf<SecurityCapabilities>() != 24)
+            Marshal.SizeOf<SecurityCapabilities>() != 24 || Marshal.SizeOf<SecurityAttributes>() != 24)
             throw new PlatformNotSupportedException("LpacGitWorkspaceNativeLayoutMismatch");
 
         var commandImage = Path.Combine(Environment.SystemDirectory, "cmd.exe");
@@ -159,6 +159,7 @@ internal static class NativeGitLpacAccessCases
         package.GetBinaryForm(packageBytes, 0);
         IntPtr packagePointer = IntPtr.Zero, attributes = IntPtr.Zero, capabilities = IntPtr.Zero;
         IntPtr jobList = IntPtr.Zero, policy = IntPtr.Zero, environment = IntPtr.Zero;
+        IntPtr processDescriptor = IntPtr.Zero, threadDescriptor = IntPtr.Zero;
         SafeProcessHandle? process = null;
         SafeWaitHandle? thread = null;
         var initialized = false;
@@ -225,14 +226,37 @@ internal static class NativeGitLpacAccessCases
             var block = string.Join('\0', values.Select(pair => pair.Key + "=" + pair.Value)) + "\0\0";
             environment = Marshal.StringToHGlobalUni(block);
 
+            const string sessionObjectSddl = "O:BAD:P(A;;0x001fffff;;;SY)(A;;0x001fffff;;;BA)";
+            if (!ConvertStringSecurityDescriptorToSecurityDescriptor(sessionObjectSddl, 1, out processDescriptor, out _) ||
+                !ConvertStringSecurityDescriptorToSecurityDescriptor(sessionObjectSddl, 1, out threadDescriptor, out _))
+                throw Error("LpacGitWorkspaceBuildProcessSecurity");
+            var processSecurity = new SecurityAttributes
+            {
+                Length = Marshal.SizeOf<SecurityAttributes>(),
+                Descriptor = processDescriptor,
+                InheritHandle = 0
+            };
+            var threadSecurity = new SecurityAttributes
+            {
+                Length = Marshal.SizeOf<SecurityAttributes>(),
+                Descriptor = threadDescriptor,
+                InheritHandle = 0
+            };
             var startup = new StartupInfoEx
             {
                 Basic = new StartupInfo { Size = (uint)Marshal.SizeOf<StartupInfoEx>() },
                 Attributes = attributes
             };
-            if (!CreateProcess(commandImage, command, IntPtr.Zero, IntPtr.Zero, false,
+            if (!CreateProcess(commandImage, command, ref processSecurity, ref threadSecurity, false,
                 CreateSuspendedExtendedUnicodeNoWindow, environment, root, ref startup, out var info))
-                throw Error("LpacGitWorkspaceCreateSuspendedChild");
+            {
+                var nativeError = Marshal.GetLastWin32Error();
+                var parentJobQuery = IsProcessInJob(GetCurrentProcess(), IntPtr.Zero, out var parentInJob);
+                throw new InvalidOperationException("LpacGitWorkspaceCreateSuspendedChild:Win32=0x" +
+                    nativeError.ToString("X8", System.Globalization.CultureInfo.InvariantCulture) +
+                    ";ParentJobQuery=" + parentJobQuery.ToString() + ";ParentInJob=" + parentInJob.ToString(),
+                    new Win32Exception(nativeError));
+            }
             childCreated = true;
             process = new SafeProcessHandle(info.Process, true);
             thread = new SafeWaitHandle(info.Thread, true);
@@ -285,6 +309,8 @@ internal static class NativeGitLpacAccessCases
             if (capabilities != IntPtr.Zero) Marshal.FreeHGlobal(capabilities);
             if (attributes != IntPtr.Zero) Marshal.FreeHGlobal(attributes);
             if (packagePointer != IntPtr.Zero) Marshal.FreeHGlobal(packagePointer);
+            if (threadDescriptor != IntPtr.Zero) _ = LocalFree(threadDescriptor);
+            if (processDescriptor != IntPtr.Zero) _ = LocalFree(processDescriptor);
         }
     }
 
@@ -516,7 +542,12 @@ internal static class NativeGitLpacAccessCases
         finally { if (value != IntPtr.Zero) _ = LocalFree(value); }
     }
 
-    private static Win32Exception Error(string operation) => new(Marshal.GetLastWin32Error(), operation);
+    private static InvalidOperationException Error(string operation)
+    {
+        var code = Marshal.GetLastWin32Error();
+        return new InvalidOperationException(operation + ":Win32=0x" +
+            code.ToString("X8", System.Globalization.CultureInfo.InvariantCulture), new Win32Exception(code));
+    }
 
     [StructLayout(LayoutKind.Sequential)]
     private struct SecurityAttributes
@@ -610,8 +641,8 @@ internal static class NativeGitLpacAccessCases
     [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
     [DllImport("kernel32.dll", EntryPoint = "CreateProcessW", CharSet = CharSet.Unicode, SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool CreateProcess(string image, StringBuilder command, IntPtr processSecurity,
-        IntPtr threadSecurity, [MarshalAs(UnmanagedType.Bool)] bool inheritHandles, uint flags, IntPtr environment,
+    private static extern bool CreateProcess(string image, StringBuilder command, ref SecurityAttributes processSecurity,
+        ref SecurityAttributes threadSecurity, [MarshalAs(UnmanagedType.Bool)] bool inheritHandles, uint flags, IntPtr environment,
         string currentDirectory, ref StartupInfoEx startup, out ProcessInformation processInformation);
     [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
     [DllImport("kernel32.dll", SetLastError = true)]
@@ -631,6 +662,14 @@ internal static class NativeGitLpacAccessCases
     [DllImport("kernel32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool IsProcessInJob(SafeProcessHandle process, SafeFileHandle job,
+        [MarshalAs(UnmanagedType.Bool)] out bool result);
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
+    [DllImport("kernel32.dll")]
+    private static extern IntPtr GetCurrentProcess();
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
+    [DllImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool IsProcessInJob(IntPtr process, IntPtr job,
         [MarshalAs(UnmanagedType.Bool)] out bool result);
     [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
     [DllImport("kernel32.dll", SetLastError = true)]
