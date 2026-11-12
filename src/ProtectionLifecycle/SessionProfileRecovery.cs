@@ -131,8 +131,12 @@ internal static class SessionProfileRecovery
             Scope="EXACT_CREATED_CURRENT_USER_PROFILE_ONLY",NewProcessAdmissionAllowed=false}));
         _=ValidateCleanupIntent(state,record);
     }
-    private static string ValidateCleanupIntent(ProtectedState state,ProfileStorageReceipt record)
+    internal static string ValidateCleanupIntent(ProtectedState state,ProfileStorageReceipt record)
     {
+        state.AssertHeld();
+        var createdLeaf="profile-created-"+record.ProfileId+".json";
+        var created=state.Read(createdLeaf,8192);
+        if(ReadCreated(state,createdLeaf,created)!=record)throw WfpNative.Contract("ProfileCreationChanged");
         var raw=state.Read("profile-delete-intent-"+record.ProfileId+".json",8192);
         using var doc=JsonDocument.Parse(raw.Bytes,new JsonDocumentOptions{MaxDepth=3});var r=doc.RootElement;
         StrictJson.Fields(r,"SchemaVersion","InstallationId","ProfileId","CreatedSHA256","JobId","BindingSHA256","CompletionSHA256","Scope","NewProcessAdmissionAllowed");
