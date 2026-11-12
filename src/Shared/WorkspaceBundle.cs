@@ -166,6 +166,19 @@ internal sealed record WorkspaceBundle(int SchemaVersion,string Scope,string? Ba
     }
     internal static string GitPlanHash(WorkspaceGitPlan plan)
         =>Hash(JsonSerializer.SerializeToUtf8Bytes(plan));
+    internal static void ValidateGitWorkflowSnapshot(byte[] baselineBytes,byte[] resultBytes)
+    {
+        var baseline=Parse(baselineBytes);var result=Parse(resultBytes);
+        if(baseline.GitPlan is null || baseline.BaseSHA256 is not null ||
+            result.SchemaVersion!=1 || result.Scope!=DataScope || result.GitPlan is not null || result.GitReceipt is not null ||
+            result.BaseSHA256!=Hash(baselineBytes) || result.Files.Length!=baseline.Files.Length)
+            throw new InvalidDataException("Git workflow snapshot contract refused");
+        var observed=result.Files.ToDictionary(file=>file.Path,StringComparer.Ordinal);
+        foreach(var expected in baseline.Files)
+            if(!observed.TryGetValue(expected.Path,out var actual) || actual.SHA256!=expected.SHA256 ||
+                !actual.Content.AsSpan().SequenceEqual(expected.Content))
+                throw new InvalidDataException("Git workflow snapshot changed selected project bytes");
+    }
     internal static byte[] AttachGitReceipt(byte[] resultBytes,byte[] baselineBytes,WorkspaceGitReceipt receipt)
     {
         var baseline=Parse(baselineBytes);var result=Parse(resultBytes);
@@ -174,7 +187,10 @@ internal sealed record WorkspaceBundle(int SchemaVersion,string Scope,string? Ba
             receipt.CommitMessage!=baseline.GitPlan.CommitMessage || receipt.CommitUnixTime!=baseline.GitPlan.CommitUnixTime ||
             receipt.FileCount!=baseline.Files.Length)
             throw new InvalidDataException("Git receipt is not bound to the exact workflow input");
-        return new WorkspaceBundle(2,GitWorkflowScope,result.BaseSHA256,result.Files){GitReceipt=receipt}.AlsoValidateAndSerialize();
+        ValidateGitWorkflowSnapshot(baselineBytes,resultBytes);
+        var completed=new WorkspaceBundle(2,GitWorkflowScope,result.BaseSHA256,result.Files){GitReceipt=receipt}.AlsoValidateAndSerialize();
+        if(Compare(baselineBytes,completed).Length!=0)throw new InvalidDataException("Git receipt did not preserve the exact selected project bytes");
+        return completed;
     }
     private byte[] AlsoValidateAndSerialize()=>Serialize();
     internal static WorkspaceBundle Create(IEnumerable<(string Path,byte[] Content)> files,string? baseSHA256=null)

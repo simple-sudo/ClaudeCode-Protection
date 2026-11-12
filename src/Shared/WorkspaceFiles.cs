@@ -197,7 +197,9 @@ internal static class WorkspaceFiles
         }
         var result=WorkspaceBundle.Create(files.Select(f=>
         {var content=new byte[f.Length];f.Stream.ReadExactly(content);return(f.Path,content);}),WorkspaceBundle.Hash(baselineBytes)).Serialize();
-        _=WorkspaceBundle.Compare(baselineBytes,result);return result;
+        if(baseline.GitPlan is null)_=WorkspaceBundle.Compare(baselineBytes,result);
+        else WorkspaceBundle.ValidateGitWorkflowSnapshot(baselineBytes,result);
+        return result;
     }
     // No adoption, overwrite, ACL expansion, recursion, host path or deletion.
     // Existing task root remains held by SessionResources throughout this call.

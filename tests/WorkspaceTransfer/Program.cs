@@ -36,6 +36,28 @@ Refuse(()=>WorkspaceBundle.Compare(original,WorkspaceBundle.Create(new[]{("EMPTY
 var gitTask=WorkspaceBundle.CreateGitWorkflow(original,"Initial offline import");
 var parsedGit=WorkspaceBundle.Parse(gitTask);var gitPlan=parsedGit.GitPlan??throw new InvalidDataException("Git plan missing");
 Require(parsedGit.SchemaVersion==2 && gitPlan.BranchName=="main" && parsedGit.Files.Length==3,"explicit Git workflow schema and selected files");
+var gitProject=Path.Combine(task,"git-project");
+WorkspaceFiles.MaterializeNew(task,"git-project",gitTask);
+var gitLimits=parsedGit.Files.ToDictionary(file=>file.Path,_=>WorkspaceBundle.MaxFileBytes,StringComparer.Ordinal);
+var gitSnapshot=WorkspaceFiles.SnapshotSelectedResult(task,"git-project",gitTask,gitLimits);
+var snapshotReceipt=new WorkspaceGitReceipt(1,WorkspaceBundle.GitPlanHash(gitPlan),"main",new string('a',40),new string('b',40),
+    gitPlan.CommitMessage,WorkspaceGitPlan.AuthorName,WorkspaceGitPlan.AuthorEmail,gitPlan.CommitUnixTime,
+    parsedGit.Files.Length,0,0,1,true,true);
+var completedGitSnapshot=WorkspaceBundle.AttachGitReceipt(gitSnapshot,gitTask,snapshotReceipt);
+Require(WorkspaceBundle.Compare(gitTask,completedGitSnapshot).Length==0,
+    "Git workflow selected-result snapshot and receipt preserve exact original bytes");
+var originalGitMain=File.ReadAllBytes(Path.Combine(gitProject,"src","main.txt"));
+try
+{
+    File.WriteAllText(Path.Combine(gitProject,"src","main.txt"),"tampered after import");
+    Refuse(()=>WorkspaceFiles.SnapshotSelectedResult(task,"git-project",gitTask,gitLimits),
+        "Git workflow snapshot refuses changed selected bytes");
+}
+finally{File.WriteAllBytes(Path.Combine(gitProject,"src","main.txt"),originalGitMain);}
+var alteredGitSnapshot=WorkspaceBundle.Create(parsedGit.Files.Select(file=>
+    (file.Path,file.Path=="src/main.txt"?Bytes("tampered after import"):file.Content)),WorkspaceBundle.Hash(gitTask)).Serialize();
+Refuse(()=>WorkspaceBundle.AttachGitReceipt(alteredGitSnapshot,gitTask,snapshotReceipt),
+    "Git receipt cannot be attached to changed result bytes");
 Refuse(()=>WorkspaceBundle.CreateGitWorkflow(original,"bad\nmessage"),"multiline Git commit message");
 Refuse(()=>WorkspaceBundle.CreateGitWorkflow(original,"bad\u2028message"),"Unicode line separator commit message");
 Refuse(()=>WorkspaceBundle.CreateGitWorkflow(original,"bad\u2029message"),"Unicode paragraph separator commit message");
