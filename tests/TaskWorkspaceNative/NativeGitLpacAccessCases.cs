@@ -232,7 +232,9 @@ internal static class NativeGitLpacAccessCases
                 jobList, (nuint)IntPtr.Size, IntPtr.Zero, IntPtr.Zero))
                 throw Error("LpacGitWorkspaceBindJob");
 
-            var commandLine = "\"" + commandImage + "\" /d /q /c \"\"" + scriptPath + "\"\"";
+            // Use CALL with a single quoted path. cmd.exe's /c leading-quote
+            // stripping is ambiguous for a doubled-quote-only batch command.
+            var commandLine = "\"" + commandImage + "\" /d /q /c call \"" + scriptPath + "\"";
             var values = new SortedDictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             foreach (var name in new[] { "SystemRoot", "windir", "SystemDrive" })
             {
@@ -350,6 +352,7 @@ internal static class NativeGitLpacAccessCases
                     "program-files-traverse=" + ProbeOpenAsLpac(token, programFiles, true, 0x20),
                     "task-root-traverse=" + ProbeOpenAsLpac(token, root, true, 0x20),
                     "task-root-add-file=" + ProbeOpenAsLpac(token, root, true, 0x22),
+                    "script-file-read=" + ProbeOpenAsLpac(token, scriptPath, false, 0x1),
                     "project-dir-read-write=" + ProbeOpenAsLpac(token, Path.Combine(root, "git-project"), true, 0x27),
                     "project-source-read=" + ProbeOpenAsLpac(token, Path.Combine(root, "git-project", "source.txt"), false, 0x1),
                     "control-dir-read=" + ProbeOpenAsLpac(token, Path.Combine(root, "git-control"), true, 0x21),
