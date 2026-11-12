@@ -86,10 +86,18 @@ internal sealed class GitWorkspaceDescriptor : IDisposable
             if(size is <20 or >65536)throw new InvalidDataException("Private Git security descriptor bounds");
             var bytes=new byte[checked((int)size)];Marshal.Copy(value,bytes,0,bytes.Length);
             var actual=new RawSecurityDescriptor(bytes,0);
-            if(actual.Owner?.Value!=expected.Owner?.Value || actual.Group?.Value!=expected.Group?.Value ||
-                !actual.ControlFlags.HasFlag(ControlFlags.DiscretionaryAclProtected) ||
-                !Same(actual.DiscretionaryAcl,expected.DiscretionaryAcl) || !Same(actual.SystemAcl,expected.SystemAcl))
-                throw new InvalidDataException("Private Git DACL/OWNER RIGHTS/low-label mismatch");
+            if(actual.Owner?.Value!=expected.Owner?.Value)
+                throw new InvalidDataException("PrivateGitOwnerMismatch");
+            if(actual.Group?.Value!=expected.Group?.Value)
+                throw new InvalidDataException("PrivateGitGroupMismatch");
+            const ControlFlags relevant=ControlFlags.DiscretionaryAclPresent|ControlFlags.DiscretionaryAclProtected|
+                ControlFlags.SystemAclPresent|ControlFlags.SystemAclProtected;
+            if((actual.ControlFlags&relevant)!=(expected.ControlFlags&relevant))
+                throw new InvalidDataException("PrivateGitAclProtectionFlagsMismatch");
+            if(!Same(actual.DiscretionaryAcl,expected.DiscretionaryAcl))
+                throw new InvalidDataException("PrivateGitDaclMismatch");
+            if(!Same(actual.SystemAcl,expected.SystemAcl))
+                throw new InvalidDataException("PrivateGitMandatoryLabelMismatch");
         }
         finally{if(value!=IntPtr.Zero)LocalFree(value);}
     }
