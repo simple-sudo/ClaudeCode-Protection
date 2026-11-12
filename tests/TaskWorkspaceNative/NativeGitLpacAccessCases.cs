@@ -211,8 +211,11 @@ internal static class NativeGitLpacAccessCases
 
             var initialCwdPath = Path.Combine(root, "lpac-start-cwd.txt");
             var finalCwdPath = Path.Combine(root, "lpac-final-cwd.txt");
-            var readErrorPath = Path.Combine(root, "lpac-read-error.txt");
             var projectSourcePath = Path.Combine(root, "git-project", "source.txt");
+            var projectReadCopyPath = Path.Combine(root, "lpac-project-read.bin");
+            var controlConfigReadCopyPath = Path.Combine(root, "lpac-control-config-read.bin");
+            var controlPathspecReadCopyPath = Path.Combine(root, "lpac-control-pathspec-read.bin");
+            var mediumReadCopyPath = Path.Combine(root, "lpac-medium-read.bin");
             var controlConfigPath = Path.Combine(root, "git-control", "empty-git-config");
             var controlPathspecPath = Path.Combine(root, "git-control", "git-selected-paths.bin");
             var mediumFilePath = Path.Combine(root, "medium-write", "medium.txt");
@@ -227,11 +230,10 @@ internal static class NativeGitLpacAccessCases
                 "echo %CD%>" + Quote(initialCwdPath) + " & " +
                 "echo %CD%>" + Quote(finalCwdPath) + " & " +
                 "echo root-write>" + Quote(Path.Combine(root, "lpac-root-write.txt")) + " & " +
-                "type " + Quote(projectSourcePath) + " >nul 2>" + Quote(readErrorPath) + " || exit /b 11 & " +
-                "del /q " + Quote(readErrorPath) + " & " +
-                "type " + Quote(controlConfigPath) + " >nul || exit /b 12 & " +
-                "type " + Quote(controlPathspecPath) + " >nul || exit /b 13 & " +
-                "type " + Quote(mediumFilePath) + " >nul || exit /b 14 & " +
+                "copy /b " + Quote(projectSourcePath) + " " + Quote(projectReadCopyPath) + " || exit /b 11 & " +
+                "copy /b " + Quote(controlConfigPath) + " " + Quote(controlConfigReadCopyPath) + " || exit /b 12 & " +
+                "copy /b " + Quote(controlPathspecPath) + " " + Quote(controlPathspecReadCopyPath) + " || exit /b 13 & " +
+                "copy /b " + Quote(mediumFilePath) + " " + Quote(mediumReadCopyPath) + " || exit /b 14 & "
                 "echo project-write>" + Quote(projectWritePath) + " & " +
                 "mkdir " + Quote(projectCreatedPath) + " & " +
                 "echo nested>" + Quote(projectNestedPath) + " & " +
@@ -361,7 +363,8 @@ internal static class NativeGitLpacAccessCases
                     "task-root-traverse=" + ProbeOpenAsLpac(token, root, true, 0x20),
                     "task-root-add-file=" + ProbeOpenAsLpac(token, root, true, 0x22),
                     "project-dir-read-write=" + ProbeOpenAsLpac(token, Path.Combine(root, "git-project"), true, 0x27),
-                    "project-source-read=" + ProbeOpenAsLpac(token, Path.Combine(root, "git-project", "source.txt"), false, 0x1),
+                    "project-source-read-data=" + ProbeOpenAsLpac(token, Path.Combine(root, "git-project", "source.txt"), false, 0x1),
+                    "project-source-generic-read=" + ProbeOpenAsLpac(token, Path.Combine(root, "git-project", "source.txt"), false, 0x80000000),
                     "control-dir-read=" + ProbeOpenAsLpac(token, Path.Combine(root, "git-control"), true, 0x21),
                     "control-dir-add-file=" + ProbeOpenAsLpac(token, Path.Combine(root, "git-control"), true, 0x22)
                 };
@@ -377,19 +380,18 @@ internal static class NativeGitLpacAccessCases
             if (!GetExitCodeProcess(process, out var exitCode)) throw Error("LpacGitWorkspaceReadChildExit");
             if (exitCode != 0)
             {
-                var diagnosticPath = Path.Combine(root, "lpac-read-error.txt");
-                var diagnostic = File.Exists(diagnosticPath)
-                    ? File.ReadAllText(diagnosticPath).Trim().Replace("\r", " ").Replace("\n", " ")
-                    : "none";
+                var copyDiagnostics = "project=" + File.Exists(projectReadCopyPath) +
+                    ";controlConfig=" + File.Exists(controlConfigReadCopyPath) +
+                    ";controlPathspec=" + File.Exists(controlPathspecReadCopyPath) +
+                    ";medium=" + File.Exists(mediumReadCopyPath);
                 var failedInitialCwdPath = Path.Combine(root, "lpac-start-cwd.txt");
                 var failedFinalCwdPath = Path.Combine(root, "lpac-final-cwd.txt");
                 var failedInitialCwd = File.Exists(failedInitialCwdPath) ? File.ReadAllText(failedInitialCwdPath).Trim() : "missing";
                 var failedFinalCwd = File.Exists(failedFinalCwdPath) ? File.ReadAllText(failedFinalCwdPath).Trim() : "missing";
                 var rootWriteObserved = File.Exists(Path.Combine(root, "lpac-root-write.txt"));
-                if (diagnostic.Length > 256) diagnostic = diagnostic[..256];
                 throw new InvalidDataException("LpacGitWorkspaceChildCommandFailed:" +
                     exitCode.ToString(System.Globalization.CultureInfo.InvariantCulture) +
-                    ";ReadDiagnostic=" + diagnostic + ";RootWriteObserved=" + rootWriteObserved +
+                    ";ReadCopies=" + copyDiagnostics + ";RootWriteObserved=" + rootWriteObserved +
                     ";InitialCwd=" + failedInitialCwd + ";FinalCwd=" + failedFinalCwd);
             }
             var expectedCwd = Path.TrimEndingDirectorySeparator(Path.GetFullPath(root));
@@ -399,10 +401,17 @@ internal static class NativeGitLpacAccessCases
                 throw new InvalidDataException("LpacGitWorkspaceInitialCurrentDirectoryMismatch");
             if (!string.Equals(Path.TrimEndingDirectorySeparator(Path.GetFullPath(finalCwd)), expectedCwd, StringComparison.OrdinalIgnoreCase))
                 throw new InvalidDataException("LpacGitWorkspaceChildCurrentDirectoryMismatch");
+            if (!File.ReadAllBytes(projectReadCopyPath).SequenceEqual(File.ReadAllBytes(projectSourcePath)) ||
+                !File.ReadAllBytes(controlConfigReadCopyPath).SequenceEqual(File.ReadAllBytes(controlConfigPath)) ||
+                !File.ReadAllBytes(controlPathspecReadCopyPath).SequenceEqual(File.ReadAllBytes(controlPathspecPath)) ||
+                !File.ReadAllBytes(mediumReadCopyPath).SequenceEqual(File.ReadAllBytes(mediumFilePath)))
+                throw new InvalidDataException("LpacGitWorkspaceReadCopyContentMismatch");
+            File.Delete(projectReadCopyPath);
+            File.Delete(controlConfigReadCopyPath);
+            File.Delete(controlPathspecReadCopyPath);
+            File.Delete(mediumReadCopyPath);
             File.Delete(initialCwdPath);
             File.Delete(finalCwdPath);
-            if (File.Exists(Path.Combine(root, "lpac-read-error.txt")))
-                throw new InvalidDataException("LpacGitWorkspaceReadDiagnosticWasNotCleaned");
         }
         finally
         {
