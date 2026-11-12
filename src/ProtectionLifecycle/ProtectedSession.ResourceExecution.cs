@@ -65,8 +65,8 @@ internal sealed partial class ProtectedSession
         {
             intent.AssertCaller?.Invoke();
             LifecycleRecovery.AssertNoPending(state);InstallationLoopbackLease.AssertClosedHistory(state);
-            foreach(var intent in OwnedJobIntent.ReadAll(state))
-                if(!SessionZeroCreatorRecovery.IsAdmissionResolved(state,intent))throw WfpNative.Contract("ResourceQualificationPriorAdmissionNotClosed");
+            foreach(var ownedJobIntent in OwnedJobIntent.ReadAll(state))
+                if(!SessionZeroCreatorRecovery.IsAdmissionResolved(state,ownedJobIntent))throw WfpNative.Contract("ResourceQualificationPriorAdmissionNotClosed");
             var plans=FencePlan.ReadAll(state);if(plans.Count==0)throw WfpNative.Contract("ResourceQualificationNeedsExistingQuarantine");
             foreach(var plan in plans)fences.Add(PersistentFence.OpenExisting(state,plan.Data.FenceId));
             foreach(var fence in fences)if(!fence.Observe().FullQuarantineObserved)throw WfpNative.Contract("ResourceQualificationFullQuarantineRequired");
