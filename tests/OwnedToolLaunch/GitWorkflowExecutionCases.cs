@@ -48,12 +48,11 @@ internal static class GitWorkflowExecutionCases
             var atomicChildType=library.GetType("ProtectionLifecycle.AtomicChild",true)!;
             var gitWorkflowTimeout=(int)GetStatic(protectedSessionType,"GitWorkflowTimeoutMs")!;
             Require(gitWorkflowTimeout==60000,"schema 2 Git workflow has a bounded 60-second owner/runtime deadline");
-            var waitMethod=atomicChildType.GetMethod("WaitForCanaryExit",InstanceFlags)
-                ??throw new MissingMethodException(atomicChildType.FullName,"WaitForCanaryExit");
-            var waitParameters=waitMethod.GetParameters();
-            Require(waitParameters.Length==1 && waitParameters[0].ParameterType==typeof(int?) &&
-                waitParameters[0].IsOptional && waitParameters[0].DefaultValue is null,
-                "resource child wait accepts an explicit bounded deadline while preserving existing default callers");
+            var waitMethods=atomicChildType.GetMethods(InstanceFlags).Where(method=>method.Name=="WaitForCanaryExit").ToArray();
+            var defaultWait=waitMethods.SingleOrDefault(method=>method.GetParameters().Length==0);
+            var boundedWait=waitMethods.SingleOrDefault(method=>method.GetParameters().Length==1 && method.GetParameters()[0].ParameterType==typeof(int?));
+            Require(defaultWait is not null && boundedWait is not null,
+                "resource child wait preserves the parameterless method-group contract and adds an explicit bounded deadline");
             Require(Convert.ToUInt32(InvokeStatic(atomicChildType,"ResolveCanaryTimeoutMs",gitWorkflowTimeout,15000u))==60000u,
                 "schema 2 workflow deadline overrides the generic 15-second canary default");
             Require(Convert.ToUInt32(InvokeStatic(atomicChildType,"ResolveCanaryTimeoutMs",null,15000u))==15000u,
