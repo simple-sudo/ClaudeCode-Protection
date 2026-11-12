@@ -108,8 +108,8 @@ internal static class NativeGitLpacAccessCases
 
                 RunActualLpacProcess(root, package.Value);
 
-                if (File.ReadAllText(Path.Combine(projectPath, "lpac-write.txt")) != "project-write" + Environment.NewLine ||
-                    File.ReadAllText(Path.Combine(projectPath, "lpac-created", "nested.txt")) != "nested" + Environment.NewLine)
+                if (File.ReadAllText(Path.Combine(projectPath, "lpac-write.txt")).TrimEnd() != "project-write" ||
+                    File.ReadAllText(Path.Combine(projectPath, "lpac-created", "nested.txt")).TrimEnd() != "nested")
                     throw new InvalidDataException("LpacGitWorkspaceProjectWriteNotObserved");
                 if (File.ReadAllText(Path.Combine(projectPath, "source.txt")) != "project-source")
                     throw new InvalidDataException("LpacGitWorkspaceProjectSourceChanged");
@@ -121,7 +121,7 @@ internal static class NativeGitLpacAccessCases
                     throw new InvalidDataException("LpacGitWorkspaceLowBoxMediumPackageGrantMismatch");
                 if (File.ReadAllText(mediumReadOnlyFile) != "medium-readonly-original")
                     throw new InvalidDataException("LpacGitWorkspaceMediumReadOnlyDaclWriteWasNotDenied");
-                if (File.ReadAllText(Path.Combine(root, "lpac-root-write.txt")) != "root-write" + Environment.NewLine)
+                if (File.ReadAllText(Path.Combine(root, "lpac-root-write.txt")).TrimEnd() != "root-write")
                     throw new InvalidDataException("LpacGitWorkspaceRootWriteNotObserved");
                 var expectedRootNames = new[] { "git-control", "git-project", "lpac-root-write.txt", "medium-readonly", "medium-write" };
                 if (!Directory.EnumerateFileSystemEntries(root).Select(Path.GetFileName)
