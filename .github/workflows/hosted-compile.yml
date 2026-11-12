@@ -4,6 +4,11 @@ on:
   pull_request:
     paths:
       - '.github/workflows/hosted-compile.yml'
+      - 'scripts/Test-ProductBuildBoundary.ps1'
+      - 'scripts/Assert-ProjectSecurityClearance.ps1'
+      - 'scripts/Build*.ps1'
+      - 'scripts/Build*.cmd'
+      - 'scripts/Build*.bat'
       - 'src/ProtectionLifecycle/**'
       - 'src/ProtectionBroker/**'
       - 'src/Shared/**'
@@ -31,6 +36,9 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
+      - name: Verify product build and security-stop boundary (static only)
+        shell: pwsh
+        run: ./scripts/Test-ProductBuildBoundary.ps1
       - name: Compile source, do not run protected code
         shell: pwsh
         run: |
