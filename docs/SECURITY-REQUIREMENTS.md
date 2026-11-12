@@ -142,6 +142,8 @@ P0-HOST、P0-NET、P0-SELF同属必需安全目标；新增自我保护不降低
 安装文件DACL、一次LPAC拒绝或原始屏障是部分机制证据，不能直接覆盖整个P0自我保护目标。
 不要把“未公开用途”当作管理接口鉴权。程序异常时仍需独立有效的拒绝边界，而非只依赖轮询发现后补救。
 
+**LowBox / AppContainer 完整性语义约束：** 不得假定 Low Integrity + `TOKEN_MANDATORY_POLICY_NO_WRITE_UP` 能阻止 LowBox 对所有 Medium-IL 对象写入。Windows 的 AppContainer 访问规则允许在 DACL 明确授予 Package SID 或 Capability SID 时访问 Medium IL 或更低的对象；因此，敏感控制对象必须依靠精确、受保护的 package-specific DACL 拒绝写入，并以真实 LPAC token 做正/负访问对照。Low label 是附加防护，不替代 DACL。机制依据：[Launch an AppContainer](https://learn.microsoft.com/en-us/windows/win32/secauthz/implementing-an-appcontainer)、[Mandatory Integrity Control](https://learn.microsoft.com/en-us/windows/win32/secauthz/mandatory-integrity-control)。
+
 ## P0-ASSURANCE：可信自评与指纹画像重建
 
 两系统是 P0-HOST / P0-NET / P0-SELF 的**验证和关联风险判断能力**，不替代 Windows 强制边界、

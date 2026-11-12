@@ -2897,3 +2897,7 @@ Compile/Run/Tests失败和正常DataReport通过；最终library/Broker及77a1�
 2026-11-03 07:29Z：新单次授权/UAC后8ddc安装INACTIVE，原LPAC匿名有界反馈/owner绑定实测可用，根进入HTTPS后125/0x80131534+0x8013150A、具体静态类UNKNOWN，原owner隔离/Job零/停止失败0。15公开资产/13回执/独立ACL及安全观察通过，无私有补读/恢复/自动重试。a9固定字面网关回调、子Invariant格式与细分阶段BUILD0/0，54+21普通检查/精确pin/回执/预检通过，未安装/native复测；work/session-gateway-qualification-20261103-01/owner-feedback与fixed-client-tunnel证据保留。
 
 2026-11-03阶段收尾：a9de已安装INACTIVE，单次授权运行在HTTPS_TLS_POLICY安全异常125处停止，原owner准入关闭/隔离/Job零及15公开资产/13回执/独立ACL通过；FAIL/消耗许可保留。4607专项公共时区KEY_READ租约复用原owner实现，最终BUILD0/0、35+54+21普通检查/精确pin/12回执/20预检及两键只读元数据通过，未安装/修改ACL/系统复测。证据work/session-gateway-qualification-20261103-01/public-timezone-resource及fixed-client-tunnel，见CURRENT/账本。用户要求本阶段本地提交后暂停，无新系统操作授权，不发起新UAC/安装/联网。
+
+## 2026-11-12 LPAC LowBox MIC 与 Git workspace DACL 原生验收
+
+原生 Windows Runner 在 `3f88571149e332af164ab575283a98e964a074a1` 全部通过：离线 workspace Git workflow `43181109441`、Hosted Windows compile `43181109423`、Safe managed policy smoke/Daily CLI `43181109371`。实际 LPAC token 为 AppContainer、精确 package SID、零 capabilities、Low IL，TokenMandatoryPolicy=0x1。真实 NTFS 探针确认项目读写允许、Git control 写入拒绝；LowBox 对 Medium-IL 且 DACL 明确授予 package 的文件可写，对 Medium-IL 但 package 只读的文件只能读、写返回 ACCESS_DENIED。task-workspace 两种安全清理路径成功，非空/身份不匹配/标签漂移拒绝并保留。原先“LowBox 对 Medium IL 一律 MIC write-up denied”的测试假设已纠正；产品 DACL 未放宽。此结果仅是托管 Windows 的原生测试夹具证据，不是本机 Win11 或安装产品 E2E；本机复测待执行。早期失败记录保留，不由本次通过抹除。

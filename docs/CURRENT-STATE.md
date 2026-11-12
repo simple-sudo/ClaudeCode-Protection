@@ -2949,3 +2949,17 @@ Claude四处状态重置、普通用户物理网络/IPv6、9090、UU与开发认
 
 历史进程及证据入口见[开发记录索引](STATUS.md)和[验收账本](PROJECT-ACCEPTANCE.md)。
 更新本页只移动当前结论，不抹除原始失败、取消、UNKNOWN和历史授权范围。
+
+## 2026-11-12 LPAC / NTFS Git workspace 原生边界验收
+
+- 开发分支 `chatgpt/complete-git-workflow-20261110`；本轮原生测试基线 `3f88571149e332af164ab575283a98e964a074a1`。
+- GitHub Windows Runner 的离线 Git 工作流、托管编译和纯托管策略三组工作流全部成功：
+  - `43181109441`：产品/测试编译、普通用户策略及真实 NTFS/LPAC 集成测试全部成功。
+  - `43181109423`：产品编译与安全停止静态检查成功。
+  - `43181109371`：Daily CLI 编译及纯托管策略测试成功。
+- 真实 LPAC token：AppContainer=true、精确 Package SID、capabilities=0、Low Integrity、`TokenMandatoryPolicy=0x00000001`；挂起创建后确认 Job membership。
+- 实际访问对照：项目目录读写允许；Git control 目录新增文件返回 ACCESS_DENIED；Medium-IL 文件若 DACL 授权 Package SID，LowBox 实际写入允许；同为 Medium-IL、但 DACL 只授予 package read 的文件，读取允许、写入返回 ACCESS_DENIED。
+- 原生 task-workspace 恢复测试：正确 Low label 清理成功；缺失 Low label 的创建崩溃窗口清理成功；非空目录、Package SID/DACL 不匹配、意外 Medium label 均拒绝且保留。
+- 修正了旧测试的错误假设：LowBox/AppContainer 对 Medium-IL 对象存在特殊 MIC 语义，不能把 `NO_WRITE_UP` 或 Low label 当作敏感对象的独立写入屏障。敏感控制对象必须由精确、受保护的 DACL 拒绝 package 写入，并通过真实 LPAC access probe 验证。
+- 本轮未修改产品 ACL 或扩大权限；修改集中于原生测试夹具及其断言。测试使用 GitHub 托管 Windows 的真实 NTFS/LPAC，不等于本机 Windows 11 验收，不等于已安装 Broker 的完整 Job/LPAC E2E；没有安装产品、启动 Claude、修改网络/WFP/IPv6 或 FlClash。
+- 完整产品仍为 `PRODUCT_DELIVERY_NOT_ACCEPTED`。下一步需在本人 Windows 11 主机复跑同一原生测试，核对 OS/NTFS 差异，再继续 Git 工具链及产品主链验收。

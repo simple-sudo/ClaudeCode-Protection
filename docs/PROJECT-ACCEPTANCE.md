@@ -2058,3 +2058,19 @@ SOURCE/BUILD/INTEGRATED：新候选92e39631676f45168f1bc52125068fb9、清单ADC8
 候选4607e502b0c449dc8887ddd6fe115274/45CC7331701952BE34F798000FCD2025A990B868A61401B2991111AD2AA92B38实现原资源owner专项租约，当前时区定义/可选Dynamic DST最多两键，精确本SID非继承KEY_READ、零capabilities、不写值/不改Windows语言时区。复用原对象安全原语、原挂起/Admission绑定/runtime/关闭Job后恢复/生命周期未闭合门禁及固定自身inspect/recover，不建立通用执行器。166 native imports（唯一新增NtQueryKey只读身份），原写安全接口复用；最终管理/Broker/测试BUILD0警告0错误，35策略/54反馈传输格式TLS/21边界/精确a9de pin1正6拒绝/12回执/20预检通过。真实两键只读对象元数据检查通过，未写ACL/运行新系统任务；首次测试源码语法构建失败及新build-r2成功分别保留。
 
 普通准备证据public-timezone-resource/observed-preparation.json SHA256 1719451DDBA41353CA9A5D78DEA1888A564B072D22BF5914328D5F44C1C1E1D3，库8FF16CE71B867850795426072650B172B0AA8DB333744E6626AE6BE196F3301A；Bootstrap嵌入清单/同库/控制器匹配。SOURCE/BUILD/INTEGRATED及所列ordinary只读范围VERIFIED，真实授予/恢复/HTTPS均NOT_RUN，不标网络交付或完整P1。用户明确本阶段本地提交后暂停；尚无新系统决定/claim，审查单不得重跑，完整产品PRODUCT_DELIVERY_NOT_ACCEPTED。
+
+## 2026-11-12：真实 LPAC LowBox / Medium-IL DACL 对照与 task-workspace NTFS 验收
+
+**基线：** `3f88571149e332af164ab575283a98e964a074a1`，PR #3 Draft，目标分支未改。
+
+**实际 Windows Runner 结果：**
+- `43181109441` Offline workspace Git workflow verification：SUCCESS。产品编译、六个聚焦托管测试项目编译、普通用户策略测试、实际 NTFS task-workspace 与 LPAC Git 访问测试全部通过。
+- `43181109423` Hosted Windows compile only：SUCCESS。
+- `43181109371` Safe managed policy smoke（含 Daily CLI 编译）：SUCCESS。
+- LPAC Token：AppContainer、精确 Package SID、零 capability、Low IL；`TokenMandatoryPolicy=0x00000001`；挂起创建后的 Job membership 已观察。
+- 实际访问：task root/project 写入允许；Git control 目录写入拒绝；Medium-IL + package 写 ACE 的文件实际可写；Medium-IL + package 只读 ACE 的文件可读但写入 ACCESS_DENIED。两种 Medium-IL 对照均检查实际 NTFS SACL/DACL，并以真实 LPAC token 做打开测试和子进程写入测试。
+- task-workspace 恢复：精确 Low descriptor、创建中断缺少 Low label 两种合法清理成功；非空目录、错误 package SID/DACL、unexpected Medium label 均 fail-closed 并保留原目录。
+
+**语义修正：** 旧测试曾假定 LowBox 的 `NO_WRITE_UP` 会无条件阻止其写入所有 Medium-IL 对象。微软 AppContainer 说明明确：Medium IL 或更低的对象只要 DACL 授予 Package/Capability SID，AppContainer 仍可按 DACL 授权访问。故本轮把测试改成同一 Medium IL 下的正/负 DACL 对照；不再把 MIC 当作 package-specific DACL 的替代。产品 `GitWorkspaceDescriptor` 权限没有放宽。
+
+**边界：** 这是 GitHub Windows Runner 的真实 NTFS/LPAC 原生测试夹具，不是安装 Broker 的完整产品 Job/LPAC E2E，也不是用户本机 Windows 11 结果；没有安装/启动产品、Claude、网络/WFP/IPv6 或 FlClash 变更。后续本机复测待执行；PRODUCT_DELIVERY_NOT_ACCEPTED 保持。
