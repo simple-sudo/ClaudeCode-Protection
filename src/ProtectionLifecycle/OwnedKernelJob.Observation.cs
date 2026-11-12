@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Linq;
 using Microsoft.Win32.SafeHandles;
+using System.Text.Json;
 using System.Runtime.InteropServices;
 
 namespace ProtectionLifecycle;
