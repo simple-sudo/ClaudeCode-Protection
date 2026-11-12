@@ -346,6 +346,15 @@ Machine Network Lease 和 Session lease 是不同生命周期。Broker/Owner 是
 - 三组 Actions 全部 SUCCESS：Hosted Windows compile `43213673926`、Safe managed policy smoke `43213673933`、Offline workspace Git workflow `43213673931`。产品项目、六个聚焦 harness 编译通过；普通用户策略/Runner Git 和 elevated NTFS fixture 通过。
 - 证据范围仅为源码重构与 CI；未执行本机 Build、安装、提权、Broker → Owned Job → LPAC 产品链或真实 Claude。
 
+### A1.2 完成记录：AtomicChild Token 观察职责提取（2026-11-12）
+
+- 提交：`7613c4e681b57ce17fdd0ff6efed747ce85435f9`。
+- 新增 `AtomicAdmissionEvidence.cs`，承载 AdmissionToken、ResourceBootstrapFailure、OwnedMemberInspection；新增 `AtomicChild.Token.cs`，承载原 AtomicChild 内部 Token 读取、Token snapshot、LPAC AccessCheck 与 ETW token access observation。
+- `AtomicAdmission.cs` 从 1,317 行缩减为 1,201 行；Lifecycle 显式 Compile 清单同步更新。
+- 保留原 namespace、类型可见性、方法签名、AccessCheck descriptor、Token 读取和失败语义；不改变 AtomicChild 创建/Resume 顺序、Job/Profile 资源 owner、持久协议、程序集和安装资产。
+- 三组 Actions 全部 SUCCESS：Hosted Windows compile `43214439565`、Safe managed policy smoke `43214439543`、Offline workspace Git workflow `43214439759`。五个产品项目、六个聚焦 harness 编译通过；普通用户策略/Runner Git 与 elevated NTFS fixture 通过。
+- 不构成本机产品 Build、Broker/LPAC 端到端、真实 Claude 或全机网络验收。
+
 ## 13. 持续维护规则
 
 - 新模块先写职责/输入输出/失败/资源释放/测试合同，再实现。
