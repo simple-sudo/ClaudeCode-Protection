@@ -206,6 +206,21 @@ internal static class GitWorkflowExecutionCases
                 true,true,commitId,true,privateDenial.Exit,true,allPackagesDenial.Exit,null,null,null
             },null)??throw new InvalidOperationException("Git toolchain report construction failed");
             reportType.GetProperty("Workflow",InstanceFlags)!.SetValue(report,observation);
+            Require((bool)InvokeStatic(gitType,"QualifiedForPlan",plan,report)!,
+                "schema 2 Git report requires a plan-bound workflow observation");
+            var missingObservation=Activator.CreateInstance(reportType,InstanceFlags,null,new object?[]
+            {
+                true,true,commitId,true,privateDenial.Exit,true,allPackagesDenial.Exit,null,null,null
+            },null)??throw new InvalidOperationException("Missing-observation report construction failed");
+            Require(!(bool)InvokeStatic(gitType,"QualifiedForPlan",plan,missingObservation)!,
+                "schema 2 Git report without workflow observation is rejected");
+            var failedReport=Activator.CreateInstance(reportType,InstanceFlags,null,new object?[]
+            {
+                true,true,commitId,true,privateDenial.Exit,true,allPackagesDenial.Exit,"GIT_COMMIT","InvalidDataException",-1
+            },null)??throw new InvalidOperationException("Failed Git report construction failed");
+            reportType.GetProperty("Workflow",InstanceFlags)!.SetValue(failedReport,observation);
+            Require(!(bool)InvokeStatic(gitType,"QualifiedForPlan",plan,failedReport)!,
+                "Git command failure cannot qualify even when a prior observation exists");
             var receipt=InvokeStatic(gitType,"AssertRepository",workspace,plan,report)!;
 
             var resultData=InvokeStatic(bundleType,"Create",dataFiles,Hash(taskBytes))!;

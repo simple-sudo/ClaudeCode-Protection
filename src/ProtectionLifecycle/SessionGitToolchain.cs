@@ -81,6 +81,11 @@ internal sealed class SessionGitToolchain : IDisposable
             AddedLines:>=0,DeletedLines:>=0,BinaryFileCount:>=0,CleanAfterCommit:true,ObjectIntegrityObserved:true} &&
             WorkspaceBundle.IsHash(value.Workflow.PlanSHA256) && IsObjectId(value.Workflow.TreeId) &&
             value.Workflow.CommitId==value.CommitId);
+    internal static bool QualifiedForPlan(ResourceProbePlan plan,GitToolchainReport value)
+    {
+        var workflowExpected=WorkspaceBundle.Parse(plan.ProjectBundle).GitPlan is not null;
+        return workflowExpected==(value.Workflow is not null) && Qualified(value);
+    }
     private static bool IsObjectId(string? value)=>value?.Length==40 && value.All(c=>c is >= '0' and <= '9' or >= 'a' and <= 'f');
     internal static string BlobId(byte[] input)=>Convert.ToHexString(SHA1.HashData(Encoding.ASCII.GetBytes("blob "+input.Length+"\0").Concat(input).ToArray())).ToLowerInvariant();
     internal static GitToolchainReport RunChild(ResourceProbePlan plan,string workspace)
@@ -490,7 +495,7 @@ internal sealed class SessionGitToolchain : IDisposable
     {if(result.Exit!=0 || result.Error.Length!=0)throw WfpNative.Contract("FixedGitCommandFailed");}
     internal static WorkspaceGitReceipt? AssertRepository(string workspace,ResourceProbePlan plan,GitToolchainReport report)
     {
-        if(!Qualified(report))throw WfpNative.Contract("GitToolchainReportRefused");
+        if(!QualifiedForPlan(plan,report))throw WfpNative.Contract("GitToolchainReportRefused");
         var project=WorkspaceBundle.Parse(plan.ProjectBundle);
         if(project.GitPlan is { } workflow)
         {

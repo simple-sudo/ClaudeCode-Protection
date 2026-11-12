@@ -438,7 +438,7 @@ internal sealed class SessionResources : IDisposable
                 stage="DENY_NAMED_HOST_RESOURCES";
                 if(!HostPrivacyProbe.RunRestricted(plan,workspace,"root"))throw WfpNative.Contract("NamedHostResourceReadOpenNotDenied");
                 stage="PROJECT_GIT_BASELINE";gitReport=SessionGitToolchain.RunChild(plan,workspace);
-                if(!SessionGitToolchain.Qualified(gitReport))throw WfpNative.Contract("FixedGitToolchainNotQualified");
+                if(!SessionGitToolchain.QualifiedForPlan(plan,gitReport))throw WfpNative.Contract("FixedGitToolchainNotQualified");
                 stage="START_FIXED_PRIVACY_PROBE";
                 using(var probe=AtomicChild.StartInheritedTool(BundledProjectDevelopment.ProbeStart(plan,workspace)))
                 {
