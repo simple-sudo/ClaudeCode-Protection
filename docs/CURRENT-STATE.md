@@ -10,7 +10,7 @@
 | 可见性 | Public |
 | 默认分支 | main |
 | 当前线上开发分支 | chatgpt/complete-git-workflow-20261110 |
-| 当前产品源码重构提交 | 31dc39bac582f65f1061f38aa455977b0471f235 |
+| 当前产品源码重构提交 | 87b2e097a4763785302dd3974b4880d444c3ac48 |
 | 架构审查源码基线 | 74578e903c2584628d853598ef8f1910adf7da5b |
 | 真实证据政策更新前 HEAD | 80a300f760a22b94060e598874b196f3e967dfef |
 | 文档整理与语义修正验证基线 | 2a5e4a5bf26d0f723d4cbb08d59bd4419111a4fa（文档变更；产品源码未变） |
@@ -23,11 +23,13 @@
 
 ## 2. 最新云端验证
 
-在架构审查源码基线 HEAD 74578e903c2584628d853598ef8f1910adf7da5b 上，以下三组 GitHub Actions 均为 SUCCESS：
+最新架构重构源码提交 `87b2e097a4763785302dd3974b4880d444c3ac48` 的三组 GitHub Actions 全部 SUCCESS：
 
-- 本次架构/代码重构后的 CI 正在运行；以对应提交的 Actions 结果为准。
+- Hosted Windows compile only：`43220859756`
+- Offline workspace Git workflow verification：`43220859804`
+- Safe managed policy smoke：`43220859739`
 
-最新测试提交 36ad1b2 澄清了 NativeGitLpacAccessCases 测试夹具的本机 elevated Windows 运行边界。CI 成功只证明这些工作流所执行的编译和测试范围，不等于产品 Broker、Owned Job、LPAC 完整链或真实 Claude 会话已通过。
+该轮包含五个产品项目编译、六个聚焦 Harness 编译、普通用户策略/Runner Git 测试及 elevated NTFS Git fixture。证据边界仍不包括产品 Broker → Owned Job → LPAC 完整产品链、安装、真实 Claude、全机网络保护或宿主隐私 L3 验收。此前中间重构提交的失败 CI 与修复记录保留在架构基线和 STATUS 中。
 
 ## 3. 已有证据与未证明范围
 
@@ -91,16 +93,12 @@
 
 ## 8. 全项目架构治理（2026-11-12）
 
-架构基线与目标设计见 [ARCHITECTURE-BASELINE-AND-TARGET-20261112](ARCHITECTURE-BASELINE-AND-TARGET-20261112.md)。本轮审查基于源码 HEAD `74578e903c2584628d853598ef8f1910adf7da5b`，确认当前开发分支仍为 PR #3 的 OPEN / DRAFT 分支，领先目标分支 237、落后 0。最新三组 Actions（工具启动职责提取最终修复提交）为 43215792139、43215792288、43215792160，均 SUCCESS；其证据边界仍限于托管编译、策略/工作区测试和限定 NTFS fixture。
+架构基线与目标设计见 [ARCHITECTURE-BASELINE-AND-TARGET-20261112](ARCHITECTURE-BASELINE-AND-TARGET-20261112.md)。原始审查基线为源码 HEAD `74578e903c2584628d853598ef8f1910adf7da5b`；当前最新架构重构产品源码为 `87b2e097a4763785302dd3974b4880d444c3ac48`。PR #3 保持 OPEN / DRAFT，开发分支领先目标分支 267、落后 0。
 
-当前工程清单为 5 个产品项目、24 个 C# 测试项目、16 个脚本条目、3 个 Actions workflow；src Git Tree 共 193 个条目。主要架构问题是 ProtectionLifecycle 单程序集聚合过多领域、AtomicAdmission/ProtectedSession/SessionResources/InstalledBroker/BootstrapInstaller/SessionGitToolchain/HostPrivacyProbe 等大型类职责混合，以及 Shared 源码重复编译和测试 source-link 边界需要治理。没有证据证明产品项目存在 ProjectReference 环；ProtectedLifecycleCoordinator 只在测试项目编译，不是当前生产第二授权中心。
+当前工程清单仍为 5 个产品项目、24 个 C# 测试项目、16 个脚本条目、3 个 Actions workflow；src Git Tree 共 193 个条目。架构问题与目标边界见架构文档。当前未增加 DLL、未改变安装资产或 Manifest 协议，Shared 仍是源码链接契约而非独立程序集。
 
-本轮先建立架构设计文档并更新文档索引/状态，随后连续完成两个 Admission 文件级重构微阶段；未修改安装资产、DLL 输出布局或安全门禁。架构文档提交：`31dd2d1e08e40d3a720521328dc2d1a9562278a0`；索引提交：`7d0ae519e406cb47d2161cc8a6bca3d5d8797607`。
+A1.1—A1.7 已完成：Profile lease、Job completion receipt、Token evidence、Token observation、受限工具启动、原生 ABI、restricted Worker、runtime supervision、进程创建工厂、Job membership observation、default DACL candidate 已按职责拆分。当前 `AtomicAdmission.cs` 从初始 1,442 行缩减至 226 行；新增 partial 文件仍属于同一个 `ProtectionLifecycle` 程序集，未改变类型可见性、公共调用契约、原子创建/Resume 顺序、资源所有权或安装资产。最新提交 `87b2e097` 的三组 CI 全部 SUCCESS（43220859756、43220859804、43220859739）。
 
-A1.1 已完成：从 AtomicAdmission.cs 提取 InstallationProfileLease 与 AtomicJobCompletion；AtomicAdmission 从 1,442 行降至 1,317 行。提交 74a3a5908308ef31b098dbcccf6b0ec94fa7d1fc 的三组 Actions 均 SUCCESS（43213673926、43213673933、43213673931）。
+重构期间出现的中间编译失败均已修复且未绕过门禁：工具启动缺少 Shared/Win32Exception using、原生 ABI 缺少 StringBuilder using、runtime split 重复成员、DACL split 的源码切片偏移；各失败提交和最终修复提交在架构文档/STATUS 中保留。
 
-A1.2 已完成：将 AdmissionToken、ResourceBootstrapFailure、OwnedMemberInspection 移至 AtomicAdmissionEvidence.cs；将 AtomicChild 的 Token 读取、快照和 AccessCheck 方法移至 AtomicChild.Token.cs。AtomicAdmission 从 1,317 行降至 1,201 行。提交 7613c4e681b57ce17fdd0ff6efed747ce85435f9 的三组 Actions 均 SUCCESS（43214439565、43214439543、43214439759）。
-
-A1.3 已完成：将 AtomicChild 的受限工具启动、原 Job 预绑定创建、标准输入输出句柄建立与受限句柄回传移至 AtomicChild.ToolLaunch.cs。AtomicAdmission 从 1,201 行降至 1,021 行。首次拆分 CI 发现 Shared workspace contract 与 System.ComponentModel 两个遗漏 using，已在后续提交修复；最终提交 31dc39bac582f65f1061f38aa455977b0471f235 的三组 Actions 全部 SUCCESS（43215792139、43215792288、43215792160），五个产品项目、六个专项 harness 编译及普通用户策略/Runner Git/elevated NTFS fixture 均通过。
-
-三个微阶段均未改变持久协议、资源所有权、Job/Token 创建与 Resume 顺序、安装资产或 DLL 输出布局；均不构成产品 Broker/LPAC 实机验收。下一步拆分 AtomicChild 原生 API 声明与成员监督边界。全机网络模式仍为 REQUIREMENT_ONLY / DESIGN；本机 `SECURITY_REVIEW_REQUIRED` 硬停止仍有效。
+下一阶段转向 A2：先梳理并拆分 `ProtectedSession` 的 GatewayQualification 纯策略目录、ResourceQualification/Preparation/Admission 一次性 permit 类型，以及环境证据/资源资格执行编排；保持原 ProtectedSession 为唯一 session owner，不引入第二授权中心。全机网络模式仍为 REQUIREMENT_ONLY / DESIGN；本机 `SECURITY_REVIEW_REQUIRED` 硬停止仍有效。

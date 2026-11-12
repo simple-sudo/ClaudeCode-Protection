@@ -2945,3 +2945,14 @@ Compile/Run/Tests失败和正常DataReport通过；最终library/Broker及77a1�
 - 拆分期间两次 CI 编译失败均保留并修复：`476ada6` 遗漏 `ClaudeCodeProtection.Workspaces`；`f0969d3` 补齐 Shared namespace 后仍遗漏 `System.ComponentModel`。最终修复提交 `31dc39bac582f65f1061f38aa455977b0471f235`。
 - 最终三组 Actions 全部 SUCCESS：Hosted Windows compile `43215792139`、Safe managed policy smoke `43215792288`、Offline workspace Git workflow `43215792160`；五个产品项目、六个专项 harness 编译、普通用户策略/Runner Git 与 elevated NTFS fixture 全部通过。
 - 未改变固定工具命令边界、原 Job 预绑定、LPAC/Token 核验、句柄交接语义、Resume 顺序、持久协议、安装资产或程序集。无本机产品实测。
+
+
+## 2026-11-12：AtomicChild 架构拆分 A1.4—A1.7
+
+- A1.4：原生 ABI → `AtomicChild.NativeMethods.cs`；固定受限 Worker 入口 → `AtomicChild.Worker.cs`；运行监督/退出观察 → `AtomicChild.Supervision.cs`。最终监督拆分提交 `61c7b18526b8a3ed2d19a9b84194ddc966220e40` 三组 Actions SUCCESS（43218823219、43218823283、43218823441）。中间重复方法/属性错误的失败 CI 已记录并修复。
+- A1.5：创建工厂 → `AtomicChild.Creation.cs`，提交 `13b99bcd7fc6e03721f2c39c22c1941782917a87`；三组 Actions SUCCESS（43219495979、43219496046、43219496141）。
+- A1.6：精确 Job/Session Peer 成员观察 → `AtomicChild.Membership.cs`，提交 `aaff76fc39253cc5e0d023b1c3fc0b7dbbc4f8aa`；三组 Actions SUCCESS（43220265620、43220265310、43220265089）。
+- A1.7：suspended child future-object default DACL candidate → `AtomicChild.DefaultDacl.cs`，最终提交 `87b2e097a4763785302dd3974b4880d444c3ac48`；三组 Actions SUCCESS（43220859756、43220859804、43220859739）。该 candidate 仍无当前调用方，未启用。
+- `AtomicAdmission.cs` 从初始 1,442 行缩减至 226 行。新增均为同一 Lifecycle 程序集内源码文件，不新增 DLL，不改变 Manifest/Bootstrap/安装资产或原子进程创建/Job 预绑定/Token 核验/Resume 顺序。
+- 失败记录：`dbbb3b5` 原生 ABI 漏 `StringBuilder`；`d8aed8d` runtime 方法重复；`a3efa8b` runtime 属性重复；`9165f2d` DACL 切片偏移导致语法错误。分别由后续提交修复，最终验证全绿。
+- 证据边界：编译、专项 Harness、标准用户策略/Runner Git、elevated NTFS fixture；无本机产品 Build/安装/UAC、Broker → Owned Job → LPAC 完整链或真实 Claude。下一阶段进入 ProtectedSession A2 职责拆分。

@@ -325,7 +325,7 @@ Machine Network Lease 和 Session lease 是不同生命周期。Broker/Owner 是
 
 阶段可以细分，不允许跨阶段铺开多个未完成的大型重构。每个阶段完成后立即验证并记录；实机测试可以在任何适合的阶段提前进行，不必等到所有源码完成。
 
-## 12. 第一批实际重构的选择
+## 12. 第一批实际重构的选择（A1.1—A1.7 已完成）
 
 先从 `AtomicAdmission.cs` 的**纯职责边界提取**开始，而不是先改 WFP、网络或安装资产：
 
@@ -335,7 +335,7 @@ Machine Network Lease 和 Session lease 是不同生命周期。Broker/Owner 是
 4. 更新显式 Compile Include、source-link tests（如有）和 workflow 路径。
 5. 运行所有相关编译/测试，确认无行为变化后再选择下一个拆分点。
 
-如果拆分暴露隐式所有权或测试不能证明等价，暂停该微阶段并先补契约，不用接口重命名掩盖问题。
+如果拆分暴露隐式所有权或测试不能证明等价，暂停该微阶段并先补契约，不用接口重命名掩盖问题。A1.1—A1.7 已完成；下一批从 ProtectedSession 的策略目录与一次性 permit 类型开始，先保留 ProtectedSession 唯一 owner，再逐步分离资源资格工作流。
 
 ### A1.1 完成记录：Profile lease 与 Job completion receipt 文件级提取（2026-11-12）
 
@@ -363,6 +363,36 @@ Machine Network Lease 和 Session lease 是不同生命周期。Broker/Owner 是
 - 首次拆分的 CI 失败记录保留：提交 `476ada6` 遗漏 `ClaudeCodeProtection.Workspaces` namespace；提交 `f0969d3` 补齐该依赖后仍遗漏 `System.ComponentModel`。最终在 `31dc39b` 修复，未绕过或禁用编译门禁。
 - 最终三组 Actions 全部 SUCCESS：Hosted Windows compile `43215792139`、Safe managed policy smoke `43215792288`、Offline workspace Git workflow `43215792160`。产品项目、六个专项 harness、普通用户策略/Runner Git 和 elevated NTFS fixture 均通过。
 - 未改变工具固定范围、原 Job 预绑定、Token/LPAC 验证、句柄转移、进程 Resume 顺序、资源 owner、持久协议、程序集或安装资产；不构成产品 Broker/LPAC 实机验收。
+
+### A1.4 完成记录：原生 ABI、受限 Worker 与运行监督边界（2026-11-12）
+
+- 原生 ABI 声明迁移至 `AtomicChild.NativeMethods.cs`，不包含策略或资源 owner；提交 `7f476de5c1ce86e37eed44d823eaf6d9eeec8500` 最终三组 Actions SUCCESS（43216696819、43216696809、43216696758）。首次遗漏 `System.Text.StringBuilder` 的 CI 失败保留，后续补齐。
+- 固定受限子进程内部入口迁移至 `AtomicChild.Worker.cs`，包含 Offline TLS、Gateway、Resource 和固定 Canary 工作代码；提交 `8b7b81342f8d5e44effcdddb5c0808d86e626810` 三组 Actions SUCCESS（43217351660、43217351273、43217351348）。
+- 对已创建精确子进程的退出、Job 归属和资格证据观察迁移至 `AtomicChild.Supervision.cs`；最终提交 `61c7b18526b8a3ed2d19a9b84194ddc966220e40` 三组 Actions SUCCESS（43218823219、43218823283、43218823441）。
+- 中间 runtime split 曾因原文件未完全移除旧方法/重复属性导致 CI 失败（`d8aed8d`、`a3efa8b`）；最终修复已保留原方法单一实现，未通过关闭检查规避。
+
+### A1.5 完成记录：原子进程创建工厂提取（2026-11-12）
+
+- 提交：`13b99bcd7fc6e03721f2c39c22c1941782917a87`。
+- 新增 `AtomicChild.Creation.cs`，集中普通固定 child、Session 0 offline console、resource/session/TLS/console qualification 的创建工厂与 `CreateCore`。
+- `AtomicAdmission.cs` 从 664 行降至 369 行。没有改变 CreateProcess suspended、LPAC security attributes、Job list 预绑定、Token/Job 核验和首次 Resume 顺序。
+- 三组 Actions SUCCESS：Hosted `43219495979`、Offline `43219496046`、Policy `43219496141`。
+
+### A1.6 完成记录：Job/Session Peer 成员观察提取（2026-11-12）
+
+- 提交：`aaff76fc39253cc5e0d023b1c3fc0b7dbbc4f8aa`。
+- 新增 `AtomicChild.Membership.cs`，集中 independent-user/token proof、Session Peer 打开与核验、精确 Job member inspection。临时进程句柄在完整双快照回调期间保持存活，并由观察方法关闭。
+- `AtomicAdmission.cs` 从 369 行降至 300 行；未改变 Job owner 或 membership decision。
+- 三组 Actions SUCCESS：Hosted `43220265620`、Offline `43220265310`、Policy `43220265089`。
+
+### A1.7 完成记录：Suspended Child Default DACL 候选隔离（2026-11-12）
+
+- 最终提交：`87b2e097a4763785302dd3974b4880d444c3ac48`。
+- 新增 `AtomicChild.DefaultDacl.cs`，独立保存精确 suspended LPAC child 的 future-object default DACL candidate、原值解析、owner ACE addition 和 readback。
+- `AtomicAdmission.cs` 从 300 行降至 226 行。该 candidate 仍未被任何当前创建/准入路径调用；本次仅隔离既有实现，不宣称该能力已启用或验收。
+- 首次提取提交 `9165f2d` 因源码切片偏移导致 AtomicAdmission 语法错误，修复提交 `87b2e09` 恢复完整主文件并通过三组 CI。最终 Actions SUCCESS：Hosted `43220859756`、Offline `43220859804`、Policy `43220859739`。
+
+以上 A1.1—A1.7 均为同一 Lifecycle 程序集内的源文件/partial 职责提取，不新增 DLL、不改变 PackageAssetCatalog/Manifest/Bootstrap 资产，不把 CI 编译和 fixture 结果冒充产品 Broker/LPAC 或实机验收。
 
 ## 13. 持续维护规则
 
