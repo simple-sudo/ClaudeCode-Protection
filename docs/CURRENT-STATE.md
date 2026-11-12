@@ -9,7 +9,7 @@
 | 仓库 | simple-sudo/ClaudeCode-Protection |
 | 可见性 | Public |
 | 默认分支 | main |
-| 当前线上开发分支 | chatgpt/complete-git-workflow-20261110 |
+| 当前线上开发分支 | chatgpt/complete-git-workflow-20261110 |\n| 当前文档更新后 HEAD | 7d0ae519e406cb47d2161cc8a6bca3d5d8797607（架构基线文档与索引更新；产品源码未变） |\n| 架构审查源码基线 | 74578e903c2584628d853598ef8f1910adf7da5b |
 | 真实证据政策更新前 HEAD | 80a300f760a22b94060e598874b196f3e967dfef |
 | 文档整理与语义修正验证基线 | 2a5e4a5bf26d0f723d4cbb08d59bd4419111a4fa（文档变更；产品源码未变） |
 | 产品源码最近修订 | 2c3fb1646cf64da0817d777215d4efbf9ad4db1b（移除 Git ACL 失败诊断中的原始 SID/ACE 字符串） |
@@ -21,7 +21,7 @@
 
 ## 2. 最新云端验证
 
-在文档整理前的 HEAD 36ad1b20848fd056c1f034113b8831d7fc6b0c99 上，以下三组 GitHub Actions 均为 SUCCESS：
+在架构审查源码基线 HEAD 74578e903c2584628d853598ef8f1910adf7da5b 上，以下三组 GitHub Actions 均为 SUCCESS：
 
 - [Hosted Windows compile only](https://github.com/simple-sudo/ClaudeCode-Protection/actions/runs/43182143806)
 - [Safe managed policy smoke](https://github.com/simple-sudo/ClaudeCode-Protection/actions/runs/43182143786)
@@ -87,3 +87,14 @@
 6. 每个可独立验证的能力尽早安排实机测试；云端能完成的编译和自动化回归由 CI 自主完成。
 
 本摘要只记录截至上述基线的已知事实。文档整理提交本身不改变产品实现状态或实机授权。
+
+
+## 8. 全项目架构治理（2026-11-12）
+
+架构基线与目标设计见 [ARCHITECTURE-BASELINE-AND-TARGET-20261112](ARCHITECTURE-BASELINE-AND-TARGET-20261112.md)。本轮审查基于源码 HEAD `74578e903c2584628d853598ef8f1910adf7da5b`，确认当前开发分支仍为 PR #3 的 OPEN / DRAFT 分支，领先目标分支 237、落后 0。最新三组 Actions 为 43190088230、43190088178、43190088173，均 SUCCESS；其证据边界仍限于托管编译、策略/工作区测试和限定 NTFS fixture。
+
+当前工程清单为 5 个产品项目、24 个 C# 测试项目、16 个脚本条目、3 个 Actions workflow；src Git Tree 共 193 个条目。主要架构问题是 ProtectionLifecycle 单程序集聚合过多领域、AtomicAdmission/ProtectedSession/SessionResources/InstalledBroker/BootstrapInstaller/SessionGitToolchain/HostPrivacyProbe 等大型类职责混合，以及 Shared 源码重复编译和测试 source-link 边界需要治理。没有证据证明产品项目存在 ProjectReference 环；ProtectedLifecycleCoordinator 只在测试项目编译，不是当前生产第二授权中心。
+
+本轮只新增架构设计文档并更新文档索引/状态；未修改产品可执行源码、项目编译清单、安装资产或安全门禁。架构文档提交：`31dd2d1e08e40d3a720521328dc2d1a9562278a0`；索引提交：`7d0ae519e406cb47d2161cc8a6bca3d5d8797607`。
+
+下一步按架构文档第 12 节，从 AtomicAdmission 的 Profile lease / Job completion receipt 职责提取开始，保持现有程序集、资源所有权、调用顺序、持久状态格式和安装资产不变。每个微阶段单独编译、回归并记录。全机网络模式仍为 REQUIREMENT_ONLY / DESIGN；本机 `SECURITY_REVIEW_REQUIRED` 硬停止仍有效。
