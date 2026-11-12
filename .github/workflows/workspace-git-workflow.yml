@@ -14,6 +14,7 @@ on:
       - 'tests/WorkspacePipe/**'
       - 'tests/CenterResults/**'
       - 'tests/ProfileRecovery/**'
+      - 'tests/TaskWorkspaceNative/**'
       - 'docs/WORKSPACE-TRANSFER.md'
   workflow_dispatch:
 
@@ -63,6 +64,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           dotnet build tests/ProfileRecovery/ProfileRecovery.csproj --configuration Release --nologo
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          dotnet build tests/TaskWorkspaceNative/TaskWorkspaceNative.csproj --configuration Release --nologo
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Run workspace, policy and real Git tests as a standard user
         shell: pwsh
         run: |
@@ -78,6 +81,7 @@ jobs:
           $workspacePipeApp = Join-Path $stage 'workspace-pipe-app'
           $centerApp = Join-Path $stage 'center-results-app'
           $profileRecoveryApp = Join-Path $stage 'profile-recovery-app'
+          $taskWorkspaceNativeApp = Join-Path $stage 'task-workspace-native-app'
           $fixture = Join-Path $stage 'fixture'
           $source = Join-Path $fixture 'source'
           $task = Join-Path $fixture 'task'
@@ -85,6 +89,8 @@ jobs:
           $temp = Join-Path $stage 'temp'
           $sourceRedirect = Join-Path $source 'redirect'
           $redirectOutput = Join-Path $fixture 'redirect-output'
+          $nativeWorkspaceSessions = @()
+          $nativePackageName = $null
           try {
             New-LocalUser -Name $user -Password $password -PasswordNeverExpires -AccountNeverExpires -Description 'Ephemeral non-admin managed test account' | Out-Null
             Add-Type -TypeDefinition @'
@@ -110,14 +116,20 @@ jobs:
             $roamingAppData = Join-Path $profilePath 'AppData/Roaming'
             New-Item -ItemType Directory -Path $profilePath,$localAppData,$roamingAppData -Force | Out-Null
             New-Item -ItemType Directory -Path $stage -Force | Out-Null
-            New-Item -ItemType Directory -Path $workspaceApp,$ownedApp,$workspacePipeApp,$centerApp,$profileRecoveryApp,$fixture,$source,$task,$outside,$temp,(Join-Path $source 'src') -Force | Out-Null
+            New-Item -ItemType Directory -Path $workspaceApp,$ownedApp,$workspacePipeApp,$centerApp,$profileRecoveryApp,$taskWorkspaceNativeApp,$fixture,$source,$task,$outside,$temp,(Join-Path $source 'src') -Force | Out-Null
             Copy-Item -Path (Join-Path $env:GITHUB_WORKSPACE 'tests/WorkspaceTransfer/bin/Release/net8.0-windows/*') -Destination $workspaceApp -Recurse -Force
             Copy-Item -Path (Join-Path $env:GITHUB_WORKSPACE 'tests/OwnedToolLaunch/bin/Release/net8.0-windows/*') -Destination $ownedApp -Recurse -Force
             Copy-Item -Path (Join-Path $env:GITHUB_WORKSPACE 'tests/WorkspacePipe/bin/Release/net8.0-windows/*') -Destination $workspacePipeApp -Recurse -Force
             Copy-Item -Path (Join-Path $env:GITHUB_WORKSPACE 'tests/CenterResults/bin/Release/net8.0-windows/*') -Destination $centerApp -Recurse -Force
             Copy-Item -Path (Join-Path $env:GITHUB_WORKSPACE 'tests/ProfileRecovery/bin/Release/net8.0-windows/*') -Destination $profileRecoveryApp -Recurse -Force
+            Copy-Item -Path (Join-Path $env:GITHUB_WORKSPACE 'tests/TaskWorkspaceNative/bin/Release/net8.0-windows/*') -Destination $taskWorkspaceNativeApp -Recurse -Force
             & icacls $stage /grant "${account}:(OI)(CI)RX" /T /C | Out-Null
             if ($LASTEXITCODE -ne 0) { throw 'Could not grant the standard test account read/execute access to isolated test binaries' }
+            $nativePackageName = 'Cpc.NativeTaskWorkspace.' + $user
+            $nativeWorkspaceSessions = 1..5 | ForEach-Object { [Guid]::NewGuid().ToString('N') }
+            $nativePrepareArguments = @('prepare',$sid,$nativePackageName) + $nativeWorkspaceSessions
+            & (Get-Command dotnet).Source (Join-Path $taskWorkspaceNativeApp 'TaskWorkspaceNative.dll') @nativePrepareArguments
+            if ($LASTEXITCODE -ne 0) { throw 'Could not prepare isolated native NTFS task-workspace fixtures' }
             & icacls $fixture /grant "${account}:(OI)(CI)M" /T /C | Out-Null
             if ($LASTEXITCODE -ne 0) { throw 'Could not grant the standard test account workspace fixture access' }
             & icacls $temp /grant "${account}:(OI)(CI)M" /T /C | Out-Null
@@ -181,9 +193,23 @@ jobs:
               Invoke-StandardUserTest $workspacePipeApp @('WorkspacePipe.dll',$case) "WorkspacePipe $case"
             }
             Invoke-StandardUserTest $centerApp @('CenterResults.dll') 'Protection Center workspace review and project-flow tests'
-            Invoke-StandardUserTest $profileRecoveryApp @('ProfileRecovery.dll') 'Profile recovery and task-workspace cleanup/closure tests (native filesystem operations are simulated)'
+            Invoke-StandardUserTest $profileRecoveryApp @('ProfileRecovery.dll') 'Profile recovery and task-workspace cleanup/closure state-machine tests (native filesystem operations simulated)'
+            $nativeRunArguments = @('run',$sid,$nativePackageName) + $nativeWorkspaceSessions
+            Invoke-StandardUserTest $taskWorkspaceNativeApp (@('TaskWorkspaceNative.dll') + $nativeRunArguments) 'Production task-workspace recovery on real NTFS (standard user; exact ACL/low-label fixtures)'
           }
           finally {
+            foreach ($nativeSession in $nativeWorkspaceSessions) {
+              if ($nativeSession -match '^[0-9a-f]{32} { & $env:ComSpec /d /c ('rmdir "{0}"' -f $sourceRedirect) | Out-Null }
+            if (Test-Path -LiteralPath $redirectOutput) { & $env:ComSpec /d /c ('rmdir "{0}"' -f $redirectOutput) | Out-Null }
+            Remove-LocalUser -Name $user -ErrorAction SilentlyContinue
+            if ($profilePath -and (Test-Path $profilePath)) { Remove-Item $profilePath -Recurse -Force -ErrorAction SilentlyContinue }
+            if (Test-Path $stage) { Remove-Item $stage -Recurse -Force -ErrorAction SilentlyContinue }
+          }
+) {
+                $nativePath = Join-Path $env:ProgramFiles ('ClaudeCodeProtection-Task-' + $nativeSession)
+                if (Test-Path -LiteralPath $nativePath) { Remove-Item -LiteralPath $nativePath -Recurse -Force -ErrorAction SilentlyContinue }
+              }
+            }
             if (Test-Path -LiteralPath $sourceRedirect) { & $env:ComSpec /d /c ('rmdir "{0}"' -f $sourceRedirect) | Out-Null }
             if (Test-Path -LiteralPath $redirectOutput) { & $env:ComSpec /d /c ('rmdir "{0}"' -f $redirectOutput) | Out-Null }
             Remove-LocalUser -Name $user -ErrorAction SilentlyContinue
