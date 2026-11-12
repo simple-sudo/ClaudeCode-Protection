@@ -56,7 +56,7 @@
     <Compile Include="ToolFaultMode.cs" />
     <Compile Include="PowerShellPolicySnapshot.cs;RestrictedPowerShellHost.cs" />
     <Compile Include="SessionProfileRecovery.cs" />
-    <Compile Include="SessionGitToolchain.cs" />
+    <Compile Include="GitToolchainReport.cs;SessionGitToolchain.cs;SessionGitToolchain.Process.cs;SessionGitToolchain.Policy.cs;SessionGitToolchain.IndependentCommit.cs;SessionGitToolchain.Receipts.cs" />
     <Compile Include="SessionPowerShellToolchain.cs" />
     <Compile Include="SessionTaskWorkspace.cs" />
     <Compile Include="../Shared/WorkspaceBundle.cs;../Shared/WorkspaceFiles.cs" />
