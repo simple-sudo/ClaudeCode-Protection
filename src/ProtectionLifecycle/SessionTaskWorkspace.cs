@@ -188,7 +188,7 @@ internal static class SessionTaskWorkspace
             // and only exposes MarkDelete after the empty-directory preflight.
             using(var root=native.OpenDirectoryForDelete(path))
             {
-                identity=native.Identity(root);
+                identity=Identifiers.ObjectIdentity(native.Identity(root));
                 native.AssertFreshWorkspace(root,profile.OwnerSid,package.Value);
                 var names=native.EnumerateNames(root,path,1);
                 var empty=names.Length==0;
