@@ -355,6 +355,15 @@ Machine Network Lease 和 Session lease 是不同生命周期。Broker/Owner 是
 - 三组 Actions 全部 SUCCESS：Hosted Windows compile `43214439565`、Safe managed policy smoke `43214439543`、Offline workspace Git workflow `43214439759`。五个产品项目、六个聚焦 harness 编译通过；普通用户策略/Runner Git 与 elevated NTFS fixture 通过。
 - 不构成本机产品 Build、Broker/LPAC 端到端、真实 Claude 或全机网络验收。
 
+### A1.3 完成记录：AtomicChild 受限工具启动职责提取（2026-11-12）
+
+- 最终修复提交：`31dc39bac582f65f1061f38aa455977b0471f235`。
+- 新增 `AtomicChild.ToolLaunch.cs`，迁移受限工具启动请求、固定镜像/参数核验、原 Job handle 在创建时绑定、LPAC/token 回读、管道句柄创建与受限句柄回传，以及 InheritedTool handle owner。
+- `AtomicAdmission.cs` 从 1,201 行降至 1,021 行；新文件 192 行；Lifecycle Compile 清单同步。
+- 首次拆分的 CI 失败记录保留：提交 `476ada6` 遗漏 `ClaudeCodeProtection.Workspaces` namespace；提交 `f0969d3` 补齐该依赖后仍遗漏 `System.ComponentModel`。最终在 `31dc39b` 修复，未绕过或禁用编译门禁。
+- 最终三组 Actions 全部 SUCCESS：Hosted Windows compile `43215792139`、Safe managed policy smoke `43215792288`、Offline workspace Git workflow `43215792160`。产品项目、六个专项 harness、普通用户策略/Runner Git 和 elevated NTFS fixture 均通过。
+- 未改变工具固定范围、原 Job 预绑定、Token/LPAC 验证、句柄转移、进程 Resume 顺序、资源 owner、持久协议、程序集或安装资产；不构成产品 Broker/LPAC 实机验收。
+
 ## 13. 持续维护规则
 
 - 新模块先写职责/输入输出/失败/资源释放/测试合同，再实现。
