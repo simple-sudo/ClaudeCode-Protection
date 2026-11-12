@@ -2956,3 +2956,17 @@ Compile/Run/Tests失败和正常DataReport通过；最终library/Broker及77a1�
 - `AtomicAdmission.cs` 从初始 1,442 行缩减至 226 行。新增均为同一 Lifecycle 程序集内源码文件，不新增 DLL，不改变 Manifest/Bootstrap/安装资产或原子进程创建/Job 预绑定/Token 核验/Resume 顺序。
 - 失败记录：`dbbb3b5` 原生 ABI 漏 `StringBuilder`；`d8aed8d` runtime 方法重复；`a3efa8b` runtime 属性重复；`9165f2d` DACL 切片偏移导致语法错误。分别由后续提交修复，最终验证全绿。
 - 证据边界：编译、专项 Harness、标准用户策略/Runner Git、elevated NTFS fixture；无本机产品 Build/安装/UAC、Broker → Owned Job → LPAC 完整链或真实 Claude。下一阶段进入 ProtectedSession A2 职责拆分。
+
+
+## 2026-11-12：WFP partial namespace 修复、全项目架构复核与基线同步
+
+- 从远端重新确认开发分支及 PR #3。修复前实际产品源码 HEAD 为 `573c36271d0839d223317309ccda1e4a71446f47`，PR #3 为 OPEN / DRAFT，目标分支 `codex/integrate-privacy-admission-20261027`。
+- 读取失败 Actions 日志：Hosted compile 与 Offline workspace Git workflow 在 `PersistentFence.cs` 上出现 31 个 CS0246。根因是主 partial 文件缺少 `namespace ProtectionLifecycle;`，而拆分后的 partial 与其依赖类型位于该命名空间。
+- 仅恢复主 partial 的文件级命名空间，提交 `9c944d10a1b24bc88b3099091ea93a0d564b9484`。没有改变 WFP 策略、过滤条件、资源 owner、释放/恢复行为、程序集或安装资产。
+- 修复后当前产品源码基线三组 Actions 全部 SUCCESS：Hosted Windows compile `43230310511`、Offline workspace Git workflow `43230310544`、Safe managed policy smoke `43230310614`。五个产品项目编译通过；六个聚焦 Harness 编译通过；标准用户策略/真实 Git 与 elevated native NTFS fixture 全部通过。此证据不覆盖产品 Broker → Owned Job → LPAC 完整链、安装、真实 Claude 或全机网络验收。
+- 完成完整 Git Tree / 项目 / 测试 / CI 复核：src 为 254 个条目（246 文件、8 目录）；ProtectionLifecycle 有 182 个本地 C# 文件，仍是单一管理程序集；Shared 有 22 个源码文件、无独立 DLL；5 个产品项目、1 个独立 Engineering 项目、24 个 C# 测试项目、16 个脚本、3 个 Actions workflow。六个托管项目的显式 Compile Include 无缺失路径或重复项。
+- 确认现有 partial 拆分已经显著降低文件体量，但 SessionResources、SessionProxy、SessionGitToolchain、HostPrivacyProbe 仍是单一类型/owner 的 partial 组织，尚未全部形成独立服务和组合边界。没有把文件拆分计作低耦合完成。
+- 更新架构权威文档 `docs/ARCHITECTURE-BASELINE-AND-TARGET-20261112.md`，补入当前分支源码地图、真实项目/测试依赖、CI 覆盖缺口、partial 与真实 owner 的区别，以及 A2 后续次序。文档提交：`5cd52cb8dd0fb49be73eff97c03979dfcdeb1828`。
+- 同步 `docs/CURRENT-STATE.md`，将产品源码基线和最新 CI 更新到 `9c944d1`，并记录当前项目规模与 A2 重点。文档提交：`f1002230208d00de05f4c14c3cf3393e05674a02`。
+- 下一阶段按 A2 串行推进：先用 typed ResourceExecution intent 消除跨层布尔模式组合，再把 workspace 路径/文件句柄交给唯一的 `SessionWorkspaceLease` owner；`SessionResources` 仅组合并持有子 lease。保留原 `ProtectedSession` 唯一 session owner。
+- 未执行本机 Build、安装、UAC、网络修改、正式 Claude 启动或故障注入；`SECURITY_REVIEW_REQUIRED` 保持有效；PR #3 保持 OPEN / DRAFT。
