@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <AssemblyName>TaskWorkspaceNative</AssemblyName>
+    <RootNamespace>ProtectionLifecycle</RootNamespace>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Program.cs;NativeTaskWorkspaceCases.cs;TestDoubles.cs" />
+    <Compile Include="../../src/ProtectionLifecycle/SessionTaskWorkspace.cs;../../src/ProtectionLifecycle/WindowsPathSeal.cs;../../src/ProtectionLifecycle/WorkspaceDescriptor.cs" />
+    <Compile Include="../../src/Shared/WindowsDirectoryNames.cs;../../src/Shared/DirectoryNamePage.cs" />
+  </ItemGroup>
+</Project>
