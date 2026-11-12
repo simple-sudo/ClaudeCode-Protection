@@ -233,7 +233,7 @@ internal static class NativeGitLpacAccessCases
                 "copy /b " + Quote(projectSourcePath) + " " + Quote(projectReadCopyPath) + " || exit /b 11 & " +
                 "copy /b " + Quote(controlConfigPath) + " " + Quote(controlConfigReadCopyPath) + " || exit /b 12 & " +
                 "copy /b " + Quote(controlPathspecPath) + " " + Quote(controlPathspecReadCopyPath) + " || exit /b 13 & " +
-                "copy /b " + Quote(mediumFilePath) + " " + Quote(mediumReadCopyPath) + " || exit /b 14 & "
+                "copy /b " + Quote(mediumFilePath) + " " + Quote(mediumReadCopyPath) + " || exit /b 14 & " +
                 "echo project-write>" + Quote(projectWritePath) + " & " +
                 "mkdir " + Quote(projectCreatedPath) + " & " +
                 "echo nested>" + Quote(projectNestedPath) + " & " +
