@@ -214,48 +214,6 @@ internal sealed partial class SessionResources
         var data=new byte[checked((int)file.Length)];file.ReadExactly(data);return data;
     }
 
-    private static string AllPackagesFixtureSddl(string human)=>"O:BAG:SYD:P(A;;FA;;;SY)(A;;FA;;;BA)(A;;0x00120089;;;"+new SecurityIdentifier(human).Value+")(A;;0x00120089;;;S-1-15-2-1)";
-    private static FileStream CreateAllPackagesFixture(string path,string human,byte[] content)
-    {
-        // Non-secret, tool-owned positive control. It deliberately grants AAP
-        // read but neither the package nor ALL_RESTRICTED_APPLICATION_PACKAGES.
-        // Never change an existing host object to obtain this comparison.
-        if(!ConvertStringSecurityDescriptorToSecurityDescriptor(AllPackagesFixtureSddl(human),1,out var descriptor,out _))
-            throw new WfpFailure("CreateAllPackagesFixtureDescriptor",unchecked((uint)Marshal.GetLastWin32Error()));
-        try
-        {
-            var security=new KernelJobSeal.SecurityAttributes{Length=Marshal.SizeOf<KernelJobSeal.SecurityAttributes>(),Descriptor=descriptor};
-            var handle=CreateFixtureFile(path,0xC0000000,1,ref security,1,0x00200080,IntPtr.Zero);
-            if(handle.IsInvalid){var error=Marshal.GetLastWin32Error();handle.Dispose();throw new WfpFailure("CreateFreshAllPackagesFixture",unchecked((uint)error));}
-            using(var file=new FileStream(handle,FileAccess.ReadWrite)){file.Write(content);file.Flush(true);}
-        }
-        finally{LocalFree(descriptor);}
-        var held=new FileStream(WindowsPathSeal.Open(path,false,true),FileAccess.Read);
-        try
-        {
-            AssertAllPackagesFixture(held.SafeFileHandle,human);
-            if(held.Length!=content.Length || Convert.ToHexString(SHA256.HashData(held))!=Convert.ToHexString(SHA256.HashData(content)))throw WfpNative.Contract("AllPackagesFixtureContentChanged");
-            held.Position=0;return held;
-        }
-        catch{held.Dispose();throw;}
-    }
-    private static void AssertAllPackagesFixture(SafeFileHandle handle,string human)
-    {
-        var status=GetSecurityInfo(handle,1,1|2|4,out _,out _,out _,out _,out var descriptor);
-        if(status!=0)throw new WfpFailure("ReadAllPackagesFixtureAcl",status);
-        try
-        {
-            var size=GetSecurityDescriptorLength(descriptor);if(size is <20 or >65536)throw WfpNative.Contract("AllPackagesFixtureDescriptorBounds");
-            var bytes=new byte[size];Marshal.Copy(descriptor,bytes,0,bytes.Length);var actual=new RawSecurityDescriptor(bytes,0);
-            var expected=new RawSecurityDescriptor(AllPackagesFixtureSddl(human));
-            if(actual.Owner!=expected.Owner || actual.Group!=expected.Group || (actual.ControlFlags&ControlFlags.DiscretionaryAclProtected)==0 || actual.DiscretionaryAcl is null)
-                throw WfpNative.Contract("AllPackagesFixtureOwnerOrProtectionChanged");
-            var left=new byte[actual.DiscretionaryAcl.BinaryLength];actual.DiscretionaryAcl.GetBinaryForm(left,0);
-            var right=new byte[expected.DiscretionaryAcl!.BinaryLength];expected.DiscretionaryAcl.GetBinaryForm(right,0);
-            if(!left.AsSpan().SequenceEqual(right))throw WfpNative.Contract("AllPackagesFixtureExactAclChanged");
-        }
-        finally{if(descriptor!=IntPtr.Zero)LocalFree(descriptor);}
-    }
     internal static PathLease CreateOwnedTaskDirectory(ProtectedState state,InstallationProfileLease profile,string session)
     {
         state.AssertHeld();
@@ -287,12 +245,6 @@ internal sealed partial class SessionResources
     {using var expected=new WorkspaceDescriptor(human,package,true);expected.AssertApplied(handle,allowMissingLowLabel:true);}
     [DllImport("userenv.dll",CharSet=CharSet.Unicode,ExactSpelling=true)] private static extern int GetAppContainerFolderPath(string sid,out IntPtr path);
     [DllImport("kernel32.dll",EntryPoint="CreateDirectoryW",CharSet=CharSet.Unicode,SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)] private static extern bool CreateDirectory(string path,ref KernelJobSeal.SecurityAttributes attributes);
-    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
-    [DllImport("kernel32.dll",EntryPoint="CreateFileW",CharSet=CharSet.Unicode,SetLastError=true)] private static extern SafeFileHandle CreateFixtureFile(string path,uint access,uint share,ref KernelJobSeal.SecurityAttributes attributes,uint disposition,uint flags,IntPtr template);
-    [DllImport("advapi32.dll",EntryPoint="ConvertStringSecurityDescriptorToSecurityDescriptorW",CharSet=CharSet.Unicode,SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)] private static extern bool ConvertStringSecurityDescriptorToSecurityDescriptor(string text,uint revision,out IntPtr descriptor,out uint length);
-    [DllImport("advapi32.dll")] private static extern uint GetSecurityInfo(SafeFileHandle handle,int type,uint information,out IntPtr owner,out IntPtr group,out IntPtr dacl,out IntPtr sacl,out IntPtr descriptor);
-    [DllImport("advapi32.dll")] private static extern uint GetSecurityDescriptorLength(IntPtr descriptor);
     [DllImport("kernel32.dll",EntryPoint="CreateFileW",CharSet=CharSet.Unicode,SetLastError=true)] private static extern SafeFileHandle CreateFile(string path,uint access,uint share,IntPtr attributes,uint disposition,uint flags,IntPtr template);
-    [DllImport("kernel32.dll")] private static extern IntPtr LocalFree(IntPtr value);
     [DllImport("kernel32.dll",SetLastError=true)] private static extern SafeProcessHandle OpenProcess(uint access,[MarshalAs(UnmanagedType.Bool)] bool inherit,uint pid);
 }

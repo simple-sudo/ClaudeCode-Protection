@@ -19,6 +19,7 @@ internal static class GitWorkflowExecutionCases
         if(new WindowsPrincipal(identity).IsInRole(WindowsBuiltInRole.Administrator))
             throw new InvalidOperationException("Ordinary-user Git execution test must not run elevated");
         VerifyResourceExecutionIntent(library);
+        VerifyWorkspaceLeaseOwnership(library);
 
         // Recovery of a task directory created before its durable identity
         // receipt is intentionally narrower than normal recursive cleanup:
@@ -561,6 +562,27 @@ internal static class GitWorkflowExecutionCases
             Get(bundledTools,"Item1") is false && Get(bundledTools,"Item2") is true,
             "typed operation intent preserves the existing PowerShell/compiler requirement matrix");
         Console.WriteLine("PASS typed ResourceExecution intent: fixed operation kinds, payload binding, caller recheck and tool requirements; no OS resources created");
+    }
+
+    private static void VerifyWorkspaceLeaseOwnership(Assembly library)
+    {
+        var resources=library.GetType("ProtectionLifecycle.SessionResources",true)!;
+        var lease=library.GetType("ProtectionLifecycle.SessionWorkspaceLease",true)!;
+        var pathLease=library.GetType("ProtectionLifecycle.PathLease",true)!;
+        var git=library.GetType("ProtectionLifecycle.SessionGitToolchain",true)!;
+        var resourceFields=resources.GetFields(InstanceFlags);
+        var leaseFields=lease.GetFields(InstanceFlags);
+        Require(resourceFields.Any(field=>field.FieldType==lease),
+            "SessionResources composes one dedicated SessionWorkspaceLease");
+        Require(!resourceFields.Any(field=>field.FieldType==typeof(FileStream) || field.FieldType==pathLease || field.FieldType==git),
+            "SessionResources does not directly retain workspace handles or Git asset lease");
+        Require(leaseFields.Any(field=>field.FieldType==pathLease) &&
+            leaseFields.Any(field=>field.FieldType==typeof(FileStream)) &&
+            leaseFields.Any(field=>field.FieldType==git),
+            "SessionWorkspaceLease is the unique owner of workspace paths, file handles and Git lease");
+        Require(lease.IsSealed && typeof(IDisposable).IsAssignableFrom(lease),
+            "SessionWorkspaceLease has one explicit disposable lifetime");
+        Console.WriteLine("PASS SessionWorkspaceLease ownership boundary: workspace paths/files/Git lease have one owner; SessionResources only composes leases");
     }
 
     private static void VerifyGitWorkspaceBoundary(Assembly library,SecurityIdentifier owner)
