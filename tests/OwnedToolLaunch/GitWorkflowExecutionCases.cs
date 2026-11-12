@@ -47,7 +47,7 @@ internal static class GitWorkflowExecutionCases
             var planType=library.GetType("ProtectionLifecycle.ResourceProbePlan",true)!;
             var dataFiles=new (string Path,byte[] Content)[]
             {
-                (".gitattributes",Encoding.UTF8.GetBytes("*.cs text eol=lf\n*.bin filter=must-not-run\n")),
+                (".gitattributes",Encoding.UTF8.GetBytes("*.cs text eol=lf\n*.bin filter=must-not-run diff=must-not-run\n")),
                 (".gitignore",Encoding.UTF8.GetBytes("ignored.txt\n")),
                 ("README.md",Encoding.UTF8.GetBytes("Offline Git execution fixture\r\nsecond line\r\n")),
                 ("assets/payload.bin",new byte[]{0,255,1,128,13,10,0,42}),
@@ -136,6 +136,11 @@ internal static class GitWorkflowExecutionCases
             Require(filterConfig.Exit==0 && filterConfig.Error.Length==0,"adversarial local clean-filter config installed");
             var configuredFilter=Run(StartRunnerWorkflow(new[]{"-C",repository,"config","--local","--get","filter.must-not-run.clean"}));
             Require(configuredFilter.Exit==0 && configuredFilter.Out.Trim()=="tr a-z A-Z","adversarial local clean-filter config confirmed");
+            var textconvConfig=Run(StartRunnerWorkflow(new[]{"-C",repository,"config","--local","diff.must-not-run.textconv","cmd.exe /c echo TEXTCONV_EXECUTED"}));
+            Require(textconvConfig.Exit==0 && textconvConfig.Error.Length==0,"adversarial local textconv config installed");
+            var configuredTextconv=Run(StartRunnerWorkflow(new[]{"-C",repository,"config","--local","--get","diff.must-not-run.textconv"}));
+            Require(configuredTextconv.Exit==0 && configuredTextconv.Out.Trim()=="cmd.exe /c echo TEXTCONV_EXECUTED",
+                "adversarial local textconv config confirmed");
             var hooksDirectory=Path.Combine(repository,".git","hooks");
             Directory.CreateDirectory(hooksDirectory);
             File.WriteAllText(Path.Combine(hooksDirectory,"pre-commit"),"#!/bin/sh\nexit 91\n",new UTF8Encoding(false));
@@ -144,12 +149,29 @@ internal static class GitWorkflowExecutionCases
 
             var info=Path.Combine(repository,".git","info");
             Directory.CreateDirectory(info);
-            File.WriteAllText(Path.Combine(info,"attributes"),"* -text -filter -ident -working-tree-encoding\n",new UTF8Encoding(false));
+            var attributesPath=Path.Combine(info,"attributes");
+            File.WriteAllText(attributesPath,"* -text -filter -ident -working-tree-encoding !diff\n",new UTF8Encoding(false));
 
             var add=Run(StartRunnerWorkflow(commands[2]));
             Require(add.Exit==0 && add.Out.Length==0 && add.Error.Length==0,"real Git add accepts exact NUL pathspec");
+            var safeAttributes=File.ReadAllBytes(attributesPath);
+            try
+            {
+                // Prove the hostile textconv driver is live when both defenses
+                // are deliberately removed in this test-only control.
+                File.WriteAllText(attributesPath,"* -text -filter -ident -working-tree-encoding\n",new UTF8Encoding(false));
+                var unguardedArguments=commands[4].Where(argument=>argument!="--no-textconv").Append("--textconv").ToArray();
+                var unguardedNumstat=Run(StartRunnerWorkflow(unguardedArguments));
+                Require(unguardedNumstat.Exit==0 && unguardedNumstat.Out.Contains("assets/payload.bin",StringComparison.Ordinal) &&
+                    !unguardedNumstat.Out.Contains("-\t-\tassets/payload.bin",StringComparison.Ordinal),
+                    "adversarial textconv control demonstrates that the configured converter would execute");
+            }
+            finally{File.WriteAllBytes(attributesPath,safeAttributes);}
+
             var diffCheckStart=StartRunnerWorkflow(commands[3]);
             Require(diffCheckStart.ArgumentList.Contains("core.whitespace=cr-at-eol"),"fixed CRLF-aware whitespace validation policy");
+            Require(diffCheckStart.ArgumentList.Contains("--no-textconv"),"diff-check disables repository textconv drivers");
+            Require(commands[4].Contains("--no-textconv"),"numstat disables repository textconv drivers");
             var diffCheck=Run(diffCheckStart);
             if(diffCheck.Exit!=0 || diffCheck.Out.Length!=0 || diffCheck.Error.Length!=0)
                 throw new InvalidDataException("real Git diff --cached --check failed: exit="+diffCheck.Exit+

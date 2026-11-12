@@ -631,6 +631,8 @@ if(args[0]=="workspace-git-workflow-policy")
         Require(gitWorkflowCommands[1].Contains("--template="+Path.Combine(gitWorkflowControl,"empty-git-template")) &&
             gitWorkflowCommands[2].Contains("--pathspec-from-file="+gitWorkflowPathspec),
             "Git init and add use the isolated control directory");
+        Require(gitWorkflowCommands[3].Contains("--no-textconv") && gitWorkflowCommands[4].Contains("--no-textconv"),
+            "fixed diff commands disable repository-controlled textconv");
         var gitWorkflowDirectory=(string)gitWorkflowPlanType.GetProperty("GitDirectory",BindingFlags.Instance|BindingFlags.NonPublic)!.GetValue(gitWorkflowPlan)!;
         for(var i=0;i<gitWorkflowCommands.Length;i++)
         {
