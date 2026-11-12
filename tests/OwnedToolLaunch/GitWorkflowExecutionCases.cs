@@ -401,12 +401,16 @@ internal static class GitWorkflowExecutionCases
         var projectPackage=projectAcl.OfType<CommonAce>().Single(ace=>ace.SecurityIdentifier.Value==packageSid);
         var controlPackage=controlAcl.OfType<CommonAce>().Single(ace=>ace.SecurityIdentifier.Value==packageSid);
         var ownerRights=projectAcl.OfType<CommonAce>().Single(ace=>ace.SecurityIdentifier.Value=="S-1-3-4");
+        var inherited=AceFlags.ObjectInherit|AceFlags.ContainerInherit;
+        Require(projectAcl.Count==4 && controlAcl.Count==4,
+            "private Git DACLs contain only the fixed SYSTEM, Broker, LPAC and OWNER RIGHTS principals");
+        Require((projectPackage.AceFlags&inherited)==inherited && (controlPackage.AceFlags&inherited)==inherited,
+            "LPAC project/control grants inherit to child files and directories");
         Require(projectPackage.AccessMask==0x001301bf && (projectPackage.AccessMask&0x000c0000)==0 &&
             (projectPackage.AccessMask&0x00000006)==0x00000006,
             "LPAC project access permits file/directory mutation but excludes WRITE_DAC and WRITE_OWNER");
         Require(controlPackage.AccessMask==unchecked((int)0xA0000000u),"LPAC Git control access is generic read/execute only");
-        Require(ownerRights.AccessMask==0x00020000 &&
-            (ownerRights.AceFlags&(AceFlags.ObjectInherit|AceFlags.ContainerInherit))==(AceFlags.ObjectInherit|AceFlags.ContainerInherit),
+        Require(ownerRights.AccessMask==0x00020000 && (ownerRights.AceFlags&inherited)==inherited,
             "inherited OWNER RIGHTS ACE removes implicit WRITE_DAC from file and directory owners");
         Require(!projectAcl.OfType<CommonAce>().Any(ace=>ace.SecurityIdentifier.Value==owner.Value) &&
             !controlAcl.OfType<CommonAce>().Any(ace=>ace.SecurityIdentifier.Value==owner.Value),
