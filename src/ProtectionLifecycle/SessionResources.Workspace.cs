@@ -22,7 +22,11 @@ internal sealed partial class SessionResources
         }
         finally{if(pointer!=IntPtr.Zero)Marshal.FreeCoTaskMem(pointer);}
     }
-owsIdentity.GetCurrent();
+    internal static PathLease CreateOwnedTaskDirectory(ProtectedState state,InstallationProfileLease profile,string session)
+    {
+        state.AssertHeld();
+        using var sid=new InstallationPackageSid(state);profile.AssertPackage(sid);
+        using var identity=WindowsIdentity.GetCurrent();
         var owner=identity.User?.Value??throw WfpNative.Contract("WorkspaceHumanOwnerMissing");
         using var parent=WindowsPathSeal.LockDirectory(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),PathPolicy.CreationParent);
         profile.PlanTaskWorkspace(session);
