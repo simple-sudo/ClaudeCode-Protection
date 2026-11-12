@@ -8,10 +8,10 @@
 ## 2026-11-12 schema 2 多命令 Git 工作流：对抗配置、独立指标与结果快照验收
 
 SOURCE / INTEGRATED(显式 `workspace-git-pack` schema 2 接入既有 daily→Broker→ProtectedSession→Owned Job→LPAC 数据链；固定 `main`、NUL pathspec、受限 Git 命令序列、Owner 独立对象/引用核验、项目/控制目录 DACL、plan-aware 报告资格和精确结果快照/receipt 闭合)。
-BUILD(Windows hosted 43137292096：全部产品与专项测试编译成功；43137292097：全部产品编译成功且不执行受保护代码；43137292087：daily CLI 编译及纯托管策略 smoke 成功)。
-VERIFIED(标准用户 43137292096 实际执行 Runner Git 的 hash-object/init/add/diff-check/numstat/commit/log/status/fsck、两个拒绝对照及独立 commit/tree/blob/ref/GitReceipt 核验；clean filter、hooksPath 和 textconv 对抗配置被固定策略压制；CRLF、未终止文本、二进制、空文件、ignored 文件及首 8000 字节 NUL 分类边界通过。Owner 独立重算新增/删除/二进制指标；NTFS fixture 验证 schema 2 快照逐项逐字节一致、篡改拒绝和 receipt 绑定；Windows DOS 设备名扩展名前空格别名拒绝)。
+BUILD(Windows hosted 43141904119：全部产品与专项测试编译成功；43141904069：全部产品编译成功且不执行受保护代码；43141904158：daily CLI 编译及纯托管策略 smoke 成功)。
+VERIFIED(标准用户 43141904119 实际执行 Runner Git 的 hash-object/init/add/diff-check/numstat/commit/log/status/fsck、两个拒绝对照及独立 commit/tree/blob/ref/GitReceipt 核验；clean filter、hooksPath 和 textconv 对抗配置被固定策略压制；CRLF、未终止文本、二进制、空文件、ignored 文件及首 8000 字节 NUL 分类边界通过。Owner 独立重算新增/删除/二进制指标；NTFS fixture 验证 schema 2 快照逐项逐字节一致、篡改拒绝和 receipt 绑定；Windows DOS 设备名扩展名前空格别名拒绝)。
 NOT_RUN(真实 Broker 创建目录的 DACL/继承访问检查、产品固定 Git 资产在 LPAC 中执行、Broker/Owned Job/LPAC 端到端运行、受限 token 的真实 Git 命令、故障/取消时的 Job 归零与成果拒绝导出)。
-本机 Build* 入口仍受 `SECURITY_REVIEW_REQUIRED` 硬停止，旧的一次性离线构建授权已消耗；本轮未绕过、构建、安装或执行产品。不得将本节普通用户 Git 证据与 `f9e8d29d` 既有单进程 LPAC `commit -a` 证据合并解释为 schema 2 多命令产品验收。
+本机 Build* 入口仍受 `SECURITY_REVIEW_REQUIRED` 硬停止，旧的一次性离线构建授权已消耗；本轮未绕过、构建、安装或执行产品。不得将本节普通用户 Git 证据与 `f9e8d29d` 既有单进程 LPAC `commit -a` 证据合并解释为 schema 2 多命令产品验收。 本轮另修复 schema 2 Git 多命令的 LPAC child wait：60,000ms 有界期限与 resource permit/runtime watchdog 对齐，保留无参 Canary 委托兼容，并拒绝非法超时值；最新三组 CI 全部 SUCCESS。Bootstrap 内嵌 package approval 仍是历史 Release `7df61706780c433f9dc5e7ddf5bc6f28` 与 `4d186bcb→7df61706` Transition；当前 INACTIVE 安装的 Release/Manifest SHA256 尚未只读核对，安装更新仍 NOT_RUN。
 
 ## 2026-11-10 独立 Git 固定提交
 
