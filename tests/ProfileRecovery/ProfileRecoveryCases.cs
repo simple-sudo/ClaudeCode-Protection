@@ -175,6 +175,8 @@ internal static class ProfileRecoveryCases
             record.StorageRoot,record.StorageIdentity,record.ParentIdentity,record.Status,Extra="foreign"});
         ExpectAny(()=>SessionProfileRecovery.AssertNoPending(state));
     }
+    private static void Require(bool condition,string message)
+    {if(!condition)throw new Exception(message);}
     private static void Expect(Action action,string reason)
     {try{action();}catch(InvalidDataException ex)when(ex.Message==reason){return;}throw new Exception("profile reader did not refuse: "+reason);}
     private static void ExpectAny(Action action)
