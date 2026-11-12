@@ -144,7 +144,7 @@ internal sealed class SessionGitToolchain : IDisposable
             // transformations. Data processing preserves exact selected bytes,
             // independent of .gitattributes or .gitignore in the source bundle.
             var info=WindowsPathSeal.Child(repo,".git/info");Directory.CreateDirectory(info);
-            File.WriteAllText(WindowsPathSeal.Child(info,"attributes"),"* -text -filter -ident -working-tree-encoding !diff\n",new UTF8Encoding(false));
+            File.WriteAllText(WindowsPathSeal.Child(info,"attributes"),"* -text -filter -ident -working-tree-encoding !diff !whitespace\n",new UTF8Encoding(false));
             // NUL pathspec input avoids Windows command-line length limits
             // for a real multi-file project. Validated ASCII names cannot
             // contain NUL or Git pathspec magic; no expansion is performed.
@@ -199,7 +199,7 @@ internal sealed class SessionGitToolchain : IDisposable
             stage="GIT_INIT";RequireWorkflow(RunWorkflow(workspace,plan.GitDirectory,workflow,commands[1]));
             stage="GIT_PREPARE_ATTRIBUTES";
             var info=WindowsPathSeal.Child(repo,".git/info");Directory.CreateDirectory(info);
-            File.WriteAllText(WindowsPathSeal.Child(info,"attributes"),"* -text -filter -ident -working-tree-encoding !diff\n",new UTF8Encoding(false));
+            File.WriteAllText(WindowsPathSeal.Child(info,"attributes"),"* -text -filter -ident -working-tree-encoding !diff !whitespace\n",new UTF8Encoding(false));
             stage="GIT_ADD";RequireWorkflow(RunWorkflow(workspace,plan.GitDirectory,workflow,commands[2]));
             stage="GIT_DIFF_CHECK";var check=RunWorkflow(workspace,plan.GitDirectory,workflow,commands[3]);RequireWorkflow(check);
             if(check.Out.Length!=0)throw WfpNative.Contract("GitWhitespaceCheckOutputUnexpected");

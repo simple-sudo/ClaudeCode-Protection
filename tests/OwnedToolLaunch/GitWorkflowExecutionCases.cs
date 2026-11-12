@@ -47,7 +47,7 @@ internal static class GitWorkflowExecutionCases
             var planType=library.GetType("ProtectionLifecycle.ResourceProbePlan",true)!;
             var dataFiles=new (string Path,byte[] Content)[]
             {
-                (".gitattributes",Encoding.UTF8.GetBytes("*.cs text eol=lf\n*.bin filter=must-not-run diff=must-not-run\n")),
+                (".gitattributes",Encoding.UTF8.GetBytes("*.cs text eol=lf whitespace=-blank-at-eol\n*.bin filter=must-not-run diff=must-not-run\n")),
                 (".gitignore",Encoding.UTF8.GetBytes("ignored.txt\n")),
                 ("README.md",Encoding.UTF8.GetBytes("Offline Git execution fixture\r\nsecond line\r\n")),
                 ("assets/payload.bin",new byte[]{0,255,1,128,13,10,0,42}),
@@ -150,7 +150,10 @@ internal static class GitWorkflowExecutionCases
             var info=Path.Combine(repository,".git","info");
             Directory.CreateDirectory(info);
             var attributesPath=Path.Combine(info,"attributes");
-            File.WriteAllText(attributesPath,"* -text -filter -ident -working-tree-encoding !diff\n",new UTF8Encoding(false));
+            File.WriteAllText(attributesPath,"* -text -filter -ident -working-tree-encoding !diff !whitespace\n",new UTF8Encoding(false));
+            var whitespaceAttribute=Run(StartRunnerWorkflow(new[]{"-C",repository,"check-attr","-z","whitespace","--","src/main.cs"}));
+            Require(whitespaceAttribute.Exit==0 && whitespaceAttribute.Out.Contains("unspecified",StringComparison.Ordinal),
+                "trusted info attributes reset project-controlled whitespace policy");
 
             var add=Run(StartRunnerWorkflow(commands[2]));
             Require(add.Exit==0 && add.Out.Length==0 && add.Error.Length==0,"real Git add accepts exact NUL pathspec");
