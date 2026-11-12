@@ -241,7 +241,7 @@ internal static class NativeGitLpacAccessCases
                 "exit /b 0";
             // Keep the already-observed inline cmd /c execution path. The fixed
             // command uses only generated workspace paths and fixed operations;
-            // explicit cd plus absolute file paths separate CWD from ACL access.
+            // absolute file paths separate CWD from ACL access; both CWD observations must match the CreateProcess path.
             var commandLine = "\"" + commandImage + "\" /d /q /c \"" + script + "\"";
             var values = new SortedDictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             foreach (var name in new[] { "SystemRoot", "windir", "SystemDrive" })
@@ -387,7 +387,7 @@ internal static class NativeGitLpacAccessCases
                 var failedFinalCwd = File.Exists(failedFinalCwdPath) ? File.ReadAllText(failedFinalCwdPath).Trim() : "missing";
                 var rootWriteObserved = File.Exists(Path.Combine(root, "lpac-root-write.txt"));
                 if (diagnostic.Length > 256) diagnostic = diagnostic[..256];
-                throw new InvalidDataException("LpacGitWorkspaceChildScriptFailed:" +
+                throw new InvalidDataException("LpacGitWorkspaceChildCommandFailed:" +
                     exitCode.ToString(System.Globalization.CultureInfo.InvariantCulture) +
                     ";ReadDiagnostic=" + diagnostic + ";RootWriteObserved=" + rootWriteObserved +
                     ";InitialCwd=" + failedInitialCwd + ";FinalCwd=" + failedFinalCwd);
@@ -398,7 +398,7 @@ internal static class NativeGitLpacAccessCases
             if (!string.Equals(Path.TrimEndingDirectorySeparator(Path.GetFullPath(initialCwd)), expectedCwd, StringComparison.OrdinalIgnoreCase))
                 throw new InvalidDataException("LpacGitWorkspaceInitialCurrentDirectoryMismatch");
             if (!string.Equals(Path.TrimEndingDirectorySeparator(Path.GetFullPath(finalCwd)), expectedCwd, StringComparison.OrdinalIgnoreCase))
-                throw new InvalidDataException("LpacGitWorkspaceBatchCurrentDirectoryMismatch");
+                throw new InvalidDataException("LpacGitWorkspaceChildCurrentDirectoryMismatch");
             File.Delete(initialCwdPath);
             File.Delete(finalCwdPath);
             if (File.Exists(Path.Combine(root, "lpac-read-error.txt")))
