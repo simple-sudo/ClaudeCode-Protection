@@ -79,6 +79,10 @@ internal static class SessionTaskWorkspace
     {
         if(state.ReadOptional(IntentLeaf(profile.ProfileId)) is null)return;
         var intent=ReadIntent(state,profile);
+        // A workspace closure receipt is not cleanup authority. Re-validate
+        // the exact profile cleanup scope and any closed-Job binding every
+        // time the receipt is consumed.
+        var cleanupIntentSHA256=SessionProfileRecovery.ValidateCleanupIntent(state,profile);
         var created=state.ReadOptional(CreatedLeaf(profile.ProfileId));
         var raw=state.ReadOptional(ClosedLeaf(profile.ProfileId))??throw WfpNative.Contract("TaskWorkspaceCleanupPending");
         using var doc=JsonDocument.Parse(raw.Bytes,new JsonDocumentOptions{MaxDepth=3});var r=doc.RootElement;
@@ -89,7 +93,7 @@ internal static class SessionTaskWorkspace
             var removed=r.GetProperty("RemovedEntries").GetInt32();
             if(r.GetProperty("SchemaVersion").GetInt32()!=2 || StrictJson.Text(r,"InstallationId")!=state.InstallationId ||
                 StrictJson.Text(r,"ProfileId")!=profile.ProfileId || StrictJson.Text(r,"IntentSHA256")!=intent.Raw.SHA256 ||
-                StrictJson.Text(r,"ProfileCleanupIntentSHA256")!=state.Read("profile-delete-intent-"+profile.ProfileId+".json",8192).SHA256 ||
+                StrictJson.Text(r,"ProfileCleanupIntentSHA256")!=cleanupIntentSHA256 ||
                 StrictJson.Text(r,"Status")!="UNRECORDED_EMPTY_TASK_DIRECTORY_ABSENCE_OBSERVED" || !r.GetProperty("RootAbsent").GetBoolean() ||
                 removed is <0 or >1 || (removed==0)!=(identity is null) || state.ReadOptional("profile-job-"+profile.ProfileId+".json") is not null)
                 throw WfpNative.Contract("UnrecordedTaskWorkspaceCleanupReceiptMismatch");
@@ -105,7 +109,7 @@ internal static class SessionTaskWorkspace
         StrictJson.Fields(r,"SchemaVersion","InstallationId","ProfileId","CreatedSHA256","ProfileCleanupIntentSHA256","Status","RootAbsent","RemovedEntries");
         if(r.GetProperty("SchemaVersion").GetInt32()!=1 || StrictJson.Text(r,"InstallationId")!=state.InstallationId ||
             StrictJson.Text(r,"ProfileId")!=profile.ProfileId || StrictJson.Text(r,"CreatedSHA256")!=creation.Created.SHA256 ||
-            StrictJson.Text(r,"ProfileCleanupIntentSHA256")!=state.Read("profile-delete-intent-"+profile.ProfileId+".json",8192).SHA256 ||
+            StrictJson.Text(r,"ProfileCleanupIntentSHA256")!=cleanupIntentSHA256 ||
             StrictJson.Text(r,"Status")!="EXACT_TASK_DIRECTORY_ABSENCE_OBSERVED" || !r.GetProperty("RootAbsent").GetBoolean() ||
             r.GetProperty("RemovedEntries").GetInt32() is <0 or >4096)throw WfpNative.Contract("TaskWorkspaceCleanupReceiptMismatch");
     }
@@ -114,11 +118,6 @@ internal static class SessionTaskWorkspace
     {
         if(!profileOwned || !noProcessBinding || !parentIdentityMatches || !exactTaskPath || !cleanupIntentHeld)
             throw WfpNative.Contract("UnrecordedTaskWorkspaceRecoveryAuthorityIncomplete");
-    }
-    internal static void RequireUnrecordedWorkspaceDeleteEvidence(bool noReparsePoint,bool exactOwnerGroupDacl,bool lowLabelExactOrAbsent,bool emptyDirectory)
-    {
-        if(!noReparsePoint || !exactOwnerGroupDacl || !lowLabelExactOrAbsent || !emptyDirectory)
-            throw WfpNative.Contract("UnrecordedTaskWorkspaceDeleteEvidenceIncomplete");
     }
     private static void RecordCleanupFailure(ProtectedState state,ProfileStorageReceipt profile,int removed,Exception ex)
     {
@@ -155,7 +154,10 @@ internal static class SessionTaskWorkspace
     {
         state.AssertHeld();
         var intent=ReadIntent(state,profile);
-        var cleanupIntent=state.Read("profile-delete-intent-"+profile.ProfileId+".json",8192);
+        // This verifies the immutable exact-profile deletion scope and,
+        // when present, the durable closed/zero Job binding. A raw file hash
+        // alone is not sufficient cleanup authority.
+        var cleanupIntentSHA256=SessionProfileRecovery.ValidateCleanupIntent(state,profile);
         var binding=state.ReadOptional("profile-job-"+profile.ProfileId+".json");
         var parentPath=Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
         using var parent=native.LockParent(parentPath);
@@ -166,13 +168,14 @@ internal static class SessionTaskWorkspace
             string.Equals(canonical,path,StringComparison.OrdinalIgnoreCase);
         RequireUnrecordedWorkspaceRecoveryAuthority(
             profileOwned:!profile.Control && intent.Value.ProfileCreatedSHA256==state.Read("profile-created-"+profile.ProfileId+".json",8192).SHA256,
-            noProcessBinding:binding is null,parentIdentityMatches:parentMatches,exactTaskPath:exactPath,cleanupIntentHeld:true);
+            noProcessBinding:binding is null,parentIdentityMatches:parentMatches,exactTaskPath:exactPath,cleanupIntentHeld:
+                state.Read("profile-delete-intent-"+profile.ProfileId+".json",8192).SHA256==cleanupIntentSHA256);
         void AssertAuthority()
         {
             state.AssertHeld();
             if(state.Read(IntentLeaf(profile.ProfileId),8192).SHA256!=intent.Raw.SHA256 ||
                 state.Read("profile-created-"+profile.ProfileId+".json",8192).SHA256!=intent.Value.ProfileCreatedSHA256 ||
-                state.Read("profile-delete-intent-"+profile.ProfileId+".json",8192).SHA256!=cleanupIntent.SHA256 ||
+                state.Read("profile-delete-intent-"+profile.ProfileId+".json",8192).SHA256!=cleanupIntentSHA256 ||
                 state.ReadOptional("profile-job-"+profile.ProfileId+".json") is not null)
                 throw WfpNative.Contract("UnrecordedTaskWorkspaceCleanupAuthorityChanged");
         }
@@ -189,8 +192,11 @@ internal static class SessionTaskWorkspace
                 native.AssertFreshWorkspace(root,profile.OwnerSid,package.Value);
                 var names=native.EnumerateNames(root,path,1);
                 var empty=names.Length==0;
-                RequireUnrecordedWorkspaceDeleteEvidence(noReparsePoint:true,exactOwnerGroupDacl:true,
-                    lowLabelExactOrAbsent:true,emptyDirectory:empty);
+                // OpenDirectoryForDelete has already pinned the exact NTFS,
+                // no-reparse object; AssertFreshWorkspace verified the exact
+                // owner/group/DACL and expected-or-absent low label. Only the
+                // empty-directory fact remains to decide deletion.
+                if(!empty)throw WfpNative.Contract("UnrecordedTaskWorkspaceNotEmpty");
                 AssertAuthority();
                 native.VerifyObject(root,path,true);
                 native.MarkDelete(root);
