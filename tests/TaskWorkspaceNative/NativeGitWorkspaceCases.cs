@@ -132,7 +132,8 @@ internal static class NativeGitWorkspaceCases
     {
         var descriptor=ReadDescriptor(path,directory);
         if(!descriptor.ControlFlags.HasFlag(ControlFlags.DiscretionaryAclPresent) ||
-            descriptor.ControlFlags.HasFlag(ControlFlags.DiscretionaryAclProtected))
+            descriptor.ControlFlags.HasFlag(ControlFlags.DiscretionaryAclProtected) ||
+            !descriptor.ControlFlags.HasFlag(ControlFlags.DiscretionaryAclAutoInherited))
             throw new InvalidDataException("Native Git child DACL inheritance flag mismatch: "+label);
         var dacl=descriptor.DiscretionaryAcl??throw new InvalidDataException("Native Git child DACL missing: "+label);
         var packageAce=FindSingleAllowedAce(dacl,packageSid,label+" package");
