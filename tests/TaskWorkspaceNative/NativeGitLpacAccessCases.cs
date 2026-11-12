@@ -231,6 +231,7 @@ internal static class NativeGitLpacAccessCases
             var mediumReadCopyPath = Path.Combine(root, "lpac-medium-read.bin");
             var mediumReadOnlyFilePath = Path.Combine(root, "medium-readonly", "medium-readonly.txt");
             var mediumReadOnlyReadCopyPath = Path.Combine(root, "lpac-medium-readonly-read.bin");
+            var mediumWritePayloadPath = Path.Combine(root, "lpac-medium-write-payload.bin");
             var controlConfigPath = Path.Combine(root, "git-control", "empty-git-config");
             var controlPathspecPath = Path.Combine(root, "git-control", "git-selected-paths.bin");
             var mediumFilePath = Path.Combine(root, "medium-write", "medium.txt");
@@ -241,6 +242,9 @@ internal static class NativeGitLpacAccessCases
             var controlCreatedPath = Path.Combine(root, "git-control", "lpac-created");
             var mediumWritePath = mediumFilePath;
             static string Quote(string path) => "\"" + path + "\"";
+            // Use exact bytes rather than cmd.exe ECHO redirection, which can
+            // preserve a space before the redirection operator in file content.
+            File.WriteAllBytes(mediumWritePayloadPath, Encoding.ASCII.GetBytes("medium-tamper"));
             var script =
                 "echo %CD%>" + Quote(initialCwdPath) + " & " +
                 "echo %CD%>" + Quote(finalCwdPath) + " & " +
@@ -255,8 +259,8 @@ internal static class NativeGitLpacAccessCases
                 "echo nested>" + Quote(projectNestedPath) + " & " +
                 "echo control-tamper>" + Quote(controlWritePath) + " & " +
                 "mkdir " + Quote(controlCreatedPath) + " & " +
-                "echo medium-tamper>" + Quote(mediumWritePath) + " & " +
-                "echo medium-readonly-tamper>" + Quote(mediumReadOnlyFilePath) + " & " +
+                "copy /b /y " + Quote(mediumWritePayloadPath) + " " + Quote(mediumWritePath) + " >nul & " +
+                "copy /b /y " + Quote(mediumWritePayloadPath) + " " + Quote(mediumReadOnlyFilePath) + " >nul & " +
                 "exit /b 0";
             // Keep the already-observed inline cmd /c execution path. The fixed
             // command uses only generated workspace paths and fixed operations;
@@ -418,7 +422,8 @@ internal static class NativeGitLpacAccessCases
                     ";controlConfig=" + File.Exists(controlConfigReadCopyPath) +
                     ";controlPathspec=" + File.Exists(controlPathspecReadCopyPath) +
                     ";medium=" + File.Exists(mediumReadCopyPath) +
-                    ";mediumReadOnly=" + File.Exists(mediumReadOnlyReadCopyPath);
+                    ";mediumReadOnly=" + File.Exists(mediumReadOnlyReadCopyPath) +
+                    ";mediumPayload=" + File.Exists(mediumWritePayloadPath);
                 var failedInitialCwdPath = Path.Combine(root, "lpac-start-cwd.txt");
                 var failedFinalCwdPath = Path.Combine(root, "lpac-final-cwd.txt");
                 var failedInitialCwd = File.Exists(failedInitialCwdPath) ? File.ReadAllText(failedInitialCwdPath).Trim() : "missing";
@@ -443,10 +448,11 @@ internal static class NativeGitLpacAccessCases
             CheckReadCopy("medium-readonly", mediumReadOnlyFilePath, mediumReadOnlyReadCopyPath, readMismatches);
             if (readMismatches.Count != 0)
                 throw new InvalidDataException("LpacGitWorkspaceReadCopyContentMismatch:" + string.Join(";", readMismatches));
-            if (File.ReadAllText(mediumFilePath) != "medium-tamper" + Environment.NewLine ||
+            if (!File.ReadAllBytes(mediumFilePath).SequenceEqual(Encoding.ASCII.GetBytes("medium-tamper")) ||
                 File.ReadAllText(mediumReadCopyPath) != "medium-original" ||
                 File.ReadAllText(mediumReadOnlyFilePath) != "medium-readonly-original")
                 throw new InvalidDataException("LpacGitWorkspaceLowBoxMediumAccessResultMismatch");
+            File.Delete(mediumWritePayloadPath);
             File.Delete(projectReadCopyPath);
             File.Delete(controlConfigReadCopyPath);
             File.Delete(controlPathspecReadCopyPath);
