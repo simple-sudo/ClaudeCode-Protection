@@ -126,6 +126,22 @@ internal static class GitWorkflowExecutionCases
 
             var init=Run(StartRunnerWorkflow(commands[1]));
             Require(init.Exit==0 && init.Out.Length==0 && init.Error.Length==0,"real Git init creates fresh SHA-1 main repository");
+
+            // Adversarial repository-local config must not activate project
+            // filters or hooks. The project .gitattributes requests a filter;
+            // the local config deliberately defines one that rewrites bytes.
+            // Highest-precedence info attributes must suppress that filter,
+            // while the fixed command-line hooksPath must suppress local hooks.
+            var filterConfig=Run(StartRunnerWorkflow(new[]{"-C",repository,"config","--local","filter.must-not-run.clean","tr a-z A-Z"}));
+            Require(filterConfig.Exit==0 && filterConfig.Error.Length==0,"adversarial local clean-filter config installed");
+            var configuredFilter=Run(StartRunnerWorkflow(new[]{"-C",repository,"config","--local","--get","filter.must-not-run.clean"}));
+            Require(configuredFilter.Exit==0 && configuredFilter.Out.Trim()=="tr a-z A-Z","adversarial local clean-filter config confirmed");
+            var hooksDirectory=Path.Combine(repository,".git","hooks");
+            Directory.CreateDirectory(hooksDirectory);
+            File.WriteAllText(Path.Combine(hooksDirectory,"pre-commit"),"#!/bin/sh\nexit 91\n",new UTF8Encoding(false));
+            var hookConfig=Run(StartRunnerWorkflow(new[]{"-C",repository,"config","--local","core.hooksPath",hooksDirectory}));
+            Require(hookConfig.Exit==0 && hookConfig.Error.Length==0,"adversarial local hooksPath config installed");
+
             var info=Path.Combine(repository,".git","info");
             Directory.CreateDirectory(info);
             File.WriteAllText(Path.Combine(info,"attributes"),"* -text -filter -ident -working-tree-encoding\n",new UTF8Encoding(false));
@@ -213,7 +229,7 @@ internal static class GitWorkflowExecutionCases
             finally{File.WriteAllText(branchRef,originalRef,new UTF8Encoding(false));}
             Require(refTamperRefused,"owner verifier refuses a branch ref that no longer names the verified commit");
 
-            Console.WriteLine("PASS ordinary-user real Git execution using the hosted runner Git executable and its runtime PATH: hash-object/init/add/diff-check/numstat/commit/log/status/fsck and both denial controls; independent owner commit/tree/blob/ref verification and exact GitReceipt binding; CRLF, binary, empty and ignored selected files preserved. ORDINARY-USER COMMAND/VERIFIER EVIDENCE ONLY: runner Git semantics, not product pinned-asset qualification; no product Broker, Owned Job, LPAC, UAC, host policy or Claude execution.");
+            Console.WriteLine("PASS ordinary-user real Git execution using the hosted runner Git executable and its runtime PATH: hash-object/init/add/diff-check/numstat/commit/log/status/fsck and both denial controls; hostile repository-local clean-filter and hooksPath settings were neutralized by fixed attribute/hook policy; independent owner commit/tree/blob/ref verification and exact GitReceipt binding; CRLF, binary, empty and ignored selected files preserved. ORDINARY-USER COMMAND/VERIFIER EVIDENCE ONLY: runner Git semantics, not product pinned-asset qualification; no product Broker, Owned Job, LPAC, UAC, host policy or Claude execution.");
         }
         catch(Exception error)
         {
