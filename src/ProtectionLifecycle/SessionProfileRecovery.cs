@@ -2,6 +2,8 @@ using System.Runtime.InteropServices;
 using System.Security.Principal;
 using System.Text.Json;
 
+namespace ProtectionLifecycle;
+
 // Same profile owner as AtomicChild. Recovery accepts no caller path, SID,
 // PID, receipt, or deletion target. Existing post-creation recovery requires a
 // durable pre-delete checkpoint. Explicit never-started recovery additionally

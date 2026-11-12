@@ -2,6 +2,8 @@ using System.Runtime.InteropServices;
 using System.Security.Principal;
 using System.Text.Json;
 
+namespace ProtectionLifecycle;
+
 internal static partial class SessionProfileRecovery
 {
     private static (string? JobId,string? BindingSHA256,string? CompletionSHA256) ClosedBinding(ProtectedState state,ProfileStorageReceipt record)
