@@ -69,7 +69,7 @@ internal sealed class GitWorkspaceDescriptor : IDisposable
 
     private void ApplyLowLabelAndVerify(string path)
     {
-        using var handle=CreateFile(path,0x000a0080u,1,IntPtr.Zero,3,0x02200000u,IntPtr.Zero);
+        using var handle=CreateFile(path,0x000e0080u,1,IntPtr.Zero,3,0x02200000u,IntPtr.Zero);
         if(handle.IsInvalid)throw new Win32Exception(Marshal.GetLastWin32Error(),"Open private Git directory for low label");
         WindowsPathSeal.VerifyObject(handle,path,true);
         if(!GetSecurityDescriptorDacl(descriptor,out var daclPresent,out var dacl,out _) ||
