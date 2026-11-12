@@ -47,6 +47,7 @@ internal static class GitWorkflowExecutionCases
             catch(InvalidDataException error)when(error.Message=="UnrecordedTaskWorkspaceDeleteEvidenceIncomplete"){refused=true;}
             Require(refused,"unrecorded workspace deletion refuses missing "+deleteNames[index]);
         }
+        Console.WriteLine("PASS unrecorded task workspace recovery gates: fresh profile ownership, no process binding, exact parent/path and cleanup intent; no reparse, exact owner/group/DACL, expected-or-absent low label and empty-only deletion");
 
         var nonce=Guid.NewGuid().ToString("N");
         var root=Path.Combine(Path.GetTempPath(),"cpc-git-workflow-execution-"+nonce);
