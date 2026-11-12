@@ -11,6 +11,8 @@ namespace ProtectionLifecycle;
 // same three creation attributes used by AtomicAdmission: package SID,
 // ALL_APPLICATION_PACKAGES_POLICY=OPT_OUT, and Job assignment at creation.
 // It then exercises the production GitWorkspaceDescriptor on real NTFS.
+// LowBox MIC permits a medium-IL object when its DACL grants the package SID;
+// the fixture verifies both that positive case and a same-IL DACL-denied case.
 // This does not invoke the installed Broker or claim product Job/LPAC E2E.
 internal static class NativeGitLpacAccessCases
 {
@@ -96,6 +98,14 @@ internal static class NativeGitLpacAccessCases
                 File.WriteAllText(mediumFile, "medium-original", new UTF8Encoding(false));
                 AssertInheritedFile(mediumFile, package.Value, humanSid, ProjectPackageMask, MediumIntegritySid);
 
+                // Same Medium IL, but package read-only DACL. This proves that
+                // the ACL, not an assumed LowBox MIC write-up rule, protects data.
+                var mediumReadOnlyPath = Path.Combine(root, "medium-readonly");
+                CreateProtectedDirectory(mediumReadOnlyPath, package.Value, ControlPackageMask, MediumIntegritySid, humanSid);
+                var mediumReadOnlyFile = Path.Combine(mediumReadOnlyPath, "medium-readonly.txt");
+                File.WriteAllText(mediumReadOnlyFile, "medium-readonly-original", new UTF8Encoding(false));
+                AssertInheritedFile(mediumReadOnlyFile, package.Value, humanSid, ControlPackageMask, MediumIntegritySid);
+
                 RunActualLpacProcess(root, package.Value);
 
                 if (File.ReadAllText(Path.Combine(projectPath, "lpac-write.txt")) != "project-write" + Environment.NewLine ||
@@ -107,11 +117,15 @@ internal static class NativeGitLpacAccessCases
                     !File.ReadAllBytes(Path.Combine(controlPath, "git-selected-paths.bin")).SequenceEqual(new byte[] { 0x61, 0x00 }) ||
                     Directory.Exists(Path.Combine(controlPath, "lpac-created")))
                     throw new InvalidDataException("LpacGitWorkspaceControlWriteWasNotDenied");
-                if (File.ReadAllText(mediumFile) != "medium-original")
-                    throw new InvalidDataException("LpacGitWorkspaceMandatoryIntegrityWriteWasNotDenied");
+                if (File.ReadAllText(mediumFile) != "medium-tamper" + Environment.NewLine ||
+                    File.ReadAllText(Path.Combine(root, "lpac-medium-read.bin")) != "medium-original")
+                    throw new InvalidDataException("LpacGitWorkspaceLowBoxMediumPackageGrantMismatch");
+                if (File.ReadAllText(mediumReadOnlyFile) != "medium-readonly-original" ||
+                    File.ReadAllText(Path.Combine(root, "lpac-medium-readonly-read.bin")) != "medium-readonly-original")
+                    throw new InvalidDataException("LpacGitWorkspaceMediumReadOnlyDaclWriteWasNotDenied");
                 if (File.ReadAllText(Path.Combine(root, "lpac-root-write.txt")) != "root-write" + Environment.NewLine)
                     throw new InvalidDataException("LpacGitWorkspaceRootWriteNotObserved");
-                var expectedRootNames = new[] { "git-control", "git-project", "lpac-root-write.txt", "medium-write" };
+                var expectedRootNames = new[] { "git-control", "git-project", "lpac-root-write.txt", "medium-readonly", "medium-write" };
                 if (!Directory.EnumerateFileSystemEntries(root).Select(Path.GetFileName)
                     .Order(StringComparer.Ordinal).SequenceEqual(expectedRootNames.Order(StringComparer.Ordinal), StringComparer.Ordinal))
                     throw new InvalidDataException("LpacGitWorkspaceRootInventoryChanged");
@@ -121,11 +135,12 @@ internal static class NativeGitLpacAccessCases
                     throw new InvalidDataException("LpacGitWorkspaceProjectInventoryMismatch");
                 if (!Directory.EnumerateFileSystemEntries(controlPath).Select(Path.GetFileName)
                     .Order(StringComparer.Ordinal).SequenceEqual(expectedControlNames.Order(StringComparer.Ordinal), StringComparer.Ordinal) ||
-                    Directory.EnumerateFileSystemEntries(mediumPath).Select(Path.GetFileName).SingleOrDefault() != "medium.txt")
+                    Directory.EnumerateFileSystemEntries(mediumPath).Select(Path.GetFileName).SingleOrDefault() != "medium.txt" ||
+                    Directory.EnumerateFileSystemEntries(mediumReadOnlyPath).Select(Path.GetFileName).SingleOrDefault() != "medium-readonly.txt")
                     throw new InvalidDataException("LpacGitWorkspaceProtectedInventoryChanged");
 
                 Console.WriteLine("PASS actual LPAC token: AppContainer, exact package SID, zero capabilities, Low Integrity, access-check mask 2, pre-resume Job membership");
-                Console.WriteLine("PASS actual LPAC NTFS access: project read/write allowed; Git control read-only; medium-integrity write-up denied despite package write ACE");
+                Console.WriteLine("PASS actual LPAC NTFS access: project read/write; Git control read-only; Medium-IL package grant honored; Medium-IL read-only DACL denies write");
             }
         }
         finally
@@ -216,6 +231,8 @@ internal static class NativeGitLpacAccessCases
             var controlConfigReadCopyPath = Path.Combine(root, "lpac-control-config-read.bin");
             var controlPathspecReadCopyPath = Path.Combine(root, "lpac-control-pathspec-read.bin");
             var mediumReadCopyPath = Path.Combine(root, "lpac-medium-read.bin");
+            var mediumReadOnlyFilePath = Path.Combine(root, "medium-readonly", "medium-readonly.txt");
+            var mediumReadOnlyReadCopyPath = Path.Combine(root, "lpac-medium-readonly-read.bin");
             var controlConfigPath = Path.Combine(root, "git-control", "empty-git-config");
             var controlPathspecPath = Path.Combine(root, "git-control", "git-selected-paths.bin");
             var mediumFilePath = Path.Combine(root, "medium-write", "medium.txt");
@@ -234,12 +251,14 @@ internal static class NativeGitLpacAccessCases
                 "copy /b " + Quote(controlConfigPath) + " " + Quote(controlConfigReadCopyPath) + " || exit /b 12 & " +
                 "copy /b " + Quote(controlPathspecPath) + " " + Quote(controlPathspecReadCopyPath) + " || exit /b 13 & " +
                 "copy /b " + Quote(mediumFilePath) + " " + Quote(mediumReadCopyPath) + " || exit /b 14 & " +
+                "copy /b " + Quote(mediumReadOnlyFilePath) + " " + Quote(mediumReadOnlyReadCopyPath) + " || exit /b 15 & " +
                 "echo project-write>" + Quote(projectWritePath) + " & " +
                 "mkdir " + Quote(projectCreatedPath) + " & " +
                 "echo nested>" + Quote(projectNestedPath) + " & " +
                 "echo control-tamper>" + Quote(controlWritePath) + " & " +
                 "mkdir " + Quote(controlCreatedPath) + " & " +
                 "echo medium-tamper>" + Quote(mediumWritePath) + " & " +
+                "echo medium-readonly-tamper>" + Quote(mediumReadOnlyFilePath) + " & " +
                 "exit /b 0";
             // Keep the already-observed inline cmd /c execution path. The fixed
             // command uses only generated workspace paths and fixed operations;
@@ -371,10 +390,20 @@ internal static class NativeGitLpacAccessCases
                     "control-dir-read=" + ProbeOpenAsLpac(token, Path.Combine(root, "git-control"), true, 0x21),
                     "control-dir-add-file=" + ProbeOpenAsLpac(token, Path.Combine(root, "git-control"), true, 0x22)
                 };
-                pathProbes = pathProbes.Append("medium-file-write-data=" +
-                    ProbeOpenAsLpac(token, Path.Combine(root, "medium-write", "medium.txt"), false, 0x2)).ToArray();
+                var mediumWriteProbe = ProbeOpenAsLpac(token, Path.Combine(root, "medium-write", "medium.txt"), false, 0x2);
+                var mediumReadOnlyReadProbe = ProbeOpenAsLpac(token, mediumReadOnlyFilePath, false, 0x1);
+                var mediumReadOnlyWriteProbe = ProbeOpenAsLpac(token, mediumReadOnlyFilePath, false, 0x2);
+                pathProbes = pathProbes.Append("medium-file-write-data=" + mediumWriteProbe)
+                    .Append("medium-readonly-file-read-data=" + mediumReadOnlyReadProbe)
+                    .Append("medium-readonly-file-write-data=" + mediumReadOnlyWriteProbe).ToArray();
                 Console.WriteLine("INFO LPAC token mandatory policy: 0x" +
                     mandatoryPolicy.ToString("X8", System.Globalization.CultureInfo.InvariantCulture));
+                if ((mandatoryPolicy & 0x1) == 0 || (mandatoryPolicy & ~0x3) != 0)
+                    throw new InvalidDataException("LpacGitWorkspaceMandatoryPolicyMismatch:0x" +
+                        mandatoryPolicy.ToString("X8", System.Globalization.CultureInfo.InvariantCulture));
+                if (mediumWriteProbe != "PASS" || mediumReadOnlyReadProbe != "PASS" ||
+                    mediumReadOnlyWriteProbe != "Win32=0x00000005")
+                    throw new InvalidDataException("LpacGitWorkspaceMediumIntegrityDaclProbeMismatch:" + string.Join(";", pathProbes));
                 Console.WriteLine("INFO LPAC path access probes (actual token impersonation): " + string.Join(";", pathProbes));
             }
 
@@ -390,7 +419,8 @@ internal static class NativeGitLpacAccessCases
                 var copyDiagnostics = "project=" + File.Exists(projectReadCopyPath) +
                     ";controlConfig=" + File.Exists(controlConfigReadCopyPath) +
                     ";controlPathspec=" + File.Exists(controlPathspecReadCopyPath) +
-                    ";medium=" + File.Exists(mediumReadCopyPath);
+                    ";medium=" + File.Exists(mediumReadCopyPath) +
+                    ";mediumReadOnly=" + File.Exists(mediumReadOnlyReadCopyPath);
                 var failedInitialCwdPath = Path.Combine(root, "lpac-start-cwd.txt");
                 var failedFinalCwdPath = Path.Combine(root, "lpac-final-cwd.txt");
                 var failedInitialCwd = File.Exists(failedInitialCwdPath) ? File.ReadAllText(failedInitialCwdPath).Trim() : "missing";
@@ -412,13 +442,18 @@ internal static class NativeGitLpacAccessCases
             CheckReadCopy("project", projectSourcePath, projectReadCopyPath, readMismatches);
             CheckReadCopy("control-config", controlConfigPath, controlConfigReadCopyPath, readMismatches);
             CheckReadCopy("control-pathspec", controlPathspecPath, controlPathspecReadCopyPath, readMismatches);
-            CheckReadCopy("medium", mediumFilePath, mediumReadCopyPath, readMismatches);
+            CheckReadCopy("medium-readonly", mediumReadOnlyFilePath, mediumReadOnlyReadCopyPath, readMismatches);
             if (readMismatches.Count != 0)
                 throw new InvalidDataException("LpacGitWorkspaceReadCopyContentMismatch:" + string.Join(";", readMismatches));
+            if (File.ReadAllText(mediumFilePath) != "medium-tamper" + Environment.NewLine ||
+                File.ReadAllText(mediumReadCopyPath) != "medium-original" ||
+                File.ReadAllText(mediumReadOnlyFilePath) != "medium-readonly-original")
+                throw new InvalidDataException("LpacGitWorkspaceLowBoxMediumAccessResultMismatch");
             File.Delete(projectReadCopyPath);
             File.Delete(controlConfigReadCopyPath);
             File.Delete(controlPathspecReadCopyPath);
             File.Delete(mediumReadCopyPath);
+            File.Delete(mediumReadOnlyReadCopyPath);
             File.Delete(initialCwdPath);
             File.Delete(finalCwdPath);
         }
