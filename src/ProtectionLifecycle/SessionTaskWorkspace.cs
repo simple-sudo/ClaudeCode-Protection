@@ -126,7 +126,9 @@ internal static class SessionTaskWorkspace
         void AssertAuthority()
         {
             state.AssertHeld();
-            if(state.Read("profile-delete-intent-"+profile.ProfileId+".json",8192).SHA256!=cleanupIntent.SHA256 ||
+            if(state.Read(IntentLeaf(profile.ProfileId),8192).SHA256!=intent.Raw.SHA256 ||
+                state.Read("profile-created-"+profile.ProfileId+".json",8192).SHA256!=intent.Value.ProfileCreatedSHA256 ||
+                state.Read("profile-delete-intent-"+profile.ProfileId+".json",8192).SHA256!=cleanupIntent.SHA256 ||
                 state.ReadOptional("profile-job-"+profile.ProfileId+".json") is not null)
                 throw WfpNative.Contract("UnrecordedTaskWorkspaceCleanupAuthorityChanged");
         }
@@ -159,10 +161,6 @@ internal static class SessionTaskWorkspace
             state.WriteNew(ClosedLeaf(profile.ProfileId),JsonSerializer.SerializeToUtf8Bytes(new {SchemaVersion=2,state.InstallationId,profile.ProfileId,
                 IntentSHA256=intent.Raw.SHA256,ProfileCleanupIntentSHA256=cleanupIntent.SHA256,
                 Status="UNRECORDED_EMPTY_TASK_DIRECTORY_ABSENCE_OBSERVED",RootAbsent=true,RemovedEntries=removed,WorkspaceIdentity=identity}));
-        }
-        catch
-        {
-            throw;
         }
     }
     internal static void Cleanup(ProtectedState state,ProfileStorageReceipt profile)
