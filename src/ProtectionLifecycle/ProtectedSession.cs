@@ -12,7 +12,7 @@ namespace ProtectionLifecycle;
 // The installed Broker's session owner. Diagnostic JSON, supplied targets and
 // serialized permits are deliberately absent from this API. Both request kinds
 // use this owner; only its fixed installed synthetic workload is implemented.
-internal sealed class ProtectedSession
+internal sealed partial class ProtectedSession
 {
     // Current artifact still needs bounded runtime/install qualification.
     // Renewed human authorization permits that work, not a positive clearance.
