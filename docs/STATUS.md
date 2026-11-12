@@ -2909,4 +2909,4 @@ Compile/Run/Tests失败和正常DataReport通过；最终library/Broker及77a1�
 - 将网络模式与 Claude 会话拆为独立生命周期；停止 Claude 不会自动关闭全机代理模式，只有用户明确退出网络模式才精确恢复本产品拥有的规则。
 - 设备所有者明确接受将研发必要的真实主机信息、敏感字段、私人路径、设备/网络/代理/远控元数据、原始日志和失败回执纳入 Public GitHub 仓库。新增 EVIDENCE-GOVERNANCE.md，要求原始证据、来源、时间、身份、工件版本、哈希和分析结论可追溯；不以默认脱敏或合成值替代真实证据。有效认证凭据仍单独管理，真实读取路径仍须测试。
 - 更新 README、AGENTS、SECURITY-REQUIREMENTS、NETWORK-SCOPE、CURRENT-STATE、REAL-DATA-ADVERSARIAL-ASSURANCE、ASSURANCE-AND-EXPOSURE-PROFILING 和 DOCUMENTATION-INDEX 的现行语义；旧 IPv4-only/IPv6 临时门方案保留为历史决策，不再覆盖新目标。
-- 本轮仅更新规范、证据治理与文档导航，不修改产品可执行源码，不进行本机安装/UAC/网络设置/真实 Claude 启动或故障注入。当前实现缺口和实机状态仍按 CURRENT-STATE / PROJECT-ACCEPTANCE 记录。
+- 本轮仅更新规范、证据治理与文档导航，不修改产品可执行源码，不进行本机安装/UAC/网络设置/真实 Claude 启动或故障注入。主要提交：真实证据治理 `a93edb0cf077265839a3435c38572443020976a1`；完整文档索引与历史范围语义修正 `f2ae2ac878a4a978ecaf73d0451318910e4b4f56`。当前实现缺口和实机状态仍按 CURRENT-STATE / PROJECT-ACCEPTANCE 记录。

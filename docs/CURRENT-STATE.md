@@ -16,7 +16,7 @@
 | PR 目标分支 | codex/integrate-privacy-admission-20261027 |
 | PR 目标基线 | 8d56b0c40ef92d384b572bb168eec6bcd8a44d4e |
 
-本轮文档更新提交：a93edb0cf077265839a3435c38572443020976a1（真实证据治理与文档语义修订）。本次只更新当前线上开发分支，不合并 PR #3，不推进 main，不改变仓库设置或可见性。
+真实证据治理提交：a93edb0cf077265839a3435c38572443020976a1；完整文档索引与历史范围语义修正提交：f2ae2ac878a4a978ecaf73d0451318910e4b4f56。本轮只更新当前线上开发分支，不合并 PR #3，不推进 main，不改变仓库设置或可见性。
 
 ## 2. 最新云端验证
 
@@ -65,7 +65,15 @@
 
 设备所有者已明确接受将研发必要的真实主机信息、敏感字段、私人路径、设备/网络/代理/远控元数据、原始日志和失败证据纳入当前 Public GitHub 仓库；后续开发不得默认脱敏或用合成数据替代。证据必须保留来源、时间、身份、工件 SHA 和上下文，见 [EVIDENCE-GOVERNANCE](EVIDENCE-GOVERNANCE.md)。可直接认证或重放的密码、Token、Cookie、私钥和代理订阅凭据仍独立管理；历史公开内容的清理如有需要，另行制定凭据轮换、历史重写和缓存/Artifacts 方案。
 
-## 6. 下一步开发重点
+## 6. 文档治理与最新验证状态（2026-11-12）
+
+- 新增 [EVIDENCE-GOVERNANCE](EVIDENCE-GOVERNANCE.md)：设备所有者明确允许必要真实主机信息、敏感字段和原始证据进入 Public GitHub 仓库；不再默认脱敏或以合成数据替代真实证据。有效认证凭据仍独立管理，Claude 执行域不继承研发者证据权限。
+- 重建 [DOCUMENTATION-INDEX](DOCUMENTATION-INDEX.md)：覆盖当前 docs 目录内 68 份 Markdown 文档及上游许可证文本，链接目标核对无缺失；历史方案保留并标注历史效力。
+- 修正 SECURITY-REQUIREMENTS 中旧 IPv4-only / IPv6 临时门范围，明确由 2026-11-12 全机公网代理目标取代。
+- 文档基线 `f2ae2ac878a4a978ecaf73d0451318910e4b4f56` 的 Actions：Safe managed policy smoke `43188798980` SUCCESS；Hosted Windows compile `43188798999` 与 Offline workspace Git workflow `43188798991` 在本次快照时仍运行中，完成后再记录结论。
+- 本轮只变更文档，不修改产品可执行源码，不构成实机安装、网络更改或正式 Claude 启动授权。
+
+## 7. 下一步开发重点
 
 1. 先完成全机 TUN/WFP 正确分层、FlClash Core 与代理端点绑定、DNS 引导和 fail-closed 的底层可行性审计。
 2. 实现全机公网出口强制代理的最小可验证切片，先用自研测试程序和受控接收端证明无直连。
