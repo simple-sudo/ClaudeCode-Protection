@@ -17,7 +17,7 @@
     <Compile Include="../Shared/DirectoryNamePage.cs;../Shared/PackageAssetCatalog.cs" />
     <Compile Include="WorkspaceDataChannel.cs;WorkspaceCallerLifetime.cs;../Shared/WorkspacePipe.cs;../Shared/WorkspaceStopControl.cs" />
     <Compile Include="../Shared/WindowsDirectoryNames.cs" />
-    <Compile Include="InstallationProfileLease.cs;AtomicJobCompletion.cs;AtomicAdmissionEvidence.cs;AtomicAdmission.cs;AtomicChild.Token.cs;AtomicChild.ToolLaunch.cs;AtomicChild.NativeMethods.cs;AtomicChild.Worker.cs;AtomicChild.Supervision.cs" />
+    <Compile Include="InstallationProfileLease.cs;AtomicJobCompletion.cs;AtomicAdmissionEvidence.cs;AtomicAdmission.cs;AtomicChild.Creation.cs;AtomicChild.Token.cs;AtomicChild.ToolLaunch.cs;AtomicChild.NativeMethods.cs;AtomicChild.Worker.cs;AtomicChild.Supervision.cs" />
     <Compile Include="SchannelAcquisition.cs;OfflineTlsQualification.cs" />
     <Compile Include="OfflineConsoleStreams.cs;OfflineConsoleQualification.cs;OfflineConsoleProjection.cs;OfflineConsoleStorage.cs;OfflineConsoleHostIdentity.cs;OfflineConsoleNativeIdentity.cs;SessionZeroStartupWitness.cs" />
     <Compile Include="OfflineConsoleNetworkSurvey.cs" />
