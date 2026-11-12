@@ -24,7 +24,9 @@ internal sealed class GitWorkspaceDescriptor : IDisposable
         var package=new SecurityIdentifier(packageSid).Value;
         if(!package.StartsWith("S-1-15-2-",StringComparison.Ordinal))
             throw new InvalidDataException("AppContainer package SID required for private Git workspace");
-        var packageMask=packageWrite?"0x001301bf":"GRGX";
+        // NTFS stores the file-system mapping of GENERIC_READ|GENERIC_EXECUTE as
+        // specific rights. Using GRGX here does not round-trip through GetSecurityInfo.
+        var packageMask=packageWrite?"0x001301bf":"0x001200a9";
         return "O:BAG:SYD:P(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)(A;OICI;"+packageMask+";;;"+package+")(A;OICI;RC;;;S-1-3-4)";
     }
 
