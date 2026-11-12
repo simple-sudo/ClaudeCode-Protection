@@ -136,11 +136,6 @@ internal static class GitWorkflowExecutionCases
             Require(filterConfig.Exit==0 && filterConfig.Error.Length==0,"adversarial local clean-filter config installed");
             var configuredFilter=Run(StartRunnerWorkflow(new[]{"-C",repository,"config","--local","--get","filter.must-not-run.clean"}));
             Require(configuredFilter.Exit==0 && configuredFilter.Out.Trim()=="tr a-z A-Z","adversarial local clean-filter config confirmed");
-            var textconvConfig=Run(StartRunnerWorkflow(new[]{"-C",repository,"config","--local","diff.must-not-run.textconv","cmd.exe /c echo TEXTCONV_EXECUTED"}));
-            Require(textconvConfig.Exit==0 && textconvConfig.Error.Length==0,"adversarial local textconv config installed");
-            var configuredTextconv=Run(StartRunnerWorkflow(new[]{"-C",repository,"config","--local","--get","diff.must-not-run.textconv"}));
-            Require(configuredTextconv.Exit==0 && configuredTextconv.Out.Trim()=="cmd.exe /c echo TEXTCONV_EXECUTED",
-                "adversarial local textconv config confirmed");
             var hooksDirectory=Path.Combine(repository,".git","hooks");
             Directory.CreateDirectory(hooksDirectory);
             File.WriteAllText(Path.Combine(hooksDirectory,"pre-commit"),"#!/bin/sh\nexit 91\n",new UTF8Encoding(false));
@@ -157,21 +152,39 @@ internal static class GitWorkflowExecutionCases
 
             var add=Run(StartRunnerWorkflow(commands[2]));
             Require(add.Exit==0 && add.Out.Length==0 && add.Error.Length==0,"real Git add accepts exact NUL pathspec");
-            var safeAttributes=File.ReadAllBytes(attributesPath);
-            try
-            {
-                // Prove the hostile textconv driver is live when both defenses
-                // are deliberately removed in this test-only control.
-                File.WriteAllText(attributesPath,"* -text -filter -ident -working-tree-encoding\n",new UTF8Encoding(false));
-                var diffAttribute=Run(StartRunnerWorkflow(new[]{"-C",repository,"check-attr","-z","diff","--","assets/payload.bin"}));
-                Require(diffAttribute.Exit==0 && diffAttribute.Out.Contains("must-not-run",StringComparison.Ordinal),
-                    "unguarded control restores the project-selected diff driver");
-                var unguardedDiff=Run(StartRunnerWorkflow(new[]{"-C",repository,"diff","--cached","--textconv","--no-ext-diff","--no-color"}));
-                Require(unguardedDiff.Exit==0 && unguardedDiff.Out.Contains("TEXTCONV_EXECUTED",StringComparison.Ordinal),
-                    "adversarial textconv control demonstrates that the configured converter would execute (exit "+
-                    unguardedDiff.Exit+", stderr="+unguardedDiff.Error+")");
-            }
-            finally{File.WriteAllBytes(attributesPath,safeAttributes);}
+
+            // A newly-added path has no old blob to convert, so use a separate
+            // ordinary-user probe repository with a committed binary baseline
+            // and a changed worktree blob. The unguarded control must visibly
+            // execute the hostile textconv driver; the production-style
+            // --no-textconv command must suppress it.
+            var textconvRepository=Path.Combine(workspace,"textconv-probe");
+            Directory.CreateDirectory(textconvRepository);
+            var textconvInit=Run(StartRunnerWorkflow(new[]{"init","--quiet","--initial-branch=main",
+                "--template="+Path.Combine(workspace,"git-control","empty-git-template"),textconvRepository}));
+            Require(textconvInit.Exit==0 && textconvInit.Error.Length==0,"textconv probe repository initialized");
+            File.WriteAllText(Path.Combine(textconvRepository,".gitattributes"),"payload.bin diff=must-not-run\n",new UTF8Encoding(false));
+            var textconvPayload=Path.Combine(textconvRepository,"payload.bin");
+            File.WriteAllBytes(textconvPayload,new byte[]{0,255,1,128,13,10,0,42});
+            var textconvConfig=Run(StartRunnerWorkflow(new[]{"-C",textconvRepository,"config","--local",
+                "diff.must-not-run.textconv","cmd.exe /c echo TEXTCONV_EXECUTED_%RANDOM%"}));
+            Require(textconvConfig.Exit==0 && textconvConfig.Error.Length==0,"adversarial textconv config installed");
+            var textconvAttribute=Run(StartRunnerWorkflow(new[]{"-C",textconvRepository,"check-attr","-z","diff","--","payload.bin"}));
+            Require(textconvAttribute.Exit==0 && textconvAttribute.Out.Contains("must-not-run",StringComparison.Ordinal),
+                "textconv probe selects the hostile repository diff driver");
+            var probeAdd=Run(StartRunnerWorkflow(new[]{"-C",textconvRepository,"add","--force","--",".gitattributes","payload.bin"}));
+            Require(probeAdd.Exit==0 && probeAdd.Error.Length==0,"textconv probe baseline staged");
+            var probeCommit=Run(StartRunnerWorkflow(new[]{"-C",textconvRepository,"commit","--quiet","--no-gpg-sign","-m","textconv probe baseline"}));
+            Require(probeCommit.Exit==0 && probeCommit.Error.Length==0,"textconv probe baseline committed");
+            File.WriteAllBytes(textconvPayload,new byte[]{0,254,2,129,13,11,0,43});
+            var unguardedDiff=Run(StartRunnerWorkflow(new[]{"-C",textconvRepository,"diff","--textconv","--no-ext-diff","--no-color","--","payload.bin"}));
+            Require(unguardedDiff.Exit==0 && unguardedDiff.Out.Contains("TEXTCONV_EXECUTED_",StringComparison.Ordinal),
+                "adversarial textconv control visibly executes the configured converter (exit "+
+                unguardedDiff.Exit+", stdout="+unguardedDiff.Out+", stderr="+unguardedDiff.Error+")");
+            var guardedDiff=Run(StartRunnerWorkflow(new[]{"-C",textconvRepository,"diff","--no-textconv","--no-ext-diff","--no-color","--","payload.bin"}));
+            Require(guardedDiff.Exit==0 && !guardedDiff.Out.Contains("TEXTCONV_EXECUTED_",StringComparison.Ordinal) &&
+                guardedDiff.Out.Contains("Binary files",StringComparison.Ordinal),
+                "fixed no-textconv policy suppresses the repository converter and retains binary diff semantics");
 
             var diffCheckStart=StartRunnerWorkflow(commands[3]);
             Require(diffCheckStart.ArgumentList.Contains("core.whitespace=cr-at-eol"),"fixed CRLF-aware whitespace validation policy");
@@ -295,7 +308,7 @@ internal static class GitWorkflowExecutionCases
             finally{File.WriteAllText(branchRef,originalRef,new UTF8Encoding(false));}
             Require(refTamperRefused,"owner verifier refuses a branch ref that no longer names the verified commit");
 
-            Console.WriteLine("PASS ordinary-user real Git execution using the hosted runner Git executable and its runtime PATH: hash-object/init/add/diff-check/numstat/commit/log/status/fsck and both denial controls; hostile repository-local clean-filter and hooksPath settings were neutralized by fixed attribute/hook policy; independent owner commit/tree/blob/ref verification and exact GitReceipt binding; CRLF, binary, empty and ignored selected files preserved. ORDINARY-USER COMMAND/VERIFIER EVIDENCE ONLY: runner Git semantics, not product pinned-asset qualification; no product Broker, Owned Job, LPAC, UAC, host policy or Claude execution.");
+            Console.WriteLine("PASS ordinary-user real Git execution using the hosted runner Git executable and its runtime PATH: hash-object/init/add/diff-check/numstat/commit/log/status/fsck and both denial controls; hostile repository-local clean-filter, hooksPath and textconv settings were neutralized by fixed policy; independent owner commit/tree/blob/ref verification and exact GitReceipt binding; CRLF, binary, empty and ignored selected files preserved. ORDINARY-USER COMMAND/VERIFIER EVIDENCE ONLY: runner Git semantics, not product pinned-asset qualification; no product Broker, Owned Job, LPAC, UAC, host policy or Claude execution.");
         }
         catch(Exception error)
         {
