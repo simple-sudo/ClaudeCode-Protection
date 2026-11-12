@@ -8,6 +8,8 @@ using System.Text.Json;
 using Microsoft.Win32.SafeHandles;
 using ClaudeCodeProtection.Workspaces;
 
+namespace ProtectionLifecycle;
+
 internal sealed partial class HostPrivacyProbe : IDisposable
 {
     private sealed record Target(HostPrivacyCheck Check,string Path,int Pid,string? Identity,int MissingParentDepth=0);
