@@ -505,6 +505,9 @@ internal static class GitWorkflowExecutionCases
         Require(project.Group?.Value=="S-1-5-18" && control.Group?.Value=="S-1-5-18","private Git directories use the fixed SYSTEM group");
         Require(project.ControlFlags.HasFlag(ControlFlags.DiscretionaryAclProtected) &&
             control.ControlFlags.HasFlag(ControlFlags.DiscretionaryAclProtected),"private Git DACLs block parent ACL inheritance");
+        Require(project.ControlFlags.HasFlag(ControlFlags.DiscretionaryAclAutoInherited) &&
+            control.ControlFlags.HasFlag(ControlFlags.DiscretionaryAclAutoInherited),
+            "private Git DACLs are marked for automatic propagation to child objects");
         var projectAcl=project.DiscretionaryAcl??throw new InvalidDataException("Project DACL missing");
         var controlAcl=control.DiscretionaryAcl??throw new InvalidDataException("Control DACL missing");
         var projectPackage=projectAcl.OfType<CommonAce>().Single(ace=>ace.SecurityIdentifier.Value==packageSid);
