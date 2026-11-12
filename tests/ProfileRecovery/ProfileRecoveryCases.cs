@@ -190,6 +190,35 @@ internal static class ProfileRecoveryCases
             changedAfterDeleteState.ReadOptional("task-workspace-closed-"+id+".json") is null,
             "cleanup-intent drift after deletion prevents a false closed receipt");
 
+        var changedTaskIntentAfterDeleteState=BuildTaskState();
+        var changedTaskIntentAfterDeleteOps=new FakeTaskWorkspaceRecoveryOps{DirectoryExists=true,ParentIdentity=record.ParentIdentity};
+        changedTaskIntentAfterDeleteOps.AfterDelete=()=>changedTaskIntentAfterDeleteState.Set("task-workspace-intent-"+id+".json",
+            new TaskWorkspaceIntent(1,changedTaskIntentAfterDeleteState.InstallationId,id,new string('e',32),
+                changedTaskIntentAfterDeleteState.Read(created).SHA256,record.ParentIdentity,"FRESH_DISPOSABLE_TASK_DIRECTORY_ONLY"));
+        ExpectAny(()=>SessionTaskWorkspace.Cleanup(changedTaskIntentAfterDeleteState,record,changedTaskIntentAfterDeleteOps));
+        Require(!changedTaskIntentAfterDeleteOps.DirectoryExists &&
+            changedTaskIntentAfterDeleteState.ReadOptional("task-workspace-closed-"+id+".json") is null,
+            "task-intent drift after deletion prevents a false closed receipt");
+
+        var changedCreatedAfterDeleteState=BuildTaskState();
+        var changedCreatedAfterDeleteOps=new FakeTaskWorkspaceRecoveryOps{DirectoryExists=true,ParentIdentity=record.ParentIdentity};
+        changedCreatedAfterDeleteOps.AfterDelete=()=>changedCreatedAfterDeleteState.Set(created,
+            record with {StorageIdentity="00000001:00000002:00000009"});
+        ExpectAny(()=>SessionTaskWorkspace.Cleanup(changedCreatedAfterDeleteState,record,changedCreatedAfterDeleteOps));
+        Require(!changedCreatedAfterDeleteOps.DirectoryExists &&
+            changedCreatedAfterDeleteState.ReadOptional("task-workspace-closed-"+id+".json") is null,
+            "profile-created receipt drift after deletion prevents a false closed receipt");
+
+        var bindingAfterDeleteState=BuildTaskState();
+        var bindingAfterDeleteOps=new FakeTaskWorkspaceRecoveryOps{DirectoryExists=true,ParentIdentity=record.ParentIdentity};
+        bindingAfterDeleteOps.AfterDelete=()=>bindingAfterDeleteState.Set("profile-job-"+id+".json",
+            new {SchemaVersion=1,bindingAfterDeleteState.InstallationId,ProfileId=id,
+                CreatedSHA256=bindingAfterDeleteState.Read(created).SHA256,JobId=job});
+        ExpectAny(()=>SessionTaskWorkspace.Cleanup(bindingAfterDeleteState,record,bindingAfterDeleteOps));
+        Require(!bindingAfterDeleteOps.DirectoryExists &&
+            bindingAfterDeleteState.ReadOptional("task-workspace-closed-"+id+".json") is null,
+            "a process binding appearing during cleanup prevents a false closed receipt");
+
         ProtectedState BuildClosedReceiptState(int removed=0,string? workspaceIdentity=null,bool rootAbsent=true)
         {
             var taskState=BuildTaskState();
