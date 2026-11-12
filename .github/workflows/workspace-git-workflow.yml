@@ -195,7 +195,8 @@ jobs:
             Invoke-StandardUserTest $centerApp @('CenterResults.dll') 'Protection Center workspace review and project-flow tests'
             Invoke-StandardUserTest $profileRecoveryApp @('ProfileRecovery.dll') 'Profile recovery and task-workspace cleanup/closure state-machine tests (native filesystem operations simulated)'
             $nativeRunArguments = @('run',$sid,$nativePackageName) + $nativeWorkspaceSessions
-            Invoke-StandardUserTest $taskWorkspaceNativeApp (@('TaskWorkspaceNative.dll') + $nativeRunArguments) 'Production task-workspace recovery on real NTFS (standard user; exact ACL/low-label fixtures)'
+            & (Get-Command dotnet).Source (Join-Path $taskWorkspaceNativeApp 'TaskWorkspaceNative.dll') @nativeRunArguments
+            if ($LASTEXITCODE -ne 0) { throw 'Production task-workspace recovery on real NTFS failed' }
           }
           finally {
             foreach ($nativeSession in $nativeWorkspaceSessions) {
