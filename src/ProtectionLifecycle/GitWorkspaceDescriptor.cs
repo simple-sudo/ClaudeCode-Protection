@@ -27,7 +27,9 @@ internal sealed class GitWorkspaceDescriptor : IDisposable
         // NTFS stores the file-system mapping of GENERIC_READ|GENERIC_EXECUTE as
         // specific rights. Using GRGX here does not round-trip through GetSecurityInfo.
         var packageMask=packageWrite?"0x001301bf":"0x001200a9";
-        return "O:BAG:SYD:P(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)(A;OICI;"+packageMask+";;;"+package+")(A;OICI;RC;;;S-1-3-4)";
+        // P blocks inherited grants from ProgramData; AR asks NTFS to propagate
+        // these OI/CI ACEs to newly created child files and directories.
+        return "O:BAG:SYD:PAR(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)(A;OICI;"+packageMask+";;;"+package+")(A;OICI;RC;;;S-1-3-4)";
     }
 
     private GitWorkspaceDescriptor(string packageSid,bool packageWrite)
