@@ -1,12 +1,8 @@
-using System.ComponentModel;
-using System.Diagnostics;
-using System.Runtime.InteropServices;
-using System.Security.Principal;
+namespace ProtectionLifecycle;
+
+using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Microsoft.Win32.SafeHandles;
-
-namespace ProtectionLifecycle;
 
 internal sealed record OwnedJobIntent(int SchemaVersion,string InstallationId,string JobId,string Release,string ManifestSHA256,string Binding,string Scope,
     [property:JsonIgnore(Condition=JsonIgnoreCondition.WhenWritingNull)] string? CreatorServiceSid=null)
@@ -62,68 +58,5 @@ internal sealed record OwnedJobIntent(int SchemaVersion,string InstallationId,st
             result.Add(Read(state,id));
         }
         return result.AsReadOnly();
-    }
-}
-
-internal sealed class SafeJobHandle : SafeHandleZeroOrMinusOneIsInvalid
-{
-    public SafeJobHandle():base(true){}
-    internal SafeJobHandle DuplicateAssignment()
-    {
-        // The creation attribute needs assignment. Query, terminate and
-        // policy changes stay on the original Job owner's handle.
-        var current=new IntPtr(-1);
-        if(DuplicateHandle(current,this,current,out var assignment,0x0001,false,0))return assignment;
-        var error=new Win32Exception(Marshal.GetLastWin32Error());
-        assignment?.Dispose();error.Data["Stage"]="DuplicateJobAssignmentOnly";throw error;
-    }
-    protected override bool ReleaseHandle()=>CloseHandle(handle);
-    [DllImport("kernel32.dll",SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)] private static extern bool CloseHandle(IntPtr handle);
-    [DllImport("kernel32.dll",ExactSpelling=true,SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)]
-    private static extern bool DuplicateHandle(IntPtr sourceProcess,SafeJobHandle source,IntPtr targetProcess,out SafeJobHandle target,
-        uint access,[MarshalAs(UnmanagedType.Bool)]bool inherit,uint options);
-}
-
-internal sealed record JobSnapshot(string JobId,uint LimitFlags,uint ActiveBefore,uint ActiveAfter,uint[] ProcessIds,string AtUtc)
-{
-    internal bool ExpectedLimits=>LimitFlags==OwnedKernelJob.RequiredLimits;
-    internal bool ObservedZero=>ActiveBefore==0 && ActiveAfter==0 && ProcessIds.Length==0;
-}
-
-internal sealed record UnadmittedJobRetirement(int SchemaVersion,string IntentSHA256,string Status,uint TotalProcesses,JobSnapshot Snapshot)
-{
-    internal const string Disposition="NEVER_ADMITTED_ORIGINAL_JOB_ZERO_OBSERVED";
-    internal static string Leaf(string id)=>"job-unadmitted-retired-"+Identifiers.Hex32(id)+".json";
-
-    internal static void AssertNoAdmissionEvidence(ProtectedState state,OwnedJobIntent intent)
-    {
-        if(state.ReadOptional("job-admission-"+intent.JobId+".json") is not null ||
-            state.ReadOptional("job-completed-"+intent.JobId+".json") is not null)
-            throw WfpNative.Contract("UnadmittedJobConflictingAdmissionEvidence");
-    }
-
-    internal static bool Read(ProtectedState state,OwnedJobIntent intent)
-    {
-        state.AssertHeld();
-        var raw=state.ReadOptional(Leaf(intent.JobId));
-        if(raw is null)return false;
-        if(OwnedJobIntent.Read(state,intent.JobId)!=intent)throw WfpNative.Contract("UnadmittedJobIntentMismatch");
-        AssertNoAdmissionEvidence(state,intent);
-        Parse(raw.Bytes,intent,state.Read(OwnedJobIntent.Leaf(intent.JobId),8192).SHA256);
-        return true;
-    }
-
-    internal static void Parse(byte[] bytes,OwnedJobIntent intent,string intentHash)
-    {
-        using var doc=JsonDocument.Parse(bytes,new JsonDocumentOptions{MaxDepth=5});
-        var record=doc.RootElement;
-        StrictJson.Fields(record,"SchemaVersion","IntentSHA256","Status","TotalProcesses","Snapshot");
-        StrictJson.Fields(record.GetProperty("Snapshot"),"JobId","LimitFlags","ActiveBefore","ActiveAfter","ProcessIds","AtUtc");
-        var result=record.Deserialize<UnadmittedJobRetirement>();
-        if(intent.SchemaVersion!=2 || intent.CreatorServiceSid is not null || result is null || result.SchemaVersion!=1 ||
-            result.IntentSHA256!=intentHash || result.Status!=Disposition || result.TotalProcesses!=0 ||
-            result.Snapshot is not {ProcessIds:not null} snapshot ||
-            snapshot.JobId!=intent.JobId || !snapshot.ExpectedLimits || !snapshot.ObservedZero)
-            throw WfpNative.Contract("UnadmittedJobRetirementProofMismatch");
     }
 }
