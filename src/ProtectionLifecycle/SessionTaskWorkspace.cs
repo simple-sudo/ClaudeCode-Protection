@@ -136,10 +136,10 @@ internal static class SessionTaskWorkspace
         using var package=new InstallationPackageSid(state);
         try
         {
-            // The delete disposition requires DELETE access on this exact
-            // handle. OpenForDelete also pins the no-share-delete handle and
-            // verifies the NTFS path/object identity before any mutation.
-            using(var root=WindowsPathSeal.OpenForDelete(path,true))
+            // This class's private Open() requests DELETE | READ_CONTROL |
+            // FILE_READ_ATTRIBUTES (0x00030180), holds FILE_SHARE_READ only,
+            // and verifies the no-reparse NTFS path/object identity.
+            using(var root=Open(path,true))
             {
                 identity=WindowsPathSeal.Identity(root);
                 SessionResources.AssertFreshWorkspaceForRecovery(root,profile.OwnerSid,package.Value);
