@@ -16,7 +16,7 @@ internal static class NativeGitWorkspaceCases
     private const int FileObject=1;
     private const uint OwnerGroupDaclLabel=1u|2u|4u|16u;
     private const int ProjectPackageMask=0x001301bf;
-    private const int ControlPackageMask=unchecked((int)0xA0000000);
+    private const int ControlPackageMask=0x001200a9;
 
     internal static void Run(string humanSid,string packageSid)
     {
