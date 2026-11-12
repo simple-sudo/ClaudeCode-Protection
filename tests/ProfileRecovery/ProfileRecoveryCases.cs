@@ -154,6 +154,9 @@ internal static class ProfileRecoveryCases
         Require(wrongParentOps.OpenCount==0 && wrongParentOps.DeleteCount==0,"changed Program Files parent identity blocks filesystem access");
 
         var boundState=BuildTaskState();
+        // BuildTaskState wrote a valid no-binding intent. Remove that fixture
+        // leaf before creating the distinct immutable bound-job scenario.
+        boundState.Remove("profile-delete-intent-"+id+".json");
         boundState.Closed=true;
         boundState.Set("job-completed-"+job+".json",new {Status="FAKE_CLOSED_ZERO_FOR_READER_CASE_ONLY"});
         boundState.Set("profile-job-"+id+".json",new {SchemaVersion=1,boundState.InstallationId,ProfileId=id,
