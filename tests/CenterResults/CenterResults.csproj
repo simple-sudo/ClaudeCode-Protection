@@ -14,7 +14,7 @@
     <Compile Include="../../src/Shared/ProjectWorkerFeedback.cs" />
     <Compile Include="../../src/ProtectionCenter/WorkspaceResultSession.cs" Link="WorkspaceResultSession.cs" />
     <Compile Include="ProjectClientCancellationCases.cs;ProjectEditQueueCases.cs;ProjectTaskEditCases.cs;../../src/ProtectionCenter/ProjectEditQueue.cs;ProjectFlowCases.cs;../../src/ProtectionCenter/CallerProjectSession.cs;../../src/ProtectionCenter/BackendClient.cs" />
-    <Compile Include="../../src/Shared/WorkspaceInstalledHost.cs;../../src/Shared/PackageAssetCatalog.cs;../../src/Shared/CSharpProjectTask.cs;../../src/Shared/HostPrivacyContract.cs;../../src/Shared/UserDataPaths.cs;../../src/Shared/WorkspaceStopControl.cs" />
+    <Compile Include="../../src/Shared/WorkspaceInstalledHost.cs;../../src/Shared/PackageAssetCatalog.cs;../../src/Shared/CSharpProjectTask.cs;../../src/Shared/HostPrivacyModels.cs;HostPrivacyContract.cs;../../src/Shared/UserDataPaths.cs;../../src/Shared/WorkspaceStopControl.cs" />
     <Compile Include="../../src/Shared/WorkspaceBundle.cs" Link="WorkspaceBundle.cs" />
     <Compile Include="../../src/Shared/WorkspaceFiles.cs" Link="WorkspaceFiles.cs" />
     <Compile Include="../../src/Shared/WindowsDirectoryNames.cs" Link="WindowsDirectoryNames.cs" />
