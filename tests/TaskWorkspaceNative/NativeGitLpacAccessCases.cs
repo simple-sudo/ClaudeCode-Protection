@@ -331,6 +331,22 @@ internal static class NativeGitLpacAccessCases
                 if (!isAppContainer || actualPackageSid != packageSid || capabilityCount != 0 ||
                     integritySid != LowIntegritySid || packageAccess != 2)
                     throw new InvalidDataException("LpacGitWorkspaceTokenQualificationFailed");
+
+                var programFiles = Path.GetDirectoryName(root) ?? throw new InvalidDataException("LpacGitWorkspaceProgramFilesParentMissing");
+                var driveRoot = Path.GetPathRoot(root) ?? throw new InvalidDataException("LpacGitWorkspaceDriveRootMissing");
+                var pathProbes = new[]
+                {
+                    "drive-traverse=" + ProbeOpenAsLpac(token, driveRoot, true, 0x20),
+                    "program-files-traverse=" + ProbeOpenAsLpac(token, programFiles, true, 0x20),
+                    "task-root-traverse=" + ProbeOpenAsLpac(token, root, true, 0x20),
+                    "task-root-add-file=" + ProbeOpenAsLpac(token, root, true, 0x22),
+                    "project-dir-read-write=" + ProbeOpenAsLpac(token, Path.Combine(root, "git-project"), true, 0x27),
+                    "project-source-read=" + ProbeOpenAsLpac(token, Path.Combine(root, "git-project", "source.txt"), false, 0x1),
+                    "control-dir-read=" + ProbeOpenAsLpac(token, Path.Combine(root, "git-control"), true, 0x21),
+                    "control-dir-add-file=" + ProbeOpenAsLpac(token, Path.Combine(root, "git-control"), true, 0x22),
+                    "medium-dir-add-file=" + ProbeOpenAsLpac(token, Path.Combine(root, "medium-write"), true, 0x22)
+                };
+                Console.WriteLine("INFO LPAC path access probes (actual token impersonation): " + string.Join(";", pathProbes));
             }
 
             var resume = ResumeThread(thread);
@@ -344,7 +360,7 @@ internal static class NativeGitLpacAccessCases
             {
                 var diagnosticPath = Path.Combine(root, "lpac-read-error.txt");
                 var diagnostic = File.Exists(diagnosticPath)
-                    ? File.ReadAllText(diagnosticPath).Trim().Replace("\\r", " ").Replace("\\n", " ")
+                    ? File.ReadAllText(diagnosticPath).Trim().Replace("\r", " ").Replace("\n", " ")
                     : "none";
                 if (diagnostic.Length > 256) diagnostic = diagnostic[..256];
                 throw new InvalidDataException("LpacGitWorkspaceChildReadFailed:" +
@@ -376,6 +392,38 @@ internal static class NativeGitLpacAccessCases
             if (packagePointer != IntPtr.Zero) Marshal.FreeHGlobal(packagePointer);
             if (threadDescriptor != IntPtr.Zero) _ = LocalFree(threadDescriptor);
             if (processDescriptor != IntPtr.Zero) _ = LocalFree(processDescriptor);
+        }
+    }
+
+    private static string ProbeOpenAsLpac(SafeAccessTokenHandle primaryToken, string path, bool directory, uint access)
+    {
+        if (!DuplicateTokenEx(primaryToken, 0x000c, IntPtr.Zero, 2, 2, out var impersonation))
+        {
+            var error = Marshal.GetLastWin32Error();
+            return "DuplicateTokenEx=0x" + error.ToString("X8", System.Globalization.CultureInfo.InvariantCulture);
+        }
+        using (impersonation)
+        {
+            if (!ImpersonateLoggedOnUser(impersonation))
+            {
+                var error = Marshal.GetLastWin32Error();
+                return "Impersonate=0x" + error.ToString("X8", System.Globalization.CultureInfo.InvariantCulture);
+            }
+            try
+            {
+                var flags = OpenReparsePoint | (directory ? BackupSemantics : 0u);
+                using var handle = CreateFile(path, access, ShareAll, IntPtr.Zero, OpenExisting, flags, IntPtr.Zero);
+                if (handle.IsInvalid)
+                {
+                    var error = Marshal.GetLastWin32Error();
+                    return "Win32=0x" + error.ToString("X8", System.Globalization.CultureInfo.InvariantCulture);
+                }
+                return "PASS";
+            }
+            finally
+            {
+                if (!RevertToSelf()) throw Error("LpacGitWorkspaceRevertAfterPathProbe");
+            }
         }
     }
 
@@ -768,6 +816,14 @@ internal static class NativeGitLpacAccessCases
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool DuplicateTokenEx(SafeAccessTokenHandle existingToken, uint desiredAccess,
         IntPtr tokenAttributes, int impersonationLevel, int tokenType, out SafeAccessTokenHandle newToken);
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
+    [DllImport("advapi32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool ImpersonateLoggedOnUser(SafeAccessTokenHandle token);
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
+    [DllImport("advapi32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool RevertToSelf();
     [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
     [DllImport("advapi32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
