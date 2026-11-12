@@ -54,7 +54,8 @@ internal static class GitWorkflowExecutionCases
                 ("empty.txt",Array.Empty<byte>()),
                 ("ignored.txt",Encoding.UTF8.GetBytes("force-added despite ignore\n")),
                 ("src/main.cs",Encoding.UTF8.GetBytes("class Sample\r\n{\r\n}\r\n")),
-                ("tail.txt",Encoding.UTF8.GetBytes("last line without newline"))
+                ("tail.txt",Encoding.UTF8.GetBytes("last line without newline")),
+                ("late-nul.txt",Enumerable.Repeat((byte)'A',8000).Append((byte)0).ToArray())
             };
             var data=InvokeStatic(bundleType,"Create",dataFiles,null)!;
             var dataBytes=(byte[])InvokeInstance(data,"Serialize")!;
@@ -206,7 +207,7 @@ internal static class GitWorkflowExecutionCases
             var added=(int)metrics.GetType().GetField("Item1")!.GetValue(metrics)!;
             var deleted=(int)metrics.GetType().GetField("Item2")!.GetValue(metrics)!;
             var binary=(int)metrics.GetType().GetField("Item3")!.GetValue(metrics)!;
-            Require(added==10 && deleted==0 && binary==1,
+            Require(added==11 && deleted==0 && binary==1,
                 "real Git numstat matches exact CRLF, unterminated, empty and binary fixture metrics");
 
             var commit=Run(StartRunnerWorkflow(commands[5]));
