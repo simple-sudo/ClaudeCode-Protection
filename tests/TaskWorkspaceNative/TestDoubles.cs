@@ -6,7 +6,7 @@ namespace ProtectionLifecycle;
 
 internal sealed record BoundBytes(byte[] Bytes,string SHA256)
 {
-    internal static BoundBytes From(byte[] bytes)=>new(bytes,Convert.ToHexString(SHA256.HashData(bytes)));
+    internal static BoundBytes From(byte[] bytes)=>new(bytes,Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(bytes)));
 }
 internal sealed class ProtectedState
 {
