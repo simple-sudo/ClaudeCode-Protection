@@ -117,7 +117,7 @@ internal static class NativeGitLpacAccessCases
                     !File.ReadAllBytes(Path.Combine(controlPath, "git-selected-paths.bin")).SequenceEqual(new byte[] { 0x61, 0x00 }) ||
                     Directory.Exists(Path.Combine(controlPath, "lpac-created")))
                     throw new InvalidDataException("LpacGitWorkspaceControlWriteWasNotDenied");
-                if (File.ReadAllText(mediumFile) != "medium-tamper" + Environment.NewLine)
+                if (!File.ReadAllBytes(mediumFile).SequenceEqual(Encoding.ASCII.GetBytes("medium-tamper")))
                     throw new InvalidDataException("LpacGitWorkspaceLowBoxMediumPackageGrantMismatch");
                 if (File.ReadAllText(mediumReadOnlyFile) != "medium-readonly-original")
                     throw new InvalidDataException("LpacGitWorkspaceMediumReadOnlyDaclWriteWasNotDenied");
