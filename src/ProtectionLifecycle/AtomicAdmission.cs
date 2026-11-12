@@ -54,9 +54,7 @@ internal sealed partial class AtomicChild : IDisposable
     // Candidate primitive only; no current creation/qualification path calls
     // it. A separately reviewed fixed owner operation must select it before
     // resume. It can alter only this held child's future-object default ACL.
-    internal void PrepareOwnDefaultDaclBeforeResume()
-    {
-        P    internal void AssertSuspendedSessionIdentity(ProtectedSession.Preparation exactPreparation)
+    internal void AssertSuspendedSessionIdentity(ProtectedSession.Preparation exactPreparation)
     {
         if(!ReferenceEquals(sessionPreparation,exactPreparation))throw WfpNative.Contract("ForeignSuspendedSessionRoot");
         AssertSuspendedIdentity();
