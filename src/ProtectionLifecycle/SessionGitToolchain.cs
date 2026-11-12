@@ -87,8 +87,9 @@ internal sealed class SessionGitToolchain : IDisposable
         if(!Qualified(value))return false;
         if(project.GitPlan is not { } workflow)return value.Workflow is null;
         var observed=value.Workflow;
-        return observed is not null &&
-            observed.PlanSHA256==WorkspaceBundle.GitPlanHash(workflow) &&
+        if(observed is null)return false;
+        var metrics=ExpectedWorkflowMetrics(project);
+        return observed.PlanSHA256==WorkspaceBundle.GitPlanHash(workflow) &&
             observed.BranchName==workflow.BranchName &&
             observed.CommitId==value.CommitId &&
             observed.CommitMessage==workflow.CommitMessage &&
@@ -96,7 +97,30 @@ internal sealed class SessionGitToolchain : IDisposable
             observed.AuthorEmail==WorkspaceGitPlan.AuthorEmail &&
             observed.CommitUnixTime==workflow.CommitUnixTime &&
             observed.FileCount==project.Files.Length &&
+            observed.AddedLines==metrics.AddedLines &&
+            observed.DeletedLines==metrics.DeletedLines &&
+            observed.BinaryFileCount==metrics.BinaryFiles &&
             observed.CleanAfterCommit && observed.ObjectIntegrityObserved;
+    }
+    private static (int AddedLines,int DeletedLines,int BinaryFiles) ExpectedWorkflowMetrics(WorkspaceBundle project)
+    {
+        // The pinned Git diff implementation probes the first 8000 bytes for
+        // NUL before classifying a blob as binary. With the trusted info
+        // attributes disabling text/filters, every selected path is an
+        // addition from an empty baseline and therefore has zero deletions.
+        const int binaryProbeBytes=8000;
+        int added=0,binary=0;
+        foreach(var file in project.Files)
+        {
+            var content=file.Content;
+            if(content.AsSpan(0,Math.Min(content.Length,binaryProbeBytes)).IndexOf((byte)0)>=0)
+            {binary++;continue;}
+            var lines=0;
+            foreach(var valueByte in content)if(valueByte==(byte)'\\n')lines++;
+            if(content.Length>0 && content[^1]!=(byte)'\\n')lines++;
+            added=checked(added+lines);
+        }
+        return(added,0,binary);
     }
     private static bool IsObjectId(string? value)=>value?.Length==40 && value.All(c=>c is >= '0' and <= '9' or >= 'a' and <= 'f');
     internal static string BlobId(byte[] input)=>Convert.ToHexString(SHA1.HashData(Encoding.ASCII.GetBytes("blob "+input.Length+"\0").Concat(input).ToArray())).ToLowerInvariant();

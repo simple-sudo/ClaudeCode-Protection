@@ -53,7 +53,8 @@ internal static class GitWorkflowExecutionCases
                 ("assets/payload.bin",new byte[]{0,255,1,128,13,10,0,42}),
                 ("empty.txt",Array.Empty<byte>()),
                 ("ignored.txt",Encoding.UTF8.GetBytes("force-added despite ignore\n")),
-                ("src/main.cs",Encoding.UTF8.GetBytes("class Sample\r\n{\r\n}\r\n"))
+                ("src/main.cs",Encoding.UTF8.GetBytes("class Sample\r\n{\r\n}\r\n")),
+                ("tail.txt",Encoding.UTF8.GetBytes("last line without newline"))
             };
             var data=InvokeStatic(bundleType,"Create",dataFiles,null)!;
             var dataBytes=(byte[])InvokeInstance(data,"Serialize")!;
@@ -205,7 +206,8 @@ internal static class GitWorkflowExecutionCases
             var added=(int)metrics.GetType().GetField("Item1")!.GetValue(metrics)!;
             var deleted=(int)metrics.GetType().GetField("Item2")!.GetValue(metrics)!;
             var binary=(int)metrics.GetType().GetField("Item3")!.GetValue(metrics)!;
-            Require(binary==1,"binary file is reported as binary, not text-transformed");
+            Require(added==10 && deleted==0 && binary==1,
+                "real Git numstat matches exact CRLF, unterminated, empty and binary fixture metrics");
 
             var commit=Run(StartRunnerWorkflow(commands[5]));
             Require(commit.Exit==0 && commit.Out.Length==0 && commit.Error.Length==0,"real Git commit succeeds with fixed identity/date");
@@ -289,6 +291,33 @@ internal static class GitWorkflowExecutionCases
             reportType.GetProperty("Workflow",InstanceFlags)!.SetValue(wrongMessageReport,wrongMessageObservation);
             Require(!(bool)InvokeStatic(gitType,"QualifiedForPlan",plan,wrongMessageReport)!,
                 "workflow observation must bind the exact immutable commit message");
+            foreach(var wrongMetrics in new[]
+            {
+                Activator.CreateInstance(observationType,InstanceFlags,null,new object?[]
+                {
+                    planHash,(string)Get(workflow,"BranchName")!,commitId,treeId,(string)Get(workflow,"CommitMessage")!,
+                    "Local Workspace","local@invalid.example",commitTime,projectFiles.Length,added+1,deleted,binary,true,true
+                },null)!,
+                Activator.CreateInstance(observationType,InstanceFlags,null,new object?[]
+                {
+                    planHash,(string)Get(workflow,"BranchName")!,commitId,treeId,(string)Get(workflow,"CommitMessage")!,
+                    "Local Workspace","local@invalid.example",commitTime,projectFiles.Length,added,deleted+1,binary,true,true
+                },null)!,
+                Activator.CreateInstance(observationType,InstanceFlags,null,new object?[]
+                {
+                    planHash,(string)Get(workflow,"BranchName")!,commitId,treeId,(string)Get(workflow,"CommitMessage")!,
+                    "Local Workspace","local@invalid.example",commitTime,projectFiles.Length,added,deleted,binary+1,true,true
+                },null)!
+            })
+            {
+                var wrongMetricsReport=Activator.CreateInstance(reportType,InstanceFlags,null,new object?[]
+                {
+                    true,true,commitId,true,privateDenial.Exit,true,allPackagesDenial.Exit,null,null,null
+                },null)??throw new InvalidOperationException("Wrong-metrics report construction failed");
+                reportType.GetProperty("Workflow",InstanceFlags)!.SetValue(wrongMetricsReport,wrongMetrics);
+                Require(!(bool)InvokeStatic(gitType,"QualifiedForPlan",plan,wrongMetricsReport)!,
+                    "owner qualification independently rejects forged added/deleted/binary Git metrics");
+            }
             var receipt=InvokeStatic(gitType,"AssertRepository",workspace,plan,report)!;
 
             var resultData=InvokeStatic(bundleType,"Create",dataFiles,Hash(taskBytes))!;
@@ -312,7 +341,7 @@ internal static class GitWorkflowExecutionCases
             finally{File.WriteAllText(branchRef,originalRef,new UTF8Encoding(false));}
             Require(refTamperRefused,"owner verifier refuses a branch ref that no longer names the verified commit");
 
-            Console.WriteLine("PASS ordinary-user real Git execution using the hosted runner Git executable and its runtime PATH: hash-object/init/add/diff-check/numstat/commit/log/status/fsck and both denial controls; hostile repository-local clean-filter, hooksPath and textconv settings were neutralized by fixed policy; independent owner commit/tree/blob/ref verification and exact GitReceipt binding; CRLF, binary, empty and ignored selected files preserved. ORDINARY-USER COMMAND/VERIFIER EVIDENCE ONLY: runner Git semantics, not product pinned-asset qualification; no product Broker, Owned Job, LPAC, UAC, host policy or Claude execution.");
+            Console.WriteLine("PASS ordinary-user real Git execution using the hosted runner Git executable and its runtime PATH: hash-object/init/add/diff-check/numstat/commit/log/status/fsck and both denial controls; hostile repository-local clean-filter, hooksPath and textconv settings were neutralized by fixed policy; owner independently verified exact added/deleted/binary metrics plus commit/tree/blob/ref and GitReceipt binding; CRLF, unterminated, binary, empty and ignored selected files preserved. ORDINARY-USER COMMAND/VERIFIER EVIDENCE ONLY: runner Git semantics, not product pinned-asset qualification; no product Broker, Owned Job, LPAC, UAC, host policy or Claude execution.");
         }
         catch(Exception error)
         {
