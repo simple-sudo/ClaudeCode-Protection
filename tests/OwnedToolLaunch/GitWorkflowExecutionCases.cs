@@ -19,6 +19,35 @@ internal static class GitWorkflowExecutionCases
         if(new WindowsPrincipal(identity).IsInRole(WindowsBuiltInRole.Administrator))
             throw new InvalidOperationException("Ordinary-user Git execution test must not run elevated");
 
+        // Recovery of a task directory created before its durable identity
+        // receipt is intentionally narrower than normal recursive cleanup:
+        // it requires the exact fresh profile intent, no process binding,
+        // unchanged Program Files parent, exact path and cleanup checkpoint.
+        var taskWorkspaceType=library.GetType("ProtectionLifecycle.SessionTaskWorkspace",true)!;
+        InvokeStatic(taskWorkspaceType,"RequireUnrecordedWorkspaceRecoveryAuthority",true,true,true,true,true);
+        var authorityEvidence=new object?[]{true,true,true,true,true};
+        var authorityNames=new[]{"profile ownership","absence of a process binding","original parent identity",
+            "exact nonce task path","durable cleanup intent"};
+        for(var index=0;index<authorityEvidence.Length;index++)
+        {
+            var tampered=authorityEvidence.ToArray();tampered[index]=false;
+            var refused=false;
+            try{_=InvokeStatic(taskWorkspaceType,"RequireUnrecordedWorkspaceRecoveryAuthority",tampered);}
+            catch(InvalidDataException error)when(error.Message=="UnrecordedTaskWorkspaceRecoveryAuthorityIncomplete"){refused=true;}
+            Require(refused,"unrecorded workspace recovery refuses missing "+authorityNames[index]);
+        }
+        InvokeStatic(taskWorkspaceType,"RequireUnrecordedWorkspaceDeleteEvidence",true,true,true,true);
+        var deleteEvidence=new object?[]{true,true,true,true};
+        var deleteNames=new[]{"no reparse point","exact owner/group/DACL","expected or absent low label","empty directory"};
+        for(var index=0;index<deleteEvidence.Length;index++)
+        {
+            var tampered=deleteEvidence.ToArray();tampered[index]=false;
+            var refused=false;
+            try{_=InvokeStatic(taskWorkspaceType,"RequireUnrecordedWorkspaceDeleteEvidence",tampered);}
+            catch(InvalidDataException error)when(error.Message=="UnrecordedTaskWorkspaceDeleteEvidenceIncomplete"){refused=true;}
+            Require(refused,"unrecorded workspace deletion refuses missing "+deleteNames[index]);
+        }
+
         var nonce=Guid.NewGuid().ToString("N");
         var root=Path.Combine(Path.GetTempPath(),"cpc-git-workflow-execution-"+nonce);
         string? privateFixture=null,allPackagesFixture=null;
