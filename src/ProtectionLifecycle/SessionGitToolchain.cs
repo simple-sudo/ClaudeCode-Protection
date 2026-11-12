@@ -83,8 +83,20 @@ internal sealed class SessionGitToolchain : IDisposable
             value.Workflow.CommitId==value.CommitId);
     internal static bool QualifiedForPlan(ResourceProbePlan plan,GitToolchainReport value)
     {
-        var workflowExpected=WorkspaceBundle.Parse(plan.ProjectBundle).GitPlan is not null;
-        return workflowExpected==(value.Workflow is not null) && Qualified(value);
+        var project=WorkspaceBundle.Parse(plan.ProjectBundle);
+        if(!Qualified(value))return false;
+        if(project.GitPlan is not { } workflow)return value.Workflow is null;
+        var observed=value.Workflow;
+        return observed is not null &&
+            observed.PlanSHA256==WorkspaceBundle.GitPlanHash(workflow) &&
+            observed.BranchName==workflow.BranchName &&
+            observed.CommitId==value.CommitId &&
+            observed.CommitMessage==workflow.CommitMessage &&
+            observed.AuthorName==WorkspaceGitPlan.AuthorName &&
+            observed.AuthorEmail==WorkspaceGitPlan.AuthorEmail &&
+            observed.CommitUnixTime==workflow.CommitUnixTime &&
+            observed.FileCount==project.Files.Length &&
+            observed.CleanAfterCommit && observed.ObjectIntegrityObserved;
     }
     private static bool IsObjectId(string? value)=>value?.Length==40 && value.All(c=>c is >= '0' and <= '9' or >= 'a' and <= 'f');
     internal static string BlobId(byte[] input)=>Convert.ToHexString(SHA1.HashData(Encoding.ASCII.GetBytes("blob "+input.Length+"\0").Concat(input).ToArray())).ToLowerInvariant();

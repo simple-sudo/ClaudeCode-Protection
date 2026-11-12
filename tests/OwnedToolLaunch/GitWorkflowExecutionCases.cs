@@ -221,6 +221,30 @@ internal static class GitWorkflowExecutionCases
             reportType.GetProperty("Workflow",InstanceFlags)!.SetValue(failedReport,observation);
             Require(!(bool)InvokeStatic(gitType,"QualifiedForPlan",plan,failedReport)!,
                 "Git command failure cannot qualify even when a prior observation exists");
+            var wrongPlanObservation=Activator.CreateInstance(observationType,InstanceFlags,null,new object?[]
+            {
+                new string('d',64),(string)Get(workflow,"BranchName")!,commitId,treeId,(string)Get(workflow,"CommitMessage")!,
+                "Local Workspace","local@invalid.example",commitTime,projectFiles.Length,added,deleted,binary,true,true
+            },null)??throw new InvalidOperationException("Wrong-plan observation construction failed");
+            var wrongPlanReport=Activator.CreateInstance(reportType,InstanceFlags,null,new object?[]
+            {
+                true,true,commitId,true,privateDenial.Exit,true,allPackagesDenial.Exit,null,null,null
+            },null)??throw new InvalidOperationException("Wrong-plan report construction failed");
+            reportType.GetProperty("Workflow",InstanceFlags)!.SetValue(wrongPlanReport,wrongPlanObservation);
+            Require(!(bool)InvokeStatic(gitType,"QualifiedForPlan",plan,wrongPlanReport)!,
+                "workflow observation must bind the exact immutable Git plan hash");
+            var wrongMessageObservation=Activator.CreateInstance(observationType,InstanceFlags,null,new object?[]
+            {
+                planHash,(string)Get(workflow,"BranchName")!,commitId,treeId,"different but non-empty message",
+                "Local Workspace","local@invalid.example",commitTime,projectFiles.Length,added,deleted,binary,true,true
+            },null)??throw new InvalidOperationException("Wrong-message observation construction failed");
+            var wrongMessageReport=Activator.CreateInstance(reportType,InstanceFlags,null,new object?[]
+            {
+                true,true,commitId,true,privateDenial.Exit,true,allPackagesDenial.Exit,null,null,null
+            },null)??throw new InvalidOperationException("Wrong-message report construction failed");
+            reportType.GetProperty("Workflow",InstanceFlags)!.SetValue(wrongMessageReport,wrongMessageObservation);
+            Require(!(bool)InvokeStatic(gitType,"QualifiedForPlan",plan,wrongMessageReport)!,
+                "workflow observation must bind the exact immutable commit message");
             var receipt=InvokeStatic(gitType,"AssertRepository",workspace,plan,report)!;
 
             var resultData=InvokeStatic(bundleType,"Create",dataFiles,Hash(taskBytes))!;
