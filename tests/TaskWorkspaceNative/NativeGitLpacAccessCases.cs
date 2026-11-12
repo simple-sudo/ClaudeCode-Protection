@@ -336,7 +336,7 @@ internal static class NativeGitLpacAccessCases
                 var driveVolumeRoot = Path.GetPathRoot(root) ?? throw new InvalidDataException("LpacGitWorkspaceDriveRootMissing");
                 var pathProbes = new[]
                 {
-                    "drive-traverse=" + ProbeOpenAsLpac(token, driveRoot, true, 0x20),
+                    "drive-traverse=" + ProbeOpenAsLpac(token, driveVolumeRoot, true, 0x20),
                     "program-files-traverse=" + ProbeOpenAsLpac(token, programFiles, true, 0x20),
                     "task-root-traverse=" + ProbeOpenAsLpac(token, root, true, 0x20),
                     "task-root-add-file=" + ProbeOpenAsLpac(token, root, true, 0x22),
