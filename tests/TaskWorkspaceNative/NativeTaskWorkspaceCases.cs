@@ -57,6 +57,7 @@ internal static class NativeTaskWorkspaceCases
         RunDeleteRefusal(sessions[3],humanSid,packageName,packageSid,parentIdentity,"package SID/DACL mismatch","WorkspaceGrantOrLowIntegrityMismatch");
         RunDeleteRefusal(sessions[4],humanSid,packageName,packageSid,parentIdentity,"unexpected medium-integrity label","WorkspaceGrantOrLowIntegrityMismatch");
         NativeGitWorkspaceCases.Run(humanSid,packageSid);
+        NativeGitLpacAccessCases.Run(humanSid,packageName,packageSid);
         Console.WriteLine("PASS native NTFS task-workspace deletion, exact absence receipt and fail-closed preservation");
     }
 
