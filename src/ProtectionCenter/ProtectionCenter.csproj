@@ -11,7 +11,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="App.cs;BackendClient.cs;PreflightDisplay.cs;WorkspaceResultSession.cs;ProjectTaskWindow.cs;ProjectEditQueue.cs" />
-    <Compile Include="CallerProjectSession.cs;../Shared/CSharpProjectTask.cs;../Shared/HostPrivacyModels.cs;HostPrivacyContract.cs;../Shared/ProjectFailure.cs;../Shared/WorkspaceStopControl.cs" />
+    <Compile Include="CallerProjectSession.cs;../Shared/CSharpProjectTask.cs;../Shared/HostPrivacyModels.cs;../Shared/HostPrivacyContract.cs;../Shared/ProjectFailure.cs;../Shared/WorkspaceStopControl.cs" />
     <Compile Include="../Shared/ProjectWorkerFeedback.cs" />
     <Compile Include="../Shared/WorkspaceInstalledHost.cs;../Shared/PackageAssetCatalog.cs" />
     <Compile Include="../Shared/WorkspaceBundle.cs" Link="WorkspaceBundle.cs" />
