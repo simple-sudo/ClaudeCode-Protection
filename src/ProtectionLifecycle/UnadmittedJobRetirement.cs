@@ -38,3 +38,4 @@ internal sealed record UnadmittedJobRetirement(int SchemaVersion,string IntentSH
             snapshot.JobId!=intent.JobId || !snapshot.ExpectedLimits || !snapshot.ObservedZero)
             throw WfpNative.Contract("UnadmittedJobRetirementProofMismatch");
     }
+}
