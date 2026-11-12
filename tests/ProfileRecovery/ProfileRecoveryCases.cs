@@ -46,12 +46,12 @@ internal static class ProfileRecoveryCases
         // Changed completion bytes also invalidate the bound pre-delete intent.
         state.Set("job-completed-"+job+".json",new {Status="CHANGED"});
         Expect(()=>SessionProfileRecovery.WriteCleanupIntent(state,record),"ProfileCleanupIntentMismatch");
-        // Exercise the actual task-workspace closure receipt reader with a
-        // fake state journal and a fake native filesystem boundary. No
-        // directory deletion, AppContainer deletion, Job or process is run.
+        // Exercise the actual unrecorded-empty cleanup control flow and the
+        // actual closed-receipt reader. Only the native filesystem boundary is
+        // faked; all state, authority, decision, failure and receipt code is real.
         SessionResources.ProfileRoot=record.StorageRoot;
         var session=new string('d',32);
-        ProtectedState BuildTaskState(int removed=0,string? workspaceIdentity=null,bool rootAbsent=true)
+        ProtectedState BuildTaskState()
         {
             var taskState=new ProtectedState();
             taskState.Set("profile-intent-"+id+".json",new {
@@ -60,42 +60,111 @@ internal static class ProfileRecoveryCases
             });
             taskState.Set(created,record);
             SessionProfileRecovery.WriteCleanupIntent(taskState,record);
-            var taskIntent=new TaskWorkspaceIntent(1,taskState.InstallationId,id,session,
-                taskState.Read(created).SHA256,record.ParentIdentity,"FRESH_DISPOSABLE_TASK_DIRECTORY_ONLY");
-            var intentLeaf="task-workspace-intent-"+id+".json";
-            taskState.Set(intentLeaf,taskIntent);
-            taskState.Set("task-workspace-closed-"+id+".json",new {
-                SchemaVersion=2,taskState.InstallationId,ProfileId=id,
-                IntentSHA256=taskState.Read(intentLeaf).SHA256,
-                ProfileCleanupIntentSHA256=taskState.Read("profile-delete-intent-"+id+".json").SHA256,
-                Status="UNRECORDED_EMPTY_TASK_DIRECTORY_ABSENCE_OBSERVED",RootAbsent=rootAbsent,
-                RemovedEntries=removed,WorkspaceIdentity=workspaceIdentity
-            });
+            taskState.Set("task-workspace-intent-"+id+".json",new TaskWorkspaceIntent(1,taskState.InstallationId,id,session,
+                taskState.Read(created).SHA256,record.ParentIdentity,"FRESH_DISPOSABLE_TASK_DIRECTORY_ONLY"));
             WindowsPathSeal.ParentIdentity=record.ParentIdentity;
             WindowsPathSeal.PresentPath=null;
             return taskState;
         }
         var taskPath=SessionTaskWorkspace.PathFor(session);
-        SessionTaskWorkspace.AssertClosed(BuildTaskState(),record);
+        var absentState=BuildTaskState();
+        var absentOps=new FakeTaskWorkspaceRecoveryOps{DirectoryExists=false,ParentIdentity=record.ParentIdentity};
+        SessionTaskWorkspace.Cleanup(absentState,record,absentOps);
+        SessionTaskWorkspace.AssertClosed(absentState,record);
+        Require(absentOps.OpenCount==1 && absentOps.DeleteCount==0,
+            "recovery records exact absence when the interrupted task directory was never created");
+
+        var emptyState=BuildTaskState();
+        var emptyOps=new FakeTaskWorkspaceRecoveryOps{DirectoryExists=true,ParentIdentity=record.ParentIdentity,Names=Array.Empty<string>()};
+        SessionTaskWorkspace.Cleanup(emptyState,record,emptyOps);
+        SessionTaskWorkspace.AssertClosed(emptyState,record);
+        Require(emptyOps.DeleteCount==1 && !emptyOps.DirectoryExists,
+            "recovery deletes exactly one verified empty directory and records its identity");
+
+        var nonEmptyState=BuildTaskState();
+        var nonEmptyOps=new FakeTaskWorkspaceRecoveryOps{DirectoryExists=true,ParentIdentity=record.ParentIdentity,Names=new[]{"unexpected.txt"}};
+        ExpectAny(()=>SessionTaskWorkspace.Cleanup(nonEmptyState,record,nonEmptyOps));
+        Require(nonEmptyOps.DeleteCount==0 && nonEmptyOps.DirectoryExists &&
+            nonEmptyState.ReadOptional("task-workspace-closed-"+id+".json") is null &&
+            nonEmptyState.ListLeaves("task-workspace-failure-"+id+"-").Length==1,
+            "non-empty interrupted workspace is preserved and failure is journaled");
+
+        var wrongAclState=BuildTaskState();
+        var wrongAclOps=new FakeTaskWorkspaceRecoveryOps{DirectoryExists=true,ParentIdentity=record.ParentIdentity,DescriptorValid=false};
+        ExpectAny(()=>SessionTaskWorkspace.Cleanup(wrongAclState,record,wrongAclOps));
+        Require(wrongAclOps.DeleteCount==0 && wrongAclOps.DirectoryExists,"wrong owner/group/DACL/label never reaches deletion");
+
+        var reparseState=BuildTaskState();
+        var reparseOps=new FakeTaskWorkspaceRecoveryOps{DirectoryExists=true,ParentIdentity=record.ParentIdentity,NoReparse=false};
+        ExpectAny(()=>SessionTaskWorkspace.Cleanup(reparseState,record,reparseOps));
+        Require(reparseOps.DeleteCount==0 && reparseOps.DirectoryExists,"reparse-point task root is preserved");
+
+        var wrongParentState=BuildTaskState();
+        var wrongParentOps=new FakeTaskWorkspaceRecoveryOps{DirectoryExists=true,ParentIdentity="00000001:00000002:00000005"};
+        ExpectAny(()=>SessionTaskWorkspace.Cleanup(wrongParentState,record,wrongParentOps));
+        Require(wrongParentOps.OpenCount==0 && wrongParentOps.DeleteCount==0,"changed Program Files parent identity blocks filesystem access");
+
+        var boundState=BuildTaskState();
+        boundState.Set("profile-job-"+id+".json",new {SchemaVersion=1,JobId=job});
+        var boundOps=new FakeTaskWorkspaceRecoveryOps{DirectoryExists=true,ParentIdentity=record.ParentIdentity};
+        ExpectAny(()=>SessionTaskWorkspace.Cleanup(boundState,record,boundOps));
+        Require(boundOps.OpenCount==0 && boundOps.DeleteCount==0,"a profile with a process binding cannot use unrecorded-empty recovery");
+
+        var deleteFailureState=BuildTaskState();
+        var deleteFailureOps=new FakeTaskWorkspaceRecoveryOps{DirectoryExists=true,ParentIdentity=record.ParentIdentity,DeleteSucceeds=false};
+        try{SessionTaskWorkspace.Cleanup(deleteFailureState,record,deleteFailureOps);throw new Exception("delete failure was accepted");}
+        catch(WfpFailure){}
+        Require(deleteFailureOps.DirectoryExists && deleteFailureOps.DeleteCount==1 &&
+            deleteFailureState.ReadOptional("task-workspace-closed-"+id+".json") is null,
+            "native delete failure produces no closed receipt and preserves the task root");
+
+        var stillPresentState=BuildTaskState();
+        var stillPresentOps=new FakeTaskWorkspaceRecoveryOps{DirectoryExists=true,ParentIdentity=record.ParentIdentity,KeepPresentAfterDelete=true};
+        ExpectAny(()=>SessionTaskWorkspace.Cleanup(stillPresentState,record,stillPresentOps));
+        Require(stillPresentOps.DeleteCount==1 && stillPresentOps.DirectoryExists &&
+            stillPresentState.ReadOptional("task-workspace-closed-"+id+".json") is null,
+            "recovery refuses to issue a closed receipt when post-delete absence is not observed");
+
+        var changedAfterDeleteState=BuildTaskState();
+        var changedAfterDeleteOps=new FakeTaskWorkspaceRecoveryOps{DirectoryExists=true,ParentIdentity=record.ParentIdentity};
+        changedAfterDeleteOps.AfterDelete=()=>changedAfterDeleteState.Set("profile-delete-intent-"+id+".json",new {SchemaVersion=2,Changed=true});
+        ExpectAny(()=>SessionTaskWorkspace.Cleanup(changedAfterDeleteState,record,changedAfterDeleteOps));
+        Require(!changedAfterDeleteOps.DirectoryExists &&
+            changedAfterDeleteState.ReadOptional("task-workspace-closed-"+id+".json") is null,
+            "cleanup-intent drift after deletion prevents a false closed receipt");
+
+        ProtectedState BuildClosedReceiptState(int removed=0,string? workspaceIdentity=null,bool rootAbsent=true)
+        {
+            var taskState=BuildTaskState();
+            var intentLeaf="task-workspace-intent-"+id+".json";
+            taskState.Set("task-workspace-closed-"+id+".json",new {
+                SchemaVersion=2,taskState.InstallationId,ProfileId=id,IntentSHA256=taskState.Read(intentLeaf).SHA256,
+                ProfileCleanupIntentSHA256=taskState.Read("profile-delete-intent-"+id+".json").SHA256,
+                Status="UNRECORDED_EMPTY_TASK_DIRECTORY_ABSENCE_OBSERVED",RootAbsent=rootAbsent,
+                RemovedEntries=removed,WorkspaceIdentity=workspaceIdentity
+            });
+            return taskState;
+        }
+        SessionTaskWorkspace.AssertClosed(BuildClosedReceiptState(),record);
         foreach(var invalid in new[]{
-            BuildTaskState(rootAbsent:false),
-            BuildTaskState(removed:1),
-            BuildTaskState(removed:1,workspaceIdentity:"bad"),
+            BuildClosedReceiptState(rootAbsent:false),
+            BuildClosedReceiptState(removed:1),
+            BuildClosedReceiptState(removed:1,workspaceIdentity:"bad"),
         }) ExpectAny(()=>SessionTaskWorkspace.AssertClosed(invalid,record));
-        var changedIntent=BuildTaskState();
+        var changedIntent=BuildClosedReceiptState();
         changedIntent.Set("task-workspace-intent-"+id+".json",new TaskWorkspaceIntent(1,changedIntent.InstallationId,id,
             new string('e',32),changedIntent.Read(created).SHA256,record.ParentIdentity,"FRESH_DISPOSABLE_TASK_DIRECTORY_ONLY"));
         ExpectAny(()=>SessionTaskWorkspace.AssertClosed(changedIntent,record));
-        var changedCleanup=BuildTaskState();
+        var changedCleanup=BuildClosedReceiptState();
         changedCleanup.Set("profile-delete-intent-"+id+".json",new {SchemaVersion=2,Changed=true});
         ExpectAny(()=>SessionTaskWorkspace.AssertClosed(changedCleanup,record));
-        var boundTask=BuildTaskState();
+        var boundTask=BuildClosedReceiptState();
         boundTask.Set("profile-job-"+id+".json",new {SchemaVersion=1,JobId=job});
         ExpectAny(()=>SessionTaskWorkspace.AssertClosed(boundTask,record));
-        var parentMismatch=BuildTaskState();
+        var parentMismatch=BuildClosedReceiptState();
         WindowsPathSeal.ParentIdentity="00000001:00000002:00000005";
         ExpectAny(()=>SessionTaskWorkspace.AssertClosed(parentMismatch,record));
-        var rootStillPresent=BuildTaskState();
+        var rootStillPresent=BuildClosedReceiptState();
         WindowsPathSeal.ParentIdentity=record.ParentIdentity;
         WindowsPathSeal.PresentPath=taskPath;
         ExpectAny(()=>SessionTaskWorkspace.AssertClosed(rootStillPresent,record));
@@ -175,7 +244,7 @@ internal static class WindowsPathSeal
 {
     internal static string? PresentPath;
     internal static string ParentIdentity="00000001:00000002:00000004";
-    internal static string Child(string path,string relative)=>Path.Combine(path,relative.Replace('/',Path.DirectorySeparatorChar));
+    internal static string Child(string path,string relative)=>Path.GetFullPath(Path.Combine(path,relative.Replace('/',Path.DirectorySeparatorChar)));
     internal static string Canonical(string path)=>Path.GetFullPath(path);
     internal static PathLease LockDirectory(string path,PathPolicy policy)=>new(Path.GetFullPath(path),ParentIdentity);
     internal static SafeFileHandle Open(string path,bool directory,bool read)
@@ -204,3 +273,39 @@ internal static class InstallationLoopbackLease{internal static void AssertClose
 internal sealed class FencePlan{internal FencePlan Data=>this;internal string FenceId=>throw new Exception("native forbidden");internal static IReadOnlyList<FencePlan> ReadAll(ProtectedState state)=>throw new Exception("native forbidden");}
 internal sealed class PersistentFence : IDisposable{internal static PersistentFence OpenExisting(ProtectedState state,string id)=>throw new Exception("native forbidden");internal (bool FullQuarantineObserved, bool Unused) Observe()=>throw new Exception("native forbidden");public void Dispose(){}}
 internal sealed class WfpFailure : IOException{internal WfpFailure(string stage,uint status):base(stage){}}
+internal sealed class FakeTaskWorkspaceRecoveryOps : ITaskWorkspaceRecoveryOps
+{
+    internal string ParentIdentity="00000001:00000002:00000004";
+    internal bool DirectoryExists;
+    internal bool DescriptorValid=true;
+    internal bool NoReparse=true;
+    internal bool DeleteSucceeds=true;
+    internal bool KeepPresentAfterDelete;
+    internal string[] Names=Array.Empty<string>();
+    internal int OpenCount,DeleteCount;
+    internal Action? AfterDelete;
+    private const string IdentityValue="00000001:00000002:00000006";
+    public PathLease LockParent(string path)=>new(Path.GetFullPath(path),ParentIdentity);
+    public string Canonical(string path)=>Path.GetFullPath(path);
+    public SafeFileHandle OpenDirectoryForDelete(string path)
+    {
+        OpenCount++;
+        if(!DirectoryExists)throw new ExactPathAbsentException(2,Path.GetFullPath(path));
+        return new SafeFileHandle(IntPtr.Zero,false);
+    }
+    public string Identity(SafeFileHandle handle)=>IdentityValue;
+    public void AssertFreshWorkspace(SafeFileHandle handle,string ownerSid,string packageSid)
+    {if(!DescriptorValid)throw WfpNative.Contract("WorkspaceGrantOrLowIntegrityMismatch");}
+    public string[] EnumerateNames(SafeFileHandle handle,string path,int maximum)=>Names.Take(maximum).ToArray();
+    public void VerifyObject(SafeFileHandle handle,string path,bool directory)
+    {if(!NoReparse)throw WfpNative.Contract("TaskWorkspaceReparsePointRefused");}
+    public void MarkDelete(SafeFileHandle handle)
+    {
+        DeleteCount++;
+        if(!DeleteSucceeds)throw new WfpFailure("FakeTaskWorkspaceDelete",5);
+        if(!KeepPresentAfterDelete)DirectoryExists=false;
+        AfterDelete?.Invoke();
+    }
+    public void AssertAbsent(string path)
+    {if(DirectoryExists)throw WfpNative.Contract("UnrecordedTaskWorkspaceStillPresent");}
+}
