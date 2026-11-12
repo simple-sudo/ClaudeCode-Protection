@@ -787,7 +787,8 @@ internal sealed partial class AtomicChild : IDisposable
         if(previous!=1)throw WfpNative.Contract("AtomicInitialSuspendCountMismatch");
         resumed=true;return proof;
     }
-    internal uint WaitForCanaryExit(int? timeoutMs = null)
+    internal uint WaitForCanaryExit()=>WaitForCanaryExit(null);
+    internal uint WaitForCanaryExit(int? timeoutMs)
     {
         var defaultTimeoutMs=network?.Kind==NetworkProbeKind.ProxySession?90000u:network is not null || gpuWorkload?30000u:15000u;
         return ObserveCanaryExit(ResolveCanaryTimeoutMs(timeoutMs,defaultTimeoutMs))
