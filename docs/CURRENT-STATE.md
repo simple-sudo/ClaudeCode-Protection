@@ -23,9 +23,7 @@
 
 在架构审查源码基线 HEAD 74578e903c2584628d853598ef8f1910adf7da5b 上，以下三组 GitHub Actions 均为 SUCCESS：
 
-- [Hosted Windows compile only](https://github.com/simple-sudo/ClaudeCode-Protection/actions/runs/43182143806)
-- [Safe managed policy smoke](https://github.com/simple-sudo/ClaudeCode-Protection/actions/runs/43182143786)
-- [Offline workspace Git workflow verification](https://github.com/simple-sudo/ClaudeCode-Protection/actions/runs/43182143869)
+- 本次架构/代码重构后的 CI 正在运行；以对应提交的 Actions 结果为准。
 
 最新测试提交 36ad1b2 澄清了 NativeGitLpacAccessCases 测试夹具的本机 elevated Windows 运行边界。CI 成功只证明这些工作流所执行的编译和测试范围，不等于产品 Broker、Owned Job、LPAC 完整链或真实 Claude 会话已通过。
 
