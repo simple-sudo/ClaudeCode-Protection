@@ -48,14 +48,6 @@ internal sealed partial class AtomicChild
         Console.WriteLine(JsonSerializer.Serialize(witness));
         return witness.Complete?0:3;
     }
-    private uint? ObserveCanaryExit(uint milliseconds)
-    {
-        if(!resumed || disposed)throw new InvalidOperationException("Canary has not resumed");
-        var status=WaitForSingleObject(process,milliseconds);
-        if(status==0x102)return null;
-        if(status!=0)throw Error("AtomicCanaryWait");
-        if(!GetExitCodeProcess(process,out var code))throw Error("AtomicCanaryExitCode");return code;
-    }
     internal static void SetPrivateRuntimeDirectories(IDictionary<string,string> environment,string ownedDirectory)
     {
         // Pure mapping only. The creation owner supplies its bound profile or
