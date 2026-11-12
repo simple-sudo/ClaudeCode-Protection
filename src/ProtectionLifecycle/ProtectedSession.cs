@@ -21,6 +21,7 @@ internal sealed class ProtectedSession
     internal static void AssertSystemTestingAllowed()
     {if(SystemTestingBlocked)throw new InvalidOperationException("SYSTEM_ARTIFACT_NOT_QUALIFIED: bounded artifact/runtime/install qualification required");}
     private const string ResourceScope = "INSTALLED_BROKER_CANARY_ONLY;workspace=none;tools=none;gpu=none;no-breakaway";
+    internal const int GitWorkflowTimeoutMs=60000;
     private readonly FixedLayout layout;
     private readonly ProtectedState state;
     private readonly VerifiedVersion version;
@@ -198,7 +199,7 @@ internal sealed class ProtectedSession
     {
         InstallationProfileLease? profile=null;AtomicChild? child=null;
         var gitWorkflow=workspaceInput is not null && WorkspaceBundle.Parse(workspaceInput).GitPlan is not null;
-        resourceDurationMs=gitWorkflow?60000:30000;
+        resourceDurationMs=gitWorkflow?GitWorkflowTimeoutMs:30000;
         var (powerShellRequired,compilerRequired)=ResourceProbePlan.ToolRequirements(developProject,workspaceInput is not null);
         System.IO.Pipes.AnonymousPipeServerStream? pipe=null;StreamReader? reader=null;
         ResourceQualification? permit=null;ResourceChildReport? observed=null;Task<uint>? exited=null;Task<string>? text=null;
@@ -233,7 +234,11 @@ internal sealed class ProtectedSession
             // mutation; keep its journal inspection/recovery for old runs.
             runtime=new ProtectionRuntimeLease(state,version,job,fences,null,resources:permit,assertCaller:assertCaller);
             assertCaller?.Invoke();
-            _=child.ResumeQuarantined();resumed=true;runtime.Activate(gitWorkflow?60000:20000);exited=Task.Run(child.WaitForCanaryExit);
+            _=child.ResumeQuarantined();resumed=true;runtime.Activate(gitWorkflow?GitWorkflowTimeoutMs:20000);
+            // Eleven owner-brokered Git processes need the same bounded window
+            // as the resource permit and runtime watchdog, not the generic
+            // atomic canary's 15-second default.
+            exited=Task.Run(()=>child!.WaitForCanaryExit(gitWorkflow?GitWorkflowTimeoutMs:null));
             while(!exited.Wait(100))
             {
                 runtime.AssertHealthy();
