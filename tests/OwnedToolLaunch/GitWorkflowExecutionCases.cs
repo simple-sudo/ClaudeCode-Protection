@@ -556,9 +556,9 @@ internal static class GitWorkflowExecutionCases
         var workspaceTools=InvokeStatic(plan,"ToolRequirementsForIntent",workspace)!;
         var dataTools=InvokeStatic(plan,"ToolRequirementsForIntent",data)!;
         var bundledTools=InvokeStatic(plan,"ToolRequirementsForIntent",bundled)!;
-        Require(Get(workspaceTools,"PowerShell") is true && Get(workspaceTools,"Compiler") is true &&
-            Get(dataTools,"PowerShell") is false && Get(dataTools,"Compiler") is false &&
-            Get(bundledTools,"PowerShell") is false && Get(bundledTools,"Compiler") is true,
+        Require(Get(workspaceTools,"Item1") is true && Get(workspaceTools,"Item2") is true &&
+            Get(dataTools,"Item1") is false && Get(dataTools,"Item2") is false &&
+            Get(bundledTools,"Item1") is false && Get(bundledTools,"Item2") is true,
             "typed operation intent preserves the existing PowerShell/compiler requirement matrix");
         Console.WriteLine("PASS typed ResourceExecution intent: fixed operation kinds, payload binding, caller recheck and tool requirements; no OS resources created");
     }
