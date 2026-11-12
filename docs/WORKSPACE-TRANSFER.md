@@ -5,7 +5,7 @@
 
 ## 2026-11-10/12：显式离线 Git 工作流 schema 2（托管构建、普通用户真实 Git、结果快照和对抗配置验证通过；LPAC待验收）
 
-本节描述开发分支 `chatgpt/complete-git-workflow-20261110` 当前源码能力，不覆盖上方历史安装证据。当前已验证实现基线为 `ec195f4c49414ecf374cf12e5d9929b576b11817`，Draft PR #3 保持开放且未合并；当前安装仍以[CURRENT-STATE](CURRENT-STATE.md)为准。GitHub Actions 43141904119 完成全部产品/专项测试编译并以标准用户实际执行 Git 工作流；43141904069 编译全部产品但不运行受保护代码；43141904158 通过纯托管策略 smoke 并编译 daily CLI。三组均 SUCCESS。2026-11-12 又修正了 schema 2 多命令执行期限：Broker resource permit 与 runtime watchdog 均为 60,000ms，LPAC root 的等待不再误用通用 15,000ms Canary 默认值；显式超时范围校验及无参旧调用兼容已加入专项测试。该修复只消除等待期限不一致，不构成 LPAC 实机验收。
+本节描述开发分支 `chatgpt/complete-git-workflow-20261110` 当前源码能力，不覆盖上方历史安装证据。当前分支 HEAD 为 `5b2b732f2d94052329c320f235141a7129ce783d`，源码/测试实现基线为 `ec195f4c49414ecf374cf12e5d9929b576b11817`，相对目标分支领先 79、落后 0；Draft PR #3 保持开放且未合并。Pointer schema 1；当前安装 Release `f9e8d29d9c2c472495422dbffd40bffd`，Activation `INACTIVE`，Package schema 32，25 assets。用户在 2026-11-12 以只读 PowerShell 实测 `current.json` 的 `ManifestSHA256` 与当前版本 `package.json` 实际 SHA256 完全一致：`5195D12C6A446BA3408D822C3907E5FD7E51BB4ED820A69BFCB08A16512BDBC2`。 Bootstrap 仍嵌入旧 schema 6 Release `7df61706780c433f9dc5e7ddf5bc6f28` 和 `4d186bcb→7df61706` Transition，该 transition 不适用于当前安装，不能复用。GitHub Actions 43141904119 完成全部产品/专项测试编译并以标准用户实际执行 Git 工作流；43141904069 编译全部产品但不运行受保护代码；43141904158 通过纯托管策略 smoke 并编译 daily CLI。三组均 SUCCESS。2026-11-12 又修正了 schema 2 多命令执行期限：Broker resource permit 与 runtime watchdog 均为 60,000ms，LPAC root 的等待不再误用通用 15,000ms Canary 默认值；显式超时范围校验及无参旧调用兼容已加入专项测试。该修复只消除等待期限不一致，不构成 LPAC 实机验收。
 
 **证据边界：** 43141904119 的标准用户测试实际启动 Runner Git，执行 hash-object/init/add/diff-check/numstat/commit/log/status/fsck、两个私有对象拒绝对照及 Owner 独立 commit/tree/blob/ref/GitReceipt 核验。对抗样例注入仓库本地 clean filter、恶意 hooksPath 和 textconv 驱动；固定 info attributes、外置 hooksPath、`--no-ext-diff` 与 `--no-textconv` 使其不能改变文件内容或启动转换器。样本覆盖 CRLF、未终止文本、NUL 二进制、空文件、显式选择的 ignored 文件，以及首 8000 字节无 NUL、其后含 NUL 的边界。Owner 依据不可变 GitPlan 文件内容独立重算 numstat 新增/删除/二进制指标，拒绝伪造指标；再独立验证 commit/tree/blob/ref 和精确 GitReceipt 绑定。以上是 Runner 普通用户真实 Git 和 Owner 托管验证证据，不是产品 LPAC 证据。
 
@@ -42,7 +42,7 @@ READ_CONTROL）及低完整性标签；不授予 LPAC WRITE_DAC/WRITE_OWNER。Ow
 空全局配置和 pathspec 长度/内容。该分层保护的是外置 Git 控制输入；仓库自身的
 `.git` 元数据仍位于 LPAC 可写的 `git-project` 中，不能把外置控制目录的只读权限
 误写成整个 `.git` 都只读。当前 CI 只证明描述符/fixture 逻辑和普通用户真实 Git，
-真实 Broker 创建的目录 ACL 继承、LPAC token 实际读写边界仍 NOT_RUN。 Bootstrap 交付链仍需单独闭环：源码内嵌 `ApprovedPackage.json` 当前为 schema 6 / Release `7df61706780c433f9dc5e7ddf5bc6f28`，`InactiveUpdateTransition.json` 固定 `4d186bcb→7df61706`；当前 INACTIVE 安装的 Release/Manifest SHA256 必须从受保护 current pointer 只读核对后，才能生成新的精确 transition。`PackageAssetCatalog` schema 32 与 workspace bundle schema 2 不同，不得混为一谈。
+真实 Broker 创建的目录 ACL 继承、LPAC token 实际读写边界仍 NOT_RUN。 Bootstrap 交付链仍需单独闭环：源码内嵌 `ApprovedPackage.json` 当前为 schema 6 / Release `7df61706780c433f9dc5e7ddf5bc6f28`，`InactiveUpdateTransition.json` 固定 `4d186bcb→7df61706`；当前 INACTIVE 安装的 Release/Manifest SHA256 已由用户只读核对并精确匹配；新 transition 仍须等下一候选包所有资产实际构建、哈希和清单核对完成后生成。`PackageAssetCatalog` schema 32 与 workspace bundle schema 2 不同，不得混为一谈。
 
 Owner 在 Job 归零后独立核对 commit、tree、每个 blob、`HEAD`、`refs/heads/main`
 及提交身份，并根据不可变输入重新计算 numstat 新增行、删除行和二进制文件数量，
