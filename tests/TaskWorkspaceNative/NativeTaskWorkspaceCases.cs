@@ -33,10 +33,12 @@ internal static class NativeTaskWorkspaceCases
     internal static void Run(string expectedHumanSid,string packageName,string[] sessions)
     {
         if(sessions.Length!=5)throw new ArgumentException("Five native fixture sessions are required");
+        _=new SecurityIdentifier(expectedHumanSid);
         using var identity=WindowsIdentity.GetCurrent();
-        var humanSid=identity.User?.Value??throw new InvalidOperationException("Current Windows user SID unavailable");
-        if(!string.Equals(humanSid,expectedHumanSid,StringComparison.OrdinalIgnoreCase))
-            throw new InvalidOperationException("Native recovery test did not run as the prepared standard user");
+        var principal=new WindowsPrincipal(identity);
+        if(!principal.IsInRole(WindowsBuiltInRole.Administrator))
+            throw new InvalidOperationException("Native NTFS recovery test must run in the elevated Broker-equivalent context");
+        var humanSid=expectedHumanSid;
         var packageSid=DeriveAppContainerSid(packageName);
         var programFiles=Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
         string parentIdentity;
