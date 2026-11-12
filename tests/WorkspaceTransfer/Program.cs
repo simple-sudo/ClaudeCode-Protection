@@ -15,7 +15,7 @@ var original=WorkspaceBundle.Create(new[]{("src/main.txt",Bytes("before")),("emp
 using(var input=new MemoryStream(original))Require(WorkspaceFiles.ReadInput(input,WorkspaceBundle.MaxBundleBytes).AsSpan().SequenceEqual(original),"bounded stdin exact bytes");
 using(var over=new MemoryStream(new byte[33]))Refuse(()=>WorkspaceFiles.ReadInput(over,32),"stdin maximum plus one");
 Require(WorkspaceBundle.Parse(original).Files.Length==3,"binary and empty roundtrip");
-foreach(var name in new[]{"../outside","/absolute","C:/outside","a\\b","a:b","a//b","a/./b","a/../b","CON.txt","nul","COM1.dat","LPT9","a.","a ",".git/config","a/.GIT/config","a/*","a/é"})
+foreach(var name in new[]{"../outside","/absolute","C:/outside","a\\b","a:b","a//b","a/./b","a/../b","CON.txt","CON .txt","PRN .txt","AUX .txt","NUL .dat","COM1 .dat","LPT9 .dat","nul","COM1.dat","LPT9","a.","a ",".git/config","a/.GIT/config","a/*","a/é"})
     Refuse(()=>WorkspaceBundle.Create(new[]{(name,Bytes("x"))}),"path "+name);
 foreach(var pair in new[]{("a.txt","A.txt"),("src","src/a.txt"),("src/A.txt","SRC/b.txt"),("src/a.txt","SRC")})
     Refuse(()=>WorkspaceBundle.Create(new[]{(pair.Item1,Bytes("a")),(pair.Item2,Bytes("b"))}),"collision");

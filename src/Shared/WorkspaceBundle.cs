@@ -75,7 +75,9 @@ internal sealed record WorkspaceBundle(int SchemaVersion,string Scope,string? Ba
             if(part.Length is <1 or >80 || part is "." or ".." || part.EndsWith('.') || part.EndsWith(' ') ||
                 part.Any(c=>!char.IsAsciiLetterOrDigit(c) && c is not ('.' or '_' or '-' or ' ')))
                 throw new InvalidDataException("Ambiguous workspace path refused");
-            var stem=part.Split('.')[0].ToUpperInvariant();
+            // Win32 device aliases remain reserved when followed by an
+            // extension; trim spaces immediately before that extension too.
+            var stem=part.Split('.')[0].TrimEnd(' ').ToUpperInvariant();
             if(stem is "CON" or "PRN" or "AUX" or "NUL" or "CLOCK$" ||
                 stem.Length==4 && (stem.StartsWith("COM",StringComparison.Ordinal) || stem.StartsWith("LPT",StringComparison.Ordinal)) && stem[3] is >= '0' and <= '9' ||
                 part.Equals(".git",StringComparison.OrdinalIgnoreCase))throw new InvalidDataException("Workspace device or Git metadata refused");
