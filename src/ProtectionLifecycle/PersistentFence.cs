@@ -2,6 +2,8 @@ using System.Runtime.InteropServices;
 using System.Security.Principal;
 using System.Text.Json;
 
+namespace ProtectionLifecycle;
+
 // A real WFP implementation for a fixed installation package SID. It adds or
 // reinstates quarantine and opens only the compiled IPv4 proxy endpoint after
 // identity qualification. It cannot remove the final barrier for uninstall or
