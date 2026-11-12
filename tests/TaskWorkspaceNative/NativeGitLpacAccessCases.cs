@@ -333,7 +333,7 @@ internal static class NativeGitLpacAccessCases
                     throw new InvalidDataException("LpacGitWorkspaceTokenQualificationFailed");
 
                 var programFiles = Path.GetDirectoryName(root) ?? throw new InvalidDataException("LpacGitWorkspaceProgramFilesParentMissing");
-                var driveRoot = Path.GetPathRoot(root) ?? throw new InvalidDataException("LpacGitWorkspaceDriveRootMissing");
+                var driveVolumeRoot = Path.GetPathRoot(root) ?? throw new InvalidDataException("LpacGitWorkspaceDriveRootMissing");
                 var pathProbes = new[]
                 {
                     "drive-traverse=" + ProbeOpenAsLpac(token, driveRoot, true, 0x20),
