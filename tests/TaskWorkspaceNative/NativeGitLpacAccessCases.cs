@@ -394,8 +394,6 @@ internal static class NativeGitLpacAccessCases
                     ";InitialCwd=" + failedInitialCwd + ";FinalCwd=" + failedFinalCwd);
             }
             var expectedCwd = Path.TrimEndingDirectorySeparator(Path.GetFullPath(root));
-            var initialCwdPath = Path.Combine(root, "lpac-start-cwd.txt");
-            var finalCwdPath = Path.Combine(root, "lpac-final-cwd.txt");
             var initialCwd = File.ReadAllText(initialCwdPath).Trim();
             var finalCwd = File.ReadAllText(finalCwdPath).Trim();
             if (!string.Equals(Path.TrimEndingDirectorySeparator(Path.GetFullPath(initialCwd)), expectedCwd, StringComparison.OrdinalIgnoreCase))
