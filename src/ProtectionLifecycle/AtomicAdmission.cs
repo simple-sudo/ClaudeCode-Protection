@@ -652,54 +652,6 @@ internal sealed partial class AtomicChild : IDisposable
         if(previous!=1)throw WfpNative.Contract("AtomicInitialSuspendCountMismatch");
         resumed=true;return proof;
     }
-    internal uint WaitForCanaryExit()=>WaitForCanaryExit(null);
-    internal uint WaitForCanaryExit(int? timeoutMs)
-    {
-        var defaultTimeoutMs=network?.Kind==NetworkProbeKind.ProxySession?90000u:network is not null || gpuWorkload?30000u:15000u;
-        return ObserveCanaryExit(ResolveCanaryTimeoutMs(timeoutMs,defaultTimeoutMs))
-            ??throw new TimeoutException("Finite atomic canary did not exit");
-    }
-    internal static uint ResolveCanaryTimeoutMs(int? timeoutMs,uint defaultTimeoutMs)
-    {
-        if(defaultTimeoutMs is 0 or >120000 || timeoutMs is <1 or >120000)
-            throw new ArgumentOutOfRangeException(nameof(timeoutMs));
-        return timeoutMs.HasValue?checked((uint)timeoutMs.Value):defaultTimeoutMs;
-    }
-    internal static void AssertHeldInitialThread(SafeProcessHandle process,SafeWaitHandle thread,uint pid,uint tid)
-    {
-        if(pid==0 || tid==0 || process.IsClosed || process.IsInvalid || thread.IsClosed || thread.IsInvalid ||
-            GetProcessId(process)!=pid || GetThreadId(thread)!=tid || GetProcessIdOfThread(thread)!=pid ||
-            WaitForSingleObject(process,0)!=0x102 || WaitForInitialThread(thread,0)!=0x102)
-            throw WfpNative.Contract("HeldInitialThreadIdentityOrLifetimeMismatch");
-    }
-    internal void AssertGpuRuntimeOwner(ProtectedState exactState,VerifiedVersion exactVersion,OwnedKernelJob exactJob)
-    {
-        if(!gpuWorkload || disposed || resumed || !IsRunning || !ReferenceEquals(state,exactState) ||
-            !ReferenceEquals(version,exactVersion) || !ReferenceEquals(job,exactJob) || !job.ContainsProcess(process))
-            throw WfpNative.Contract("GpuRuntimeRequiresExactSuspendedChild");
-    }
-    internal uint? ObserveFixedGpuExit()
-    {
-        if(!gpuWorkload)throw WfpNative.Contract("FixedGpuWorkloadRequired");
-        return ObserveCanaryExit(100);
-    }
-    internal void AssertOfflineTlsRuntimeOwner(ProtectedState exactState,VerifiedVersion exactVersion,OwnedKernelJob exactJob,OfflineTlsProbe probe)
-    {
-        if(offlineTls!=probe || disposed || resumed || !IsRunning || !ReferenceEquals(state,exactState) ||
-            !ReferenceEquals(version,exactVersion) || !ReferenceEquals(job,exactJob) || !job.ContainsProcess(process))
-            throw WfpNative.Contract("OfflineTlsRuntimeRequiresExactSuspendedChild");
-    }
-    internal uint? ObserveFixedOfflineTlsExit()
-    {
-        if(offlineTls is null)throw WfpNative.Contract("FixedOfflineTlsWorkloadRequired");
-        return ObserveCanaryExit(100);
-    }
-    internal void AssertOfflineConsoleRuntimeOwner(ProtectedState exactState,VerifiedVersion exactVersion,OwnedKernelJob exactJob)
-    {
-        if(!offlineConsole || disposed || ResumeAttempted || !IsRunning || !ReferenceEquals(state,exactState) ||
-            !ReferenceEquals(version,exactVersion) || !ReferenceEquals(job,exactJob) || !job.ContainsProcess(process))
-            throw WfpNative.Contract("OfflineConsoleRuntimeRequiresExactSuspendedChild");
-    }
     private static void AssertNoChildCreation(SafeProcessHandle process)
     {
         if(!GetProcessMitigationPolicy(process,13,out var flags,sizeof(uint)))throw Error("OfflineConsoleReadChildPolicy");
