@@ -7,6 +7,22 @@ namespace ProtectionLifecycle;
 internal sealed record TaskWorkspaceIntent(int SchemaVersion,string InstallationId,string ProfileId,string SessionId,
     string ProfileCreatedSHA256,string ParentIdentity,string Scope);
 
+// Narrow native boundary for the unrecorded-empty recovery transaction. The
+// production implementation is the only default; tests inject a fake to drive
+// every failure edge without mutating the host filesystem.
+internal interface ITaskWorkspaceRecoveryOps
+{
+    PathLease LockParent(string path);
+    string Canonical(string path);
+    SafeFileHandle OpenDirectoryForDelete(string path);
+    string Identity(SafeFileHandle handle);
+    void AssertFreshWorkspace(SafeFileHandle handle,string ownerSid,string packageSid);
+    string[] EnumerateNames(SafeFileHandle handle,string path,int maximum);
+    void VerifyObject(SafeFileHandle handle,string path,bool directory);
+    void MarkDelete(SafeFileHandle handle);
+    void AssertAbsent(string path);
+}
+
 // Tool-owned disposable task data with publicly traversable ancestry. This
 // avoids granting access to private user-profile ancestors for Win32 tools'
 // getcwd/path normalization. The task DACL itself remains package-specific.
@@ -110,16 +126,41 @@ internal static class SessionTaskWorkspace
             SchemaVersion=1,state.InstallationId,profile.ProfileId,RemovedEntries=removed,Status="NOT_CONFIRMED",Failures=WfpNative.Describe(ex)}));}
         catch(Exception log){throw new AggregateException("Exact task cleanup and failure recording both failed",ex,log);}
     }
-    private static void CleanupUnrecordedEmpty(ProtectedState state,ProfileStorageReceipt profile,ref int removed)
+    private sealed class NativeTaskWorkspaceRecoveryOps : ITaskWorkspaceRecoveryOps
+    {
+        internal static readonly NativeTaskWorkspaceRecoveryOps Instance=new();
+        public PathLease LockParent(string path)=>WindowsPathSeal.LockDirectory(path,PathPolicy.CreationParent);
+        public string Canonical(string path)=>WindowsPathSeal.Canonical(path);
+        public SafeFileHandle OpenDirectoryForDelete(string path)=>Open(path,true);
+        public string Identity(SafeFileHandle handle)=>WindowsPathSeal.Identity(handle);
+        public void AssertFreshWorkspace(SafeFileHandle handle,string ownerSid,string packageSid)
+            =>SessionResources.AssertFreshWorkspaceForRecovery(handle,ownerSid,packageSid);
+        public string[] EnumerateNames(SafeFileHandle handle,string path,int maximum)
+            =>WindowsPathSeal.EnumerateNames(handle,path,maximum);
+        public void VerifyObject(SafeFileHandle handle,string path,bool directory)
+            =>WindowsPathSeal.VerifyObject(handle,path,directory);
+        public void MarkDelete(SafeFileHandle handle)
+        {
+            var disposition=0x17u;
+            if(!SetFileInformationByHandle(handle,21,ref disposition,4))
+                throw new WfpFailure("DeleteUnrecordedEmptyTaskWorkspace",unchecked((uint)Marshal.GetLastWin32Error()));
+        }
+        public void AssertAbsent(string path)
+        {
+            try{using var exists=WindowsPathSeal.Open(path,true,false);throw WfpNative.Contract("UnrecordedTaskWorkspaceStillPresent");}
+            catch(ExactPathAbsentException ex)when(string.Equals(ex.FailedPath,path,StringComparison.OrdinalIgnoreCase)){}
+        }
+    }
+    private static void CleanupUnrecordedEmpty(ProtectedState state,ProfileStorageReceipt profile,ref int removed,ITaskWorkspaceRecoveryOps native)
     {
         state.AssertHeld();
         var intent=ReadIntent(state,profile);
         var cleanupIntent=state.Read("profile-delete-intent-"+profile.ProfileId+".json",8192);
         var binding=state.ReadOptional("profile-job-"+profile.ProfileId+".json");
         var parentPath=Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
-        using var parent=WindowsPathSeal.LockDirectory(parentPath,PathPolicy.CreationParent);
+        using var parent=native.LockParent(parentPath);
         var path=PathFor(intent.Value.SessionId);
-        var canonical=WindowsPathSeal.Canonical(path);
+        var canonical=native.Canonical(path);
         var parentMatches=parent.ObjectIdentity()==intent.Value.ParentIdentity;
         var exactPath=string.Equals(Path.GetDirectoryName(canonical),parent.Path,StringComparison.OrdinalIgnoreCase) &&
             string.Equals(canonical,path,StringComparison.OrdinalIgnoreCase);
@@ -139,41 +180,41 @@ internal static class SessionTaskWorkspace
         using var package=new InstallationPackageSid(state);
         try
         {
-            // This class's private Open() requests DELETE | READ_CONTROL |
-            // FILE_READ_ATTRIBUTES (0x00030180), holds FILE_SHARE_READ only,
-            // and verifies the no-reparse NTFS path/object identity.
-            using(var root=Open(path,true))
+            // The native adapter opens a DELETE-capable, no-share-delete handle,
+            // verifies NTFS/no-reparse identity, exact owner/group/DACL and label,
+            // and only exposes MarkDelete after the empty-directory preflight.
+            using(var root=native.OpenDirectoryForDelete(path))
             {
-                identity=WindowsPathSeal.Identity(root);
-                SessionResources.AssertFreshWorkspaceForRecovery(root,profile.OwnerSid,package.Value);
-                var names=WindowsPathSeal.EnumerateNames(root,path,1);
+                identity=native.Identity(root);
+                native.AssertFreshWorkspace(root,profile.OwnerSid,package.Value);
+                var names=native.EnumerateNames(root,path,1);
                 var empty=names.Length==0;
                 RequireUnrecordedWorkspaceDeleteEvidence(noReparsePoint:true,exactOwnerGroupDacl:true,
                     lowLabelExactOrAbsent:true,emptyDirectory:empty);
                 AssertAuthority();
-                WindowsPathSeal.VerifyObject(root,path,true);
-                var disposition=0x17u;
-                if(!SetFileInformationByHandle(root,21,ref disposition,4))
-                    throw new WfpFailure("DeleteUnrecordedEmptyTaskWorkspace",unchecked((uint)Marshal.GetLastWin32Error()));
+                native.VerifyObject(root,path,true);
+                native.MarkDelete(root);
             }
             removed++;
         }
         catch(ExactPathAbsentException ex)when(string.Equals(ex.FailedPath,path,StringComparison.OrdinalIgnoreCase)){}
         AssertAuthority();
-        try{using var exists=WindowsPathSeal.Open(path,true,false);throw WfpNative.Contract("UnrecordedTaskWorkspaceStillPresent");}
-        catch(ExactPathAbsentException ex)when(string.Equals(ex.FailedPath,path,StringComparison.OrdinalIgnoreCase)){}
+        native.AssertAbsent(path);
         state.WriteNew(ClosedLeaf(profile.ProfileId),JsonSerializer.SerializeToUtf8Bytes(new {SchemaVersion=2,state.InstallationId,profile.ProfileId,
             IntentSHA256=intent.Raw.SHA256,ProfileCleanupIntentSHA256=cleanupIntent.SHA256,
             Status="UNRECORDED_EMPTY_TASK_DIRECTORY_ABSENCE_OBSERVED",RootAbsent=true,RemovedEntries=removed,WorkspaceIdentity=identity}));
     }
     internal static void Cleanup(ProtectedState state,ProfileStorageReceipt profile)
+        =>Cleanup(state,profile,NativeTaskWorkspaceRecoveryOps.Instance);
+    internal static void Cleanup(ProtectedState state,ProfileStorageReceipt profile,ITaskWorkspaceRecoveryOps recoveryNative)
     {
+        if(recoveryNative is null)throw new ArgumentNullException(nameof(recoveryNative));
         state.AssertHeld();if(state.ReadOptional(IntentLeaf(profile.ProfileId)) is null)return;
         if(state.ReadOptional(ClosedLeaf(profile.ProfileId)) is not null){AssertClosed(state,profile);return;}
         var removed=0;
         if(state.ReadOptional(CreatedLeaf(profile.ProfileId)) is null)
         {
-            try{CleanupUnrecordedEmpty(state,profile,ref removed);}
+            try{CleanupUnrecordedEmpty(state,profile,ref removed,recoveryNative);}
             catch(Exception ex){RecordCleanupFailure(state,profile,removed,ex);throw;}
             return;
         }
