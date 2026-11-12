@@ -75,6 +75,18 @@ internal static class ProfileRecoveryCases
         Require(absentOps.OpenCount==1 && absentOps.DeleteCount==0,
             "recovery records exact absence when the interrupted task directory was never created");
 
+        // A crash can also occur after the directory deletion succeeds but
+        // before the closed receipt is durably written. The next recovery
+        // observes the exact fixed path absent and completes the receipt
+        // without issuing a second delete or adopting another object.
+        var replayAbsentState=BuildTaskState();
+        var replayAbsentOps=new FakeTaskWorkspaceRecoveryOps{DirectoryExists=false,ParentIdentity=record.ParentIdentity};
+        SessionTaskWorkspace.Cleanup(replayAbsentState,record,replayAbsentOps);
+        SessionTaskWorkspace.AssertClosed(replayAbsentState,record);
+        Require(replayAbsentOps.OpenCount==1 && replayAbsentOps.DeleteCount==0 &&
+            replayAbsentState.Read("task-workspace-closed-"+id+".json").Bytes.Length>0,
+            "recovery is idempotent after deletion completed but before closed receipt persistence");
+
         var emptyState=BuildTaskState();
         var emptyOps=new FakeTaskWorkspaceRecoveryOps{DirectoryExists=true,ParentIdentity=record.ParentIdentity,Names=Array.Empty<string>()};
         SessionTaskWorkspace.Cleanup(emptyState,record,emptyOps);
