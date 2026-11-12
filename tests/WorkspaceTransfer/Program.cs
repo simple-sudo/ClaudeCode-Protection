@@ -87,6 +87,16 @@ try
         "Git workflow snapshot refuses changed selected bytes");
 }
 finally{File.WriteAllBytes(Path.Combine(gitProject,"src","main.txt"),originalGitMain);}
+var unselectedGitFile=Path.Combine(gitProject,"unselected.txt");
+File.WriteAllText(unselectedGitFile,"unselected");
+Refuse(()=>WorkspaceFiles.SnapshotSelectedResult(task,"git-project",gitTask,gitLimits),
+    "Git workflow snapshot refuses unselected files");
+File.Delete(unselectedGitFile);
+var missingGitFile=Path.Combine(gitProject,"empty.txt");
+File.Delete(missingGitFile);
+Refuse(()=>WorkspaceFiles.SnapshotSelectedResult(task,"git-project",gitTask,gitLimits),
+    "Git workflow snapshot refuses missing selected files");
+File.WriteAllBytes(missingGitFile,Array.Empty<byte>());
 var alteredGitSnapshot=WorkspaceBundle.Create(parsedGit.Files.Select(file=>
     (file.Path,file.Path=="src/main.txt"?Bytes("tampered after import"):file.Content)),WorkspaceBundle.Hash(gitTask)).Serialize();
 Refuse(()=>WorkspaceBundle.AttachGitReceipt(alteredGitSnapshot,gitTask,snapshotReceipt),
