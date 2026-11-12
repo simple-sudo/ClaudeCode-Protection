@@ -141,6 +141,9 @@ internal static class NativeGitWorkspaceCases
                 "; actualMask=0x"+packageAce.AccessMask.ToString("X8",System.Globalization.CultureInfo.InvariantCulture)+
                 "; expectedMask=0x"+expectedPackageMask.ToString("X8",System.Globalization.CultureInfo.InvariantCulture)+
                 "; actualFlags="+packageAce.AceFlags+
+                "; descriptorFlags="+descriptor.ControlFlags+
+                "; owner="+descriptor.Owner?.Value+
+                "; group="+descriptor.Group?.Value+
                 "; actualDacl="+DescribeAcl(dacl));
         if((packageAce.AccessMask&0x000c0000)!=0)
             throw new InvalidDataException("Native Git package ACE grants WRITE_DAC/WRITE_OWNER: "+label);
