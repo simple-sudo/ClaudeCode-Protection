@@ -133,35 +133,32 @@ internal static class SessionTaskWorkspace
                 throw WfpNative.Contract("UnrecordedTaskWorkspaceCleanupAuthorityChanged");
         }
         string? identity=null;
+        using var package=new InstallationPackageSid(state);
         try
         {
-            using var package=new InstallationPackageSid(state);
-            try
+            using(var root=Open(path,true))
             {
-                using(var root=Open(path,true))
-                {
-                    identity=WindowsPathSeal.Identity(root);
-                    SessionResources.AssertFreshWorkspaceForRecovery(root,profile.OwnerSid,package.Value);
-                    var names=WindowsPathSeal.EnumerateNames(root,path,1);
-                    var empty=names.Length==0;
-                    RequireUnrecordedWorkspaceDeleteEvidence(noReparsePoint:true,exactOwnerGroupDacl:true,
-                        lowLabelExactOrAbsent:true,emptyDirectory:empty);
-                    AssertAuthority();
-                    WindowsPathSeal.VerifyObject(root,path,true);
-                    var disposition=0x17u;
-                    if(!SetFileInformationByHandle(root,21,ref disposition,4))
-                        throw new WfpFailure("DeleteUnrecordedEmptyTaskWorkspace",unchecked((uint)Marshal.GetLastWin32Error()));
-                }
-                removed++;
+                identity=WindowsPathSeal.Identity(root);
+                SessionResources.AssertFreshWorkspaceForRecovery(root,profile.OwnerSid,package.Value);
+                var names=WindowsPathSeal.EnumerateNames(root,path,1);
+                var empty=names.Length==0;
+                RequireUnrecordedWorkspaceDeleteEvidence(noReparsePoint:true,exactOwnerGroupDacl:true,
+                    lowLabelExactOrAbsent:true,emptyDirectory:empty);
+                AssertAuthority();
+                WindowsPathSeal.VerifyObject(root,path,true);
+                var disposition=0x17u;
+                if(!SetFileInformationByHandle(root,21,ref disposition,4))
+                    throw new WfpFailure("DeleteUnrecordedEmptyTaskWorkspace",unchecked((uint)Marshal.GetLastWin32Error()));
             }
-            catch(ExactPathAbsentException ex)when(string.Equals(ex.FailedPath,path,StringComparison.OrdinalIgnoreCase)){}
-            AssertAuthority();
-            try{using var exists=WindowsPathSeal.Open(path,true,false);throw WfpNative.Contract("UnrecordedTaskWorkspaceStillPresent");}
-            catch(ExactPathAbsentException ex)when(string.Equals(ex.FailedPath,path,StringComparison.OrdinalIgnoreCase)){}
-            state.WriteNew(ClosedLeaf(profile.ProfileId),JsonSerializer.SerializeToUtf8Bytes(new {SchemaVersion=2,state.InstallationId,profile.ProfileId,
-                IntentSHA256=intent.Raw.SHA256,ProfileCleanupIntentSHA256=cleanupIntent.SHA256,
-                Status="UNRECORDED_EMPTY_TASK_DIRECTORY_ABSENCE_OBSERVED",RootAbsent=true,RemovedEntries=removed,WorkspaceIdentity=identity}));
+            removed++;
         }
+        catch(ExactPathAbsentException ex)when(string.Equals(ex.FailedPath,path,StringComparison.OrdinalIgnoreCase)){}
+        AssertAuthority();
+        try{using var exists=WindowsPathSeal.Open(path,true,false);throw WfpNative.Contract("UnrecordedTaskWorkspaceStillPresent");}
+        catch(ExactPathAbsentException ex)when(string.Equals(ex.FailedPath,path,StringComparison.OrdinalIgnoreCase)){}
+        state.WriteNew(ClosedLeaf(profile.ProfileId),JsonSerializer.SerializeToUtf8Bytes(new {SchemaVersion=2,state.InstallationId,profile.ProfileId,
+            IntentSHA256=intent.Raw.SHA256,ProfileCleanupIntentSHA256=cleanupIntent.SHA256,
+            Status="UNRECORDED_EMPTY_TASK_DIRECTORY_ABSENCE_OBSERVED",RootAbsent=true,RemovedEntries=removed,WorkspaceIdentity=identity}));
     }
     internal static void Cleanup(ProtectedState state,ProfileStorageReceipt profile)
     {
