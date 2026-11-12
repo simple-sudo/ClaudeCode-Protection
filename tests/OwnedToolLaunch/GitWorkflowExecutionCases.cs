@@ -137,6 +137,67 @@ internal static class GitWorkflowExecutionCases
             var commands=(string[][])InvokeStatic(gitType,"WorkflowCommands",plan,workspace,workflow)!;
             Require(commands.Length==11,"fixed bounded 11-command workflow");
 
+            // Exercise the exact Broker-side sequence gate for every one of
+            // the eleven commands. The ordinary-user Git execution below runs
+            // the command semantics; this separately tests the request
+            // contract consumed by OwnedToolLaunch.ProcessPending.
+            var ownedToolType=library.GetType("ProtectionLifecycle.OwnedToolLaunch",true)!;
+            var commandPrefix=StartWorkflow(gitType,workspace,plan,workflow,Array.Empty<string>()).ArgumentList.ToArray();
+            for(var index=0;index<commands.Length;index++)
+            {
+                var sequence=index+1;
+                var arguments=commandPrefix.Concat(commands[index]).ToArray();
+                Require((bool)InvokeStatic(gitType,"WorkflowSequenceMatches",plan,workspace,sequence,arguments)!,
+                    "Broker accepts only the exact fixed Git command at sequence "+sequence);
+                var start=StartWorkflow(gitType,workspace,plan,workflow,commands[index]);
+                var digest=(string)InvokeStatic(ownedToolType,"StartHash",start)!;
+                var validated=(ProcessStartInfo)InvokeStatic(ownedToolType,"ValidateStart",plan,workspace,"git",arguments,digest)!;
+                Require(validated.ArgumentList.SequenceEqual(arguments),
+                    "Broker reconstructs exact fixed image/arguments/environment at sequence "+sequence);
+            }
+            Require(!(bool)InvokeStatic(gitType,"WorkflowSequenceMatches",plan,workspace,2,commandPrefix.Concat(commands[0]).ToArray())!,
+                "Broker refuses a valid Git command replayed at the wrong sequence");
+            Require(!(bool)InvokeStatic(gitType,"WorkflowSequenceMatches",plan,workspace,0,commandPrefix.Concat(commands[0]).ToArray())!,
+                "Broker refuses sequence zero");
+            Require(!(bool)InvokeStatic(gitType,"WorkflowSequenceMatches",plan,workspace,12,commandPrefix.Concat(commands[10]).ToArray())!,
+                "Broker refuses commands beyond the fixed eleven-command sequence");
+            Require(!(bool)InvokeStatic(gitType,"WorkflowSequenceMatches",plan,workspace,1,commandPrefix.Concat(commands[0]).Append("--unexpected").ToArray())!,
+                "Broker refuses appended command arguments");
+            var alteredPrefix=commandPrefix.ToArray();alteredPrefix[0]="--pager";
+            Require(!(bool)InvokeStatic(gitType,"WorkflowSequenceMatches",plan,workspace,1,alteredPrefix.Concat(commands[0]).ToArray())!,
+                "Broker refuses caller-modified fixed Git configuration prefix");
+
+            var alteredEnvironmentStart=StartWorkflow(gitType,workspace,plan,workflow,commands[0]);
+            alteredEnvironmentStart.Environment["PATH"]=(alteredEnvironmentStart.Environment["PATH"]??"")+";CPC-UNTRUSTED";
+            var alteredEnvironmentDigest=(string)InvokeStatic(ownedToolType,"StartHash",alteredEnvironmentStart)!;
+            var environmentRefused=false;
+            try
+            {
+                _=InvokeStatic(ownedToolType,"ValidateStart",plan,workspace,"git",commandPrefix.Concat(commands[0]).ToArray(),alteredEnvironmentDigest);
+            }
+            catch(InvalidDataException){environmentRefused=true;}
+            Require(environmentRefused,"Broker refuses caller-modified Git environment even when its digest is self-consistent");
+
+            var originalPathspec=File.ReadAllBytes(pathspec);
+            try
+            {
+                File.WriteAllBytes(pathspec,originalPathspec.Concat(new byte[]{0}).ToArray());
+                Require(!(bool)InvokeStatic(gitType,"WorkflowSequenceMatches",plan,workspace,3,commandPrefix.Concat(commands[2]).ToArray())!,
+                    "Broker refuses Git add after owner-held NUL pathspec bytes change");
+                var pathspecRefused=false;
+                try
+                {
+                    var addStart=StartWorkflow(gitType,workspace,plan,workflow,commands[2]);
+                    _=InvokeStatic(ownedToolType,"ValidateStart",plan,workspace,"git",commandPrefix.Concat(commands[2]).ToArray(),
+                        InvokeStatic(ownedToolType,"StartHash",addStart));
+                }
+                catch(InvalidDataException){pathspecRefused=true;}
+                Require(pathspecRefused,"Broker-side launch validator rejects a changed selected-path inventory");
+            }
+            finally{File.WriteAllBytes(pathspec,originalPathspec);}
+            Require((bool)InvokeStatic(gitType,"WorkflowSequenceMatches",plan,workspace,3,commandPrefix.Concat(commands[2]).ToArray())!,
+                "restored owner pathspec requalifies only after exact byte restoration");
+
             var input=(byte[])Get(plan,"Input")!;
             var hashInput=Run(StartRunnerWorkflow(commands[0]),input);
             var expectedBlob=(string)InvokeStatic(gitType,"BlobId",input)!;
