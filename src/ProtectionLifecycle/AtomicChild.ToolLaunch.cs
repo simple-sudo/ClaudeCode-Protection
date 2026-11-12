@@ -3,6 +3,7 @@ using System.Runtime.InteropServices;
 using System.Security.Principal;
 using System.Text;
 using Microsoft.Win32.SafeHandles;
+using ClaudeCodeProtection.Workspaces;
 
 namespace ProtectionLifecycle;
 
