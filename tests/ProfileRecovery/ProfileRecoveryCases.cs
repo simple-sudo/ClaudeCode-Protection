@@ -54,6 +54,10 @@ internal static class ProfileRecoveryCases
         ProtectedState BuildTaskState(int removed=0,string? workspaceIdentity=null,bool rootAbsent=true)
         {
             var taskState=new ProtectedState();
+            taskState.Set("profile-intent-"+id+".json",new {
+                SchemaVersion=2,taskState.InstallationId,ProfileId=id,Control=false,Name=record.Name,Sid=record.Sid,
+                Status="FRESH_PROFILE_CREATION_PLANNED",ExistingProfileAdoptionAllowed=false,AtUtc=DateTime.UtcNow.ToString("o")
+            });
             taskState.Set(created,record);
             SessionProfileRecovery.WriteCleanupIntent(taskState,record);
             var taskIntent=new TaskWorkspaceIntent(1,taskState.InstallationId,id,session,
