@@ -654,6 +654,12 @@ internal sealed class SessionResources : IDisposable
     }
     internal static void AssertMutableWorkspace(SafeFileHandle handle,string human,string package)
     {using var expected=new WorkspaceDescriptor(human,package,true);expected.AssertApplied(handle);}
+    // Recovery may delete only an unrecorded, still-empty directory created
+    // after a durable fresh-path intent. Its DACL must remain exact; the low
+    // label may be either the expected label or absent if creation was
+    // interrupted between CreateDirectoryW and SetSecurityInfo(LABEL).
+    internal static void AssertFreshWorkspaceForRecovery(SafeFileHandle handle,string human,string package)
+    {using var expected=new WorkspaceDescriptor(human,package,true);expected.AssertApplied(handle,allowMissingLowLabel:true);}
     // Windows' profile-root access does not guarantee that a directory created
     // by the elevated Broker inherits a usable package grant. Define both
     // halves of the AppContainer access check at creation, then set only the
@@ -691,17 +697,19 @@ internal sealed class SessionResources : IDisposable
             if(status!=0)throw new WfpFailure("SetNewWorkspaceLowLabel",status);
             AssertApplied(handle);
         }
-        internal void AssertApplied(SafeFileHandle handle)
+        internal void AssertApplied(SafeFileHandle handle,bool allowMissingLowLabel=false)
         {
-            var status=GetSecurityInfo(handle,1,1|4|16,out _,out _,out _,out _,out var value);
+            var status=GetSecurityInfo(handle,1,1|2|4|16,out _,out _,out _,out _,out var value);
             if(status!=0)throw new WfpFailure("ReadWorkspaceGrant",status);
             try
             {
                 if(value==IntPtr.Zero)throw WfpNative.Contract("WorkspaceDescriptorMissing");
                 var size=GetSecurityDescriptorLength(value);if(size is <20 or >65536)throw WfpNative.Contract("WorkspaceDescriptorBounds");
                 var bytes=new byte[checked((int)size)];Marshal.Copy(value,bytes,0,bytes.Length);var actual=new RawSecurityDescriptor(bytes,0);
-                if(actual.Owner?.Value!=expected.Owner?.Value || (actual.ControlFlags&ControlFlags.DiscretionaryAclProtected)==0 ||
-                    !Same(actual.DiscretionaryAcl,expected.DiscretionaryAcl) || !Same(actual.SystemAcl,expected.SystemAcl))
+                var labelMatches=Same(actual.SystemAcl,expected.SystemAcl) || allowMissingLowLabel && actual.SystemAcl is null;
+                if(actual.Owner?.Value!=expected.Owner?.Value || actual.Group?.Value!=expected.Group?.Value ||
+                    (actual.ControlFlags&ControlFlags.DiscretionaryAclProtected)==0 ||
+                    !Same(actual.DiscretionaryAcl,expected.DiscretionaryAcl) || !labelMatches)
                     throw WfpNative.Contract("WorkspaceGrantOrLowIntegrityMismatch");
             }
             finally{if(value!=IntPtr.Zero)LocalFree(value);}
