@@ -5,7 +5,7 @@
 
 ## 2026-11-04 原会话所有者新增入口要求（仅设计）
 
-新 GUI 要依次提供「准备启动」先阻断全机原生 IPv6 外联、提醒用户手动打开 FlClash Global + TUN、「开始检查」通过后「启动 Claude Code」；使用**现有** InstalledBroker→ProtectedSession→LPAC/Job/WFP 可信原子入口，不允许普通 Claude 先运行再补沙箱。退出「一键关闭所有 Claude 进程」，owner 先撤销授权/转发并精确封闭原 Job/通道，核对结果后提示用户手动关 FlClash，之后 GUI 才能请求独立恢复普通 IPv6。代理故障保持 Claude 永久拒绝直连和全机 IPv6 阻断，不自动恢复。具体状态与验收工作包见[生命周期 V1](PROTECTED-STARTUP-SHUTDOWN-LIFECYCLE-V1.md)。
+本文件早期段落描述的是 2026-11-04 的“全机 IPv6 临时门 + Claude 专属网络屏障”设计。该较窄网络范围已被 2026-11-12 的 Protection 全机公网出口强制代理目标取代。当前网络模式与 Claude 会话的启停顺序，以 [PROTECTED-STARTUP-SHUTDOWN-LIFECYCLE-V1](PROTECTED-STARTUP-SHUTDOWN-LIFECYCLE-V1.md) 为准；本文件其余内容保留为原会话主链源码接线和限定证据说明。
 以上 REQUIREMENT_ONLY / DESIGN / NOT_RUN，旧固定离线项目与 synthetic 网关不可冒充正式 Claude 准入。
 
 2026-10-27；首轮 `04e7419`，后续继续同一所有者。本文件描述源码与限定接线，不代表完整会话已验收。

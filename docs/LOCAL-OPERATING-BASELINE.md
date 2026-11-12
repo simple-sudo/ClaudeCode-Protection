@@ -1,5 +1,7 @@
 # 本机日常网络基线与保护范围
 
+> **历史基线说明（2026-11-12）**：本文件记录的是 2026-11-04 的用户操作顺序与本机观察。其“仅 Claude 会话叠加限制 + 全机 IPv6 临时门”已被 2026-11-12 的全机公网出口强制代理目标取代。当前规范见 [NETWORK-SCOPE](NETWORK-SCOPE.md) 与 [SECURITY-REQUIREMENTS](SECURITY-REQUIREMENTS.md)；本文件不再定义现行网络范围或操作授权。
+
 > 本页为2026-10-25日常环境与原操作范围记录，不是最新系统快照或持续管理员许可。
 > 现行要求见[SECURITY-REQUIREMENTS](SECURITY-REQUIREMENTS.md)，当前授权/最近安装观察见
 > [CURRENT-STATE](CURRENT-STATE.md)。既有日常环境保护原则保留，历史配置描述不能当作本次实时核验。

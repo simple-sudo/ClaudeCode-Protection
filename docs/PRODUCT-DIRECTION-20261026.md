@@ -1,5 +1,7 @@
 # 产品目标与当前实施方向
 
+> **历史决策记录（2026-10-26）**：本文件仅保留当日产品方向与操作边界。其网络范围和“保持当前全机网络设置”的设计已由 2026-11-12 全机公网出口强制代理目标取代；当前需求以 [SECURITY-REQUIREMENTS](SECURITY-REQUIREMENTS.md) 和 [NETWORK-SCOPE](NETWORK-SCOPE.md) 为准。
+
 本文件保留2026-10-26指导历史，后续10月27/28日指导亦为来源记录。最新正式范围见
 [SECURITY-REQUIREMENTS](SECURITY-REQUIREMENTS.md)，当前状态/授权见[CURRENT-STATE](CURRENT-STATE.md)；
 历史阶段顺序不能降低后续宿主隔离、网络及自我保护等完整要求。
