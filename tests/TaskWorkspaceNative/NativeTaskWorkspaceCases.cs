@@ -14,7 +14,13 @@ internal static class NativeTaskWorkspaceCases
     internal static void Prepare(string humanSid,string packageName,string[] sessions)
     {
         if(sessions.Length!=5)throw new ArgumentException("Five native fixture sessions are required");
+        using(var identity=WindowsIdentity.GetCurrent())
+            if(!new WindowsPrincipal(identity).IsInRole(WindowsBuiltInRole.Administrator))
+                throw new InvalidOperationException("Native NTFS fixture preparation requires the elevated Broker-equivalent context");
         _=new SecurityIdentifier(humanSid);
+        if(sessions.Distinct(StringComparer.OrdinalIgnoreCase).Count()!=5)
+            throw new ArgumentException("Native fixture session identifiers must be unique");
+        foreach(var session in sessions)_=Identifiers.Hex32(session);
         var packageSid=DeriveAppContainerSid(packageName);
         var wrongPackageSid=DeriveAppContainerSid(packageName+".Wrong");
         var programFiles=Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
@@ -47,9 +53,9 @@ internal static class NativeTaskWorkspaceCases
 
         RunDeleteSuccess(sessions[0],humanSid,packageName,packageSid,parentIdentity,"exact low-integrity descriptor");
         RunDeleteSuccess(sessions[1],humanSid,packageName,packageSid,parentIdentity,"missing low-integrity label crash window");
-        RunDeleteRefusal(sessions[2],humanSid,packageName,packageSid,parentIdentity,"non-empty directory");
-        RunDeleteRefusal(sessions[3],humanSid,packageName,packageSid,parentIdentity,"package SID/DACL mismatch");
-        RunDeleteRefusal(sessions[4],humanSid,packageName,packageSid,parentIdentity,"unexpected medium-integrity label");
+        RunDeleteRefusal(sessions[2],humanSid,packageName,packageSid,parentIdentity,"non-empty directory","UnrecordedTaskWorkspaceNotEmpty");
+        RunDeleteRefusal(sessions[3],humanSid,packageName,packageSid,parentIdentity,"package SID/DACL mismatch","WorkspaceGrantOrLowIntegrityMismatch");
+        RunDeleteRefusal(sessions[4],humanSid,packageName,packageSid,parentIdentity,"unexpected medium-integrity label","WorkspaceGrantOrLowIntegrityMismatch");
         Console.WriteLine("PASS native NTFS task-workspace deletion, exact absence receipt and fail-closed preservation");
     }
 
@@ -76,20 +82,30 @@ internal static class NativeTaskWorkspaceCases
         Console.WriteLine("PASS native NTFS recovery: "+label);
     }
 
-    private static void RunDeleteRefusal(string session,string humanSid,string packageName,string packageSid,string parentIdentity,string label)
+    private static void RunDeleteRefusal(string session,string humanSid,string packageName,string packageSid,string parentIdentity,string label,string expectedReason)
     {
         var path=SessionTaskWorkspace.PathFor(session);
         var (state,profile)=BuildState(session,humanSid,packageName,packageSid,parentIdentity);
-        Exception? failure=null;
+        InvalidDataException? failure=null;
         try{SessionTaskWorkspace.Cleanup(state,profile);}
-        catch(Exception error){failure=error;}
-        if(failure is null)throw new InvalidOperationException("Native recovery unexpectedly accepted "+label);
+        catch(InvalidDataException error) when(error.Message==expectedReason){failure=error;}
+        if(failure is null)throw new InvalidOperationException("Native recovery did not fail at the expected refusal boundary: "+label);
         if(!Directory.Exists(path))throw new InvalidOperationException("Native recovery removed a refused task workspace: "+label);
-        if(state.ListLeaves("task-workspace-failure-"+profile.ProfileId+"-").Length!=1)
-            throw new InvalidOperationException("Native recovery did not persist exactly one failure receipt: "+label);
-        if(label=="non-empty directory" && !File.Exists(Path.Combine(path,"native-fixture-child.txt")))
+        var failureLeaves=state.ListLeaves("task-workspace-failure-"+profile.ProfileId+"-");
+        if(failureLeaves.Length!=1)throw new InvalidOperationException("Native recovery did not persist exactly one failure receipt: "+label);
+        using(var receipt=JsonDocument.Parse(state.Read(failureLeaves[0]).Bytes))
+        {
+            var root=receipt.RootElement;
+            if(root.GetProperty("RemovedEntries").GetInt32()!=0 ||
+                root.GetProperty("Status").GetString()!="NOT_CONFIRMED" ||
+                root.GetProperty("Failures").GetString()!=WfpNative.Describe(failure))
+                throw new InvalidOperationException("Native recovery failure receipt did not bind the exact refusal: "+label);
+        }
+        if(label=="non-empty directory" && File.ReadAllText(Path.Combine(path,"native-fixture-child.txt"))!="preserve-me")
             throw new InvalidOperationException("Native recovery changed the non-empty fixture");
-        Console.WriteLine("PASS native NTFS refusal: "+label+" ("+failure.GetType().Name+")");
+        if(label!="non-empty directory" && Directory.EnumerateFileSystemEntries(path).Any())
+            throw new InvalidOperationException("Native recovery changed a refused empty fixture: "+label);
+        Console.WriteLine("PASS native NTFS refusal: "+label+" ("+failure.Message+")");
     }
 
     private static (ProtectedState State,ProfileStorageReceipt Profile) BuildState(string session,string humanSid,string packageName,string packageSid,string parentIdentity)
@@ -115,14 +131,15 @@ internal static class NativeTaskWorkspaceCases
     private static string DeriveAppContainerSid(string name)
     {
         var status=DeriveAppContainerSidFromAppContainerName(name,out var sid);
-        if(status!=0||sid==IntPtr.Zero)throw new Win32Exception(status,"DeriveAppContainerSidFromAppContainerName failed");
+        if(status!=0)throw new COMException("DeriveAppContainerSidFromAppContainerName failed",status);
+        if(sid==IntPtr.Zero)throw new InvalidOperationException("DeriveAppContainerSidFromAppContainerName returned a null SID");
         try
         {
             if(!ConvertSidToStringSid(sid,out var text))throw new Win32Exception(Marshal.GetLastWin32Error(),"ConvertSidToStringSid failed");
             try{return Marshal.PtrToStringUni(text)??throw new InvalidOperationException("AppContainer SID string missing");}
             finally{LocalFree(text);}
         }
-        finally{LocalFree(sid);}
+        finally{FreeSid(sid);}
     }
 
     private static void SetMediumLabel(string path)
@@ -154,5 +171,6 @@ internal static class NativeTaskWorkspaceCases
     [DllImport("advapi32.dll")] private static extern uint SetSecurityInfo(SafeFileHandle handle,int type,uint information,IntPtr owner,IntPtr group,IntPtr dacl,IntPtr sacl);
     [DllImport("kernel32.dll",EntryPoint="CreateFileW",CharSet=CharSet.Unicode,SetLastError=true)]
     private static extern SafeFileHandle CreateFile(string path,uint access,uint share,IntPtr attributes,uint disposition,uint flags,IntPtr template);
-    [DllImport("advapi32.dll",SetLastError=true)] private static extern IntPtr LocalFree(IntPtr value);
+    [DllImport("advapi32.dll")] private static extern IntPtr FreeSid(IntPtr sid);
+    [DllImport("kernel32.dll",SetLastError=true)] private static extern IntPtr LocalFree(IntPtr value);
 }
