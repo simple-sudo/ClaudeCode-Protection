@@ -2937,3 +2937,11 @@ Compile/Run/Tests失败和正常DataReport通过；最终library/Broker及77a1�
 - `AtomicAdmission.cs` 从 1,317 行降至 1,201 行；显式编译清单同步。未改变 namespace/可见性/方法签名、Token AccessCheck 语义、进程创建/Resume 顺序、Job/Profile owner、持久协议、程序集或安装资产。
 - 提交：`7613c4e681b57ce17fdd0ff6efed747ce85435f9`。Hosted Windows compile `43214439565`、Safe managed policy smoke `43214439543`、Offline workspace Git workflow `43214439759` 全部 SUCCESS；产品与六个专项 harness 编译通过，普通用户策略/Runner Git 和 elevated NTFS fixture 通过。
 - 无本机 Build、安装、UAC、Broker → Owned Job → LPAC 完整产品执行或真实 Claude 测试；SECURITY_REVIEW_REQUIRED 保持有效。
+
+
+## 2026-11-12：AtomicChild 受限工具启动边界提取
+
+- 将 AtomicChild 受限工具启动请求、固定工具镜像/参数验证、Job 预绑定创建、LPAC Token 回读、stdio 管道与受限句柄交接迁移至 `AtomicChild.ToolLaunch.cs`；`AtomicAdmission.cs` 从 1,201 行降至 1,021 行。
+- 拆分期间两次 CI 编译失败均保留并修复：`476ada6` 遗漏 `ClaudeCodeProtection.Workspaces`；`f0969d3` 补齐 Shared namespace 后仍遗漏 `System.ComponentModel`。最终修复提交 `31dc39bac582f65f1061f38aa455977b0471f235`。
+- 最终三组 Actions 全部 SUCCESS：Hosted Windows compile `43215792139`、Safe managed policy smoke `43215792288`、Offline workspace Git workflow `43215792160`；五个产品项目、六个专项 harness 编译、普通用户策略/Runner Git 与 elevated NTFS fixture 全部通过。
+- 未改变固定工具命令边界、原 Job 预绑定、LPAC/Token 核验、句柄交接语义、Resume 顺序、持久协议、安装资产或程序集。无本机产品实测。
