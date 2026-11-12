@@ -34,15 +34,13 @@ internal static class NativeGitWorkspaceCases
         try
         {
             using(var parent=WindowsPathSeal.LockDirectory(root,PathPolicy.Source))
-            using(var project=CreateDiagnosed(parent,"git-project",package.Value,true))
-            using(var control=CreateDiagnosed(parent,"git-control",package.Value,false))
+            using(var project=GitWorkspaceDescriptor.Create(parent,"git-project",package.Value,true))
+            using(var control=GitWorkspaceDescriptor.Create(parent,"git-control",package.Value,false))
             {
                 var projectPath=Path.Combine(root,"git-project");
                 var controlPath=Path.Combine(root,"git-control");
                 GitWorkspaceDescriptor.AssertPath(projectPath,package.Value,true);
                 GitWorkspaceDescriptor.AssertPath(controlPath,package.Value,false);
-                Console.WriteLine("NATIVE GIT project-root descriptor flags="+ReadDescriptor(projectPath,true).ControlFlags);
-                Console.WriteLine("NATIVE GIT control-root descriptor flags="+ReadDescriptor(controlPath,true).ControlFlags);
 
                 var nestedProject=Path.Combine(projectPath,"nested");
                 Directory.CreateDirectory(nestedProject);
@@ -86,48 +84,6 @@ internal static class NativeGitWorkspaceCases
         Console.WriteLine("PASS native Git project/control DACL, OWNER RIGHTS and low-label inheritance");
     }
 
-    private static PathLease CreateDiagnosed(PathLease parent,string leaf,string packageSid,bool packageWrite)
-    {
-        var path=WindowsPathSeal.Child(parent.Path,leaf);
-        Console.WriteLine("NATIVE GIT create "+leaf);
-        try
-        {
-            var lease=GitWorkspaceDescriptor.Create(parent,leaf,packageSid,packageWrite);
-            Console.WriteLine("NATIVE GIT created "+leaf);
-            return lease;
-        }
-        catch(Exception error)
-        {
-            Console.WriteLine("NATIVE GIT "+leaf+" create failed: "+error.GetType().Name+": "+error.Message);
-            if(Directory.Exists(path))DumpDescriptor(path,leaf);
-            throw;
-        }
-    }
-
-    private static void DumpDescriptor(string path,string label)
-    {
-        var descriptor=ReadDescriptor(path,true);
-        Console.WriteLine("NATIVE GIT "+label+" owner="+descriptor.Owner?.Value+
-            " group="+descriptor.Group?.Value+" flags="+descriptor.ControlFlags);
-        DumpAcl(label+" DACL",descriptor.DiscretionaryAcl);
-        DumpAcl(label+" SACL",descriptor.SystemAcl);
-    }
-
-    private static void DumpAcl(string label,RawAcl? acl)
-    {
-        if(acl is null){Console.WriteLine("NATIVE GIT "+label+" <null>");return;}
-        for(var i=0;i<acl.Count;i++)
-        {
-            var ace=acl[i];
-            var bytes=new byte[ace.BinaryLength];
-            ace.GetBinaryForm(bytes,0);
-            var mask=bytes.Length>=8?BitConverter.ToInt32(bytes,4):0;
-            var sid=ace is QualifiedAce qualified?qualified.SecurityIdentifier.Value:"<no-sid>";
-            Console.WriteLine("NATIVE GIT "+label+"["+i+"] type=0x"+bytes[0].ToString("X2")+
-                " flags=0x"+bytes[1].ToString("X2")+" mask=0x"+mask.ToString("X8")+" sid="+sid);
-        }
-    }
-
     private static void AssertInherited(string path,bool directory,string packageSid,string humanSid,int expectedPackageMask,string label)
     {
         var descriptor=ReadDescriptor(path,directory);
@@ -144,10 +100,7 @@ internal static class NativeGitWorkspaceCases
                 "; actualMask=0x"+packageAce.AccessMask.ToString("X8",System.Globalization.CultureInfo.InvariantCulture)+
                 "; expectedMask=0x"+expectedPackageMask.ToString("X8",System.Globalization.CultureInfo.InvariantCulture)+
                 "; actualFlags="+packageAce.AceFlags+
-                "; descriptorFlags="+descriptor.ControlFlags+
-                "; owner="+descriptor.Owner?.Value+
-                "; group="+descriptor.Group?.Value+
-                "; actualDacl="+DescribeAcl(dacl));
+                "; descriptorFlags="+descriptor.ControlFlags);
         if((packageAce.AccessMask&0x000c0000)!=0)
             throw new InvalidDataException("Native Git package ACE grants WRITE_DAC/WRITE_OWNER: "+label);
 
@@ -175,19 +128,6 @@ internal static class NativeGitWorkspaceCases
         if(labels.Count!=1 || labels[0].Sid.Value!="S-1-16-4096" || labels[0].Mask!=1 ||
             !labels[0].Flags.HasFlag(AceFlags.Inherited))
             throw new InvalidDataException("Native Git low mandatory label inheritance mismatch: "+label);
-    }
-
-    private static string DescribeAcl(RawAcl dacl)
-    {
-        var entries=new List<string>(dacl.Count);
-        for(var i=0;i<dacl.Count;i++)
-        {
-            if(dacl[i] is CommonAce ace)
-                entries.Add(i+":mask=0x"+ace.AccessMask.ToString("X8",System.Globalization.CultureInfo.InvariantCulture)+
-                    ";flags="+ace.AceFlags+";qualifier="+ace.AceQualifier+";sid="+ace.SecurityIdentifier.Value);
-            else entries.Add(i+":type="+dacl[i].AceType+";flags="+dacl[i].AceFlags);
-        }
-        return string.Join("|",entries);
     }
 
     private static CommonAce FindSingleAllowedAce(RawAcl dacl,string sid,string label)
