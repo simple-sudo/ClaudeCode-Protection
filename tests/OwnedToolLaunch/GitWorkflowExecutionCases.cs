@@ -424,9 +424,12 @@ internal static class GitWorkflowExecutionCases
         var expected=(RawSecurityDescriptor)(descriptorType.GetField("expected",InstanceFlags)?.GetValue(built)
             ??throw new InvalidDataException("Expected Git descriptor missing"));
         var labels=expected.SystemAcl?.OfType<CommonAce>().ToArray()??Array.Empty<CommonAce>();
+        var labelSummary=string.Join("|",labels.Select(label=>
+            $"{label.AceType}:{label.SecurityIdentifier.Value}:{label.AccessMask:X8}:{label.AceFlags}"));
         Require(labels.Length==1 && labels[0].SecurityIdentifier.Value=="S-1-16-4096" &&
             labels[0].AccessMask==1 && (labels[0].AceFlags&inherited)==inherited,
-            "private Git directories carry an inherited low-integrity no-write-up mandatory label");
+            "private Git directories carry an inherited low-integrity no-write-up mandatory label (count="+
+            labels.Length+", "+labelSummary+")");
     }
 
     private static void VerifyGitControlMutationGuards(Type gitType,string workspace)
