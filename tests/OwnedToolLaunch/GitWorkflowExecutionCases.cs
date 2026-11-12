@@ -418,6 +418,15 @@ internal static class GitWorkflowExecutionCases
         Require(projectAcl.OfType<CommonAce>().Any(ace=>ace.SecurityIdentifier.Value=="S-1-5-18" && ace.AccessMask==0x001f01ff) &&
             projectAcl.OfType<CommonAce>().Any(ace=>ace.SecurityIdentifier.Value=="S-1-5-32-544" && ace.AccessMask==0x001f01ff),
             "SYSTEM and elevated Broker retain full management access");
+        var constructor=descriptorType.GetConstructor(InstanceFlags,null,new[]{typeof(string),typeof(bool)},null)
+            ??throw new InvalidDataException("Private Git descriptor constructor missing");
+        using var built=(IDisposable)constructor.Invoke(new object[]{packageSid,true});
+        var expected=(RawSecurityDescriptor)(descriptorType.GetField("expected",InstanceFlags)?.GetValue(built)
+            ??throw new InvalidDataException("Expected Git descriptor missing"));
+        var labels=expected.SystemAcl?.OfType<CommonAce>().ToArray()??Array.Empty<CommonAce>();
+        Require(labels.Length==1 && labels[0].SecurityIdentifier.Value=="S-1-16-4096" &&
+            labels[0].AccessMask==1 && (labels[0].AceFlags&inherited)==inherited,
+            "private Git directories carry an inherited low-integrity no-write-up mandatory label");
     }
 
     private static void VerifyGitControlMutationGuards(Type gitType,string workspace)
