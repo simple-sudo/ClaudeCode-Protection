@@ -2901,3 +2901,12 @@ Compile/Run/Tests失败和正常DataReport通过；最终library/Broker及77a1�
 ## 2026-11-12 LPAC LowBox MIC 与 Git workspace DACL 原生验收
 
 原生 Windows Runner 在 `3f88571149e332af164ab575283a98e964a074a1` 全部通过：离线 workspace Git workflow `43181109441`、Hosted Windows compile `43181109423`、Safe managed policy smoke/Daily CLI `43181109371`。实际 LPAC token 为 AppContainer、精确 package SID、零 capabilities、Low IL，TokenMandatoryPolicy=0x1。真实 NTFS 探针确认项目读写允许、Git control 写入拒绝；LowBox 对 Medium-IL 且 DACL 明确授予 package 的文件可写，对 Medium-IL 但 package 只读的文件只能读、写返回 ACCESS_DENIED。task-workspace 两种安全清理路径成功，非空/身份不匹配/标签漂移拒绝并保留。原先“LowBox 对 Medium IL 一律 MIC write-up denied”的测试假设已纠正；产品 DACL 未放宽。此结果仅是托管 Windows 的原生测试夹具证据，不是本机 Win11 或安装产品 E2E；本机复测待执行。早期失败记录保留，不由本次通过抹除。
+
+
+## 2026-11-12：正式网络范围升级、文档权威层级与真实证据治理
+
+- Protection 网络模式正式目标升级为：用户明确启用期间，全机所有应用和 Windows 服务的公网 IPv4/IPv6 流量统一经指定 FlClash 美国住宅代理；不支持代理的协议阻断，不允许 DIRECT 回退。该目标仍为 REQUIREMENT_ONLY / DESIGN，不能误报为产品实现或实机验收。
+- 将网络模式与 Claude 会话拆为独立生命周期；停止 Claude 不会自动关闭全机代理模式，只有用户明确退出网络模式才精确恢复本产品拥有的规则。
+- 设备所有者明确接受将研发必要的真实主机信息、敏感字段、私人路径、设备/网络/代理/远控元数据、原始日志和失败回执纳入 Public GitHub 仓库。新增 EVIDENCE-GOVERNANCE.md，要求原始证据、来源、时间、身份、工件版本、哈希和分析结论可追溯；不以默认脱敏或合成值替代真实证据。有效认证凭据仍单独管理，真实读取路径仍须测试。
+- 更新 README、AGENTS、SECURITY-REQUIREMENTS、NETWORK-SCOPE、CURRENT-STATE、REAL-DATA-ADVERSARIAL-ASSURANCE、ASSURANCE-AND-EXPOSURE-PROFILING 和 DOCUMENTATION-INDEX 的现行语义；旧 IPv4-only/IPv6 临时门方案保留为历史决策，不再覆盖新目标。
+- 本轮仅更新规范、证据治理与文档导航，不修改产品可执行源码，不进行本机安装/UAC/网络设置/真实 Claude 启动或故障注入。当前实现缺口和实机状态仍按 CURRENT-STATE / PROJECT-ACCEPTANCE 记录。

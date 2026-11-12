@@ -10,13 +10,13 @@
 | 可见性 | Public |
 | 默认分支 | main |
 | 当前线上开发分支 | chatgpt/complete-git-workflow-20261110 |
-| 本次文档整理前 HEAD | 36ad1b20848fd056c1f034113b8831d7fc6b0c99 |
+| 真实证据政策更新前 HEAD | 80a300f760a22b94060e598874b196f3e967dfef |
 | 产品源码最近修订 | 2c3fb1646cf64da0817d777215d4efbf9ad4db1b（移除 Git ACL 失败诊断中的原始 SID/ACE 字符串） |
 | PR | #3，OPEN / DRAFT |
 | PR 目标分支 | codex/integrate-privacy-admission-20261027 |
 | PR 目标基线 | 8d56b0c40ef92d384b572bb168eec6bcd8a44d4e |
 
-本次文档变更只更新当前线上开发分支，不合并 PR #3，不推进 main，不改变仓库设置或可见性。
+本轮文档更新提交：a93edb0cf077265839a3435c38572443020976a1（真实证据治理与文档语义修订）。本次只更新当前线上开发分支，不合并 PR #3，不推进 main，不改变仓库设置或可见性。
 
 ## 2. 最新云端验证
 

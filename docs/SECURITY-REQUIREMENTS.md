@@ -29,7 +29,7 @@
 | 开发行为 | [AGENTS.md](../AGENTS.md) | 当前操作边界、工作方法、文档导航 |
 | 最新状态 | [CURRENT-STATE](CURRENT-STATE.md) | 唯一最新基线、最近安装观察、缺口、当前授权；区分新鲜核验与历史观察 |
 | 正式需求 | 本页 | 完整产品范围、威胁模型、安全优先级、交付术语 |
-| 2026-11-04 执行计划 | [受保护启停生命周期 V1](PROTECTED-STARTUP-SHUTDOWN-LIFECYCLE-V1.md) | GUI 状态、用户手动 FlClash、全机 IPv6 临时门与 Claude 永久阻断、验收工作包；目前仅设计 |
+| 受保护启停生命周期 | [受保护启停生命周期 V1](PROTECTED-STARTUP-SHUTDOWN-LIFECYCLE-V1.md) | Protection 全机网络模式与 Claude 会话的独立状态机、启用、故障关闭和精确恢复；目前仅设计 |
 | 2026-11-04 强制实验规范 | [真实敏感数据对抗实验](REAL-DATA-ADVERSARIAL-ASSURANCE.md) | 限定 Claude 的敏感信息语义、开发者读取授权、L3 真实内容与画像验收、数据流和旧规则冲突处理 |
 | 证据治理 | [EVIDENCE-GOVERNANCE](EVIDENCE-GOVERNANCE.md) | 真实原值、原始证据、公开仓库存储、溯源和凭据边界 |
 | 专题机制 | 各机制文档 | 指定机制、接口、设计和限定版本证据；不能自行扩大需求或授权 |
@@ -286,8 +286,9 @@ GPU身份路径至少考虑NVML、CUDA、Windows PnP、驱动接口及其他替�
   不适用必须有明确场景依据，不能用来抹掉未知或跳过必需安全项。
 - 授权开发/编译/测试、依赖下载、必要本地MCP/服务与NVIDIA计算应在同一边界内可用。
   宿主GPU发现或未隔离计算不替代选定隔离身份内的代表性CUDA/PyTorch及结果验证。
-- IPv4 强制代理为主，不开发 IPv6 代理转发/线路优化；Claude 独立 IPv4/IPv6 持久防直连与用户主动的全机原生 IPv6 临时外联门是不同规则。
-  仅安全退出、用户手动关闭 FlClash 和 owner 再次核验后恢复普通 IPv6，绝不撤销 Claude 屏障；FlClash/UU 日常使用保持，必要全机变更须具体审查并可恢复。
+### 历史范围（2026-11-04，已由 2026-11-12 全机公网代理目标取代）
+
+早期曾限定为 IPv4 代理优先、不开发 IPv6 代理转发，并采用 Claude 专属 IPv4/IPv6 持久防直连加用户手动控制的全机 IPv6 临时门。该方案只代表当时的开发范围和决策，不能限制现行全机 IPv4/IPv6 公网出口强制代理目标。现行要求见 [NETWORK-SCOPE](NETWORK-SCOPE.md)；IPv6 与 IPv4 采用同一代理/阻断标准。
 - 普通GUI/维护、可信安装/更新、长时稳定、异常退出/重启、恢复/卸载和真实受保护Claude执行链
   均属整机验收；真实Claude仍延期且未测试时，不得标PRODUCT_DELIVERY_ACCEPTED。
 
