@@ -10,8 +10,8 @@
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="Program.cs;NativeTaskWorkspaceCases.cs;TestDoubles.cs" />
-    <Compile Include="../../src/ProtectionLifecycle/SessionTaskWorkspace.cs;../../src/ProtectionLifecycle/WindowsPathSeal.cs;../../src/ProtectionLifecycle/WorkspaceDescriptor.cs" />
+    <Compile Include="Program.cs;NativeTaskWorkspaceCases.cs;NativeGitWorkspaceCases.cs;TestDoubles.cs" />
+    <Compile Include="../../src/ProtectionLifecycle/SessionTaskWorkspace.cs;../../src/ProtectionLifecycle/WindowsPathSeal.cs;../../src/ProtectionLifecycle/WorkspaceDescriptor.cs;../../src/ProtectionLifecycle/GitWorkspaceDescriptor.cs" />
     <Compile Include="../../src/Shared/WindowsDirectoryNames.cs;../../src/Shared/DirectoryNamePage.cs" />
   </ItemGroup>
 </Project>
