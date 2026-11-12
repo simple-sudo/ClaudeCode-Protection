@@ -10,7 +10,7 @@
 | 可见性 | Public |
 | 默认分支 | main |
 | 当前线上开发分支 | chatgpt/complete-git-workflow-20261110 |
-| 当前产品源码重构提交 | 87b2e097a4763785302dd3974b4880d444c3ac48 |
+| 当前产品源码重构提交 | 9c944d10a1b24bc88b3099091ea93a0d564b9484 |
 | 架构审查源码基线 | 74578e903c2584628d853598ef8f1910adf7da5b |
 | 真实证据政策更新前 HEAD | 80a300f760a22b94060e598874b196f3e967dfef |
 | 文档整理与语义修正验证基线 | 2a5e4a5bf26d0f723d4cbb08d59bd4419111a4fa（文档变更；产品源码未变） |
@@ -23,13 +23,13 @@
 
 ## 2. 最新云端验证
 
-最新架构重构源码提交 `87b2e097a4763785302dd3974b4880d444c3ac48` 的三组 GitHub Actions 全部 SUCCESS：
+最新架构重构源码提交 `9c944d10a1b24bc88b3099091ea93a0d564b9484` 的三组 GitHub Actions 全部 SUCCESS：
 
-- Hosted Windows compile only：`43220859756`
-- Offline workspace Git workflow verification：`43220859804`
-- Safe managed policy smoke：`43220859739`
+- Hosted Windows compile only：`43230310511`
+- Offline workspace Git workflow verification：`43230310544`
+- Safe managed policy smoke：`43230310614`
 
-该轮包含五个产品项目编译、六个聚焦 Harness 编译、普通用户策略/Runner Git 测试及 elevated NTFS Git fixture。证据边界仍不包括产品 Broker → Owned Job → LPAC 完整产品链、安装、真实 Claude、全机网络保护或宿主隐私 L3 验收。此前中间重构提交的失败 CI 与修复记录保留在架构基线和 STATUS 中。
+该轮包含五个产品项目编译、六个聚焦 Harness 编译、普通用户策略/Runner Git 测试及 elevated NTFS Git fixture。此前 `573c362` 的 Hosted compile 与 Offline workflow 因 `PersistentFence.cs` 主 partial 缺少 `namespace ProtectionLifecycle;` 出现 31 个 CS0246；`9c944d1` 仅恢复正确命名空间。修复后产品编译、六个 Harness、普通用户真实 Git 和 elevated NTFS fixture 全部通过。证据边界仍不包括产品 Broker → Owned Job → LPAC 完整产品链、安装、真实 Claude、全机网络保护或宿主隐私 L3 验收。
 
 ## 3. 已有证据与未证明范围
 
@@ -93,12 +93,12 @@
 
 ## 8. 全项目架构治理（2026-11-12）
 
-架构基线与目标设计见 [ARCHITECTURE-BASELINE-AND-TARGET-20261112](ARCHITECTURE-BASELINE-AND-TARGET-20261112.md)。原始审查基线为源码 HEAD `74578e903c2584628d853598ef8f1910adf7da5b`；当前最新架构重构产品源码为 `87b2e097a4763785302dd3974b4880d444c3ac48`。PR #3 保持 OPEN / DRAFT，开发分支领先目标分支 267、落后 0。
+架构基线与目标设计见 [ARCHITECTURE-BASELINE-AND-TARGET-20261112](ARCHITECTURE-BASELINE-AND-TARGET-20261112.md)。原始审查基线为源码 HEAD `74578e903c2584628d853598ef8f1910adf7da5b`；当前最新架构重构产品源码为 `9c944d10a1b24bc88b3099091ea93a0d564b9484`。PR #3 保持 OPEN / DRAFT，开发分支领先目标分支 299、落后 0；当前 PR 为 299 commits / 129 changed files。
 
-当前工程清单仍为 5 个产品项目、24 个 C# 测试项目、16 个脚本条目、3 个 Actions workflow；src Git Tree 共 193 个条目。架构问题与目标边界见架构文档。当前未增加 DLL、未改变安装资产或 Manifest 协议，Shared 仍是源码链接契约而非独立程序集。
+当前工程清单为 5 个产品项目、1 个独立 Engineering 项目、24 个 C# 测试项目、16 个脚本条目、3 个 Actions workflow；src Git Tree 共 254 个条目（246 个文件、8 个目录）。其中 ProtectionLifecycle 有 182 个本地 C# 文件，仍编译为一个管理程序集；Shared 有 22 个源码文件，不是独立 DLL。六个托管项目的显式 Compile Include 均已核对，无缺失路径或重复项。架构问题与当前完整项目/测试/依赖地图见架构文档。当前未增加 DLL、未改变安装资产或 Manifest 协议。
 
-A1.1—A1.7 已完成：Profile lease、Job completion receipt、Token evidence、Token observation、受限工具启动、原生 ABI、restricted Worker、runtime supervision、进程创建工厂、Job membership observation、default DACL candidate 已按职责拆分。当前 `AtomicAdmission.cs` 从初始 1,442 行缩减至 226 行；新增 partial 文件仍属于同一个 `ProtectionLifecycle` 程序集，未改变类型可见性、公共调用契约、原子创建/Resume 顺序、资源所有权或安装资产。最新提交 `87b2e097` 的三组 CI 全部 SUCCESS（43220859756、43220859804、43220859739）。
+A1.1—A1.7 已完成：Profile lease、Job completion receipt、Token evidence、Token observation、受限工具启动、原生 ABI、restricted Worker、runtime supervision、进程创建工厂、Job membership observation、default DACL candidate 已按职责拆分。此后继续完成 ProtectedSession、SessionResources/Workspace/Recovery、Git、HostPrivacy、SessionProxy/ProxyChannel、WFP 和 NetworkQualification 的文件级职责提取；这些拆分未改变原有程序集、安装资产、Manifest 或安全语义。需要区分：partial 文件拆分不等同于独立服务或独立资源所有权，SessionResources、SessionProxy、SessionGitToolchain 和 HostPrivacyProbe 仍有待组合边界重构。
 
-重构期间出现的中间编译失败均已修复且未绕过门禁：工具启动缺少 Shared/Win32Exception using、原生 ABI 缺少 StringBuilder using、runtime split 重复成员、DACL split 的源码切片偏移；各失败提交和最终修复提交在架构文档/STATUS 中保留。
+重构期间出现的编译失败均保留并修复。当前基线 `9c944d1` 的三组 Actions 全部 SUCCESS（43230310511、43230310544、43230310614）。Hosted Windows compile 编译五个产品项目；Offline workflow 编译六个聚焦 Harness 并通过标准用户 Git 与 elevated NTFS fixtures；Policy Smoke 成功。证据边界仍不包括 Broker → Owned Job → LPAC 完整产品链或真实 Claude。
 
-下一阶段转向 A2：先梳理并拆分 `ProtectedSession` 的 GatewayQualification 纯策略目录、ResourceQualification/Preparation/Admission 一次性 permit 类型，以及环境证据/资源资格执行编排；保持原 ProtectedSession 为唯一 session owner，不引入第二授权中心。全机网络模式仍为 REQUIREMENT_ONLY / DESIGN；本机 `SECURITY_REVIEW_REQUIRED` 硬停止仍有效。
+下一阶段转向 A2：优先将资源操作模式改为 typed ResourceExecution intent，随后建立真正拥有 workspace path/file handles 的 SessionWorkspaceLease，由 SessionResources 作为组合协调器；保持原 ProtectedSession 唯一 session owner，不引入第二授权中心。全机网络模式仍为 REQUIREMENT_ONLY / DESIGN；本机 `SECURITY_REVIEW_REQUIRED` 硬停止仍有效。
