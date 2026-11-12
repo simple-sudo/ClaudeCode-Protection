@@ -40,14 +40,15 @@ internal sealed partial class SessionResources : IDisposable
         this.projectInput=projectInput;this.gitPathspec=gitPathspec;this.allPackagesFixture=allPackagesFixture;
         this.privacy=privacy;this.workspaceBundle=workspaceBundle;
     }
-    internal static SessionResources Create(ProtectedState state,VerifiedVersion version,InstallationProfileLease profile,string nonce,bool includeGit=false,byte[]? workspaceInput=null,bool developProject=false,bool callerProject=false)
+    internal static SessionResources Create(ProtectedState state,VerifiedVersion version,InstallationProfileLease profile,string nonce,ResourceExecutionIntent intent,byte[]? workspaceInput)
     {
         state.AssertHeld();version.AssertHeld(state);
+        ArgumentNullException.ThrowIfNull(intent);intent.AssertInput(workspaceInput);
         using var sid=new InstallationPackageSid(state);profile.AssertPackage(sid);
-        if(callerProject && !developProject)throw WfpNative.Contract("ExplicitCallerCodeTaskRequired");
-        if(developProject && (!includeGit || workspaceInput is null || !callerProject && WorkspaceBundle.Hash(workspaceInput)!=BundledProjectDevelopment.BaselineHash))throw WfpNative.Contract("ExplicitBundledProjectTaskRequired");
-        var callerTask=callerProject?CSharpProjectTask.Parse(workspaceInput!):null;
-        var tool=workspaceInput is null || developProject?SessionPowerShellToolchain.Open():null;
+        if(intent.CallerProject && !intent.DevelopProject)throw WfpNative.Contract("ExplicitCallerCodeTaskRequired");
+        if(intent.DevelopProject && (!intent.IncludeGit || workspaceInput is null || !intent.CallerProject && WorkspaceBundle.Hash(workspaceInput)!=BundledProjectDevelopment.BaselineHash))throw WfpNative.Contract("ExplicitBundledProjectTaskRequired");
+        var callerTask=intent.CallerProject?CSharpProjectTask.Parse(workspaceInput!):null;
+        var tool=workspaceInput is null || intent.DevelopProject?SessionPowerShellToolchain.Open():null;
         PathLease? directory=null,gitProjectDirectory=null,gitControlDirectory=null;
         string? gitPackageSid=null;
         FileStream? input=null,projectInput=null,gitPathspec=null,allPackagesFixture=null;SessionGitToolchain? git=null;
@@ -55,12 +56,12 @@ internal sealed partial class SessionResources : IDisposable
         try
         {
             var hash=version.Package.Files.Single(f=>f.Asset.Id=="broker-exe").SHA256;
-            if(includeGit)git=SessionGitToolchain.Open();
-            if(developProject)privacy=HostPrivacyProbe.Capture(nonce,state.InstallationId,version.Package.Release);
-            var plan=new ResourceProbePlan(developProject?(callerProject?6:5):3,Identifiers.Hex32(nonce),state.InstallationId,version.Package.Release,Environment.ProcessId,hash,
-                includeGit?SessionGitToolchain.AssetSetSHA256:null,workspaceInput is null?null:WorkspaceBundle.Hash(workspaceInput),
-                WindowsPathSeal.Canonical(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles))){DevelopProject=developProject,HostPrivacySHA256=privacy?.SHA256,CallerProjectKind=callerTask?.Definition.Kind};plan.Validate();
-            if(!string.Equals(plan.ExpectedChildImage,Environment.ProcessPath,StringComparison.OrdinalIgnoreCase) || includeGit && plan.Workspace("")!=SessionTaskWorkspace.PathFor(nonce))
+            if(intent.IncludeGit)git=SessionGitToolchain.Open();
+            if(intent.DevelopProject)privacy=HostPrivacyProbe.Capture(nonce,state.InstallationId,version.Package.Release);
+            var plan=new ResourceProbePlan(intent.DevelopProject?(intent.CallerProject?6:5):3,Identifiers.Hex32(nonce),state.InstallationId,version.Package.Release,Environment.ProcessId,hash,
+                intent.IncludeGit?SessionGitToolchain.AssetSetSHA256:null,workspaceInput is null?null:WorkspaceBundle.Hash(workspaceInput),
+                WindowsPathSeal.Canonical(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles))){DevelopProject=intent.DevelopProject,HostPrivacySHA256=privacy?.SHA256,CallerProjectKind=callerTask?.Definition.Kind};plan.Validate();
+            if(!string.Equals(plan.ExpectedChildImage,Environment.ProcessPath,StringComparison.OrdinalIgnoreCase) || intent.IncludeGit && plan.Workspace("")!=SessionTaskWorkspace.PathFor(nonce))
                 throw WfpNative.Contract("ResourceRuntimePathsDifferFromInstalledOwner");
             WorkspaceBundle? project=null;
             if(workspaceInput is not null)
@@ -75,7 +76,7 @@ internal sealed partial class SessionResources : IDisposable
             var path=plan.Workspace(sid.Value);
             using var identity=WindowsIdentity.GetCurrent();
             var owner=identity.User?.Value??throw WfpNative.Contract("WorkspaceHumanOwnerMissing");
-            if(includeGit)
+            if(intent.IncludeGit)
             {
                 directory=CreateOwnedTaskDirectory(state,profile,nonce);
                 gitPackageSid=sid.Value;
@@ -95,7 +96,7 @@ internal sealed partial class SessionResources : IDisposable
                 throw WfpNative.Contract("FreshWorkspaceInputChanged");
             input.Position=0;
             allPackagesFixture=CreateAllPackagesFixture(WindowsPathSeal.Child(path,"all-packages-only.json"),identity.User!.Value,plan.Input);
-            if(includeGit)
+            if(intent.IncludeGit)
             {
                 if(workspaceInput is not null)
                 {

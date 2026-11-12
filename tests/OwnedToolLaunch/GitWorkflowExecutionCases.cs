@@ -18,6 +18,7 @@ internal static class GitWorkflowExecutionCases
         var owner=identity.User??throw new InvalidOperationException("Ordinary test owner SID missing");
         if(new WindowsPrincipal(identity).IsInRole(WindowsBuiltInRole.Administrator))
             throw new InvalidOperationException("Ordinary-user Git execution test must not run elevated");
+        VerifyResourceExecutionIntent(library);
 
         // Recovery of a task directory created before its durable identity
         // receipt is intentionally narrower than normal recursive cleanup:
@@ -491,6 +492,75 @@ internal static class GitWorkflowExecutionCases
                 if(primaryFailure is null)throw cleanupFailure;
             }
         }
+    }
+
+    private static void VerifyResourceExecutionIntent(Assembly library)
+    {
+        var type=library.GetType("ProtectionLifecycle.ResourceExecutionIntent",true)!;
+        object Create(string name,params object?[] values)=>InvokeStatic(type,name,values)!;
+        bool Flag(object intent,string name)=>Get(intent,name) is true;
+        var workspace=Create("ForWorkspaceQualification");
+        var git=Create("ForGitToolchainQualification");
+        var bundled=Create("ForBundledProjectDevelopment",new object?[]{null});
+        var bundledCaller=Create("ForBundledProjectDevelopment",new Action(static()=>{}));
+        var callerGuard=new Action(static()=>{});
+        var caller=Create("ForCallerProjectBuild",callerGuard);
+        var data=Create("ForWorkspaceDataProcessing",new object?[]{null});
+        var dataCaller=Create("ForWorkspaceDataProcessing",callerGuard);
+        var recovery=Create("ForRecoveryQualification");
+
+        Require(!Flag(workspace,"IncludeGit") && !Flag(workspace,"DevelopProject") &&
+            !Flag(workspace,"CallerProject") && !Flag(workspace,"DeferCleanup") && !Flag(workspace,"RequiresWorkspaceInput"),
+            "workspace qualification intent has no Git, project, caller or recovery scope");
+        Require(Flag(git,"IncludeGit") && !Flag(git,"DevelopProject") && !Flag(git,"RequiresWorkspaceInput"),
+            "Git toolchain qualification intent is Git-only");
+        Require(Flag(bundled,"IncludeGit") && Flag(bundled,"DevelopProject") && !Flag(bundled,"CallerProject") &&
+            Flag(bundled,"RequiresWorkspaceInput") && Get(bundledCaller,"AssertCaller") is Action,
+            "bundled project intent has fixed project scope and optional caller recheck");
+        Require(Flag(caller,"IncludeGit") && Flag(caller,"DevelopProject") && Flag(caller,"CallerProject") &&
+            Flag(caller,"RequiresWorkspaceInput") && ReferenceEquals(Get(caller,"AssertCaller"),callerGuard),
+            "caller project intent requires and retains its owner recheck");
+        Require(Flag(data,"IncludeGit") && !Flag(data,"DevelopProject") && !Flag(data,"CallerProject") &&
+            Flag(data,"RequiresWorkspaceInput") && Get(dataCaller,"AssertCaller") is Action,
+            "workspace data intent permits Git data handling but not project execution");
+        Require(!Flag(recovery,"IncludeGit") && !Flag(recovery,"DevelopProject") && Flag(recovery,"DeferCleanup") &&
+            !Flag(recovery,"RequiresWorkspaceInput"),
+            "recovery intent is a distinct deferred-cleanup operation");
+
+        bool RefusesInput(object intent,byte[]? input)
+        {
+            try{_=InvokeInstance(intent,"AssertInput",new object?[]{input});return false;}
+            catch(InvalidDataException error) when(error.Message=="ResourceExecutionIntentInputMismatch"){return true;}
+        }
+        InvokeInstance(workspace,"AssertInput",new object?[]{null});
+        Require(RefusesInput(workspace,Array.Empty<byte>()),"workspace qualification refuses an unexpected payload");
+        InvokeInstance(git,"AssertInput",new object?[]{null});
+        Require(RefusesInput(git,Array.Empty<byte>()),"Git toolchain qualification refuses an unexpected payload");
+        Require(RefusesInput(bundled,null),"bundled project operation requires its fixed bundle");
+        InvokeInstance(bundled,"AssertInput",Array.Empty<byte>());
+        Require(RefusesInput(caller,null),"caller project operation requires caller bytes");
+        InvokeInstance(caller,"AssertInput",Array.Empty<byte>());
+        Require(RefusesInput(data,null),"workspace data operation requires input bytes");
+        InvokeInstance(data,"AssertInput",Array.Empty<byte>());
+        InvokeInstance(recovery,"AssertInput",new object?[]{null});
+        Require(RefusesInput(recovery,Array.Empty<byte>()),"recovery operation refuses workspace data");
+
+        var missingCallerGuard=false;
+        try{_=Create("ForCallerProjectBuild",new object?[]{null});}
+        catch(ArgumentNullException){missingCallerGuard=true;}
+        Require(missingCallerGuard,"caller project operation cannot be created without a caller recheck");
+        Require(type.GetConstructors(InstanceFlags).Length==1 && type.GetConstructors(InstanceFlags)[0].IsPrivate,
+            "resource intent construction is factory-controlled rather than caller-assembled");
+
+        var plan=library.GetType("ProtectionLifecycle.ResourceProbePlan",true)!;
+        var workspaceTools=InvokeStatic(plan,"ToolRequirementsForIntent",workspace)!;
+        var dataTools=InvokeStatic(plan,"ToolRequirementsForIntent",data)!;
+        var bundledTools=InvokeStatic(plan,"ToolRequirementsForIntent",bundled)!;
+        Require(Get(workspaceTools,"PowerShell") is true && Get(workspaceTools,"Compiler") is true &&
+            Get(dataTools,"PowerShell") is false && Get(dataTools,"Compiler") is false &&
+            Get(bundledTools,"PowerShell") is false && Get(bundledTools,"Compiler") is true,
+            "typed operation intent preserves the existing PowerShell/compiler requirement matrix");
+        Console.WriteLine("PASS typed ResourceExecution intent: fixed operation kinds, payload binding, caller recheck and tool requirements; no OS resources created");
     }
 
     private static void VerifyGitWorkspaceBoundary(Assembly library,SecurityIdentifier owner)

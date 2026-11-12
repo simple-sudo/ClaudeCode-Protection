@@ -41,12 +41,48 @@ internal sealed partial class ProtectedSession
         // checkpoint. The NEXT installed invocation performs real journal
         // recovery; no live in-memory profile object is transferred to it.
         =>new ProtectedSession(layout,state,version).ExecuteResourceQualification(true);
-    private (int ExitCode,string Report) ExecuteResourceQualification(bool deferCleanup=false,bool includeGit=false,byte[]? workspaceInput=null,bool developProject=false,bool callerProject=false,Action? assertCaller=null)
+    internal static (int ExitCode,string Report) QualifyResources(FixedLayout layout,ProtectedState state,VerifiedVersion version)
+        =>new ProtectedSession(layout,state,version).ExecuteResourceQualification(ResourceExecutionIntent.ForWorkspaceQualification());
+    internal static (int ExitCode,string Report) QualifyToolchain(FixedLayout layout,ProtectedState state,VerifiedVersion version)
+        =>new ProtectedSession(layout,state,version).ExecuteResourceQualification(ResourceExecutionIntent.ForGitToolchainQualification());
+    internal static (int ExitCode,string Report) DevelopBundledProject(FixedLayout layout,ProtectedState state,VerifiedVersion version)
+        =>new ProtectedSession(layout,state,version).ExecuteResourceQualification(
+            ResourceExecutionIntent.ForBundledProjectDevelopment(),BundledProjectDevelopment.Baseline());
+    internal static (int ExitCode,string Report) DevelopBundledProjectForCaller(FixedLayout layout,ProtectedState state,VerifiedVersion version,Action assertCaller)
     {
+        ArgumentNullException.ThrowIfNull(assertCaller);
+        return new ProtectedSession(layout,state,version).ExecuteResourceQualification(
+            ResourceExecutionIntent.ForBundledProjectDevelopment(assertCaller),BundledProjectDevelopment.Baseline());
+    }
+    internal static (int ExitCode,string Report) BuildCallerProject(FixedLayout layout,ProtectedState state,VerifiedVersion version,byte[] bytes,Action assertCaller)
+    {
+        ArgumentNullException.ThrowIfNull(assertCaller);
+        return new ProtectedSession(layout,state,version).ExecuteResourceQualification(
+            ResourceExecutionIntent.ForCallerProjectBuild(assertCaller),bytes);
+    }
+    // A data-only operation on the existing owner and fixed offline Git
+    // program. Source/test/build files in the bundle are NEVER executed.
+    internal static (int ExitCode,string Report) ProcessWorkspaceData(FixedLayout layout,ProtectedState state,VerifiedVersion version,byte[] bytes)
+        =>new ProtectedSession(layout,state,version).ExecuteResourceQualification(
+            ResourceExecutionIntent.ForWorkspaceDataProcessing(),bytes);
+    internal static (int ExitCode,string Report) ProcessWorkspaceDataForCaller(FixedLayout layout,ProtectedState state,VerifiedVersion version,byte[] bytes,Action assertCaller)
+    {
+        ArgumentNullException.ThrowIfNull(assertCaller);
+        return new ProtectedSession(layout,state,version).ExecuteResourceQualification(
+            ResourceExecutionIntent.ForWorkspaceDataProcessing(assertCaller),bytes);
+    }
+    internal static (int ExitCode,string Report) QualifyResourceRecovery(FixedLayout layout,ProtectedState state,VerifiedVersion version)
+        // Deliberately EXIT this installed owner with a durable cleanup
+        // checkpoint. The NEXT installed invocation performs real journal
+        // recovery; no live in-memory profile object is transferred to it.
+        =>new ProtectedSession(layout,state,version).ExecuteResourceQualification(ResourceExecutionIntent.ForRecoveryQualification());
+    private (int ExitCode,string Report) ExecuteResourceQualification(ResourceExecutionIntent intent,byte[]? workspaceInput=null)
+    {
+        ArgumentNullException.ThrowIfNull(intent);intent.AssertInput(workspaceInput);
         InstallationProfileLease? profile=null;AtomicChild? child=null;
         var gitWorkflow=workspaceInput is not null && WorkspaceBundle.Parse(workspaceInput).GitPlan is not null;
         resourceDurationMs=gitWorkflow?GitWorkflowTimeoutMs:30000;
-        var (powerShellRequired,compilerRequired)=ResourceProbePlan.ToolRequirements(developProject,workspaceInput is not null);
+        var (powerShellRequired,compilerRequired)=ResourceProbePlan.ToolRequirementsForIntent(intent);
         System.IO.Pipes.AnonymousPipeServerStream? pipe=null;StreamReader? reader=null;
         ResourceQualification? permit=null;ResourceChildReport? observed=null;Task<uint>? exited=null;Task<string>? text=null;
         ResourceBootstrapFailure? bootstrapFailure=null;
@@ -57,7 +93,7 @@ internal sealed partial class ProtectedSession
         (int Pid,long CreatedFileTime)? projectActor=null,probeActor=null;bool probeObserved=false;HostPrivacySummary? hostPrivacy=null;
         try
         {
-            assertCaller?.Invoke();
+            intent.AssertCaller?.Invoke();
             LifecycleRecovery.AssertNoPending(state);InstallationLoopbackLease.AssertClosedHistory(state);
             foreach(var intent in OwnedJobIntent.ReadAll(state))
                 if(!SessionZeroCreatorRecovery.IsAdmissionResolved(state,intent))throw WfpNative.Contract("ResourceQualificationPriorAdmissionNotClosed");
@@ -65,21 +101,21 @@ internal sealed partial class ProtectedSession
             foreach(var plan in plans)fences.Add(PersistentFence.OpenExisting(state,plan.Data.FenceId));
             foreach(var fence in fences)if(!fence.Observe().FullQuarantineObserved)throw WfpNative.Contract("ResourceQualificationFullQuarantineRequired");
             state.WriteNew("resource-session-before-"+id+".json",JsonSerializer.SerializeToUtf8Bytes(new {SchemaVersion=1,state.InstallationId,
-                SessionId=id,version.Package.Release,version.Package.ManifestHash,Scope=callerProject?WorkspacePipe.CallerProjectScope:developProject?"EXPLICIT_BUNDLED_PROJECT_CODE_TASK":"FIXED_OFFLINE_RESOURCE_AND_POWERSHELL_QUALIFICATION",FormalAdmissionIssued=false}));
-            assertCaller?.Invoke();
-            profile=InstallationProfileLease.Create(state);resources=SessionResources.Create(state,version,profile,id,includeGit,workspaceInput,developProject,callerProject);
+                SessionId=id,version.Package.Release,version.Package.ManifestHash,Scope=intent.CallerProject?WorkspacePipe.CallerProjectScope:intent.DevelopProject?"EXPLICIT_BUNDLED_PROJECT_CODE_TASK":"FIXED_OFFLINE_RESOURCE_AND_POWERSHELL_QUALIFICATION",FormalAdmissionIssued=false}));
+            intent.AssertCaller?.Invoke();
+            profile=InstallationProfileLease.Create(state);resources=SessionResources.Create(state,version,profile,id,intent,workspaceInput);
             using(var package=new InstallationPackageSid(state))sid=package.Value;
             job=OwnedKernelJob.CreateEmpty(state,version);permit=new ResourceQualification(this);
             pipe=new(System.IO.Pipes.PipeDirection.In,HandleInheritability.Inheritable);reader=new StreamReader(pipe,Encoding.UTF8,false,4096,true);
             text=toolLaunch.ReadMessages(reader);
-            assertCaller?.Invoke();
+            intent.AssertCaller?.Invoke();
             child=AtomicChild.CreateResourceQualification(layout,state,version,job,profile,permit,pipe.ClientSafePipeHandle.DangerousGetHandle());
             pipe.DisposeLocalCopyOfClientHandle();
             // The installed register-only ETW lease restored exactly but did
             // not repair EventRegister5. Retire that automatic permission
             // mutation; keep its journal inspection/recovery for old runs.
-            runtime=new ProtectionRuntimeLease(state,version,job,fences,null,resources:permit,assertCaller:assertCaller);
-            assertCaller?.Invoke();
+            runtime=new ProtectionRuntimeLease(state,version,job,fences,null,resources:permit,assertCaller:intent.AssertCaller);
+            intent.AssertCaller?.Invoke();
             _=child.ResumeQuarantined();resumed=true;runtime.Activate(gitWorkflow?GitWorkflowTimeoutMs:20000);
             // Eleven owner-brokered Git processes need the same bounded window
             // as the resource permit and runtime watchdog, not the generic
@@ -93,12 +129,12 @@ internal sealed partial class ProtectedSession
                 // members have been verified together. After release, its
                 // planned exit is supervised by the runtime and exact Job
                 // drain, not mistaken for a foreign process appearing.
-                var executionPhase=developProject && toolObserved;
-                var probePhase=developProject && gitObserved && !resources.ProjectProbeSealed;
+                var executionPhase=intent.DevelopProject && toolObserved;
+                var probePhase=intent.DevelopProject && gitObserved && !resources.ProjectProbeSealed;
                 if(probePhase && (probeObserved?!resources.ProjectProbePrivacyReady():!resources.ProjectProbeReady()))continue;
                 if(!probePhase && executionPhase && (resources.ProjectExecutionReleased || !resources.ProjectPrivacyReady()))continue;
-                var gitPhase=developProject?!gitObserved:!powerShellRequired || toolObserved;
-                if(!probePhase && !executionPhase && (gitPhase?!includeGit || gitObserved || !resources.GitReady():!resources.ToolReady()))continue;
+                var gitPhase=intent.DevelopProject?!gitObserved:!powerShellRequired || toolObserved;
+                if(!probePhase && !executionPhase && (gitPhase?!intent.IncludeGit || gitObserved || !resources.GitReady():!resources.ToolReady()))continue;
                 var expectedTool=gitPhase?SessionGitToolchain.ToolPath:resources.Plan.PowerShellLaunchImage;
                 var before=job.Observe();
                 if(before.ActiveBefore==0 && before.ActiveAfter==0)continue;
@@ -130,7 +166,7 @@ internal sealed partial class ProtectedSession
                         if(!primary && string.Equals(image,expectedTool,StringComparison.OrdinalIgnoreCase))
                         {
                             fixedTools++;
-                            if(developProject && !gitPhase)
+                            if(intent.DevelopProject && !gitPhase)
                             {
                                 var actor=(checked((int)member.Pid),member.CreatedFileTime.Value);
                                 if(probePhase)
@@ -154,7 +190,7 @@ internal sealed partial class ProtectedSession
                         else{resources.ReleaseInspectedProbe();probeObserved=true;}
                     }
                     else if(executionPhase)resources.ReleaseProjectExecution(projectActor?.Pid??throw WfpNative.Contract("ProjectToolPidMissing"),runtime.AssertHealthy);
-                    else if(gitPhase){if(developProject)resources.SealRootHostPrivacyBeforeGit(checked((int)child.Pid));resources.ReleaseInspectedGit();gitObserved=true;}
+                    else if(gitPhase){if(intent.DevelopProject)resources.SealRootHostPrivacyBeforeGit(checked((int)child.Pid));resources.ReleaseInspectedGit();gitObserved=true;}
                     else{resources.ReleaseInspectedTool();toolObserved=true;}
                 });
             }
@@ -172,7 +208,7 @@ internal sealed partial class ProtectedSession
                 }
             observed=JsonSerializer.Deserialize<ResourceChildReport>(childText)??throw WfpNative.Contract("ResourceChildReportMissing");
             if(exit!=0 || observed.Pid!=child.Pid || observed.Nonce!=id || !SessionResources.Qualified(observed,compilerRequired) || compilerRequired && !toolObserved ||
-                includeGit && (!gitObserved || observed.Git is null) || !includeGit && observed.Git is not null || developProject && !resources.ProjectExecutionReleased)
+                intent.IncludeGit && (!gitObserved || observed.Git is null) || !intent.IncludeGit && observed.Git is not null || intent.DevelopProject && !resources.ProjectExecutionReleased)
                 throw WfpNative.Contract("OfflineResourceOrInheritedToolBoundaryNotQualified");
         }
         catch(Exception ex){failures.Add(ex);}
@@ -192,7 +228,7 @@ internal sealed partial class ProtectedSession
             }
             else if(job is not null)try{zero=job.AtomicAdmissionReserved?job.CloseAtomicAdmissionAndStop():job.StopAndRetireUnadmitted();}catch(Exception ex){failures.Add(ex);}
             if(profile?.ProcessCreationAttempted==true && zero is not null)try{profile.AfterOwnedJobZero(zero);}catch(Exception ex){failures.Add(ex);}
-            if(developProject && resources is not null && child is not null && closedResources)
+            if(intent.DevelopProject && resources is not null && child is not null && closedResources)
                 try
                 {
                     hostPrivacy=resources.ReadClosedHostPrivacy(checked((int)child.Pid),projectActor?.Pid);
@@ -202,9 +238,9 @@ internal sealed partial class ProtectedSession
             if(closedResources && failures.Count==0 && zero is not null && observed is not null && resources is not null)
                 try
                 {
-                    assertCaller?.Invoke();
+                    intent.AssertCaller?.Invoke();
                     resources.AssertOutput(observed);
-                    if(includeGit)workspaceResultSHA256=resources.PreserveClosedWorkspaceResult(zero,assertCaller);
+                    if(intent.IncludeGit)workspaceResultSHA256=resources.PreserveClosedWorkspaceResult(zero,intent.AssertCaller);
                 }
                 catch(Exception ex){failures.Add(ex);}
             if(exited is not null)try{exit=exited.WaitAsync(TimeSpan.FromSeconds(2)).GetAwaiter().GetResult();}catch(Exception ex){failures.Add(ex);}
@@ -213,7 +249,7 @@ internal sealed partial class ProtectedSession
             foreach(var owned in new IDisposable?[]{child,reader,pipe,resources})try{owned?.Dispose();}catch(Exception ex){failures.Add(ex);}
             try
             {
-                if(deferCleanup && failures.Count==0 && profile is not null && zero?.ObservedZero==true && observed is not null && SessionResources.Qualified(observed,powerShellRequired))
+                if(intent.DeferCleanup && failures.Count==0 && profile is not null && zero?.ObservedZero==true && observed is not null && SessionResources.Qualified(observed,powerShellRequired))
                 {profile.DeferCleanupForRecovery();cleanupDeferred=true;}
                 else profile?.Dispose();
             }
@@ -226,14 +262,14 @@ internal sealed partial class ProtectedSession
         // Cleanup is independent of the caller. A result written before a
         // late disconnect stays private and must not get a success receipt.
         if(workspaceResultSHA256 is not null && failures.Count==0)
-            try{assertCaller?.Invoke();}catch(Exception ex){failures.Add(ex);}
-        var success=observed is not null && SessionResources.Qualified(observed,compilerRequired) && (!compilerRequired || toolObserved) && (!includeGit || gitObserved && observed.Git is not null && workspaceResultSHA256 is not null) && zero?.ObservedZero==true && failures.Count==0;
+            try{intent.AssertCaller?.Invoke();}catch(Exception ex){failures.Add(ex);}
+        var success=observed is not null && SessionResources.Qualified(observed,compilerRequired) && (!compilerRequired || toolObserved) && (!intent.IncludeGit || gitObserved && observed.Git is not null && workspaceResultSHA256 is not null) && zero?.ObservedZero==true && failures.Count==0;
         var report=JsonSerializer.Serialize(new {SchemaVersion=1,state.InstallationId,SessionId=id,version.Package.Release,version.Package.ManifestHash,
-            Status=success?(callerProject?"CALLER_CSHARP_PROJECT_BUILT_AND_CLEANED":developProject?"BUNDLED_PROJECT_DEVELOPED_AND_CLEANED":workspaceInput is not null?"WORKSPACE_DATA_PROCESSED_AND_CLEANED":cleanupDeferred?"OFFLINE_RESOURCE_CLOSED_JOB_CLEANUP_DEFERRED":includeGit?"FIXED_OFFLINE_GIT_TOOLCHAIN_AND_DENIAL_OBSERVED":"FIXED_OFFLINE_WORKSPACE_TOOL_AND_DENIAL_OBSERVED"):"OFFLINE_RESOURCE_SESSION_NOT_CONFIRMED",
-            Scope=callerProject?WorkspacePipe.CallerProjectScope:developProject?"EXPLICIT_TEXTSUMMARY_SOURCE_EDIT_BUILD_RUN_TEST":workspaceInput is not null?"CALLER_BYTE_PINNED_DATA_FIXED_OFFLINE_GIT_ONLY_NO_PROJECT_CODE_EXECUTION":includeGit?"FIXED_OFFLINE_GIT_INIT_ADD_COMMIT_AND_DENIAL_ONLY":"FIXED_PROFILE_WORKSPACE_WINDOWS_POWERSHELL_AND_NON_SECRET_DENIAL_FIXTURE_ONLY",
+            Status=success?(intent.CallerProject?"CALLER_CSHARP_PROJECT_BUILT_AND_CLEANED":intent.DevelopProject?"BUNDLED_PROJECT_DEVELOPED_AND_CLEANED":workspaceInput is not null?"WORKSPACE_DATA_PROCESSED_AND_CLEANED":cleanupDeferred?"OFFLINE_RESOURCE_CLOSED_JOB_CLEANUP_DEFERRED":intent.IncludeGit?"FIXED_OFFLINE_GIT_TOOLCHAIN_AND_DENIAL_OBSERVED":"FIXED_OFFLINE_WORKSPACE_TOOL_AND_DENIAL_OBSERVED"):"OFFLINE_RESOURCE_SESSION_NOT_CONFIRMED",
+            Scope=intent.CallerProject?WorkspacePipe.CallerProjectScope:intent.DevelopProject?"EXPLICIT_TEXTSUMMARY_SOURCE_EDIT_BUILD_RUN_TEST":workspaceInput is not null?"CALLER_BYTE_PINNED_DATA_FIXED_OFFLINE_GIT_ONLY_NO_PROJECT_CODE_EXECUTION":intent.IncludeGit?"FIXED_OFFLINE_GIT_INIT_ADD_COMMIT_AND_DENIAL_ONLY":"FIXED_PROFILE_WORKSPACE_WINDOWS_POWERSHELL_AND_NON_SECRET_DENIAL_FIXTURE_ONLY",
             Resumed=resumed,ChildExit=exit,Child=observed,ChildBootstrapFailure=bootstrapFailure,InheritedPowerShellIdentityObserved=powerShellRequired && toolObserved,FinalJob=zero,Stop=stopped,
-            ProjectDevelopmentRequested=developProject,InheritedProjectToolIdentityObserved=developProject && toolObserved,
-            ProjectExecutionPermitConsumedAfterOwnerSealedPrivacy=developProject && resources?.ProjectExecutionReleased==true,
+            ProjectDevelopmentRequested=intent.DevelopProject,InheritedProjectToolIdentityObserved=intent.DevelopProject && toolObserved,
+            ProjectExecutionPermitConsumedAfterOwnerSealedPrivacy=intent.DevelopProject && resources?.ProjectExecutionReleased==true,
             HostPrivacy=hostPrivacy,
             CleanupDeferredForRecovery=cleanupDeferred,ManifestReadAccessRequired=false,ManifestReadAccessRestored=false,
             PowerShellRequired=powerShellRequired,PowerShellVersion=powerShellRequired?SessionPowerShellToolchain.Version:null,PowerShellAssetSetSHA256=powerShellRequired?SessionPowerShellToolchain.AssetSetSHA256:null,
@@ -241,7 +277,7 @@ internal sealed partial class ProtectedSession
             EtwProvider=SessionEtwProviderAccess.ProviderId,EtwRegistrationRights=0,
             ToolCreationOwner="ORIGINAL_BROKER",ToolCreationBinding="ATOMIC_LPAC_PACKAGE_AND_ORIGINAL_JOB_NOT_PARENT_INHERITANCE",
             InheritedGitIdentityObserved=gitObserved,GitAssetSetSHA256=resources?.Plan.GitAssetSetSHA256,
-            WorkspaceBaselineSHA256=includeGit && resources is not null?resources.Plan.WorkspaceInputSHA256??ClaudeCodeProtection.Workspaces.WorkspaceBundle.Hash(resources.Plan.FixedProjectBundle):null,
+            WorkspaceBaselineSHA256=intent.IncludeGit && resources is not null?resources.Plan.WorkspaceInputSHA256??ClaudeCodeProtection.Workspaces.WorkspaceBundle.Hash(resources.Plan.FixedProjectBundle):null,
             ClosedWorkspaceResultSHA256=workspaceResultSHA256,
             Failures=failures.SelectMany(WfpNative.Describe).ToArray(),FormalAdmissionIssued=false,LaunchAuthorized=false,NetworkOpened=false,ClaudeLaunched=false,
             Boundary="LPAC_REQUIRED_NO_CAPABILITIES_NO_FALLBACK",AllHostResourceIsolationQualified=false,UserProjectToolchainQualified=false,FourteenEnvironmentRequirementsQualified=false,GpuQualified=false});

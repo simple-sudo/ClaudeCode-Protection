@@ -52,6 +52,12 @@ internal sealed record ResourceProbePlan(int SchemaVersion,string Nonce,string I
         var powerShell=!developProject && !hasWorkspaceInput;
         return (powerShell,powerShell || developProject);
     }
+
+    internal static (bool PowerShell,bool Compiler) ToolRequirementsForIntent(ResourceExecutionIntent intent)
+    {
+        ArgumentNullException.ThrowIfNull(intent);
+        return ToolRequirements(intent.DevelopProject,intent.RequiresWorkspaceInput);
+    }
     internal bool RequiresPowerShell=>ToolRequirements(DevelopProject,WorkspaceInputSHA256 is not null).PowerShell;
     internal bool RequiresCompilerTool=>ToolRequirements(DevelopProject,WorkspaceInputSHA256 is not null).Compiler;
     internal string Workspace(string sid)=>GitAssetSetSHA256 is null?WindowsPathSeal.Child(SessionResources.ProfileFolder(sid),"workspace-"+Nonce):WindowsPathSeal.Child(ProgramFilesRoot,"ClaudeCodeProtection-Task-"+Nonce);
