@@ -72,6 +72,14 @@ internal sealed class GitWorkspaceDescriptor : IDisposable
         using var handle=CreateFile(path,0x000a0080u,1,IntPtr.Zero,3,0x02200000u,IntPtr.Zero);
         if(handle.IsInvalid)throw new Win32Exception(Marshal.GetLastWin32Error(),"Open private Git directory for low label");
         WindowsPathSeal.VerifyObject(handle,path,true);
+        if(!GetSecurityDescriptorDacl(descriptor,out var daclPresent,out var dacl,out _) ||
+            !daclPresent || dacl==IntPtr.Zero)
+            throw new InvalidOperationException("Private Git DACL descriptor missing");
+        // SetSecurityInfo runs NTFS's automatic-inheritance algorithm. Supplying
+        // the protected DACL here is required for child ACEs to be recorded as inherited.
+        var daclStatus=SetSecurityInfo(handle,1,0x80000004u,IntPtr.Zero,IntPtr.Zero,dacl,IntPtr.Zero);
+        if(daclStatus!=0)
+            throw new Win32Exception(unchecked((int)daclStatus),"Apply private Git protected DACL and inheritance");
         if(!GetSecurityDescriptorSacl(label,out var present,out var sacl,out _) || !present || sacl==IntPtr.Zero)
             throw new InvalidOperationException("Private Git low-label descriptor missing");
         var status=SetSecurityInfo(handle,1,16,IntPtr.Zero,IntPtr.Zero,IntPtr.Zero,sacl);
@@ -154,6 +162,9 @@ internal sealed class GitWorkspaceDescriptor : IDisposable
     [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
     [DllImport("advapi32.dll",EntryPoint="ConvertStringSecurityDescriptorToSecurityDescriptorW",CharSet=CharSet.Unicode,SetLastError=true)]
     [return:MarshalAs(UnmanagedType.Bool)] private static extern bool ConvertStringSecurityDescriptorToSecurityDescriptor(string text,uint revision,out IntPtr descriptor,out uint length);
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
+    [DllImport("advapi32.dll",SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetSecurityDescriptorDacl(IntPtr descriptor,[MarshalAs(UnmanagedType.Bool)] out bool present,out IntPtr dacl,[MarshalAs(UnmanagedType.Bool)] out bool defaulted);
     [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
     [DllImport("advapi32.dll",SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)]
     private static extern bool GetSecurityDescriptorSacl(IntPtr descriptor,[MarshalAs(UnmanagedType.Bool)] out bool present,out IntPtr sacl,[MarshalAs(UnmanagedType.Bool)] out bool defaulted);
