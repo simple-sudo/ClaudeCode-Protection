@@ -6,48 +6,6 @@ using Microsoft.Win32.SafeHandles;
 
 namespace ProtectionLifecycle;
 
-internal sealed class WfpFailure : IOException
-{
-    internal uint Status { get; }
-    internal string Stage { get; }
-    internal WfpFailure(string stage,uint status):base(stage+":0x"+status.ToString("X8")){Stage=stage;Status=status;HResult=unchecked((int)status);}
-}
-internal sealed record WfpErrorEvidence(string Type,uint Code,string? Stage);
-internal sealed class SafeWfpEngine : SafeHandleZeroOrMinusOneIsInvalid
-{
-    public SafeWfpEngine():base(true){}
-    protected override bool ReleaseHandle()=>WfpNative.FwpmEngineClose0(handle)==0;
-}
-internal sealed class InstallationPackageSid : IDisposable
-{
-    internal IntPtr Pointer { get; private set; }
-    internal string Value { get; }
-    internal string Name { get; }
-    internal InstallationPackageSid(ProtectedState state):this(NameFor(state)){}
-    private static string NameFor(ProtectedState state)
-    {
-        state.AssertHeld();return "ClaudeCodeProtection."+Identifiers.Hex32(state.InstallationId);
-    }
-    internal static InstallationPackageSid ForObjectContractQualification()=>new("ClaudeCodeProtection.ObjectContractQualification.20261027");
-    internal static InstallationPackageSid FromInstallationId(string id)=>new("ClaudeCodeProtection."+Identifiers.Hex32(id));
-    internal static InstallationPackageSid ForNetworkControl(ProtectedState state)
-    {state.AssertHeld();return new("CPC.NetControl."+Identifiers.Hex32(state.InstallationId));}
-    private InstallationPackageSid(string name)
-    {
-        Name=name;
-        var status=DeriveAppContainerSidFromAppContainerName(name,out var pointer);
-        if(status!=0){if(pointer!=IntPtr.Zero)FreeSid(pointer);throw new WfpFailure("DeriveFixedInstallationPackageSid",unchecked((uint)status));}
-        Pointer=pointer;
-        try{if(pointer==IntPtr.Zero || !WfpNative.IsValidSid(pointer))throw new InvalidDataException("Derived package SID invalid");Value=new SecurityIdentifier(pointer).Value;}
-        catch{Dispose();throw;}
-    }
-    public void Dispose(){if(Pointer!=IntPtr.Zero){FreeSid(Pointer);Pointer=IntPtr.Zero;}}
-    [DllImport("userenv.dll",CharSet=CharSet.Unicode,ExactSpelling=true)] private static extern int DeriveAppContainerSidFromAppContainerName(string name,out IntPtr sid);
-    [DllImport("advapi32.dll")] private static extern IntPtr FreeSid(IntPtr sid);
-}
-
-// x64 Win32 declarations, not a native-layout qualification. The size/offset
-// assertions run only if this source is eventually compiled and invoked.
 internal static class WfpNative
 {
     internal const uint FilterNotFound=0x80320003,SubLayerNotFound=0x80320007;
@@ -182,4 +140,3 @@ internal static class WfpNative
     [DllImport("advapi32.dll")] private static extern uint GetSecurityDescriptorLength(IntPtr descriptor);
     [DllImport("advapi32.dll",EntryPoint="ConvertStringSecurityDescriptorToSecurityDescriptorW",CharSet=CharSet.Unicode,SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)] private static extern bool ConvertStringSecurityDescriptorToSecurityDescriptor(string value,uint revision,out IntPtr descriptor,out uint length);
     [DllImport("kernel32.dll")] private static extern IntPtr LocalFree(IntPtr memory);
-}
