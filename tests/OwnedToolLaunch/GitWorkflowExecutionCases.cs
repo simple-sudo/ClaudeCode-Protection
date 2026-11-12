@@ -181,13 +181,13 @@ internal static class GitWorkflowExecutionCases
             var probeCommit=Run(StartRunnerWorkflow(new[]{"-C",textconvRepository,"commit","--quiet","--no-gpg-sign","-m","textconv probe baseline"}));
             Require(probeCommit.Exit==0 && probeCommit.Error.Length==0,"textconv probe baseline committed");
             File.WriteAllBytes(textconvPayload,new byte[]{0,254,2,129,13,11,0,43});
-            var unguardedDiff=Run(StartRunnerWorkflow(new[]{"-C",textconvRepository,"diff","--textconv","--no-ext-diff","--no-color","--","payload.bin"}));
+            var unguardedDiff=Run(StartRunnerWorkflow(new[]{"-C",textconvRepository,"diff","HEAD","--textconv","--no-ext-diff","--no-color","--","payload.bin"}));
             Require(unguardedDiff.Exit==0 && File.Exists(textconvMarker) &&
                 File.ReadAllText(textconvMarker).Contains("TEXTCONV_EXECUTED",StringComparison.Ordinal),
                 "adversarial textconv control proves the configured converter executed (exit "+
                 unguardedDiff.Exit+", stdout="+unguardedDiff.Out+", stderr="+unguardedDiff.Error+")");
             var markerLength=new FileInfo(textconvMarker).Length;
-            var guardedDiff=Run(StartRunnerWorkflow(new[]{"-C",textconvRepository,"diff","--no-textconv","--no-ext-diff","--no-color","--","payload.bin"}));
+            var guardedDiff=Run(StartRunnerWorkflow(new[]{"-C",textconvRepository,"diff","HEAD","--no-textconv","--no-ext-diff","--no-color","--","payload.bin"}));
             Require(guardedDiff.Exit==0 && new FileInfo(textconvMarker).Length==markerLength &&
                 guardedDiff.Out.Contains("Binary files",StringComparison.Ordinal),
                 "fixed no-textconv policy suppresses the repository converter and retains binary diff semantics");
