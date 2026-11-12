@@ -225,7 +225,6 @@ internal static class NativeGitLpacAccessCases
             static string Quote(string path) => "\"" + path + "\"";
             var script =
                 "echo %CD%>" + Quote(initialCwdPath) + " & " +
-                "cd /d " + Quote(root) + " || exit /b 9 & " +
                 "echo %CD%>" + Quote(finalCwdPath) + " & " +
                 "echo root-write>" + Quote(Path.Combine(root, "lpac-root-write.txt")) + " & " +
                 "type " + Quote(projectSourcePath) + " >nul 2>" + Quote(readErrorPath) + " || exit /b 11 & " +
