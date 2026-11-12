@@ -181,7 +181,7 @@ jobs:
               Invoke-StandardUserTest $workspacePipeApp @('WorkspacePipe.dll',$case) "WorkspacePipe $case"
             }
             Invoke-StandardUserTest $centerApp @('CenterResults.dll') 'Protection Center workspace review and project-flow tests'
-            Invoke-StandardUserTest $profileRecoveryApp @('ProfileRecovery.dll') 'Profile and unrecorded task-workspace closure receipt tests (native mutation collaborators are fakes)'
+            Invoke-StandardUserTest $profileRecoveryApp @('ProfileRecovery.dll') 'Profile recovery and task-workspace cleanup/closure tests (native filesystem operations are simulated)'
           }
           finally {
             if (Test-Path -LiteralPath $sourceRedirect) { & $env:ComSpec /d /c ('rmdir "{0}"' -f $sourceRedirect) | Out-Null }
