@@ -7,10 +7,6 @@ namespace ProtectionLifecycle;
 // This partial holds no independent process/thread handle and cannot resume or replace it.
 internal sealed partial class AtomicChild
 {
-    internal SecurityIdentifier? OfflineConsoleUserSid { get;private set; }
-    internal SessionZeroStartupWitness.Win32kObservation? BeforeResumeWin32k {get;private set;}
-    internal SessionZeroStartupWitness.SystemCallFilterObservation? BeforeResumeSystemCallFilter {get;private set;}
-
     internal uint WaitForCanaryExit()=>WaitForCanaryExit(null);
     internal uint WaitForCanaryExit(int? timeoutMs)
     {
