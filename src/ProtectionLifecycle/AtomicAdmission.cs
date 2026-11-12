@@ -787,10 +787,17 @@ internal sealed partial class AtomicChild : IDisposable
         if(previous!=1)throw WfpNative.Contract("AtomicInitialSuspendCountMismatch");
         resumed=true;return proof;
     }
-    internal uint WaitForCanaryExit()
+    internal uint WaitForCanaryExit(int? timeoutMs = null)
     {
-        return ObserveCanaryExit(network?.Kind==NetworkProbeKind.ProxySession?90000u:network is not null || gpuWorkload?30000u:15000u)
+        var defaultTimeoutMs=network?.Kind==NetworkProbeKind.ProxySession?90000u:network is not null || gpuWorkload?30000u:15000u;
+        return ObserveCanaryExit(ResolveCanaryTimeoutMs(timeoutMs,defaultTimeoutMs))
             ??throw new TimeoutException("Finite atomic canary did not exit");
+    }
+    internal static uint ResolveCanaryTimeoutMs(int? timeoutMs,uint defaultTimeoutMs)
+    {
+        if(defaultTimeoutMs is 0 or >120000 || timeoutMs is <1 or >120000)
+            throw new ArgumentOutOfRangeException(nameof(timeoutMs));
+        return timeoutMs.HasValue?checked((uint)timeoutMs.Value):defaultTimeoutMs;
     }
     internal static void AssertHeldInitialThread(SafeProcessHandle process,SafeWaitHandle thread,uint pid,uint tid)
     {
