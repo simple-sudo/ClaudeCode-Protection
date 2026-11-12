@@ -50,7 +50,7 @@ internal static class ProfileRecoveryCases
         // fake state journal and a fake native filesystem boundary. No
         // directory deletion, AppContainer deletion, Job or process is run.
         SessionResources.ProfileRoot=record.StorageRoot;
-        const string session=new string('d',32);
+        var session=new string('d',32);
         ProtectedState BuildTaskState(int removed=0,string? workspaceIdentity=null,bool rootAbsent=true)
         {
             var taskState=new ProtectedState();
