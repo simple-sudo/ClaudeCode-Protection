@@ -158,7 +158,7 @@ internal static class NativeGitLpacAccessCases
         var packageBytes = new byte[package.BinaryLength];
         package.GetBinaryForm(packageBytes, 0);
         IntPtr packagePointer = IntPtr.Zero, attributes = IntPtr.Zero, capabilities = IntPtr.Zero;
-        IntPtr jobList = IntPtr.Zero, policy = IntPtr.Zero, environment = IntPtr.Zero;
+        IntPtr jobList = IntPtr.Zero, policy = IntPtr.Zero, environment = IntPtr.Zero, probeEnvironment = IntPtr.Zero;
         IntPtr processDescriptor = IntPtr.Zero, threadDescriptor = IntPtr.Zero;
         SafeProcessHandle? process = null;
         SafeWaitHandle? thread = null;
@@ -212,7 +212,7 @@ internal static class NativeGitLpacAccessCases
                 "echo control-tamper>git-control\\empty-git-config & " +
                 "mkdir git-control\\lpac-created & " +
                 "echo medium-tamper>medium-write\\medium.txt & exit /b 0";
-            var command = new StringBuilder("\"" + commandImage + "\" /d /q /c \"" + script + "\"");
+            var commandLine = "\"" + commandImage + "\" /d /q /c \"" + script + "\"";
             var values = new SortedDictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             foreach (var name in new[] { "SystemRoot", "windir", "SystemDrive" })
             {
@@ -225,14 +225,16 @@ internal static class NativeGitLpacAccessCases
             values["=" + driveRoot[..2]] = root;
             values["ComSpec"] = commandImage;
             values["PATH"] = Environment.SystemDirectory;
-            values["TEMP"] = Path.Combine(root, "git-project");
-            values["TMP"] = Path.Combine(root, "git-project");
-            // Include the =X: current-directory entry required for a custom
-            // CreateProcess environment. The string's trailing NUL plus
-            // StringToHGlobalUni's terminator form exactly the two UTF-16 NULs.
-            var block = string.Join('\0', values.Select(pair => pair.Key + "=" + pair.Value)) + "\0";
-            environment = Marshal.StringToHGlobalUni(block);
-
+            // Match AtomicAdmission.SetPrivateRuntimeDirectories without
+            // inheriting the host profile: the LPAC's private runtime directory
+            // is the writable project workspace. LOCALAPPDATA is isolated below
+            // so the native 0xCB dependency is proven by a one-variable A/B.
+            var privateRuntimeDirectory = Path.Combine(root, "git-project");
+            values["TEMP"] = privateRuntimeDirectory;
+            values["TMP"] = privateRuntimeDirectory;
+            values["USERPROFILE"] = privateRuntimeDirectory;
+            var blockWithoutLocalAppData = string.Join('\0', values.Select(pair => pair.Key + "=" + pair.Value)) + "\0";
+            probeEnvironment = Marshal.StringToHGlobalUni(blockWithoutLocalAppData);
             const string sessionObjectSddl = "O:BAD:P(A;;0x001fffff;;;SY)(A;;0x001fffff;;;BA)";
             if (!ConvertStringSecurityDescriptorToSecurityDescriptor(sessionObjectSddl, 1, out processDescriptor, out _) ||
                 !ConvertStringSecurityDescriptorToSecurityDescriptor(sessionObjectSddl, 1, out threadDescriptor, out _))
@@ -254,17 +256,52 @@ internal static class NativeGitLpacAccessCases
                 Basic = new StartupInfo { Size = (uint)Marshal.SizeOf<StartupInfoEx>() },
                 Attributes = attributes
             };
-            if (!CreateProcess(commandImage, command, ref processSecurity, ref threadSecurity, false,
+
+            // Minimal A/B: same LPAC package, LPAC policy, Job-at-creation,
+            // process/thread descriptors, image, command line and cwd.
+            // The only environment difference is LOCALAPPDATA.
+            if (!CreateProcess(commandImage, new StringBuilder(commandLine), ref processSecurity, ref threadSecurity, false,
+                CreateSuspendedExtendedUnicodeNoWindow, probeEnvironment, root, ref startup, out var probeInfo))
+            {
+                var probeError = Marshal.GetLastWin32Error();
+                if (probeError != 203)
+                    throw new InvalidOperationException("LpacGitWorkspaceMissingLocalAppDataProbeUnexpected:Win32=0x" +
+                        probeError.ToString("X8", System.Globalization.CultureInfo.InvariantCulture), new Win32Exception(probeError));
+                Console.WriteLine("PASS LPAC CreateProcess A/B: omitting LOCALAPPDATA returns ERROR_ENVVAR_NOT_FOUND (203)");
+            }
+            else
+            {
+                childCreated = true;
+                process = new SafeProcessHandle(probeInfo.Process, true);
+                thread = new SafeWaitHandle(probeInfo.Thread, true);
+                if (process.IsInvalid || thread.IsInvalid)
+                    throw new InvalidDataException("LpacGitWorkspaceMissingLocalAppDataProbeHandlesInvalid");
+                if (!TerminateProcess(process, 0xC000013A)) throw Error("LpacGitWorkspaceTerminateUnexpectedProbe");
+                var probeWait = WaitForSingleObject(process, 5000);
+                if (probeWait != 0) throw Error("LpacGitWorkspaceWaitUnexpectedProbe");
+                childCompleted = true;
+                thread.Dispose(); thread = null;
+                process.Dispose(); process = null;
+                childCreated = false; childCompleted = false;
+                Console.WriteLine("INFO LPAC CreateProcess A/B: omission did not reproduce 203 on this runner");
+            }
+
+            values["LOCALAPPDATA"] = privateRuntimeDirectory;
+            var block = string.Join('\0', values.Select(pair => pair.Key + "=" + pair.Value)) + "\0";
+            environment = Marshal.StringToHGlobalUni(block);
+            if (!CreateProcess(commandImage, new StringBuilder(commandLine), ref processSecurity, ref threadSecurity, false,
                 CreateSuspendedExtendedUnicodeNoWindow, environment, root, ref startup, out var info))
             {
                 var nativeError = Marshal.GetLastWin32Error();
                 var parentJobQuery = IsProcessInJob(GetCurrentProcess(), IntPtr.Zero, out var parentInJob);
                 throw new InvalidOperationException("LpacGitWorkspaceCreateSuspendedChild:Win32=0x" +
                     nativeError.ToString("X8", System.Globalization.CultureInfo.InvariantCulture) +
+                    ";LocalAppDataPresent=True;LocalAppDataPrivateWorkspace=True" +
                     ";ParentJobQuery=" + parentJobQuery.ToString() + ";ParentInJob=" + parentInJob.ToString(),
                     new Win32Exception(nativeError));
             }
             childCreated = true;
+            Console.WriteLine("PASS LPAC CreateProcessW: LOCALAPPDATA and USERPROFILE bound to the private writable workspace");
             process = new SafeProcessHandle(info.Process, true);
             thread = new SafeWaitHandle(info.Thread, true);
             if (process.IsInvalid || thread.IsInvalid)
@@ -311,6 +348,7 @@ internal static class NativeGitLpacAccessCases
             process?.Dispose();
             if (initialized) DeleteProcThreadAttributeList(attributes);
             if (environment != IntPtr.Zero) Marshal.FreeHGlobal(environment);
+            if (probeEnvironment != IntPtr.Zero) Marshal.FreeHGlobal(probeEnvironment);
             if (policy != IntPtr.Zero) Marshal.FreeHGlobal(policy);
             if (jobList != IntPtr.Zero) Marshal.FreeHGlobal(jobList);
             if (capabilities != IntPtr.Zero) Marshal.FreeHGlobal(capabilities);
