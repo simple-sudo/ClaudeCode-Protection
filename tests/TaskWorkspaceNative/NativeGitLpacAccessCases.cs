@@ -52,14 +52,18 @@ internal static class NativeGitLpacAccessCases
             throw new InvalidOperationException("LpacGitWorkspaceProfileCreateFailed:" + profileStatus.ToString("X8", System.Globalization.CultureInfo.InvariantCulture));
         }
 
-        var root = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
-            "CpcGitLpacAccess-" + Guid.NewGuid().ToString("N"));
+        var programFiles = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
+        if (string.IsNullOrWhiteSpace(programFiles))
+            throw new InvalidDataException("LpacGitWorkspaceProgramFilesRootMissing");
+        var root = Path.Combine(programFiles, "CpcGitLpacAccess-" + Guid.NewGuid().ToString("N"));
         try
         {
             if (profileSid == IntPtr.Zero || new SecurityIdentifier(profileSid).Value != package.Value)
                 throw new InvalidDataException("LpacGitWorkspaceProfileSidMismatch");
 
-            CreateProtectedDirectory(root, package.Value, ControlPackageMask, MediumIntegritySid, humanSid);
+            // Match the production SessionTaskWorkspace root: a fresh, writable,
+            // Low-integrity task directory under the publicly traversable Program Files parent.
+            CreateProtectedDirectory(root, package.Value, ProjectPackageMask, LowIntegritySid, humanSid);
             using (var parent = WindowsPathSeal.LockDirectory(root, PathPolicy.Source))
             using (var project = GitWorkspaceDescriptor.Create(parent, "git-project", package.Value, true))
             using (var control = GitWorkspaceDescriptor.Create(parent, "git-control", package.Value, false))
@@ -69,7 +73,9 @@ internal static class NativeGitLpacAccessCases
                 GitWorkspaceDescriptor.AssertPath(projectPath, package.Value, true);
                 GitWorkspaceDescriptor.AssertPath(controlPath, package.Value, false);
 
-                File.WriteAllText(Path.Combine(projectPath, "source.txt"), "project-source", new UTF8Encoding(false));
+                var projectSource = Path.Combine(projectPath, "source.txt");
+                File.WriteAllText(projectSource, "project-source", new UTF8Encoding(false));
+                AssertInheritedFile(projectSource, package.Value, humanSid, ProjectPackageMask, LowIntegritySid);
                 File.WriteAllText(Path.Combine(controlPath, "empty-git-config"), string.Empty, new UTF8Encoding(false));
                 Directory.CreateDirectory(Path.Combine(controlPath, "empty-git-hooks"));
                 Directory.CreateDirectory(Path.Combine(controlPath, "empty-git-template"));
@@ -103,7 +109,9 @@ internal static class NativeGitLpacAccessCases
                     throw new InvalidDataException("LpacGitWorkspaceControlWriteWasNotDenied");
                 if (File.ReadAllText(mediumFile) != "medium-original")
                     throw new InvalidDataException("LpacGitWorkspaceMandatoryIntegrityWriteWasNotDenied");
-                var expectedRootNames = new[] { "git-control", "git-project", "medium-write" };
+                if (File.ReadAllText(Path.Combine(root, "lpac-root-write.txt")) != "root-write" + Environment.NewLine)
+                    throw new InvalidDataException("LpacGitWorkspaceRootWriteNotObserved");
+                var expectedRootNames = new[] { "git-control", "git-project", "lpac-root-write.txt", "medium-write" };
                 if (!Directory.EnumerateFileSystemEntries(root).Select(Path.GetFileName)
                     .Order(StringComparer.Ordinal).SequenceEqual(expectedRootNames.Order(StringComparer.Ordinal), StringComparer.Ordinal))
                     throw new InvalidDataException("LpacGitWorkspaceRootInventoryChanged");
@@ -202,7 +210,9 @@ internal static class NativeGitLpacAccessCases
                 throw Error("LpacGitWorkspaceBindJob");
 
             var script =
-                "type git-project\\source.txt >nul || exit /b 11 & " +
+                "echo root-write>lpac-root-write.txt & " +
+                "type git-project\\source.txt >nul 2>lpac-read-error.txt || exit /b 11 & " +
+                "del /q lpac-read-error.txt & " +
                 "type git-control\\empty-git-config >nul || exit /b 12 & " +
                 "type git-control\\git-selected-paths.bin >nul || exit /b 13 & " +
                 "type medium-write\\medium.txt >nul || exit /b 14 & " +
@@ -225,11 +235,11 @@ internal static class NativeGitLpacAccessCases
             values["=" + driveRoot[..2]] = root;
             values["ComSpec"] = commandImage;
             values["PATH"] = Environment.SystemDirectory;
-            // Match AtomicAdmission.SetPrivateRuntimeDirectories without
-            // inheriting the host profile: the LPAC's private runtime directory
-            // is the writable project workspace. LOCALAPPDATA is isolated below
-            // so the native 0xCB dependency is proven by a one-variable A/B.
-            var privateRuntimeDirectory = Path.Combine(root, "git-project");
+            // Match AtomicAdmission.SetPrivateRuntimeDirectories: TEMP/TMP,
+            // USERPROFILE and LOCALAPPDATA all point at the fresh task-workspace
+            // root, never the host profile. LOCALAPPDATA is isolated below to
+            // prove the native 0xCB dependency by a one-variable A/B.
+            var privateRuntimeDirectory = root;
             values["TEMP"] = privateRuntimeDirectory;
             values["TMP"] = privateRuntimeDirectory;
             values["USERPROFILE"] = privateRuntimeDirectory;
@@ -331,7 +341,17 @@ internal static class NativeGitLpacAccessCases
             childCompleted = true;
             if (!GetExitCodeProcess(process, out var exitCode)) throw Error("LpacGitWorkspaceReadChildExit");
             if (exitCode != 0)
-                throw new InvalidDataException("LpacGitWorkspaceChildReadFailed:" + exitCode.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            {
+                var diagnosticPath = Path.Combine(root, "lpac-read-error.txt");
+                var diagnostic = File.Exists(diagnosticPath)
+                    ? File.ReadAllText(diagnosticPath).Trim().Replace("\\r", " ").Replace("\\n", " ")
+                    : "none";
+                if (diagnostic.Length > 256) diagnostic = diagnostic[..256];
+                throw new InvalidDataException("LpacGitWorkspaceChildReadFailed:" +
+                    exitCode.ToString(System.Globalization.CultureInfo.InvariantCulture) + ";ReadDiagnostic=" + diagnostic);
+            }
+            if (File.Exists(Path.Combine(root, "lpac-read-error.txt")))
+                throw new InvalidDataException("LpacGitWorkspaceReadDiagnosticWasNotCleaned");
         }
         finally
         {
