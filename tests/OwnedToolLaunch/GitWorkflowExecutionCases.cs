@@ -40,18 +40,12 @@ internal static class GitWorkflowExecutionCases
             catch(InvalidDataException error)when(error.Message=="UnrecordedTaskWorkspaceRecoveryAuthorityIncomplete"){refused=true;}
             Require(refused,"unrecorded workspace recovery refuses missing "+authorityNames[index]);
         }
-        InvokeStatic(taskWorkspaceType,"RequireUnrecordedWorkspaceDeleteEvidence",true,true,true,true);
-        var deleteEvidence=new object?[]{true,true,true,true};
-        var deleteNames=new[]{"no reparse point","exact owner/group/DACL","expected or absent low label","empty directory"};
-        for(var index=0;index<deleteEvidence.Length;index++)
-        {
-            var tampered=deleteEvidence.ToArray();tampered[index]=false;
-            var refused=false;
-            try{_=InvokeStatic(taskWorkspaceType,"RequireUnrecordedWorkspaceDeleteEvidence",tampered);}
-            catch(InvalidDataException error)when(error.Message=="UnrecordedTaskWorkspaceDeleteEvidenceIncomplete"){refused=true;}
-            Require(refused,"unrecorded workspace deletion refuses missing "+deleteNames[index]);
-        }
-        Console.WriteLine("PASS unrecorded task workspace recovery gates: fresh profile ownership, no process binding, exact parent/path and cleanup intent; no reparse, exact owner/group/DACL, expected-or-absent low label and empty-only deletion");
+        // Filesystem evidence is no longer represented by caller-supplied
+        // booleans. The real cleanup path obtains it from the pinned NTFS
+        // handle, WorkspaceDescriptor and bounded directory enumeration;
+        // ProfileRecoveryCases exercises that control flow with a fake native
+        // boundary, including each failure mode.
+        Console.WriteLine("PASS unrecorded task workspace recovery authority gates: fresh profile ownership, no process binding, exact parent/path and validated cleanup intent; DELETE-capable handle access contract");
 
         var nonce=Guid.NewGuid().ToString("N");
         var root=Path.Combine(Path.GetTempPath(),"cpc-git-workflow-execution-"+nonce);
