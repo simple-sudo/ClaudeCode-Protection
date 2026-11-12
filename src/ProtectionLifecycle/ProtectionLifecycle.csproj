@@ -43,7 +43,7 @@
     <Compile Include="GpuIdentityObservation.cs;GpuDeviceIdentitySurvey.cs;WddmAdapterProbe.cs" />
     <Compile Include="ProcessLocalRevocation.cs" />
     <Compile Include="ProtectionRuntimeLease.cs" />
-    <Compile Include="SessionProxy.cs;GatewayDestinationGuard.cs;GatewayChildReport.cs;ProtectedSession.GatewayQualification.cs;ProtectedSession.cs;ResolverTlsEvidence.cs;ResolverRequestTiming.cs;UpstreamTunnelAttempt.cs" />
+    <Compile Include="SessionProxy.cs;GatewayDestinationGuard.cs;GatewayChildReport.cs;ProtectedSession.GatewayQualification.cs;ProtectedSession.ResourceQualification.cs;ProtectedSession.Preparation.cs;ProtectedSession.Admission.cs;ProtectedSession.cs;ResolverTlsEvidence.cs;ResolverRequestTiming.cs;UpstreamTunnelAttempt.cs" />
     <Compile Include="SessionResources.cs;GitWorkspaceDescriptor.cs;HostPrivacyControlFiles.cs" />
     <Compile Include="WorkspaceDescriptor.cs" />
     <Compile Include="BundledProjectDevelopment.cs;../Shared/TextSummarySource.cs" />
