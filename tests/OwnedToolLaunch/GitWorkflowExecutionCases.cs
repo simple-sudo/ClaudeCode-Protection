@@ -168,8 +168,10 @@ internal static class GitWorkflowExecutionCases
             File.WriteAllText(Path.Combine(textconvRepository,".gitattributes"),"payload.bin diff=must-not-run\n",new UTF8Encoding(false));
             var textconvPayload=Path.Combine(textconvRepository,"payload.bin");
             File.WriteAllBytes(textconvPayload,new byte[]{0,255,1,128,13,10,0,42});
-            var textconvMarker=Path.Combine(workspace,"textconv-executions.log");
-            var textconvCommand="cmd.exe /c echo TEXTCONV_EXECUTED>>\""+textconvMarker+"\"";
+            // This converter consumes the blob on stdin and emits a distinct
+            // object ID for each binary version. It is deterministic, local,
+            // and has no side effects or host-path dependency.
+            var textconvCommand="git hash-object --stdin";
             var textconvConfig=Run(StartRunnerWorkflow(new[]{"-C",textconvRepository,"config","--local",
                 "diff.must-not-run.textconv",textconvCommand}));
             Require(textconvConfig.Exit==0 && textconvConfig.Error.Length==0,"adversarial textconv config installed");
@@ -187,14 +189,15 @@ internal static class GitWorkflowExecutionCases
             var changedPayloadAdd=Run(StartRunnerWorkflow(new[]{"-C",textconvRepository,"add","--force","--","payload.bin"}));
             Require(changedPayloadAdd.Exit==0 && changedPayloadAdd.Error.Length==0,"textconv probe changed binary blob staged");
             var unguardedDiff=Run(StartRunnerWorkflow(new[]{"-C",textconvRepository,"diff","--cached","HEAD","--textconv","--no-ext-diff","--no-color","--","payload.bin"}));
-            Require(unguardedDiff.Exit==0 && File.Exists(textconvMarker) &&
-                File.ReadAllText(textconvMarker).Contains("TEXTCONV_EXECUTED",StringComparison.Ordinal),
-                "adversarial textconv control proves the configured converter executed (exit "+
-                unguardedDiff.Exit+", stdout="+unguardedDiff.Out+", stderr="+unguardedDiff.Error+")");
-            var markerLength=new FileInfo(textconvMarker).Length;
+            Require(unguardedDiff.Exit==0 && unguardedDiff.Error.Length==0 &&
+                unguardedDiff.Out.Contains("--- a/payload.bin",StringComparison.Ordinal) &&
+                unguardedDiff.Out.Contains("+++ b/payload.bin",StringComparison.Ordinal) &&
+                !unguardedDiff.Out.Contains("Binary files",StringComparison.Ordinal),
+                "adversarial textconv control proves the configured converter transformed both binary blobs (stdout="+unguardedDiff.Out+")");
             var guardedDiff=Run(StartRunnerWorkflow(new[]{"-C",textconvRepository,"diff","--cached","HEAD","--no-textconv","--no-ext-diff","--no-color","--","payload.bin"}));
-            Require(guardedDiff.Exit==0 && new FileInfo(textconvMarker).Length==markerLength &&
-                guardedDiff.Out.Contains("Binary files",StringComparison.Ordinal),
+            Require(guardedDiff.Exit==0 && guardedDiff.Error.Length==0 &&
+                guardedDiff.Out.Contains("Binary files",StringComparison.Ordinal) &&
+                !guardedDiff.Out.Contains("--- a/payload.bin",StringComparison.Ordinal),
                 "fixed no-textconv policy suppresses the repository converter and retains binary diff semantics");
 
             var diffCheckStart=StartRunnerWorkflow(commands[3]);
