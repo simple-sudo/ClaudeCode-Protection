@@ -232,9 +232,10 @@ internal static class NativeGitLpacAccessCases
                 jobList, (nuint)IntPtr.Size, IntPtr.Zero, IntPtr.Zero))
                 throw Error("LpacGitWorkspaceBindJob");
 
-            // Use CALL with a single quoted path. cmd.exe's /c leading-quote
-            // stripping is ambiguous for a doubled-quote-only batch command.
-            var commandLine = "\"" + commandImage + "\" /d /q /c call \"" + scriptPath + "\"";
+            // /s makes cmd.exe strip exactly the outer quote pair from the
+            // /c command string, leaving one quoted batch path for execution.
+            // CALL is deliberately not used: at the command prompt it has no effect.
+            var commandLine = "\"" + commandImage + "\" /d /q /s /c \\\"" + scriptPath + "\\\"";
             var values = new SortedDictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             foreach (var name in new[] { "SystemRoot", "windir", "SystemDrive" })
             {
