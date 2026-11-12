@@ -119,7 +119,7 @@ internal static class NativeGitLpacAccessCases
                 }) + "\r\n";
                 File.WriteAllText(scriptPath, script, new UTF8Encoding(false));
                 AssertInheritedFile(scriptPath, package.Value, humanSid, ProjectPackageMask, LowIntegritySid);
-                RunActualLpacProcess(root, package.Value, humanSid, scriptPath);
+                RunActualLpacProcess(root, package.Value, scriptPath);
 
                 if (File.ReadAllText(Path.Combine(projectPath, "lpac-write.txt")) != "project-write" + Environment.NewLine ||
                     File.ReadAllText(Path.Combine(projectPath, "lpac-created", "nested.txt")) != "nested" + Environment.NewLine)
@@ -173,7 +173,7 @@ internal static class NativeGitLpacAccessCases
         }
     }
 
-    private static void RunActualLpacProcess(string root, string packageSid, string humanSid, string scriptPath)
+    private static void RunActualLpacProcess(string root, string packageSid, string scriptPath)
     {
         if (Marshal.SizeOf<StartupInfo>() != 104 || Marshal.SizeOf<StartupInfoEx>() != 112 ||
             Marshal.SizeOf<SecurityCapabilities>() != 24 || Marshal.SizeOf<SecurityAttributes>() != 24)
@@ -371,16 +371,16 @@ internal static class NativeGitLpacAccessCases
                 var diagnostic = File.Exists(diagnosticPath)
                     ? File.ReadAllText(diagnosticPath).Trim().Replace("\r", " ").Replace("\n", " ")
                     : "none";
-                var initialCwdPath = Path.Combine(root, "lpac-start-cwd.txt");
-                var finalCwdPath = Path.Combine(root, "lpac-final-cwd.txt");
-                var initialCwd = File.Exists(initialCwdPath) ? File.ReadAllText(initialCwdPath).Trim() : "missing";
-                var finalCwd = File.Exists(finalCwdPath) ? File.ReadAllText(finalCwdPath).Trim() : "missing";
+                var failedInitialCwdPath = Path.Combine(root, "lpac-start-cwd.txt");
+                var failedFinalCwdPath = Path.Combine(root, "lpac-final-cwd.txt");
+                var failedInitialCwd = File.Exists(failedInitialCwdPath) ? File.ReadAllText(failedInitialCwdPath).Trim() : "missing";
+                var failedFinalCwd = File.Exists(failedFinalCwdPath) ? File.ReadAllText(failedFinalCwdPath).Trim() : "missing";
                 var rootWriteObserved = File.Exists(Path.Combine(root, "lpac-root-write.txt"));
                 if (diagnostic.Length > 256) diagnostic = diagnostic[..256];
                 throw new InvalidDataException("LpacGitWorkspaceChildScriptFailed:" +
                     exitCode.ToString(System.Globalization.CultureInfo.InvariantCulture) +
                     ";ReadDiagnostic=" + diagnostic + ";RootWriteObserved=" + rootWriteObserved +
-                    ";InitialCwd=" + initialCwd + ";FinalCwd=" + finalCwd);
+                    ";InitialCwd=" + failedInitialCwd + ";FinalCwd=" + failedFinalCwd);
             }
             var expectedCwd = Path.TrimEndingDirectorySeparator(Path.GetFullPath(root));
             var initialCwdPath = Path.Combine(root, "lpac-start-cwd.txt");
