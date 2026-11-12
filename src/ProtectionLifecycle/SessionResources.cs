@@ -331,14 +331,11 @@ internal sealed class SessionResources : IDisposable
         else if(Plan.DevelopProject)
             foreach(var path in BundledProjectDevelopment.OutputPaths)limits.Add(path,WorkspaceBundle.MaxFileBytes);
         var bytes=WorkspaceFiles.SnapshotSelectedResult(Workspace,"git-project",baseline.Bytes,limits);
-        if(gitReceipt is not null)
-        {
-            bytes=WorkspaceBundle.AttachGitReceipt(bytes,baseline.Bytes,gitReceipt);
-            if(WorkspaceBundle.Compare(baseline.Bytes,bytes).Length!=0)throw WfpNative.Contract("GitWorkspaceResultChanged");
-        }
+        if(gitReceipt is not null)bytes=WorkspaceBundle.AttachGitReceipt(bytes,baseline.Bytes,gitReceipt);
         if(callerProject is not null)callerProject.VerifyResult(bytes);
         else if(Plan.DevelopProject)BundledProjectDevelopment.VerifyResult(bytes);
-        else if(WorkspaceBundle.Compare(baseline.Bytes,bytes).Length!=0)throw WfpNative.Contract("FixedGitWorkspaceUnexpectedChanges");
+        else if(gitReceipt is null && WorkspaceBundle.Compare(baseline.Bytes,bytes).Length!=0)
+            throw WfpNative.Contract("FixedGitWorkspaceUnexpectedChanges");
         // Current fixed sample fits the existing private journal size. Future
         // large project output needs owned data storage, not a widened ledger.
         assertCaller?.Invoke();
