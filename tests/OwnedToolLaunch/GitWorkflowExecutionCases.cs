@@ -592,7 +592,7 @@ internal static class GitWorkflowExecutionCases
         var runner=library.GetType("ProtectionLifecycle.ResourceChildRunner",true)!;
         Require(runner.IsAbstract && runner.IsSealed && runner.GetFields(InstanceFlags).Length==0,
             "ResourceChildRunner is stateless and has no second resource owner");
-        foreach(var method in new[]{"RunChild","PowerShellStart","Qualified","OpenExecutableForProbe"})
+        foreach(var method in new[]{"RunChild","PowerShellStart","Qualified","OpenExecutableForProbe","ReadBounded"})
         {
             Require(runner.GetMethod(method,StaticFlags) is not null,"ResourceChildRunner owns "+method);
             Require(resources.GetMethod(method,StaticFlags) is null,"SessionResources no longer owns "+method);

@@ -56,7 +56,7 @@ internal sealed partial class AtomicChild
         // Hash/read success does not establish FILE_EXECUTE access. Probe only
         // the already fixed, manager-held tool image, without mapping or running
         // it; do not read another resource or change any security descriptor.
-        using var executable=SessionResources.OpenExecutableForProbe(fixedImage);
+        using var executable=ResourceChildRunner.OpenExecutableForProbe(fixedImage);
         if(executable.IsInvalid)
         {
             var code=Marshal.GetLastWin32Error();var failure=new Win32Exception(code);failure.Data["Stage"]="InheritedToolImageExecuteOpen";

@@ -30,7 +30,7 @@ internal static GitToolchainReport RunChild(ResourceProbePlan plan,string worksp
             stage="HASH_INPUT_WITH_INSPECTED_GIT";
             using(var process=AtomicChild.StartInheritedTool(Start(workspace,plan.GitDirectory,"hash-object","--stdin")))
             {
-                var stdout=SessionResources.ReadBounded(process.StandardOutput);var stderr=SessionResources.ReadBounded(process.StandardError);
+                var stdout=ResourceChildRunner.ReadBounded(process.StandardOutput);var stderr=ResourceChildRunner.ReadBounded(process.StandardError);
                 Signal(workspace,"git-ready",plan.Nonce);
                 var clock=Stopwatch.StartNew();
                 while(!File.Exists(WindowsPathSeal.Child(workspace,"git-go.signal")))
