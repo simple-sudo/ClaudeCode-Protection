@@ -59,8 +59,30 @@ internal static class SessionTaskWorkspace
     internal static void AssertClosed(ProtectedState state,ProfileStorageReceipt profile)
     {
         if(state.ReadOptional(IntentLeaf(profile.ProfileId)) is null)return;
-        var creation=ReadCreated(state,profile);var raw=state.ReadOptional(ClosedLeaf(profile.ProfileId))??throw WfpNative.Contract("TaskWorkspaceCleanupPending");
+        var intent=ReadIntent(state,profile);
+        var created=state.ReadOptional(CreatedLeaf(profile.ProfileId));
+        var raw=state.ReadOptional(ClosedLeaf(profile.ProfileId))??throw WfpNative.Contract("TaskWorkspaceCleanupPending");
         using var doc=JsonDocument.Parse(raw.Bytes,new JsonDocumentOptions{MaxDepth=3});var r=doc.RootElement;
+        if(created is null)
+        {
+            StrictJson.Fields(r,"SchemaVersion","InstallationId","ProfileId","IntentSHA256","ProfileCleanupIntentSHA256","Status","RootAbsent","RemovedEntries","WorkspaceIdentity");
+            var identity=LifecycleJournal.NullableText(r,"WorkspaceIdentity");
+            var removed=r.GetProperty("RemovedEntries").GetInt32();
+            if(r.GetProperty("SchemaVersion").GetInt32()!=2 || StrictJson.Text(r,"InstallationId")!=state.InstallationId ||
+                StrictJson.Text(r,"ProfileId")!=profile.ProfileId || StrictJson.Text(r,"IntentSHA256")!=intent.Raw.SHA256 ||
+                StrictJson.Text(r,"ProfileCleanupIntentSHA256")!=state.Read("profile-delete-intent-"+profile.ProfileId+".json",8192).SHA256 ||
+                StrictJson.Text(r,"Status")!="UNRECORDED_EMPTY_TASK_DIRECTORY_ABSENCE_OBSERVED" || !r.GetProperty("RootAbsent").GetBoolean() ||
+                removed is <0 or >1 || (removed==0)!=(identity is null) || state.ReadOptional("profile-job-"+profile.ProfileId+".json") is not null)
+                throw WfpNative.Contract("UnrecordedTaskWorkspaceCleanupReceiptMismatch");
+            if(identity is not null)_=Identifiers.ObjectIdentity(identity);
+            using var parent=WindowsPathSeal.LockDirectory(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),PathPolicy.CreationParent);
+            if(parent.ObjectIdentity()!=intent.Value.ParentIdentity)throw WfpNative.Contract("TaskWorkspaceParentChanged");
+            var path=PathFor(intent.Value.SessionId);
+            try{using var exists=WindowsPathSeal.Open(path,true,false);throw WfpNative.Contract("UnrecordedTaskWorkspaceStillPresent");}
+            catch(ExactPathAbsentException ex)when(string.Equals(ex.FailedPath,path,StringComparison.OrdinalIgnoreCase)){}
+            return;
+        }
+        var creation=ReadCreated(state,profile);
         StrictJson.Fields(r,"SchemaVersion","InstallationId","ProfileId","CreatedSHA256","ProfileCleanupIntentSHA256","Status","RootAbsent","RemovedEntries");
         if(r.GetProperty("SchemaVersion").GetInt32()!=1 || StrictJson.Text(r,"InstallationId")!=state.InstallationId ||
             StrictJson.Text(r,"ProfileId")!=profile.ProfileId || StrictJson.Text(r,"CreatedSHA256")!=creation.Created.SHA256 ||
@@ -68,17 +90,99 @@ internal static class SessionTaskWorkspace
             StrictJson.Text(r,"Status")!="EXACT_TASK_DIRECTORY_ABSENCE_OBSERVED" || !r.GetProperty("RootAbsent").GetBoolean() ||
             r.GetProperty("RemovedEntries").GetInt32() is <0 or >4096)throw WfpNative.Contract("TaskWorkspaceCleanupReceiptMismatch");
     }
+    internal static void RequireUnrecordedWorkspaceRecoveryAuthority(bool profileOwned,bool noProcessBinding,bool parentIdentityMatches,
+        bool exactTaskPath,bool cleanupIntentHeld)
+    {
+        if(!profileOwned || !noProcessBinding || !parentIdentityMatches || !exactTaskPath || !cleanupIntentHeld)
+            throw WfpNative.Contract("UnrecordedTaskWorkspaceRecoveryAuthorityIncomplete");
+    }
+    internal static void RequireUnrecordedWorkspaceDeleteEvidence(bool noReparsePoint,bool exactOwnerGroupDacl,bool lowLabelExactOrAbsent,bool emptyDirectory)
+    {
+        if(!noReparsePoint || !exactOwnerGroupDacl || !lowLabelExactOrAbsent || !emptyDirectory)
+            throw WfpNative.Contract("UnrecordedTaskWorkspaceDeleteEvidenceIncomplete");
+    }
+    private static void RecordCleanupFailure(ProtectedState state,ProfileStorageReceipt profile,int removed,Exception ex)
+    {
+        try{state.WriteNew("task-workspace-failure-"+profile.ProfileId+"-"+Guid.NewGuid().ToString("N")+".json",JsonSerializer.SerializeToUtf8Bytes(new {
+            SchemaVersion=1,state.InstallationId,profile.ProfileId,RemovedEntries=removed,Status="NOT_CONFIRMED",Failures=WfpNative.Describe(ex)}));}
+        catch(Exception log){throw new AggregateException("Exact task cleanup and failure recording both failed",ex,log);}
+    }
+    private static void CleanupUnrecordedEmpty(ProtectedState state,ProfileStorageReceipt profile,ref int removed)
+    {
+        state.AssertHeld();
+        var intent=ReadIntent(state,profile);
+        var cleanupIntent=state.Read("profile-delete-intent-"+profile.ProfileId+".json",8192);
+        var binding=state.ReadOptional("profile-job-"+profile.ProfileId+".json");
+        var parentPath=Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
+        using var parent=WindowsPathSeal.LockDirectory(parentPath,PathPolicy.CreationParent);
+        var path=PathFor(intent.Value.SessionId);
+        var canonical=WindowsPathSeal.Canonical(path);
+        var parentMatches=parent.ObjectIdentity()==intent.Value.ParentIdentity;
+        var exactPath=string.Equals(Path.GetDirectoryName(canonical),parent.Path,StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(canonical,path,StringComparison.OrdinalIgnoreCase);
+        RequireUnrecordedWorkspaceRecoveryAuthority(
+            profileOwned:!profile.Control && intent.Value.ProfileCreatedSHA256==state.Read("profile-created-"+profile.ProfileId+".json",8192).SHA256,
+            noProcessBinding:binding is null,parentIdentityMatches:parentMatches,exactTaskPath:exactPath,cleanupIntentHeld:true);
+        void AssertAuthority()
+        {
+            state.AssertHeld();
+            if(state.Read("profile-delete-intent-"+profile.ProfileId+".json",8192).SHA256!=cleanupIntent.SHA256 ||
+                state.ReadOptional("profile-job-"+profile.ProfileId+".json") is not null)
+                throw WfpNative.Contract("UnrecordedTaskWorkspaceCleanupAuthorityChanged");
+        }
+        string? identity=null;
+        try
+        {
+            using var package=new InstallationPackageSid(state);
+            try
+            {
+                using(var root=Open(path,true))
+                {
+                    identity=WindowsPathSeal.Identity(root);
+                    SessionResources.AssertFreshWorkspaceForRecovery(root,profile.OwnerSid,package.Value);
+                    var names=WindowsPathSeal.EnumerateNames(root,path,1);
+                    var empty=names.Length==0;
+                    RequireUnrecordedWorkspaceDeleteEvidence(noReparsePoint:true,exactOwnerGroupDacl:true,
+                        lowLabelExactOrAbsent:true,emptyDirectory:empty);
+                    AssertAuthority();
+                    WindowsPathSeal.VerifyObject(root,path,true);
+                    var disposition=0x17u;
+                    if(!SetFileInformationByHandle(root,21,ref disposition,4))
+                        throw new WfpFailure("DeleteUnrecordedEmptyTaskWorkspace",unchecked((uint)Marshal.GetLastWin32Error()));
+                }
+                removed++;
+            }
+            catch(ExactPathAbsentException ex)when(string.Equals(ex.FailedPath,path,StringComparison.OrdinalIgnoreCase)){}
+            AssertAuthority();
+            try{using var exists=WindowsPathSeal.Open(path,true,false);throw WfpNative.Contract("UnrecordedTaskWorkspaceStillPresent");}
+            catch(ExactPathAbsentException ex)when(string.Equals(ex.FailedPath,path,StringComparison.OrdinalIgnoreCase)){}
+            state.WriteNew(ClosedLeaf(profile.ProfileId),JsonSerializer.SerializeToUtf8Bytes(new {SchemaVersion=2,state.InstallationId,profile.ProfileId,
+                IntentSHA256=intent.Raw.SHA256,ProfileCleanupIntentSHA256=cleanupIntent.SHA256,
+                Status="UNRECORDED_EMPTY_TASK_DIRECTORY_ABSENCE_OBSERVED",RootAbsent=true,RemovedEntries=removed,WorkspaceIdentity=identity}));
+        }
+        catch
+        {
+            throw;
+        }
+    }
     internal static void Cleanup(ProtectedState state,ProfileStorageReceipt profile)
     {
         state.AssertHeld();if(state.ReadOptional(IntentLeaf(profile.ProfileId)) is null)return;
         if(state.ReadOptional(ClosedLeaf(profile.ProfileId)) is not null){AssertClosed(state,profile);return;}
+        var removed=0;
+        if(state.ReadOptional(CreatedLeaf(profile.ProfileId)) is null)
+        {
+            try{CleanupUnrecordedEmpty(state,profile,ref removed);}
+            catch(Exception ex){RecordCleanupFailure(state,profile,removed,ex);throw;}
+            return;
+        }
         // The caller has already validated the profile's durable closed-Job
         // binding and written its immutable cleanup intent. Bind to that proof.
         var profileIntent=state.Read("profile-delete-intent-"+profile.ProfileId+".json",8192);
         var creation=ReadCreated(state,profile);var path=PathFor(creation.Intent.SessionId);
         using var parent=WindowsPathSeal.LockDirectory(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),PathPolicy.CreationParent);
         if(parent.ObjectIdentity()!=creation.Intent.ParentIdentity)throw WfpNative.Contract("TaskWorkspaceParentChanged");
-        var removed=0;
+        removed=0;
         try
         {
             using var package=new InstallationPackageSid(state);
@@ -91,12 +195,7 @@ internal static class SessionTaskWorkspace
                 CreatedSHA256=creation.Created.SHA256,ProfileCleanupIntentSHA256=profileIntent.SHA256,
                 Status="EXACT_TASK_DIRECTORY_ABSENCE_OBSERVED",RootAbsent=true,RemovedEntries=removed}));
         }
-        catch(Exception ex)
-        {
-            try{state.WriteNew("task-workspace-failure-"+profile.ProfileId+"-"+Guid.NewGuid().ToString("N")+".json",JsonSerializer.SerializeToUtf8Bytes(new {
-                SchemaVersion=1,state.InstallationId,profile.ProfileId,RemovedEntries=removed,Status="NOT_CONFIRMED",Failures=WfpNative.Describe(ex)}));}
-            catch(Exception log){throw new AggregateException("Exact task cleanup and failure recording both failed",ex,log);}throw;
-        }
+        catch(Exception ex){RecordCleanupFailure(state,profile,removed,ex);throw;}
     }
 
     internal static void DeleteExactTree(ProtectedState state,string path,string identity,string audience,string packageSid,Action assertAuthority,ref int removed,
