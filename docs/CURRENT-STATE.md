@@ -10,7 +10,7 @@
 | 可见性 | Public |
 | 默认分支 | main |
 | 当前线上开发分支 | chatgpt/complete-git-workflow-20261110 |
-| 当前产品源码重构提交 | 7613c4e681b57ce17fdd0ff6efed747ce85435f9 |
+| 当前产品源码重构提交 | 31dc39bac582f65f1061f38aa455977b0471f235 |
 | 架构审查源码基线 | 74578e903c2584628d853598ef8f1910adf7da5b |
 | 真实证据政策更新前 HEAD | 80a300f760a22b94060e598874b196f3e967dfef |
 | 文档整理与语义修正验证基线 | 2a5e4a5bf26d0f723d4cbb08d59bd4419111a4fa（文档变更；产品源码未变） |
@@ -99,4 +99,8 @@
 
 A1.1 已完成：从 AtomicAdmission.cs 提取 InstallationProfileLease 与 AtomicJobCompletion；AtomicAdmission 从 1,442 行降至 1,317 行。提交 74a3a5908308ef31b098dbcccf6b0ec94fa7d1fc 的三组 Actions 均 SUCCESS（43213673926、43213673933、43213673931）。
 
-A1.2 已完成：将 AdmissionToken、ResourceBootstrapFailure、OwnedMemberInspection 移至 AtomicAdmissionEvidence.cs；将 AtomicChild 的 Token 读取、快照和 AccessCheck 方法移至 AtomicChild.Token.cs。AtomicAdmission 从 1,317 行降至 1,201 行。提交 7613c4e681b57ce17fdd0ff6efed747ce85435f9 的三组 Actions 均 SUCCESS（43214439565、43214439543、43214439759），产品与六个专项 harness 编译通过，普通用户策略/Runner Git 和 elevated NTFS fixture 通过。两个微阶段均未改变持久协议、资源所有权、调用顺序或安装资产；均不构成产品 Broker/LPAC 实机验收。下一步处理 AtomicChild 的受限工具创建与句柄交接职责。全机网络模式仍为 REQUIREMENT_ONLY / DESIGN；本机 `SECURITY_REVIEW_REQUIRED` 硬停止仍有效。
+A1.2 已完成：将 AdmissionToken、ResourceBootstrapFailure、OwnedMemberInspection 移至 AtomicAdmissionEvidence.cs；将 AtomicChild 的 Token 读取、快照和 AccessCheck 方法移至 AtomicChild.Token.cs。AtomicAdmission 从 1,317 行降至 1,201 行。提交 7613c4e681b57ce17fdd0ff6efed747ce85435f9 的三组 Actions 均 SUCCESS（43214439565、43214439543、43214439759）。
+
+A1.3 已完成：将 AtomicChild 的受限工具启动、原 Job 预绑定创建、标准输入输出句柄建立与受限句柄回传移至 AtomicChild.ToolLaunch.cs。AtomicAdmission 从 1,201 行降至 1,021 行。首次拆分 CI 发现 Shared workspace contract 与 System.ComponentModel 两个遗漏 using，已在后续提交修复；最终提交 31dc39bac582f65f1061f38aa455977b0471f235 的三组 Actions 全部 SUCCESS（43215792139、43215792288、43215792160），五个产品项目、六个专项 harness 编译及普通用户策略/Runner Git/elevated NTFS fixture 均通过。
+
+三个微阶段均未改变持久协议、资源所有权、Job/Token 创建与 Resume 顺序、安装资产或 DLL 输出布局；均不构成产品 Broker/LPAC 实机验收。下一步拆分 AtomicChild 原生 API 声明与成员监督边界。全机网络模式仍为 REQUIREMENT_ONLY / DESIGN；本机 `SECURITY_REVIEW_REQUIRED` 硬停止仍有效。
