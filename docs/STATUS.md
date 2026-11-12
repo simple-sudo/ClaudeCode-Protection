@@ -7,7 +7,7 @@
 
 ## 2026-11-12 显式 Git 工作流 schema 2：对抗配置、独立指标与结果快照验收
 
-开发分支 `chatgpt/complete-git-workflow-20261110`，当前头 `316248272d37aa3a85ffa71b437960fbd03207cd`，Draft PR #3 保持 OPEN / DRAFT，未合并。
+开发分支 `chatgpt/complete-git-workflow-20261110`，当前已验证实现基线 `316248272d37aa3a85ffa71b437960fbd03207cd`，Draft PR #3 保持 OPEN / DRAFT，未合并。
 GitHub Actions：43137292096 完成全部产品/专项测试编译及标准用户真实 Git 工作流；43137292097 完成全部产品编译但不运行受保护代码；43137292087 通过纯托管策略 smoke 并编译 daily CLI。三组均 SUCCESS。
 真实 Git 回归执行 hash-object/init/add/diff-check/numstat/commit/log/status/fsck、两项私有对象拒绝对照及独立 commit/tree/blob/ref/GitReceipt 核验。恶意仓库本地 clean filter、hooksPath 与 textconv 对抗配置均被固定 info attributes、外置 hooksPath 及 `--no-ext-diff --no-textconv` 策略压制；样本覆盖 CRLF、未终止文本、二进制、空文件、ignored 文件和首 8000 字节 NUL 分类边界。Owner 不再直接信任 child 的 numstat 数字，而是根据不可变输入重算新增/删除/二进制指标，并把指标绑定到 plan-aware Git 报告资格。
 修复 schema 2 结果快照路径：预 receipt 快照必须与 GitPlan 的文件清单及每个文件字节完全一致；AttachGitReceipt 拒绝修改后的结果，SessionResources 仅在精确快照验证后输出。标准用户 NTFS fixture 正向快照、篡改拒绝及 workspace transfer 测试通过。另加强 Windows DOS 设备名检测，拒绝 `CON .txt` 等扩展名前空格别名。

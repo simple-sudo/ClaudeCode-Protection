@@ -5,13 +5,11 @@
 
 ## 2026-11-10/12：显式离线 Git 工作流 schema 2（托管构建、普通用户真实 Git、结果快照和对抗配置验证通过；LPAC待验收）
 
-本节描述开发分支 `chatgpt/complete-git-workflow-20261110` 当前源码能力，不覆盖上方历史安装证据。当前头为 `316248272d37aa3a85ffa71b437960fbd03207cd`，Draft PR #3 保持开放且未合并；当前安装仍以[CURRENT-STATE](CURRENT-STATE.md)为准。GitHub Actions 43137292096 完成全部产品/专项测试编译并以标准用户实际执行 Git 工作流；43137292097 编译全部产品但不运行受保护代码；43137292087 通过纯托管策略 smoke 并编译 daily CLI。三组均 SUCCESS。
+本节描述开发分支 `chatgpt/complete-git-workflow-20261110` 当前源码能力，不覆盖上方历史安装证据。当前已验证实现基线为 `316248272d37aa3a85ffa71b437960fbd03207cd`，Draft PR #3 保持开放且未合并；当前安装仍以[CURRENT-STATE](CURRENT-STATE.md)为准。GitHub Actions 43137292096 完成全部产品/专项测试编译并以标准用户实际执行 Git 工作流；43137292097 编译全部产品但不运行受保护代码；43137292087 通过纯托管策略 smoke 并编译 daily CLI。三组均 SUCCESS。
 
 **证据边界：** 43137292096 的标准用户测试实际启动 Runner Git，执行 hash-object/init/add/diff-check/numstat/commit/log/status/fsck、两个私有对象拒绝对照及 Owner 独立 commit/tree/blob/ref/GitReceipt 核验。对抗样例注入仓库本地 clean filter、恶意 hooksPath 和 textconv 驱动；固定 info attributes、外置 hooksPath、`--no-ext-diff` 与 `--no-textconv` 使其不能改变文件内容或启动转换器。样本覆盖 CRLF、未终止文本、NUL 二进制、空文件、显式选择的 ignored 文件，以及首 8000 字节无 NUL、其后含 NUL 的边界。Owner 依据不可变 GitPlan 文件内容独立重算 numstat 新增/删除/二进制指标，拒绝伪造指标；再独立验证 commit/tree/blob/ref 和精确 GitReceipt 绑定。以上是 Runner 普通用户真实 Git 和 Owner 托管验证证据，不是产品 LPAC 证据。
 
 **结果快照与 receipt：** Job 关闭后，Owner 的文件系统快照先以 schema 2 GitPlan 为基线，验证结果包的路径清单、文件数和每个文件字节完全一致，再允许附加 GitReceipt。改变任一选中文件、增加/删除文件或使用错误 baseline 均拒绝。普通用户 NTFS fixture 已覆盖精确快照正向、工作区文件篡改拒绝、篡改结果不得附加 receipt；这不是产品 Broker/LPAC 端到端验收。
-
-**Git 工作区 DACL 分层（源码候选，LPAC 尚未实测）：** Broker 在任务根下分别创建 `git-project` 与 `git-control`，不再把两类对象放在同一可写目录。项目目录允许指定 LPAC Package SID 读写项目文件及 Git 工作树；控制目录只允许该 Package SID 读取，存放空全局配置、空 Hooks/Template 目录和 Owner 预建的 NUL pathspec。两者均使用受保护 DACL、Owner=Administrators、Group=SYSTEM、继承的 OWNER RIGHTS（仅 READ_CONTROL）及低完整性标签；不授予 LPAC WRITE_DAC/WRITE_OWNER。Owner 的资源持有检查会重新核对两个目录的实际安全描述符、控制目录精确清单、空 Hooks/Template、空全局配置和 pathspec 长度/内容。该分层保护的是外置 Git 控制输入；仓库自身的 `.git` 元数据仍位于 LPAC 可写的 `git-project` 中，不能把外置控制目录的只读权限误写成整个 `.git` 都只读。当前 CI 只证明描述符/fixture 逻辑和普通用户真实 Git；真实 Broker 创建目录的 ACL 继承、LPAC token 实际读写边界仍 NOT_RUN。
 
 Owner 在 Job 归零后独立核对 commit、tree、每个 blob、`HEAD`、`refs/heads/main` 及提交身份，再附加与精确输入包哈希绑定的 `GitReceipt`。普通 `workspace-review` 可显示提交摘要；`workspace-extract` 仍只提取项目文件，不写回原项目。
 
@@ -33,9 +31,9 @@ schema 2 的 `GitPlan`。然后运行既有入口：
 脚本或任意参数集合。
 
 schema 2 的固定顺序为：输入摘要核对、在新目录初始化 SHA-1 `main`、按 Owner 预先
-创建并持有的 NUL 路径清单执行显式 `git add --force`、暂存差异空白检查、numstat、
-单次提交、提交元数据读取、工作树清洁检查、`git fsck`，最后执行既有两项私有对象
-拒绝对照。Broker 对命令序列和参数逐项限定；不接受 clone/fetch/push/remote、任意
+创建并持有的 NUL 路径清单执行显式 `git add --force`、带固定 `--no-ext-diff --no-textconv`
+的暂存差异空白检查和 numstat、单次提交、提交元数据读取、工作树清洁检查、
+`git fsck`，最后执行既有两项私有对象拒绝对照。Broker 对命令序列和参数逐项限定；不接受 clone/fetch/push/remote、任意
 config、脚本、hook、filter 或宿主路径。Git 配置、环境、身份、hook 路径和对象格式
 均固定；作者为 `Local Workspace <local@invalid.example>`，不读取或导入宿主 Git
 身份配置。提交日期绑定数据包创建时间。
@@ -53,7 +51,9 @@ READ_CONTROL）及低完整性标签；不授予 LPAC WRITE_DAC/WRITE_OWNER。Ow
 真实 Broker 创建的目录 ACL 继承、LPAC token 实际读写边界仍 NOT_RUN。
 
 Owner 在 Job 归零后独立核对 commit、tree、每个 blob、`HEAD`、`refs/heads/main`
-及提交身份，再附加与精确输入包哈希绑定的 `GitReceipt`。普通 `workspace-review`
+及提交身份，并根据不可变输入重新计算 numstat 新增行、删除行和二进制文件数量，
+拒绝 child 报告中的伪造指标。结果快照必须与 GitPlan 的路径清单及每个文件字节
+完全一致后，才附加与精确输入包哈希绑定的 `GitReceipt`。普通 `workspace-review`
 可显示提交摘要；`workspace-extract` 仍只提取项目文件，不写回原项目。
 
 **明确边界：** 只创建全新的隔离仓库，不导入原项目的 `.git`、历史、remote、凭据或
@@ -63,7 +63,8 @@ Git 结果仍是未加密数据包；哈希是内容绑定，不是签名、准�
 项目代码、测试、MSBuild、Git hooks 或 filter，不开放网络、不启动 Claude。
 
 包的文件数量、单文件、总内容和路径边界沿用原 workspace 限制。CommitMessage 只允许
-1–160 字符、单行、无控制字符的有效 UTF-8。失败不导出部分成果；原工作区、输入包和
+1–160 字符、单行、无控制字符的有效 UTF-8；路径验证还拒绝扩展名前含空格的 DOS
+设备名别名（例如 `CON .txt`）。失败不导出部分成果；原工作区、输入包和
 私有失败证据按原恢复流程保留。后续若需要跨会话历史，必须另行设计并审计专用 Git
 bundle 导入/导出，不能把 `.git` 目录直接放入普通文件包。
 
