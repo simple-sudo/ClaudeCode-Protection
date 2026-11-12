@@ -137,7 +137,11 @@ internal static class NativeGitWorkspaceCases
         if(packageAce.AccessMask!=expectedPackageMask ||
             !packageAce.AceFlags.HasFlag(AceFlags.Inherited) ||
             packageAce.AceFlags.HasFlag(AceFlags.InheritOnly))
-            throw new InvalidDataException("Native Git package ACE inheritance/mask mismatch: "+label);
+            throw new InvalidDataException("Native Git package ACE inheritance/mask mismatch: "+label+
+                "; actualMask=0x"+packageAce.AccessMask.ToString("X8",System.Globalization.CultureInfo.InvariantCulture)+
+                "; expectedMask=0x"+expectedPackageMask.ToString("X8",System.Globalization.CultureInfo.InvariantCulture)+
+                "; actualFlags="+packageAce.AceFlags+
+                "; actualDacl="+DescribeAcl(dacl));
         if((packageAce.AccessMask&0x000c0000)!=0)
             throw new InvalidDataException("Native Git package ACE grants WRITE_DAC/WRITE_OWNER: "+label);
 
@@ -165,6 +169,19 @@ internal static class NativeGitWorkspaceCases
         if(labels.Count!=1 || labels[0].Sid.Value!="S-1-16-4096" || labels[0].Mask!=1 ||
             !labels[0].Flags.HasFlag(AceFlags.Inherited))
             throw new InvalidDataException("Native Git low mandatory label inheritance mismatch: "+label);
+    }
+
+    private static string DescribeAcl(RawAcl dacl)
+    {
+        var entries=new List<string>(dacl.Count);
+        for(var i=0;i<dacl.Count;i++)
+        {
+            if(dacl[i] is CommonAce ace)
+                entries.Add(i+":mask=0x"+ace.AccessMask.ToString("X8",System.Globalization.CultureInfo.InvariantCulture)+
+                    ";flags="+ace.AceFlags+";qualifier="+ace.AceQualifier+";sid="+ace.SecurityIdentifier.Value);
+            else entries.Add(i+":type="+dacl[i].AceType+";flags="+dacl[i].AceFlags);
+        }
+        return string.Join("|",entries);
     }
 
     private static CommonAce FindSingleAllowedAce(RawAcl dacl,string sid,string label)
