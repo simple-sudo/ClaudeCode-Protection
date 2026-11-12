@@ -81,6 +81,54 @@ internal static class ProfileRecoveryCases
         Require(emptyOps.DeleteCount==1 && !emptyOps.DirectoryExists,
             "recovery deletes exactly one verified empty directory and records its identity");
 
+        var absentLowLabelState=BuildTaskState();
+        var absentLowLabelOps=new FakeTaskWorkspaceRecoveryOps{DirectoryExists=true,ParentIdentity=record.ParentIdentity,
+            LowLabelExact=false,LowLabelAbsent=true};
+        SessionTaskWorkspace.Cleanup(absentLowLabelState,record,absentLowLabelOps);
+        SessionTaskWorkspace.AssertClosed(absentLowLabelState,record);
+        Require(absentLowLabelOps.DeleteCount==1,
+            "the narrowly permitted crash window with an absent low-integrity label remains recoverable");
+
+        var invalidLowLabelState=BuildTaskState();
+        var invalidLowLabelOps=new FakeTaskWorkspaceRecoveryOps{DirectoryExists=true,ParentIdentity=record.ParentIdentity,
+            LowLabelExact=false,LowLabelAbsent=false};
+        ExpectAny(()=>SessionTaskWorkspace.Cleanup(invalidLowLabelState,record,invalidLowLabelOps));
+        Require(invalidLowLabelOps.DeleteCount==0 && invalidLowLabelOps.DirectoryExists,
+            "an unexpected low-integrity label never reaches deletion");
+
+        var invalidCleanupState=BuildTaskState();
+        invalidCleanupState.Set("profile-delete-intent-"+id+".json",new {
+            SchemaVersion=2,invalidCleanupState.InstallationId,ProfileId=id,
+            CreatedSHA256=invalidCleanupState.Read(created).SHA256,
+            JobId=(string?)null,BindingSHA256=(string?)null,CompletionSHA256=(string?)null,
+            Scope="OTHER_PROFILE",NewProcessAdmissionAllowed=false
+        });
+        var invalidCleanupOps=new FakeTaskWorkspaceRecoveryOps{DirectoryExists=true,ParentIdentity=record.ParentIdentity};
+        ExpectAny(()=>SessionTaskWorkspace.Cleanup(invalidCleanupState,record,invalidCleanupOps));
+        Require(invalidCleanupOps.OpenCount==0 && invalidCleanupOps.DeleteCount==0 && invalidCleanupOps.DirectoryExists,
+            "an invalid profile cleanup scope is rejected before opening the task directory");
+
+        var invalidIdentityState=BuildTaskState();
+        var invalidIdentityOps=new FakeTaskWorkspaceRecoveryOps{DirectoryExists=true,ParentIdentity=record.ParentIdentity,
+            WorkspaceIdentity="not-an-object-identity"};
+        ExpectAny(()=>SessionTaskWorkspace.Cleanup(invalidIdentityState,record,invalidIdentityOps));
+        Require(invalidIdentityOps.DeleteCount==0 && invalidIdentityOps.DirectoryExists,
+            "an invalid filesystem object identity is rejected before deletion");
+
+        var enumerationFailureState=BuildTaskState();
+        var enumerationFailureOps=new FakeTaskWorkspaceRecoveryOps{DirectoryExists=true,ParentIdentity=record.ParentIdentity,
+            EnumerationFails=true};
+        ExpectAny(()=>SessionTaskWorkspace.Cleanup(enumerationFailureState,record,enumerationFailureOps));
+        Require(enumerationFailureOps.DeleteCount==0 && enumerationFailureOps.DirectoryExists,
+            "an incomplete directory inventory cannot authorize deletion");
+
+        var pathMismatchState=BuildTaskState();
+        var pathMismatchOps=new FakeTaskWorkspaceRecoveryOps{DirectoryExists=true,ParentIdentity=record.ParentIdentity,
+            PathMatches=false};
+        ExpectAny(()=>SessionTaskWorkspace.Cleanup(pathMismatchState,record,pathMismatchOps));
+        Require(pathMismatchOps.DeleteCount==0 && pathMismatchOps.DirectoryExists,
+            "a changed opened-object path cannot authorize deletion");
+
         var nonEmptyState=BuildTaskState();
         var nonEmptyOps=new FakeTaskWorkspaceRecoveryOps{DirectoryExists=true,ParentIdentity=record.ParentIdentity,Names=new[]{"unexpected.txt"}};
         ExpectAny(()=>SessionTaskWorkspace.Cleanup(nonEmptyState,record,nonEmptyOps));
@@ -280,13 +328,17 @@ internal sealed class FakeTaskWorkspaceRecoveryOps : ITaskWorkspaceRecoveryOps
     internal string ParentIdentity="00000001:00000002:00000004";
     internal bool DirectoryExists;
     internal bool DescriptorValid=true;
+    internal bool LowLabelExact=true;
+    internal bool LowLabelAbsent;
     internal bool NoReparse=true;
+    internal bool PathMatches=true;
+    internal bool EnumerationFails;
     internal bool DeleteSucceeds=true;
     internal bool KeepPresentAfterDelete;
+    internal string WorkspaceIdentity="00000001:00000002:00000006";
     internal string[] Names=Array.Empty<string>();
     internal int OpenCount,DeleteCount;
     internal Action? AfterDelete;
-    private const string IdentityValue="00000001:00000002:00000006";
     public PathLease LockParent(string path)=>new(Path.GetFullPath(path),ParentIdentity);
     public string Canonical(string path)=>Path.GetFullPath(path);
     public SafeFileHandle OpenDirectoryForDelete(string path)
@@ -295,12 +347,13 @@ internal sealed class FakeTaskWorkspaceRecoveryOps : ITaskWorkspaceRecoveryOps
         if(!DirectoryExists)throw new ExactPathAbsentException(2,Path.GetFullPath(path));
         return new SafeFileHandle(IntPtr.Zero,false);
     }
-    public string Identity(SafeFileHandle handle)=>IdentityValue;
+    public string Identity(SafeFileHandle handle)=>WorkspaceIdentity;
     public void AssertFreshWorkspace(SafeFileHandle handle,string ownerSid,string packageSid)
-    {if(!DescriptorValid)throw WfpNative.Contract("WorkspaceGrantOrLowIntegrityMismatch");}
-    public string[] EnumerateNames(SafeFileHandle handle,string path,int maximum)=>Names.Take(maximum).ToArray();
+    {if(!DescriptorValid || (!LowLabelExact && !LowLabelAbsent))throw WfpNative.Contract("WorkspaceGrantOrLowIntegrityMismatch");}
+    public string[] EnumerateNames(SafeFileHandle handle,string path,int maximum)
+    {if(EnumerationFails)throw WfpNative.Contract("TaskWorkspaceInventoryIncomplete");return Names.Take(maximum).ToArray();}
     public void VerifyObject(SafeFileHandle handle,string path,bool directory)
-    {if(!NoReparse)throw WfpNative.Contract("TaskWorkspaceReparsePointRefused");}
+    {if(!NoReparse)throw WfpNative.Contract("TaskWorkspaceReparsePointRefused");if(!PathMatches)throw WfpNative.Contract("TaskWorkspaceOpenedObjectPathMismatch");}
     public void MarkDelete(SafeFileHandle handle)
     {
         DeleteCount++;
