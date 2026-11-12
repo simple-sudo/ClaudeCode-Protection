@@ -518,7 +518,7 @@ internal static class GitWorkflowExecutionCases
         Require(projectPackage.AccessMask==0x001301bf && (projectPackage.AccessMask&0x000c0000)==0 &&
             (projectPackage.AccessMask&0x00000006)==0x00000006,
             "LPAC project access permits file/directory mutation but excludes WRITE_DAC and WRITE_OWNER");
-        Require(controlPackage.AccessMask==unchecked((int)0xA0000000u),"LPAC Git control access is generic read/execute only");
+        Require(controlPackage.AccessMask==0x001200a9,"LPAC Git control access is the exact NTFS GENERIC_READ|GENERIC_EXECUTE mapping");
         Require(ownerRights.AccessMask==0x00020000 && (ownerRights.AceFlags&inherited)==inherited,
             "inherited OWNER RIGHTS ACE removes implicit WRITE_DAC from file and directory owners");
         Require(!projectAcl.OfType<CommonAce>().Any(ace=>ace.SecurityIdentifier.Value==owner.Value) &&
