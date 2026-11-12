@@ -166,8 +166,10 @@ internal static class GitWorkflowExecutionCases
             File.WriteAllText(Path.Combine(textconvRepository,".gitattributes"),"payload.bin diff=must-not-run\n",new UTF8Encoding(false));
             var textconvPayload=Path.Combine(textconvRepository,"payload.bin");
             File.WriteAllBytes(textconvPayload,new byte[]{0,255,1,128,13,10,0,42});
+            var textconvMarker=Path.Combine(workspace,"textconv-executions.log");
+            var textconvCommand="cmd.exe /c echo TEXTCONV_EXECUTED>>\""+textconvMarker+"\"";
             var textconvConfig=Run(StartRunnerWorkflow(new[]{"-C",textconvRepository,"config","--local",
-                "diff.must-not-run.textconv","cmd.exe /c echo TEXTCONV_EXECUTED_%RANDOM%"}));
+                "diff.must-not-run.textconv",textconvCommand}));
             Require(textconvConfig.Exit==0 && textconvConfig.Error.Length==0,"adversarial textconv config installed");
             var textconvAttribute=Run(StartRunnerWorkflow(new[]{"-C",textconvRepository,"check-attr","-z","diff","--","payload.bin"}));
             Require(textconvAttribute.Exit==0 && textconvAttribute.Out.Contains("must-not-run",StringComparison.Ordinal),
@@ -178,11 +180,13 @@ internal static class GitWorkflowExecutionCases
             Require(probeCommit.Exit==0 && probeCommit.Error.Length==0,"textconv probe baseline committed");
             File.WriteAllBytes(textconvPayload,new byte[]{0,254,2,129,13,11,0,43});
             var unguardedDiff=Run(StartRunnerWorkflow(new[]{"-C",textconvRepository,"diff","--textconv","--no-ext-diff","--no-color","--","payload.bin"}));
-            Require(unguardedDiff.Exit==0 && unguardedDiff.Out.Contains("TEXTCONV_EXECUTED_",StringComparison.Ordinal),
-                "adversarial textconv control visibly executes the configured converter (exit "+
+            Require(unguardedDiff.Exit==0 && File.Exists(textconvMarker) &&
+                File.ReadAllText(textconvMarker).Contains("TEXTCONV_EXECUTED",StringComparison.Ordinal),
+                "adversarial textconv control proves the configured converter executed (exit "+
                 unguardedDiff.Exit+", stdout="+unguardedDiff.Out+", stderr="+unguardedDiff.Error+")");
+            var markerLength=new FileInfo(textconvMarker).Length;
             var guardedDiff=Run(StartRunnerWorkflow(new[]{"-C",textconvRepository,"diff","--no-textconv","--no-ext-diff","--no-color","--","payload.bin"}));
-            Require(guardedDiff.Exit==0 && !guardedDiff.Out.Contains("TEXTCONV_EXECUTED_",StringComparison.Ordinal) &&
+            Require(guardedDiff.Exit==0 && new FileInfo(textconvMarker).Length==markerLength &&
                 guardedDiff.Out.Contains("Binary files",StringComparison.Ordinal),
                 "fixed no-textconv policy suppresses the repository converter and retains binary diff semantics");
 
