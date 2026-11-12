@@ -115,7 +115,7 @@ jobs:
             Copy-Item -Path (Join-Path $env:GITHUB_WORKSPACE 'tests/OwnedToolLaunch/bin/Release/net8.0-windows/*') -Destination $ownedApp -Recurse -Force
             Copy-Item -Path (Join-Path $env:GITHUB_WORKSPACE 'tests/WorkspacePipe/bin/Release/net8.0-windows/*') -Destination $workspacePipeApp -Recurse -Force
             Copy-Item -Path (Join-Path $env:GITHUB_WORKSPACE 'tests/CenterResults/bin/Release/net8.0-windows/*') -Destination $centerApp -Recurse -Force
-          Copy-Item -Path (Join-Path $env:GITHUB_WORKSPACE 'tests/ProfileRecovery/bin/Release/net8.0-windows/*') -Destination $profileRecoveryApp -Recurse -Force
+            Copy-Item -Path (Join-Path $env:GITHUB_WORKSPACE 'tests/ProfileRecovery/bin/Release/net8.0-windows/*') -Destination $profileRecoveryApp -Recurse -Force
             & icacls $stage /grant "${account}:(OI)(CI)RX" /T /C | Out-Null
             if ($LASTEXITCODE -ne 0) { throw 'Could not grant the standard test account read/execute access to isolated test binaries' }
             & icacls $fixture /grant "${account}:(OI)(CI)M" /T /C | Out-Null
