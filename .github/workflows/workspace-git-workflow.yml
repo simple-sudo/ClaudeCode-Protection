@@ -200,15 +200,11 @@ jobs:
           }
           finally {
             foreach ($nativeSession in $nativeWorkspaceSessions) {
-              if ($nativeSession -match '^[0-9a-f]{32} { & $env:ComSpec /d /c ('rmdir "{0}"' -f $sourceRedirect) | Out-Null }
-            if (Test-Path -LiteralPath $redirectOutput) { & $env:ComSpec /d /c ('rmdir "{0}"' -f $redirectOutput) | Out-Null }
-            Remove-LocalUser -Name $user -ErrorAction SilentlyContinue
-            if ($profilePath -and (Test-Path $profilePath)) { Remove-Item $profilePath -Recurse -Force -ErrorAction SilentlyContinue }
-            if (Test-Path $stage) { Remove-Item $stage -Recurse -Force -ErrorAction SilentlyContinue }
-          }
-) {
+              if ($nativeSession -match '^[0-9a-f]{32}$') {
                 $nativePath = Join-Path $env:ProgramFiles ('ClaudeCodeProtection-Task-' + $nativeSession)
-                if (Test-Path -LiteralPath $nativePath) { Remove-Item -LiteralPath $nativePath -Recurse -Force -ErrorAction SilentlyContinue }
+                if (Test-Path -LiteralPath $nativePath) {
+                  Remove-Item -LiteralPath $nativePath -Recurse -Force -ErrorAction SilentlyContinue
+                }
               }
             }
             if (Test-Path -LiteralPath $sourceRedirect) { & $env:ComSpec /d /c ('rmdir "{0}"' -f $sourceRedirect) | Out-Null }
