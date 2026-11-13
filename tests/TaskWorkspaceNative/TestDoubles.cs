@@ -64,7 +64,7 @@ internal static class SessionProfileRecovery
         return raw.SHA256;
     }
 }
-internal static class SessionResources
+internal static class SessionWorkspaceDirectory
 {
     internal static void AssertFreshWorkspaceForRecovery(Microsoft.Win32.SafeHandles.SafeFileHandle handle,string humanSid,string packageSid)
     {

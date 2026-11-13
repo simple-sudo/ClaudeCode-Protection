@@ -1,16 +1,13 @@
-using System.Diagnostics;
 using System.Runtime.InteropServices;
-using System.Security.AccessControl;
 using System.Security.Principal;
-using System.Security.Cryptography;
-using System.Text;
-using System.Text.Json;
 using Microsoft.Win32.SafeHandles;
-using ClaudeCodeProtection.Workspaces;
 
 namespace ProtectionLifecycle;
 
-internal sealed partial class SessionResources
+// Owns the native filesystem boundary for fresh AppContainer profile/task
+// directories and their exact descriptor qualification. It owns no lifetime:
+// callers retain the returned PathLease and remain responsible for recovery.
+internal static class SessionWorkspaceDirectory
 {
     internal static string ProfileFolder(string sid)
     {
@@ -22,6 +19,7 @@ internal sealed partial class SessionResources
         }
         finally{if(pointer!=IntPtr.Zero)Marshal.FreeCoTaskMem(pointer);}
     }
+
     internal static PathLease CreateOwnedTaskDirectory(ProtectedState state,InstallationProfileLease profile,string session)
     {
         state.AssertHeld();
@@ -34,6 +32,7 @@ internal sealed partial class SessionResources
         try{profile.RecordTaskWorkspace(session,directory);return directory;}
         catch{directory.Dispose();throw;}
     }
+
     internal static PathLease CreateWorkspace(string path,string owner,string package,bool mutable)
     {
         using var grant=new WorkspaceDescriptor(owner,package,mutable);
@@ -43,14 +42,19 @@ internal sealed partial class SessionResources
         try{grant.ApplyLowLabelAndVerify(path);return directory;}
         catch{directory.Dispose();throw;}
     }
+
     internal static void AssertMutableWorkspace(SafeFileHandle handle,string human,string package)
     {using var expected=new WorkspaceDescriptor(human,package,true);expected.AssertApplied(handle);}
+
     // Recovery may delete only an unrecorded, still-empty directory created
     // after a durable fresh-path intent. Its DACL must remain exact; the low
-    // label may be either the expected label or absent if creation was
-    // interrupted between CreateDirectoryW and SetSecurityInfo(LABEL).
+    // label may be absent only if creation stopped before SetSecurityInfo.
     internal static void AssertFreshWorkspaceForRecovery(SafeFileHandle handle,string human,string package)
     {using var expected=new WorkspaceDescriptor(human,package,true);expected.AssertApplied(handle,allowMissingLowLabel:true);}
-    [DllImport("userenv.dll",CharSet=CharSet.Unicode,ExactSpelling=true)] private static extern int GetAppContainerFolderPath(string sid,out IntPtr path);
-    [DllImport("kernel32.dll",EntryPoint="CreateDirectoryW",CharSet=CharSet.Unicode,SetLastError=true)] [return:MarshalAs(UnmanagedType.Bool)] private static extern bool CreateDirectory(string path,ref KernelJobSeal.SecurityAttributes attributes);
+
+    [DllImport("userenv.dll",CharSet=CharSet.Unicode,ExactSpelling=true)]
+    private static extern int GetAppContainerFolderPath(string sid,out IntPtr path);
+    [DllImport("kernel32.dll",EntryPoint="CreateDirectoryW",CharSet=CharSet.Unicode,SetLastError=true)]
+    [return:MarshalAs(UnmanagedType.Bool)]
+    private static extern bool CreateDirectory(string path,ref KernelJobSeal.SecurityAttributes attributes);
 }

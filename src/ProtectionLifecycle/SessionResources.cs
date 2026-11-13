@@ -61,7 +61,7 @@ internal sealed partial class SessionResources : IDisposable
             var owner=identity.User?.Value??throw WfpNative.Contract("WorkspaceHumanOwnerMissing");
             if(intent.IncludeGit)
             {
-                directory=CreateOwnedTaskDirectory(state,profile,nonce);
+                directory=SessionWorkspaceDirectory.CreateOwnedTaskDirectory(state,profile,nonce);
                 gitPackageSid=sid.Value;
                 gitProjectDirectory=GitWorkspaceDescriptor.Create(directory,"git-project",sid.Value,true);
                 gitControlDirectory=GitWorkspaceDescriptor.Create(directory,"git-control",sid.Value,false);
@@ -69,7 +69,7 @@ internal sealed partial class SessionResources : IDisposable
             else
             {
                 using var parent=WindowsPathSeal.LockDirectory(profile.WorkspaceRoot(),PathPolicy.Source);
-                directory=CreateWorkspace(path,owner,sid.Value,false);
+                directory=SessionWorkspaceDirectory.CreateWorkspace(path,owner,sid.Value,false);
             }
             privacy?.Publish(path);
             var inputPath=WindowsPathSeal.Child(path,"input.txt");

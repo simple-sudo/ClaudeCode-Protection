@@ -20,6 +20,7 @@ internal static class GitWorkflowExecutionCases
             throw new InvalidOperationException("Ordinary-user Git execution test must not run elevated");
         VerifyResourceExecutionIntent(library);
         VerifyWorkspaceLeaseOwnership(library);
+        VerifyWorkspaceDirectoryBoundary(library);
         VerifyResourceChildRunnerBoundary(library);
 
         // Recovery of a task directory created before its durable identity
@@ -584,6 +585,21 @@ internal static class GitWorkflowExecutionCases
         Require(lease.IsSealed && typeof(IDisposable).IsAssignableFrom(lease),
             "SessionWorkspaceLease has one explicit disposable lifetime");
         Console.WriteLine("PASS SessionWorkspaceLease ownership boundary: workspace paths/files/Git lease have one owner; SessionResources only composes leases");
+    }
+
+    private static void VerifyWorkspaceDirectoryBoundary(Assembly library)
+    {
+        var resources=library.GetType("ProtectionLifecycle.SessionResources",true)!;
+        var directory=library.GetType("ProtectionLifecycle.SessionWorkspaceDirectory",true)!;
+        Require(directory.IsAbstract && directory.IsSealed && directory.GetFields(InstanceFlags).Length==0 &&
+            !typeof(IDisposable).IsAssignableFrom(directory),
+            "SessionWorkspaceDirectory is a stateless native boundary, not a resource owner");
+        foreach(var method in new[]{"ProfileFolder","CreateOwnedTaskDirectory","CreateWorkspace","AssertMutableWorkspace","AssertFreshWorkspaceForRecovery"})
+        {
+            Require(directory.GetMethod(method,StaticFlags) is not null,"SessionWorkspaceDirectory owns "+method);
+            Require(resources.GetMethod(method,StaticFlags) is null,"SessionResources no longer owns "+method);
+        }
+        Console.WriteLine("PASS SessionWorkspaceDirectory boundary: profile/task directory creation and descriptor qualification are separate from SessionResources coordination");
     }
 
     private static void VerifyResourceChildRunnerBoundary(Assembly library)

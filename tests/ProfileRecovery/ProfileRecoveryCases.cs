@@ -50,7 +50,7 @@ internal static class ProfileRecoveryCases
         // Exercise the actual unrecorded-empty cleanup control flow and the
         // actual closed-receipt reader. Only the native filesystem boundary is
         // faked; all state, authority, decision, failure and receipt code is real.
-        SessionResources.ProfileRoot=record.StorageRoot;
+        SessionWorkspaceDirectory.ProfileRoot=record.StorageRoot;
         var session=new string('d',32);
         ProtectedState BuildTaskState()
         {
@@ -362,7 +362,7 @@ internal sealed class ExactPathAbsentException : Exception
     internal string FailedPath{get;}
     internal ExactPathAbsentException(int error,string path):base("exact path absent ("+error+")"){FailedPath=path;}
 }
-internal static class SessionResources
+internal static class SessionWorkspaceDirectory
 {
     internal static string ProfileRoot="";
     internal static string ProfileFolder(string sid)=>ProfileRoot;

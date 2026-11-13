@@ -32,7 +32,7 @@ internal static partial class SessionProfileRecovery
         state.AssertHeld();parent.AssertHeld();var path=Storage(package.Name);
         // This fixed deployment layout is checked against the OS result, not
         // inferred solely from a directory name or a serialized input path.
-        var local=SessionResources.ProfileFolder(package.Value);
+        var local=SessionWorkspaceDirectory.ProfileFolder(package.Value);
         if(!string.Equals(local,path,StringComparison.OrdinalIgnoreCase) &&
             !string.Equals(local,WindowsPathSeal.Child(path,"AC"),StringComparison.OrdinalIgnoreCase))
             throw WfpNative.Contract("UnexpectedFreshProfileStorageLayout");

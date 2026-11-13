@@ -64,7 +64,7 @@ internal sealed class InstallationProfileLease : IDisposable
     {
         state.AssertHeld();if(disposed)throw new ObjectDisposedException(nameof(InstallationProfileLease));
         using var package=new InstallationPackageSid(state);AssertPackage(package);
-        return SessionResources.ProfileFolder(package.Value);
+        return SessionWorkspaceDirectory.ProfileFolder(package.Value);
     }
     internal void AfterOwnedJobZero(JobSnapshot snapshot)
     {

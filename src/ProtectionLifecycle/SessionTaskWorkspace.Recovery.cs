@@ -14,7 +14,7 @@ internal static partial class SessionTaskWorkspace
         public SafeFileHandle OpenDirectoryForDelete(string path)=>Open(path,true);
         public string Identity(SafeFileHandle handle)=>WindowsPathSeal.Identity(handle);
         public void AssertFreshWorkspace(SafeFileHandle handle,string ownerSid,string packageSid)
-            =>SessionResources.AssertFreshWorkspaceForRecovery(handle,ownerSid,packageSid);
+            =>SessionWorkspaceDirectory.AssertFreshWorkspaceForRecovery(handle,ownerSid,packageSid);
         public string[] EnumerateNames(SafeFileHandle handle,string path,int maximum)
             =>WindowsPathSeal.EnumerateNames(handle,path,maximum);
         public void VerifyObject(SafeFileHandle handle,string path,bool directory)
@@ -150,7 +150,7 @@ internal static partial class SessionTaskWorkspace
             {
                 entries.Add((path,true,root));
                 if(WindowsPathSeal.Identity(root)!=identity)throw WfpNative.Contract("TaskWorkspaceRootReplaced");
-                SessionResources.AssertMutableWorkspace(root,audience,packageSid);
+                SessionWorkspaceDirectory.AssertMutableWorkspace(root,audience,packageSid);
                 var pending=new Stack<(string Path,int Depth,SafeFileHandle Handle)>();pending.Push((path,0,root));
                 while(pending.Count>0)
                 {
@@ -166,7 +166,7 @@ internal static partial class SessionTaskWorkspace
                         var directory=(attributes&FileAttributes.Directory)!=0;
                         if(expectedEmptyDirectories is not null && !directory)throw WfpNative.Contract("LegacyCreatorWorkspaceExpectedDirectory");
                         var entry=Open(child,directory);entries.Add((child,directory,entry));if(directory)pending.Push((child,next.Depth+1,entry));
-                        if(expectedEmptyDirectories is not null)SessionResources.AssertMutableWorkspace(entry,audience,packageSid);
+                        if(expectedEmptyDirectories is not null)SessionWorkspaceDirectory.AssertMutableWorkspace(entry,audience,packageSid);
                     }
                 }
                 if(expectedEmptyDirectories is not null && !expectedEmptyDirectories.SetEquals(entries.Skip(1).Select(entry=>entry.Path)))

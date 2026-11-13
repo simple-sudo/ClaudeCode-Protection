@@ -60,7 +60,7 @@ internal sealed record ResourceProbePlan(int SchemaVersion,string Nonce,string I
     }
     internal bool RequiresPowerShell=>ToolRequirements(DevelopProject,WorkspaceInputSHA256 is not null).PowerShell;
     internal bool RequiresCompilerTool=>ToolRequirements(DevelopProject,WorkspaceInputSHA256 is not null).Compiler;
-    internal string Workspace(string sid)=>GitAssetSetSHA256 is null?WindowsPathSeal.Child(SessionResources.ProfileFolder(sid),"workspace-"+Nonce):WindowsPathSeal.Child(ProgramFilesRoot,"ClaudeCodeProtection-Task-"+Nonce);
+    internal string Workspace(string sid)=>GitAssetSetSHA256 is null?WindowsPathSeal.Child(SessionWorkspaceDirectory.ProfileFolder(sid),"workspace-"+Nonce):WindowsPathSeal.Child(ProgramFilesRoot,"ClaudeCodeProtection-Task-"+Nonce);
     internal byte[] Input=>Encoding.UTF8.GetBytes("CPC-RESOURCE:"+Nonce);
     // Same data transfer contract as daily workspace-pack, without importing
     // a caller-selected workload into this fixed qualification entry point.
