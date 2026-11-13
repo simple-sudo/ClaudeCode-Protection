@@ -277,11 +277,17 @@ internal static class OfflineConsoleNativeCases
                 ctor.GetParameters()[1].ParameterType==typeof(string));
         var readReceipts=Enumerable.Repeat(new string('A',64),3).ToArray();
         var actorReceipts=receiptsCtor.Invoke(new object[]{readReceipts,new string('B',64)});
-        var profile=Call(type.GetMethod("BuildEvidenceProfile",Instance)!,native,session,actorReceipts,actorReceipts,captured,after)!;
+        var identityReceipt=new string('C',64);
+        var surveyReceipt=new string('D',64);
+        var profile=Call(type.GetMethod("BuildEvidenceProfile",Instance)!,native,session,actorReceipts,actorReceipts,captured,after,
+            identityReceipt,surveyReceipt)!;
         var profileNode=JsonSerializer.SerializeToNode(profile)!;
         Require(profileNode["Assessments"]!.AsArray().Any(item=>item?["Classification"]!.GetValue<int>()==0));
         Require(profileNode["Assessments"]!.AsArray().Any(item=>item?["Classification"]!.GetValue<int>()==1));
         Require(profileNode["P0Exposure"]!.GetValue<bool>());
+        Require(profileNode["ActorId"]!.GetValue<string>()==$"{Environment.ProcessId}:{captured.Network.StartedFileTime}");
+        Require(profileNode["OwnerIdentityReceiptSHA256"]!.GetValue<string>()==identityReceipt);
+        Require(profileNode["NetworkSurveyReceiptSHA256"]!.GetValue<string>()==surveyReceipt);
         var summary=JsonSerializer.SerializeToNode(comparison)!;
         Require(summary["Adapters"]!["Status"]!.GetValue<string>()=="CONTENT_READ");
         Require(summary["MatchingAdapterNames"]!.GetValue<int>()>0);
