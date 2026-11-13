@@ -117,9 +117,8 @@ internal sealed record OfflineConsoleNetworkSurvey(int SchemaVersion,string Sess
     internal Summary Seal(ProtectedState state,VerifiedVersion version,string jobId,OfflineConsoleNetworkSurvey host,ProcessView hostAfter,
         OfflineConsoleHostIdentitySummary ownerIdentity)
     {
-        if(ownerIdentity is null || !WorkspaceBundle.IsHash(ownerIdentity.ReceiptSHA256) ||
-            ownerIdentity.ActorSessionId!=SessionId || ownerIdentity.ActorPid<=0 || (uint)ownerIdentity.ActorPid!=Network.Pid ||
-            SessionId!=jobId || host.SessionId!=jobId || Network.Pid==host.Network.Pid ||
+        AssertOwnerIdentityBinding(ownerIdentity,SessionId,Network.Pid);
+        if(SessionId!=jobId || host.SessionId!=jobId || Network.Pid==host.Network.Pid ||
             host.Network.FinishedFileTime>Network.StartedFileTime)
             throw WfpNative.Contract("OfflineNetworkSurveyReferenceMismatch");
         var restrictedReceipts=SealActor(this,"restricted");
@@ -162,6 +161,13 @@ internal sealed record OfflineConsoleNetworkSurvey(int SchemaVersion,string Sess
         static object SealActorSummary(OfflineConsoleNetworkSurvey actor,ActorReceipts receipts)=>
             new {actor.Network.Pid,actor.Network.StartedFileTime,actor.Network.FinishedFileTime,
                 ReadsSHA256=receipts.Reads,ProcessesSHA256=receipts.Processes,actor.Processes};
+    }
+
+    internal static void AssertOwnerIdentityBinding(OfflineConsoleHostIdentitySummary ownerIdentity,string session,uint actorPid)
+    {
+        if(ownerIdentity is null || !WorkspaceBundle.IsHash(ownerIdentity.ReceiptSHA256) ||
+            ownerIdentity.ActorSessionId!=session || ownerIdentity.ActorPid<=0 || (uint)ownerIdentity.ActorPid!=actorPid)
+            throw WfpNative.Contract("OfflineNetworkSurveyOwnerIdentityBindingMismatch");
     }
 
     private HostPrivacyEvidenceProfile BuildEvidenceProfile(string jobId,ActorReceipts restrictedReceipts,
