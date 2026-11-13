@@ -5,6 +5,7 @@
 [CmdletBinding()]
 param()
 $ErrorActionPreference='Stop'
+. (Join-Path $PSScriptRoot 'Assert-ProjectSecurityClearance.ps1') -Stage LegacyOfflineBuild
 $root=Split-Path -Parent $PSScriptRoot
 if($root -cne 'F:\ClaudeCode-Protection'){throw 'Wrong checkout'}
 $identity=[Security.Principal.WindowsIdentity]::GetCurrent()

@@ -5,6 +5,7 @@
 [CmdletBinding()]
 param()
 $ErrorActionPreference='Stop'
+. (Join-Path $PSScriptRoot 'Assert-ProjectSecurityClearance.ps1') -Stage EngineeringBuild
 $root=Split-Path -Parent $PSScriptRoot
 $commit='8a9c4b13711598187cde8845794f24d455ea0004'
 if($root -cne 'F:\ClaudeCode-Protection' -or (git -C $root rev-parse HEAD) -ne $commit){throw 'Wrong checkout or source revision'}

@@ -1,6 +1,6 @@
 # 卡巴斯基监控与分阶段验证门禁（2026-11-13）
 
-状态：**SOURCE / staged gate implemented; local execution NOT_RUN**。本文件记录设备所有者于 2026-11-13 明确授权的门禁策略更新，取代 2026-10-25 历史告警后“无条件永久停止构建/执行”的旧门禁；不改写历史事件证据，也不宣称卡巴斯基厂商已判定误报。
+状态：**SOURCE / staged gate hardening in progress; CI pending; local execution NOT_RUN**。本文件记录设备所有者于 2026-11-13 明确授权的门禁策略更新，取代 2026-10-25 历史告警后“无条件永久停止构建/执行”的旧门禁；不改写历史事件证据，也不宣称卡巴斯基厂商已判定误报。
 
 ## 1. 当前决策与边界
 
@@ -24,35 +24,36 @@
 | NativeBuild | BLOCKED | Native Fence 编译 |
 | IsolationProbe | BLOCKED | 隔离探针及任何执行实验 |
 | WfpMutation | BLOCKED | WFP/防火墙启用、恢复、租约和其他策略修改 |
+| LegacyOfflineBuild | BLOCKED | 旧 S1 / Broker 离线构建入口，不得绕过当前受监控 DailyBuild |
 
 后续每个阶段必须先审查对应源码/依赖/输出范围，再更新明确阶段资格；不能通过调用者参数、环境变量或过期时间自动打开其他阶段。当前阶段参数不是操作系统安全边界或签名授权，仅用于让项目入口按审查过的阶段 fail-closed。
 
 ## 3. 卡巴斯基监控机制
 
-scripts/Assert-ProjectSecurityClearance.ps1 现在要求调用者显式提供 Stage。只有 DailyBuild 能通过当前 gate。
+scripts/Assert-ProjectSecurityClearance.ps1 要求调用者显式提供 Stage。只有 DailyBuild 能通过当前 gate。
 
 首阶段预检及运行期间检查：
 1. AVP21.26 服务必须存在且 Running；版本/服务名改变即停止并重新审查。
 2. root/SecurityCenter2 必须恰好报告一个显示名为 Kaspersky 的产品，productState 必须与本机既有合格观察 266240 一致。
-3. 从本阶段开始时间起检查 Windows Application 日志中的 avp / kaspersky Provider 事件。
-4. 构建期间每 750ms 轮询事件；每 3 秒重新检查服务与 Security Center 状态；构建结束后再做一次最终核验。
-5. 监控证据以 JSONL 持续写入 `%LOCALAPPDATA%\\ClaudeCode-Protection\\security-stage\\<run>-DailyBuild-kaspersky-monitor.jsonl`：记录预检/周期健康快照、进程启动/退出、监控失败、新告警和进程树终止结果。事件查询正常且无告警时不逐次写入空轮询，避免日志膨胀。
-6. 出现新相关事件、事件日志不可读取、服务停止或产品状态变化，终止构建进程树并报告停止原因。
+3. 从本阶段开始时间起检查 Windows Application 日志中的 avp / kaspersky Provider 事件，并发现名称包含 Kaspersky / AVP 的 Windows 事件通道；对已启用的相关通道逐一查询。
+4. 构建期间每 750ms 轮询事件；每 3 秒重新检查服务、Security Center 状态、事件通道集合和进程树；事件通道集合或启用状态变化时停止。
+5. 监控证据以 JSONL 持续写入 LOCALAPPDATA 下的 ClaudeCode-Protection/security-stage 目录。每条记录带同一 Run ID；新事件记录 Provider、Event ID、Record ID、时间、消息和原始 Event XML。stdout、stderr、输入哈希、输出哈希与 receipt 也使用同一 Run ID。
+6. 出现新相关事件、事件通道读取失败、服务停止、产品状态变化或进程树无法确认终止，立即停止并报告原因。进程树终止通过 Win32_Process 的根进程/后代关系核验；WaitForExit 只代表根进程状态，不能单独证明后代已退出。
 
-**覆盖限制：** 目前监控依赖固定服务名、Security Center 注册状态和 Windows Application 日志中的相关 Provider。它不是 Kaspersky 内部遥测 API，不能保证捕获所有弹窗、隔离动作、其他日志通道或厂商云端告警。输出明确保留 FullVendorAlertVisibility=UNKNOWN。**本机阶段测试时，设备所有者必须保持卡巴斯基界面可观察；看到任何新告警立即停止并回传截图/事件与完整构建日志。**
+**覆盖限制：** 当前监控依赖固定服务名、Security Center 注册状态、Application 相关 Provider 和已启用的 Kaspersky/AVP 命名事件通道。它不是 Kaspersky 内部遥测 API，不能保证捕获所有弹窗、隔离动作、未启用日志通道或厂商云端告警。输出明确保留 FullVendorAlertVisibility=UNKNOWN。**本机阶段测试时，设备所有者必须保持卡巴斯基界面可观察；看到任何新告警立即停止并回传截图/事件与完整构建日志。**
 
 ## 4. DailyBuild 第一阶段的精确范围
 
 scripts/Build.ps1：
-- 先调用 Assert-ProjectSecurityClearance.ps1 -Stage DailyBuild。
-- 通过 Invoke-ProjectSecurityMonitoredProcess 启动固定 dotnet.exe 构建。
-- 只执行 dotnet build，不再使用 dotnet publish。
-- 使用 --no-restore，不触发依赖恢复或下载。
-- stdout/stderr 与 JSONL 卡巴斯基监控证据均放在 %LOCALAPPDATA%\ClaudeCode-Protection\security-stage\，并使用同一轮次 ID 前缀关联。
-- 构建退出码非零、监控异常或 AV 新事件均为失败；不自动重试。
-- 产物只留在 bin/current，本阶段不启动、不安装、不签名、不发布。
+- 必须显式提供 ExpectedCommit；校验当前 HEAD 和参与构建的 Git 跟踪输入与固定 SHA 对应的 Git blob 完全一致。
+- 使用固定 dotnet.exe 路径与 SDK 8.0.422；SDK 版本查询、MSBuild preprocess 和实际 Build 均纳入同一轮卡巴斯基监控。
+- 对日常项目 XML、现有 project.assets.json、NuGet 生成导入、父目录 Directory.Build / response / global.json 文件及 preprocess 后的实际 import graph 进行审查；拒绝外部 package targets、分析器/Source Generator、显式自定义 Target、UsingTask、Exec 和项目引用。
+- 使用 --no-restore、--no-dependencies、--disable-build-servers、UseSharedCompilation=false、RunAnalyzers=false、-m:1、-nr:false 和 -noAutoResponse 缩小执行面。
+- stdout/stderr、JSONL、输入清单、输出工件 SHA-256 和 receipt 均写入 security-stage 目录，并使用同一 Run ID 关联。
+- 输出只写入 bin/security-stage/<RunId>，不启动、不安装、不签名、不发布。
+- 旧 Invoke-S1DailyBuild.ps1 和 Invoke-BrokerOfflineBuild.ps1 分别接入 LegacyOfflineBuild / EngineeringBuild 关闭阶段，不再能绕过当前门禁。
 
-若当前工作区缺少有效 project.assets.json 或依赖缓存，--no-restore 构建可以失败；应保留失败，不切换在线 restore 来“修绿”。后续如需离线依赖恢复，先单独审查并开放专门阶段。
+**重要边界：** dotnet build 仍会执行可信 SDK 的 MSBuild 目标、内置任务和 C# 编译器；本阶段不是“零代码执行”，而是约束实际导入图和可执行组件，并在进程运行期间持续监控。若缺少有效 project.assets.json 或依赖缓存，--no-restore 构建可以失败；保留失败，不切换在线 restore 来“修绿”。
 
 ## 5. 后续阶段顺序
 
@@ -70,7 +71,9 @@ scripts/Build.ps1：
 - scripts/Build.ps1：DailyBuild-only、no-restore、受监控的非发布构建。
 - scripts/Build-Engineering.ps1、Build-Center.ps1、Build-NativeFence.ps1：分别请求仍关闭的阶段。
 - scripts/Invoke-IsolationProbe.ps1：明确隔离探针阶段，仍关闭。
-- scripts/Set-MainProtection.ps1、Test-ScopedFirewall.ps1、Use-ProbeLoopbackLease.ps1：明确 WFP mutation 阶段，仍关闭。
+- scripts/Set-MainProtection.ps1、Test-ScopedFirewall.ps1、Use-ProbeLoopbackLease.ps1：明确 WFP mutation 阶段，仍关闭；Enable 与 Restore 两种修改路径均受门禁保护。
+- scripts/Invoke-S1DailyBuild.ps1、scripts/Invoke-BrokerOfflineBuild.ps1：旧构建流程显式接入 LegacyOfflineBuild / EngineeringBuild 关闭阶段。
+- tests/OwnedToolLaunch/OfflineConsoleNativeCases.cs：Owner 身份绑定拒绝测试改为断言契约实际抛出的 InvalidDataException。
 - scripts/Test-ProductBuildBoundary.ps1：静态检查阶段白名单、监控机制、日常构建入口及其他关闭阶段。
 
-本次尚未运行 PowerShell 门禁、未查询本机卡巴斯基状态、未构建/安装/执行任何产品程序。GitHub CI 的静态脚本检查完成前，不能把本次修改标记为 BUILD 或 VERIFIED。
+本次源码修订尚未在用户本机运行 PowerShell 门禁、未查询本机卡巴斯基状态、未构建/安装/执行任何产品程序。GitHub CI 通过也只代表云端源码/自动化检查通过，不代表本机 AV 兼容或 S1 实测完成。

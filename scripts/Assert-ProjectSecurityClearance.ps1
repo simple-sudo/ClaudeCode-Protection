@@ -78,7 +78,7 @@ function Get-ProjectSecurityEvents {
   }
  }
  $unique=@($events | Group-Object -Property {'{0}|{1}|{2}' -f $_.LogName,$_.ProviderName,$_.RecordId} | ForEach-Object {$_.Group[0]})
- return ,$unique
+ return $unique
 }
 
 function ConvertTo-ProjectSecurityEventDetails {
