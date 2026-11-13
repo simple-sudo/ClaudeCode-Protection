@@ -160,7 +160,11 @@ internal static class Native
     [StructLayout(LayoutKind.Sequential)]internal struct Blob{internal uint Size;internal IntPtr Data;}
     [StructLayout(LayoutKind.Explicit,Size=120)]internal struct Event
     {
+        internal const int LocalAddressOffset = 20, RemoteAddressOffset = 36;
         [FieldOffset(0)]internal long Timestamp;[FieldOffset(8)]internal uint Flags;
+        [FieldOffset(12)]internal uint IpVersion;[FieldOffset(16)]internal byte Protocol;
+        [FieldOffset(LocalAddressOffset)]internal uint LocalV4;[FieldOffset(RemoteAddressOffset)]internal uint RemoteV4;
+        [FieldOffset(52)]internal ushort LocalPort;[FieldOffset(54)]internal ushort RemotePort;
         [FieldOffset(64)]internal Blob App;[FieldOffset(80)]internal IntPtr User;
         [FieldOffset(96)]internal IntPtr Package;[FieldOffset(104)]internal uint Type;[FieldOffset(112)]internal IntPtr Data;
     }

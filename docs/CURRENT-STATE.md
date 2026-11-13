@@ -60,7 +60,7 @@
 - Claude 本机敏感资源隔离和数据外传审计仍是独立 P0。
 - UU 远程在 FlClash Global 美国代理开启时能够正常使用，是用户观察到的应用兼容性证据；并未证明 UU 的全部 TCP/UDP/P2P/中继流量均经过代理。
 
-**状态：全机模式 DESIGN，定向双栈拒绝、投递判定与精确恢复已有 SOURCE。** 恢复记录和对象库存判定通过托管测试，八组 Windows 回环测试收齐全部标记。普通权限读取本机 WFP 层字段返回 Win32 5。内部资格事务未开放执行，原生提交及恢复、物理口投递和全机策略仍待验证。规范见 [NETWORK-SCOPE](NETWORK-SCOPE.md) 和 [PROTECTED-STARTUP-SHUTDOWN-LIFECYCLE-V1](PROTECTED-STARTUP-SHUTDOWN-LIFECYCLE-V1.md)。
+**状态：全机模式 DESIGN，定向双栈拒绝、投递判定与精确恢复已有 SOURCE。** 恢复记录、对象库存和 WFP 丢弃选择通过托管测试，八组 Windows 回环测试收齐全部标记。普通权限读取本机 WFP 层字段和事件采集配置均返回 Win32 5。内部资格事务未开放执行，真实丢弃事件、原生提交及恢复、物理口投递和全机策略仍待验证。规范见 [NETWORK-SCOPE](NETWORK-SCOPE.md) 和 [PROTECTED-STARTUP-SHUTDOWN-LIFECYCLE-V1](PROTECTED-STARTUP-SHUTDOWN-LIFECYCLE-V1.md)。
 
 ## 5. 公开仓库状态与资料边界
 

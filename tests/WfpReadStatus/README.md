@@ -25,3 +25,11 @@ and disabled collection remain UNKNOWN. Selected filter/layer IDs are read from
 the current engine; a current filter is not proof of its historical identity.
 All raw evidence stays local. Nothing here grants a network capability or
 relaxes the installed original owner's privacy/Job/WFP checks.
+
+`MachineEgressDropReader` selects existing outbound classify drops by the
+original held filter ID, layer, short FILETIME window and exact TCP/UDP
+endpoints. Its in-memory layout and matching fixtures run with
+`--check-machine-egress-policy`. Native enumeration has no command-line entry
+and requires a fixed run owner to supply the observed tuple and generation.
+An event has no payload marker or PID. A tuple/time match can corroborate a
+drop, and cannot distinguish retransmission of older data on the same flow.

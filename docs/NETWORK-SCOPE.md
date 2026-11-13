@@ -50,6 +50,8 @@
 
 当前 Windows 测试的八组双栈回环正向控制实际收齐所有标记。规则读回、WFP 丢弃与物理口采集用于判定器的合成分支测试。真实采集接线、提交规则、恢复事务和物理接收端均待实测；入站发起的回包和原生 DNS 仍是后续覆盖项。
 
+已有只读 WFP 历史事件选择器按原过滤器运行时 ID、层 ID、双栈 TCP/UDP 五元组、出站方向和最多五秒的 FILETIME 窗口关联丢弃。它只读取已有历史，缺字段、错误规则、错方向或窗口外事件均拒绝。匹配只能佐证该流发生丢弃，既存流仍须独立对账，以区分旧数据重传和本次试验发送。未开放原生枚举命令。本机普通身份读取 BFE 采集配置返回 Win32 5，历史采集状态为 UNKNOWN。 [WFP 事件字段](https://learn.microsoft.com/windows/win32/api/fwpmtypes/ns-fwpmtypes-fwpm_net_event_header2) · [WFP 丢弃方向与过滤器标识](https://learn.microsoft.com/en-us/windows/win32/api/fwpmtypes/ns-fwpmtypes-fwpm_net_event_classify_drop2)
+
 受控投递所需的提交与恢复源码由内部 `MachineEgressProbeLease` 管理。它要求当前安装版本、原状态锁及原 Job 准入已关闭。写事务先确认三项对象键缺席，持久化绑定安装、版本及双栈作用域的意图，再添加并核对三项对象，在提交前记录 BFE 返回的两个过滤器 ID、子层权重及三个对象的 owner/DACL 摘要。提交后单独复读。未闭合意图阻止普通生命周期操作。
 
 恢复在同一写事务中确认三项对象全部缺席，或全部与原规则、owner/DACL 摘要及提交前对象 ID 记录匹配。部分残留、替换或 ID 漂移保留现场。仅按原键删除两个过滤器和所属子层，提交后再确认缺席并写入闭合回执。已有闭合回执的重放只复核缺席。微软将过滤器 ID 定义为运行时标识。BFE 重启后 ID 稳定性仍未知，ID 变化时该资格路径会拒绝自动删除。当前系统测试门仍阻止此路径运行，Broker 尚未提供命令，原生提交、回滚、进程中断与重启恢复均为 NOT_RUN。 [WFP 过滤器运行时标识](https://learn.microsoft.com/windows/win32/api/fwpmu/nf-fwpmu-fwpmfiltergetbyid0)
