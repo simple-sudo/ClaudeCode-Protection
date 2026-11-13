@@ -41,7 +41,7 @@ internal sealed class SessionZeroOfflineWorkspace : IDisposable
             state.WriteNew("creator-workspace-intent-"+job.JobId+".json",JsonSerializer.SerializeToUtf8Bytes(new {
                 SchemaVersion=1,state.InstallationId,job.JobId,CreatorSid=audience,PackageSid=package.Value,ParentIdentity=parent.ObjectIdentity()
             }));
-            root=SessionResources.CreateWorkspace(path,audience,package.Value,true);
+            root=SessionWorkspaceDirectory.CreateWorkspace(path,audience,package.Value,true);
             storage=OfflineConsoleStorage.Create(state,root,audience);
             var identity=root.ObjectIdentity();
             var hash=state.WriteNew(CreatedLeaf(job.JobId),JsonSerializer.SerializeToUtf8Bytes(new {
@@ -59,7 +59,7 @@ internal sealed class SessionZeroOfflineWorkspace : IDisposable
         storage.AssertHeld(root);
         using var opened=WindowsPathSeal.Open(Path,true,false);
         if(WindowsPathSeal.Identity(opened)!=identity)throw WfpNative.Contract("CreatorWorkspaceRootReplaced");
-        SessionResources.AssertMutableWorkspace(opened,audience,package);
+        SessionWorkspaceDirectory.AssertMutableWorkspace(opened,audience,package);
     }
 
     internal void CloseAfterProfileCleanup(SessionZeroCreatorChannel channel)

@@ -207,7 +207,7 @@ internal static class OfflineConsoleQualification
             AssertQuarantine();
             var hostIdentityReference=OfflineConsoleHostIdentity.Capture(id);
             using(var profile=InstallationProfileLease.Create(state))
-            using(var workspace=SessionResources.CreateOwnedTaskDirectory(state,profile,id))
+            using(var workspace=SessionWorkspaceDirectory.CreateOwnedTaskDirectory(state,profile,id))
             using(var storage=OfflineConsoleStorage.Create(state,workspace))
             using(var streams=new OfflineConsoleStreams())
             {
@@ -901,6 +901,6 @@ internal static class OfflineConsoleQualification
         using var package=new InstallationPackageSid(state);
         using var handle=WindowsPathSeal.Open(workspace.Path,true,false);
         if(WindowsPathSeal.Identity(handle)!=workspace.ObjectIdentity())throw WfpNative.Contract("OfflineConsoleWorkspaceReplaced");
-        SessionResources.AssertMutableWorkspace(handle,user.User?.Value??throw WfpNative.Contract("WorkspaceHumanOwnerMissing"),package.Value);
+        SessionWorkspaceDirectory.AssertMutableWorkspace(handle,user.User?.Value??throw WfpNative.Contract("WorkspaceHumanOwnerMissing"),package.Value);
     }
 }

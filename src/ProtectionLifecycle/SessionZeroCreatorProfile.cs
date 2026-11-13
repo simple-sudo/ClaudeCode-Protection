@@ -88,11 +88,11 @@ internal sealed class SessionZeroCreatorProfile : IDisposable
         string.Equals(mapped,WindowsPathSeal.Child(storage,"AC"),StringComparison.OrdinalIgnoreCase);
     private static void AssertMapping(string sid,string storage)
     {
-        if(!MatchesStorage(storage,SessionResources.ProfileFolder(sid)))throw WfpNative.Contract("CreatorProfileMappingDiffers");
+        if(!MatchesStorage(storage,SessionWorkspaceDirectory.ProfileFolder(sid)))throw WfpNative.Contract("CreatorProfileMappingDiffers");
     }
     private static void AssertMappingAbsent(string sid)
     {
-        try{_=SessionResources.ProfileFolder(sid);}
+        try{_=SessionWorkspaceDirectory.ProfileFolder(sid);}
         catch(WfpFailure error) when(error.Status==NotFound){return;}
         throw WfpNative.Contract("CreatorProfileMappingPresent");
     }

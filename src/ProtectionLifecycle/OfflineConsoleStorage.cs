@@ -38,7 +38,7 @@ internal sealed class OfflineConsoleStorage : IDisposable
         try
         {
             foreach(var path in new[]{view.Base,view.Packages,view.Package,view.LocalData,view.Temp})
-                directories.Add(SessionResources.CreateWorkspace(path,owner,package.Value,true));
+                directories.Add(SessionWorkspaceDirectory.CreateWorkspace(path,owner,package.Value,true));
             return new(workspace,view,directories.ToArray());
         }
         catch
