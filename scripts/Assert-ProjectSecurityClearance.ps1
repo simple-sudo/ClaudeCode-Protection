@@ -38,14 +38,14 @@ function Get-ProjectSecurityEvents {
     [CmdletBinding()]
     param()
     try{
-        return ,@(
+        return @(
             Get-WinEvent -FilterHashtable @{
                 LogName='Application'
                 StartTime=$script:ProjectSecurityStartedAt
             } -ErrorAction Stop | Where-Object { $_.ProviderName -match '(?i)avp|kaspersky' }
         )
     }catch{
-        if($_.FullyQualifiedErrorId -match 'NoMatchingEventsFound'){return ,@()}
+        if($_.FullyQualifiedErrorId -match 'NoMatchingEventsFound'){return @()}
         Write-ProjectSecurityEvidence -RecordType 'MonitorFailure' -Data @{
             Check='ApplicationEventLog'
             Error=$_.Exception.Message
