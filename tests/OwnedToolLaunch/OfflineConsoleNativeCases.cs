@@ -269,6 +269,15 @@ internal static class OfflineConsoleNativeCases
         var native=Call(parse,null,bytes,session,(uint)Environment.ProcessId,start)!;
         var after=Call(type.GetMethod("CaptureProcesses",Static)!,null)!;
         var comparison=Call(type.GetMethod("Compare",Instance)!,native,captured,after,new string('A',64))!;
+        var receiptsType=type.GetNestedType("ActorReceipts",BindingFlags.NonPublic)!;
+        var receiptsCtor=receiptsType.GetConstructors(BindingFlags.Instance|BindingFlags.Public|BindingFlags.NonPublic).Single();
+        var readReceipts=Enumerable.Repeat(new string('A',64),3).ToArray();
+        var actorReceipts=receiptsCtor.Invoke(new object[]{readReceipts,new string('B',64)});
+        var profile=Call(type.GetMethod("BuildEvidenceProfile",Instance)!,native,session,actorReceipts,actorReceipts,captured,after)!;
+        var profileNode=JsonSerializer.SerializeToNode(profile)!;
+        Require(profileNode["Assessments"]!.AsArray().Any(item=>item?["Classification"]!.GetValue<int>()==0));
+        Require(profileNode["Assessments"]!.AsArray().Any(item=>item?["Classification"]!.GetValue<int>()==1));
+        Require(profileNode["P0Exposure"]!.GetValue<bool>());
         var summary=JsonSerializer.SerializeToNode(comparison)!;
         Require(summary["Adapters"]!["Status"]!.GetValue<string>()=="CONTENT_READ");
         Require(summary["MatchingAdapterNames"]!.GetValue<int>()>0);
@@ -286,7 +295,7 @@ internal static class OfflineConsoleNativeCases
             ["Name"]="other",["Pid"]=1,["CreatedFileTime"]=null
         });
         Refuse<InvalidDataException>(()=>Call(parse,null,JsonSerializer.SerializeToUtf8Bytes(wrongProcess),session,(uint)Environment.ProcessId,start));
-        Console.WriteLine("PASS actual ordinary adapter and dual-stack TCP content and actor-bound network survey validation.");
+        Console.WriteLine("PASS ordinary network-content fixture and deterministic host/actor profile mapping; NOT LPAC/L3.");
     }
 
     private static void RunChild(Assembly library,Type type,string mode)
