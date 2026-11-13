@@ -10,26 +10,26 @@
 | 可见性 | Public |
 | 默认分支 | main |
 | 当前线上开发分支 | chatgpt/complete-git-workflow-20261110 |
-| 当前产品源码重构提交 | 9c944d10a1b24bc88b3099091ea93a0d564b9484 |
+| 已继承的产品源码与架构冻结基线 | d7507e57959c8c580a79657b756ec5fc6611b6db |
+| 本机开发分支 | codex/integrate-privacy-admission-20261027，在原工作区快进至线上交接基线，后续提交仅在本地 |
 | 架构审查源码基线 | 74578e903c2584628d853598ef8f1910adf7da5b |
 | 真实证据政策更新前 HEAD | 80a300f760a22b94060e598874b196f3e967dfef |
 | 文档整理与语义修正验证基线 | 2a5e4a5bf26d0f723d4cbb08d59bd4419111a4fa（文档变更；产品源码未变） |
-| 产品源码最近修订 | 2c3fb1646cf64da0817d777215d4efbf9ad4db1b（移除 Git ACL 失败诊断中的原始 SID/ACE 字符串） |
 | PR | #3，OPEN / DRAFT |
 | PR 目标分支 | codex/integrate-privacy-admission-20261027 |
 | PR 目标基线 | 8d56b0c40ef92d384b572bb168eec6bcd8a44d4e |
 
-真实证据治理提交：a93edb0cf077265839a3435c38572443020976a1；完整文档索引与历史范围语义修正提交：f2ae2ac878a4a978ecaf73d0451318910e4b4f56；历史证据政策注释及验收状态更新：2a5e4a5bf26d0f723d4cbb08d59bd4419111a4fa。本轮只更新当前线上开发分支，不合并 PR #3，不推进 main，不改变仓库设置或可见性。
+线上交接分支比 PR 目标基线多 318 个提交，无落后提交。本机继承完整历史，GitHub PR #3 仍为 OPEN / DRAFT。
 
 ## 2. 最新云端验证
 
-最新架构重构源码提交 `9c944d10a1b24bc88b3099091ea93a0d564b9484` 的三组 GitHub Actions 全部 SUCCESS：
+已按 HEAD 核对 `d7507e57959c8c580a79657b756ec5fc6611b6db` 的三组 GitHub Actions，均为 SUCCESS。
 
-- Hosted Windows compile only：`43230310511`
-- Offline workspace Git workflow verification：`43230310544`
-- Safe managed policy smoke：`43230310614`
+- [Hosted Windows compile only](https://github.com/simple-sudo/ClaudeCode-Protection/actions/runs/43354304869)
+- [Offline workspace Git workflow verification](https://github.com/simple-sudo/ClaudeCode-Protection/actions/runs/43354304588)
+- [Safe managed policy smoke](https://github.com/simple-sudo/ClaudeCode-Protection/actions/runs/43354304617)
 
-该轮包含五个产品项目编译、六个聚焦 Harness 编译、普通用户策略/Runner Git 测试及 elevated NTFS Git fixture。此前 `573c362` 的 Hosted compile 与 Offline workflow 因 `PersistentFence.cs` 主 partial 缺少 `namespace ProtectionLifecycle;` 出现 31 个 CS0246；`9c944d1` 仅恢复正确命名空间。修复后产品编译、六个 Harness、普通用户真实 Git 和 elevated NTFS fixture 全部通过。证据边界仍不包括产品 Broker → Owned Job → LPAC 完整产品链、安装、真实 Claude、全机网络保护或宿主隐私 L3 验收。
+该轮包含五个产品项目编译、六个聚焦 harness 编译、普通用户策略和 Runner Git 测试，以及提升权限的 NTFS fixture。本机另通过静态构建边界检查。验证范围详见 [验收账本](PROJECT-ACCEPTANCE.md#2026-11-12-架构交接源码与验证范围)。
 
 ## 3. 已有证据与未证明范围
 
@@ -45,7 +45,7 @@
 - 全部 P0 宿主敏感信息隔离、跨来源画像与数据外传验收。
 - 保留 GPU 计算能力同时隔离 GPU 稳定个体身份的完整验收。
 
-产品常规 Build 入口的 SECURITY_REVIEW_REQUIRED 硬停止仍有效。本次文档工作没有绕过该门禁，也没有在用户主机上编译、安装、提权或运行产品。
+产品常规 Build 入口仍受 `SECURITY_REVIEW_REQUIRED` 硬停止约束。最近有证据的安装为 `f9e8d29d9c2c472495422dbffd40bffd`、INACTIVE、package schema 32、25 项资产，见 [安装观察](STATUS.md#2026-11-12-显式-git-工作流-schema-2对抗配置独立指标与结果快照验收)。本次普通权限读取私有版本指针被拒绝，当前安装状态未能独立复核。源码内嵌的旧 Bootstrap 批准包和更新迁移仍不适用于该安装。官方 Claude Code 每次执行及高影响系统实验按现行操作门禁取得具体决定。
 
 ## 4. 2026-11-12 网络架构更新
 
@@ -79,26 +79,10 @@
   - Offline workspace Git workflow verification：`43189433650`
 - 本轮只变更文档，不修改产品可执行源码，不构成实机安装、网络更改或正式 Claude 启动授权。
 
-## 7. 下一步开发重点
+## 7. 架构冻结后的开发重点
 
-1. 先完成全机 TUN/WFP 正确分层、FlClash Core 与代理端点绑定、DNS 引导和 fail-closed 的底层可行性审计。
-2. 实现全机公网出口强制代理的最小可验证切片，先用自研测试程序和受控接收端证明无直连。
-3. 把 UU 远程纳入全机代理兼容性实测，不增加未经验证的直连例外。
-4. 继续完成 Claude 本机敏感信息隔离、真实内容 L3 对抗实验和数据外传审计。
-5. 将网络模式、Claude 会话、Job/LPAC、安装、退出和恢复统一到原可信 Owner 生命周期。
-6. 每个可独立验证的能力尽早安排实机测试；云端能完成的编译和自动化回归由 CI 自主完成。
+现有产品模块和资源所有权以 `d7507e5` 冻结。带类型的资源意图、工作区租约和独立 Git 策略已经继承。收尾审查、冻结范围与后续调整条件见 [架构决策](ARCHITECTURE-BASELINE-AND-TARGET-20261112.md#14-2026-11-12-架构收尾与冻结)。
 
-本摘要只记录截至上述基线的已知事实。文档整理提交本身不改变产品实现状态或实机授权。
-
-
-## 8. 全项目架构治理（2026-11-12）
-
-架构基线与目标设计见 [ARCHITECTURE-BASELINE-AND-TARGET-20261112](ARCHITECTURE-BASELINE-AND-TARGET-20261112.md)。原始审查基线为源码 HEAD `74578e903c2584628d853598ef8f1910adf7da5b`；当前最新架构重构产品源码为 `9c944d10a1b24bc88b3099091ea93a0d564b9484`。PR #3 保持 OPEN / DRAFT，开发分支领先目标分支 299、落后 0；当前 PR 为 299 commits / 129 changed files。
-
-当前工程清单为 5 个产品项目、1 个独立 Engineering 项目、24 个 C# 测试项目、16 个脚本条目、3 个 Actions workflow；src Git Tree 共 254 个条目（246 个文件、8 个目录）。其中 ProtectionLifecycle 有 182 个本地 C# 文件，仍编译为一个管理程序集；Shared 有 22 个源码文件，不是独立 DLL。六个托管项目的显式 Compile Include 均已核对，无缺失路径或重复项。架构问题与当前完整项目/测试/依赖地图见架构文档。当前未增加 DLL、未改变安装资产或 Manifest 协议。
-
-A1.1—A1.7 已完成：Profile lease、Job completion receipt、Token evidence、Token observation、受限工具启动、原生 ABI、restricted Worker、runtime supervision、进程创建工厂、Job membership observation、default DACL candidate 已按职责拆分。此后继续完成 ProtectedSession、SessionResources/Workspace/Recovery、Git、HostPrivacy、SessionProxy/ProxyChannel、WFP 和 NetworkQualification 的文件级职责提取；这些拆分未改变原有程序集、安装资产、Manifest 或安全语义。需要区分：partial 文件拆分不等同于独立服务或独立资源所有权，SessionResources、SessionProxy、SessionGitToolchain 和 HostPrivacyProbe 仍有待组合边界重构。
-
-重构期间出现的编译失败均保留并修复。当前基线 `9c944d1` 的三组 Actions 全部 SUCCESS（43230310511、43230310544、43230310614）。Hosted Windows compile 编译五个产品项目；Offline workflow 编译六个聚焦 Harness 并通过标准用户 Git 与 elevated NTFS fixtures；Policy Smoke 成功。证据边界仍不包括 Broker → Owned Job → LPAC 完整产品链或真实 Claude。
-
-下一阶段转向 A2：优先将资源操作模式改为 typed ResourceExecution intent，随后建立真正拥有 workspace path/file handles 的 SessionWorkspaceLease，由 SessionResources 作为组合协调器；保持原 ProtectedSession 唯一 session owner，不引入第二授权中心。全机网络模式仍为 REQUIREMENT_ONLY / DESIGN；本机 `SECURITY_REVIEW_REQUIRED` 硬停止仍有效。
+1. 全机公网出口保护进入主要开发顺序。首个切片验证持久拒绝、WFP 分层、新旧连接的物理投递和精确恢复。只读现场快照与 Windows 原语审查见 [全机 WFP 可行性审查](NETWORK-SCOPE.md#2026-11-12-全机-wfp-可行性审查与首个实证切片)。
+2. 接入可信 Core 与授权端点、有限 DNS 引导、代理正向路径和故障收敛，再验证 UU 的实际控制与传输路径。
+3. 按功能完成宿主敏感信息 L3、受限进程和工具、设备及 GPU 身份、管理面自我保护、安装升级恢复卸载，并最终完成正式 Claude Code 端到端验收。

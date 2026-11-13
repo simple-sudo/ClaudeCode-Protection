@@ -5,6 +5,10 @@
 历史页的“当前/待执行/暂停/DELIVERABLE”按段落日期及限定范围解释，不是今天的状态或操作许可。
 不在本页复制当前安装和授权摘要。
 
+## 2026-11-12 本机接续网页端架构交接
+
+原本机开发分支从 `8d56b0c` 快进至 `d7507e5`。核对了资源意图、工作区增量租约、Git 策略和两处测试入口；按实际资源归属结束通用拆分，记录 [架构冻结决策](ARCHITECTURE-BASELINE-AND-TARGET-20261112.md#14-2026-11-12-架构收尾与冻结) 及 [验收范围](PROJECT-ACCEPTANCE.md#2026-11-12-架构交接源码与验证范围)。依据本机只读路由/监听观察和 Windows 原语文档完成 [全机 WFP 首个验证切片设计](NETWORK-SCOPE.md#2026-11-12-全机-wfp-可行性审查与首个实证切片)。
+
 ## 2026-11-12 显式 Git 工作流 schema 2：对抗配置、独立指标与结果快照验收
 
 开发分支 `chatgpt/complete-git-workflow-20261110` 当前 HEAD `87918722b0c39c82e780f4a6bd221ede127e3227`（CURRENT-STATE/STATUS/验收证据同步提交）；最近产品/测试行为基线 `406324114b2c90ccd2f2ec352e0f0c31f43f1f3d`，后续代码/测试输出清理与 CI 标签 HEAD `569cb301485bb439d9609b1bfe29c02d7197ff5c`。`2c3fb16` 移除产品异常中的原始 SID/ACE 诊断字符串，`28565b1` 移除测试 harness 的临时原始 SID/ACE 输出并恢复直接生产 descriptor 调用，`569cb30` 更正 CI 步骤标签；后续 Actions 43158190722（offline workspace Git + elevated native NTFS）、43158190720（hosted compile）、43158190733（managed policy/daily compile）全部 SUCCESS。历史 schema 2 Git 产品源码基线 `6a76936cad67be5da8adc08b3db0e05ff7434be1`、恢复测试实现基线 `b93347ca1778d34758a3b3aeddedceeed05f049c`；产品超时修复源码基线 `ec195f4c49414ecf374cf12e5d9929b576b11817`、Broker 命令准入回归测试 `f687cd874bd9ae2473eb5688d6b90af74daab577`；Draft PR #3 保持 OPEN / DRAFT，未合并。

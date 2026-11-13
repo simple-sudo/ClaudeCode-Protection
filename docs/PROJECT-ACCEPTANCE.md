@@ -5,6 +5,13 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-12 架构交接源码与验证范围
+
+- SOURCE / INTEGRATED（`d7507e5`）包括带类型的资源意图、增量工作区租约、Git 策略提取和两处 Offline Git 策略测试入口迁移。五个产品项目与 Engineering 的六份显式编译清单已核对路径存在及无重复。
+- BUILD / VERIFIED（GitHub Actions，HEAD `d7507e5`）涵盖托管产品编译、专项 harness、纯托管策略、普通 Windows Runner Git，以及提升权限的真实 NTFS fixtures。运行日志确认工作区所有权、ResourceChildRunner 职责、GitWorkspacePolicy 无状态边界、Git 权限继承及精确任务目录恢复。 [Hosted compile](https://github.com/simple-sudo/ClaudeCode-Protection/actions/runs/43354304869) · [Offline Git](https://github.com/simple-sudo/ClaudeCode-Protection/actions/runs/43354304588) · [Policy smoke](https://github.com/simple-sudo/ClaudeCode-Protection/actions/runs/43354304617)
+- VERIFIED（本机静态审查）通过五项构建边界断言。VERIFIED（本机普通权限只读快照）覆盖 BFE 状态、双栈默认路由和两个 FlClash 回环监听归属。当前私有安装指针读取被拒绝，现场安装状态未重新确认。
+- NOT_RUN（该源码基线）包括本机产品构建/安装、Broker → Owned Job → LPAC 的 schema 2 多命令实测、正式 Claude、全机出口过滤、代理物理投递与故障恢复。宿主 L3 和整机产品交付仍待验收。
+
 ## 2026-11-12 schema 2 多命令 Git 工作流：对抗配置、独立指标与结果快照验收
 
 SOURCE / INTEGRATED(显式 `workspace-git-pack` schema 2 接入既有 daily→Broker→ProtectedSession→Owned Job→LPAC 数据链；固定 `main`、NUL pathspec、受限 Git 命令序列、Owner 独立对象/引用核验、项目/控制目录 DACL、plan-aware 报告资格和精确结果快照/receipt 闭合)。

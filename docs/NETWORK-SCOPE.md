@@ -28,6 +28,20 @@
 **REQUIREMENT_ONLY / DESIGN。** 当前 SessionProxy 固定资格通路、WFP 持久规则、FlClash 身份核验和路由快照是局部基础，不等于全机通用 TUN/WFP 出口控制。完整全机 IPv4/IPv6、DNS/UDP/QUIC、代理端点动态租约、UU 全流量和故障窗口仍须实现与 Windows 实机验收。详细状态机见 [PROTECTED-STARTUP-SHUTDOWN-LIFECYCLE-V1](PROTECTED-STARTUP-SHUTDOWN-LIFECYCLE-V1.md)。
 
 
+## 2026-11-12 全机 WFP 可行性审查与首个实证切片
+
+现有 `PersistentFence` 的规则绑定单一安装 Package SID，落在双栈 ALE connect 层，继续承担原会话隔离。全机规则由独立所有者管理。可信侧普通权限只读快照观察到 BFE 在运行、FlClash 和 WLAN 均有 IPv4 默认路由、WLAN 有 IPv6 默认路由；FlClash 两个固定回环监听归于同一 Core 进程。此快照记录现场拓扑和监听归属，实际流向、出口属性、既存连接和 UU 路径仍为 UNKNOWN。
+
+| 要证明的能力 | Windows 原语与待验证边界 |
+| --- | --- |
+| 应用身份和实际出接口 | ALE 应用 ID 表示映像路径。出站 IP 包层有接口、地址和网络 compartment 等条件，缺少 ALE 应用 ID、协议和端口条件。需证明应用/进程实例授权与实际物理出口相交。仅匹配目的地址或 Core 路径无法满足完整授权。先验证原生过滤能表达所需条件，再决定是否需要驱动维护逐流授权。 [WFP 各层条件](https://learn.microsoft.com/en-us/windows/win32/fwp/filtering-conditions-available-at-each-filtering-layer) · [应用与接口条件定义](https://learn.microsoft.com/en-us/windows-hardware/drivers/network/filtering-condition-identifiers) |
+| 既存连接与抢占窗口 | ALE 策略变化会在原授权层触发重授权，触发包方向可与连接发起方向不同。实验须分别观察入站发起的应答和出站发起的连接，校对 TCP、UDP 以及启用、撤销两侧的实际投递。WFP 子层权重、硬允许和跨层阻断需纳入同一实测。 [ALE 重授权](https://learn.microsoft.com/en-us/windows/win32/fwp/ale-re-authorization) · [WFP 仲裁](https://learn.microsoft.com/en-us/windows/win32/fwp/filter-arbitration) |
+| 崩溃、重启和 BFE 交接 | 持久拒绝是候选基线。动态会话关闭时自动删除对象，可作为短命授权的一环，授权期限、Core 实例退出、Owner 卡住及撤销触发仍需单独保证。启动期过滤与 BFE 加载持久过滤之间的交接需要实测。 [WFP 对象生命周期](https://learn.microsoft.com/en-us/windows/win32/fwp/object-management) |
+
+首个切片先在受控双栈接收端验证最小拒绝机制。使用自研发送端，对固定接收目标先证明实际可达，保持既存 TCP 及 UDP 流，再验证启用前后新建和既存流的发送标记、Windows 分类、物理口观察及接收端记录。纳入入站发起的回包、IPv4/IPv6、TCP/UDP 与原生 DNS，后续再扩至 DoH、DoT、QUIC、转发、虚拟网卡与网络切换。拒绝证据须对应同一策略版本、测试身份、接口和时间窗。先验证准确回读及只恢复本次拥有的规则，再进入 Core 端点正向放行和故障验证。
+
+正向切片须验证 Core 实例身份、TUN、授权远端协议/地址/端口、端点变更、有限 DNS 引导及代理出口属性。UU 的真实控制、传输和重连另采证据。首轮结论按实际覆盖范围记账，原生过滤、受控投递和故障注入当前均为 NOT_RUN。系统实验须先固定候选工件、对象、时限、停止及恢复条件并取得适用许可。
+
 ## 历史实现证据（2026-11-06：最小能力与实际内容比较切片，受限实测 NOT_RUN）
 
 在AFD/TCPIP正向证据收敛到创建检查层、既存WFP历史查询未返回记录后，不再盲改

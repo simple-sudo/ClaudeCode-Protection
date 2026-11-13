@@ -1,6 +1,6 @@
 # ClaudeCode-Protection 架构基线与目标架构（2026-11-12）
 
-> 状态：源码审查基线 / 渐进重构目标。本文以分支 `chatgpt/complete-git-workflow-20261110` 的提交 `74578e903c2584628d853598ef8f1910adf7da5b` 为审查基准。它不声明目标架构已实现，不授予构建、安装、提权、网络修改或产品执行许可。
+> 现有产品的模块和资源所有权边界已冻结，基准为 `d7507e57959c8c580a79657b756ec5fc6611b6db`，见第 14 节。前文保留以 `74578e9` 开始的历史审查、阶段目标和中间快照。未来全机网络所有者及其原生执行机制仍为设计。
 >
 > 本文是架构职责和依赖方向的权威文档。正式安全目标仍由 [SECURITY-REQUIREMENTS](SECURITY-REQUIREMENTS.md) 定义；当前实现和验收事实由 [CURRENT-STATE](CURRENT-STATE.md) 与 [PROJECT-ACCEPTANCE](PROJECT-ACCEPTANCE.md) 定义；机制细节仍由对应专题文档定义。
 
@@ -405,7 +405,7 @@ Machine Network Lease 和 Session lease 是不同生命周期。Broker/Owner 是
 - PR #3 保持 OPEN / DRAFT；不得合并、修改目标分支或 force-push。
 
 
-## 13. 2026-11-12 branch-head re-audit and current implementation map
+## 13. 2026-11-12 historical re-audit at `9c944d1`
 
 This section supersedes only the *current-source observations* in the earlier review. Sections 1–12 preserve the original review baseline and A1 history.
 
@@ -493,3 +493,19 @@ The next A2 work remains inside the current Lifecycle assembly and must not chan
 6. Continue A7 review of Broker/Bootstrap and A6 GPU identity/compute only after the earlier owner boundaries are stable.
 
 No new DLL, namespace-wide migration, install asset, Manifest/Bootstrap approval, product runtime behavior or local security-stop change is implied by this plan. Full Machine Network Protection remains REQUIREMENT_ONLY / DESIGN; `SECURITY_REVIEW_REQUIRED` remains effective.
+
+## 14. 2026-11-12 架构收尾与冻结
+
+冻结对象为 `d7507e57959c8c580a79657b756ec5fc6611b6db` 的现有生产入口、模块职责、资源所有权及依赖方向。A1 已有拆分继续沿用。A2/A3 本轮核对到带类型的 `ResourceExecutionIntent`、独立的 `ResourceChildRunner` 与 `SessionWorkspaceDirectory`、工作区租约和 Git 策略边界。核对范围包括构建清单、Git 策略的两处测试入口、会话与资源释放路径、Session 0 和安装事务的入口及所有权。五个产品项目和一个独立 Engineering 项目的显式编译清单没有缺失或重复路径，详细验证见 [验收账本](PROJECT-ACCEPTANCE.md#2026-11-12-架构交接源码与验证范围)。
+
+| 边界 | 冻结的职责 |
+| --- | --- |
+| GUI/CLI、Broker、Bootstrap | 普通前端提交有限请求。Broker 绑定可信安装、版本、调用方和固定操作。Bootstrap 按固定批准资产和事务记录安装、升级或恢复。管理状态及恢复记录由原事务所有者核验。 |
+| ProtectedSession、Admission、Runtime、Job | ProtectedSession 编排并持有会话；准入与挂起创建绑定原 Job、LPAC 及句柄。Runtime 撤销许可、监督并协调停止；原 Job 所有者确认闭合及成员归零。 |
+| Workspace 与工具 | SessionWorkspaceLease 自 Begin 起持有 Git 资产租约，并通过 Prepare/Populate 逐步持有目录、文件及回执。SessionResources 协调 HostPrivacy、Workspace、PowerShell，按此顺序尝试释放。目录创建/身份核验由 SessionWorkspaceDirectory 负责，持久恢复仍由原精确恢复链完成。 |
+| Git 策略 | GitWorkspacePolicy 负责固定命令、环境、控制目录、pathspec 与 ProcessStartInfo。SessionGitToolchain 的资产句柄及进程与回执实现沿用现有边界。两处 Offline Git harness 均指向新策略类型。 |
+| 隐私、GPU、Session 0 | HostPrivacyProbe 持有可信参考、控制文件及受限探针证据；报告契约与执行入口已有源码边界。GPU 能力和设备身份分别验收。临时创建者和窗口资源沿各自的服务、Job 和恢复证据核验归属。 |
+| 会话网络 | PersistentFence 持有安装 Package SID 对应的 WFP 屏障及回读。SessionProxy 持有监听、转发任务及套接字的会话生命周期。ProxyChannelLease 持有上游进程/映像/路径身份；套接字由会话内连接与转发路径持有。原会话结束只撤销会话权限和资源。 |
+| 全机网络扩展 | 由原可信 Broker/Owner 协调独立的全机策略所有者和恢复记录。会话消费经核验的网络状态；全机故障可撤销会话许可，停止会话不释放全机规则。旧 IPv6 流程的 ProtectedLifecycleCoordinator 目前仅有 fixture 调用；接线前须满足现行两套状态机。 |
+
+通用拆分阶段到此结束。现有 `partial` 结构按底层资源归属保留。未提交的 `GitToolchainContract` 候选不纳入基线。进一步改动须由可定位的技术障碍、安全缺陷或重大设计缺陷驱动，并记录受影响的调用链、所有权、兼容性和回归证据。A4/A6/A7 的产品缺口按对应功能推进，全机网络实现进入主开发顺序。冻结不改变软件包版本，也不提供产品运行或交付资格。
