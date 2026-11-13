@@ -80,7 +80,9 @@ internal static class HostPrivacyEvidenceRules
         var p0Unknown=requiredTargets.Any(target=>{
                 var targetRecords=records.Where(item=>item.RequiredP0 && item.Target==target).ToArray();
                 var targetResults=assessments.Where(item=>item.RequiredP0 && item.Target==target).ToArray();
-                if(targetRecords.Length==0)return true;
+                if(targetRecords.Length==0 ||
+                    !targetRecords.Any(item=>item.Visibility==HostPrivacyEvidenceVisibility.HostReferenceOnly) ||
+                    !targetRecords.Any(item=>item.Visibility==HostPrivacyEvidenceVisibility.RestrictedActor))return true;
                 return !targetResults.Any(item=>item.Classification is HostPrivacyEvidenceClass.DeniedConfirmed or HostPrivacyEvidenceClass.ConfirmedDirect) ||
                     targetResults.Any(item=>item.Classification is HostPrivacyEvidenceClass.Unknown or HostPrivacyEvidenceClass.NotRun or HostPrivacyEvidenceClass.TargetAbsent) ||
                     targetRecords.Any(item=>item.Visibility==HostPrivacyEvidenceVisibility.HostReferenceOnly) &&
