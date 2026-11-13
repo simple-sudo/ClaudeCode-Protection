@@ -32,7 +32,7 @@ internal static class HostPrivacyEvidenceCases
         var emptyInventory=Record("00000000000000000000000000000011","network.adapter","inventory","[]","iphelper-empty","iphelper",
             sensitive:false,claim:"",key:"");
         var emptyProfile=Evaluate(new[]{host,emptyInventory},"network.adapter");
-        Require(emptyProfile.Assessments.Single().Classification==HostPrivacyEvidenceClass.ConfirmedDirect &&
+        Require(emptyProfile.Assessments.Single(item=>item.EvidenceId==emptyInventory.EvidenceId).Classification==HostPrivacyEvidenceClass.ConfirmedDirect &&
             !emptyProfile.P0Exposure && !emptyProfile.P0Unknown,
             "a successfully read empty inventory resolves coverage without fabricating sensitive exposure");
         Require(Evaluate(new[]{host},"network.adapter").P0Unknown,
