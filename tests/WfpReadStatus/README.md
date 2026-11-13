@@ -33,3 +33,9 @@ endpoints. Its in-memory layout and matching fixtures run with
 and requires a fixed run owner to supply the observed tuple and generation.
 An event has no payload marker or PID. A tuple/time match can corroborate a
 drop, and cannot distinguish retransmission of older data on the same flow.
+
+The policy fixtures also exercise the Ethernet frame matcher and capture
+window. A capture owner must provide the physical component identity,
+direction, timebase and loss count. Matching headers are enough to identify
+a payload-free SYN. Unknown direction, ambiguous fragments and missing loss
+accounting cannot support a zero-delivery result.

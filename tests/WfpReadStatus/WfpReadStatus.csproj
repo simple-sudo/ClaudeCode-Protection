@@ -7,6 +7,7 @@
   <ItemGroup><Compile Include="Program.cs" /><Compile Include="ExistingEvents.cs" /><Compile Include="SelectionChecks.cs" /></ItemGroup>
   <ItemGroup>
     <Compile Include="MachineEgressProbeCases.cs;MachineEgressDeliveryCases.cs;MachineEgressRecoveryCases.cs;MachineEgressDropReader.cs;MachineEgressDropCases.cs" />
+    <Compile Include="MachineEgressFrameMatch.cs;MachineEgressCaptureWindow.cs;MachineEgressFrameCases.cs" />
     <Compile Include="../../src/ProtectionLifecycle/MachineEgressProbePolicy.cs;../../src/ProtectionLifecycle/MachineEgressDeliveryEvidence.cs;../../src/ProtectionLifecycle/MachineEgressRecoveryState.cs;../../src/ProtectionLifecycle/WfpNative.cs;../../src/ProtectionLifecycle/WfpFailure.cs;../../src/ProtectionLifecycle/SafeWfpEngine.cs" />
   </ItemGroup>
 </Project>

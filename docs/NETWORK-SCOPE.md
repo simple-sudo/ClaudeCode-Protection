@@ -50,6 +50,8 @@
 
 当前 Windows 测试的八组双栈回环正向控制实际收齐所有标记。规则读回、WFP 丢弃与物理口采集用于判定器的合成分支测试。真实采集接线、提交规则、恢复事务和物理接收端均待实测；入站发起的回包和原生 DNS 仍是后续覆盖项。
 
+物理出口对账已有 Ethernet 帧匹配和采集窗口源码。帧按 IPv4/IPv6、地址、TCP/UDP 协议和端口归属，无负载 SYN 也计数。采集组件、方向、覆盖时间和零丢失计数必须由可信采集端提供。方向未知、截断或无法归属的分片使零投递保持 UNKNOWN。Pktmon 转出的 pcapng 会丢失组件路径和丢弃信息，因此后续接线须保留原始 ETL 和组件归属。普通权限 `pktmon status` 已返回访问拒绝，真实采集仍 NOT_RUN。 [Pktmon 转换边界](https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/pktmon-etl2pcap) · [IPv6 扩展头与分片](https://www.rfc-editor.org/rfc/rfc8200.html)
+
 已有只读 WFP 历史事件选择器按原过滤器运行时 ID、层 ID、双栈 TCP/UDP 五元组、出站方向和最多五秒的 FILETIME 窗口关联丢弃。它只读取已有历史，缺字段、错误规则、错方向或窗口外事件均拒绝。匹配只能佐证该流发生丢弃，既存流仍须独立对账，以区分旧数据重传和本次试验发送。未开放原生枚举命令。本机普通身份读取 BFE 采集配置返回 Win32 5，历史采集状态为 UNKNOWN。 [WFP 事件字段](https://learn.microsoft.com/windows/win32/api/fwpmtypes/ns-fwpmtypes-fwpm_net_event_header2) · [WFP 丢弃方向与过滤器标识](https://learn.microsoft.com/en-us/windows/win32/api/fwpmtypes/ns-fwpmtypes-fwpm_net_event_classify_drop2)
 
 受控投递所需的提交与恢复源码由内部 `MachineEgressProbeLease` 管理。它要求当前安装版本、原状态锁及原 Job 准入已关闭。写事务先确认三项对象键缺席，持久化绑定安装、版本及双栈作用域的意图，再添加并核对三项对象，在提交前记录 BFE 返回的两个过滤器 ID、子层权重及三个对象的 owner/DACL 摘要。提交后单独复读。未闭合意图阻止普通生命周期操作。
