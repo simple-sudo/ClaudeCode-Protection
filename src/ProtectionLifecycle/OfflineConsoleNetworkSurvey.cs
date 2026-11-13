@@ -14,7 +14,7 @@ internal sealed record OfflineConsoleNetworkSurvey(int SchemaVersion,string Sess
     private static readonly string[] ProcessNames=["FlClash","FlClashCore","GameViewerService",
         "MuMuRemoteBackend","MumuRemoteHealthd","MuMuRemoteService"];
     internal sealed record ProcessRow(string Name,int Pid,long? CreatedFileTime);
-    internal sealed record ProcessView(int Error,ProcessRow[] Rows);
+    internal sealed record ProcessView(int Error,ProcessRow[] Rows,long CapturedFileTime);
     internal sealed record ReadSummary(string Status,uint? SizeStatus,uint? ReadStatus,int CapturedBytes,int? TrustedRows,int? RestrictedRows);
     internal sealed record Summary(string ReceiptSHA256,ReadSummary Adapters,ReadSummary TcpV4,ReadSummary TcpV6,
         int MatchingAdapterNames,int MatchingAdapterMacs,int MatchingUnicast,int MatchingGateways,int MatchingDns,
@@ -33,7 +33,7 @@ internal sealed record OfflineConsoleNetworkSurvey(int SchemaVersion,string Sess
     private sealed record ActorReceipts(string[] Reads,string Processes);
 
     internal static OfflineConsoleNetworkSurvey Capture(string session)=>
-        new(1,session,GatewayCapabilityContent.Capture(),CaptureProcesses());
+        new(2,session,GatewayCapabilityContent.Capture(),CaptureProcesses());
 
     internal static ProcessView CaptureProcesses()
     {
@@ -46,13 +46,13 @@ internal sealed record OfflineConsoleNetworkSurvey(int SchemaVersion,string Sess
             {
                 var name=ProcessNames.FirstOrDefault(item=>string.Equals(item,process.ProcessName,StringComparison.OrdinalIgnoreCase));
                 if(name is null)continue;
-                if(rows.Count==MaximumProcesses)return new(122,[]);
+                if(rows.Count==MaximumProcesses)return new(122,[],DateTime.UtcNow.ToFileTimeUtc());
                 rows.Add(new(name,process.Id,Created(process)));
             }
-            return new(0,rows.ToArray());
+            return new(0,rows.ToArray(),DateTime.UtcNow.ToFileTimeUtc());
         }
-        catch(Win32Exception error){return new(error.NativeErrorCode>0?error.NativeErrorCode:13,[]);}
-        catch(InvalidOperationException){return new(13,[]);}
+        catch(Win32Exception error){return new(error.NativeErrorCode>0?error.NativeErrorCode:13,[],DateTime.UtcNow.ToFileTimeUtc());}
+        catch(InvalidOperationException){return new(13,[],DateTime.UtcNow.ToFileTimeUtc());}
         finally{foreach(var process in processes)process.Dispose();}
     }
 
@@ -87,17 +87,20 @@ internal sealed record OfflineConsoleNetworkSurvey(int SchemaVersion,string Sess
         using var document=JsonDocument.Parse(bytes,new JsonDocumentOptions{MaxDepth=6});
         var root=document.RootElement;
         StrictJson.Fields(root,"SchemaVersion","SessionId","Network","Processes");
-        if(root.GetProperty("SchemaVersion").GetInt32()!=1 || StrictJson.Text(root,"SessionId")!=session || pid==0)
+        if(root.GetProperty("SchemaVersion").GetInt32()!=2 || StrictJson.Text(root,"SessionId")!=session || pid==0)
             throw WfpNative.Contract("OfflineNetworkSurveyActorMismatch");
         var network=GatewayNetworkContent.Parse(root.GetProperty("Network"),pid,created);
         if(network.FinishedFileTime>DateTime.UtcNow.ToFileTimeUtc())throw WfpNative.Contract("OfflineNetworkSurveyTime");
         var processData=root.GetProperty("Processes");
-        StrictJson.Fields(processData,"Error","Rows");
+        StrictJson.Fields(processData,"Error","Rows","CapturedFileTime");
         var rows=processData.GetProperty("Rows");
         if(rows.GetArrayLength()>MaximumProcesses)throw WfpNative.Contract("OfflineNetworkSurveyProcessBound");
         foreach(var row in rows.EnumerateArray())StrictJson.Fields(row,"Name","Pid","CreatedFileTime");
         var processes=processData.Deserialize<ProcessView>()??throw WfpNative.Contract("OfflineNetworkSurveyProcessMissing");
         if(processes.Error<0 || processes.Error!=0 && processes.Rows.Length!=0 ||
+            processes.CapturedFileTime<network.FinishedFileTime ||
+            processes.CapturedFileTime-network.FinishedFileTime>TimeSpan.TicksPerSecond*15 ||
+            processes.CapturedFileTime>DateTime.UtcNow.ToFileTimeUtc() ||
             processes.Rows.Any(row=>!ProcessNames.Contains(row.Name) || row.Pid<=0 ||
                 row.CreatedFileTime is long time && (time<=0 || time>DateTime.UtcNow.ToFileTimeUtc())) ||
             processes.Rows.Select(row=>row.Pid).Distinct().Count()!=processes.Rows.Length)
@@ -118,10 +121,10 @@ internal sealed record OfflineConsoleNetworkSurvey(int SchemaVersion,string Sess
         var restrictedReceipts=SealActor(this,"restricted");
         var trustedReceipts=SealActor(host,"trusted");
         var trustedAfterReceipt=state.WriteNew("offline-net-trusted-after-"+jobId+".json",
-            JsonSerializer.SerializeToUtf8Bytes(new {SchemaVersion=1,state.InstallationId,JobId=jobId,version.Package.Release,
+            JsonSerializer.SerializeToUtf8Bytes(new {SchemaVersion=2,state.InstallationId,JobId=jobId,version.Package.Release,
                 version.Package.ManifestHash,Actor="trusted-after",hostAfter}));
         var hash=state.WriteNew("offline-console-network-"+jobId+".json",JsonSerializer.SerializeToUtf8Bytes(new {
-            SchemaVersion=1,state.InstallationId,JobId=jobId,version.Package.Release,version.Package.ManifestHash,
+            SchemaVersion=2,state.InstallationId,JobId=jobId,version.Package.Release,version.Package.ManifestHash,
             Restricted=SealActorSummary(this,restrictedReceipts),Trusted=SealActorSummary(host,trustedReceipts),
             TrustedProcessesAfterSHA256=trustedAfterReceipt
         }));
@@ -140,11 +143,11 @@ internal sealed record OfflineConsoleNetworkSurvey(int SchemaVersion,string Sess
         {
             var receipts=actor.Network.Reads.Select((read,index)=>state.WriteNew(
                 $"offline-net-{role}-{index}-{jobId}.json",JsonSerializer.SerializeToUtf8Bytes(new {
-                    SchemaVersion=1,state.InstallationId,JobId=jobId,version.Package.Release,version.Package.ManifestHash,Actor=role,
+                    SchemaVersion=2,state.InstallationId,JobId=jobId,version.Package.Release,version.Package.ManifestHash,Actor=role,
                     actor.Network.Pid,actor.Network.StartedFileTime,actor.Network.FinishedFileTime,Read=read
                 }))).ToArray();
             var processReceipt=state.WriteNew($"offline-net-process-{role}-{jobId}.json",
-                JsonSerializer.SerializeToUtf8Bytes(new {SchemaVersion=1,state.InstallationId,JobId=jobId,
+                JsonSerializer.SerializeToUtf8Bytes(new {SchemaVersion=2,state.InstallationId,JobId=jobId,
                     version.Package.Release,version.Package.ManifestHash,Actor=role,actor.Network.Pid,
                     actor.Network.StartedFileTime,actor.Processes}));
             return new(receipts,processReceipt);
@@ -244,7 +247,7 @@ internal sealed record OfflineConsoleNetworkSurvey(int SchemaVersion,string Sess
 
         void AddProcesses(ProcessView view,string receipt,bool hostReference,ProcessRow[] stableRows)
         {
-            var readTime=DateTimeOffset.FromFileTime(hostReference?trusted.Network.FinishedFileTime:Network.FinishedFileTime);
+            var readTime=DateTimeOffset.FromFileTime(view.CapturedFileTime);
             if(view.Error!=0)
             {
                 if(hostReference)return;
