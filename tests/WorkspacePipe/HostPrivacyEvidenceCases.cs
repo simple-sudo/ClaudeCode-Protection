@@ -26,6 +26,9 @@ internal static class HostPrivacyEvidenceCases
             "host reference is not Claude exposure");
         Require(profile.Assessments.Single(item=>item.EvidenceId==direct.EvidenceId).Classification==HostPrivacyEvidenceClass.ConfirmedDirect &&
             profile.P0Exposure,"one confirmed P0 content read blocks regardless of other evidence");
+        Require(profile.P0Unknown==false,"a confirmed restricted observation resolves the target's unknown state");
+        Require(HostPrivacyEvidenceRules.Evaluate(session,actor,new[]{host},now).P0Unknown,
+            "host-only reference cannot resolve restricted-actor visibility");
         var denied=Record("00000000000000000000000000000003","network.tcp","table","","iphelper-2","iphelper",
             outcome:HostPrivacyEvidenceOutcome.AccessDenied,verified:false,error:5);
         var deniedProfile=HostPrivacyEvidenceRules.Evaluate(session,actor,new[]{denied},now);
@@ -38,6 +41,10 @@ internal static class HostPrivacyEvidenceCases
         var unknown=Record("00000000000000000000000000000005","network.tcp","table","","iphelper-4","iphelper",
             outcome:HostPrivacyEvidenceOutcome.Unknown,verified:false);
         Require(HostPrivacyEvidenceRules.Evaluate(session,actor,new[]{unknown},now).P0Unknown,"unknown P0 remains unknown");
+        var notRun=Record("00000000000000000000000000000010","network.tcp","table","","iphelper-5","iphelper",
+            outcome:HostPrivacyEvidenceOutcome.NotRun,verified:false);
+        Require(HostPrivacyEvidenceRules.Evaluate(session,actor,new[]{notRun},now).P0Unknown,
+            "NOT_RUN P0 cannot be treated as a pass");
         var a=Record("00000000000000000000000000000006","proxy.config","node","route-x","flclash-config","file",
             claim:"proxy.route",key:"route-x");
         var b=Record("00000000000000000000000000000007","network.tcp","remote-endpoint","route-x","tcp-table","iphelper",
