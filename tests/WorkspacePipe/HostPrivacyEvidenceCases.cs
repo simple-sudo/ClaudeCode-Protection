@@ -65,6 +65,7 @@ internal static class HostPrivacyEvidenceCases
         Require(Evaluate(new[]{expired},"device.gpu").Assessments.Single().Classification==
             HostPrivacyEvidenceClass.Unknown,"expired evidence is unknown");
         Reject(new[]{direct with {ActorId="other-actor"}},"foreign actor");
+        Reject(new[]{direct with {RequiredP0=false}},"evidence cannot downgrade a required P0 target");
         Reject(new[]{direct with {OwnerSealed=false}},"unsealed actor result");
         Reject(new[]{direct with {ContentVerified=false}},"unverified content");
         Reject(new[]{direct with {ArtifactSHA256="bad"}},"invalid evidence digest");
