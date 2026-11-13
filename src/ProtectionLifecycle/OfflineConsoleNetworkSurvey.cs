@@ -139,7 +139,7 @@ internal sealed record OfflineConsoleNetworkSurvey(int SchemaVersion,string Sess
         var summary=Compare(host,hostAfter,hash);
         return summary with {
             ProfileReceiptSHA256=profileHash,
-            OwnerIdentityReceiptSHA256=ownerIdentityReceiptSHA256,
+            OwnerIdentityReceiptSHA256=ownerIdentity.ReceiptSHA256,
             ProfileP0Exposure=profile.P0Exposure,
             ProfileP0Unknown=profile.P0Unknown,
             ProfileDirectEvidenceCount=profile.Assessments.Count(item=>item.Classification==HostPrivacyEvidenceClass.ConfirmedDirect),
