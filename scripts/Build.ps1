@@ -5,7 +5,7 @@ $project=Join-Path $root 'src\ClaudeProtection\ClaudeProtection.csproj'
 $dotnet=(Get-Command dotnet.exe -ErrorAction Stop).Source
 $logRoot=Join-Path $env:LOCALAPPDATA 'ClaudeCode-Protection\security-stage'
 [void][IO.Directory]::CreateDirectory($logRoot)
-$run=[DateTime]::UtcNow.ToString('yyyyMMddTHHmmssfffZ')
+$run=$script:ProjectSecurityRunId
 $stdout=Join-Path $logRoot ($run+'-daily-build.stdout.log')
 $stderr=Join-Path $logRoot ($run+'-daily-build.stderr.log')
 $arguments=@('build',$project,'--configuration','Release','--output',(Join-Path $root 'bin\current'),'--nologo','--no-restore')
