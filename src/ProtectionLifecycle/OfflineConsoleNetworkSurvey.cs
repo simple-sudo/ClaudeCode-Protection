@@ -102,7 +102,7 @@ internal sealed record OfflineConsoleNetworkSurvey(int SchemaVersion,string Sess
             processes.CapturedFileTime-network.FinishedFileTime>TimeSpan.TicksPerSecond*15 ||
             processes.CapturedFileTime>DateTime.UtcNow.ToFileTimeUtc() ||
             processes.Rows.Any(row=>!ProcessNames.Contains(row.Name) || row.Pid<=0 ||
-                row.CreatedFileTime is long time && (time<=0 || time>DateTime.UtcNow.ToFileTimeUtc())) ||
+                row.CreatedFileTime is long time && (time<=0 || time>processes.CapturedFileTime)) ||
             processes.Rows.Select(row=>row.Pid).Distinct().Count()!=processes.Rows.Length)
             throw WfpNative.Contract("OfflineNetworkSurveyProcessValue");
         return new(1,session,network,processes);
