@@ -258,6 +258,8 @@ internal static class OfflineConsoleNativeCases
         Console.WriteLine("PASS actual ordinary own-logon and SMBIOS content reads, bounded firmware parsing and identity survey refusals.");
     }
 
+    internal static void VerifyNetworkProfileMapping(Assembly library)=>VerifyNetworkContentSurvey(library);
+
     private static void VerifyNetworkContentSurvey(Assembly library)
     {
         var type=library.GetType("ProtectionLifecycle.OfflineConsoleNetworkSurvey",true)!;
