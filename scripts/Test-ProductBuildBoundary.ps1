@@ -105,6 +105,8 @@ $expectedStages=@{
     'Build-Center.ps1'='CenterBuild'
     'Build-NativeFence.ps1'='NativeBuild'
 }
+$buildEntrypoints=@('Build.ps1')+@($expectedStages.Keys)
+Require ($buildEntrypoints.Count -eq 4) 'expected four conventional build entrypoints'
 foreach($name in $expectedStages.Keys){
     $text=Read-Text ('scripts/'+$name)
     Require ($text.Contains("Assert-ProjectSecurityClearance.ps1') -Stage "+$expectedStages[$name])) "$name does not request its own closed stage"
