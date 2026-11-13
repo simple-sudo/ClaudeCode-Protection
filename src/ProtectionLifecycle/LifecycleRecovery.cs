@@ -164,6 +164,7 @@ internal static class LifecycleRecovery
         state.AssertHeld();
         SessionZeroCreatorRegistration.AssertNoPending(state,preparingCreator,recoveringCreator);
         SessionZeroWindowOwner.AssertNoPending(state);
+        MachineEgressProbeLease.AssertNoPending(state);
         // Legacy parameter name; only explicit installed OS-resource inspect/
         // recovery commands skip the fixed OS-resource pending gates. All other
         // lifecycle, installed-host, elevation and recovery checks still run.

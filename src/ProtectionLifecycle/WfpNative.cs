@@ -91,6 +91,8 @@ internal static class WfpNative
     }
     internal delegate uint ReadSecurity(SafeWfpEngine engine,in Guid key,uint requested,out IntPtr owner,out IntPtr group,out IntPtr dacl,out IntPtr sacl,out IntPtr descriptor);
     internal static void AssertSecurity(SafeWfpEngine engine,Guid key,ReadSecurity read)
+        => _ = ReadTrustedSecurity(engine,key,read);
+    internal static byte[] ReadTrustedSecurity(SafeWfpEngine engine,Guid key,ReadSecurity read)
     {
         var status=read(engine,in key,1|4,out _,out _,out var dacl,out _,out var descriptor);
         try
@@ -106,6 +108,7 @@ internal static class WfpNative
                 if(ace is not CommonAce common || common.IsCallback || common.AceFlags!=AceFlags.None || common.AceQualifier!=AceQualifier.AccessAllowed ||
                     common.AccessMask==0 || !trusted.Remove(common.SecurityIdentifier.Value))throw new InvalidDataException("Unreviewed WFP grant");
             if(trusted.Count!=0)throw new InvalidDataException("Required WFP grants missing");
+            return bytes;
         }
         finally{if(descriptor!=IntPtr.Zero)FwpmFreeMemory0(ref descriptor);}
     }

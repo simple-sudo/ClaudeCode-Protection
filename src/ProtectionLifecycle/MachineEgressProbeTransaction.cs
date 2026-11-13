@@ -1,5 +1,6 @@
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
+using System.Security.Cryptography;
 
 namespace ProtectionLifecycle;
 
@@ -15,26 +16,13 @@ internal static class MachineEgressProbeTransaction
         using var engine = WfpNative.Open();
         _ = MachineEgressProbePolicy.ReadPacketLayer(engine, AddressFamily.InterNetwork);
         _ = MachineEgressProbePolicy.ReadPacketLayer(engine, AddressFamily.InterNetworkV6);
-        using var arena = new WfpNative.Arena();
-        using var descriptor = new WfpNative.Descriptor();
-        var layer = policy.DefineSubLayer(arena);
-        var v4 = policy.DefineFilter(AddressFamily.InterNetwork, arena);
-        var v6 = policy.DefineFilter(AddressFamily.InterNetworkV6, arena);
-        AssertAbsent(engine, layer.Key, v4.Key, v6.Key);
-
         ushort observedWeight;
         WfpNative.Check(WfpNative.FwpmTransactionBegin0(engine, 0), "BeginUncommittedMachineEgressProbe");
         Exception? transactionFailure = null;
         try
         {
-            // Repeat absence inside the writer transaction to reject races.
-            AssertAbsentInTransaction(engine, layer.Key, v4.Key, v6.Key);
-            WfpNative.Check(WfpNative.FwpmSubLayerAdd0(engine, in layer, descriptor.Pointer), "AddUncommittedMachineEgressSubLayer");
-            WfpNative.Check(WfpNative.FwpmFilterAdd0(engine, in v4, descriptor.Pointer, out _), "AddUncommittedMachineEgressV4");
-            WfpNative.Check(WfpNative.FwpmFilterAdd0(engine, in v6, descriptor.Pointer, out _), "AddUncommittedMachineEgressV6");
-            observedWeight = ReadLayer(engine, policy);
-            ReadFilter(engine, policy, AddressFamily.InterNetwork, v4.Key);
-            ReadFilter(engine, policy, AddressFamily.InterNetworkV6, v6.Key);
+            AssertAbsentInTransaction(engine, policy);
+            observedWeight = AddAndReadInTransaction(engine, policy).Weight;
         }
         catch (Exception error)
         {
@@ -46,7 +34,7 @@ internal static class MachineEgressProbeTransaction
             try
             {
                 WfpNative.Check(WfpNative.FwpmTransactionAbort0(engine), "AbortUncommittedMachineEgressProbe");
-                AssertAbsent(engine, layer.Key, v4.Key, v6.Key);
+                WfpNative.Transaction(engine, true, () => AssertAbsentInTransaction(engine, policy));
             }
             catch (Exception cleanupFailure) when (transactionFailure is not null)
             {
@@ -57,20 +45,47 @@ internal static class MachineEgressProbeTransaction
         return observedWeight;
     }
 
-    private static ushort ReadLayer(SafeWfpEngine engine, MachineEgressProbePolicy policy)
+    internal static MachineEgressObjects AddAndReadInTransaction(SafeWfpEngine engine, MachineEgressProbePolicy policy)
+    {
+        using var arena = new WfpNative.Arena();
+        using var descriptor = new WfpNative.Descriptor();
+        var layer = policy.DefineSubLayer(arena);
+        var v4 = policy.DefineFilter(AddressFamily.InterNetwork, arena);
+        var v6 = policy.DefineFilter(AddressFamily.InterNetworkV6, arena);
+        WfpNative.Check(WfpNative.FwpmSubLayerAdd0(engine, in layer, descriptor.Pointer), "AddMachineEgressSubLayer");
+        WfpNative.Check(WfpNative.FwpmFilterAdd0(engine, in v4, descriptor.Pointer, out var v4Id), "AddMachineEgressV4");
+        WfpNative.Check(WfpNative.FwpmFilterAdd0(engine, in v6, descriptor.Pointer, out var v6Id), "AddMachineEgressV6");
+        if (ReadOwnedInTransaction(engine, policy) is not { } observed ||
+            v4Id == 0 || v6Id == 0 || v4Id == v6Id || observed.V4Id != v4Id || observed.V6Id != v6Id)
+            throw WfpNative.Contract("MachineEgressProbeObjectIdsDiffer");
+        return observed;
+    }
+
+    internal static MachineEgressObjects? ReadOwnedInTransaction(SafeWfpEngine engine, MachineEgressProbePolicy policy)
+    {
+        var layer = ReadLayer(engine, policy);
+        var v4 = ReadFilter(engine, policy, AddressFamily.InterNetwork);
+        var v6 = ReadFilter(engine, policy, AddressFamily.InterNetworkV6);
+        return MachineEgressRecoveryState.Select(layer.HasValue, v4.HasValue, v6.HasValue)
+            ? new(layer!.Value.Weight, v4!.Value.Id, v6!.Value.Id,
+                layer.Value.Security, v4.Value.Security, v6.Value.Security) : null;
+    }
+
+    private static (ushort Weight, string Security)? ReadLayer(SafeWfpEngine engine, MachineEgressProbePolicy policy)
     {
         var key = policy.SubLayerKey;
         var status = WfpNative.FwpmSubLayerGetByKey0(engine, in key, out var pointer);
         try
         {
-            WfpNative.Check(status, "ReadUncommittedMachineEgressSubLayer");
+            if (status == WfpNative.SubLayerNotFound && pointer == IntPtr.Zero) return null;
+            WfpNative.Check(status, "ReadMachineEgressSubLayer");
             if (pointer == IntPtr.Zero)
                 throw WfpNative.Contract("MachineEgressProbeSubLayerResponseMissing");
             var actual = Marshal.PtrToStructure<WfpNative.SubLayer>(pointer);
             if (!policy.MatchesSubLayer(actual))
                 throw WfpNative.Contract("MachineEgressProbeSubLayerMismatch");
-            WfpNative.AssertSecurity(engine, key, WfpNative.FwpmSubLayerGetSecurityInfoByKey0);
-            return actual.Weight;
+            var security = WfpNative.ReadTrustedSecurity(engine, key, WfpNative.FwpmSubLayerGetSecurityInfoByKey0);
+            return (actual.Weight, Convert.ToHexString(SHA256.HashData(security)));
         }
         finally
         {
@@ -78,15 +93,21 @@ internal static class MachineEgressProbeTransaction
         }
     }
 
-    private static void ReadFilter(SafeWfpEngine engine, MachineEgressProbePolicy policy, AddressFamily family, Guid key)
+    private static (ulong Id, string Security)? ReadFilter(SafeWfpEngine engine, MachineEgressProbePolicy policy, AddressFamily family)
     {
+        var key = policy.FilterKey(family);
         var status = WfpNative.FwpmFilterGetByKey0(engine, in key, out var pointer);
         try
         {
-            WfpNative.Check(status, "ReadUncommittedMachineEgressFilter");
-            if (pointer == IntPtr.Zero || !policy.MatchesFilter(family, Marshal.PtrToStructure<WfpNative.Filter>(pointer)))
+            if (status == WfpNative.FilterNotFound && pointer == IntPtr.Zero) return null;
+            WfpNative.Check(status, "ReadMachineEgressFilter");
+            if (pointer == IntPtr.Zero)
+                throw WfpNative.Contract("MachineEgressProbeFilterResponseMissing");
+            var filter = Marshal.PtrToStructure<WfpNative.Filter>(pointer);
+            if (!policy.MatchesFilter(family, filter))
                 throw WfpNative.Contract("MachineEgressProbeFilterMismatch");
-            WfpNative.AssertSecurity(engine, key, WfpNative.FwpmFilterGetSecurityInfoByKey0);
+            var security = WfpNative.ReadTrustedSecurity(engine, key, WfpNative.FwpmFilterGetSecurityInfoByKey0);
+            return (filter.Id, Convert.ToHexString(SHA256.HashData(security)));
         }
         finally
         {
@@ -94,22 +115,18 @@ internal static class MachineEgressProbeTransaction
         }
     }
 
-    private static void AssertAbsent(SafeWfpEngine engine, Guid layerKey, Guid v4Key, Guid v6Key) =>
-        WfpNative.Transaction(engine, true, () =>
-        {
-            AssertAbsentInTransaction(engine, layerKey, v4Key, v6Key);
-            return true;
-        });
-
-    private static void AssertAbsentInTransaction(SafeWfpEngine engine, Guid layerKey, Guid v4Key, Guid v6Key)
+    internal static bool AssertAbsentInTransaction(SafeWfpEngine engine, MachineEgressProbePolicy policy)
     {
+        var layerKey = policy.SubLayerKey;
         var status = WfpNative.FwpmSubLayerGetByKey0(engine, in layerKey, out var pointer);
         RequireAbsent(status, WfpNative.SubLayerNotFound, pointer, "MachineEgressProbeSubLayerAbsenceUnconfirmed");
-        foreach (var key in new[] { v4Key, v6Key })
+        foreach (var family in new[] { AddressFamily.InterNetwork, AddressFamily.InterNetworkV6 })
         {
+            var key = policy.FilterKey(family);
             status = WfpNative.FwpmFilterGetByKey0(engine, in key, out pointer);
             RequireAbsent(status, WfpNative.FilterNotFound, pointer, "MachineEgressProbeFilterAbsenceUnconfirmed");
         }
+        return true;
     }
 
     private static void RequireAbsent(uint status, uint notFound, IntPtr pointer, string stage)

@@ -24,6 +24,7 @@ internal sealed class MachineEgressProbePolicy
     private readonly byte[] marker;
 
     internal Guid SubLayerKey { get; }
+    internal Guid FilterKey(AddressFamily family) => FilterScope(family).Key;
 
     internal MachineEgressProbePolicy(Guid subLayerKey, Guid v4Key, Guid v6Key,
         uint v4Interface, IPAddress v4Receiver, uint v6Interface, IPAddress v6Receiver)

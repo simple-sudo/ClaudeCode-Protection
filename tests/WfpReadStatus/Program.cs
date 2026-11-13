@@ -5,6 +5,7 @@ using System.Text.Json;
 if(args.Length==1 && args[0]=="--check-machine-egress-policy")
 {
     MachineEgressProbeCases.Run();
+    MachineEgressRecoveryCases.Run();
     return 0;
 }
 if(args.Length==1 && args[0]=="--read-machine-egress-layers")
