@@ -160,7 +160,6 @@ internal sealed record OfflineConsoleNetworkSurvey(int SchemaVersion,string Sess
         var evidence=new List<HostPrivacyEvidenceRecord>();
         var now=DateTimeOffset.UtcNow;
         var actorId=$"{Network.Pid}:{Network.StartedFileTime}";
-        var observed=DateTimeOffset.FromFileTime(Network.FinishedFileTime);
         var required=new[]{"network.adapter.guid","network.adapter.mac","network.adapter.address","network.adapter.dns",
             "network.adapter.gateway","network.tcp.v4","network.tcp.v6","network.processes"};
         for(var i=0;i<3;i++)
