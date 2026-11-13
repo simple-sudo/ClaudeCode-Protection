@@ -93,9 +93,9 @@ internal static class HostPrivacyEvidenceRules
 
     internal static HostPrivacyEvidenceClass Classify(HostPrivacyEvidenceRecord item,DateTimeOffset now)
     {
-        if(item.Visibility==HostPrivacyEvidenceVisibility.HostReferenceOnly)return HostPrivacyEvidenceClass.HostReferenceOnly;
         if(item.ExpiresAtUtc is { } expiry && (expiry.Offset!=TimeSpan.Zero || expiry<=now))
             return HostPrivacyEvidenceClass.Unknown;
+        if(item.Visibility==HostPrivacyEvidenceVisibility.HostReferenceOnly)return HostPrivacyEvidenceClass.HostReferenceOnly;
         return item.Outcome switch {
             HostPrivacyEvidenceOutcome.ContentRead when item.OwnerSealed && item.ContentVerified &&
                 item.NativeError is null && (!item.SensitiveContent || item.Value.Length>0) => HostPrivacyEvidenceClass.ConfirmedDirect,
