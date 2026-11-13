@@ -184,6 +184,7 @@ jobs:
             Invoke-StandardUserTest $workspaceApp @('WorkspaceTransfer.dll',$fixture) 'WorkspaceTransfer contract and NTFS fixture tests'
             Invoke-StandardUserTest $ownedApp @('OwnedToolLaunch.dll','workspace-git-workflow-policy') 'Offline Git owner policy tests'
             Invoke-StandardUserTest $ownedApp @('OwnedToolLaunch.dll','workspace-git-workflow-execution') 'Ordinary-user real Git execution and owner object verification (not LPAC)'
+            Invoke-StandardUserTest $ownedApp @('OwnedToolLaunch.dll','offline-console-network-profile') 'Actual Windows network API content to deterministic profile mapping (ordinary process only; not LPAC/L3)'
             $workspacePipeCases = @(
               'worker-feedback','frames','local-pipe','output','snapshot','token-membership',
               'reply','project-contract','privacy-contract','privacy-execution-gate',
