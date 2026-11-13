@@ -166,6 +166,8 @@ internal sealed record OfflineConsoleNetworkSurvey(int SchemaVersion,string Sess
         ActorReceipts trustedReceipts,OfflineConsoleNetworkSurvey trusted,ProcessView trustedAfter,
         string ownerIdentityReceiptSHA256,string networkSurveyReceiptSHA256)
     {
+        if(!WorkspaceBundle.IsHash(ownerIdentityReceiptSHA256) || !WorkspaceBundle.IsHash(networkSurveyReceiptSHA256))
+            throw WfpNative.Contract("OfflineNetworkProfileReceiptBindingInvalid");
         var evidence=new List<HostPrivacyEvidenceRecord>();
         var now=DateTimeOffset.UtcNow;
         var actorId=$"{Network.Pid}:{Network.StartedFileTime}";
