@@ -56,13 +56,14 @@ internal sealed class SessionWorkspaceLease : IDisposable
         using var sid=new InstallationPackageSid(state);profile.AssertPackage(sid);
         if(workspaceInput is not null)
         {
-            workspaceBundle=WorkspaceBundle.Parse(workspaceInput);
-            if(workspaceBundle.BaseSHA256 is not null || workspaceBundle.Files.Length==0)
+            var parsedProject=WorkspaceBundle.Parse(workspaceInput);
+            if(parsedProject.BaseSHA256 is not null || parsedProject.Files.Length==0)
                 throw WfpNative.Contract("NonemptyWorkspaceBaselineRequired");
+            workspaceBundle=parsedProject;
             // Preflight every destination before creating profile/task data.
             var taskRoot=SessionTaskWorkspace.PathFor(plan.Nonce);
             _=WindowsPathSeal.Child(taskRoot,"git-project");_=WindowsPathSeal.Child(taskRoot,"git-control");
-            foreach(var file in workspaceBundle.Files)
+            foreach(var file in parsedProject.Files)
                 _=WindowsPathSeal.Child(WindowsPathSeal.Child(taskRoot,"git-project"),file.Path);
         }
         if(git is not null && plan.Workspace("")!=SessionTaskWorkspace.PathFor(plan.Nonce))

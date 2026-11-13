@@ -33,7 +33,8 @@ internal sealed class SessionResources : IDisposable
             var hash=version.Package.Files.Single(f=>f.Asset.Id=="broker-exe").SHA256;
             // Begin acquires the fixed Git asset lease before HostPrivacy capture,
             // preserving the established acquisition and rollback order.
-            workspaceLease=SessionWorkspaceLease.Begin(state,intent.IncludeGit);
+            var acquiredWorkspace=SessionWorkspaceLease.Begin(state,intent.IncludeGit);
+            workspaceLease=acquiredWorkspace;
             if(intent.DevelopProject)privacy=HostPrivacyProbe.Capture(nonce,state.InstallationId,version.Package.Release);
             var plan=new ResourceProbePlan(intent.DevelopProject?(intent.CallerProject?6:5):3,Identifiers.Hex32(nonce),state.InstallationId,version.Package.Release,Environment.ProcessId,hash,
                 intent.IncludeGit?SessionGitToolchain.AssetSetSHA256:null,workspaceInput is null?null:WorkspaceBundle.Hash(workspaceInput),
@@ -42,15 +43,15 @@ internal sealed class SessionResources : IDisposable
             if(!string.Equals(plan.ExpectedChildImage,Environment.ProcessPath,StringComparison.OrdinalIgnoreCase) ||
                 intent.IncludeGit && plan.Workspace("")!=SessionTaskWorkspace.PathFor(nonce))
                 throw WfpNative.Contract("ResourceRuntimePathsDifferFromInstalledOwner");
-            workspaceLease.Prepare(profile,plan,workspaceInput);
-            privacy?.Publish(workspaceLease.Workspace);
-            workspaceLease.Populate(workspaceInput);
+            acquiredWorkspace.Prepare(profile,plan,workspaceInput);
+            privacy?.Publish(acquiredWorkspace.Workspace);
+            acquiredWorkspace.Populate(workspaceInput);
             state.WriteNew("resource-fixture-"+nonce+".json",JsonSerializer.SerializeToUtf8Bytes(new {SchemaVersion=1,state.InstallationId,Nonce=nonce,
                 Value="CONTROLLED_NON_SECRET_FIXTURE",Scope="PRIVATE_STATE_ACCESS_DENIAL_CONTROL"}));
             // An existing, readable positive host control prevents absence from
             // being mistaken for a restricted child's access-denied result.
             _=state.Read("resource-fixture-"+nonce+".json",4096);
-            var result=new SessionResources(state,workspaceLease,tool,plan,privacy);
+            var result=new SessionResources(state,acquiredWorkspace,tool,plan,privacy);
             workspaceLease=null;tool=null;privacy=null;
             return result;
         }
