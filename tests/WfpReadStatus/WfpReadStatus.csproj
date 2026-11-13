@@ -14,6 +14,7 @@
     <Compile Include="MachineEgressQuarantineCases.cs;../../src/ProtectionLifecycle/MachineEgressQuarantinePolicy.cs;../../src/ProtectionLifecycle/MachineEgressQuarantineReadback.cs" />
     <Compile Include="../../src/ProtectionLifecycle/MachineEgressQuarantineIntent.cs" />
     <Compile Include="MachineProxyEndpointCases.cs;../../src/ProtectionLifecycle/MachineProxyEndpointLease.cs;../../src/Shared/ProxyDestinationPolicy.cs" />
+    <Compile Include="../../src/ProtectionLifecycle/ProxyRouteObservation.cs" />
     <Compile Include="../../src/ProtectionLifecycle/MachineEgressProbePolicy.cs;../../src/ProtectionLifecycle/MachineEgressDeliveryEvidence.cs;../../src/ProtectionLifecycle/MachineEgressRecoveryState.cs;../../src/ProtectionLifecycle/WfpNative.cs;../../src/ProtectionLifecycle/WfpFailure.cs;../../src/ProtectionLifecycle/SafeWfpEngine.cs" />
   </ItemGroup>
 </Project>

@@ -1,19 +1,20 @@
-using System.Net;
-using System.Net.Sockets;
 using System.Security.Cryptography;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace ProtectionLifecycle;
 
 // Configuration can disqualify a route. A snapshot cannot prove where the
 // proxy sends a later CONNECT, even if no direct policy is visible in it.
-internal sealed record ProxyRouteObservation(string Status,bool ReachableDirect,bool DirectEmptyFallback,bool ManualDirectChoice,bool Complete,
+internal sealed partial record ProxyRouteObservation(string Status,bool ReachableDirect,bool DirectEmptyFallback,bool ManualDirectChoice,bool Complete,
     bool SelectableDirectRoute,bool SelectionGraphComplete)
 {
     internal const int MaxConfigBytes=16384,MaxProxyBytes=524288;
     private const int MaxNodes=512,MaxHops=32;
     internal static ProxyRouteObservation Unavailable=>new("CONTROLLER_EVIDENCE_UNAVAILABLE",false,false,false,false,false,false);
     public bool AllowsRoutePrecheck=>Complete && SelectionGraphComplete && !ReachableDirect && !SelectableDirectRoute;
+    [JsonIgnore]
+    internal string? SelectionDigest { get; private init; }
     internal void RequireAllowed(string stage)
     {
         if(!AllowsRoutePrecheck)throw WfpNative.Contract(stage);
@@ -56,19 +57,57 @@ internal sealed record ProxyRouteObservation(string Status,bool ReachableDirect,
             if(!nodes.TryGetValue("GLOBAL",out var global) || Name(Fields(global),"type")!="Selector")return Unavailable;
             var current=Walk(nodes,includeUnselected:false);
             var selectable=Walk(nodes,includeUnselected:true);
-            return new(current.Direct?"DIRECT_ROUTE_REACHABLE":current.Complete?"NO_DIRECT_ROUTE_IN_SNAPSHOT":"ROUTE_EVIDENCE_INCOMPLETE",
+            var observation = new ProxyRouteObservation(
+                current.Direct?"DIRECT_ROUTE_REACHABLE":current.Complete?"NO_DIRECT_ROUTE_IN_SNAPSHOT":"ROUTE_EVIDENCE_INCOMPLETE",
                 current.Direct,current.EmptyFallback,current.ManualChoice,current.Complete,selectable.Direct,selectable.Complete);
+            return observation.AllowsRoutePrecheck
+                ? observation with { SelectionDigest = ComputeSelectionDigest(config, nodes, selectable.Visited) }
+                : observation;
         }
         catch(Exception error) when(error is JsonException or InvalidDataException){return Unavailable;}
     }
 
-    private static (bool Direct,bool EmptyFallback,bool ManualChoice,bool Complete) Walk(Dictionary<string,JsonElement> nodes,bool includeUnselected)
+    private static string ComputeSelectionDigest(byte[] config, Dictionary<string, JsonElement> nodes, HashSet<string> visited)
+    {
+        using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+        hash.AppendData(SHA256.HashData(config));
+        // Include graph policy and selection. Volatile health, delay and
+        // traffic counters do not identify a route. Server endpoints need
+        // independent verification because the controller may omit them.
+        foreach (var name in visited.Order(StringComparer.Ordinal))
+        {
+            var fields = Fields(nodes[name]);
+            var policy = new
+            {
+                Name = name,
+                Type = Name(fields, "type"),
+                Selected = Name(fields, "now"),
+                Fallback = Name(fields, "emptyFallback"),
+                Dialer = Name(fields, "dialer-proxy"),
+                Members = fields.TryGetValue("all", out var members) ? (JsonElement?)members : null
+            };
+            hash.AppendData(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(policy)));
+        }
+        return Convert.ToHexString(hash.GetHashAndReset());
+    }
+
+    internal static ProxyRouteObservation EvaluateStableSelection(byte[] config, byte[] first, byte[] second, byte[] configReadback)
+    {
+        var before = EvaluateWithConfigReadback(config, first, configReadback);
+        if (!before.AllowsRoutePrecheck) return before;
+        var after = Evaluate(configReadback, second);
+        if (!after.AllowsRoutePrecheck) return after;
+        return before.SelectionDigest is not null && before.SelectionDigest == after.SelectionDigest
+            ? after : new("CONTROLLER_SELECTION_CHANGED_DURING_SNAPSHOT", false, false, false, false, false, false);
+    }
+
+    private static (bool Direct,bool EmptyFallback,bool ManualChoice,bool Complete,HashSet<string> Visited) Walk(Dictionary<string,JsonElement> nodes,bool includeUnselected)
     {
         var active=new HashSet<string>(StringComparer.Ordinal);
         var visited=new HashSet<string>(StringComparer.Ordinal);
         bool direct=false,emptyFallback=false,manualChoice=false,complete=true;
         Visit("GLOBAL",0);
-        return(direct,emptyFallback,manualChoice,complete);
+        return(direct,emptyFallback,manualChoice,complete,visited);
 
         void Visit(string name,int depth)
         {
@@ -139,44 +178,4 @@ internal sealed record ProxyRouteObservation(string Status,bool ReachableDirect,
     private static string? Name(Dictionary<string,JsonElement> fields,string name)=>Text(fields.GetValueOrDefault(name));
     private static string? Text(JsonElement value)=>value.ValueKind==JsonValueKind.String && value.GetString() is {Length:>0 and <=256} text &&
         !text.Any(char.IsControl)?text:null;
-
-    internal static async Task<ProxyRouteObservation> Capture(ProxyChannelLease proxy,CancellationToken cancellation=default)
-    {
-        using var deadline=CancellationTokenSource.CreateLinkedTokenSource(cancellation);
-        deadline.CancelAfter(TimeSpan.FromSeconds(3));
-        using var handler=new SocketsHttpHandler {UseProxy=false,AllowAutoRedirect=false,UseCookies=false,MaxResponseHeadersLength=8};
-        handler.ConnectCallback=async (context,cancel)=>
-        {
-            if(context.DnsEndPoint.Host!="127.0.0.1" || context.DnsEndPoint.Port!=LocalManagementBoundary.ControllerPort)
-                throw new InvalidDataException("UnexpectedProxyControllerEndpoint");
-            var socket=new Socket(AddressFamily.InterNetwork,SocketType.Stream,ProtocolType.Tcp);
-            try
-            {
-                await socket.ConnectAsync(new IPEndPoint(IPAddress.Loopback,LocalManagementBoundary.ControllerPort),cancel).ConfigureAwait(false);
-                proxy.AssertControllerPeer(socket);
-                return new NetworkStream(socket,ownsSocket:true);
-            }
-            catch{socket.Dispose();throw;}
-        };
-        using var client=new HttpClient(handler){DefaultVersionPolicy=HttpVersionPolicy.RequestVersionExact,MaxResponseContentBufferSize=MaxProxyBytes};
-        client.DefaultRequestHeaders.ConnectionClose=true;
-        byte[]? config=null,inventory=null,configReadback=null;
-        try
-        {
-            config=await client.GetByteArrayAsync("http://127.0.0.1:9090/configs",deadline.Token).ConfigureAwait(false);
-            inventory=await client.GetByteArrayAsync("http://127.0.0.1:9090/proxies",deadline.Token).ConfigureAwait(false);
-            configReadback=await client.GetByteArrayAsync("http://127.0.0.1:9090/configs",deadline.Token).ConfigureAwait(false);
-            proxy.AssertControllerListener();
-            return EvaluateWithConfigReadback(config,inventory,configReadback);
-        }
-        catch(Exception error) when(error is HttpRequestException or IOException or InvalidDataException or UnauthorizedAccessException or
-            OperationCanceledException or System.ComponentModel.Win32Exception)
-        {return Unavailable;}
-        finally
-        {
-            if(config is not null)CryptographicOperations.ZeroMemory(config);
-            if(inventory is not null)CryptographicOperations.ZeroMemory(inventory);
-            if(configReadback is not null)CryptographicOperations.ZeroMemory(configReadback);
-        }
-    }
 }

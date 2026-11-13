@@ -64,6 +64,17 @@ internal sealed class ProxyChannelLease : IDisposable
         AssertControllerListener();
         return identity;
     }
+
+    internal async Task<MachineProxyRouteBinding?> ObserveMachineRoute(CancellationToken cancellation)
+    {
+        var before = ObserveIdentity();
+        var started = Stopwatch.GetTimestamp();
+        var selection = await ProxyRouteObservation.CaptureStableSelection(this, cancellation).ConfigureAwait(false);
+        cancellation.ThrowIfCancellationRequested();
+        var finished = Stopwatch.GetTimestamp();
+        return before == ObserveIdentity() && selection is { AllowsRoutePrecheck: true, SelectionDigest: { } digest }
+            ? new(before, digest, started, finished) : null;
+    }
     // Pin the accepted server-side socket, not just whichever process happens
     // to own the listener when checked. No CONNECT data may precede this check.
     // An uncertain/closed connection is refused; there is no listener fallback.

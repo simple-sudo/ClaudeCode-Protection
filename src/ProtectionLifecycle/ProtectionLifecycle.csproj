@@ -37,7 +37,7 @@
     <Compile Include="RestrictingSidToken.cs" />
     <Compile Include="WinsockRegistryScope.cs" />
     <Compile Include="SessionWinsockReadAccess.cs" />
-    <Compile Include="ProxyChannelEvidence.cs;ProxyChannel.cs;InstallationLoopbackLease.cs;NetworkProbeContracts.cs;NetworkReceivers.cs;NetworkQualification.cs;ProxyRouteObservation.cs" />
+    <Compile Include="ProxyChannelEvidence.cs;ProxyChannel.cs;InstallationLoopbackLease.cs;NetworkProbeContracts.cs;NetworkReceivers.cs;NetworkQualification.cs;ProxyRouteObservation.cs;ProxyRouteObservation.Capture.cs" />
     <Compile Include="GpuQualification.cs;IndependentGpuWorkload.cs;GpuInitLoader.cs;SessionZeroStartupBranchTrace.Cuda.cs;SessionZeroCudaHelperPath.cs" />
     <Compile Include="GpuCallProgress.cs" />
     <Compile Include="GpuHostToken.cs;GpuHostReference.cs;GpuHostReferenceQualification.cs" />
