@@ -291,11 +291,11 @@ internal static class OfflineConsoleNativeCases
         var bindOwner=type.GetMethod("AssertOwnerIdentityBinding",Static)!;
         Call(bindOwner,null,IdentitySummary(identityReceipt,session,Environment.ProcessId),session,Environment.ProcessId);
         Refuse<IOException>(()=>Call(bindOwner,null,IdentitySummary(identityReceipt,new string('e',32),Environment.ProcessId),
-            session,(uint)Environment.ProcessId));
+            session,Environment.ProcessId));
         Refuse<IOException>(()=>Call(bindOwner,null,IdentitySummary(identityReceipt,session,Environment.ProcessId+1),
-            session,(uint)Environment.ProcessId));
+            session,Environment.ProcessId));
         Refuse<IOException>(()=>Call(bindOwner,null,IdentitySummary("bad",session,Environment.ProcessId),
-            session,(uint)Environment.ProcessId));
+            session,Environment.ProcessId));
         var profile=Call(type.GetMethod("BuildEvidenceProfile",Instance)!,native,session,actorReceipts,actorReceipts,captured,after,
             identityReceipt,surveyReceipt)!;
         var profileNode=JsonSerializer.SerializeToNode(profile)!;
