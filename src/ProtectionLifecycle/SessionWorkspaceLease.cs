@@ -71,7 +71,8 @@ internal sealed class SessionWorkspaceLease : IDisposable
         this.plan=plan;
         var path=plan.Workspace(sid.Value);
         using var identity=WindowsIdentity.GetCurrent();
-        ownerSid=identity.User?.Value??throw WfpNative.Contract("WorkspaceHumanOwnerMissing");
+        var owner=identity.User?.Value??throw WfpNative.Contract("WorkspaceHumanOwnerMissing");
+        ownerSid=owner;
         if(git is not null)
         {
             var taskFolder=SessionWorkspaceDirectory.CreateOwnedTaskDirectory(state,profile,plan.Nonce);
