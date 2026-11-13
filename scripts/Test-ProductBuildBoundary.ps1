@@ -120,6 +120,7 @@ Require ($dailyBuild -match 'preprocess') 'daily build must inventory the evalua
 Require ($dailyBuild -match '--verbosity') 'daily build must retain normal MSBuild task execution output'
 Require ($dailyBuild -match 'ExecutedExecTaskCount') 'daily build must reject actual Exec task execution'
 Require ($dailyBuild -match 'ImportedUsingTaskCount') 'daily build must inventory imported MSBuild task declarations'
+Require ($dailyBuild -match 'ImportedExecNodeCount') 'daily build must inventory imported SDK Exec nodes'
 Require ($dailyBuild -match 'ImportedTaskAssemblyFiles') 'daily build must hash imported task assembly files'
 Require ($gateText -match 'CustomBeforeMicrosoftCommonTargets=') 'gate must clear custom before-target injection properties'
 Require ($gateText -match 'CustomAfterMicrosoftCSharpTargets=') 'gate must clear custom after-target injection properties'
