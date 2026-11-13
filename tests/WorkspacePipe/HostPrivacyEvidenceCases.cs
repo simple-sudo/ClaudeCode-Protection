@@ -12,8 +12,7 @@ internal static class HostPrivacyEvidenceCases
         var sequence=0;
         HostPrivacyEvidenceRecord Record(string target,string field,string value,string source,string family,
             HostPrivacyEvidenceVisibility visibility=HostPrivacyEvidenceVisibility.RestrictedActor,
-            HostPrivacyEvidenceOutcome outcome=HostPrivacyEvidenceOutcome.ContentRead,bool sensitive=true,
-            string claim="",string key="",string actorId=actor,bool owner=true,bool verified=true,int? error=null,
+            HostPrivacyEvidenceOutcome outcome=HostPrivacyEvidenceOutcome.ContentRead,string claim="",string key="",string actorId=actor,bool owner=true,bool verified=true,int? error=null,
             DateTimeOffset? expiry=null)
         {
             sequence++;
@@ -27,7 +26,7 @@ internal static class HostPrivacyEvidenceCases
                 "network.processes" when field=="process"=>true,
                 _=>false
             };
-            return new(new string(sequence.ToString("x32")),session,
+            return new(sequence.ToString("x32"),session,
                 visibility==HostPrivacyEvidenceVisibility.HostReferenceOnly?"":actorId,
                 target,field,value,source,family,claim,key,visibility,outcome,owner,verified,
                 HostPrivacyEvidenceRules.RequiredP0Targets.Contains(target,StringComparer.Ordinal),
@@ -42,10 +41,10 @@ internal static class HostPrivacyEvidenceCases
             Require(rejected,"Accepted "+reason);
         }
         HostPrivacyEvidenceRecord Host(string target,string field="inventory")=>
-            Record(target,field,"[]","host-"+target,"iphelper-adapters",
-                HostPrivacyEvidenceVisibility.HostReferenceOnly,sensitive:false);
+            Record(target,field,field=="mac"?"HOST-MAC":"[]","host-"+target,"iphelper-adapters",
+                HostPrivacyEvidenceVisibility.HostReferenceOnly);
         HostPrivacyEvidenceRecord Empty(string target,string field="inventory")=>
-            Record(target,field,"[]","restricted-"+target,"iphelper-adapters",sensitive:false);
+            Record(target,field,"[]","restricted-"+target,"iphelper-adapters");
         HostPrivacyEvidenceRecord[] CompleteCoverage()
         {
             var result=new List<HostPrivacyEvidenceRecord>();
@@ -89,22 +88,22 @@ internal static class HostPrivacyEvidenceCases
             "required P0 targets without host and restricted observations remain unknown");
 
         var denied=Record("network.tcp.v4","buffer-status","","iphelper-2","iphelper-tcp",
-            outcome:HostPrivacyEvidenceOutcome.AccessDenied,sensitive:false,verified:false,error:5);
+            outcome:HostPrivacyEvidenceOutcome.AccessDenied,verified:false,error:5);
         var hostTcp=Host("network.tcp.v4");
         var deniedProfile=Evaluate(new[]{hostTcp,denied});
         Require(deniedProfile.Assessments.Single(item=>item.EvidenceId==denied.EvidenceId).Classification==HostPrivacyEvidenceClass.DeniedConfirmed &&
             !deniedProfile.P0Exposure && deniedProfile.P0Unknown,
             "explicit native access denied is a denial, not content, and does not resolve unrelated P0 targets");
         var missing=Record("network.tcp.v4","buffer-status","","iphelper-3","iphelper-tcp",
-            outcome:HostPrivacyEvidenceOutcome.TargetAbsent,sensitive:false,verified:false,error:2);
+            outcome:HostPrivacyEvidenceOutcome.TargetAbsent,verified:false,error:2);
         Require(Evaluate(new[]{missing}).Assessments.Single().Classification==
             HostPrivacyEvidenceClass.TargetAbsent && Evaluate(new[]{missing}).P0Unknown,
             "target absence is not denial and leaves the P0 target unresolved");
         var unknown=Record("network.tcp.v4","decode-status","","iphelper-4","iphelper-tcp",
-            outcome:HostPrivacyEvidenceOutcome.Unknown,sensitive:false,verified:false);
+            outcome:HostPrivacyEvidenceOutcome.Unknown,verified:false);
         Require(Evaluate(new[]{unknown}).P0Unknown,"unknown P0 remains unknown");
         var notRun=Record("network.tcp.v4","decode-status","","iphelper-5","iphelper-tcp",
-            outcome:HostPrivacyEvidenceOutcome.NotRun,sensitive:false,verified:false);
+            outcome:HostPrivacyEvidenceOutcome.NotRun,verified:false);
         Require(Evaluate(new[]{notRun}).P0Unknown,"NOT_RUN P0 cannot be treated as a pass");
 
         var mixed=Evaluate(CompleteCoverage().Append(direct).Append(denied));
@@ -140,7 +139,11 @@ internal static class HostPrivacyEvidenceCases
         Reject(new[]{direct with {Outcome=HostPrivacyEvidenceOutcome.AccessDenied,NativeError=5,Value="secret"}},"denial carrying content");
         Reject(new[]{direct with {Outcome=HostPrivacyEvidenceOutcome.ContentRead,NativeError=5}},"content read carrying native failure");
         Reject(new[]{direct with {Outcome=HostPrivacyEvidenceOutcome.Unknown,Value="secret",ContentVerified=false}},"unknown outcome carrying unverified raw content");
-        Reject(new[]{direct with {Outcome=HostPrivacyEvidenceOutcome.ContentRead,Value="",SensitiveContent=false}},"required sensitive field cannot fabricate a verified empty value");
+        var emptyMac=direct with {Value="",SensitiveContent=false};
+        var emptyMacProfile=Evaluate(new[]{emptyMac});
+        Require(emptyMacProfile.Assessments.Single().Classification==HostPrivacyEvidenceClass.ConfirmedDirect &&
+            !emptyMacProfile.P0Exposure && emptyMacProfile.P0Unknown,
+            "a verified empty field is not sensitive content and cannot resolve unrelated P0 targets");
         Console.WriteLine("PASS host privacy evidence: immutable P0 matrix, field sensitivity, owner-sealed actor provenance, bounded expiry, content/denial distinction, independent-source inference and one-vote blocking");
     }
 }
