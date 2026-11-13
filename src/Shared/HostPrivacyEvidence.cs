@@ -25,11 +25,15 @@ internal sealed record HostPrivacyEvidenceProfile(
 internal static class HostPrivacyEvidenceRules
 {
     internal static HostPrivacyEvidenceProfile Evaluate(string session,string actor,
-        IEnumerable<HostPrivacyEvidenceRecord> evidence,DateTimeOffset now)
+        IEnumerable<HostPrivacyEvidenceRecord> evidence,DateTimeOffset now,IEnumerable<string> requiredP0Targets)
     {
         if(!IsHex(session,32) || string.IsNullOrWhiteSpace(actor) || actor.Length>256 ||
-            evidence is null || now.Offset!=TimeSpan.Zero)
+            evidence is null || requiredP0Targets is null || now.Offset!=TimeSpan.Zero)
             throw new InvalidDataException("Host privacy evidence context differs");
+        var requiredTargets=requiredP0Targets.ToArray();
+        if(requiredTargets.Length is <1 or >1024 || requiredTargets.Any(target=>string.IsNullOrWhiteSpace(target) || target.Length>256) ||
+            requiredTargets.Distinct(StringComparer.Ordinal).Count()!=requiredTargets.Length)
+            throw new InvalidDataException("Required P0 target matrix differs");
         var records=evidence.ToArray();
         if(records.Length>4096)throw new InvalidDataException("Host privacy evidence count exceeds limit");
         var ids=new HashSet<string>(StringComparer.Ordinal);
@@ -68,10 +72,10 @@ internal static class HostPrivacyEvidenceRules
             })
             .OrderBy(item=>item.Claim,StringComparer.Ordinal).ThenBy(item=>item.CorrelationKey,StringComparer.Ordinal).ToArray();
         var p0Exposure=assessments.Any(item=>item.RequiredP0 && item.Classification==HostPrivacyEvidenceClass.ConfirmedDirect);
-        var p0Unknown=records.Where(item=>item.RequiredP0).Select(item=>item.Target).Distinct(StringComparer.Ordinal)
-            .Any(target=>{
+        var p0Unknown=requiredTargets.Any(target=>{
                 var targetRecords=records.Where(item=>item.RequiredP0 && item.Target==target).ToArray();
                 var targetResults=assessments.Where(item=>item.RequiredP0 && item.Target==target).ToArray();
+                if(targetRecords.Length==0)return true;
                 return !targetResults.Any(item=>item.Classification is HostPrivacyEvidenceClass.DeniedConfirmed or HostPrivacyEvidenceClass.ConfirmedDirect) ||
                     targetResults.Any(item=>item.Classification is HostPrivacyEvidenceClass.Unknown or HostPrivacyEvidenceClass.NotRun or HostPrivacyEvidenceClass.TargetAbsent) ||
                     targetRecords.Any(item=>item.Visibility==HostPrivacyEvidenceVisibility.HostReferenceOnly) &&
