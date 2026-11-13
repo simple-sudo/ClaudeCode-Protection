@@ -25,7 +25,13 @@
 
 ### 当前实现状态
 
-**REQUIREMENT_ONLY / DESIGN。** 当前 SessionProxy 固定资格通路、WFP 持久规则、FlClash 身份核验和路由快照是局部基础，不等于全机通用 TUN/WFP 出口控制。完整全机 IPv4/IPv6、DNS/UDP/QUIC、代理端点动态租约、UU 全流量和故障窗口仍须实现与 Windows 实机验收。详细状态机见 [PROTECTED-STARTUP-SHUTDOWN-LIFECYCLE-V1](PROTECTED-STARTUP-SHUTDOWN-LIFECYCLE-V1.md)。
+全机模式仍为 DESIGN。全机拒绝规则与精确回读已有 SOURCE，见下文。完整全机 IPv4/IPv6、DNS/UDP/QUIC、代理端点动态租约、UU 全流量和故障窗口仍须实现与 Windows 实机验收。详细状态机见 [PROTECTED-STARTUP-SHUTDOWN-LIFECYCLE-V1](PROTECTED-STARTUP-SHUTDOWN-LIFECYCLE-V1.md)。
+
+### 全机拒绝策略源码
+
+全机准备及故障状态的候选规则使用独立持久子层，IPv4/IPv6 出站 IP 包层阻断未标为 loopback 的包，双栈 IPFORWARD 层阻断全部转发。规则不依赖接口枚举、当前路由、应用名或私网地址清单。它没有放行 FlClash 或链路控制协议的规则，因此仅作为拒绝策略。 [WFP 分层条件](https://learn.microsoft.com/en-us/windows/win32/fwp/filtering-conditions-available-at-each-filtering-layer)
+
+原生只读事务按安装绑定的对象键核对四条规则、子层及管理员/SYSTEM 权限，并记录分配的子层权重和过滤器 ID。部分存在或规则漂移被拒绝。当前无规则写入或公开调用入口。待证明范围包括 WFP 实际仲裁、物理投递、转发和虚拟交换路径、启动期覆盖，以及绑定到已核验 Core 与端点的正向放行。 [WFP 仲裁](https://learn.microsoft.com/en-us/windows/win32/fwp/filter-arbitration)
 
 
 ## 2026-11-12 全机 WFP 可行性审查与首个实证切片

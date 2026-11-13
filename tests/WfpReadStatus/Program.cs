@@ -8,6 +8,7 @@ if(args.Length==1 && args[0]=="--check-machine-egress-policy")
     MachineEgressRecoveryCases.Run();
     WfpExistingEvents.MachineEgressDropCases.Run();
     MachineEgressFrameCases.Run();
+    MachineEgressQuarantineCases.Run();
     return 0;
 }
 if(args.Length==1 && args[0]=="--read-machine-egress-layers")

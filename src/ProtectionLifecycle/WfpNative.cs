@@ -9,6 +9,8 @@ namespace ProtectionLifecycle;
 internal static class WfpNative
 {
     internal const uint FilterNotFound=0x80320003,SubLayerNotFound=0x80320007;
+    internal static readonly Guid OutboundPacketV4=new("1e5c9fae-8a84-4135-a331-950b54229ecd"),
+        OutboundPacketV6=new("a3b3ab6b-3564-488c-9117-f34e82142763");
     internal static readonly Guid ConnectV4=new("c38d57d1-05a7-4c33-904f-7fbceee60e82"),ConnectV6=new("4a72393b-319f-44bc-84c3-ba54dcb3b6b4"),
         PackageId=new("71bc78fa-f17c-4997-a602-6abb261f351c"),RemoteAddress=new("b235ae9a-1d64-49b8-a44c-5ff3d9095045"),
         RemotePort=new("c35a604d-d22b-4e1a-91b4-68f674ee674b"),Protocol=new("3971ef2b-623e-4f9a-8cb1-6e79b806b9a7");

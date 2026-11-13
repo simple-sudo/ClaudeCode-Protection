@@ -13,8 +13,6 @@ internal sealed class MachineEgressProbePolicy
 {
     private const string Scope = "CPC-MACHINE-EGRESS-PROBE-1";
     private const ulong FilterWeight = ulong.MaxValue;
-    private static readonly Guid OutboundPacketV4 = new("1e5c9fae-8a84-4135-a331-950b54229ecd");
-    private static readonly Guid OutboundPacketV6 = new("a3b3ab6b-3564-488c-9117-f34e82142763");
     private static readonly Guid InterfaceIndex = new("667fd755-d695-434a-8af5-d3835a1259bc");
     private const uint ByteArray16 = 11;
 
@@ -63,8 +61,8 @@ internal sealed class MachineEgressProbePolicy
     {
         var (key, addressType) = family switch
         {
-            AddressFamily.InterNetwork => (OutboundPacketV4, WfpNative.UInt32),
-            AddressFamily.InterNetworkV6 => (OutboundPacketV6, ByteArray16),
+            AddressFamily.InterNetwork => (WfpNative.OutboundPacketV4, WfpNative.UInt32),
+            AddressFamily.InterNetworkV6 => (WfpNative.OutboundPacketV6, ByteArray16),
             _ => throw new ArgumentOutOfRangeException(nameof(family))
         };
         var status = WfpNative.FwpmLayerGetByKey0(engine, in key, out var pointer);
@@ -176,8 +174,8 @@ internal sealed class MachineEgressProbePolicy
 
     private (Guid Key, Guid Layer, uint Interface, byte[] Address, string Role) FilterScope(AddressFamily family) => family switch
     {
-        AddressFamily.InterNetwork => (v4Key, OutboundPacketV4, v4Interface, v4Address, "out-v4"),
-        AddressFamily.InterNetworkV6 => (v6Key, OutboundPacketV6, v6Interface, v6Address, "out-v6"),
+        AddressFamily.InterNetwork => (v4Key, WfpNative.OutboundPacketV4, v4Interface, v4Address, "out-v4"),
+        AddressFamily.InterNetworkV6 => (v6Key, WfpNative.OutboundPacketV6, v6Interface, v6Address, "out-v6"),
         _ => throw new ArgumentOutOfRangeException(nameof(family))
     };
 }
