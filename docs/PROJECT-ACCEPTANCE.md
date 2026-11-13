@@ -9,7 +9,7 @@
 
 - 设备所有者明确授权：在独立分支将无条件永久停止改为分阶段、卡巴斯基持续监控、新告警立即停止的测试门禁。
 - 当前独立分支：`chatgpt/p0-assurance-host-20261113`；PR #4 OPEN / DRAFT，目标 `codex/integrate-privacy-admission-20261027`，未合并。
-- SOURCE：`Assert-ProjectSecurityClearance.ps1` 改为显式 Stage；仅 DailyBuild 可进入。服务 `AVP21.26`、SecurityCenter2 Kaspersky productState 266240 和 Application 事件检查构成当前观察面；750ms 事件轮询、3 秒服务/产品复核；新事件、状态异常或监控失败时终止构建进程树。
+- SOURCE：`Assert-ProjectSecurityClearance.ps1` 改为显式 Stage；仅 DailyBuild 可进入。服务 `AVP21.26`、SecurityCenter2 Kaspersky productState 266240 和 Application 事件检查构成当前观察面；750ms 事件轮询、3 秒服务/产品复核；JSONL 持久记录健康快照、进程生命周期、告警和停止结果；新事件、状态异常或监控失败时终止构建进程树。
 - SOURCE：`Build.ps1` 仅执行 Release `dotnet build --no-restore`，不 publish、不安装、不执行产物。EngineeringBuild、CenterBuild、NativeBuild、IsolationProbe、WfpMutation 仍 BLOCKED。
 - SOURCE：`Test-ProductBuildBoundary.ps1` 改为断言分阶段门禁、持续 AV 观察和各关闭入口。PowerShell AST/静态断言是否通过，以 PR #4 最新 Actions 为准。
 - **NOT_RUN：** 本机门禁执行、DailyBuild、产物检查、安装、产品执行、WFP/网络修改和正式 Claude 均未执行。卡巴斯基全厂商告警可见性仍 UNKNOWN；Windows Application 日志不是完整厂商遥测，设备所有者界面观察仍为必要停止信号。
