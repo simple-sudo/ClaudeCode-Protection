@@ -1,6 +1,7 @@
 $ErrorActionPreference='Stop'
 $root=Split-Path -Parent $PSScriptRoot
 . (Join-Path $PSScriptRoot 'Assert-ProjectSecurityClearance.ps1') -Stage DailyBuild
+if([string]::IsNullOrWhiteSpace([string]$script:ProjectSecurityRunId)){throw 'Security gate did not provide a monitor run ID; refusing an uncorrelated build.'}
 $project=Join-Path $root 'src\ClaudeProtection\ClaudeProtection.csproj'
 $dotnet=(Get-Command dotnet.exe -ErrorAction Stop).Source
 $logRoot=Join-Path $env:LOCALAPPDATA 'ClaudeCode-Protection\security-stage'
