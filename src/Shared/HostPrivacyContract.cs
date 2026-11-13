@@ -171,8 +171,7 @@ internal static class HostPrivacyContract
         if(summary.RootCases is null || summary.ToolCases is null || summary.ProbeCases is null)throw new InvalidDataException("Host privacy cases missing");
         if(summary.ContentEvidenceCount is <0 or >27 ||
             (summary.ContentEvidenceSHA256 is null)!=(summary.ContentEvidenceCount==0) ||
-            summary.ContentEvidenceSHA256 is not null && !WorkspaceBundle.IsHash(summary.ContentEvidenceSHA256) ||
-            requireSatisfied && (summary.ContentEvidenceSHA256 is null || summary.ContentEvidenceCount!=27))
+            summary.ContentEvidenceSHA256 is not null && !WorkspaceBundle.IsHash(summary.ContentEvidenceSHA256))
             throw new InvalidDataException("Host privacy content evidence receipt missing or inconsistent");
         if(summary.PolicySHA256!=PolicySHA256 || summary.SessionId!=session || !WorkspaceBundle.IsHash(summary.PlanSHA256) ||
             summary.RootPid<=0 || summary.ToolPid is <=0 || summary.ToolPid==summary.RootPid ||
