@@ -31,7 +31,7 @@ internal static class HostPrivacyEvidenceCases
         Require(profile.P0Unknown==false,"a confirmed restricted observation resolves the target's unknown state");
         var emptyInventory=Record("00000000000000000000000000000011","network.adapter","inventory","[]","iphelper-empty","iphelper",
             sensitive:false,claim:"",key:"");
-        var emptyProfile=Evaluate(new[]{emptyInventory},"network.adapter");
+        var emptyProfile=Evaluate(new[]{host,emptyInventory},"network.adapter");
         Require(emptyProfile.Assessments.Single().Classification==HostPrivacyEvidenceClass.ConfirmedDirect &&
             !emptyProfile.P0Exposure && !emptyProfile.P0Unknown,
             "a successfully read empty inventory resolves coverage without fabricating sensitive exposure");
@@ -41,7 +41,9 @@ internal static class HostPrivacyEvidenceCases
             "required P0 target without any observation remains unknown");
         var denied=Record("00000000000000000000000000000003","network.tcp","table","","iphelper-2","iphelper",
             outcome:HostPrivacyEvidenceOutcome.AccessDenied,verified:false,error:5);
-        var deniedProfile=Evaluate(new[]{denied},"network.tcp");
+        var hostTcp=Record("00000000000000000000000000000012","network.tcp","inventory","[]","host-tcp","iphelper",
+            HostPrivacyEvidenceVisibility.HostReferenceOnly,sensitive:false);
+        var deniedProfile=Evaluate(new[]{hostTcp,denied},"network.tcp");
         Require(deniedProfile.Assessments.Single().Classification==HostPrivacyEvidenceClass.DeniedConfirmed &&
             !deniedProfile.P0Exposure,"explicit native access denied is a denial, not content");
         var missing=Record("00000000000000000000000000000004","network.tcp","table","","iphelper-3","iphelper",
