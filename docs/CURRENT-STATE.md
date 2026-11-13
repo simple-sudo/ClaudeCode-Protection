@@ -1,6 +1,6 @@
 # 当前状态（权威摘要）
 
-更新时间：2026-11-13（GitHub 只读核查）。本页记录本次文档同步前的产品源码基线；文档同步提交本身只改变交接文档，不改变该产品源码基线。历史快照见 [CURRENT-STATE-HISTORY-20261112](CURRENT-STATE-HISTORY-20261112.md)。开发过程与能力证据分别见 [STATUS](STATUS.md) 和 [PROJECT-ACCEPTANCE](PROJECT-ACCEPTANCE.md)。
+更新时间：2026-11-13（GitHub 只读核查）。本页区分 Codex 主线的产品源码基线与 PR #4 独立分支上的门禁/保证实现；PR #4 不修改 Codex 网络开发主线。历史快照见 [CURRENT-STATE-HISTORY-20261112](CURRENT-STATE-HISTORY-20261112.md)。开发过程与能力证据分别见 [STATUS](STATUS.md) 和 [PROJECT-ACCEPTANCE](PROJECT-ACCEPTANCE.md)。
 
 ## 1. GitHub 与开发基线
 
