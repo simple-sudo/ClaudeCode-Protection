@@ -163,10 +163,10 @@ internal sealed record OfflineConsoleNetworkSurvey(int SchemaVersion,string Sess
                 ReadsSHA256=receipts.Reads,ProcessesSHA256=receipts.Processes,actor.Processes};
     }
 
-    internal static void AssertOwnerIdentityBinding(OfflineConsoleHostIdentitySummary ownerIdentity,string session,uint actorPid)
+    internal static void AssertOwnerIdentityBinding(OfflineConsoleHostIdentitySummary ownerIdentity,string session,int actorPid)
     {
         if(ownerIdentity is null || !WorkspaceBundle.IsHash(ownerIdentity.ReceiptSHA256) ||
-            ownerIdentity.ActorSessionId!=session || ownerIdentity.ActorPid<=0 || (uint)ownerIdentity.ActorPid!=actorPid)
+            ownerIdentity.ActorSessionId!=session || actorPid<=0 || ownerIdentity.ActorPid!=actorPid)
             throw WfpNative.Contract("OfflineNetworkSurveyOwnerIdentityBindingMismatch");
     }
 
