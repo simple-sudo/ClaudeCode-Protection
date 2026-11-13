@@ -125,7 +125,7 @@ internal sealed record OfflineConsoleNetworkSurvey(int SchemaVersion,string Sess
             Restricted=SealActorSummary(this,restrictedReceipts),Trusted=SealActorSummary(host,trustedReceipts),
             TrustedProcessesAfterSHA256=trustedAfterReceipt
         }));
-        var profile=BuildEvidenceProfile(jobId,restrictedReceipts,trustedReceipts,trustedAfterReceipt,host,hostAfter);
+        var profile=BuildEvidenceProfile(jobId,restrictedReceipts,trustedReceipts,host,hostAfter);
         var profileHash=state.WriteNew("host-privacy-network-profile-"+jobId+".json",JsonSerializer.SerializeToUtf8Bytes(profile));
         var summary=Compare(host,hostAfter,hash);
         return summary with {
@@ -155,14 +155,14 @@ internal sealed record OfflineConsoleNetworkSurvey(int SchemaVersion,string Sess
     }
 
     private HostPrivacyEvidenceProfile BuildEvidenceProfile(string jobId,ActorReceipts restrictedReceipts,
-        ActorReceipts trustedReceipts,string trustedAfterReceipt,OfflineConsoleNetworkSurvey trusted,ProcessView trustedAfter)
+        ActorReceipts trustedReceipts,OfflineConsoleNetworkSurvey trusted,ProcessView trustedAfter)
     {
         var evidence=new List<HostPrivacyEvidenceRecord>();
         var now=DateTimeOffset.UtcNow;
         var actorId=$"{Network.Pid}:{Network.StartedFileTime}";
         var observed=DateTimeOffset.FromFileTime(Network.FinishedFileTime);
-        var expires=observed.AddMinutes(15);
-        var required=new[]{"network.adapters","network.tcp.v4","network.tcp.v6","network.processes"};
+        var required=new[]{"network.adapter.guid","network.adapter.mac","network.adapter.address","network.adapter.dns",
+            "network.adapter.gateway","network.tcp.v4","network.tcp.v6","network.processes"};
         for(var i=0;i<3;i++)
         {
             AddRead(this,restrictedReceipts.Reads[i],false,i);
@@ -172,8 +172,6 @@ internal sealed record OfflineConsoleNetworkSurvey(int SchemaVersion,string Sess
             .Where(row=>row.CreatedFileTime is not null).ToArray();
         AddProcesses(this.Processes,restrictedReceipts.Processes,false,stable);
         AddProcesses(trusted.Processes,trustedReceipts.Processes,true,stable);
-        var processAfterTime=DateTimeOffset.FromFileTime(Math.Max(trusted.Network.FinishedFileTime,Network.FinishedFileTime));
-        _=trustedAfterReceipt;_=processAfterTime;
         return HostPrivacyEvidenceRules.Evaluate(jobId,actorId,evidence,now,required);
 
         void AddRead(OfflineConsoleNetworkSurvey actor,string receipt,bool hostReference,int index)
@@ -182,15 +180,19 @@ internal sealed record OfflineConsoleNetworkSurvey(int SchemaVersion,string Sess
             var target=index switch {0=>"network.adapters",1=>"network.tcp.v4",_=>"network.tcp.v6"};
             var sourceFamily=index==0?"iphelper-adapters":"iphelper-tcp";
             var sourceId=index switch {0=>"GetAdaptersAddresses",1=>"GetExtendedTcpTable-v4",_=>"GetExtendedTcpTable-v6"};
-            var actorValue=hostReference?"":actorId;
             var readTime=DateTimeOffset.FromFileTime(actor.Network.FinishedFileTime);
-            void Add(string field,string value,string rowId,string claim="",string key="")=>
-                evidence.Add(Create(target,field,value,rowId,sourceFamily,claim,key,hostReference,
+            void Add(string field,string value,string rowId,string claim="",string key="",string? targetOverride=null,
+                bool p0=true,bool sensitive=true)
+            {
+                if(value.Length==0)return;
+                evidence.Add(Create(targetOverride??target,field,value,rowId,sourceFamily,claim,key,hostReference,p0,sensitive,
                     HostPrivacyEvidenceOutcome.ContentRead,true,null,receipt,readTime));
+            }
             if(read.Content.Length==0)
             {
+                if(hostReference)return;
                 var denied=read.ErrorKind is null && (read.SizeStatus==5 && read.ReadStatus is null || read.ReadStatus==5);
-                evidence.Add(Create(target,"buffer-status","",sourceId,sourceFamily,"","",hostReference,
+                evidence.Add(Create(target,"buffer-status","",sourceId,sourceFamily,"","",false,true,false,
                     denied?HostPrivacyEvidenceOutcome.AccessDenied:HostPrivacyEvidenceOutcome.Unknown,
                     false,denied?5:null,receipt,readTime));
                 return;
@@ -199,18 +201,18 @@ internal sealed record OfflineConsoleNetworkSurvey(int SchemaVersion,string Sess
             {
                 var rows=Decode(read,item=>NetworkContentSnapshot.DecodeAdapters(item.Content,item.NativeBase,8));
                 if(rows is null){AddUnknown(target,sourceId,sourceFamily,receipt,readTime,hostReference);return;}
-                if(rows.Length==0){Add("inventory","[]",sourceId);return;}
+                if(rows.Length==0){Add("inventory","[]",sourceId,targetOverride:"network.adapter.metadata",p0:false,sensitive:false);return;}
                 foreach(var row in rows)
                 {
                     var rowId=sourceId+":"+row.IfIndex;
-                    Add("interface-guid",row.Name,rowId,"network.interface.guid",row.Name);
-                    Add("mac",row.Mac,rowId,"network.adapter.mac",row.Mac);
-                    Add("description",row.Description,rowId);
-                    Add("friendly-name",row.FriendlyName,rowId);
-                    Add("dns-suffix",row.DnsSuffix,rowId);
-                    for(var n=0;n<row.Unicast.Length;n++)Add("unicast",row.Unicast[n].Value,rowId+":u"+n,"network.ip.address",row.Unicast[n].Value);
-                    for(var n=0;n<row.Dns.Length;n++)Add("dns",row.Dns[n].Value,rowId+":d"+n,"network.dns.address",row.Dns[n].Value);
-                    for(var n=0;n<row.Gateways.Length;n++)Add("gateway",row.Gateways[n].Value,rowId+":g"+n,"network.gateway.address",row.Gateways[n].Value);
+                    Add("interface-guid",row.Name,rowId,"network.interface.guid",row.Name,"network.adapter.guid");
+                    Add("mac",row.Mac,rowId,"network.adapter.mac",row.Mac,"network.adapter.mac");
+                    Add("description",row.Description,rowId,targetOverride:"network.adapter.metadata",p0:false,sensitive:false);
+                    Add("friendly-name",row.FriendlyName,rowId,targetOverride:"network.adapter.metadata",p0:false,sensitive:false);
+                    Add("dns-suffix",row.DnsSuffix,rowId,targetOverride:"network.adapter.metadata",p0:false,sensitive:false);
+                    for(var n=0;n<row.Unicast.Length;n++)Add("unicast",row.Unicast[n].Value,rowId+":u"+n,"network.ip.address",row.Unicast[n].Value,"network.adapter.address");
+                    for(var n=0;n<row.Dns.Length;n++)Add("dns",row.Dns[n].Value,rowId+":d"+n,"network.dns.address",row.Dns[n].Value,"network.adapter.dns");
+                    for(var n=0;n<row.Gateways.Length;n++)Add("gateway",row.Gateways[n].Value,rowId+":g"+n,"network.gateway.address",row.Gateways[n].Value,"network.adapter.gateway");
                 }
                 return;
             }
@@ -222,9 +224,9 @@ internal sealed record OfflineConsoleNetworkSurvey(int SchemaVersion,string Sess
             {
                 var row=tcp[n];var rowId=sourceId+":"+n;
                 var endpoint=$"{row.LocalAddress}:{row.LocalPort}->{row.RemoteAddress}:{row.RemotePort}";
-                Add("connection",endpoint,rowId,"network.tcp.endpoint",endpoint);
+                Add("connection",endpoint,rowId,"network.tcp.endpoint",endpoint,target);
                 Add("process-pid",row.Pid.ToString(System.Globalization.CultureInfo.InvariantCulture),rowId,
-                    "network.process-owner",row.Pid.ToString(System.Globalization.CultureInfo.InvariantCulture));
+                    "network.process-owner",row.Pid.ToString(System.Globalization.CultureInfo.InvariantCulture),target);
             }
         }
 
@@ -233,9 +235,10 @@ internal sealed record OfflineConsoleNetworkSurvey(int SchemaVersion,string Sess
             var readTime=DateTimeOffset.FromFileTime(hostReference?trusted.Network.FinishedFileTime:Network.FinishedFileTime);
             if(view.Error!=0)
             {
+                if(hostReference)return;
                 var denied=view.Error==5;
                 evidence.Add(Create("network.processes","inventory-status","",
-                    "process-enumeration","process-inventory","","",hostReference,
+                    "process-enumeration","process-inventory","","",false,true,false,
                     denied?HostPrivacyEvidenceOutcome.AccessDenied:HostPrivacyEvidenceOutcome.Unknown,
                     false,denied?5:view.Error,receipt,readTime));
                 return;
@@ -244,7 +247,7 @@ internal sealed record OfflineConsoleNetworkSurvey(int SchemaVersion,string Sess
             if(rows.Length==0)
             {
                 evidence.Add(Create("network.processes","inventory","[]","process-enumeration",
-                    "process-inventory","","",hostReference,HostPrivacyEvidenceOutcome.ContentRead,true,null,receipt,readTime));
+                    "process-inventory","","",hostReference,true,false,HostPrivacyEvidenceOutcome.ContentRead,true,null,receipt,readTime));
                 return;
             }
             foreach(var row in rows)
@@ -252,7 +255,7 @@ internal sealed record OfflineConsoleNetworkSurvey(int SchemaVersion,string Sess
                 var key=row.Pid.ToString(System.Globalization.CultureInfo.InvariantCulture);
                 var value=$"{row.Name}|{row.Pid}|{row.CreatedFileTime}";
                 evidence.Add(Create("network.processes","process",value,"process-enumeration:"+key,
-                    "process-inventory","network.process-owner",key,hostReference,
+                    "process-inventory","network.process-owner",key,hostReference,true,true,
                     HostPrivacyEvidenceOutcome.ContentRead,true,null,receipt,readTime));
             }
         }
@@ -260,17 +263,17 @@ internal sealed record OfflineConsoleNetworkSurvey(int SchemaVersion,string Sess
         void AddUnknown(string target,string sourceId,string sourceFamily,string receipt,DateTimeOffset readTime,bool hostReference)
         {
             if(hostReference)return;
-            evidence.Add(Create(target,"decode-status","",sourceId,sourceFamily,"","",false,
+            evidence.Add(Create(target,"decode-status","",sourceId,sourceFamily,"","",false,true,false,
                 HostPrivacyEvidenceOutcome.Unknown,false,null,receipt,readTime));
         }
 
         HostPrivacyEvidenceRecord Create(string target,string field,string value,string sourceId,string sourceFamily,
-            string claim,string key,bool hostReference,HostPrivacyEvidenceOutcome outcome,bool verified,int? error,
+            string claim,string key,bool hostReference,bool p0,bool sensitive,HostPrivacyEvidenceOutcome outcome,bool verified,int? error,
             string receipt,DateTimeOffset readTime)=>new(
                 EvidenceId(target,field,value,sourceId,hostReference?string.Empty:actorId),jobId,
                 hostReference?string.Empty:actorId,target,field,value,sourceId,sourceFamily,claim,key,
                 hostReference?HostPrivacyEvidenceVisibility.HostReferenceOnly:HostPrivacyEvidenceVisibility.RestrictedActor,
-                outcome,true,verified,true,error,readTime,readTime.AddMinutes(15),receipt);
+                outcome,true,verified,p0,sensitive,error,readTime,readTime.AddMinutes(15),receipt);
     }
 
     private static string EvidenceId(string target,string field,string value,string source,string actor)
