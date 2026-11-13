@@ -37,6 +37,12 @@ internal static class HostPrivacyEvidenceCases
             "a successfully read empty inventory resolves coverage without fabricating sensitive exposure");
         Require(Evaluate(new[]{host},"network.adapter").P0Unknown,
             "host-only reference cannot resolve restricted-actor visibility");
+        var staleHost=host with {ExpiresAtUtc=now.AddSeconds(-1)};
+        Require(Evaluate(new[]{staleHost,direct},"network.adapter").P0Unknown,
+            "expired host reference cannot qualify a restricted observation");
+        var mixed=Evaluate(new[]{host,direct,hostTcp,denied},"network.adapter","network.tcp");
+        Require(mixed.P0Exposure && !mixed.P0Unknown,
+            "one direct P0 exposure remains blocking even alongside a confirmed denial");
         Require(Evaluate(new[]{direct},"network.adapter","network.tcp").P0Unknown,
             "required P0 target without any observation remains unknown");
         var denied=Record("00000000000000000000000000000003","network.tcp","table","","iphelper-2","iphelper",
