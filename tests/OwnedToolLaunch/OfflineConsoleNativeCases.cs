@@ -279,6 +279,23 @@ internal static class OfflineConsoleNativeCases
         var actorReceipts=receiptsCtor.Invoke(new object[]{readReceipts,new string('B',64)});
         var identityReceipt=new string('C',64);
         var surveyReceipt=new string('D',64);
+        var identitySummaryType=library.GetType("ProtectionLifecycle.OfflineConsoleHostIdentitySummary",true)!;
+        object IdentitySummary(string receipt,string identitySession,int identityPid)
+        {
+            var value=Activator.CreateInstance(identitySummaryType,Instance,null,
+                new object[]{receipt,"DIFFERS_FROM_HOST","DENIED","DENIED","DENIED","DENIED"},null)!;
+            identitySummaryType.GetProperty("ActorSessionId")!.SetValue(value,identitySession);
+            identitySummaryType.GetProperty("ActorPid")!.SetValue(value,identityPid);
+            return value;
+        }
+        var bindOwner=type.GetMethod("AssertOwnerIdentityBinding",Static)!;
+        Call(bindOwner,null,IdentitySummary(identityReceipt,session,Environment.ProcessId),session,(uint)Environment.ProcessId);
+        Refuse<InvalidDataException>(()=>Call(bindOwner,null,IdentitySummary(identityReceipt,new string('e',32),Environment.ProcessId),
+            session,(uint)Environment.ProcessId));
+        Refuse<InvalidDataException>(()=>Call(bindOwner,null,IdentitySummary(identityReceipt,session,Environment.ProcessId+1),
+            session,(uint)Environment.ProcessId));
+        Refuse<InvalidDataException>(()=>Call(bindOwner,null,IdentitySummary("bad",session,Environment.ProcessId),
+            session,(uint)Environment.ProcessId));
         var profile=Call(type.GetMethod("BuildEvidenceProfile",Instance)!,native,session,actorReceipts,actorReceipts,captured,after,
             identityReceipt,surveyReceipt)!;
         var profileNode=JsonSerializer.SerializeToNode(profile)!;
