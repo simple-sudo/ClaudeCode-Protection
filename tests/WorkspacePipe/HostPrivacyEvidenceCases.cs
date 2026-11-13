@@ -11,10 +11,10 @@ internal static class HostPrivacyEvidenceCases
         var hash=new string('A',64);
         HostPrivacyEvidenceRecord Record(string id,string target,string field,string value,string source,string family,
             HostPrivacyEvidenceVisibility visibility=HostPrivacyEvidenceVisibility.RestrictedActor,
-            HostPrivacyEvidenceOutcome outcome=HostPrivacyEvidenceOutcome.ContentRead,bool p0=true,
+            HostPrivacyEvidenceOutcome outcome=HostPrivacyEvidenceOutcome.ContentRead,bool p0=true,bool sensitive=true,
             string claim="",string key="",string actorId=actor,bool owner=true,bool verified=true,int? error=null,
             DateTimeOffset? expiry=null)=>new(id,session,visibility==HostPrivacyEvidenceVisibility.HostReferenceOnly?"":actorId,
-                target,field,value,source,family,claim,key,visibility,outcome,owner,verified,p0,error,now.AddMinutes(-1),expiry,hash);
+                target,field,value,source,family,claim,key,visibility,outcome,owner,verified,p0,sensitive,error,now.AddMinutes(-1),expiry,hash);
         void Require(bool value,string reason){if(!value)throw new InvalidDataException(reason);}
         HostPrivacyEvidenceProfile Evaluate(IEnumerable<HostPrivacyEvidenceRecord> items,params string[] requiredTargets)=>
             HostPrivacyEvidenceRules.Evaluate(session,actor,items,now,requiredTargets);
@@ -29,6 +29,12 @@ internal static class HostPrivacyEvidenceCases
         Require(profile.Assessments.Single(item=>item.EvidenceId==direct.EvidenceId).Classification==HostPrivacyEvidenceClass.ConfirmedDirect &&
             profile.P0Exposure,"one confirmed P0 content read blocks regardless of other evidence");
         Require(profile.P0Unknown==false,"a confirmed restricted observation resolves the target's unknown state");
+        var emptyInventory=Record("00000000000000000000000000000011","network.adapter","inventory","[]","iphelper-empty","iphelper",
+            sensitive:false,claim:"",key:"");
+        var emptyProfile=Evaluate(new[]{emptyInventory},"network.adapter");
+        Require(emptyProfile.Assessments.Single().Classification==HostPrivacyEvidenceClass.ConfirmedDirect &&
+            !emptyProfile.P0Exposure && !emptyProfile.P0Unknown,
+            "a successfully read empty inventory resolves coverage without fabricating sensitive exposure");
         Require(Evaluate(new[]{host},"network.adapter").P0Unknown,
             "host-only reference cannot resolve restricted-actor visibility");
         Require(Evaluate(new[]{direct},"network.adapter","network.tcp").P0Unknown,
