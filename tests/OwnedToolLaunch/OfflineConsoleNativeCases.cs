@@ -285,7 +285,9 @@ internal static class OfflineConsoleNativeCases
         Require(profileNode["Assessments"]!.AsArray().Any(item=>item?["Classification"]!.GetValue<int>()==0));
         Require(profileNode["Assessments"]!.AsArray().Any(item=>item?["Classification"]!.GetValue<int>()==1));
         Require(profileNode["P0Exposure"]!.GetValue<bool>());
-        Require(profileNode["ActorId"]!.GetValue<string>()==$"{Environment.ProcessId}:{captured.Network.StartedFileTime}");
+        var network=type.GetProperty("Network")!.GetValue(captured)!;
+        var startedFileTime=(long)network.GetType().GetProperty("StartedFileTime")!.GetValue(network)!;
+        Require(profileNode["ActorId"]!.GetValue<string>()==$"{Environment.ProcessId}:{startedFileTime}");
         Require(profileNode["OwnerIdentityReceiptSHA256"]!.GetValue<string>()==identityReceipt);
         Require(profileNode["NetworkSurveyReceiptSHA256"]!.GetValue<string>()==surveyReceipt);
         var summary=JsonSerializer.SerializeToNode(comparison)!;
