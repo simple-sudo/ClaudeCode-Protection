@@ -15,6 +15,8 @@ $project=Join-Path $root 'src\ClaudeProtection\ClaudeProtection.csproj'
 $projectDirectory=Split-Path -Parent $project
 $dotnet=$script:ProjectSecurityDotNetPath
 $expectedSdk='8.0.422'
+$dotnetRoot=Split-Path -Parent $dotnet
+$sdkRoot=Join-Path $dotnetRoot ('sdk\'+$expectedSdk)
 $runDirectory=Join-Path $logRoot $run
 $outputDirectory=Join-Path $root ('bin\security-stage\'+$run)
 $expanded=Join-Path $runDirectory 'expanded-project.xml'
@@ -144,25 +146,45 @@ try{
  $taskAssemblyPaths=[Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
  $taskAssemblyNames=[Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
  $taskFactories=[Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+ function Add-TaskAssemblyByLeaf([string]$Leaf){
+  if([string]::IsNullOrWhiteSpace($Leaf) -or $Leaf -match '\$\('){throw ('Unresolvable MSBuild task assembly leaf: '+$Leaf)}
+  $matches=[Collections.Generic.List[string]]::new()
+  foreach($searchRoot in @($sdkRoot,(Join-Path $dotnetRoot 'shared'))){
+   if(Test-Path -LiteralPath $searchRoot -PathType Container){
+    foreach($match in @(Get-ChildItem -LiteralPath $searchRoot -Filter $Leaf -Recurse -File -ErrorAction Stop)){
+     $full=[IO.Path]::GetFullPath($match.FullName)
+     if(-not $full.StartsWith($dotnetRoot+'\',[StringComparison]::OrdinalIgnoreCase)){throw ('Task assembly escapes .NET root: '+$full)}
+     $matches.Add($full)
+    }
+   }
+  }
+  if($matches.Count -eq 0){throw ('MSBuild task assembly could not be resolved under the pinned .NET installation: '+$Leaf)}
+  foreach($match in $matches){[void]$taskAssemblyPaths.Add($match)}
+ }
  foreach($task in $importedUsingTasks){
   $assemblyFile=[string]$task.AssemblyFile
   $assemblyName=[string]$task.AssemblyName
   $factory=[string]$task.TaskFactory
   if(-not [string]::IsNullOrWhiteSpace($factory)){
-   if($factory -notin @('CodeTaskFactory','RoslynCodeTaskFactory')){throw ('Unreviewed MSBuild TaskFactory in imported SDK graph: '+$factory)}
+   if($factory -notmatch '(?i)(^|\.)(CodeTaskFactory|RoslynCodeTaskFactory)$'){throw ('Unreviewed MSBuild TaskFactory in imported SDK graph: '+$factory)}
    [void]$taskFactories.Add($factory)
   }
   if(-not [string]::IsNullOrWhiteSpace($assemblyFile)){
-   if($assemblyFile -match '\$\('){throw ('Unresolved MSBuild task assembly path: '+$assemblyFile)}
-   $taskPath=[IO.Path]::GetFullPath($assemblyFile)
-   if(-not $taskPath.StartsWith('C:\Program Files\dotnet\',[StringComparison]::OrdinalIgnoreCase)){
-    throw ('MSBuild task assembly escapes the pinned .NET installation: '+$taskPath)
+   if($assemblyFile -match '^[A-Za-z]:\\'){
+    $taskPath=[IO.Path]::GetFullPath($assemblyFile)
+    if(-not $taskPath.StartsWith($dotnetRoot+'\',[StringComparison]::OrdinalIgnoreCase)){throw ('MSBuild task assembly escapes the pinned .NET installation: '+$taskPath)}
+    [void]$taskAssemblyPaths.Add($taskPath)
+   }else{
+    Add-TaskAssemblyByLeaf ([IO.Path]::GetFileName($assemblyFile))
    }
-   [void]$taskAssemblyPaths.Add($taskPath)
   }elseif(-not [string]::IsNullOrWhiteSpace($assemblyName)){
    if($assemblyName -notmatch '^(Microsoft|System)\.'){throw ('Unreviewed MSBuild task assembly name: '+$assemblyName)}
+   $simpleName=$assemblyName.Split(',')[0].Trim()
+   Add-TaskAssemblyByLeaf ($simpleName+'.dll')
    [void]$taskAssemblyNames.Add($assemblyName)
-  }elseif([string]::IsNullOrWhiteSpace($factory)){
+  }elseif(-not [string]::IsNullOrWhiteSpace($factory)){
+   Add-TaskAssemblyByLeaf 'Microsoft.Build.Tasks.Core.dll'
+  }else{
    throw ('MSBuild UsingTask has no auditable assembly or task factory: '+[string]$task.TaskName)
   }
  }
@@ -223,7 +245,12 @@ $inputPaths=[Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal
  $combinedBuildLog=''
  if(Test-Path -LiteralPath $buildStdout){$combinedBuildLog+=[IO.File]::ReadAllText($buildStdout)}
  if(Test-Path -LiteralPath $buildStderr){$combinedBuildLog+=[IO.File]::ReadAllText($buildStderr)}
- $executedTasks=[regex]::Matches($combinedBuildLog,'(?im)^\s*Task\s+"([^"]+)"\s*
+ $executedTasks=[regex]::Matches($combinedBuildLog,'Task\s+"([^"]+)"')
+ $receipt.ExecutedTaskNames=@($executedTasks | ForEach-Object {$_.Groups[1].Value} | Sort-Object -Unique)
+ $execTaskMatches=[regex]::Matches($combinedBuildLog,'Task\s+"Exec"')
+ $receipt.ExecutedExecTaskCount=$execTaskMatches.Count
+ if($execTaskMatches.Count -gt 0){throw 'MSBuild executed an Exec task. DailyBuild refuses external command execution from imported targets.'}
+ if($buildExit -ne 0){throw ('Daily build failed with exit code '+$buildExit)}
  $receipt.Status='BUILD_SUCCEEDED_NO_PRODUCT_EXECUTION'
 }catch{
  $operationFailure=$_.Exception
