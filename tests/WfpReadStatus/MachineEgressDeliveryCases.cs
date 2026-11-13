@@ -1,5 +1,5 @@
-using System.Diagnostics;
 using System.Net;
+using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using ProtectionLifecycle;
 
@@ -75,7 +75,29 @@ internal static class MachineEgressDeliveryCases
                 blocked[1] with { PhysicalPackets = 1 }, blocked[2]]) ==
                 MachineEgressDeliveryVerdict.DeliveredWhileEnforced, "physical observation refutes zero delivery");
         }
+        await VerifyFailedSenderAsync(deadline.Token);
         Console.WriteLine("PASS 8 dual-stack loopback delivery controls and machine egress verdict cases");
+    }
+
+    private static async Task VerifyFailedSenderAsync(CancellationToken token)
+    {
+        using var reserved = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)
+        {
+            ExclusiveAddressUse = true
+        };
+        reserved.Bind(new IPEndPoint(IPAddress.Loopback, 0)); // Keep the port reserved without listening.
+        using var sender = new MachineEgressSender(IPAddress.Loopback, (IPEndPoint)reserved.LocalEndPoint!,
+            (uint)NetworkInterface.LoopbackInterfaceIndex, ProtocolType.Tcp);
+        var local = sender.Local;
+        var result = await sender.SendAsync(Guid.NewGuid(), token);
+        Require(result.Error == SocketError.ConnectionRefused && !result.TimedOut && result.Attempt.ReachedSocketCall &&
+            Equals(local, sender.Local), "connection refusal is recorded independently of delivery");
+        try
+        {
+            _ = await sender.SendAsync(Guid.NewGuid(), token);
+            throw new InvalidDataException("Failed sender reused");
+        }
+        catch (InvalidOperationException error) when (error.Message == "MachineEgressFailedSocketCannotBeReused") { }
     }
 
     private static MachineEgressAttempt Attempt(MachineEgressDeliveryPhase phase, Receipt receipt,
@@ -95,53 +117,63 @@ internal static class MachineEgressDeliveryCases
         if (flow.Family == AddressFamily.InterNetworkV6) receiver.DualMode = false;
         receiver.Bind(new IPEndPoint(address, 0));
         if (stream) receiver.Listen(3);
-        using var first = new Socket(flow.Family, type, flow.Protocol);
-        using var second = flow.Existing ? null : new Socket(flow.Family, type, flow.Protocol);
-        using var last = new Socket(flow.Family, type, flow.Protocol);
+        var destination = (IPEndPoint)receiver.LocalEndPoint!;
+        var index = checked((uint)(flow.Family == AddressFamily.InterNetwork
+            ? NetworkInterface.LoopbackInterfaceIndex : NetworkInterface.IPv6LoopbackInterfaceIndex));
+        using var first = new MachineEgressSender(address, destination, index, flow.Protocol);
+        using var second = flow.Existing ? null : new MachineEgressSender(address, destination, index, flow.Protocol);
+        using var last = new MachineEgressSender(address, destination, index, flow.Protocol);
 
-        await first.ConnectAsync(receiver.LocalEndPoint!, token);
-        using var firstPeer = stream ? await receiver.AcceptAsync(token) : null;
-        var firstId = Guid.NewGuid();
-        var baseline = await Observe(first, firstPeer, firstId);
+        var firstLocal = first.Local;
+        var (baseline, firstPeer) = await Observe(first, firstLocal, null);
+        using var heldFirstPeer = firstPeer;
         Receipt enforced;
         if (second is null)
         {
-            enforced = await Observe(first, firstPeer, firstId);
+            (enforced, _) = await Observe(first, firstLocal, heldFirstPeer);
         }
         else
         {
-            await second.ConnectAsync(receiver.LocalEndPoint!, token);
-            using var secondPeer = stream ? await receiver.AcceptAsync(token) : null;
-            enforced = await Observe(second, secondPeer, Guid.NewGuid());
+            var (receipt, peer) = await Observe(second, second.Local, null);
+            using var heldSecondPeer = peer;
+            enforced = receipt;
         }
-        await last.ConnectAsync(receiver.LocalEndPoint!, token);
-        using var lastPeer = stream ? await receiver.AcceptAsync(token) : null;
-        var restored = await Observe(last, lastPeer, Guid.NewGuid());
+        var (restored, lastPeer) = await Observe(last, last.Local, null);
+        using var heldLastPeer = lastPeer;
         return [baseline, enforced, restored];
 
-        async Task<Receipt> Observe(Socket sender, Socket? accepted, Guid socketId)
+        async Task<(Receipt Receipt, Socket? Peer)> Observe(MachineEgressSender sender, IPEndPoint local, Socket? accepted)
         {
             var marker = Guid.NewGuid();
-            var bytes = marker.ToByteArray();
+            var sent = await sender.SendAsync(marker, token);
+            Require(sent.Error is null && !sent.TimedOut && sent.Attempt.ReachedSocketCall && Equals(sender.Local, local),
+                "bounded sender completed using its original tuple");
             var read = new byte[17];
-            var started = Stopwatch.GetTimestamp();
-            if (accepted is not null)
+            var newPeer = stream && accepted is null ? await receiver.AcceptAsync(token) : null;
+            try
             {
-                using var output = new NetworkStream(sender, ownsSocket: false);
-                using var input = new NetworkStream(accepted, ownsSocket: false);
-                await output.WriteAsync(bytes, token);
-                await input.ReadExactlyAsync(read.AsMemory(0, 16), token);
+                var peer = accepted ?? newPeer;
+                if (peer is not null)
+                {
+                    Require(Equals(peer.RemoteEndPoint, local), "independent TCP receipt binds pre-connect tuple");
+                    using var input = new NetworkStream(peer, ownsSocket: false);
+                    await input.ReadExactlyAsync(read.AsMemory(0, 16), token);
+                }
+                else
+                {
+                    var observed = await receiver.ReceiveFromAsync(read, SocketFlags.None, new IPEndPoint(address, 0), token);
+                    Require(observed.ReceivedBytes == 16 && Equals(observed.RemoteEndPoint, local),
+                        "independent datagram receipt binds pre-send tuple");
+                }
+                Require(read.AsSpan(0, 16).SequenceEqual(marker.ToByteArray()), "receiver observed exact marker");
+                var attempt = sent.Attempt;
+                return (new(marker, attempt.SocketId, attempt.Started, attempt.Finished), newPeer);
             }
-            else
+            catch
             {
-                Require(await sender.SendAsync(bytes, SocketFlags.None, token) == bytes.Length, "complete datagram submitted");
-                var observed = await receiver.ReceiveFromAsync(read, SocketFlags.None,
-                    new IPEndPoint(address, 0), token);
-                Require(observed.ReceivedBytes == bytes.Length && Equals(observed.RemoteEndPoint, sender.LocalEndPoint),
-                    "independent datagram receipt binds sender");
+                newPeer?.Dispose();
+                throw;
             }
-            Require(read.AsSpan(0, 16).SequenceEqual(bytes), "receiver observed exact marker");
-            return new(marker, socketId, started, Stopwatch.GetTimestamp());
         }
     }
 
