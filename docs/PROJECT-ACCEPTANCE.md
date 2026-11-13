@@ -12,6 +12,18 @@
 - d7507e5 对应三组 Actions 43354304869、43354304588、43354304617 均 SUCCESS；622700e 没有可查询的 GitHub Actions workflow run 或 combined status。不得将 d7507e5 的 CI 结果外推到 622700e。
 - 这是 Git 分支/PR 集成状态，不是产品能力 PASS，也不改变本账本中任何真实 WFP 写入、物理出口、Broker/LPAC、正式 Claude 或完整产品验收的 NOT_RUN 状态。最新状态以 [CURRENT-STATE](CURRENT-STATE.md) 为准。
 
+## 2026-11-13 P0-ASSURANCE + P0-HOST 首批可信证据与网络画像源码（PR #4 Draft）
+
+- 基线：从实时 Codex HEAD `bdbd667545519952e5f4bb8464fd782364d18f8c` 创建独立分支 `chatgpt/p0-assurance-host-20261113`；目标为原 Codex 主线，不覆盖 Codex 网络工作。PR #4 为 Draft，未合并。
+- SOURCE：新增 `src/Shared/HostPrivacyEvidence.cs`，定义 HostReferenceOnly / RestrictedActor、ContentRead / AccessDenied / TargetAbsent / Unknown / NotRun、P0 目标矩阵、敏感内容区分、有效期、Owner 封存和 Artifact SHA-256。宿主参考不能冒充受限暴露；缺失/过期/未知保留 P0 UNKNOWN；任一 P0 敏感内容确认可读即 P0Exposure，不以其他拒绝平均抵消。
+- SOURCE：`OfflineConsoleNetworkSurvey.Seal` 复用原可信 Owner、ProtectedState 和 LPAC worker，封存 GetAdaptersAddresses、GetExtendedTcpTable IPv4/IPv6 原始内容及进程清单；新 profile receipt 保存到受保护状态，普通摘要仅返回 SHA、计数和 P0 flags。ProcessView 增加独立 CapturedFileTime，survey schema 提升至 2。OfflineConsoleQualification 的限定完成条件增加 profile receipt、P0Exposure=false、P0Unknown=false。
+- SOURCE：`tests/WorkspacePipe/HostPrivacyEvidenceCases.cs` 覆盖来源绑定、宿主/受限区分、内容/拒绝、过期、缺失、同源不独立、跨源推断、P0 一票阻断和 P0 降级拒绝；`tests/OwnedToolLaunch/OfflineConsoleNativeCases.cs` 增加 Windows Runner 普通进程实际网络内容到 profile 的映射测试。
+- 范围限制：该网络 profile 只覆盖接口 GUID/MAC/IP/DNS/Gateway、IPv4/IPv6 TCP endpoint/PID，以及指定 FlClash/UU 相关进程名称清单；不覆盖 UDP、路由/DNS cache、BSSID/SSID、ASN/运营商、FlClash/UU 管理配置、PnP/GPU、注册表、COM/WMI、完整工具派生链或跨会话画像。
+- T0 SOURCE 已形成；T1/T2 以该 Draft PR 最新 HEAD 的三组 Actions 为准。Windows Runner 普通进程映射测试不是 LPAC/L3 证据。
+- **T3 新集成后的真实 Windows 安装 Broker + 同 Job LPAC 网络内容对抗：NOT_RUN。** 历史上指定 API 的 error 5 仅保留为历史结果，不能替代新 schema 2/profile receipt 的实机验收。T4 多工具完整画像、T5 真实受保护 Claude 完整链均 NOT_RUN。
+- 不修改 WFP、全机网络策略、FlClash/UU owner、Bootstrap、Manifest、安装协议或 GPU 能力；不改变正式 Claude 准入许可。整机产品仍 NOT_ACCEPTED。
+- 详细实现边界、数据流、证据级别和下一步实机要求见 [P0-ASSURANCE-HOST-IMPLEMENTATION-20261113](P0-ASSURANCE-HOST-IMPLEMENTATION-20261113.md)；唯一 Codex 主线状态仍见 [CURRENT-STATE](CURRENT-STATE.md)。
+
 ## 全机出口首个切片：定向双栈 WFP 拒绝
 
 - SOURCE / VERIFIED（托管规则定义）独立全机拒绝子层和四条持久规则，覆盖双栈非回环出站包及双栈 IP 转发。覆盖安装绑定、层/动作/条件漂移拒绝。原生只读库存代码已编入独立测试项目，真实读取、实际 WFP 仲裁和物理投递均 NOT_RUN。
