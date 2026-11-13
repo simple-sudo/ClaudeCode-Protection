@@ -5,7 +5,6 @@ param(
     [string]$Stage
 )
 $ErrorActionPreference='Stop'
-Set-StrictMode -Version Latest
 $script:ProjectSecurityStage=$Stage
 $script:ProjectSecurityStartedAt=Get-Date
 if($Stage -cne 'DailyBuild'){
