@@ -8,7 +8,7 @@ internal sealed record HostPrivacyEvidenceRecord(
     string EvidenceId,string SessionId,string ActorId,string Target,string Field,string Value,
     string SourceId,string SourceFamily,string Claim,string CorrelationKey,
     HostPrivacyEvidenceVisibility Visibility,HostPrivacyEvidenceOutcome Outcome,
-    bool OwnerSealed,bool ContentVerified,bool RequiredP0,int? NativeError,
+    bool OwnerSealed,bool ContentVerified,bool RequiredP0,bool SensitiveContent,int? NativeError,
     DateTimeOffset ObservedAtUtc,DateTimeOffset? ExpiresAtUtc,string ArtifactSHA256);
 
 internal sealed record HostPrivacyEvidenceAssessment(
