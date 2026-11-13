@@ -5,6 +5,16 @@
 历史页的“当前/待执行/暂停/DELIVERABLE”按段落日期及限定范围解释，不是今天的状态或操作许可。
 不在本页复制当前安装和授权摘要。
 
+## 2026-11-13 GitHub 分支与 PR #3 状态纠正
+
+GitHub 只读核查确认：PR #3（Add owner-bound offline workspace Git workflow）已于 2026-11-13 06:17:18Z CLOSED / MERGED。来源分支 chatgpt/complete-git-workflow-20261110 的 HEAD 和 merge commit 均为 d7507e57959c8c580a79657b756ec5fc6611b6db；目标分支为 codex/integrate-privacy-admission-20261027，PR 原目标基线为 8d56b0c40ef92d384b572bb168eec6bcd8a44d4e。
+
+核查时 codex HEAD 为 622700ebefa685eaf2179d032bcd3da352e83065。它包含 d7507e5，并在该提交之后额外领先 16 个提交、无落后提交；相对 PR 原目标基线共领先 334 个提交。后续 16 个提交主要推进双栈 WFP 出站探针、发送/投递证据、路由和网络变化观察、WFP 丢弃/物理帧关联、持久隔离与恢复、FlClash Core 端点租约。具体范围见 [网络机制](NETWORK-SCOPE.md#2026-11-12-全机-wfp-可行性审查与首个实证切片) 和 [验收账本](PROJECT-ACCEPTANCE.md)。
+
+d7507e5 对应的 Hosted compile、Offline workspace Git workflow、Safe managed policy smoke 三组 Actions（43354304869、43354304588、43354304617）均 SUCCESS；但对 622700e 的 GitHub Actions workflow-run 和 combined-status 查询均无记录。不能把前述旧基线 CI 结果写成 622700e 已通过 CI。PR #3 合并状态不改变任何产品能力的 PASS/FAIL/NOT_RUN 结论。
+
+本段顶部的 2026-11-13 核查状态优先于下方 2026-11-12 及更早记录中“PR #3 保持 OPEN / DRAFT”的表述；旧记录保留为当时真实状态，不再代表当前状态。
+
 ## 全机出口开发：首个 WFP 包层规则切片
 
 架构冻结后实现定向双栈拒绝规则、对象回读及仅中止的原生资格事务。托管规则测试和原有 PolicySmoke 均通过，原生层字段只读查询因普通令牌权限返回 Win32 5。范围与后续缺口见 [网络机制](NETWORK-SCOPE.md#2026-11-12-全机-wfp-可行性审查与首个实证切片) 及 [验收账本](PROJECT-ACCEPTANCE.md#全机出口首个切片定向双栈-wfp-拒绝)。
@@ -27,7 +37,7 @@
 
 ## 2026-11-12 显式 Git 工作流 schema 2：对抗配置、独立指标与结果快照验收
 
-开发分支 `chatgpt/complete-git-workflow-20261110` 当前 HEAD `87918722b0c39c82e780f4a6bd221ede127e3227`（CURRENT-STATE/STATUS/验收证据同步提交）；最近产品/测试行为基线 `406324114b2c90ccd2f2ec352e0f0c31f43f1f3d`，后续代码/测试输出清理与 CI 标签 HEAD `569cb301485bb439d9609b1bfe29c02d7197ff5c`。`2c3fb16` 移除产品异常中的原始 SID/ACE 诊断字符串，`28565b1` 移除测试 harness 的临时原始 SID/ACE 输出并恢复直接生产 descriptor 调用，`569cb30` 更正 CI 步骤标签；后续 Actions 43158190722（offline workspace Git + elevated native NTFS）、43158190720（hosted compile）、43158190733（managed policy/daily compile）全部 SUCCESS。历史 schema 2 Git 产品源码基线 `6a76936cad67be5da8adc08b3db0e05ff7434be1`、恢复测试实现基线 `b93347ca1778d34758a3b3aeddedceeed05f049c`；产品超时修复源码基线 `ec195f4c49414ecf374cf12e5d9929b576b11817`、Broker 命令准入回归测试 `f687cd874bd9ae2473eb5688d6b90af74daab577`；Draft PR #3 保持 OPEN / DRAFT，未合并。
+开发分支 `chatgpt/complete-git-workflow-20261110` 当前 HEAD `87918722b0c39c82e780f4a6bd221ede127e3227`（CURRENT-STATE/STATUS/验收证据同步提交）；最近产品/测试行为基线 `406324114b2c90ccd2f2ec352e0f0c31f43f1f3d`，后续代码/测试输出清理与 CI 标签 HEAD `569cb301485bb439d9609b1bfe29c02d7197ff5c`。`2c3fb16` 移除产品异常中的原始 SID/ACE 诊断字符串，`28565b1` 移除测试 harness 的临时原始 SID/ACE 输出并恢复直接生产 descriptor 调用，`569cb30` 更正 CI 步骤标签；后续 Actions 43158190722（offline workspace Git + elevated native NTFS）、43158190720（hosted compile）、43158190733（managed policy/daily compile）全部 SUCCESS。历史 schema 2 Git 产品源码基线 `6a76936cad67be5da8adc08b3db0e05ff7434be1`、恢复测试实现基线 `b93347ca1778d34758a3b3aeddedceeed05f049c`；产品超时修复源码基线 `ec195f4c49414ecf374cf12e5d9929b576b11817`、Broker 命令准入回归测试 `f687cd874bd9ae2473eb5688d6b90af74daab577`；截至本段记录时（2026-11-12）Draft PR #3 仍为 OPEN / DRAFT；该状态于 2026-11-13 结束，PR #3 已合并，见本页顶部记录。
 最近完成的 GitHub Actions：43157681722 离线 Git workflow（产品/专项 harness 编译、标准用户真实 Git、TaskWorkspaceNative 与 NativeGitWorkspaceCases 真实 NTFS 测试）；43157681712 hosted 产品编译/静态安全边界；43157681738 纯托管策略 smoke 与 daily CLI 编译，三组均 SUCCESS。输出清理/步骤标签修正后的重复验证 43158190722、43158190720、43158190733 也全部 SUCCESS；其中 offline workflow 明确分离 standard-user policy tests 与 elevated native NTFS Git tests。Pointer schema 1；当前安装 Release `f9e8d29d9c2c472495422dbffd40bffd`，Activation `INACTIVE`，Package schema 32，25 assets。用户在 2026-11-12 以只读 PowerShell 实测 `current.json` 的 `ManifestSHA256` 与当前版本 `package.json` 实际 SHA256 完全一致：`5195D12C6A446BA3408D822C3907E5FD7E51BB4ED820A69BFCB08A16512BDBC2`。 当前 Bootstrap 的旧 Transition 从 `4d186bcb` 起始，与此安装不匹配，不可复用；必须待新候选资产哈希固定后重新授权。中间一次 timeout override 提交触发两个 CS1503 方法组兼容性错误；已恢复无参 `WaitForCanaryExit()` 重载并新增显式有界重载，随后最新三组 CI 全绿。schema 2 Git 的 11 命令流程现在将 LPAC child wait 与 60,000ms resource permit/runtime deadline 对齐；旧 Canary 默认期限仍保持，0 和大于 120,000ms 的显式值拒绝。 新增 Broker-side request gate 回归对 11 条命令逐一验证精确 sequence、参数前缀和 StartHash 环境绑定；乱序/重放/越界/附加参数/环境自洽篡改/Pathspec 字节篡改全部拒绝。测试 harness 运行了生产数据与策略代码及 Runner Git，但没有执行产品 Broker、Owned Job、LPAC 或 Claude。 `Test-ProductBuildBoundary.ps1` 在 hosted compile 前通过 5 项静态断言：日常 CLI 不含历史 SelfTests/工程 Job 代码、工程源独立、批准资产不含工程文件、4 个 Build 入口先执行无条件 `SECURITY_REVIEW_REQUIRED`。此 PASS 不解除门禁。 未记录任务目录恢复现已接入：目录创建前持久化 task intent；缺少 Created receipt 时，仅允许同一非 control profile、无 profile-job 进程绑定、原 profile-created/cleanup-intent 摘要、Program Files 父对象身份及固定 nonce 路径均匹配的恢复。NTFS/no-reparse、精确 owner/group/DACL、low label expected-or-absent、空目录检查通过后才标记删除，并二次核对授权/路径缺失后写 schema 2 closed receipt。`ProfileRecovery` 现在源链接实际 `SessionTaskWorkspace` 与 `SessionProfileRecovery`，fake ProtectedState + 注入式 `ITaskWorkspaceRecoveryOps` 下执行真实 `SessionTaskWorkspace.Cleanup` 与 `AssertClosed`。覆盖未创建/空目录、low-label 精确或允许缺失、非法标签、cleanup scope/identity、枚举/路径/父身份、非空/重解析/ACL、Job 绑定、删除失败/删除后仍存在、删除期间 intent/created/binding 漂移及 closed receipt 篡改。43151208497 的标准用户 harness PASS；fake native 未执行实际目录删除，AppContainer、Job、Broker/LPAC 仍 NOT_RUN。原私有 `Open()` 已有 `DELETE`（`0x00030180`），本轮只命名掩码并加回归断言，纠正先前误判。 `SessionProfileRecovery.ValidateCleanupIntent` 现在在清理和回执消费时重新验证 profile-created 记录与当前 Profile 完全一致、清理范围精确、`NewProcessAdmissionAllowed=false`，以及存在时的持久化 CLOSED/zero Job 绑定；返回的 cleanup-intent SHA256 用于 task workspace 删除前后授权复核。
 
 后续原生 NTFS 恢复补充（2026-11-12，分支 HEAD 当时为 3d5765f09ce07d9ebe62d6c0bf7683cb167bb920）：Actions 43154121514、43154121577、43154121797 全部 SUCCESS。新增 TaskWorkspaceNative hosted Windows harness，源链接实际生产 SessionTaskWorkspace/WindowsPathSeal/WorkspaceDescriptor，在 elevated runner identity（仅权限级别近似 Broker，不是 Broker 进程）下对真实 NTFS fixture 执行 Cleanup/AssertClosed 与 FileDispositionInfoEx 删除。精确 low label、无 label 两种空目录删除通过；非空目录、错误 Package SID/DACL、异常 Medium label 精确拒绝，验证路径/内容保留、RemovedEntries=0 与 NOT_CONFIRMED failure receipt。该 harness 使用 fake ProtectedState、SessionProfileRecovery、SessionResources 和 InstallationPackageSid；只派生 Package SID，不创建 AppContainer profile/token。故此证据只证明生产清理源码在真实 NTFS 上的窄范围行为；真实 Broker 创建时序、持久化 ProtectedState、AppContainer/LPAC token、Owned Job 与完整 11 命令链仍 NOT_RUN。另修正 SID allocator 释放（FreeSid/LocalFree）、精确拒绝回执断言、测试 SHA256 名称遮蔽和 CI finally 清理块。
@@ -2948,7 +2958,7 @@ Compile/Run/Tests失败和正常DataReport通过；最终library/Broker及77a1�
 - 新增 `docs/ARCHITECTURE-BASELINE-AND-TARGET-20261112.md`，记录基于源码 HEAD `74578e903c2584628d853598ef8f1910adf7da5b` 的工程清单、产品/测试依赖图、资源所有权、主要架构问题和 A0—A8 迁移计划；同步更新文档索引与 CURRENT-STATE。
 - 完成首个渐进式拆分：`InstallationProfileLease` 从 `AtomicAdmission.cs` 移至 `InstallationProfileLease.cs`；`AtomicJobCompletion` 移至 `AtomicJobCompletion.cs`；更新 Lifecycle 显式编译清单。未改变类型可见性/命名空间/方法签名、持久状态格式、Job-zero 清理条件、所有权、程序集或安装资产。
 - 产品源码提交：`74a3a5908308ef31b098dbcccf6b0ec94fa7d1fc`。三组 Actions 均 SUCCESS：`43213673926` Hosted Windows compile、`43213673933` Safe managed policy smoke、`43213673931` Offline workspace Git workflow。产品编译和六个专项 harness 编译通过，普通用户策略/Runner Git 与 elevated NTFS fixture 通过。
-- 证据边界：没有本机 Build/安装/UAC/产品执行；没有 Broker → Owned Job → LPAC 完整链或真实 Claude 验收。SECURITY_REVIEW_REQUIRED 保持有效，PR #3 保持 OPEN / DRAFT。
+- 证据边界：没有本机 Build/安装/UAC/产品执行；没有 Broker → Owned Job → LPAC 完整链或真实 Claude 验收。SECURITY_REVIEW_REQUIRED 保持有效，截至该 2026-11-12 记录时，PR #3 仍为 OPEN / DRAFT；该状态于 2026-11-13 结束，见本页顶部 GitHub 同步记录。
 
 
 ## 2026-11-12：AtomicChild Token 观察边界提取
@@ -2989,4 +2999,4 @@ Compile/Run/Tests失败和正常DataReport通过；最终library/Broker及77a1�
 - 更新架构权威文档 `docs/ARCHITECTURE-BASELINE-AND-TARGET-20261112.md`，补入当前分支源码地图、真实项目/测试依赖、CI 覆盖缺口、partial 与真实 owner 的区别，以及 A2 后续次序。文档提交：`5cd52cb8dd0fb49be73eff97c03979dfcdeb1828`。
 - 同步 `docs/CURRENT-STATE.md`，将产品源码基线和最新 CI 更新到 `9c944d1`，并记录当前项目规模与 A2 重点。文档提交：`f1002230208d00de05f4c14c3cf3393e05674a02`。
 - 下一阶段按 A2 串行推进：先用 typed ResourceExecution intent 消除跨层布尔模式组合，再把 workspace 路径/文件句柄交给唯一的 `SessionWorkspaceLease` owner；`SessionResources` 仅组合并持有子 lease。保留原 `ProtectedSession` 唯一 session owner。
-- 未执行本机 Build、安装、UAC、网络修改、正式 Claude 启动或故障注入；`SECURITY_REVIEW_REQUIRED` 保持有效；PR #3 保持 OPEN / DRAFT。
+- 未执行本机 Build、安装、UAC、网络修改、正式 Claude 启动或故障注入；`SECURITY_REVIEW_REQUIRED` 保持有效；截至该 2026-11-12 记录时，PR #3 仍为 OPEN / DRAFT；该状态于 2026-11-13 结束，见本页顶部 GitHub 同步记录。

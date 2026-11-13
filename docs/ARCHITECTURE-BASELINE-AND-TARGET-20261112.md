@@ -1,10 +1,12 @@
 # ClaudeCode-Protection 架构基线与目标架构（2026-11-12）
 
-> 现有产品的模块和资源所有权边界已冻结，基准为 `d7507e57959c8c580a79657b756ec5fc6611b6db`，见第 14 节。前文保留以 `74578e9` 开始的历史审查、阶段目标和中间快照。未来全机网络所有者及其原生执行机制仍为设计。
+> 现有产品入口、模块职责和资源所有权冻结基准为 `d7507e57959c8c580a79657b756ec5fc6611b6db`，见第 14 节；它是架构冻结基线，不等于当前分支 HEAD。2026-11-13 当前源码分支及 PR 状态见第 15 节。前文保留以 `74578e9` 开始的历史审查、阶段目标和中间快照。未来全机网络所有者及其原生执行机制仍为设计。
 >
 > 本文是架构职责和依赖方向的权威文档。正式安全目标仍由 [SECURITY-REQUIREMENTS](SECURITY-REQUIREMENTS.md) 定义；当前实现和验收事实由 [CURRENT-STATE](CURRENT-STATE.md) 与 [PROJECT-ACCEPTANCE](PROJECT-ACCEPTANCE.md) 定义；机制细节仍由对应专题文档定义。
 
 ## 1. 审查范围与基线
+
+> 本节及其原始分支/PR 表格是 2026-11-12 架构审查时的历史快照；2026-11-13 的最新 GitHub 分支、PR 和源码基线见第 15 节。
 
 已直接检查当前开发分支的 Git HEAD、PR #3、目标分支比较、最新 Actions、完整 Git Tree、五个产品项目的显式编译清单、核心 Lifecycle 源码、24 个测试项目的项目文件、三个 Actions workflow、Bootstrap 资产清单、README、AGENTS、CURRENT-STATE、DOCUMENTATION-INDEX、SECURITY-REQUIREMENTS 和 2026-11-12 静态构建边界审查。
 
@@ -402,7 +404,7 @@ Machine Network Lease 和 Session lease 是不同生命周期。Broker/Owner 是
 - 新 DLL 是发布协议变化，不是普通重构。
 - 真实数据实验按 EVIDENCE-GOVERNANCE 保存真实来源、身份、时间、工件和哈希；不以合成数据替代 L3。
 - SECURITY_REVIEW_REQUIRED 是硬停止，任何新入口、CI、脚本或重命名均不得绕过。
-- PR #3 保持 OPEN / DRAFT；不得合并、修改目标分支或 force-push。
+- PR 状态必须按 GitHub 实时结果核对，不从历史文档推断。PR #3 已于 2026-11-13 合并，不得重新打开或重复合并；其他 PR 的合并、改目标分支或 force-push 仍须遵守所有者的明确决定。
 
 
 ## 13. 2026-11-12 historical re-audit at `9c944d1`
@@ -413,7 +415,7 @@ This section supersedes only the *current-source observations* in the earlier re
 
 - Repository: `simple-sudo/ClaudeCode-Protection`; branch: `chatgpt/complete-git-workflow-20261110`.
 - Current audited HEAD: `9c944d10a1b24bc88b3099091ea93a0d564b9484`.
-- PR #3 remains OPEN / DRAFT, targeting `codex/integrate-privacy-admission-20261027`; the branch is 299 commits ahead and 0 behind the target.
+- At the time of this historical 2026-11-12 audit, PR #3 was OPEN / DRAFT and the branch was 299 commits ahead of its target. PR #3 was subsequently merged on 2026-11-13; see Section 15 for the current GitHub state.
 - The handoff SHA `573c36271d0839d223317309ccda1e4a71446f47` was confirmed as the branch HEAD before this repair. Its Hosted compile and Offline Git workflows failed with 31 CS0246 errors originating in `PersistentFence.cs`. The primary partial declaration lacked `namespace ProtectionLifecycle;`, while the split partial files and referenced WFP/session types were in that namespace.
 - Commit `9c944d10a1b24bc88b3099091ea93a0d564b9484` restores the file-scoped namespace only. It does not change WFP policy, filter definitions, access masks, ownership, recovery or product behavior.
 - All three workflows for `9c944d1` completed SUCCESS: Hosted Windows compile only `43230310511`, Offline workspace Git workflow verification `43230310544`, and Safe managed policy smoke `43230310614`. The offline workflow compiled all six focused harnesses and completed its standard-user policy/real Git and elevated native NTFS fixture steps.
@@ -509,3 +511,37 @@ No new DLL, namespace-wide migration, install asset, Manifest/Bootstrap approval
 | 全机网络扩展 | 由原可信 Broker/Owner 协调独立的全机策略所有者和恢复记录。会话消费经核验的网络状态；全机故障可撤销会话许可，停止会话不释放全机规则。旧 IPv6 流程的 ProtectedLifecycleCoordinator 目前仅有 fixture 调用；接线前须满足现行两套状态机。 |
 
 通用拆分阶段到此结束。现有 `partial` 结构按底层资源归属保留。未提交的 `GitToolchainContract` 候选不纳入基线。进一步改动须由可定位的技术障碍、安全缺陷或重大设计缺陷驱动，并记录受影响的调用链、所有权、兼容性和回归证据。A4/A6/A7 的产品缺口按对应功能推进，全机网络实现进入主开发顺序。冻结不改变软件包版本，也不提供产品运行或交付资格。
+
+## 15. 2026-11-13 GitHub 集成状态与冻结后源码跟进
+
+本节是本文的最新分支/PR 状态记录，覆盖第 1 节原始审查表和第 13.1 节当时的 OPEN / DRAFT 描述；不改写它们在 2026-11-12 审查时的历史真实性。
+
+### 15.1 PR #3 与当前 codex 分支
+
+- Repository：simple-sudo/ClaudeCode-Protection。
+- 当前开发分支：codex/integrate-privacy-admission-20261027。
+- 本次文档同步前的源码 HEAD：622700ebefa685eaf2179d032bcd3da352e83065。
+- PR #3：CLOSED / MERGED，merged_at 为 2026-11-13T06:17:18Z。
+- PR 来源分支：chatgpt/complete-git-workflow-20261110，HEAD d7507e57959c8c580a79657b756ec5fc6611b6db。
+- PR 目标分支：codex/integrate-privacy-admission-20261027；原目标基线 8d56b0c40ef92d384b572bb168eec6bcd8a44d4e。
+- merge commit：d7507e57959c8c580a79657b756ec5fc6611b6db。
+- codex 当前源码 HEAD 相对 PR merge commit 领先 16 个提交、无落后提交；相对 PR 原目标基线领先 334 个提交、无落后提交。PR merge commit 是当前源码 HEAD 的祖先。
+- main 核查快照 c9c979a205663813d82e9dc1465302853468bd3d。codex 与 main 已分叉，共同祖先 3e1a511ef2e177f518ea98360319f8f300c803e；codex 独有 481 个提交，main 独有 2 个提交。不得未经明确决定同步或覆盖 main。
+
+### 15.2 架构冻结基线与后续 16 个提交
+
+第 14 节的 d7507e5 仍是既有产品入口、模块职责、资源所有权和依赖方向的架构冻结基线。它不是当前分支 HEAD。其后的 16 个提交是沿既有 ProtectionLifecycle/WFP 所有者推进全机网络验证切片，主要增加：
+
+- 双栈出站 WFP 探针规则、受控发送端和三阶段投递证据；
+- WFP 丢弃事件选择、Ethernet 帧匹配、采集窗口和投递判定关联；
+- 路由/地址/接口变化观察及精确发送接口绑定；
+- 双栈持久隔离策略、意图记录、对象读回和精确恢复状态；
+- FlClash Core 进程身份与稳定、新鲜代理路线观察绑定的端点租约。
+
+最新提交 622700e 将代理端点租约进一步绑定到稳定的新鲜路线观察。上述改动扩展网络功能，不代表既有架构重构重新开始，也不代表全机网络能力已完成。
+
+### 15.3 CI 与验收边界
+
+d7507e5 对应的三组 GitHub Actions（Hosted Windows compile only 43354304869、Offline workspace Git workflow verification 43354304588、Safe managed policy smoke 43354304617）均 SUCCESS。对 622700e 的 GitHub Actions workflow-run 和 combined-status 查询均无记录，因此不能把 d7507e5 的成功外推为 622700e 已通过 CI。
+
+受控 Windows 回环、发送回执、路由查询和通知的限定证据见 [网络范围](NETWORK-SCOPE.md) 与 [验收账本](PROJECT-ACCEPTANCE.md)。真实 WFP 写入/仲裁、物理出口采集、Broker/Owner 接线、真实 FlClash 外层端点和全机故障恢复仍未由这些证据证明。架构冻结不改变 SECURITY_REVIEW_REQUIRED，也不提供本机 BUILD、安装、提权或正式 Claude 运行资格。

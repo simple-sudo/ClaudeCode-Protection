@@ -5,6 +5,13 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-13 GitHub 分支与 PR #3 集成状态（非产品能力验收）
+
+- PR #3 已于 2026-11-13 06:17:18Z 合并并关闭；来源分支 HEAD / merge commit 为 d7507e57959c8c580a79657b756ec5fc6611b6db，目标分支为 codex/integrate-privacy-admission-20261027，原目标基线为 8d56b0c40ef92d384b572bb168eec6bcd8a44d4e。
+- 当前产品源码核查基线为 622700ebefa685eaf2179d032bcd3da352e83065；相对 PR merge commit 额外领先 16 个提交、无落后提交。该 16 个提交推进双栈 WFP 探针、受控投递与路由观察、丢弃/帧证据关联、持久隔离/恢复及代理端点租约。
+- d7507e5 对应三组 Actions 43354304869、43354304588、43354304617 均 SUCCESS；622700e 没有可查询的 GitHub Actions workflow run 或 combined status。不得将 d7507e5 的 CI 结果外推到 622700e。
+- 这是 Git 分支/PR 集成状态，不是产品能力 PASS，也不改变本账本中任何真实 WFP 写入、物理出口、Broker/LPAC、正式 Claude 或完整产品验收的 NOT_RUN 状态。最新状态以 [CURRENT-STATE](CURRENT-STATE.md) 为准。
+
 ## 全机出口首个切片：定向双栈 WFP 拒绝
 
 - SOURCE / VERIFIED（托管规则定义）独立全机拒绝子层和四条持久规则，覆盖双栈非回环出站包及双栈 IP 转发。覆盖安装绑定、层/动作/条件漂移拒绝。原生只读库存代码已编入独立测试项目，真实读取、实际 WFP 仲裁和物理投递均 NOT_RUN。
@@ -2090,7 +2097,7 @@ SOURCE/BUILD/INTEGRATED：新候选92e39631676f45168f1bc52125068fb9、清单ADC8
 
 ## 2026-11-12：真实 LPAC LowBox / Medium-IL DACL 对照与 task-workspace NTFS 验收
 
-**基线：** `3f88571149e332af164ab575283a98e964a074a1`，PR #3 Draft，目标分支未改。
+**基线：** `3f88571149e332af164ab575283a98e964a074a1`。该段记录时（2026-11-12）PR #3 仍为 Draft、目标分支未改；PR #3 于 2026-11-13 合并，当前 Git 状态见本页顶部说明。
 
 **实际 Windows Runner 结果：**
 - `43181109441` Offline workspace Git workflow verification：SUCCESS。产品编译、六个聚焦托管测试项目编译、普通用户策略测试、实际 NTFS task-workspace 与 LPAC Git 访问测试全部通过。
