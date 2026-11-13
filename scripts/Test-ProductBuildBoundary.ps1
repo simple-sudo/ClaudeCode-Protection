@@ -86,7 +86,7 @@ $tokens=$null;$parseErrors=$null
 $gateAst=[System.Management.Automation.Language.Parser]::ParseInput($gateText,[ref]$tokens,[ref]$parseErrors)
 Require ($parseErrors.Count -eq 0) 'security gate has PowerShell parse errors'
 Require ($null -ne $gateAst.ParamBlock) 'security gate must require an explicit stage'
-Require ($gateText -match "ValidateSet\('DailyBuild','EngineeringBuild','CenterBuild','NativeBuild','IsolationProbe','WfpMutation'\)") 'security stage allowlist changed'
+Require ($gateText -match "ValidateSet\('DailyBuild','EngineeringBuild','CenterBuild','NativeBuild','IsolationProbe','WfpMutation','LegacyOfflineBuild'\)") 'security stage allowlist changed'
 Require ($gateText -match '\$Stage -cne ''DailyBuild''') 'all stages except DailyBuild must remain closed'
 Require ($gateText -match "Get-Service -Name 'AVP21\.26'") 'pinned Kaspersky service health check missing'
 Require ($gateText -match "root/SecurityCenter2") 'Windows Security Center Kaspersky registration check missing'
@@ -97,16 +97,31 @@ Require ($gateText -match "Add-Content -LiteralPath") 'Kaspersky monitor evidenc
 Require ($gateText -match "Start-Sleep -Milliseconds 750") 'Kaspersky event poll interval changed'
 Require ($gateText -match "TotalSeconds -ge 3") 'Kaspersky service/product recheck interval changed'
 Require ($gateText -match '\$process\.Kill\(\$true\)') 'monitor must terminate the complete child process tree on failure'
-Require ($gateText -match 'WaitForExit\(10000\)') 'monitor must wait for process-tree termination confirmation'
-Require ($gateText -match 'terminationConfirmed') 'monitor must verify process-tree termination rather than assume success'
+Require ($gateText -match 'Get-ProjectSecurityProcessTree') 'monitor must inspect the actual Win32 process tree'
+Require ($gateText -match 'Win32_Process') 'monitor must use Windows process ancestry for descendant verification'
+Require ($gateText -match 'ProcessTreeTerminationVerified') 'monitor must persist positive process-tree verification evidence'
+Require ($gateText -match 'WaitForExit\(250\)') 'monitor must use bounded root waits while independently checking descendants'
+Require ($gateText -match 'PROCESS_TREE_TERMINATION_UNCONFIRMED') 'unconfirmed process-tree termination must be a distinct failure'
+Require ($gateText -match 'Get-WinEvent -ListLog \*') 'monitor must discover Kaspersky-named Windows event channels'
+Require ($gateText -match 'KasperskyEventChannelSetChanged') 'monitor must stop if the Kaspersky event-channel inventory changes'
+Require ($gateText -match 'EventXml=\$_.ToXml\(\)') 'monitor must preserve raw Windows event XML'
+Require ($gateText -match 'RunId=\$script:ProjectSecurityRunId') 'every monitor record must carry the shared run ID'
+Require ($gateText -match 'return \$unique') 'an empty event query must return an empty array, not a nested empty array'
 Require ($gateText -match "FullVendorAlertVisibility='UNKNOWN'") 'limited event coverage must remain explicitly UNKNOWN'
 
 $dailyBuild=Read-Text 'scripts/Build.ps1'
 Require ($dailyBuild -match "Assert-ProjectSecurityClearance\.ps1'\) -Stage DailyBuild") 'daily build does not request the explicit DailyBuild stage'
 Require ($dailyBuild -match 'Invoke-ProjectSecurityMonitoredProcess') 'daily build is not continuously AV-monitored'
 Require ($dailyBuild -match "'--no-restore'") 'daily build must not fetch or restore dependencies during the first stage'
-Require ($dailyBuild -match '\$script:ProjectSecurityRunId') 'build stdout/stderr logs are not correlated with the AV monitor evidence run ID'
-Require ($dailyBuild -match 'did not provide a monitor run ID') 'daily build must fail closed if monitor/build log correlation is unavailable'
+Require ($dailyBuild -match 'ExpectedCommit') 'daily build must require a fixed expected Git SHA'
+Require ($dailyBuild -match 'project.assets.json') 'daily build must inspect the existing no-restore assets graph'
+Require ($dailyBuild -match 'RunAnalyzers=false') 'daily build must disable analyzer/source-generator execution'
+Require ($dailyBuild -match 'preprocess') 'daily build must inventory the evaluated MSBuild import graph'
+Require ($dailyBuild -match 'noAutoResponse') 'daily build must refuse implicit MSBuild response-file injection'
+Require ($dailyBuild -match 'daily-build-inputs.json') 'daily build must persist input SHA-256 evidence'
+Require ($dailyBuild -match 'daily-build-artifacts.json') 'daily build must persist output SHA-256 evidence'
+Require ($dailyBuild -match '--disable-build-servers') 'daily build must disable persistent SDK build servers'
+Require ($dailyBuild -match '\$script:ProjectSecurityRunId') 'build logs are not correlated with the AV monitor evidence run ID'
 
 $expectedStages=@{
     'Build.ps1'='DailyBuild'
@@ -130,9 +145,32 @@ foreach($relative in $wfpScripts){
     Require ($text.Contains("Assert-ProjectSecurityClearance.ps1') -Stage WfpMutation")) "$relative does not remain behind the WFP mutation stage"
 }
 
+
+foreach($relative in @('scripts/Build.ps1','scripts/Invoke-S1DailyBuild.ps1','scripts/Invoke-BrokerOfflineBuild.ps1','scripts/Set-MainProtection.ps1')){
+    $source=Read-Text $relative
+    $tokens=$null;$parseErrors=$null
+    [void][System.Management.Automation.Language.Parser]::ParseInput($source,[ref]$tokens,[ref]$parseErrors)
+    Require ($parseErrors.Count -eq 0) "$relative has PowerShell parse errors"
+}
+$legacyStages=@{
+    'scripts/Invoke-S1DailyBuild.ps1'='LegacyOfflineBuild'
+    'scripts/Invoke-BrokerOfflineBuild.ps1'='EngineeringBuild'
+}
+foreach($relative in $legacyStages.Keys){
+    $source=Read-Text $relative
+    $gatePosition=$source.IndexOf("Assert-ProjectSecurityClearance.ps1') -Stage "+$legacyStages[$relative],[StringComparison]::Ordinal)
+    $buildPosition=$source.IndexOf('dotnet',[StringComparison]::OrdinalIgnoreCase)
+    Require ($gatePosition -ge 0 -and ($buildPosition -lt 0 -or $gatePosition -lt $buildPosition)) "$relative does not fail closed before its legacy build action"
+}
+$mainProtection=Read-Text 'scripts/Set-MainProtection.ps1'
+Require ($mainProtection -match 'if \(\$Mode -in @\(''Enable'',''Restore''\)\)') 'WFP enable and restore mutations must both require the closed WfpMutation stage'
+Require ($dailyXml.SelectNodes('//Target|//UsingTask|//Exec|//PackageReference|//ProjectReference|//Analyzer|//SourceGenerator|//Import').Count -eq 0) 'daily project contains custom build execution, external packages, analyzers, generators or imports'
+
 Write-Output 'PASS daily explicit source inventory excludes historical SelfTests and engineering-only Job/sandbox code'
 Write-Output 'PASS engineering-only process/job/sandbox source remains separately compiled and unshipped'
 Write-Output 'PASS approved package inventory excludes engineering, selftest, sandbox and native-fence assets'
-Write-Output 'PASS staged gate opens only the monitored daily build and keeps engineering, probes and WFP mutation closed'
+Write-Output 'PASS staged gate opens only the monitored daily build and keeps engineering, legacy offline builds, probes and WFP mutation closed'
+Write-Output 'PASS legacy offline build scripts and both WFP mutation modes fail closed before side effects'
+Write-Output 'PASS DailyBuild source project contains no custom Target, UsingTask, Exec, package, analyzer, generator or explicit import nodes'
 Write-Output ("PASS {0} conventional Build entrypoints require explicit staged qualification before build actions" -f $buildEntrypoints.Count)
 Write-Output 'STATIC SOURCE REVIEW ONLY: no product build, assembly load, product execution, AV query, install or host mutation'
