@@ -1,5 +1,7 @@
+using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
+using System.Security.Cryptography;
 
 namespace ProtectionLifecycle;
 
@@ -7,21 +9,29 @@ namespace ProtectionLifecycle;
 // Closing an engine handle is never treated as removal of persistent objects.
 internal static class MachineEgressProbeLease
 {
-    internal static Guid Apply(ProtectedState state, VerifiedVersion version,
+    internal static MachineEgressProbeIntent Plan(ProtectedState state, VerifiedVersion version,
         uint v4Interface, IPAddress v4Receiver, uint v6Interface, IPAddress v6Receiver)
     {
-        ProtectedSession.AssertSystemTestingAllowed();
-        ProtectedState.RequireAdministrator();
         ArgumentNullException.ThrowIfNull(v4Receiver);
         ArgumentNullException.ThrowIfNull(v6Receiver);
         AssertCurrent(state, version);
+        var intent = new MachineEgressProbeIntent(1, Guid.ParseExact(state.InstallationId, "N"),
+            Guid.ParseExact(version.Package.Release, "N"), version.Package.ManifestHash,
+            Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), v4Interface, v4Receiver.ToString(), v6Interface, v6Receiver.ToString());
+        _ = intent.Policy();
+        return intent;
+    }
+
+    internal static void Apply(ProtectedState state, VerifiedVersion version, MachineEgressProbeIntent intent)
+    {
+        ProtectedSession.AssertSystemTestingAllowed();
+        ProtectedState.RequireAdministrator();
+        AssertCurrent(state, version);
+        AssertIntentVersion(state, version, intent);
         LifecycleRecovery.AssertNoPending(state);
         using var jobs = RegisteredJobSet.OpenForMaintenance(state);
         jobs.AssertClosedAdmissionsForNetworkMaintenance();
 
-        var intent = new MachineEgressProbeIntent(1, Guid.ParseExact(state.InstallationId, "N"),
-            Guid.ParseExact(version.Package.Release, "N"), version.Package.ManifestHash,
-            Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), v4Interface, v4Receiver.ToString(), v6Interface, v6Receiver.ToString());
         var bytes = intent.Encode();
         _ = MachineEgressProbeIntent.Decode(bytes, intent.InstallationId, intent.Leaf);
         var policy = intent.Policy();
@@ -33,6 +43,8 @@ internal static class MachineEgressProbeLease
             AssertCurrent(state, version);
             jobs.AssertClosedAdmissionsForNetworkMaintenance();
             MachineEgressProbeTransaction.AssertAbsentInTransaction(engine, policy);
+            if (state.ReadOptional(intent.PreparedLeaf) is not null || state.ReadOptional(intent.ClosedLeaf) is not null)
+                throw WfpNative.Contract("MachineEgressProbePlanAlreadyUsed");
             // Publish after verifying absence and before the first kernel add.
             // If the process stops after this point the record stays pending.
             var digest = state.WriteNew(intent.Leaf, bytes);
@@ -42,7 +54,30 @@ internal static class MachineEgressProbeLease
         });
         if (WfpNative.Transaction(engine, true, () => MachineEgressProbeTransaction.ReadOwnedInTransaction(engine, policy)) != prepared)
             throw WfpNative.Contract("CommittedMachineEgressProbeReadbackMismatch");
-        return intent.SubLayerKey;
+    }
+
+    internal static MachineEgressPolicyObservation Observe(ProtectedState state, VerifiedVersion version,
+        MachineEgressProbeIntent intent)
+    {
+        ProtectedSession.AssertSystemTestingAllowed();
+        ProtectedState.RequireAdministrator();
+        var started = Stopwatch.GetTimestamp();
+        AssertCurrent(state, version);
+        AssertIntentVersion(state, version, intent);
+        var bytes = intent.Encode();
+        var digest = Convert.ToHexString(SHA256.HashData(bytes));
+        var record = state.ReadOptional(intent.Leaf);
+        if (record is not null && (record.SHA256 != digest || !record.Bytes.AsSpan().SequenceEqual(bytes)))
+            throw WfpNative.Contract("MachineEgressObservationIntentDiffers");
+
+        var closed = ClosedReceiptPresent(state, intent, MachineEgressRecoveryState.ClosedReceipt(intent, digest));
+        var prepared = state.ReadOptional(intent.PreparedLeaf)?.Bytes;
+        using var engine = WfpNative.Open();
+        var objects = WfpNative.Transaction(engine, true,
+            () => MachineEgressProbeTransaction.ReadOwnedInTransaction(engine, intent.Policy()));
+        var result = MachineEgressRecoveryState.Observe(objects, record is not null, closed, prepared, digest);
+        return new(intent.SubLayerKey, result, started, Stopwatch.GetTimestamp(),
+            result == MachineEgressPolicyState.ExactBlock ? objects : null);
     }
 
     internal static void Recover(ProtectedState state, VerifiedVersion version, Guid operation)
@@ -55,8 +90,7 @@ internal static class MachineEgressProbeLease
 
         var leaf = MachineEgressProbeIntent.Prefix + operation.ToString("N") + ".json";
         var (intent, digest) = Read(state, leaf);
-        if (intent.Release.ToString("N") != version.Package.Release || intent.ManifestSHA256 != version.Package.ManifestHash)
-            throw WfpNative.Contract("MachineEgressRecoveryArtifactDiffers");
+        AssertIntentVersion(state, version, intent);
 
         var policy = intent.Policy();
         var expectedReceipt = MachineEgressRecoveryState.ClosedReceipt(intent, digest);
@@ -124,5 +158,12 @@ internal static class MachineEgressProbeLease
         if (pointer.Release != version.Package.Release || pointer.ManifestSHA256 != version.Package.ManifestHash ||
             pointer.Activation != "INACTIVE")
             throw WfpNative.Contract("MachineEgressProbeRequiresCurrentInactiveVersion");
+    }
+
+    private static void AssertIntentVersion(ProtectedState state, VerifiedVersion version, MachineEgressProbeIntent intent)
+    {
+        if (intent.InstallationId.ToString("N") != state.InstallationId ||
+            intent.Release.ToString("N") != version.Package.Release || intent.ManifestSHA256 != version.Package.ManifestHash)
+            throw WfpNative.Contract("MachineEgressProbeArtifactDiffers");
     }
 }

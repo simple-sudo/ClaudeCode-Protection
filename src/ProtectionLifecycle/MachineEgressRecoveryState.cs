@@ -47,6 +47,11 @@ internal sealed record MachineEgressPrepared(int SchemaVersion, string IntentSHA
     }
 }
 
+internal enum MachineEgressPolicyState { Absent, ExactBlock, Unknown }
+
+internal readonly record struct MachineEgressPolicyObservation(Guid Operation, MachineEgressPolicyState State,
+    long Started, long Finished, MachineEgressObjects? Objects = null);
+
 internal static class MachineEgressRecoveryState
 {
     // The writer creates/deletes all three objects atomically. A partial
@@ -56,6 +61,19 @@ internal static class MachineEgressRecoveryState
         if (sublayerPresent != ipv4Present || sublayerPresent != ipv6Present)
             throw new InvalidDataException("MachineEgressProbePartialInventory");
         return sublayerPresent;
+    }
+
+    internal static MachineEgressPolicyState Observe(MachineEgressObjects? objects, bool intentPresent,
+        bool closed, byte[]? prepared, string digest)
+    {
+        if (!intentPresent)
+            return objects is null && !closed && prepared is null ? MachineEgressPolicyState.Absent : MachineEgressPolicyState.Unknown;
+        if (closed)
+            return objects is null ? MachineEgressPolicyState.Absent : MachineEgressPolicyState.Unknown;
+        if (objects is not { } actual)
+            return MachineEgressPolicyState.Unknown;
+        MachineEgressPrepared.AssertMatches(prepared, digest, actual);
+        return MachineEgressPolicyState.ExactBlock;
     }
 
     internal static byte[] ClosedReceipt(MachineEgressProbeIntent intent, string digest) =>

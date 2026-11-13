@@ -19,6 +19,7 @@ internal sealed class MachineEgressDropSelection
     private readonly ulong filter;
     internal long Start { get; }
     internal long End { get; }
+    internal ulong FilterId => filter;
 
     internal MachineEgressDropSelection(IPEndPoint local, IPEndPoint remote, ProtocolType protocol,
         ushort layer, ulong filter, long start, long end)
@@ -73,7 +74,7 @@ internal sealed class MachineEgressDropSelection
     }
 }
 
-internal sealed record MachineEgressDropRead(bool Matched, bool CollectionEnabled, bool Exhausted,
+internal sealed record MachineEgressDropRead(ulong? MatchedFilterId, bool CollectionEnabled, bool Exhausted,
     int EventsExamined, string? Failure, uint? Status);
 
 internal static class MachineEgressDropReader
@@ -87,8 +88,8 @@ internal static class MachineEgressDropReader
         var examined = 0;
         var collectionEnabled = false;
         IntPtr engine = IntPtr.Zero, enumerator = IntPtr.Zero;
-        MachineEgressDropRead Result(bool matched = false, bool exhausted = false, string? failure = null, uint? status = null)
-            => new(matched, collectionEnabled, exhausted, examined, failure, status);
+        MachineEgressDropRead Result(ulong? matchedFilterId = null, bool exhausted = false, string? failure = null, uint? status = null)
+            => new(matchedFilterId, collectionEnabled, exhausted, examined, failure, status);
         try
         {
             var status = Native.FwpmEngineOpen0(null, 10, IntPtr.Zero, IntPtr.Zero, out var opened);
@@ -124,7 +125,7 @@ internal static class MachineEgressDropReader
                     {
                         examined++;
                         if (selection.Matches(Marshal.ReadIntPtr(entries, index * IntPtr.Size)))
-                            return Result(matched: true);
+                            return Result(matchedFilterId: selection.FilterId);
                     }
                     if (count < Reader.PageSize) return Result(exhausted: true);
                 }

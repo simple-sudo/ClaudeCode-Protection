@@ -17,13 +17,16 @@ internal static class MachineEgressDeliveryCases
             var baseline = receipts[0];
             var enforced = receipts[1];
             var restored = receipts[2];
+            var operation = Guid.NewGuid();
+            var objects = new MachineEgressObjects(100, 200, 300, "fixture", "fixture", "fixture");
+            var filterId = flow.Family == AddressFamily.InterNetwork ? objects.V4Id : objects.V6Id;
             var attempts = new[]
             {
-                Attempt(MachineEgressDeliveryPhase.Baseline, baseline, MachineEgressPolicyState.Absent),
-                Attempt(MachineEgressDeliveryPhase.Enforced, enforced, MachineEgressPolicyState.ExactBlock),
-                Attempt(MachineEgressDeliveryPhase.Restored, restored, MachineEgressPolicyState.Absent)
+                Attempt(MachineEgressDeliveryPhase.Baseline, baseline, operation),
+                Attempt(MachineEgressDeliveryPhase.Enforced, enforced, operation, objects),
+                Attempt(MachineEgressDeliveryPhase.Restored, restored, operation)
             };
-            var delivery = receipts.Select(r => new MachineEgressPacketEvidence(r.Marker, 0, 1, false, true, false)).ToArray();
+            var delivery = receipts.Select(r => new MachineEgressPacketEvidence(r.Marker, 0, 1, false, true, null)).ToArray();
             Require(MachineEgressDeliveryEvidence.Evaluate(flow, attempts, delivery) ==
                 MachineEgressDeliveryVerdict.DeliveredWhileEnforced, "receiver-only positive observation refutes zero delivery");
             Require(MachineEgressDeliveryEvidence.Evaluate(flow, attempts, [delivery[1]]) ==
@@ -34,14 +37,15 @@ internal static class MachineEgressDeliveryCases
             var blocked = new[]
             {
                 delivery[0] with { PhysicalPackets = 1, PhysicalObservationComplete = true },
-                delivery[1] with { ReceiverReceipts = 0, PhysicalObservationComplete = true, ExactWfpDropObserved = true },
+                delivery[1] with { ReceiverReceipts = 0, PhysicalObservationComplete = true, WfpDropFilterId = filterId },
                 delivery[2] with { PhysicalPackets = 1, PhysicalObservationComplete = true }
             };
             Require(MachineEgressDeliveryEvidence.Evaluate(flow, attempts, blocked) ==
                 MachineEgressDeliveryVerdict.BlockObserved, "complete matched evidence");
             foreach (var uncertain in new[]
             {
-                blocked[1] with { ExactWfpDropObserved = false },
+                blocked[1] with { WfpDropFilterId = null },
+                blocked[1] with { WfpDropFilterId = filterId + 1 },
                 blocked[1] with { PhysicalObservationComplete = false },
                 blocked[1] with { ReceiverObservationComplete = false },
                 blocked[1] with { Marker = Guid.NewGuid() },
@@ -52,8 +56,19 @@ internal static class MachineEgressDeliveryCases
             RequireUnknown(flow, attempts, [blocked[0] with { ReceiverReceipts = 0 }, blocked[1], blocked[2]]);
             RequireUnknown(flow, attempts, [blocked[0], blocked[1], blocked[2] with { PhysicalPackets = 0 }]);
             RequireUnknown(flow, [attempts[0], attempts[1] with { ReachedSocketCall = false }, attempts[2]], blocked);
-            RequireUnknown(flow, [attempts[0], attempts[1] with { PolicyAfter = MachineEgressPolicyState.Unknown }, attempts[2]], blocked);
+            foreach (var invalidAfter in new[]
+            {
+                attempts[1].PolicyAfter with { State = MachineEgressPolicyState.Unknown },
+                attempts[1].PolicyAfter with { Operation = Guid.NewGuid() },
+                attempts[1].PolicyAfter with { Objects = objects with { V4Id = 400 } },
+                attempts[1].PolicyAfter with { Started = enforced.Finished - 1 }
+            })
+                RequireUnknown(flow, [attempts[0], attempts[1] with { PolicyAfter = invalidAfter }, attempts[2]], blocked);
             RequireUnknown(flow, [attempts[0], attempts[1] with { Started = attempts[0].Finished }, attempts[2]], blocked);
+            RequireUnknown(flow, [attempts[0] with
+            {
+                PolicyAfter = attempts[0].PolicyAfter with { Finished = attempts[1].PolicyBefore.Started + 1 }
+            }, attempts[1], attempts[2]], blocked);
             RequireUnknown(flow, [attempts[0], attempts[1], attempts[2] with { SocketId = attempts[1].SocketId }], blocked);
             RequireUnknown(flow with { Existing = !flow.Existing }, attempts, blocked);
             Require(MachineEgressDeliveryEvidence.Evaluate(flow, attempts, [blocked[0],
@@ -63,8 +78,14 @@ internal static class MachineEgressDeliveryCases
         Console.WriteLine("PASS 8 dual-stack loopback delivery controls and machine egress verdict cases");
     }
 
-    private static MachineEgressAttempt Attempt(MachineEgressDeliveryPhase phase, Receipt receipt, MachineEgressPolicyState state) =>
-        new(phase, receipt.Marker, receipt.SocketId, receipt.Started, receipt.Finished, true, state, state);
+    private static MachineEgressAttempt Attempt(MachineEgressDeliveryPhase phase, Receipt receipt,
+        Guid operation, MachineEgressObjects? objects = null)
+    {
+        var state = objects.HasValue ? MachineEgressPolicyState.ExactBlock : MachineEgressPolicyState.Absent;
+        return new(phase, receipt.Marker, receipt.SocketId, receipt.Started, receipt.Finished, true,
+            new(operation, state, receipt.Started - 1, receipt.Started, objects),
+            new(operation, state, receipt.Finished, receipt.Finished + 1, objects));
+    }
 
     private static async Task<Receipt[]> ObserveLoopbackAsync(IPAddress address, MachineEgressFlow flow, CancellationToken token)
     {

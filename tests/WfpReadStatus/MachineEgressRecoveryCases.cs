@@ -45,6 +45,14 @@ internal static class MachineEgressRecoveryCases
         Reject(() => MachineEgressPrepared.AssertMatches(prepared, digest, observed with { Weight = 101 }));
         Reject(() => MachineEgressPrepared.AssertMatches(prepared, digest, observed with { V6SecuritySHA256 = new string('B', 64) }));
         Reject(() => MachineEgressPrepared.AssertMatches(prepared, new string('B', 64), observed));
+        Require(MachineEgressRecoveryState.Observe(null, false, false, null, digest) == MachineEgressPolicyState.Absent);
+        Require(MachineEgressRecoveryState.Observe(null, true, true, prepared, digest) == MachineEgressPolicyState.Absent);
+        Require(MachineEgressRecoveryState.Observe(observed, true, false, prepared, digest) == MachineEgressPolicyState.ExactBlock);
+        Require(MachineEgressRecoveryState.Observe(observed, false, false, null, digest) == MachineEgressPolicyState.Unknown);
+        Require(MachineEgressRecoveryState.Observe(null, false, false, prepared, digest) == MachineEgressPolicyState.Unknown);
+        Require(MachineEgressRecoveryState.Observe(observed, true, true, prepared, digest) == MachineEgressPolicyState.Unknown);
+        Require(MachineEgressRecoveryState.Observe(null, true, false, prepared, digest) == MachineEgressPolicyState.Unknown);
+        Reject(() => _ = MachineEgressRecoveryState.Observe(observed, true, false, null, digest));
         Console.WriteLine("PASS machine egress recovery intent, receipt binding and complete inventory decisions (managed only)");
     }
 
