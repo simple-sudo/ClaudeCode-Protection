@@ -67,12 +67,15 @@ internal static class HostPrivacyEvidenceCases
         Reject(new[]{direct with {ActorId="other-actor"}},"foreign actor");
         Reject(new[]{direct with {RequiredP0=false}},"evidence cannot downgrade a required P0 target");
         Reject(new[]{direct with {OwnerSealed=false}},"unsealed actor result");
-        Reject(new[]{direct with {ContentVerified=false}},"unverified content");
+        Require(Evaluate(new[]{direct with {ContentVerified=false}},"network.adapter").Assessments.Single().Classification==
+            HostPrivacyEvidenceClass.Unknown,"unverified content is unknown, never confirmed exposure");
         Reject(new[]{direct with {ArtifactSHA256="bad"}},"invalid evidence digest");
         Reject(new[]{direct with {SessionId=new string('b',32)}},"foreign session");
         Reject(new[]{direct,direct},"duplicate evidence identifier");
-        Reject(new[]{direct with {Outcome=HostPrivacyEvidenceOutcome.AccessDenied,NativeError=5,Value="secret"}},"denial carrying content");
-        Reject(new[]{direct with {Outcome=HostPrivacyEvidenceOutcome.ContentRead,Value="",ContentVerified=true}},"empty content read");
+        Require(Evaluate(new[]{direct with {Outcome=HostPrivacyEvidenceOutcome.AccessDenied,NativeError=5,Value="secret"}},"network.adapter").Assessments.Single().Classification==
+            HostPrivacyEvidenceClass.Unknown,"denial carrying content is contradictory and unknown");
+        Require(Evaluate(new[]{direct with {Outcome=HostPrivacyEvidenceOutcome.ContentRead,Value="",ContentVerified=true}},"network.adapter").Assessments.Single().Classification==
+            HostPrivacyEvidenceClass.Unknown,"empty content cannot be confirmed as a content read");
         Console.WriteLine("PASS host privacy evidence provenance, visibility, content/denial distinction, expiry, duplicate-source independence and P0 one-vote blocking");
     }
 }
