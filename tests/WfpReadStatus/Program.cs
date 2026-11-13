@@ -9,6 +9,11 @@ if(args.Length==1 && args[0]=="--check-machine-egress-policy")
 }
 if(args.Length==1 && args[0]=="--read-machine-egress-layers")
     return MachineEgressProbeCases.ReadLayers();
+if(args.Length==1 && args[0]=="--check-machine-egress-delivery")
+{
+    await MachineEgressDeliveryCases.RunAsync();
+    return 0;
+}
 if(args.Length==1 && args[0]=="--check-selection")
 {Console.WriteLine(JsonSerializer.Serialize(WfpExistingEvents.SelectionChecks.Run()));return 0;}
 if(args.Length!=1 || args[0] is not ("--inspect" or "--read-fixed"))return 125;

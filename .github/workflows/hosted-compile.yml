@@ -49,3 +49,5 @@ jobs:
           }
       - name: Verify machine egress rule definitions in memory
         run: dotnet run --project tests/WfpReadStatus/WfpReadStatus.csproj --configuration Release -- --check-machine-egress-policy
+      - name: Verify delivery evidence with dual-stack loopback controls
+        run: dotnet run --no-build --project tests/WfpReadStatus/WfpReadStatus.csproj --configuration Release -- --check-machine-egress-delivery

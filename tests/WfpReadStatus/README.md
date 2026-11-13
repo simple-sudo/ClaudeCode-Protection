@@ -6,6 +6,11 @@ checks identity/image/time matching without native history reads.
 `--read-fixed` reads only existing engine collection/keyword options and closes
 its own connection. Denied options remain UNKNOWN, not disabled or PASS.
 
+`--check-machine-egress-delivery` uses exclusive Windows loopback listeners
+on ephemeral ports. It observes three distinct markers for each IPv4/IPv6,
+TCP/UDP and new/existing socket case. The decision checks use synthetic WFP
+and physical capture evidence. This command opens no WFP session.
+
 `ExistingEvents.cs` has no public CLI. A separately frozen fixed entry point may
 compile one reviewed historical selection. It never enables collection,
 subscribes, starts a trace, changes filters, or starts a protected process.
