@@ -147,6 +147,8 @@ try{
         $generatedText=[IO.File]::ReadAllText($generated)
         if($generatedText -match '\$\(\['){throw ('MSBuild property-function expression in generated NuGet import: '+$generated)}
         [xml]$generatedXml=$generatedText
+        $generatedCustomNodes=$generatedXml.SelectNodes('//Target|//UsingTask|//Exec|//PackageReference|//ProjectReference|//Analyzer|//SourceGenerator')
+        if($generatedCustomNodes.Count -gt 0){throw ('Generated NuGet props/targets contain custom execution or package nodes: '+$generated)}
         foreach($import in $generatedXml.SelectNodes('//Import[@Project]')){
             $importPath=[string]$import.Project
             if($importPath -match '\$\('){throw ('Unresolved generated import is not permitted: '+$importPath)}
@@ -368,6 +370,24 @@ try{
         }
         [IO.File]::WriteAllText($artifactsPath,($artifactManifest | ConvertTo-Json -Depth 8),[Text.UTF8Encoding]::new($false))
         $receipt.OutputArtifactCount=$artifactRecords.Count
+        $receipt.ArtifactManifestSHA256=(Get-FileHash -LiteralPath $artifactsPath -Algorithm SHA256).Hash
+        if(-not (Test-Path -LiteralPath $script:ProjectSecurityEvidencePath -PathType Leaf)){
+            throw 'Kaspersky monitor JSONL evidence file is missing; refusing to issue a build receipt.'
+        }
+        $evidencePaths=@($script:ProjectSecurityEvidencePath,$sdkStdout,$sdkStderr,$preprocessStdout,$preprocessStderr,
+            $buildStdout,$buildStderr,$inputsPath,$artifactsPath)
+        $evidenceHashes=[Collections.Generic.List[object]]::new()
+        foreach($evidencePath in $evidencePaths){
+            if(Test-Path -LiteralPath $evidencePath -PathType Leaf){
+                $evidenceItem=Get-Item -LiteralPath $evidencePath
+                $evidenceHashes.Add([pscustomobject]@{
+                    Path=$evidencePath
+                    Length=$evidenceItem.Length
+                    SHA256=(Get-FileHash -LiteralPath $evidencePath -Algorithm SHA256).Hash
+                })
+            }
+        }
+        $receipt.EvidenceFileHashes=@($evidenceHashes.ToArray())
     }catch{
         $receipt.ArtifactHashFailure=$_.Exception.Message
         if(-not $operationFailure){$operationFailure=$_.Exception}

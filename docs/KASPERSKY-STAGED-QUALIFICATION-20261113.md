@@ -36,9 +36,9 @@ scripts/Assert-ProjectSecurityClearance.ps1 要求调用者显式提供 Stage。
 1. AVP21.26 服务必须存在且 Running；版本/服务名改变即停止并重新审查。
 2. root/SecurityCenter2 必须恰好报告一个显示名为 Kaspersky 的产品，productState 必须与本机既有合格观察 266240 一致。
 3. 从本阶段开始时间起检查 Windows Application 日志中的 avp / kaspersky Provider 事件，并发现名称包含 Kaspersky / AVP 的 Windows 事件通道；对已启用的相关通道逐一查询。
-4. 构建期间每 750ms 轮询事件；每 3 秒重新检查服务、Security Center 状态、事件通道集合和进程树；事件通道集合或启用状态变化时停止。
+4. 构建期间每 750ms 轮询事件；每 3 秒重新检查服务、Security Center 状态、事件通道集合和进程树；事件通道集合或启用状态变化时停止；任何已发现的 Kaspersky/AVP 命名事件通道处于 Disabled 状态时，预检即失败。
 5. 监控证据以 JSONL 持续写入 LOCALAPPDATA 下的 ClaudeCode-Protection/security-stage 目录。每条记录带同一 Run ID；新事件记录 Provider、Event ID、Record ID、时间、消息和原始 Event XML。stdout、stderr、输入哈希、输出哈希与 receipt 也使用同一 Run ID。
-6. 出现新相关事件、事件通道读取失败、服务停止、产品状态变化或进程树无法确认终止，立即停止并报告原因。进程树终止通过 Win32_Process 的根进程/后代关系核验；WaitForExit 只代表根进程状态，不能单独证明后代已退出。
+6. 出现新相关事件、事件通道读取失败、服务停止、产品状态变化或进程树无法确认终止，立即停止并报告原因。进程树终止通过 Win32_Process 的根进程/后代关系核验；WaitForExit 只代表根进程状态，不能单独证明后代已退出。监控进程启动后的首条生命周期记录也处于同一异常终止保护范围；终止证据无法持久化时，本轮同样失败。
 
 **覆盖限制：** 当前监控依赖固定服务名、Security Center 注册状态、Application 相关 Provider 和已启用的 Kaspersky/AVP 命名事件通道。它不是 Kaspersky 内部遥测 API，不能保证捕获所有弹窗、隔离动作、未启用日志通道或厂商云端告警。输出明确保留 FullVendorAlertVisibility=UNKNOWN。**本机阶段测试时，设备所有者必须保持卡巴斯基界面可观察；看到任何新告警立即停止并回传截图/事件与完整构建日志。**
 
@@ -49,7 +49,7 @@ scripts/Build.ps1：
 - 使用固定 dotnet.exe 路径与 SDK 8.0.422；SDK 版本查询、MSBuild preprocess 和实际 Build 均纳入同一轮卡巴斯基监控。
 - 对日常项目 XML、现有 project.assets.json、NuGet 生成导入、父目录 Directory.Build / response / global.json 文件及 preprocess 后的实际 import graph 进行审查；拒绝外部 package targets、分析器/Source Generator、显式自定义 Target、UsingTask、Exec 和项目引用。导入 SDK 图中的 Target / UsingTask / Exec 节点数量写入 receipt；所有 AssemblyFile 任务程序集必须位于固定 .NET 安装目录并纳入输入哈希；AssemblyName / TaskFactory 必须属于受审查的 Microsoft/System 内置集合。
 - 使用 --no-restore、--no-dependencies、--disable-build-servers、UseSharedCompilation=false、RunAnalyzers=false、-m:1、-nr:false 和 -noAutoResponse 缩小执行面；使用 normal verbosity 记录实际任务执行，若 Build 日志出现 Exec task 执行则拒绝本轮构建。
-- stdout/stderr、JSONL、输入清单、输出工件 SHA-256 和 receipt 均写入 security-stage 目录，并使用同一 Run ID 关联。
+- stdout/stderr、JSONL、输入清单、输出工件 SHA-256 和 receipt 均写入 security-stage 目录，并使用同一 Run ID 关联；receipt 同时记录监控 JSONL、各阶段 stdout/stderr、输入/输出清单的 SHA-256。
 - 输出只写入 bin/security-stage/<RunId>，不启动、不安装、不签名、不发布。
 - 旧 Invoke-S1DailyBuild.ps1 和 Invoke-BrokerOfflineBuild.ps1 分别接入 LegacyOfflineBuild / EngineeringBuild 关闭阶段，不再能绕过当前门禁。
 

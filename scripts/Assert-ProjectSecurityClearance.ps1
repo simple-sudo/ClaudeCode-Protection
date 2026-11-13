@@ -128,6 +128,11 @@ function Get-ProjectSecuritySnapshot {
   throw 'SECURITY_MONITOR_FAILED: Kaspersky Security Center registration/state differs from the qualified baseline.'
  }
  $currentChannels=@(Get-ProjectSecurityEventChannelInventory)
+ $disabledChannels=@($currentChannels | Where-Object {-not $_.IsEnabled})
+ if($disabledChannels.Count -gt 0){
+  Write-ProjectSecurityEvidence -RecordType 'KasperskyEventChannelDisabled' -Data @{DisabledChannels=$disabledChannels}
+  throw ('SECURITY_MONITOR_FAILED: Kaspersky/AVP event channel(s) are disabled: '+(($disabledChannels | ForEach-Object {$_.LogName}) -join ', '))
+ }
  $initialKeys=@($script:ProjectSecurityVendorEventChannels | ForEach-Object {'{0}|{1}' -f $_.LogName,$_.IsEnabled})
  $currentKeys=@($currentChannels | ForEach-Object {'{0}|{1}' -f $_.LogName,$_.IsEnabled})
  $channelChanges=@(Compare-Object -ReferenceObject $initialKeys -DifferenceObject $currentKeys)
@@ -247,9 +252,9 @@ function Invoke-ProjectSecurityMonitoredProcess {
  }
  try{$process=Start-Process -FilePath $FilePath -ArgumentList $ArgumentList -WorkingDirectory $WorkingDirectory -PassThru -NoNewWindow -RedirectStandardOutput $StandardOutputPath -RedirectStandardError $StandardErrorPath}
  catch{Write-ProjectSecurityEvidence -RecordType 'MonitoredProcessStartFailure' -Data @{Purpose=$Purpose;Error=$_.Exception.Message};throw}
- Write-ProjectSecurityEvidence -RecordType 'MonitoredProcessStarted' -Data @{Purpose=$Purpose;ProcessId=$process.Id;FilePath=$FilePath}
  $lastFullCheck=[DateTime]::UtcNow
  try{
+  Write-ProjectSecurityEvidence -RecordType 'MonitoredProcessStarted' -Data @{Purpose=$Purpose;ProcessId=$process.Id;FilePath=$FilePath}
   $initialTree=Get-ProjectSecurityProcessTree -RootProcessId $process.Id
   Write-ProjectSecurityEvidence -RecordType 'MonitoredProcessTreeSnapshot' -Data @{Purpose=$Purpose;RootProcessId=$process.Id;RootPresent=$initialTree.RootPresent;Processes=$initialTree.Rows}
   if(-not $initialTree.RootPresent -and -not $process.HasExited){throw 'SECURITY_MONITOR_FAILED: monitored root process is absent from the process inventory.'}
@@ -283,42 +288,45 @@ function Invoke-ProjectSecurityMonitoredProcess {
   Write-ProjectSecurityEvidence -RecordType 'MonitoredProcessExited' -Data @{Purpose=$Purpose;ProcessId=$process.Id;ExitCode=[int]$process.ExitCode;DescendantVerification='PASS'}
   return [int]$process.ExitCode
  }catch{
-  $reason=$_.Exception.Message
-  try{Write-ProjectSecurityEvidence -RecordType 'MonitoredProcessStopped' -Data @{Purpose=$Purpose;ProcessId=$process.Id;Reason=$reason}}catch{}
-  $terminationErrors=[Collections.Generic.List[string]]::new()
-  $terminationConfirmed=$false
-  try{$process.Refresh();if(-not $process.HasExited){$process.Kill($true)}}catch{$terminationErrors.Add('Root Kill(true): '+$_.Exception.Message)}
-  $deadline=[DateTime]::UtcNow.AddSeconds(10)
-  $lastTree=@()
-  while([DateTime]::UtcNow -lt $deadline){
-   try{
-    $tree=Get-ProjectSecurityProcessTree -RootProcessId $process.Id
-    $lastTree=@($tree.Rows)
-    if($lastTree.Count -eq 0){$terminationConfirmed=$true;break}
-    foreach($child in @($tree.Rows | Where-Object {$_.ParentProcessId -eq $process.Id -and $_.ProcessId -ne $process.Id})){
-     try{$childProcess=[Diagnostics.Process]::GetProcessById([int]$child.ProcessId);try{$childProcess.Kill($true)}finally{$childProcess.Dispose()}}
-     catch [ArgumentException]{}catch [InvalidOperationException]{}catch{$terminationErrors.Add(('Descendant PID {0}: {1}' -f $child.ProcessId,$_.Exception.Message))}
-    }
-    $process.Refresh()
-    if(-not $process.HasExited){try{$process.Kill($true)}catch{$terminationErrors.Add('Retry root Kill(true): '+$_.Exception.Message)};[void]$process.WaitForExit(250)}
-   }catch{$terminationErrors.Add('Process-tree verification: '+$_.Exception.Message);break}
-   Start-Sleep -Milliseconds 250
-  }
-  if($terminationConfirmed){
-   try{Write-ProjectSecurityEvidence -RecordType 'ProcessTreeTerminationVerified' -Data @{
-    Purpose=$Purpose;RootProcessId=$process.Id;DescendantsRemaining=0
-    Verification='Win32_Process root/descendant inventory; WaitForExit alone is not treated as proof'
-    VerificationWindowSeconds=10;PriorErrors=@($terminationErrors.ToArray())
-   }}catch{}
-  }else{
-   try{Write-ProjectSecurityEvidence -RecordType 'ProcessTerminationFailure' -Data @{
-    Purpose=$Purpose;RootProcessId=$process.Id;Error='Process tree did not become empty and verifiable within 10 seconds.'
-    RemainingProcesses=$lastTree;Errors=@($terminationErrors.ToArray())
-   }}catch{}
-  }
-  $finalReason=$reason
-  if(-not $terminationConfirmed){$finalReason+='; PROCESS_TREE_TERMINATION_UNCONFIRMED'}
-  throw "SECURITY_MONITORED_BUILD_STOPPED: $finalReason"
+   $reason=$_.Exception.Message
+   $terminationErrors=[Collections.Generic.List[string]]::new()
+   $terminationEvidencePersisted=$true
+   try{Write-ProjectSecurityEvidence -RecordType 'MonitoredProcessStopped' -Data @{Purpose=$Purpose;ProcessId=$process.Id;Reason=$reason}}
+   catch{$terminationEvidencePersisted=$false;$terminationErrors.Add('MonitoredProcessStopped evidence write failed: '+$_.Exception.Message)}
+   $terminationConfirmed=$false
+   try{$process.Refresh();if(-not $process.HasExited){$process.Kill($true)}}catch{$terminationErrors.Add('Root Kill(true): '+$_.Exception.Message)}
+   $deadline=[DateTime]::UtcNow.AddSeconds(10)
+   $lastTree=@()
+   while([DateTime]::UtcNow -lt $deadline){
+    try{
+     $tree=Get-ProjectSecurityProcessTree -RootProcessId $process.Id
+     $lastTree=@($tree.Rows)
+     if($lastTree.Count -eq 0){$terminationConfirmed=$true;break}
+     foreach($child in @($tree.Rows | Where-Object {$_.ParentProcessId -eq $process.Id -and $_.ProcessId -ne $process.Id})){
+      try{$childProcess=[Diagnostics.Process]::GetProcessById([int]$child.ProcessId);try{$childProcess.Kill($true)}finally{$childProcess.Dispose()}}
+      catch [ArgumentException]{}catch [InvalidOperationException]{}catch{$terminationErrors.Add(('Descendant PID {0}: {1}' -f $child.ProcessId,$_.Exception.Message))}
+     }
+     $process.Refresh()
+     if(-not $process.HasExited){try{$process.Kill($true)}catch{$terminationErrors.Add('Retry root Kill(true): '+$_.Exception.Message)};[void]$process.WaitForExit(250)}
+    }catch{$terminationErrors.Add('Process-tree verification: '+$_.Exception.Message);break}
+    Start-Sleep -Milliseconds 250
+   }
+   if($terminationConfirmed){
+    try{Write-ProjectSecurityEvidence -RecordType 'ProcessTreeTerminationVerified' -Data @{
+     Purpose=$Purpose;RootProcessId=$process.Id;DescendantsRemaining=0
+     Verification='Win32_Process root/descendant inventory; WaitForExit alone is not treated as proof'
+     VerificationWindowSeconds=10;PriorErrors=@($terminationErrors.ToArray())
+    }}catch{$terminationEvidencePersisted=$false;$terminationErrors.Add('ProcessTreeTerminationVerified evidence write failed: '+$_.Exception.Message)}
+   }else{
+    try{Write-ProjectSecurityEvidence -RecordType 'ProcessTerminationFailure' -Data @{
+     Purpose=$Purpose;RootProcessId=$process.Id;Error='Process tree did not become empty and verifiable within 10 seconds.'
+     RemainingProcesses=$lastTree;Errors=@($terminationErrors.ToArray())
+    }}catch{$terminationEvidencePersisted=$false;$terminationErrors.Add('ProcessTerminationFailure evidence write failed: '+$_.Exception.Message)}
+   }
+   $finalReason=$reason
+   if(-not $terminationConfirmed){$finalReason+='; PROCESS_TREE_TERMINATION_UNCONFIRMED'}
+   if(-not $terminationEvidencePersisted){$finalReason+='; PROCESS_TERMINATION_EVIDENCE_PERSISTENCE_FAILED'}
+   throw "SECURITY_MONITORED_BUILD_STOPPED: $finalReason"
  }
 }
 Write-Output ("SECURITY_STAGE_READY: {0}; Kaspersky service, SecurityCenter2 and discovered Windows event channels verified; process-tree verification active; FullVendorAlertVisibility=UNKNOWN; evidence={1}" -f $Stage,$script:ProjectSecurityEvidencePath)

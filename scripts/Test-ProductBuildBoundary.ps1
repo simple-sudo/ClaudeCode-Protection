@@ -104,6 +104,8 @@ Require ($gateText -match 'WaitForExit\(250\)') 'monitor must use bounded root w
 Require ($gateText -match 'PROCESS_TREE_TERMINATION_UNCONFIRMED') 'unconfirmed process-tree termination must be a distinct failure'
 Require ($gateText -match 'Get-WinEvent -ListLog \*') 'monitor must discover Kaspersky-named Windows event channels'
 Require ($gateText -match 'KasperskyEventChannelSetChanged') 'monitor must stop if the Kaspersky event-channel inventory changes'
+Require ($gateText -match 'KasperskyEventChannelDisabled') 'monitor must fail closed when a Kaspersky event channel is disabled'
+Require ($gateText -match 'PROCESS_TERMINATION_EVIDENCE_PERSISTENCE_FAILED') 'monitor must report failure to persist process termination evidence'
 Require ($gateText -match 'EventXml=\$_.ToXml\(\)') 'monitor must preserve raw Windows event XML'
 Require ($gateText -match 'RunId=\$script:ProjectSecurityRunId') 'every monitor record must carry the shared run ID'
 Require ($gateText -match 'return \$unique') 'an empty event query must return an empty array, not a nested empty array'
@@ -127,6 +129,9 @@ Require ($gateText -match 'CustomAfterMicrosoftCSharpTargets=') 'gate must clear
 Require ($dailyBuild -match 'noAutoResponse') 'daily build must refuse implicit MSBuild response-file injection'
 Require ($dailyBuild -match 'daily-build-inputs.json') 'daily build must persist input SHA-256 evidence'
 Require ($dailyBuild -match 'daily-build-artifacts.json') 'daily build must persist output SHA-256 evidence'
+Require ($dailyBuild -match 'EvidenceFileHashes') 'daily build receipt must hash its monitor and build log evidence'
+Require ($dailyBuild -match 'ArtifactManifestSHA256') 'daily build receipt must hash the output manifest'
+Require ($dailyBuild -match 'generatedCustomNodes') 'daily build must inspect generated NuGet props/targets for custom execution nodes'
 Require ($dailyBuild -match '--disable-build-servers') 'daily build must disable persistent SDK build servers'
 Require ($dailyBuild -match '\$script:ProjectSecurityRunId') 'build logs are not correlated with the AV monitor evidence run ID'
 
