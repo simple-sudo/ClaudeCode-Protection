@@ -596,6 +596,7 @@ if(args[0]=="workspace-git-workflow-policy")
 {
     var gitWorkflowBundleType=library.GetType("ClaudeCodeProtection.Workspaces.WorkspaceBundle",true)!;
     var gitWorkflowTool=library.GetType("ProtectionLifecycle.SessionGitToolchain",true)!;
+    var gitWorkflowPolicy=library.GetType("ProtectionLifecycle.GitWorkspacePolicy",true)!;
     var gitWorkflowData=Call(gitWorkflowBundleType,"Create",new (string,byte[])[]{
         ("README.md",Encoding.UTF8.GetBytes("offline Git workflow fixture\n")),
         ("src/main.cs",Encoding.UTF8.GetBytes("public static class MainSource {}\n"))},null)!;
@@ -625,8 +626,8 @@ if(args[0]=="workspace-git-workflow-policy")
         var gitWorkflowPaths=gitWorkflowFiles.Cast<object>().Select(file=>(string)file.GetType().GetProperty("Path")!.GetValue(file)!).ToArray();
         var gitWorkflowPathspec=Path.Combine(gitWorkflowControl,"git-selected-paths.bin");
         File.WriteAllBytes(gitWorkflowPathspec,Encoding.ASCII.GetBytes(string.Join('\0',gitWorkflowPaths)+"\0"));
-        var gitWorkflowCommands=(string[][])Call(gitWorkflowTool,"WorkflowCommands",gitWorkflowPlan,gitWorkflowWorkspace,gitWorkflowDefinition)!;
-        Call(gitWorkflowTool,"AssertGitControlReady",gitWorkflowWorkspace,true);
+        var gitWorkflowCommands=(string[][])Call(gitWorkflowPolicy,"WorkflowCommands",gitWorkflowPlan,gitWorkflowWorkspace,gitWorkflowDefinition)!;
+        Call(gitWorkflowPolicy,"AssertGitControlReady",gitWorkflowWorkspace,true);
         Require(gitWorkflowCommands.Length==11,"fixed bounded Git workflow command count");
         Require(gitWorkflowCommands[1].Contains("--template="+Path.Combine(gitWorkflowControl,"empty-git-template")) &&
             gitWorkflowCommands[2].Contains("--pathspec-from-file="+gitWorkflowPathspec),
@@ -636,22 +637,22 @@ if(args[0]=="workspace-git-workflow-policy")
         var gitWorkflowDirectory=(string)gitWorkflowPlanType.GetProperty("GitDirectory",BindingFlags.Instance|BindingFlags.NonPublic)!.GetValue(gitWorkflowPlan)!;
         for(var i=0;i<gitWorkflowCommands.Length;i++)
         {
-            var gitWorkflowStart=(ProcessStartInfo)Call(gitWorkflowTool,"StartWorkflow",gitWorkflowWorkspace,gitWorkflowDirectory,gitWorkflowDefinition,gitWorkflowCommands[i])!;
+            var gitWorkflowStart=(ProcessStartInfo)Call(gitWorkflowPolicy,"StartWorkflow",gitWorkflowWorkspace,gitWorkflowDirectory,gitWorkflowDefinition,gitWorkflowCommands[i])!;
             var gitWorkflowArguments=gitWorkflowStart.ArgumentList.ToArray();
-            Require((bool)Call(gitWorkflowTool,"WorkflowSequenceMatches",gitWorkflowPlan,gitWorkflowWorkspace,i+1,gitWorkflowArguments)!,"exact ordered Git operation "+(i+1));
+            Require((bool)Call(gitWorkflowPolicy,"WorkflowSequenceMatches",gitWorkflowPlan,gitWorkflowWorkspace,i+1,gitWorkflowArguments)!,"exact ordered Git operation "+(i+1));
         }
-        var gitWorkflowFirstStart=(ProcessStartInfo)Call(gitWorkflowTool,"StartWorkflow",gitWorkflowWorkspace,gitWorkflowDirectory,gitWorkflowDefinition,gitWorkflowCommands[0])!;
+        var gitWorkflowFirstStart=(ProcessStartInfo)Call(gitWorkflowPolicy,"StartWorkflow",gitWorkflowWorkspace,gitWorkflowDirectory,gitWorkflowDefinition,gitWorkflowCommands[0])!;
         Require(gitWorkflowFirstStart.ArgumentList.Contains("core.whitespace=cr-at-eol"),"fixed CRLF-aware Git whitespace policy");
         Require(gitWorkflowFirstStart.Environment["GIT_CONFIG_GLOBAL"]==Path.Combine(gitWorkflowControl,"empty-git-config") &&
             gitWorkflowFirstStart.ArgumentList.Contains("core.hooksPath="+Path.Combine(gitWorkflowControl,"empty-git-hooks")),
             "Git process uses the isolated empty global config and hooks directory");
         var gitWorkflowFirstArguments=gitWorkflowFirstStart.ArgumentList.ToArray();
-        Require(!(bool)Call(gitWorkflowTool,"WorkflowSequenceMatches",gitWorkflowPlan,gitWorkflowWorkspace,0,gitWorkflowFirstArguments)!,"zero Git sequence refused");
-        Require(!(bool)Call(gitWorkflowTool,"WorkflowSequenceMatches",gitWorkflowPlan,gitWorkflowWorkspace,12,gitWorkflowFirstArguments)!,"out-of-range Git sequence refused");
+        Require(!(bool)Call(gitWorkflowPolicy,"WorkflowSequenceMatches",gitWorkflowPlan,gitWorkflowWorkspace,0,gitWorkflowFirstArguments)!,"zero Git sequence refused");
+        Require(!(bool)Call(gitWorkflowPolicy,"WorkflowSequenceMatches",gitWorkflowPlan,gitWorkflowWorkspace,12,gitWorkflowFirstArguments)!,"out-of-range Git sequence refused");
         var gitWorkflowPrefixTamper=(string[])gitWorkflowFirstArguments.Clone();gitWorkflowPrefixTamper[0]="--paginate";
-        Require(!(bool)Call(gitWorkflowTool,"WorkflowSequenceMatches",gitWorkflowPlan,gitWorkflowWorkspace,1,gitWorkflowPrefixTamper)!,"Git executable configuration prefix tamper refused");
-        var gitWorkflowOutOfOrder=(ProcessStartInfo)Call(gitWorkflowTool,"StartWorkflow",gitWorkflowWorkspace,gitWorkflowDirectory,gitWorkflowDefinition,gitWorkflowCommands[1])!;
-        Require(!(bool)Call(gitWorkflowTool,"WorkflowSequenceMatches",gitWorkflowPlan,gitWorkflowWorkspace,1,gitWorkflowOutOfOrder.ArgumentList.ToArray())!,"out-of-order Git operation refused");
+        Require(!(bool)Call(gitWorkflowPolicy,"WorkflowSequenceMatches",gitWorkflowPlan,gitWorkflowWorkspace,1,gitWorkflowPrefixTamper)!,"Git executable configuration prefix tamper refused");
+        var gitWorkflowOutOfOrder=(ProcessStartInfo)Call(gitWorkflowPolicy,"StartWorkflow",gitWorkflowWorkspace,gitWorkflowDirectory,gitWorkflowDefinition,gitWorkflowCommands[1])!;
+        Require(!(bool)Call(gitWorkflowPolicy,"WorkflowSequenceMatches",gitWorkflowPlan,gitWorkflowWorkspace,1,gitWorkflowOutOfOrder.ArgumentList.ToArray())!,"out-of-order Git operation refused");
         var gitWorkflowOwner=library.GetType("ProtectionLifecycle.OwnedToolLaunch",true)!;
         var gitWorkflowApprovedHash=(string)Call(gitWorkflowOwner,"StartHash",gitWorkflowFirstStart)!;
         _=Call(gitWorkflowOwner,"ValidateStart",gitWorkflowPlan,gitWorkflowWorkspace,"git",gitWorkflowFirstArguments,gitWorkflowApprovedHash);
@@ -662,20 +663,20 @@ if(args[0]=="workspace-git-workflow-policy")
         catch(InvalidDataException){gitWorkflowEnvironmentTamperRefused=true;}
         Require(gitWorkflowEnvironmentTamperRefused,"Git environment configuration tamper refused");
         var gitWorkflowAltered=(string[])gitWorkflowCommands[5].Clone();gitWorkflowAltered[^1]="unapproved commit";
-        Require(!(bool)Call(gitWorkflowTool,"WorkflowCommandAllowed",gitWorkflowPlan,gitWorkflowWorkspace,gitWorkflowAltered)!,"unapproved commit message refused");
-        Require(!(bool)Call(gitWorkflowTool,"WorkflowCommandAllowed",gitWorkflowPlan,gitWorkflowWorkspace,new[]{"clone","https://example.invalid/repo"})!,"remote Git command refused");
+        Require(!(bool)Call(gitWorkflowPolicy,"WorkflowCommandAllowed",gitWorkflowPlan,gitWorkflowWorkspace,gitWorkflowAltered)!,"unapproved commit message refused");
+        Require(!(bool)Call(gitWorkflowPolicy,"WorkflowCommandAllowed",gitWorkflowPlan,gitWorkflowWorkspace,new[]{"clone","https://example.invalid/repo"})!,"remote Git command refused");
         var gitWorkflowPathspecWriteBlocked=false;
         using(var gitWorkflowPathspecLease=new FileStream(gitWorkflowPathspec,FileMode.Open,FileAccess.ReadWrite,FileShare.Read))
         {
             try{File.WriteAllText(gitWorkflowPathspec,"unselected.txt\0",new UTF8Encoding(false));}
             catch(IOException){gitWorkflowPathspecWriteBlocked=true;}
-            Require((bool)Call(gitWorkflowTool,"SelectedPathspecMatches",gitWorkflowWorkspace,gitWorkflowParsed)!,
+            Require((bool)Call(gitWorkflowPolicy,"SelectedPathspecMatches",gitWorkflowWorkspace,gitWorkflowParsed)!,
                 "owner-held NUL pathspec remains exact while leased");
         }
         Require(gitWorkflowPathspecWriteBlocked,"owner-held NUL pathspec denies concurrent write");
         File.WriteAllText(gitWorkflowPathspec,"unselected.txt\0",new UTF8Encoding(false));
-        var gitWorkflowAdd=(ProcessStartInfo)Call(gitWorkflowTool,"StartWorkflow",gitWorkflowWorkspace,gitWorkflowDirectory,gitWorkflowDefinition,gitWorkflowCommands[2])!;
-        Require(!(bool)Call(gitWorkflowTool,"WorkflowSequenceMatches",gitWorkflowPlan,gitWorkflowWorkspace,3,gitWorkflowAdd.ArgumentList.ToArray())!,"tampered NUL pathspec refused");
+        var gitWorkflowAdd=(ProcessStartInfo)Call(gitWorkflowPolicy,"StartWorkflow",gitWorkflowWorkspace,gitWorkflowDirectory,gitWorkflowDefinition,gitWorkflowCommands[2])!;
+        Require(!(bool)Call(gitWorkflowPolicy,"WorkflowSequenceMatches",gitWorkflowPlan,gitWorkflowWorkspace,3,gitWorkflowAdd.ArgumentList.ToArray())!,"tampered NUL pathspec refused");
     }
     finally{Directory.Delete(gitWorkflowRoot,true);}
     Console.WriteLine("PASS offline Git workflow owner policy: fixed ordered init/add/diff/commit/log/status/fsck and denial commands; altered message, remote, command prefix, environment, sequence bounds, reordering and tampered pathspec refused; no Git process, Broker, Job or LPAC execution");
