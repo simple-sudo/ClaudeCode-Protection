@@ -73,6 +73,7 @@ scripts/Build.ps1：
 - scripts/Invoke-IsolationProbe.ps1：明确隔离探针阶段，仍关闭。
 - scripts/Set-MainProtection.ps1、Test-ScopedFirewall.ps1、Use-ProbeLoopbackLease.ps1：明确 WFP mutation 阶段，仍关闭；Enable 与 Restore 两种修改路径均受门禁保护。
 - scripts/Invoke-S1DailyBuild.ps1、scripts/Invoke-BrokerOfflineBuild.ps1：旧构建流程显式接入 LegacyOfflineBuild / EngineeringBuild 关闭阶段。
+- tests/SessionZeroStartupWitness/Test-OrdinaryStartupWitness.ps1、Test-OrdinaryBranchTrace.ps1 和 tests/GpuCallProgress/Test-NativeWin32k.ps1：会编译/加载/执行辅助代码的本机见证测试均接入关闭的 IsolationProbe 阶段。
 - tests/OwnedToolLaunch/OfflineConsoleNativeCases.cs：Owner 身份绑定拒绝测试改为断言契约实际抛出的 InvalidDataException。
 - scripts/Test-ProductBuildBoundary.ps1：静态检查阶段白名单、监控机制、日常构建入口及其他关闭阶段。
 

@@ -146,7 +146,7 @@ foreach($relative in $wfpScripts){
 }
 
 
-foreach($relative in @('scripts/Build.ps1','scripts/Invoke-S1DailyBuild.ps1','scripts/Invoke-BrokerOfflineBuild.ps1','scripts/Set-MainProtection.ps1')){
+foreach($relative in @('scripts/Build.ps1','scripts/Invoke-S1DailyBuild.ps1','scripts/Invoke-BrokerOfflineBuild.ps1','scripts/Set-MainProtection.ps1','tests/SessionZeroStartupWitness/Test-OrdinaryStartupWitness.ps1','tests/SessionZeroStartupWitness/Test-OrdinaryBranchTrace.ps1','tests/GpuCallProgress/Test-NativeWin32k.ps1')){
     $source=Read-Text $relative
     $tokens=$null;$parseErrors=$null
     [void][System.Management.Automation.Language.Parser]::ParseInput($source,[ref]$tokens,[ref]$parseErrors)
@@ -171,6 +171,19 @@ Write-Output 'PASS engineering-only process/job/sandbox source remains separatel
 Write-Output 'PASS approved package inventory excludes engineering, selftest, sandbox and native-fence assets'
 Write-Output 'PASS staged gate opens only the monitored daily build and keeps engineering, legacy offline builds, probes and WFP mutation closed'
 Write-Output 'PASS legacy offline build scripts and both WFP mutation modes fail closed before side effects'
+
+$probeEntryPoints=@(
+    'tests/SessionZeroStartupWitness/Test-OrdinaryStartupWitness.ps1',
+    'tests/SessionZeroStartupWitness/Test-OrdinaryBranchTrace.ps1',
+    'tests/GpuCallProgress/Test-NativeWin32k.ps1'
+)
+foreach($relative in $probeEntryPoints){
+    $source=Read-Text $relative
+    $gatePosition=$source.IndexOf("Assert-ProjectSecurityClearance.ps1') -Stage IsolationProbe",[StringComparison]::Ordinal)
+    Require ($gatePosition -ge 0) "$relative is not behind the closed IsolationProbe stage"
+}
+
 Write-Output 'PASS DailyBuild source project contains no custom Target, UsingTask, Exec, package, analyzer, generator or explicit import nodes'
+Write-Output 'PASS native Win32k and SessionZero executable witness tests are behind the closed IsolationProbe stage'
 Write-Output ("PASS {0} conventional Build entrypoints require explicit staged qualification before build actions" -f $buildEntrypoints.Count)
 Write-Output 'STATIC SOURCE REVIEW ONLY: no product build, assembly load, product execution, AV query, install or host mutation'
