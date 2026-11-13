@@ -36,7 +36,8 @@ scripts/Assert-ProjectSecurityClearance.ps1 现在要求调用者显式提供 St
 2. root/SecurityCenter2 必须恰好报告一个显示名为 Kaspersky 的产品，productState 必须与本机既有合格观察 266240 一致。
 3. 从本阶段开始时间起检查 Windows Application 日志中的 avp / kaspersky Provider 事件。
 4. 构建期间每 750ms 轮询事件；每 3 秒重新检查服务与 Security Center 状态；构建结束后再做一次最终核验。
-5. 出现新相关事件、事件日志不可读取、服务停止或产品状态变化，终止构建进程树并报告停止原因。
+5. 监控证据以 JSONL 持续写入 `%LOCALAPPDATA%\\ClaudeCode-Protection\\security-stage\\<run>-DailyBuild-kaspersky-monitor.jsonl`：记录预检/周期健康快照、进程启动/退出、监控失败、新告警和进程树终止结果。事件查询正常且无告警时不逐次写入空轮询，避免日志膨胀。
+6. 出现新相关事件、事件日志不可读取、服务停止或产品状态变化，终止构建进程树并报告停止原因。
 
 **覆盖限制：** 目前监控依赖固定服务名、Security Center 注册状态和 Windows Application 日志中的相关 Provider。它不是 Kaspersky 内部遥测 API，不能保证捕获所有弹窗、隔离动作、其他日志通道或厂商云端告警。输出明确保留 FullVendorAlertVisibility=UNKNOWN。**本机阶段测试时，设备所有者必须保持卡巴斯基界面可观察；看到任何新告警立即停止并回传截图/事件与完整构建日志。**
 
