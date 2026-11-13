@@ -100,8 +100,9 @@ ProcessView 已增加独立 CapturedFileTime 并将 OfflineConsoleNetworkSurvey 
 
 ## 5. 下一步验收
 
-1. `f819ddf` 的 Hosted Windows compile、Safe managed policy smoke、Offline workspace Git workflow 均 PASS；其离线 workflow 日志明确显示 focused ordinary Windows network-profile mapping PASS（NOT LPAC/L3）。后续文档同步 HEAD 的三组 CI 也已全部 PASS。
-2. 在用户 Windows 11 上，用当前独立分支构建的工件走现有安装/版本/Owner 链，执行一次固定 OfflineConsoleNetworkSurvey schema 2 的真实 LPAC 对照；不关闭 GPU，不修改全机代理/WFP。
+1. `f819ddf` 的 Hosted Windows compile、Safe managed policy smoke、Offline workspace Git workflow 均 PASS；离线 workflow 日志明确显示 focused ordinary Windows network-profile mapping PASS（NOT LPAC/L3）。文档同步 HEAD `98c0506` 的三组 CI 也全部 PASS。
+2. **本机产品构建/执行硬停止：** `scripts/Build.ps1` 首先调用 `scripts/Assert-ProjectSecurityClearance.ps1`；该文件当前明确抛出 `SECURITY_REVIEW_REQUIRED`，关联 `docs/INCIDENT-20261025-KASPERSKY.md`。在该门禁经正式安全审查解除前，不得运行 Build.ps1、不得换脚本/参数绕过、不得安装或运行本分支测试包。CI 的 compile-only 不解除此门禁。
+3. 只有在 SECURITY_REVIEW_REQUIRED 按项目流程解除并允许构建/安装后，才在用户 Windows 11 上使用当前独立分支工件走现有安装/版本/Owner 链，执行固定 OfflineConsoleNetworkSurvey schema 2 的真实 LPAC 对照；不关闭 GPU，不修改全机代理/WFP。
 3. 由可信 Owner 核验真实 host references、restricted raw bytes、process receipt、Profile receipt 的文件身份/哈希/权限和实际内容；保存桌面日志并回传。不能只看退出码或摘要。
 4. 对本次实际读取结果逐字段分类：CONFIRMED_DIRECT、DENIED_CONFIRMED、UNKNOWN、NOT_RUN；若任何 P0 内容真实可读，保留原值与证据并记录 FAIL，再修复复验。
 5. 在本垂直切片闭环后，再串行推进 FlClash/UU 管理面、设备身份、环境位置和其他替代来源。
