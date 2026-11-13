@@ -208,7 +208,7 @@ internal sealed class ProtectedState : IDisposable
     }
     internal static void RequireFixedInventoryPrefix(string fixedPrefix)
     {
-        if (fixedPrefix == MachineEgressProbeIntent.Prefix) return;
+        if (fixedPrefix is MachineEgressProbeIntent.Prefix or MachineEgressQuarantineIntent.Prefix) return;
         if(fixedPrefix is not (EtwAccessIntentPrefix or SessionWinsockReadAccess.IntentPrefix or SessionTimeZoneReadAccess.IntentPrefix or SessionZeroCreatorRegistration.IntentPrefix or SessionZeroWindowOwner.IntentPrefix or "manifest-access-intent-" or "operation-" or "plan-" or "release-" or "restage-" or "recovery-" or "selection-" or "stage-intent-" or "job-intent-" or "fence-intent-" or "fence-migration-" or "loopback-intent-" or "profile-created-" or "profile-intent-")) throw new InvalidOperationException("Fixed inventory prefix required");
     }
     internal void AssertFreshEmpty()

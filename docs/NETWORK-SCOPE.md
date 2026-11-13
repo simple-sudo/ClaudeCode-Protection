@@ -31,7 +31,9 @@
 
 全机准备及故障状态的候选规则使用独立持久子层，IPv4/IPv6 出站 IP 包层阻断未标为 loopback 的包，双栈 IPFORWARD 层阻断全部转发。规则不依赖接口枚举、当前路由、应用名或私网地址清单。它没有放行 FlClash 或链路控制协议的规则，因此仅作为拒绝策略。 [WFP 分层条件](https://learn.microsoft.com/en-us/windows/win32/fwp/filtering-conditions-available-at-each-filtering-layer)
 
-原生只读事务按安装绑定的对象键核对四条规则、子层及管理员/SYSTEM 权限，并记录分配的子层权重和过滤器 ID。部分存在或规则漂移被拒绝。当前无规则写入或公开调用入口。待证明范围包括 WFP 实际仲裁、物理投递、转发和虚拟交换路径、启动期覆盖，以及绑定到已核验 Core 与端点的正向放行。 [WFP 仲裁](https://learn.microsoft.com/en-us/windows/win32/fwp/filter-arbitration)
+全机拒绝策略使用原安装状态锁和版本核验。写事务先确认全部对象键缺席并记录意图，再添加子层及四条规则。提交前记录过滤器 ID、子层权重及五项权限摘要，提交后用独立只读事务复核。未闭合的意图进入原生命周期待恢复门。
+
+精确恢复在删除前核对整套对象及准备记录。部分残留、对象替换和权限漂移保留现场。删除后的缺席经提交后读回才记录为闭合，已闭合的操作重放只检查缺席。源码仍受系统测试门限制，实际仲裁、物理投递、转发、重启恢复和经验证的 Core 端点放行仍待实测。 [WFP 仲裁](https://learn.microsoft.com/en-us/windows/win32/fwp/filter-arbitration)
 
 
 ## 2026-11-12 全机 WFP 可行性审查与首个实证切片

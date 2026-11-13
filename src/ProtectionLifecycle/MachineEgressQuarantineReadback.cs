@@ -1,8 +1,10 @@
 using System.Runtime.InteropServices;
+using System.Security.Cryptography;
 
 namespace ProtectionLifecycle;
 
-internal sealed record MachineEgressQuarantineObservation(ushort SubLayerWeight, IReadOnlyList<ulong> FilterIds);
+internal sealed record MachineEgressQuarantineObservation(ushort SubLayerWeight, IReadOnlyList<ulong> FilterIds,
+    IReadOnlyList<string> SecurityHashes);
 
 internal static class MachineEgressQuarantineReadback
 {
@@ -11,11 +13,12 @@ internal static class MachineEgressQuarantineReadback
     internal static MachineEgressQuarantineObservation? Read(SafeWfpEngine engine, MachineEgressQuarantinePolicy policy) =>
         WfpNative.Transaction(engine, true, () => ReadInTransaction(engine, policy));
 
-    private static MachineEgressQuarantineObservation? ReadInTransaction(SafeWfpEngine engine, MachineEgressQuarantinePolicy policy)
+    internal static MachineEgressQuarantineObservation? ReadInTransaction(SafeWfpEngine engine, MachineEgressQuarantinePolicy policy)
     {
         var key = policy.SubLayerKey;
         var status = WfpNative.FwpmSubLayerGetByKey0(engine, in key, out var pointer);
         ushort? weight = null;
+        var security = new List<string>(policy.FilterCount + 1);
         try
         {
             if (status != WfpNative.SubLayerNotFound || pointer != IntPtr.Zero)
@@ -24,7 +27,7 @@ internal static class MachineEgressQuarantineReadback
                 if (pointer == IntPtr.Zero) throw WfpNative.Contract("MachineQuarantineSubLayerMissing");
                 var layer = Marshal.PtrToStructure<WfpNative.SubLayer>(pointer);
                 if (!policy.MatchesSubLayer(layer)) throw WfpNative.Contract("MachineQuarantineSubLayerDiffers");
-                WfpNative.AssertSecurity(engine, key, WfpNative.FwpmSubLayerGetSecurityInfoByKey0);
+                security.Add(SecurityHash(engine, key, WfpNative.FwpmSubLayerGetSecurityInfoByKey0));
                 weight = layer.Weight;
             }
         }
@@ -45,7 +48,7 @@ internal static class MachineEgressQuarantineReadback
                 if (pointer == IntPtr.Zero) throw WfpNative.Contract("MachineQuarantineFilterMissing");
                 var filter = Marshal.PtrToStructure<WfpNative.Filter>(pointer);
                 if (!policy.MatchesFilter(role, filter)) throw WfpNative.Contract("MachineQuarantineFilterDiffers");
-                WfpNative.AssertSecurity(engine, key, WfpNative.FwpmFilterGetSecurityInfoByKey0);
+                security.Add(SecurityHash(engine, key, WfpNative.FwpmFilterGetSecurityInfoByKey0));
                 ids.Add(filter.Id);
             }
             finally
@@ -56,6 +59,9 @@ internal static class MachineEgressQuarantineReadback
         if (!weight.HasValue && ids.Count == 0) return null;
         if (!weight.HasValue || ids.Count != policy.FilterCount || ids.Contains(0) || ids.Distinct().Count() != ids.Count)
             throw WfpNative.Contract("MachineQuarantineInventoryIncomplete");
-        return new(weight.Value, ids.AsReadOnly());
+        return new(weight.Value, ids.AsReadOnly(), security.AsReadOnly());
     }
+
+    private static string SecurityHash(SafeWfpEngine engine, Guid key, WfpNative.ReadSecurity read) =>
+        Convert.ToHexString(SHA256.HashData(WfpNative.ReadTrustedSecurity(engine, key, read)));
 }

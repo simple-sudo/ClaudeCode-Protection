@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using System.Security.Cryptography;
 using ProtectionLifecycle;
 
 internal static class MachineEgressQuarantineCases
@@ -55,7 +56,43 @@ internal static class MachineEgressQuarantineCases
                 Require(!policy.MatchesFilter(role, drifted));
             }
         }
-        Console.WriteLine("PASS dual-stack machine quarantine and exact readback definitions (managed only)");
+        VerifyRecords(keys);
+        Console.WriteLine("PASS dual-stack machine quarantine, exact readback and recovery records (managed only)");
+    }
+
+    private static void VerifyRecords(Guid[] keys)
+    {
+        var intent = new MachineEgressQuarantineIntent(1, keys[0], Guid.NewGuid(), new string('A', 64),
+            keys[1], keys[2], keys[3], keys[4], keys[5]);
+        var bytes = intent.Encode();
+        var digest = Convert.ToHexString(SHA256.HashData(bytes));
+        Require(MachineEgressQuarantineIntent.Decode(bytes, keys[0], intent.Leaf) == intent);
+        Refuse(() => _ = MachineEgressQuarantineIntent.Decode(bytes, Guid.NewGuid(), intent.Leaf));
+        Refuse(() => _ = MachineEgressQuarantineIntent.Decode(bytes, keys[0], intent.Leaf + ".json"));
+        var repeatedKey = intent with { ForwardV6 = intent.ForwardV4 };
+        Refuse(() => _ = MachineEgressQuarantineIntent.Decode(repeatedKey.Encode(), keys[0], intent.Leaf));
+
+        var observation = new MachineEgressQuarantineObservation(500, [1, 2, 3, 4],
+            [digest, digest, digest, digest, digest]);
+        var prepared = intent.Prepared(digest, observation);
+        intent.AssertPrepared(prepared, digest, observation);
+        Refuse(() => intent.AssertPrepared(null, digest, observation));
+        Refuse(() => intent.AssertPrepared(prepared, digest, observation with { FilterIds = [1, 2, 3] }));
+        Refuse(() => intent.AssertPrepared(prepared, digest, observation with { FilterIds = [2, 1, 3, 4] }));
+        Refuse(() => intent.AssertPrepared(prepared, digest, observation with { SubLayerWeight = 501 }));
+        Refuse(() => intent.AssertPrepared(prepared, digest, observation with
+        {
+            SecurityHashes = [digest, digest, digest, digest, new string('B', 64)]
+        }));
+        Require(!intent.Closed(digest).AsSpan().SequenceEqual(intent.Closed(new string('B', 64))));
+        Require(!intent.Closed(digest).AsSpan().SequenceEqual(prepared));
+    }
+
+    private static void Refuse(Action action)
+    {
+        try { action(); }
+        catch (Exception error) when (error is InvalidDataException or ArgumentException) { return; }
+        throw new InvalidDataException("Machine egress quarantine accepted mismatched ownership evidence");
     }
 
     private static void Require(bool condition)

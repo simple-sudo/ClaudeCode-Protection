@@ -12,6 +12,7 @@
     <Compile Include="MachineEgressSocketTrialCases.cs;../../src/ProtectionLifecycle/MachineEgressSocketTrial.cs;../../src/ProtectionLifecycle/MachineEgressRoute.cs" />
     <Compile Include="../../src/ProtectionLifecycle/MachineEgressRouteWatch.cs" />
     <Compile Include="MachineEgressQuarantineCases.cs;../../src/ProtectionLifecycle/MachineEgressQuarantinePolicy.cs;../../src/ProtectionLifecycle/MachineEgressQuarantineReadback.cs" />
+    <Compile Include="../../src/ProtectionLifecycle/MachineEgressQuarantineIntent.cs" />
     <Compile Include="../../src/ProtectionLifecycle/MachineEgressProbePolicy.cs;../../src/ProtectionLifecycle/MachineEgressDeliveryEvidence.cs;../../src/ProtectionLifecycle/MachineEgressRecoveryState.cs;../../src/ProtectionLifecycle/WfpNative.cs;../../src/ProtectionLifecycle/WfpFailure.cs;../../src/ProtectionLifecycle/SafeWfpEngine.cs" />
   </ItemGroup>
 </Project>
