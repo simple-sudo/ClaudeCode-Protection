@@ -236,8 +236,9 @@ internal sealed record OfflineConsoleNetworkSurvey(int SchemaVersion,string Sess
                 var row=tcp[n];var rowId=sourceId+":"+n;
                 var endpoint=$"{row.LocalAddress}:{row.LocalPort}->{row.RemoteAddress}:{row.RemotePort}";
                 Add("connection",endpoint,rowId,"network.tcp.endpoint",endpoint,target);
-                Add("process-pid",row.Pid.ToString(System.Globalization.CultureInfo.InvariantCulture),rowId,
-                    "network.process-owner",row.Pid.ToString(System.Globalization.CultureInfo.InvariantCulture),target);
+                var pidKey=row.Pid.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                Add("process-pid",pidKey,rowId,
+                    row.Pid==0?"":"network.process-owner",row.Pid==0?"":pidKey,target);
             }
         }
 
@@ -266,7 +267,8 @@ internal sealed record OfflineConsoleNetworkSurvey(int SchemaVersion,string Sess
                 var key=row.Pid.ToString(System.Globalization.CultureInfo.InvariantCulture);
                 var value=$"{row.Name}|{row.Pid}|{row.CreatedFileTime}";
                 evidence.Add(Create("network.processes","process",value,"process-enumeration:"+key,
-                    "process-inventory","network.process-owner",key,hostReference,true,true,
+                    "process-inventory",row.CreatedFileTime is null?"":"network.process-owner",
+                    row.CreatedFileTime is null?"":key,hostReference,true,true,
                     HostPrivacyEvidenceOutcome.ContentRead,true,null,receipt,readTime));
             }
         }
