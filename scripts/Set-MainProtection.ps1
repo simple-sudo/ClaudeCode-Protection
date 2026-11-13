@@ -30,7 +30,7 @@ if ($Mode -eq 'Restore') {
     # During the security hold, exact restoration may disable owned rules but
     # must not provide an alternate route to enable protection rules.
     if (@($saved.Rules | Where-Object { $_.Enabled -eq 'True' }).Count) {
-        . (Join-Path $PSScriptRoot 'Assert-ProjectSecurityClearance.ps1')
+        . (Join-Path $PSScriptRoot 'Assert-ProjectSecurityClearance.ps1') -Stage WfpMutation
     }
     foreach ($item in $saved.Rules) { Set-NetFirewallRule -PolicyStore PersistentStore -Name $item.Name -Enabled $item.Enabled | Out-Null }
     foreach ($item in $saved.Rules) { if ([string](Get-NetFirewallRule -PolicyStore ActiveStore -Name $item.Name).Enabled -ne $item.Enabled) { throw 'Restored rule not reflected in ActiveStore' } }
