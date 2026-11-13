@@ -97,6 +97,8 @@ Require ($gateText -match "Add-Content -LiteralPath") 'Kaspersky monitor evidenc
 Require ($gateText -match "Start-Sleep -Milliseconds 750") 'Kaspersky event poll interval changed'
 Require ($gateText -match "TotalSeconds -ge 3") 'Kaspersky service/product recheck interval changed'
 Require ($gateText -match '\$process\.Kill\(\$true\)') 'monitor must terminate the complete child process tree on failure'
+Require ($gateText -match 'WaitForExit\(10000\)') 'monitor must wait for process-tree termination confirmation'
+Require ($gateText -match 'terminationConfirmed') 'monitor must verify process-tree termination rather than assume success'
 Require ($gateText -match "FullVendorAlertVisibility='UNKNOWN'") 'limited event coverage must remain explicitly UNKNOWN'
 
 $dailyBuild=Read-Text 'scripts/Build.ps1'
