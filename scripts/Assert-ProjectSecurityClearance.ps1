@@ -208,10 +208,15 @@ function Invoke-ProjectSecurityMonitoredProcess {
             $process.Refresh()
             if(-not $process.HasExited){
                 $process.Kill($true)
-                [void]$process.WaitForExit(10000)
+                $terminationConfirmed=$process.WaitForExit(10000)
+                $process.Refresh()
+                if(-not $terminationConfirmed -or -not $process.HasExited){
+                    throw 'Process-tree termination could not be confirmed within 10 seconds.'
+                }
                 Write-ProjectSecurityEvidence -RecordType 'MonitoredProcessTreeTerminated' -Data @{
                     ProcessId=$process.Id
                     HasExited=$process.HasExited
+                    WaitConfirmed=$terminationConfirmed
                 }
             }
         }catch{
