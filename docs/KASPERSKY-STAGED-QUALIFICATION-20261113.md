@@ -47,13 +47,13 @@ scripts/Assert-ProjectSecurityClearance.ps1 要求调用者显式提供 Stage。
 scripts/Build.ps1：
 - 必须显式提供 ExpectedCommit；校验当前 HEAD 和参与构建的 Git 跟踪输入与固定 SHA 对应的 Git blob 完全一致。
 - 使用固定 dotnet.exe 路径与 SDK 8.0.422；SDK 版本查询、MSBuild preprocess 和实际 Build 均纳入同一轮卡巴斯基监控。
-- 对日常项目 XML、现有 project.assets.json、NuGet 生成导入、父目录 Directory.Build / response / global.json 文件及 preprocess 后的实际 import graph 进行审查；拒绝外部 package targets、分析器/Source Generator、显式自定义 Target、UsingTask、Exec 和项目引用。
-- 使用 --no-restore、--no-dependencies、--disable-build-servers、UseSharedCompilation=false、RunAnalyzers=false、-m:1、-nr:false 和 -noAutoResponse 缩小执行面。
+- 对日常项目 XML、现有 project.assets.json、NuGet 生成导入、父目录 Directory.Build / response / global.json 文件及 preprocess 后的实际 import graph 进行审查；拒绝外部 package targets、分析器/Source Generator、显式自定义 Target、UsingTask、Exec 和项目引用。导入 SDK 图中的 Target / UsingTask / Exec 节点数量写入 receipt；所有 AssemblyFile 任务程序集必须位于固定 .NET 安装目录并纳入输入哈希；AssemblyName / TaskFactory 必须属于受审查的 Microsoft/System 内置集合。
+- 使用 --no-restore、--no-dependencies、--disable-build-servers、UseSharedCompilation=false、RunAnalyzers=false、-m:1、-nr:false 和 -noAutoResponse 缩小执行面；使用 normal verbosity 记录实际任务执行，若 Build 日志出现 Exec task 执行则拒绝本轮构建。
 - stdout/stderr、JSONL、输入清单、输出工件 SHA-256 和 receipt 均写入 security-stage 目录，并使用同一 Run ID 关联。
 - 输出只写入 bin/security-stage/<RunId>，不启动、不安装、不签名、不发布。
 - 旧 Invoke-S1DailyBuild.ps1 和 Invoke-BrokerOfflineBuild.ps1 分别接入 LegacyOfflineBuild / EngineeringBuild 关闭阶段，不再能绕过当前门禁。
 
-**重要边界：** dotnet build 仍会执行可信 SDK 的 MSBuild 目标、内置任务和 C# 编译器；本阶段不是“零代码执行”，而是约束实际导入图和可执行组件，并在进程运行期间持续监控。若缺少有效 project.assets.json 或依赖缓存，--no-restore 构建可以失败；保留失败，不切换在线 restore 来“修绿”。
+**重要边界：** dotnet build 仍会执行可信 SDK 的 MSBuild 目标、内置任务和 C# 编译器；本阶段不是“零代码执行”，而是约束实际导入图和可执行组件，并在进程运行期间持续监控。SDK 导入文件和引用的任务程序集纳入输入 SHA-256；normal verbosity 下检测到实际 Exec 任务执行即停止。若缺少有效 project.assets.json 或依赖缓存，--no-restore 构建可以失败；保留失败，不切换在线 restore 来“修绿”。
 
 ## 5. 后续阶段顺序
 

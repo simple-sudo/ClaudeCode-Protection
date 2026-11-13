@@ -12,13 +12,16 @@ if($Stage -cne 'DailyBuild'){throw "SECURITY_STAGE_BLOCKED: '$Stage' has not bee
 if([string]::IsNullOrWhiteSpace($env:LOCALAPPDATA)){throw 'SECURITY_MONITOR_FAILED: LOCALAPPDATA is unavailable.'}
 $script:ProjectSecurityLogRoot=Join-Path $env:LOCALAPPDATA 'ClaudeCode-Protection\security-stage'
 [void][IO.Directory]::CreateDirectory($script:ProjectSecurityLogRoot)
-$script:ProjectSecurityRunId=[DateTime]::UtcNow.ToString('yyyyMMddTHHmmssfffZ')+'-'+$PID
+$script:ProjectSecurityRunId=[DateTime]::UtcNow.ToString('yyyyMMddTHHmmssfffZ')+'-'+$PID+'-'+[Guid]::NewGuid().ToString('N').Substring(0,8)
 $script:ProjectSecurityEvidencePath=Join-Path $script:ProjectSecurityLogRoot ($script:ProjectSecurityRunId+'-DailyBuild-kaspersky-monitor.jsonl')
 $script:ProjectSecurityDotNetPath='C:\Program Files\dotnet\dotnet.exe'
 $script:ProjectSecurityBuildProperties=@(
  '-p:ImportDirectoryBuildProps=false','-p:ImportDirectoryBuildTargets=false','-p:ImportDirectoryPackagesProps=false',
  '-p:EnableNETAnalyzers=false','-p:RunAnalyzers=false','-p:RunAnalyzersDuringBuild=false',
- '-p:UseSharedCompilation=false','-p:BuildProjectReferences=false'
+ '-p:UseSharedCompilation=false','-p:BuildProjectReferences=false',
+ '-p:CustomBeforeMicrosoftCommonTargets=','-p:CustomAfterMicrosoftCommonTargets=',
+ '-p:CustomBeforeMicrosoftCSharpTargets=','-p:CustomAfterMicrosoftCSharpTargets=',
+ '-p:CustomBeforeMicrosoftNETCoreCompile=','-p:CustomAfterMicrosoftNETCoreCompile='
 )
 foreach($part in @('Props','Targets')){
  foreach($position in @('Before','After')){
@@ -223,7 +226,7 @@ function Invoke-ProjectSecurityMonitoredProcess {
   'DailyBuild' {
    $expectedOutput=Join-Path $script:ProjectSecurityRoot ('bin\security-stage\'+$script:ProjectSecurityRunId)
    if([string]::IsNullOrWhiteSpace($OutputDirectory) -or [IO.Path]::GetFullPath($OutputDirectory) -ine [IO.Path]::GetFullPath($expectedOutput)){throw 'SECURITY_STAGE_BLOCKED: DailyBuild output must use this run''s isolated artifact directory.'}
-   $expectedArguments=@('build',$project,'--configuration','Release','--output',$OutputDirectory,'--nologo','--no-restore','--no-dependencies','--disable-build-servers','-m:1','-nr:false','-noAutoResponse')+$script:ProjectSecurityBuildProperties
+   $expectedArguments=@('build',$project,'--configuration','Release','--output',$OutputDirectory,'--nologo','--verbosity','normal','--no-restore','--no-dependencies','--disable-build-servers','-m:1','-nr:false','-noAutoResponse')+$script:ProjectSecurityBuildProperties
   }
  }
  if($ArgumentList.Count -ne $expectedArguments.Count){throw 'SECURITY_STAGE_BLOCKED: monitored process argument count differs from the reviewed operation.'}

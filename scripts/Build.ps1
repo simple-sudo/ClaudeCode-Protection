@@ -137,7 +137,43 @@ try{
   }
  }
 
- $inputPaths=[Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+ [xml]$expandedXml=[IO.File]::ReadAllText($expanded)
+ $importedTargets=@($expandedXml.SelectNodes('//Target'))
+ $importedUsingTasks=@($expandedXml.SelectNodes('//UsingTask'))
+ $importedExecNodes=@($expandedXml.SelectNodes('//Exec'))
+ $taskAssemblyPaths=[Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+ $taskAssemblyNames=[Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+ $taskFactories=[Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+ foreach($task in $importedUsingTasks){
+  $assemblyFile=[string]$task.AssemblyFile
+  $assemblyName=[string]$task.AssemblyName
+  $factory=[string]$task.TaskFactory
+  if(-not [string]::IsNullOrWhiteSpace($factory)){
+   if($factory -notin @('CodeTaskFactory','RoslynCodeTaskFactory')){throw ('Unreviewed MSBuild TaskFactory in imported SDK graph: '+$factory)}
+   [void]$taskFactories.Add($factory)
+  }
+  if(-not [string]::IsNullOrWhiteSpace($assemblyFile)){
+   if($assemblyFile -match '\$\('){throw ('Unresolved MSBuild task assembly path: '+$assemblyFile)}
+   $taskPath=[IO.Path]::GetFullPath($assemblyFile)
+   if(-not $taskPath.StartsWith('C:\Program Files\dotnet\',[StringComparison]::OrdinalIgnoreCase)){
+    throw ('MSBuild task assembly escapes the pinned .NET installation: '+$taskPath)
+   }
+   [void]$taskAssemblyPaths.Add($taskPath)
+  }elseif(-not [string]::IsNullOrWhiteSpace($assemblyName)){
+   if($assemblyName -notmatch '^(Microsoft|System)\.'){throw ('Unreviewed MSBuild task assembly name: '+$assemblyName)}
+   [void]$taskAssemblyNames.Add($assemblyName)
+  }elseif([string]::IsNullOrWhiteSpace($factory)){
+   throw ('MSBuild UsingTask has no auditable assembly or task factory: '+[string]$task.TaskName)
+  }
+ }
+ $receipt.ImportedTargetCount=$importedTargets.Count
+ $receipt.ImportedUsingTaskCount=$importedUsingTasks.Count
+ $receipt.ImportedExecNodeCount=$importedExecNodes.Count
+ $receipt.ImportedTaskAssemblyFiles=@($taskAssemblyPaths)
+ $receipt.ImportedTaskAssemblyNames=@($taskAssemblyNames)
+ $receipt.ImportedTaskFactories=@($taskFactories)
+
+$inputPaths=[Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
  Add-UniquePath $inputPaths $project
  Add-UniquePath $inputPaths $PSCommandPath
  Add-UniquePath $inputPaths (Join-Path $PSScriptRoot 'Assert-ProjectSecurityClearance.ps1')
@@ -145,6 +181,7 @@ try{
  Add-UniquePath $inputPaths $dotnet
  Add-UniquePath $inputPaths $git
  Add-UniquePath $inputPaths $expanded
+ foreach($taskAssembly in $taskAssemblyPaths){Add-UniquePath $inputPaths $taskAssembly}
  Add-UniquePath $inputPaths (Join-Path $runDirectory 'global.json')
  foreach($generated in $nugetGenerated){if(Test-Path -LiteralPath $generated -PathType Leaf){Add-UniquePath $inputPaths $generated}}
  foreach($import in $imports){if(Test-Path -LiteralPath $import -PathType Leaf){Add-UniquePath $inputPaths $import}}
@@ -180,9 +217,101 @@ try{
  if(Test-Path -LiteralPath $outputDirectory){throw 'Run-specific build output already exists; no overwrite is permitted.'}
  [void][IO.Directory]::CreateDirectory($outputDirectory)
  Assert-NoReparsePath $outputDirectory
- $buildArguments=@('build',$project,'--configuration','Release','--output',$outputDirectory,'--nologo','--no-restore','--no-dependencies','--disable-build-servers','-m:1','-nr:false','-noAutoResponse')+$script:ProjectSecurityBuildProperties
+ $buildArguments=@('build',$project,'--configuration','Release','--output',$outputDirectory,'--nologo','--verbosity','normal','--no-restore','--no-dependencies','--disable-build-servers','-m:1','-nr:false','-noAutoResponse')+$script:ProjectSecurityBuildProperties
  $buildExit=Invoke-ProjectSecurityMonitoredProcess -Purpose DailyBuild -FilePath $dotnet -ArgumentList $buildArguments -WorkingDirectory $runDirectory -StandardOutputPath $buildStdout -StandardErrorPath $buildStderr -OutputDirectory $outputDirectory
  $receipt.BuildExit=$buildExit
+ $combinedBuildLog=''
+ if(Test-Path -LiteralPath $buildStdout){$combinedBuildLog+=[IO.File]::ReadAllText($buildStdout)}
+ if(Test-Path -LiteralPath $buildStderr){$combinedBuildLog+=[IO.File]::ReadAllText($buildStderr)}
+ $executedTasks=[regex]::Matches($combinedBuildLog,'(?im)^\s*Task\s+"([^"]+)"\s*
+ $receipt.Status='BUILD_SUCCEEDED_NO_PRODUCT_EXECUTION'
+}catch{
+ $operationFailure=$_.Exception
+ $receipt.Status='STOPPED'
+ $receipt.FailureType=$_.Exception.GetType().FullName
+ $receipt.Failure=$_.Exception.Message
+}finally{
+ if($pathChanged){$env:PATH=$oldPath}
+ foreach($name in $environmentNames){
+  if($null -eq $environmentBackup[$name]){Remove-Item -LiteralPath ('Env:\'+$name) -ErrorAction SilentlyContinue}
+  else{Set-Item -Path ('Env:\'+$name) -Value $environmentBackup[$name]}
+ }
+ try{[void](Get-ProjectSecuritySnapshot);$receipt.FinalKasperskyState='HEALTHY'}
+ catch{
+  $receipt.FinalKasperskyState='UNKNOWN_OR_FAILED'
+  $receipt.FinalKasperskyFailure=$_.Exception.Message
+  if(-not $operationFailure){$operationFailure=$_.Exception}
+  $receipt.Status='STOPPED_FINAL_KASPERSKY_RECHECK'
+ }
+ try{
+  $artifactRecords=@()
+  if(Test-Path -LiteralPath $outputDirectory -PathType Container){
+   $artifactRecords=@(Get-ChildItem -LiteralPath $outputDirectory -Recurse -File | Sort-Object FullName | ForEach-Object {
+    [pscustomobject]@{Path=$_.FullName;RelativePath=[IO.Path]::GetRelativePath($outputDirectory,$_.FullName).Replace('\','/');Length=$_.Length;SHA256=(Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash}
+   })
+  }
+  $artifactManifest=[ordered]@{RunId=$run;SourceCommit=$actualCommit;OutputDirectory=$outputDirectory;ArtifactCount=$artifactRecords.Count;Artifacts=$artifactRecords}
+  [IO.File]::WriteAllText($artifactsPath,($artifactManifest | ConvertTo-Json -Depth 8),[Text.UTF8Encoding]::new($false))
+  $receipt.OutputArtifactCount=$artifactRecords.Count
+ }catch{
+  $receipt.ArtifactHashFailure=$_.Exception.Message
+  if(-not $operationFailure){$operationFailure=$_.Exception}
+  $receipt.Status='STOPPED_ARTIFACT_HASH_FAILURE'
+ }
+ $receipt.CompletedUtc=[DateTime]::UtcNow.ToString('o')
+ try{[IO.File]::WriteAllText($receiptPath,($receipt | ConvertTo-Json -Depth 8),[Text.UTF8Encoding]::new($false))}catch{if(-not $operationFailure){$operationFailure=$_.Exception}}
+}
+if($operationFailure){throw $operationFailure}
+if($receipt.OutputArtifactCount -lt 1){throw 'DailyBuild produced no hashable output artifacts.'}
+$receipt | ConvertTo-Json -Depth 8
+Write-Output "DAILY_BUILD_PASS: $run; monitor=$($script:ProjectSecurityEvidencePath); stdout=$buildStdout; stderr=$buildStderr; inputs=$inputsPath; artifacts=$artifactsPath; receipt=$receiptPath"
+)
+ $receipt.ExecutedTaskNames=@($executedTasks | ForEach-Object {$_.Groups[1].Value} | Sort-Object -Unique)
+ $execTaskMatches=[regex]::Matches($combinedBuildLog,'(?im)^\s*Task\s+"Exec"\s*
+ $receipt.Status='BUILD_SUCCEEDED_NO_PRODUCT_EXECUTION'
+}catch{
+ $operationFailure=$_.Exception
+ $receipt.Status='STOPPED'
+ $receipt.FailureType=$_.Exception.GetType().FullName
+ $receipt.Failure=$_.Exception.Message
+}finally{
+ if($pathChanged){$env:PATH=$oldPath}
+ foreach($name in $environmentNames){
+  if($null -eq $environmentBackup[$name]){Remove-Item -LiteralPath ('Env:\'+$name) -ErrorAction SilentlyContinue}
+  else{Set-Item -Path ('Env:\'+$name) -Value $environmentBackup[$name]}
+ }
+ try{[void](Get-ProjectSecuritySnapshot);$receipt.FinalKasperskyState='HEALTHY'}
+ catch{
+  $receipt.FinalKasperskyState='UNKNOWN_OR_FAILED'
+  $receipt.FinalKasperskyFailure=$_.Exception.Message
+  if(-not $operationFailure){$operationFailure=$_.Exception}
+  $receipt.Status='STOPPED_FINAL_KASPERSKY_RECHECK'
+ }
+ try{
+  $artifactRecords=@()
+  if(Test-Path -LiteralPath $outputDirectory -PathType Container){
+   $artifactRecords=@(Get-ChildItem -LiteralPath $outputDirectory -Recurse -File | Sort-Object FullName | ForEach-Object {
+    [pscustomobject]@{Path=$_.FullName;RelativePath=[IO.Path]::GetRelativePath($outputDirectory,$_.FullName).Replace('\','/');Length=$_.Length;SHA256=(Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash}
+   })
+  }
+  $artifactManifest=[ordered]@{RunId=$run;SourceCommit=$actualCommit;OutputDirectory=$outputDirectory;ArtifactCount=$artifactRecords.Count;Artifacts=$artifactRecords}
+  [IO.File]::WriteAllText($artifactsPath,($artifactManifest | ConvertTo-Json -Depth 8),[Text.UTF8Encoding]::new($false))
+  $receipt.OutputArtifactCount=$artifactRecords.Count
+ }catch{
+  $receipt.ArtifactHashFailure=$_.Exception.Message
+  if(-not $operationFailure){$operationFailure=$_.Exception}
+  $receipt.Status='STOPPED_ARTIFACT_HASH_FAILURE'
+ }
+ $receipt.CompletedUtc=[DateTime]::UtcNow.ToString('o')
+ try{[IO.File]::WriteAllText($receiptPath,($receipt | ConvertTo-Json -Depth 8),[Text.UTF8Encoding]::new($false))}catch{if(-not $operationFailure){$operationFailure=$_.Exception}}
+}
+if($operationFailure){throw $operationFailure}
+if($receipt.OutputArtifactCount -lt 1){throw 'DailyBuild produced no hashable output artifacts.'}
+$receipt | ConvertTo-Json -Depth 8
+Write-Output "DAILY_BUILD_PASS: $run; monitor=$($script:ProjectSecurityEvidencePath); stdout=$buildStdout; stderr=$buildStderr; inputs=$inputsPath; artifacts=$artifactsPath; receipt=$receiptPath"
+)
+ $receipt.ExecutedExecTaskCount=$execTaskMatches.Count
+ if($execTaskMatches.Count -gt 0){throw 'MSBuild executed an Exec task. DailyBuild refuses external command execution from imported targets.'}
  if($buildExit -ne 0){throw ('Daily build failed with exit code '+$buildExit)}
  $receipt.Status='BUILD_SUCCEEDED_NO_PRODUCT_EXECUTION'
 }catch{
