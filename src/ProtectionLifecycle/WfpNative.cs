@@ -39,6 +39,9 @@ internal static class WfpNative
         internal Guid Key;internal Display Display;internal uint Flags,FieldCount;internal IntPtr Fields;
         internal Guid DefaultSubLayer;internal ushort Id;
     }
+    [StructLayout(LayoutKind.Sequential)] internal struct LayerField {
+        internal IntPtr Key;internal uint FieldType,DataType;
+    }
     internal static IReadOnlyDictionary<string,int> LayoutSnapshot()=>new Dictionary<string,int> {
         ["PointerBytes"]=IntPtr.Size,["ValueBytes"]=Marshal.SizeOf<Value>(),["BlobBytes"]=Marshal.SizeOf<Blob>(),
         ["ConditionBytes"]=Marshal.SizeOf<Condition>(),["ActionBytes"]=Marshal.SizeOf<Action>(),["ContextBytes"]=Marshal.SizeOf<Context>(),
@@ -53,7 +56,8 @@ internal static class WfpNative
         if(!OperatingSystem.IsWindows() || !Environment.Is64BitProcess || Marshal.SizeOf<Value>()!=16 || Marshal.SizeOf<Blob>()!=16 || Marshal.SizeOf<Condition>()!=40 ||
             Marshal.SizeOf<Action>()!=20 || Marshal.SizeOf<Context>()!=16 || Marshal.SizeOf<SubLayer>()!=72 || Marshal.SizeOf<Filter>()!=200 ||
             Marshal.OffsetOf<Filter>(nameof(Filter.Context)).ToInt32()!=152 || Marshal.OffsetOf<Filter>(nameof(Filter.Id)).ToInt32()!=176 ||
-            Marshal.SizeOf<Layer>()!=72 || Marshal.OffsetOf<Layer>(nameof(Layer.Fields)).ToInt32()!=40 || Marshal.OffsetOf<Layer>(nameof(Layer.Id)).ToInt32()!=64)
+            Marshal.SizeOf<Layer>()!=72 || Marshal.OffsetOf<Layer>(nameof(Layer.Fields)).ToInt32()!=40 || Marshal.OffsetOf<Layer>(nameof(Layer.Id)).ToInt32()!=64 ||
+            Marshal.SizeOf<LayerField>()!=16 || Marshal.OffsetOf<LayerField>(nameof(LayerField.DataType)).ToInt32()!=12)
             throw new PlatformNotSupportedException("Unqualified WFP interop layout");
     }
     internal static SafeWfpEngine Open()

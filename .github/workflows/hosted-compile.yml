@@ -17,6 +17,7 @@ on:
       - 'src/ProtectionCenter/**'
       - 'src/ProtectionBootstrap/**'
       - 'samples/TextSummary/**'
+      - 'tests/WfpReadStatus/**'
   workflow_dispatch:
 
 permissions:
@@ -46,3 +47,5 @@ jobs:
             dotnet build "src/$project/$project.csproj" --configuration Release --nologo
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           }
+      - name: Verify machine egress rule definitions in memory
+        run: dotnet run --project tests/WfpReadStatus/WfpReadStatus.csproj --configuration Release -- --check-machine-egress-policy

@@ -42,6 +42,10 @@
 
 正向切片须验证 Core 实例身份、TUN、授权远端协议/地址/端口、端点变更、有限 DNS 引导及代理出口属性。UU 的真实控制、传输和重连另采证据。首轮结论按实际覆盖范围记账，原生过滤、受控投递和故障注入当前均为 NOT_RUN。系统实验须先固定候选工件、对象、时限、停止及恢复条件并取得适用许可。
 
+首个源码切片 `MachineEgressProbePolicy` 在双栈出站 IP 包层分别定义“精确接口索引 + 精确接收端地址”的持久拒绝规则，覆盖发往该地址的所有 IP 协议。地址按 WFP 要求使用 IPv4 主机字节序标量或 IPv6 16 字节表示。规则及子层绑定独立对象键与完整双栈方案摘要，回读核对作用域、动作和持久标志。实际子层优先级须独立观测。 [WFP 条件数据类型](https://learn.microsoft.com/en-us/windows-hardware/drivers/network/filtering-condition-data-types) · [WFP 地址字节序](https://learn.microsoft.com/windows/win32/fwp/filtering-condition-identifiers-)
+
+`MachineEgressProbeTransaction` 是未接入 Broker 的内部原生对象资格代码，沿用系统测试门。它先核对真实层字段和对象键缺席，在同一写事务中加入双栈规则、核验规则和安全描述符，随后中止并核对三项对象缺席。没有提交写事务的路径。托管测试已通过。本机普通权限只读打开 BFE 成功，首次查询出站包层返回 Win32 5，双栈层字段和实际对象往返仍待原生验证。受控投递阶段还需实现独立恢复记录及在包层与接收端对账。
+
 ## 历史实现证据（2026-11-06：最小能力与实际内容比较切片，受限实测 NOT_RUN）
 
 在AFD/TCPIP正向证据收敛到创建检查层、既存WFP历史查询未返回记录后，不再盲改

@@ -5,4 +5,8 @@
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
   </PropertyGroup>
   <ItemGroup><Compile Include="Program.cs" /><Compile Include="ExistingEvents.cs" /><Compile Include="SelectionChecks.cs" /></ItemGroup>
+  <ItemGroup>
+    <Compile Include="MachineEgressProbeCases.cs" />
+    <Compile Include="../../src/ProtectionLifecycle/MachineEgressProbePolicy.cs;../../src/ProtectionLifecycle/WfpNative.cs;../../src/ProtectionLifecycle/WfpFailure.cs;../../src/ProtectionLifecycle/SafeWfpEngine.cs" />
+  </ItemGroup>
 </Project>

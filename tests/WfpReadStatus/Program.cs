@@ -2,6 +2,13 @@ using System.Runtime.InteropServices;
 using System.Security.Principal;
 using System.Text.Json;
 
+if(args.Length==1 && args[0]=="--check-machine-egress-policy")
+{
+    MachineEgressProbeCases.Run();
+    return 0;
+}
+if(args.Length==1 && args[0]=="--read-machine-egress-layers")
+    return MachineEgressProbeCases.ReadLayers();
 if(args.Length==1 && args[0]=="--check-selection")
 {Console.WriteLine(JsonSerializer.Serialize(WfpExistingEvents.SelectionChecks.Run()));return 0;}
 if(args.Length!=1 || args[0] is not ("--inspect" or "--read-fixed"))return 125;
