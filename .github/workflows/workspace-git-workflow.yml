@@ -187,7 +187,7 @@ jobs:
             Invoke-StandardUserTest $ownedApp @('OwnedToolLaunch.dll','offline-console-network-profile') 'Actual Windows network API content to deterministic profile mapping (ordinary process only; not LPAC/L3)'
             $workspacePipeCases = @(
               'worker-feedback','frames','local-pipe','output','snapshot','token-membership',
-              'reply','project-contract','privacy-contract','privacy-execution-gate',
+              'reply','project-contract','privacy-contract','privacy-execution-gate','privacy-evidence',
               'caller-csharp','caller-data','project-failure'
             )
             foreach ($case in $workspacePipeCases) {

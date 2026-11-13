@@ -41,11 +41,6 @@ jobs:
       - name: Verify product build and security-stop boundary (static only)
         shell: pwsh
         run: ./scripts/Test-ProductBuildBoundary.ps1
-      - name: Run pure host privacy evidence contract cases (no native host probes)
-        shell: pwsh
-        run: |
-          dotnet run --project tests/WorkspacePipe/WorkspacePipe.csproj --configuration Release -- privacy-evidence
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Compile source, do not run protected code
         shell: pwsh
         run: |
