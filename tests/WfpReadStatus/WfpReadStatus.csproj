@@ -9,6 +9,7 @@
     <Compile Include="MachineEgressProbeCases.cs;MachineEgressDeliveryCases.cs;MachineEgressRecoveryCases.cs;MachineEgressDropReader.cs;MachineEgressDropCases.cs" />
     <Compile Include="MachineEgressFrameMatch.cs;MachineEgressCaptureWindow.cs;MachineEgressFrameCases.cs" />
     <Compile Include="MachineEgressRunCases.cs;../../src/ProtectionLifecycle/MachineEgressDeliveryRun.cs;../../src/ProtectionLifecycle/MachineEgressSender.cs" />
+    <Compile Include="MachineEgressSocketTrialCases.cs;../../src/ProtectionLifecycle/MachineEgressSocketTrial.cs" />
     <Compile Include="../../src/ProtectionLifecycle/MachineEgressProbePolicy.cs;../../src/ProtectionLifecycle/MachineEgressDeliveryEvidence.cs;../../src/ProtectionLifecycle/MachineEgressRecoveryState.cs;../../src/ProtectionLifecycle/WfpNative.cs;../../src/ProtectionLifecycle/WfpFailure.cs;../../src/ProtectionLifecycle/SafeWfpEngine.cs" />
   </ItemGroup>
 </Project>

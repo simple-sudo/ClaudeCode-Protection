@@ -62,6 +62,8 @@
 
 试验发送端在首次连接前绑定源地址、独占临时端口和指定接口，接收端可预先记录 TCP SYN 或 UDP 对应的五元组。Windows IPv4 与 IPv6 单播接口选项分别使用网络字节序和主机字节序。既存流复用原套接字，失败的套接字拒绝重用。八组 Windows 回环已由接收端独立核对标记和原始五元组，另验证了普通 TCP 连接拒绝。真实物理接口、受控接收端和 WFP 配合仍待实测。 [IPv4 单播接口](https://learn.microsoft.com/en-us/windows/win32/winsock/ipproto-ip-socket-options) · [IPv6 单播接口](https://learn.microsoft.com/en-us/windows/win32/winsock/ipproto-ipv6-socket-options)
 
+三阶段资格执行器现持有真实发送端。每次发送前向采集端交付独立标记、预绑定五元组、接口和发送前规则观察。资格入口核对双栈接收地址及接口与 WFP 计划相同。恢复前关闭基准和执行阶段的试验套接字，TCP 使用中止式关闭以丢弃排队数据。实际 Windows 回环收齐 24 条独立回执，物理采集和 Broker 入口仍待接入。
+
 恢复在同一写事务中确认三项对象全部缺席，或全部与原规则、owner/DACL 摘要及提交前对象 ID 记录匹配。部分残留、替换或 ID 漂移保留现场。仅按原键删除两个过滤器和所属子层，提交后再确认缺席并写入闭合回执。已有闭合回执的重放只复核缺席。微软将过滤器 ID 定义为运行时标识。BFE 重启后 ID 稳定性仍未知，ID 变化时该资格路径会拒绝自动删除。当前系统测试门仍阻止此路径运行，Broker 尚未提供命令，原生提交、回滚、进程中断与重启恢复均为 NOT_RUN。 [WFP 过滤器运行时标识](https://learn.microsoft.com/windows/win32/api/fwpmu/nf-fwpmu-fwpmfiltergetbyid0)
 
 ## 历史实现证据（2026-11-06：最小能力与实际内容比较切片，受限实测 NOT_RUN）

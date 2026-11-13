@@ -10,12 +10,19 @@ namespace ProtectionLifecycle;
 internal static class MachineEgressProbeLease
 {
     internal static MachineEgressFlowResult[] RunDeliveryTrial(ProtectedState state, VerifiedVersion version,
-        MachineEgressProbeIntent intent, IMachineEgressDeliveryTrial trial, CancellationToken cancellation)
+        MachineEgressProbeIntent intent, MachineEgressSocketTrial trial, CancellationToken cancellation)
     {
         ProtectedSession.AssertSystemTestingAllowed();
-        return MachineEgressDeliveryRun.Execute(intent.SubLayerKey, trial,
-            () => Observe(state, version, intent), () => Apply(state, version, intent),
-            () => Recover(state, version, intent.SubLayerKey), cancellation);
+        trial.AssertPlan(intent);
+        using (trial)
+            return MachineEgressDeliveryRun.Execute(intent.SubLayerKey, trial,
+                () => Observe(state, version, intent), () => Apply(state, version, intent), Restore, cancellation);
+
+        void Restore()
+        {
+            try { trial.StopSending(); }
+            finally { Recover(state, version, intent.SubLayerKey); }
+        }
     }
 
     internal static MachineEgressProbeIntent Plan(ProtectedState state, VerifiedVersion version,

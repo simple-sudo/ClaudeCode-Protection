@@ -16,6 +16,7 @@ if(args.Length==1 && args[0]=="--check-machine-egress-delivery")
 {
     await MachineEgressDeliveryCases.RunAsync();
     MachineEgressRunCases.Run();
+    MachineEgressSocketTrialCases.Run();
     return 0;
 }
 if(args.Length==1 && args[0]=="--check-selection")

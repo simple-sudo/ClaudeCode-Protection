@@ -88,7 +88,8 @@ internal static class MachineEgressRunCases
             new(operation, applied ? MachineEgressPolicyState.ExactBlock : MachineEgressPolicyState.Absent,
                 clock++, clock++, applied ? objects : null);
 
-        public IReadOnlyList<MachineEgressDeliverySample> Measure(MachineEgressDeliveryPhase phase, CancellationToken cancellation)
+        public IReadOnlyList<MachineEgressDeliverySample> Measure(MachineEgressDeliveryPhase phase,
+            MachineEgressPolicyObservation before, CancellationToken cancellation)
         {
             Trace.Add(phase.ToString());
             var enforced = phase == MachineEgressDeliveryPhase.Enforced;

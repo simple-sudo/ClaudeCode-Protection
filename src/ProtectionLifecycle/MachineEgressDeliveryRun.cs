@@ -10,19 +10,23 @@ internal sealed record MachineEgressFlowResult(MachineEgressFlow Flow, MachineEg
 // The fixed trial owner supplies the sender and independent collectors.
 internal interface IMachineEgressDeliveryTrial
 {
-    IReadOnlyList<MachineEgressDeliverySample> Measure(MachineEgressDeliveryPhase phase, CancellationToken cancellation);
+    IReadOnlyList<MachineEgressDeliverySample> Measure(MachineEgressDeliveryPhase phase,
+        MachineEgressPolicyObservation before, CancellationToken cancellation);
     IReadOnlyList<MachineEgressPacketEvidence> Finish(CancellationToken cancellation);
 }
 
 internal static class MachineEgressDeliveryRun
 {
+    internal static IReadOnlyList<MachineEgressFlow> Flows { get; } = Array.AsReadOnly(
+        (from family in new[] { AddressFamily.InterNetwork, AddressFamily.InterNetworkV6 }
+         from protocol in new[] { ProtocolType.Tcp, ProtocolType.Udp }
+         from existing in new[] { false, true }
+         select new MachineEgressFlow(family, protocol, existing)).ToArray());
+
     internal static MachineEgressFlowResult[] Execute(Guid operation, IMachineEgressDeliveryTrial trial,
         Func<MachineEgressPolicyObservation> observe, Action apply, Action restore, CancellationToken cancellation)
     {
-        var flows = (from family in new[] { AddressFamily.InterNetwork, AddressFamily.InterNetworkV6 }
-                     from protocol in new[] { ProtocolType.Tcp, ProtocolType.Udp }
-                     from existing in new[] { false, true }
-                     select new MachineEgressFlow(family, protocol, existing)).ToArray();
+        var flows = Flows;
         var markers = new HashSet<Guid>();
         var baseline = Measure(MachineEgressDeliveryPhase.Baseline, MachineEgressPolicyState.Absent);
         if (baseline.Values.Any(item => !item.Attempt.ReachedSocketCall || item.Attempt.SocketId == Guid.Empty ||
@@ -79,7 +83,7 @@ internal static class MachineEgressDeliveryRun
             var before = observe();
             if (operation == Guid.Empty || before.Operation != operation || before.State != expected)
                 throw new InvalidDataException("MachineEgressUnexpectedPolicyBeforePhase");
-            var samples = trial.Measure(phase, cancellation).ToArray();
+            var samples = trial.Measure(phase, before, cancellation).ToArray();
             var after = observe();
             var result = new Dictionary<MachineEgressFlow, (MachineEgressAttempt, MachineEgressPacketEvidence)>();
             foreach (var sample in samples)
@@ -93,7 +97,7 @@ internal static class MachineEgressDeliveryRun
                     socket.Finished, socket.ReachedSocketCall, before, after);
                 result.Add(sample.Flow, (attempt, sample.Evidence));
             }
-            if (result.Count != flows.Length || flows.Any(flow => !result.ContainsKey(flow)))
+            if (result.Count != flows.Count || flows.Any(flow => !result.ContainsKey(flow)))
                 throw new InvalidDataException("MachineEgressTrialFlowInventoryMismatch");
             return result;
         }

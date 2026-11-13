@@ -20,7 +20,7 @@ internal sealed class MachineEgressSender : IDisposable
     private bool attempted;
     private bool established;
 
-    internal IPEndPoint Local => new(local.Address, local.Port);
+    internal IPEndPoint Local => new(new IPAddress(local.Address.GetAddressBytes()), local.Port);
 
     internal MachineEgressSender(IPAddress source, IPEndPoint destination, uint interfaceIndex, ProtocolType protocol)
     {
@@ -43,6 +43,9 @@ internal sealed class MachineEgressSender : IDisposable
         try
         {
             socket.ExclusiveAddressUse = true;
+            // Closing an enforced probe discards queued test bytes before
+            // the owner restores the policy.
+            if (tcp) socket.LingerState = new LingerOption(true, 0);
             if (!ipv4) socket.DualMode = false;
             var index = unchecked((int)interfaceIndex);
             socket.SetSocketOption(ipv4 ? SocketOptionLevel.IP : SocketOptionLevel.IPv6,
