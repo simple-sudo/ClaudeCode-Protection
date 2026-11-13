@@ -9,6 +9,15 @@ namespace ProtectionLifecycle;
 // Closing an engine handle is never treated as removal of persistent objects.
 internal static class MachineEgressProbeLease
 {
+    internal static MachineEgressFlowResult[] RunDeliveryTrial(ProtectedState state, VerifiedVersion version,
+        MachineEgressProbeIntent intent, IMachineEgressDeliveryTrial trial, CancellationToken cancellation)
+    {
+        ProtectedSession.AssertSystemTestingAllowed();
+        return MachineEgressDeliveryRun.Execute(intent.SubLayerKey, trial,
+            () => Observe(state, version, intent), () => Apply(state, version, intent),
+            () => Recover(state, version, intent.SubLayerKey), cancellation);
+    }
+
     internal static MachineEgressProbeIntent Plan(ProtectedState state, VerifiedVersion version,
         uint v4Interface, IPAddress v4Receiver, uint v6Interface, IPAddress v6Receiver)
     {

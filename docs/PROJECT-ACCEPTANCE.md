@@ -14,6 +14,7 @@
 - SOURCE / VERIFIED（合成 x64 事件缓冲区）实现双栈 TCP/UDP WFP 丢弃选择，核对协议、五元组、方向、时间、过滤器及层。实际普通权限只读查询采集配置返回 Win32 5，采集状态 UNKNOWN，真实事件枚举和物理口采集 NOT_RUN。
 - SOURCE / VERIFIED（合成 Ethernet 帧及窗口）覆盖双栈、TCP 无负载 SYN、UDP、VLAN、IPv6 扩展头、截断、分片和不完整采集。普通权限 Pktmon 状态查询被拒，实际组件与丢失计数未获取。
 - SOURCE / VERIFIED（托管判定与八组 Windows 回环）同一计划和同一过滤器实例的前后回读约束，拒绝错序、错 ID、权限/对象变化及未闭合记录。原生回读和采集接线仍 NOT_RUN。
+- SOURCE / VERIFIED（托管执行夹具）八组正向基准约束、施加失败保留原日志、施加后取消触发恢复、试验与恢复双重失败保留、最终采集缺失与已发现投递。真实执行入口和原生事务仍 NOT_RUN。
 - FAIL（本机普通权限原生只读观察）打开本地 BFE 后，`FwpmLayerGetByKey0` 首次查询返回 Win32 5。层字段实机类型 UNKNOWN。
 - NOT_RUN（本切片）产品编译、原生写事务、持久规则生效、受控双栈实际投递和恢复。全机模式尚未实现。
 

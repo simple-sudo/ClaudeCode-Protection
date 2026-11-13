@@ -15,6 +15,7 @@ if(args.Length==1 && args[0]=="--read-machine-egress-layers")
 if(args.Length==1 && args[0]=="--check-machine-egress-delivery")
 {
     await MachineEgressDeliveryCases.RunAsync();
+    MachineEgressRunCases.Run();
     return 0;
 }
 if(args.Length==1 && args[0]=="--check-selection")

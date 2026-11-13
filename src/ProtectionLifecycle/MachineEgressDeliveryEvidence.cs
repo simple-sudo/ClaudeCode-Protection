@@ -73,7 +73,7 @@ internal static class MachineEgressDeliveryEvidence
         return MachineEgressDeliveryVerdict.BlockObserved;
     }
 
-    private static bool Brackets(MachineEgressAttempt attempt, Guid operation, MachineEgressPolicyState required)
+    internal static bool Brackets(MachineEgressAttempt attempt, Guid operation, MachineEgressPolicyState required)
     {
         var before = attempt.PolicyBefore;
         var after = attempt.PolicyAfter;
