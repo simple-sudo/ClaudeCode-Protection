@@ -10,25 +10,27 @@
 | 可见性 | Public |
 | 默认分支 | main |
 | 当前开发分支 | codex/integrate-privacy-admission-20261027 |
-| 本次文档更新前的 codex HEAD / 产品源码基线 | 622700ebefa685eaf2179d032bcd3da352e83065 |
+| 当前 codex HEAD | bdbd667545519952e5f4bb8464fd782364d18f8c（在产品源码基线 622700e 上增加 1 个文档同步提交） |
+| 最近产品源码行为基线 | 622700ebefa685eaf2179d032bcd3da352e83065 |
 | 现有产品架构冻结基线 | d7507e57959c8c580a79657b756ec5fc6611b6db |
 | PR #3 | CLOSED / MERGED，2026-11-13 06:17:18Z |
 | PR #3 来源分支与 HEAD | chatgpt/complete-git-workflow-20261110 @ d7507e57959c8c580a79657b756ec5fc6611b6db |
 | PR #3 目标分支 | codex/integrate-privacy-admission-20261027 |
 | PR #3 原目标基线 | 8d56b0c40ef92d384b572bb168eec6bcd8a44d4e |
 | PR #3 merge commit | d7507e57959c8c580a79657b756ec5fc6611b6db |
-| main 分支核查快照 | c9c979a205663813d82e9dc1465302853468bd3d |
+| main 分支当前 HEAD | af59eb0bf4f90d6114a58e0e3ac0b45c032003b5（安全门禁文档曾短暂误建后已删除，当前树中无该文件） |
+| PR #4 | OPEN / DRAFT，head `chatgpt/p0-assurance-host-20261113`，base `codex/integrate-privacy-admission-20261027` |
 
 **PR #3 已经合并，不是 OPEN / DRAFT。** GitHub 返回 merged=true、closed 状态；merge commit 为 d7507e5。不要重新打开、重复合并或把旧 Draft PR 记录当成当前状态。
 
 **当前 codex 分支包含 PR #3 的全部成果及后续开发：**
 
 - PR 原目标基线 8d56b0c → PR merge commit d7507e5：318 个提交。
-- PR merge commit d7507e5 → 本次文档更新前 codex HEAD 622700e：额外 16 个提交，0 个落后提交。
-- 原目标基线 8d56b0c → codex HEAD 622700e：共领先 334 个提交，0 个落后提交。
+- PR merge commit d7507e5 → 产品源码基线 622700e：额外 16 个提交；之后 bdbd667 又增加 1 个文档同步提交。
+- 原目标基线 8d56b0c → codex HEAD bdbd667：共领先 335 个提交；其中最后 1 个提交只更新文档。
 - d7507e5 是 622700e 的祖先；PR #3 的来源分支不是当前开发主线。
 
-main 与 codex 已分叉：共同祖先为 3e1a511ef2e177f518ea98360319f8f300c803e；codex 相对 main 有 481 个独有提交，main 相对 codex 有 2 个独有提交。**不要自动将 codex 同步、覆盖或合并到 main。** 本次文档更新只在 codex 分支产生一个文档提交；提交后分支 HEAD 会前进到该文档提交，622700e 仍是本次核实的产品源码基线。
+main 与 codex 已分叉。此前统计的 ahead/behind 数字已因后续文档提交及 main 上的临时 add/delete 更正而过期，后续如需比较必须重新查询。2026-11-13 曾因 GitHub Contents API 漏传 branch 参数，将本门禁文档短暂创建在默认 main；随后已复制到本独立分支并从 main 删除。main 当前树不含该文件，但历史保留新增与删除两个提交（main HEAD `af59eb0`）。**不要自动将 codex 同步、覆盖或合并到 main。**
 
 ## 2. GitHub Actions 与验证边界
 
@@ -87,7 +89,17 @@ d7507e5 之后的 16 个提交继续在现有 ProtectionLifecycle / WFP 方向�
 
 最后一次有明确来源的安装观察是用户于 2026-11-12 提供的只读核验：Release f9e8d29d9c2c472495422dbffd40bffd、Activation INACTIVE、Package schema 32、25 项资产；Pointer ManifestSHA256 与安装 package.json 的 SHA-256 均为 5195D12C6A446BA3408D822C3907E5FD7E51BB4ED820A69BFCB08A16512BDBC2。2026-11-13 未重新读取本机安装状态，故不把该值表述为今天已复核的安装状态。源码内嵌旧 Bootstrap 批准包/迁移与该安装不匹配，不得复用。
 
-产品常规 Build 入口仍受 SECURITY_REVIEW_REQUIRED 硬停止约束。官方 Claude Code 每次执行及高影响系统实验按现行操作门禁取得具体决定。
+## 2026-11-13 SECURITY_REVIEW_REQUIRED 分阶段门禁更新（PR #4）
+
+设备所有者已明确授权：将无条件永久停止改为分阶段、卡巴斯基持续监控、新告警立即停止的门禁。该策略已在独立 PR #4 分支实现；PR #4 仍为 OPEN / DRAFT，未合并 Codex 主线。
+
+- 当前仅 `DailyBuild` 阶段开放：固定日常 `ClaudeProtection.csproj`、Release、`dotnet build --no-restore`；不 publish、不安装、不执行生成的产品程序。
+- `EngineeringBuild`、`CenterBuild`、`NativeBuild`、`IsolationProbe`、`WfpMutation` 均仍 BLOCKED。
+- 运行前检查 Kaspersky 服务 `AVP21.26`、Windows Security Center Kaspersky 注册及既有 productState `266240`；构建期间约每 750ms 检查相关 Application 事件、每 3 秒重查服务和产品状态。新相关事件、状态变化或监控失败会终止被监控的构建进程树。
+- 该观察不是完整 Kaspersky 厂商遥测，`FullVendorAlertVisibility=UNKNOWN`；本机执行阶段仍要求设备所有者同时观察卡巴斯基界面。不得关闭 AV、增加排除项、恢复隔离对象或规避检测。
+- **当前门禁源码尚未在用户本机执行；DailyBuild 也尚未运行。** 现阶段仅为 SOURCE，不能标记 BUILD、AV 兼容 VERIFIED 或产品交付。完整范围见 [KASPERSKY-STAGED-QUALIFICATION-20261113](KASPERSKY-STAGED-QUALIFICATION-20261113.md)。
+
+官方 Claude Code 每次执行及安装、提权、WFP/网络修改等高影响操作仍按各自当前授权和阶段门禁处理。
 
 ## 6. 公开仓库与证据治理
 
