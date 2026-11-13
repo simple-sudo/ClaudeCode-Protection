@@ -44,7 +44,7 @@ internal static class HostPrivacyEvidenceCases
         var hostTcp=Record("00000000000000000000000000000012","network.tcp","inventory","[]","host-tcp","iphelper",
             HostPrivacyEvidenceVisibility.HostReferenceOnly,sensitive:false);
         var deniedProfile=Evaluate(new[]{hostTcp,denied},"network.tcp");
-        Require(deniedProfile.Assessments.Single().Classification==HostPrivacyEvidenceClass.DeniedConfirmed &&
+        Require(deniedProfile.Assessments.Single(item=>item.EvidenceId==denied.EvidenceId).Classification==HostPrivacyEvidenceClass.DeniedConfirmed &&
             !deniedProfile.P0Exposure,"explicit native access denied is a denial, not content");
         var missing=Record("00000000000000000000000000000004","network.tcp","table","","iphelper-3","iphelper",
             outcome:HostPrivacyEvidenceOutcome.TargetAbsent,verified:false,error:2);
