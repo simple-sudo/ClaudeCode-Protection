@@ -5,6 +5,17 @@
 > 仅指该段时刻。旧DELIVERABLE只按明确切片解释为CAPABILITY_DELIVERED(scope)，不是整机交付；
 > 范围不明保留UNKNOWN。自我保护/最小暴露/辅助混淆按各日期切片记录，完整目标未验收。
 
+## 2026-11-13 SECURITY_REVIEW_REQUIRED 分阶段门禁更新（用户授权；PR #4，非产品验收）
+
+- 设备所有者明确授权：在独立分支将无条件永久停止改为分阶段、卡巴斯基持续监控、新告警立即停止的测试门禁。
+- 当前独立分支：`chatgpt/p0-assurance-host-20261113`；PR #4 OPEN / DRAFT，目标 `codex/integrate-privacy-admission-20261027`，未合并。
+- SOURCE：`Assert-ProjectSecurityClearance.ps1` 改为显式 Stage；仅 DailyBuild 可进入。服务 `AVP21.26`、SecurityCenter2 Kaspersky productState 266240 和 Application 事件检查构成当前观察面；750ms 事件轮询、3 秒服务/产品复核；新事件、状态异常或监控失败时终止构建进程树。
+- SOURCE：`Build.ps1` 仅执行 Release `dotnet build --no-restore`，不 publish、不安装、不执行产物。EngineeringBuild、CenterBuild、NativeBuild、IsolationProbe、WfpMutation 仍 BLOCKED。
+- SOURCE：`Test-ProductBuildBoundary.ps1` 改为断言分阶段门禁、持续 AV 观察和各关闭入口。PowerShell AST/静态断言是否通过，以 PR #4 最新 Actions 为准。
+- **NOT_RUN：** 本机门禁执行、DailyBuild、产物检查、安装、产品执行、WFP/网络修改和正式 Claude 均未执行。卡巴斯基全厂商告警可见性仍 UNKNOWN；Windows Application 日志不是完整厂商遥测，设备所有者界面观察仍为必要停止信号。
+- 不关闭/修改卡巴斯基、不添加排除项、不恢复隔离对象、不通过改名或重包装规避检测。历史 2026-10-25 告警原因仍 UNKNOWN；用户风险接受授权不是厂商误报鉴定。
+- 完整阶段合同见 [KASPERSKY-STAGED-QUALIFICATION-20261113](KASPERSKY-STAGED-QUALIFICATION-20261113.md)。本节是门禁策略/源码状态记录，不是 BUILD、AV 兼容 VERIFIED 或产品交付 PASS。
+
 ## 2026-11-13 GitHub 分支与 PR #3 集成状态（非产品能力验收）
 
 - PR #3 已于 2026-11-13 06:17:18Z 合并并关闭；来源分支 HEAD / merge commit 为 d7507e57959c8c580a79657b756ec5fc6611b6db，目标分支为 codex/integrate-privacy-admission-20261027，原目标基线为 8d56b0c40ef92d384b572bb168eec6bcd8a44d4e。
@@ -63,7 +74,7 @@ VERIFIED(ProfileRecovery 源链接实际 SessionTaskWorkspace 与 SessionProfile
 VERIFIED(TaskWorkspaceNative hosted Windows run 43154121514：测试源链接实际生产 SessionTaskWorkspace、WindowsPathSeal、WorkspaceDescriptor；以 elevated runner identity（Broker 等价权限级别，不是实际 Broker 进程）在真实 NTFS 上创建并核验五个 fixture，实际执行 Cleanup/AssertClosed 与 FileDispositionInfoEx 删除。精确低完整性标签、缺失标签的空目录成功删除并验证路径缺失/CLOSED receipt；非空目录、Package SID/DACL 不匹配、异常 Medium 标签按精确 InvalidDataException 原因拒绝，RemovedEntries=0、NOT_CONFIRMED 回执与原目录/内容保留。ProtectedState、SessionProfileRecovery、SessionResources、InstallationPackageSid 使用测试替身；Package SID 仅用于 DACL，不创建 AppContainer profile/token，也不运行实际 Broker、Owned Job、LPAC 或产品 Git 资产。)
 VERIFIED(NativeGitWorkspaceCases hosted Windows run 43157681722：测试源链接生产 `GitWorkspaceDescriptor`/`WindowsPathSeal`，以 elevated hosted runner identity 创建真实 NTFS 的 `git-project` 与 `git-control`。项目根目录精确 Package ACE 为 `0x001301BF`；控制根目录 GENERIC_READ|GENERIC_EXECUTE 经 NTFS 映射为 `0x001200A9`。生产 descriptor 使用 protected + auto-inherited DACL；生产路径通过持有 WRITE_DAC 的句柄调用 `SetSecurityInfo` 应用 DACL/保护标志，再设置 Low Integrity 标签。实际回读根目录 `DiscretionaryAclAutoInherited` 与 `SystemAclAutoInherited`；嵌套项目目录、项目文件、控制目录 config/hooks/template/pathspec 文件/目录均验证继承 ACE、精确掩码、OWNER RIGHTS、无 human/Users ACE、Low Integrity 标签继承及不授予 Package WRITE_DAC/WRITE_OWNER。测试实际创建并读取/核验 NTFS 对象，不是模拟 ACL。该测试仅以 elevated runner identity 运行生产 descriptor，不是产品 Broker；Package SID 仅派生，不创建 AppContainer profile/token，不执行 LPAC AccessCheck 或产品 Git 资产。后续为移除原始 SID/ACE 诊断输出及修正 workflow 步骤身份标签而重复执行的 Actions 43158190722（offline workspace Git + elevated native NTFS）、43158190720（hosted compile）、43158190733（managed policy/daily compile）全部 SUCCESS；NativeGitWorkspaceCases 与 TaskWorkspaceNative 在清理后的测试路径再次通过。)
 NOT_RUN(实际产品 Broker 的 Plan→Create→Created 持久化时序/崩溃注入与真实 ProtectedState、Broker 实际创建目录的 DACL/继承访问检查、AppContainer/LPAC token 正负访问、产品固定 Git 资产在 LPAC 中执行、Broker/Owned Job/LPAC 端到端 11 命令、Job 归零及故障/取消时成果拒绝导出)。
-本机 Build* 入口仍受 `SECURITY_REVIEW_REQUIRED` 硬停止，旧的一次性离线构建授权已消耗；本轮未绕过、构建、安装或执行产品。不得将本节普通用户 Git 证据与 `f9e8d29d` 既有单进程 LPAC `commit -a` 证据合并解释为 schema 2 多命令产品验收。 本轮另修复 schema 2 Git 多命令的 LPAC child wait：60,000ms 有界期限与 resource permit/runtime watchdog 对齐，保留无参 Canary 委托兼容，并拒绝非法超时值；最新三组 CI 全部 SUCCESS。Hosted compile 的静态安全复核脚本通过 5 项断言，确认日常 CLI 排除历史 SelfTests/工程 Job 源、工程项目独立、批准包不含工程资产、四个常规 Build 入口先经过无条件 `SECURITY_REVIEW_REQUIRED`。该结果仅为 SOURCE/STATIC REVIEW，不解除本机停止条件。 Bootstrap 内嵌 package approval 仍是历史 schema 6 Release `7df61706780c433f9dc5e7ddf5bc6f28` 与 `4d186bcb→7df61706` Transition；用户已只读核实当前 INACTIVE 安装为 `f9e8d29d9c2c472495422dbffd40bffd`、Package schema 32、25 assets，Pointer ManifestSHA256 与实际 package.json SHA256 完全一致（`5195D12C6A446BA3408D822C3907E5FD7E51BB4ED820A69BFCB08A16512BDBC2`）。旧 Transition 起始 Release 与当前安装不匹配，严禁复用；当前源码内嵌 `ApprovedPackage.json` 是 schema 6 / 24 项资产，当前安装 schema 32 是 25 项资产且包含 startup witness；新批准包与 transition 均待候选包完整资产摘要固定后生成。
+截至本段原始记录时，本机 Build* 入口仍受 `SECURITY_REVIEW_REQUIRED` 硬停止，旧的一次性离线构建授权已消耗；该历史状态已由 2026-11-13 用户授权的分阶段门禁更新替代（见本页顶部），本轮未绕过、构建、安装或执行产品。不得将本节普通用户 Git 证据与 `f9e8d29d` 既有单进程 LPAC `commit -a` 证据合并解释为 schema 2 多命令产品验收。 本轮另修复 schema 2 Git 多命令的 LPAC child wait：60,000ms 有界期限与 resource permit/runtime watchdog 对齐，保留无参 Canary 委托兼容，并拒绝非法超时值；最新三组 CI 全部 SUCCESS。Hosted compile 的静态安全复核脚本通过 5 项断言，确认日常 CLI 排除历史 SelfTests/工程 Job 源、工程项目独立、批准包不含工程资产、四个常规 Build 入口先经过无条件 `SECURITY_REVIEW_REQUIRED`。该结果仅为当时的 SOURCE/STATIC REVIEW；该门禁已于 2026-11-13 按用户授权改为分阶段 AV 监控门禁，见本页顶部。 Bootstrap 内嵌 package approval 仍是历史 schema 6 Release `7df61706780c433f9dc5e7ddf5bc6f28` 与 `4d186bcb→7df61706` Transition；用户已只读核实当前 INACTIVE 安装为 `f9e8d29d9c2c472495422dbffd40bffd`、Package schema 32、25 assets，Pointer ManifestSHA256 与实际 package.json SHA256 完全一致（`5195D12C6A446BA3408D822C3907E5FD7E51BB4ED820A69BFCB08A16512BDBC2`）。旧 Transition 起始 Release 与当前安装不匹配，严禁复用；当前源码内嵌 `ApprovedPackage.json` 是 schema 6 / 24 项资产，当前安装 schema 32 是 25 项资产且包含 startup witness；新批准包与 transition 均待候选包完整资产摘要固定后生成。
 
 ## 2026-11-10 独立 Git 固定提交
 
@@ -1557,7 +1568,7 @@ c1ab0dc修正独立BUILD后，-r2受保护资格副本实际退出0：同一生�
 
 ## 当前安全闸门
 
-2026-10-25 11:43 卡巴斯基对本项目 `ClaudeProtection.exe` 报出 `PDM:Trojan.Win32.Generic`；现有事件记录对应 `selftest`。当前构建状态为 **SECURITY_REVIEW_REQUIRED**，暂停程序执行、编译、安装与网络实验。原有 PASS 保留为历史工程证据，不能授予当前构建交付资格。用户最新报告已清除、未重启、卡巴斯基显示正常，并选择后续继续在本机验证；告警原因与整机影响未鉴定，不能认定误报或无感染。详见 [事件记录](INCIDENT-20261025-KASPERSKY.md)。
+2026-10-25 11:43 卡巴斯基对本项目 `ClaudeProtection.exe` 报出 `PDM:Trojan.Win32.Generic`；现有事件记录对应 `selftest`。事件发生后当时的构建状态为 **SECURITY_REVIEW_REQUIRED**，暂停程序执行、编译、安装与网络实验；该历史门禁于 2026-11-13 经设备所有者授权改为分阶段 AV 监控门禁，见本页顶部。原有 PASS 保留为历史工程证据，不能授予当前构建交付资格。用户最新报告已清除、未重启、卡巴斯基显示正常，并选择后续继续在本机验证；告警原因与整机影响未鉴定，不能认定误报或无感染。详见 [事件记录](INCIDENT-20261025-KASPERSKY.md)。
 
 用户当前无 Claude 账号登录计划；排查安全事件不改变真实 Claude 启动的延期范围。保持日常 FlClash 全局代理、系统代理及 TUN，禁止以关闭防护、添加排除或绕过拦截恢复测试。
 
@@ -1679,7 +1690,7 @@ a085761修复已接线的CLI/GUI用户维护切片：共享当前用户私有目
 
 GUI检查先显示代理基线，再显示审计阶段结果；报告同时保留两个阶段的独立退出码/输出/错误，第二阶段调度失败生成明确失败结果，报告写入失败保留屏幕结果。修复计划失败也进入同一结果显示/报告路径。未新增模块、项目或框架。
 
-四项目仅运行获准的非生成语义检查，0错误/0警告。异常类型继承关系核对仅使用现有.NET宿主类型，不加载或运行项目程序集；没有执行项目代码、GUI渲染或配置维护。真实损坏记录/无效UTF-8/报告失败仍待安全资格后的合成目录验收；卡巴斯基硬停止及其他未完成项保持，完整产品未完成。
+四项目仅运行获准的非生成语义检查，0错误/0警告。异常类型继承关系核对仅使用现有.NET宿主类型，不加载或运行项目程序集；没有执行项目代码、GUI渲染或配置维护。真实损坏记录/无效UTF-8/报告失败仍待安全资格后的合成目录验收；当时的卡巴斯基硬停止及其他未完成项保持，完整产品未完成；后续门禁更新见本页顶部。
 
 ## 2026-10-26接续：S1具体安全范围待决定
 
