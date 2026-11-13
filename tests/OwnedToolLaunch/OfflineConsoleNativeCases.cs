@@ -166,7 +166,7 @@ internal static class OfflineConsoleNativeCases
         var session=new string('c',32);
         var reference=Call(type.GetMethod("Capture",Static)!,null,session)!;
         var captured=JsonSerializer.SerializeToUtf8Bytes(reference,type);
-        _=Call(parse,null,captured,session,(uint)Environment.ProcessId);
+        _=Call(parse,null,captured,session,Environment.ProcessId);
         using var identity=WindowsIdentity.GetCurrent();
         using(var document=JsonDocument.Parse(captured))
         {
@@ -185,12 +185,12 @@ internal static class OfflineConsoleNativeCases
         Refuse<InvalidDataException>(()=>Call(assertTokenUser,denied,identity.User));
         Refuse<InvalidDataException>(()=>Call(parse,null,captured,session,0u));
         Refuse<InvalidDataException>(()=>Call(parse,null,captured,new string('d',32),(uint)Environment.ProcessId));
-        Refuse<InvalidDataException>(()=>Call(parse,null,new byte[32769],session,(uint)Environment.ProcessId));
+        Refuse<InvalidDataException>(()=>Call(parse,null,new byte[32769],session,Environment.ProcessId));
         void Deny(Action<JsonObject> change)
         {
             var sample=JsonNode.Parse(captured)!.AsObject();
             change(sample);
-            Refuse<InvalidDataException>(()=>Call(parse,null,JsonSerializer.SerializeToUtf8Bytes(sample),session,(uint)Environment.ProcessId));
+            Refuse<InvalidDataException>(()=>Call(parse,null,JsonSerializer.SerializeToUtf8Bytes(sample),session,Environment.ProcessId));
         }
         Deny(sample=>sample["MachineGuid"]!["Error"]=5);
         Deny(sample=>sample["ProfileDirectory"]!["Value"]=new string('x',1024));
@@ -214,14 +214,14 @@ internal static class OfflineConsoleNativeCases
         var capture=Call(type.GetMethod("CaptureSurvey",Static)!,null,session)!;
         var encoded=JsonSerializer.SerializeToUtf8Bytes(capture,type);
         var parse=type.GetMethod("Parse",Static)!;
-        _=Call(parse,null,encoded,session,(uint)Environment.ProcessId);
+        _=Call(parse,null,encoded,session,Environment.ProcessId);
         var survey=JsonNode.Parse(encoded)!.AsObject();
         Require(survey["SchemaVersion"]!.GetValue<int>()==2);
         foreach(var field in new[]{"LsaName","LsaDomain","FirmwareUuid","FirmwareSerial"})
             Require(survey["Native"]![field]!["Error"]!.GetValue<int>()==0 &&
                 survey["Native"]![field]!["Value"]!.GetValue<string>().Length>0);
         survey["Native"]!["FirmwareUuid"]!["Value"]="not-native-hex";
-        Refuse<InvalidDataException>(()=>Call(parse,null,JsonSerializer.SerializeToUtf8Bytes(survey),session,(uint)Environment.ProcessId));
+        Refuse<InvalidDataException>(()=>Call(parse,null,JsonSerializer.SerializeToUtf8Bytes(survey),session,Environment.ProcessId));
 
         var native=library.GetType("ProtectionLifecycle.OfflineConsoleNativeIdentity",true)!;
         var parseFirmware=native.GetMethod("ParseFirmware",Static)!;
@@ -289,7 +289,7 @@ internal static class OfflineConsoleNativeCases
             return value;
         }
         var bindOwner=type.GetMethod("AssertOwnerIdentityBinding",Static)!;
-        Call(bindOwner,null,IdentitySummary(identityReceipt,session,Environment.ProcessId),session,(uint)Environment.ProcessId);
+        Call(bindOwner,null,IdentitySummary(identityReceipt,session,Environment.ProcessId),session,Environment.ProcessId);
         Refuse<IOException>(()=>Call(bindOwner,null,IdentitySummary(identityReceipt,new string('e',32),Environment.ProcessId),
             session,(uint)Environment.ProcessId));
         Refuse<IOException>(()=>Call(bindOwner,null,IdentitySummary(identityReceipt,session,Environment.ProcessId+1),
