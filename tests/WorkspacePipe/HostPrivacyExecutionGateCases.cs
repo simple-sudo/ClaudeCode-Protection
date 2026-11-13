@@ -17,8 +17,8 @@ internal static class HostPrivacyExecutionGateCases
         void Require(bool value,string reason){if(!value)throw new InvalidDataException(reason);checks++;}
         void Refuse(Action action,string reason)
         {try{action();}catch(InvalidDataException){checks++;return;}throw new Exception("Gate accepted "+reason);}
-        Require(HostPrivacyContract.PolicySHA256=="8034D0E54F887AF61C34280AA9815D53F59A40C24D602A5BF851BF19ADC3336C",
-            "pre-refactor privacy v5 policy identity");
+        Require(HostPrivacyContract.PolicySHA256=="ABBF1E9181325D85B814EB6901DF1F71A6FD8D707C4B97DE23A73A1CADA5BC59",
+            "privacy v6 rejects ACCESS_DENIED as owner-observed absence");
         Require(HostPrivacyContract.Checks.Count==33 && HostPrivacyContract.CompilerChecks.Count==28 &&
             HostPrivacyContract.Checks.Where(check=>check.AllowsOwnerObservedAbsence).Single().Target==HostPrivacyTarget.ClaudeSettings,
             "original inventory and sole optional target");
@@ -58,13 +58,21 @@ internal static class HostPrivacyExecutionGateCases
             var g=Probed();g.AuthorizeToolCreation();var bad=Compiler(333);bad.Cases[i]=bad.Cases[i] with {Status="OPENED",Error=0};
             Refuse(()=>g.SealTool(bad,333),"compiler exposed "+i);Refuse(g.ReleaseExecution,"compiler exposure blocks code "+i);
         }
-        foreach(var error in new[]{2,3,5})
+        foreach(var error in new[]{2,3})
         {
             var r=Observation(111);var p=Observation(222);r.Cases[7]=HostPrivacyContract.Checks[7].Observe(error,true);p.Cases[7]=HostPrivacyContract.Checks[7].Observe(error,true);
             Refuse(()=>Gate().SealRoot(r,111),"child cannot select absence");
             var g=new HostPrivacyExecutionGate(session,hash,true);g.SealRoot(r,111);g.AuthorizeProbeCreation();g.SealProbe(p,222);g.AuthorizeToolCreation();g.SealTool(Compiler(333),333);g.ReleaseExecution();
-            var report=g.Snapshot(111,333);Require(HostPrivacyContract.Satisfied(report) && report.RootCases.Concat(report.ProbeCases).Concat(report.ToolCases).Count(c=>c.Status=="ACCESS_DENIED")==92,"92 actual denials and two owner-selected absence observations");
+            var report=g.Snapshot(111,333);Require(HostPrivacyContract.Satisfied(report) && report.RootCases.Concat(report.ProbeCases).Concat(report.ToolCases).Count(c=>c.Status=="ACCESS_DENIED")==92,
+                "native file-not-found errors 2/3 qualify only with owner-selected absence");
         }
+        var deniedDespiteOwnerAbsence=HostPrivacyContract.Checks[7].Observe(5,true);
+        Require(deniedDespiteOwnerAbsence.Status=="UNKNOWN" && deniedDespiteOwnerAbsence.Error==5,
+            "native access denied cannot be relabeled as owner-observed absence");
+        var absentGate=new HostPrivacyExecutionGate(session,hash,true);
+        var absentRoot=Observation(111);absentRoot.Cases[7]=deniedDespiteOwnerAbsence;
+        Refuse(()=>absentGate.SealRoot(absentRoot,111),
+            "owner-observed absence plus native access denied cannot seal a passing root");
         Require(HostPrivacyContract.Checks.Where(check=>check.TargetKind==HostPrivacyTargetKind.OwnerProcess).Select(check=>check.Access).SequenceEqual(new uint[]{0x10,1,2,8,0x20,0x40,0x800,0x40000,0x80000}),"one minimal process right per case");
         Require(HostPrivacyContract.CompilerChecks.Where(check=>check.TargetKind==HostPrivacyTargetKind.RootProcess).Select(check=>check.Role).All(r=>r.StartsWith("protection-root-",StringComparison.Ordinal)),"compiler checks actual root memory and control separately");
         Console.WriteLine($"PASS {checks} separate-probe owner gate checks; synthetic reports only, NOT native exit, LPAC, plan withdrawal or system qualification");

@@ -685,7 +685,8 @@ internal static class OfflineConsoleQualification
                         {
                             workspace.AssertHeld();
                             networkContent=OfflineConsoleNetworkSurvey.Read(workspace.Path,job.JobId,child.Pid,childCreated)
-                                .Seal(state,version,job.JobId,hostNetwork!,OfflineConsoleNetworkSurvey.CaptureProcesses());
+                                .Seal(state,version,job.JobId,hostNetwork!,OfflineConsoleNetworkSurvey.CaptureProcesses(),
+                                    hostIdentity??throw WfpNative.Contract("OfflineNetworkProfileOwnerIdentityReceiptMissing"));
                         }
                         catch(Exception error)when(error is not OutOfMemoryException){networkEvidenceFailure=error;}
                 }
@@ -796,7 +797,9 @@ internal static class OfflineConsoleQualification
         var identityObserved=IndependentIdentityObserved(hostIdentity) && (!identitySurvey || SurveyIdentityObserved(hostIdentity?.Survey));
         var functional=failures.Count==0 && closed && profileClosed && workspaceClosed && serviceRemoved && resumed && exit==0 &&
             filesMatched && matched && (!privateWindow || privateWindowsClosed);
-        var complete=functional && identityObserved && (!networkSurvey || networkContent?.ConfirmedForFixedReads==true);
+        var complete=functional && identityObserved && (!networkSurvey ||
+            networkContent is {ConfirmedForFixedReads:true,ProfileP0Exposure:false,ProfileP0Unknown:false,
+                ProfileReceiptSHA256.Length:64,OwnerIdentityReceiptSHA256.Length:64});
         var consoleReport=JsonSerializer.SerializeToNode(new {
             SchemaVersion=networkSurvey?4:identitySurvey?3:privateWindow?2:1,Scope="INSTALLED_FIXED_INDEPENDENT_OFFLINE_CONSOLE",state.InstallationId,JobId=jobId,
             version.Package.Release,version.Package.ManifestHash,Status=complete?"INDEPENDENT_OFFLINE_CONSOLE_CLOSED":"INDEPENDENT_OFFLINE_CONSOLE_NOT_CONFIRMED",

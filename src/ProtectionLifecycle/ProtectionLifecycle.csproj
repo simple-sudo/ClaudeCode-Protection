@@ -52,6 +52,7 @@
     <Compile Include="BundledProjectDevelopment.cs;../Shared/TextSummarySource.cs" />
     <Compile Include="CallerCSharpProject.cs;../Shared/CSharpProjectTask.cs;../Shared/ProjectFailure.cs" />
     <Compile Include="../Shared/ProjectWorkerFeedback.cs" />
+    <Compile Include="../Shared/HostPrivacyEvidence.cs" />
     <Compile Include="HostPrivacyProbe.cs;HostPrivacyProbe.Lifecycle.cs;HostPrivacyProbe.RestrictedRunner.cs;HostPrivacyProbe.CompilerControl.cs;HostPrivacyProbe.NativeMethods.cs;HostPrivacyFileState.cs;HostPrivacyExecutionGate.cs;../Shared/HostPrivacyModels.cs;../Shared/HostPrivacyContract.cs" />
     <Compile Include="SessionManifestReadAccess.cs;SessionTimeZoneReadAccess.cs;PublicTimeZoneSnapshot.cs" />
     <Compile Include="SessionEtwProviderAccess.cs" />

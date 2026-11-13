@@ -18,6 +18,7 @@ on:
       - 'src/ProtectionBootstrap/**'
       - 'samples/TextSummary/**'
       - 'tests/WfpReadStatus/**'
+      - 'tests/WorkspacePipe/**'
   workflow_dispatch:
 
 permissions:

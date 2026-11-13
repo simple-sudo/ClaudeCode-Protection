@@ -12,9 +12,9 @@
     <Compile Include="Program.cs;../../src/Shared/WorkspacePipe.cs;../../src/Shared/WorkspaceBundle.cs;../../src/Shared/WorkspaceFiles.cs;../../src/Shared/WorkspaceStopControl.cs" />
     <Compile Include="../../src/Shared/WindowsDirectoryNames.cs;../../src/Shared/DirectoryNamePage.cs" />
     <Compile Include="../../src/Shared/TextSummarySource.cs" />
-    <Compile Include="../../src/Shared/HostPrivacyModels.cs;../../src/Shared/HostPrivacyContract.cs;../../src/Shared/ProjectFailure.cs" />
+    <Compile Include="../../src/Shared/HostPrivacyModels.cs;../../src/Shared/HostPrivacyContract.cs;../../src/Shared/HostPrivacyEvidence.cs;../../src/Shared/ProjectFailure.cs" />
     <Compile Include="../../src/Shared/ProjectWorkerFeedback.cs;ProjectWorkerFeedbackCases.cs" />
-    <Compile Include="HostPrivacyExecutionGateCases.cs;../../src/ProtectionLifecycle/HostPrivacyExecutionGate.cs" />
+    <Compile Include="HostPrivacyExecutionGateCases.cs;HostPrivacyEvidenceCases.cs;../../src/ProtectionLifecycle/HostPrivacyExecutionGate.cs" />
     <Compile Include="CallerCSharpCases.cs;CallerDataCases.cs;ProjectFailureCases.cs;../../src/Shared/CSharpProjectTask.cs" />
     <EmbeddedResource Include="../../samples/CallerDataReport/cpc-project.json" LogicalName="DataFixture.cpc-project.json" />
     <EmbeddedResource Include="../../samples/CallerDataReport/src/Entry.cs" LogicalName="DataFixture.src/Entry.cs" />

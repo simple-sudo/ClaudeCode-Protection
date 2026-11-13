@@ -2,7 +2,7 @@
 
 > **真实证据公开保存规则（2026-11-12）**：仓库当前为 Public；设备所有者已明确允许必要的真实主机原值、敏感字段、私人路径、设备标识、网络/远控元数据和原始开发证据进入仓库。不得默认脱敏或以合成值替代实测。认证凭据和可重放秘密单独管理。见 [EVIDENCE-GOVERNANCE](EVIDENCE-GOVERNANCE.md)。
 
-状态：REQUIREMENT_ONLY / DESIGN（2026-11-03；2026-11-04按设备所有者真实数据强制实验授权修订）；**未实现、未构建、未安装、未在真实 Claude Code 受保护身份中验收**。这是一份安全设计合同，不是授权执行脚本或新的安全准入凭据。
+状态：**REQUIREMENT + PARTIAL_SOURCE_IMPLEMENTATION（2026-11-13，PR #4 Draft）**。本文件仍是规范/设计合同；首批可信证据模型和 OfflineConsoleNetworkSurvey 网络 profile 源码已接入独立网页端分支，但新 profile 的真实 LPAC L3 实机验证、完整攻击面矩阵、完整画像和真实 Claude 受保护链仍未完成。实现范围与未完成项见 [P0-ASSURANCE-HOST-IMPLEMENTATION-20261113](P0-ASSURANCE-HOST-IMPLEMENTATION-20261113.md)。本文件不是授权执行脚本或新的安全准入凭据。
 
 真实数据强制实验和开发者访问授权见[REAL-DATA-ADVERSARIAL-ASSURANCE](REAL-DATA-ADVERSARIAL-ASSURANCE.md)；
 正式优先级与交付术语见[SECURITY-REQUIREMENTS](SECURITY-REQUIREMENTS.md)；现行安装、暂停、授权只见[CURRENT-STATE](CURRENT-STATE.md)；工作包与实际验收登记分别见[HOST-PRIVACY-AUDIT-DIRECTION-20261102](HOST-PRIVACY-AUDIT-DIRECTION-20261102.md)和[PROJECT-ACCEPTANCE](PROJECT-ACCEPTANCE.md)。沿用已有安装、Broker、ProtectedSession、LPAC/Job/WFP、网关、Watchdog、原 owner 及恢复链，不另建平行的通用执行器。

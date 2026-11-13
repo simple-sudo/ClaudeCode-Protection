@@ -2,7 +2,7 @@
 param([Parameter(Mandatory=$true)][ValidatePattern('^[a-f0-9]{32}$')][string]$Run,[ValidateRange(30,180)][int]$LeaseSeconds=120,[switch]$FenceLoopback,[switch]$UseWfpFence,[switch]$PersistentFence)
 $ErrorActionPreference='Stop'
 $root=Split-Path -Parent $PSScriptRoot
-. (Join-Path $PSScriptRoot 'Assert-ProjectSecurityClearance.ps1')
+. (Join-Path $PSScriptRoot 'Assert-ProjectSecurityClearance.ps1') -Stage WfpMutation
 $hostExe=Join-Path $root 'bin\engineering\ClaudeProtection.exe'
 . (Join-Path $PSScriptRoot 'WfpRecoveryProtocol.ps1')
 $directory=Join-Path $root ('state\isolation-probe\'+$Run)

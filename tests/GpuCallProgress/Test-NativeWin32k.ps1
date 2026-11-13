@@ -2,6 +2,8 @@
 param([Parameter(Mandatory)][string]$EvidenceDirectory)
 
 $ErrorActionPreference = 'Stop'
+$repoRoot=Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+. (Join-Path $repoRoot 'scripts\Assert-ProjectSecurityClearance.ps1') -Stage IsolationProbe
 $out = (New-Item -ItemType Directory -Path $EvidenceDirectory).FullName
 $vswhere = 'C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe'
 $vs = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath

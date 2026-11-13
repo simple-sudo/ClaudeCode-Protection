@@ -2,6 +2,8 @@
 param([string]$OutputRoot, [switch]$Win32kControl, [switch]$BuildBranchWitness, [switch]$PrivateDesktopControl, [switch]$BuildPrivateTraceWitness)
 
 $ErrorActionPreference = 'Stop'
+$repoRoot=Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+. (Join-Path $repoRoot 'scripts\Assert-ProjectSecurityClearance.ps1') -Stage IsolationProbe
 if ($PrivateDesktopControl -and ($Win32kControl -or $BuildBranchWitness -or $BuildPrivateTraceWitness) -or
     $BuildPrivateTraceWitness -and $BuildBranchWitness) { throw 'Private desktop control requires its own witness' }
 

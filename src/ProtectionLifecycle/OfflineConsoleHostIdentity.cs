@@ -107,7 +107,7 @@ internal sealed record OfflineConsoleHostIdentity(int SchemaVersion,string Sessi
                 CompareWithAlternate(read.LsaName,reference.LsaName,host.LogonName),
                 CompareWithAlternate(read.LsaDomain,reference.LsaDomain,host.ComputerName),
                 Compare(read.FirmwareUuid,reference.FirmwareUuid),Compare(read.FirmwareSerial,reference.FirmwareSerial))};
-        return summary;
+        return summary with {ActorSessionId=SessionId,ActorPid=Pid};
     }
 
     internal void AssertTokenUser(SecurityIdentifier? suspendedUser)
@@ -202,6 +202,8 @@ internal sealed record OfflineConsoleHostIdentitySummary(string ReceiptSHA256,st
 {
     [JsonIgnore(Condition=JsonIgnoreCondition.WhenWritingNull)]
     public OfflineConsoleIdentitySurvey? Survey {get;init;}
+    public string? ActorSessionId {get;init;}
+    public int ActorPid {get;init;}
 }
 internal sealed record OfflineConsoleIdentitySurvey(int GetUserNameError,int LsaNameError,int LsaDomainError,int FirmwareUuidError,
     int FirmwareSerialError,string LsaName,string LsaDomain,string FirmwareUuid,string FirmwareSerial);

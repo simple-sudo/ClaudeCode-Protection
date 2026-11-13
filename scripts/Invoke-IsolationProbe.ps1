@@ -2,7 +2,7 @@
 param([switch]$Apply,[switch]$FenceLoopback,[switch]$UseWfpFence,[switch]$PersistentFence)
 $ErrorActionPreference='Stop'
 $root=Split-Path -Parent $PSScriptRoot
-. (Join-Path $PSScriptRoot 'Assert-ProjectSecurityClearance.ps1')
+. (Join-Path $PSScriptRoot 'Assert-ProjectSecurityClearance.ps1') -Stage IsolationProbe
 $hostExe=Join-Path $root 'bin\engineering\ClaudeProtection.exe'
 if(-not $Apply) {& $hostExe isolation-plan;exit $LASTEXITCODE}
 if($PersistentFence){$UseWfpFence=$true}

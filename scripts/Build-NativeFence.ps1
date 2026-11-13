@@ -1,6 +1,6 @@
 ﻿$ErrorActionPreference='Stop'
 $root=Split-Path -Parent $PSScriptRoot
-. (Join-Path $PSScriptRoot 'Assert-ProjectSecurityClearance.ps1')
+. (Join-Path $PSScriptRoot 'Assert-ProjectSecurityClearance.ps1') -Stage NativeBuild
 New-Item -ItemType Directory -Path (Join-Path $root 'bin\engineering') -Force | Out-Null
 $vswhere='C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe'
 $installation=((& $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath) -join '').Trim()
