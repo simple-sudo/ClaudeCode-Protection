@@ -142,6 +142,9 @@ internal static class HostPrivacyEvidenceCases
         Reject(new[]{direct with {Field="unreviewed-field"}},"unknown field cannot enter the trusted evidence profile");
         Reject(new[]{direct with {ExpiresAtUtc=now.AddMinutes(-2)}},"evidence expiry cannot predate observation");
         Reject(new[]{direct with {ExpiresAtUtc=null}},"evidence cannot have an unbounded lifetime");
+        var localObserved=now.AddHours(-1).ToOffset(TimeSpan.FromHours(-5));
+        Reject(new[]{direct with {ObservedAtUtc=localObserved,ExpiresAtUtc=localObserved.AddMinutes(15)}},
+            "local-offset timestamps cannot be mislabeled as UTC evidence");
         Reject(new[]{direct with {Outcome=HostPrivacyEvidenceOutcome.AccessDenied,NativeError=5,Value="secret"}},"denial carrying content");
         Reject(new[]{direct with {Outcome=HostPrivacyEvidenceOutcome.ContentRead,NativeError=5}},"content read carrying native failure");
         Reject(new[]{direct with {Outcome=HostPrivacyEvidenceOutcome.Unknown,Value="secret",ContentVerified=false}},"unknown outcome carrying unverified raw content");

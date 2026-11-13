@@ -198,7 +198,7 @@ internal sealed record OfflineConsoleNetworkSurvey(int SchemaVersion,string Sess
             var target=index switch {0=>"network.adapter.metadata",1=>"network.tcp.v4",_=>"network.tcp.v6"};
             var sourceFamily=index==0?"iphelper-adapters":"iphelper-tcp";
             var sourceId=index switch {0=>"GetAdaptersAddresses",1=>"GetExtendedTcpTable-v4",_=>"GetExtendedTcpTable-v6"};
-            var readTime=DateTimeOffset.FromFileTime(actor.Network.FinishedFileTime);
+            var readTime=DateTimeOffset.FromFileTime(actor.Network.FinishedFileTime).ToUniversalTime();
             void Add(string field,string value,string rowId,string claim="",string key="",string? targetOverride=null,
                 bool p0=true,bool sensitive=true)
             {
@@ -263,7 +263,7 @@ internal sealed record OfflineConsoleNetworkSurvey(int SchemaVersion,string Sess
 
         void AddProcesses(ProcessView view,string receipt,bool hostReference,ProcessRow[] stableRows)
         {
-            var readTime=DateTimeOffset.FromFileTime(view.CapturedFileTime);
+            var readTime=DateTimeOffset.FromFileTime(view.CapturedFileTime).ToUniversalTime();
             if(view.Error!=0)
             {
                 if(hostReference)return;
