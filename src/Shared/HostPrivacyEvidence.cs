@@ -13,7 +13,7 @@ internal sealed record HostPrivacyEvidenceRecord(
 
 internal sealed record HostPrivacyEvidenceAssessment(
     string EvidenceId,string Target,string Field,HostPrivacyEvidenceClass Classification,
-    bool RequiredP0,string SourceId,string SourceFamily,string? Value);
+    bool RequiredP0,bool SensitiveContent,string SourceId,string SourceFamily,string? Value);
 
 internal sealed record HostPrivacyInference(
     string Claim,string CorrelationKey,string[] EvidenceIds,string[] SourceFamilies);
@@ -50,15 +50,16 @@ internal static class HostPrivacyEvidenceRules
             if(item.Visibility==HostPrivacyEvidenceVisibility.HostReferenceOnly)
             {
                 assessments.Add(new(item.EvidenceId,item.Target,item.Field,HostPrivacyEvidenceClass.HostReferenceOnly,
-                    item.RequiredP0,item.SourceId,item.SourceFamily,null));
+                    item.RequiredP0,item.SensitiveContent,item.SourceId,item.SourceFamily,null));
                 continue;
             }
             var sourceKey=string.Join("\u001f",item.ActorId,item.SourceFamily,item.SourceId,item.Field);
             if(!sourceObservations.Add(sourceKey))continue;
             var classification=Classify(item,now);
-            assessments.Add(new(item.EvidenceId,item.Target,item.Field,classification,item.RequiredP0,
+            assessments.Add(new(item.EvidenceId,item.Target,item.Field,classification,item.RequiredP0,item.SensitiveContent,
                 item.SourceId,item.SourceFamily,classification==HostPrivacyEvidenceClass.ConfirmedDirect?item.Value:null));
-            if(classification==HostPrivacyEvidenceClass.ConfirmedDirect && item.Claim.Length>0 && item.CorrelationKey.Length>0)
+            if(classification==HostPrivacyEvidenceClass.ConfirmedDirect && item.SensitiveContent &&
+                item.Claim.Length>0 && item.CorrelationKey.Length>0)
                 inferenceInputs.Add(item);
         }
         var inferences=inferenceInputs
@@ -74,7 +75,8 @@ internal static class HostPrivacyEvidenceRules
                     group.Items.Select(item=>item.SourceFamily).Order(StringComparer.Ordinal).ToArray());
             })
             .OrderBy(item=>item.Claim,StringComparer.Ordinal).ThenBy(item=>item.CorrelationKey,StringComparer.Ordinal).ToArray();
-        var p0Exposure=assessments.Any(item=>item.RequiredP0 && item.Classification==HostPrivacyEvidenceClass.ConfirmedDirect);
+        var p0Exposure=assessments.Any(item=>item.RequiredP0 && item.SensitiveContent &&
+            item.Classification==HostPrivacyEvidenceClass.ConfirmedDirect);
         var p0Unknown=requiredTargets.Any(target=>{
                 var targetRecords=records.Where(item=>item.RequiredP0 && item.Target==target).ToArray();
                 var targetResults=assessments.Where(item=>item.RequiredP0 && item.Target==target).ToArray();
@@ -94,7 +96,7 @@ internal static class HostPrivacyEvidenceRules
             return HostPrivacyEvidenceClass.Unknown;
         return item.Outcome switch {
             HostPrivacyEvidenceOutcome.ContentRead when item.OwnerSealed && item.ContentVerified &&
-                item.Value.Length>0 && item.NativeError is null => HostPrivacyEvidenceClass.ConfirmedDirect,
+                item.NativeError is null && (!item.SensitiveContent || item.Value.Length>0) => HostPrivacyEvidenceClass.ConfirmedDirect,
             HostPrivacyEvidenceOutcome.AccessDenied when item.OwnerSealed && item.Value.Length==0 &&
                 item.NativeError==5 && !item.ContentVerified => HostPrivacyEvidenceClass.DeniedConfirmed,
             HostPrivacyEvidenceOutcome.TargetAbsent when item.OwnerSealed && item.Value.Length==0 &&
