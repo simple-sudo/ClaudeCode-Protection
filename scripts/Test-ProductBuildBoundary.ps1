@@ -92,6 +92,10 @@ Require ($gateText -match "Get-Service -Name 'AVP21\.26'") 'pinned Kaspersky ser
 Require ($gateText -match "root/SecurityCenter2") 'Windows Security Center Kaspersky registration check missing'
 Require ($gateText -match "Get-WinEvent") 'Kaspersky event monitoring missing'
 Require ($gateText -match "KASPERSKY_NEW_EVENT") 'new Kaspersky events must stop the monitored operation'
+Require ($gateText -match "ProjectSecurityEvidencePath") 'durable Kaspersky monitor evidence path missing'
+Require ($gateText -match "Add-Content -LiteralPath") 'Kaspersky monitor evidence is not persisted'
+Require ($gateText -match "Start-Sleep -Milliseconds 750") 'Kaspersky event poll interval changed'
+Require ($gateText -match "TotalSeconds -ge 3") 'Kaspersky service/product recheck interval changed'
 Require ($gateText -match '\$process\.Kill\(\$true\)') 'monitor must terminate the complete child process tree on failure'
 Require ($gateText -match "FullVendorAlertVisibility='UNKNOWN'") 'limited event coverage must remain explicitly UNKNOWN'
 
