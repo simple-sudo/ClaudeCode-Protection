@@ -179,8 +179,6 @@ internal sealed record OfflineConsoleNetworkSurvey(int SchemaVersion,string Sess
         var evidence=new List<HostPrivacyEvidenceRecord>();
         var now=DateTimeOffset.UtcNow;
         var actorId=$"{Network.Pid}:{Network.StartedFileTime}";
-        var required=new[]{"network.adapter.guid","network.adapter.mac","network.adapter.address","network.adapter.dns",
-            "network.adapter.gateway","network.tcp.v4","network.tcp.v6","network.processes"};
         for(var i=0;i<3;i++)
         {
             AddRead(this,restrictedReceipts.Reads[i],false,i);
@@ -190,7 +188,7 @@ internal sealed record OfflineConsoleNetworkSurvey(int SchemaVersion,string Sess
             .Where(row=>row.CreatedFileTime is not null).ToArray();
         AddProcesses(this.Processes,restrictedReceipts.Processes,false,stable);
         AddProcesses(trusted.Processes,trustedReceipts.Processes,true,stable);
-        var evaluated=HostPrivacyEvidenceRules.Evaluate(jobId,actorId,evidence,now,required);
+        var evaluated=HostPrivacyEvidenceRules.Evaluate(jobId,actorId,evidence,now);
         return evaluated with {ActorId=actorId,OwnerIdentityReceiptSHA256=ownerIdentityReceiptSHA256,
             NetworkSurveyReceiptSHA256=networkSurveyReceiptSHA256};
 
