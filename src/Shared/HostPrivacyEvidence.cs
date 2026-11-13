@@ -107,13 +107,14 @@ internal static class HostPrivacyEvidenceRules
     private static void Validate(HostPrivacyEvidenceRecord item,string session,string actor,DateTimeOffset now)
     {
         if(item is null || !IsHex(item.EvidenceId,32) || item.SessionId!=session ||
-            string.IsNullOrWhiteSpace(item.Target) || item.Target.Length>256 ||
-            string.IsNullOrWhiteSpace(item.Field) || item.Field.Length>256 ||
-            item.Value is null || item.Value.Length>65536 ||
-            string.IsNullOrWhiteSpace(item.SourceId) || item.SourceId.Length>256 ||
-            string.IsNullOrWhiteSpace(item.SourceFamily) || item.SourceFamily.Length>128 ||
-            item.ObservedAtUtc.Offset!=TimeSpan.Zero || item.ObservedAtUtc>now ||
-            !IsHex(item.ArtifactSHA256,64))
+            !SafeLabel(item.Target,256) || !SafeLabel(item.Field,256) ||
+            item.ActorId is null || item.Value is null || item.Value.Length>65536 ||
+            !SafeLabel(item.SourceId,256) || !SafeLabel(item.SourceFamily,128) ||
+            item.Claim is null || item.CorrelationKey is null ||
+            item.Claim.Length>256 || item.Claim.Contains('\u001f') ||
+            item.CorrelationKey.Length>1024 || item.CorrelationKey.Contains('\u001f') ||
+            item.ObservedAtUtc.Offset!=TimeSpan.Zero || item.ObservedAtUtc<=DateTimeOffset.UnixEpoch ||
+            item.ObservedAtUtc>now || !IsHex(item.ArtifactSHA256,64))
             throw new InvalidDataException("Host privacy evidence shape or provenance differs");
         if(item.Visibility==HostPrivacyEvidenceVisibility.RestrictedActor)
         {
@@ -127,10 +128,11 @@ internal static class HostPrivacyEvidenceRules
                 throw new InvalidDataException("Host reference evidence shape differs");
         }
         else throw new InvalidDataException("Unknown host privacy evidence visibility");
-        if(item.Claim.Length>256 || item.CorrelationKey.Length>1024)
-            throw new InvalidDataException("Host privacy correlation bounds differ");
     }
 
-    private static bool IsHex(string value,int length)=>value.Length==length &&
+    private static bool SafeLabel(string value,int maximum)=>!string.IsNullOrWhiteSpace(value) &&
+        value.Length<=maximum && !value.Any(char.IsControl);
+
+    private static bool IsHex(string? value,int length)=>value is not null && value.Length==length &&
         value.All(c=>c is >= '0' and <= '9' or >= 'a' and <= 'f' or >= 'A' and <= 'F');
 }
