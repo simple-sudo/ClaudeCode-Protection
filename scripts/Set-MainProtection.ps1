@@ -2,7 +2,7 @@
 param([ValidateSet('Inspect','Enable','Restore')][string]$Mode='Inspect', [string]$Snapshot)
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
-if ($Mode -eq 'Enable') { . (Join-Path $PSScriptRoot 'Assert-ProjectSecurityClearance.ps1') }
+if ($Mode -eq 'Enable') { . (Join-Path $PSScriptRoot 'Assert-ProjectSecurityClearance.ps1') -Stage WfpMutation }
 $exe = Join-Path $env:USERPROFILE '.local\bin\claude.exe'
 $names = @('ClaudeCodeFailClosed-BlockDirect-IPv4','ClaudeCodeFailClosed-BlockDirect-IPv6')
 $original = @()
