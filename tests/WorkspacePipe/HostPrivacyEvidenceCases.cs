@@ -40,9 +40,6 @@ internal static class HostPrivacyEvidenceCases
         var staleHost=host with {ExpiresAtUtc=now.AddSeconds(-1)};
         Require(Evaluate(new[]{staleHost,direct},"network.adapter").P0Unknown,
             "expired host reference cannot qualify a restricted observation");
-        var mixed=Evaluate(new[]{host,direct,hostTcp,denied},"network.adapter","network.tcp");
-        Require(mixed.P0Exposure && !mixed.P0Unknown,
-            "one direct P0 exposure remains blocking even alongside a confirmed denial");
         Require(Evaluate(new[]{direct},"network.adapter","network.tcp").P0Unknown,
             "required P0 target without any observation remains unknown");
         var denied=Record("00000000000000000000000000000003","network.tcp","table","","iphelper-2","iphelper",
@@ -52,6 +49,9 @@ internal static class HostPrivacyEvidenceCases
         var deniedProfile=Evaluate(new[]{hostTcp,denied},"network.tcp");
         Require(deniedProfile.Assessments.Single(item=>item.EvidenceId==denied.EvidenceId).Classification==HostPrivacyEvidenceClass.DeniedConfirmed &&
             !deniedProfile.P0Exposure,"explicit native access denied is a denial, not content");
+        var mixed=Evaluate(new[]{host,direct,hostTcp,denied},"network.adapter","network.tcp");
+        Require(mixed.P0Exposure && !mixed.P0Unknown,
+            "one direct P0 exposure remains blocking even alongside a confirmed denial");
         var missing=Record("00000000000000000000000000000004","network.tcp","table","","iphelper-3","iphelper",
             outcome:HostPrivacyEvidenceOutcome.TargetAbsent,verified:false,error:2);
         Require(Evaluate(new[]{missing},"network.tcp").Assessments.Single().Classification==
