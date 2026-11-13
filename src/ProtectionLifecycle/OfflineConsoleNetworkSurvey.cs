@@ -106,7 +106,7 @@ internal sealed record OfflineConsoleNetworkSurvey(int SchemaVersion,string Sess
                 row.CreatedFileTime is long time && (time<=0 || time>processes.CapturedFileTime)) ||
             processes.Rows.Select(row=>row.Pid).Distinct().Count()!=processes.Rows.Length)
             throw WfpNative.Contract("OfflineNetworkSurveyProcessValue");
-        return new(1,session,network,processes);
+        return new(2,session,network,processes);
     }
 
     private static void AssertLength(long length)
@@ -269,6 +269,7 @@ internal sealed record OfflineConsoleNetworkSurvey(int SchemaVersion,string Sess
                 return;
             }
             var rows=hostReference?stableRows:view.Rows;
+            var networkCutoff=hostReference?trusted.Network.FinishedFileTime:Network.FinishedFileTime;
             if(rows.Length==0)
             {
                 evidence.Add(Create("network.processes","inventory","[]","process-enumeration",
@@ -279,9 +280,10 @@ internal sealed record OfflineConsoleNetworkSurvey(int SchemaVersion,string Sess
             {
                 var key=row.Pid.ToString(System.Globalization.CultureInfo.InvariantCulture);
                 var value=$"{row.Name}|{row.Pid}|{row.CreatedFileTime}";
+                var stableAtNetworkSnapshot=row.CreatedFileTime is long created && created<=networkCutoff;
                 evidence.Add(Create("network.processes","process",value,"process-enumeration:"+key,
-                    "process-inventory",row.CreatedFileTime is null?"":"network.process-owner",
-                    row.CreatedFileTime is null?"":key,hostReference,true,true,
+                    "process-inventory",stableAtNetworkSnapshot?"network.process-owner":"",
+                    stableAtNetworkSnapshot?key:"",hostReference,true,true,
                     HostPrivacyEvidenceOutcome.ContentRead,true,null,receipt,readTime));
             }
         }
