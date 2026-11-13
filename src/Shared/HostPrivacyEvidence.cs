@@ -1,5 +1,3 @@
-using System.Security.Cryptography;
-
 namespace ClaudeCodeProtection.Workspaces;
 
 internal enum HostPrivacyEvidenceVisibility { HostReferenceOnly, RestrictedActor }
@@ -70,10 +68,15 @@ internal static class HostPrivacyEvidenceRules
             })
             .OrderBy(item=>item.Claim,StringComparer.Ordinal).ThenBy(item=>item.CorrelationKey,StringComparer.Ordinal).ToArray();
         var p0Exposure=assessments.Any(item=>item.RequiredP0 && item.Classification==HostPrivacyEvidenceClass.ConfirmedDirect);
-        var p0Unknown=assessments.Any(item=>item.RequiredP0 && item.Classification==HostPrivacyEvidenceClass.Unknown) ||
-            records.Where(item=>item.RequiredP0 && item.Visibility==HostPrivacyEvidenceVisibility.RestrictedActor)
-                .GroupBy(item=>item.Target,StringComparer.Ordinal).Any(group=>group.All(item=>
-                    assessments.All(result=>result.EvidenceId!=item.EvidenceId)));
+        var p0Unknown=records.Where(item=>item.RequiredP0).Select(item=>item.Target).Distinct(StringComparer.Ordinal)
+            .Any(target=>{
+                var targetRecords=records.Where(item=>item.RequiredP0 && item.Target==target).ToArray();
+                var targetResults=assessments.Where(item=>item.RequiredP0 && item.Target==target).ToArray();
+                return !targetResults.Any(item=>item.Classification is HostPrivacyEvidenceClass.DeniedConfirmed or HostPrivacyEvidenceClass.ConfirmedDirect) ||
+                    targetResults.Any(item=>item.Classification is HostPrivacyEvidenceClass.Unknown or HostPrivacyEvidenceClass.NotRun or HostPrivacyEvidenceClass.TargetAbsent) ||
+                    targetRecords.Any(item=>item.Visibility==HostPrivacyEvidenceVisibility.HostReferenceOnly) &&
+                        !targetRecords.Any(item=>item.Visibility==HostPrivacyEvidenceVisibility.RestrictedActor);
+            });
         return new(session,now,assessments.ToArray(),inferences,p0Exposure,p0Unknown);
     }
 
