@@ -46,6 +46,7 @@ internal static class HostPrivacyEvidenceRules
     private static readonly IReadOnlyDictionary<string,IReadOnlyDictionary<string,bool>> FieldPolicy=
         new Dictionary<string,IReadOnlyDictionary<string,bool>>(StringComparer.Ordinal)
         {
+            ["network.adapter.metadata"]=Fields(("description",false),("friendly-name",false),("dns-suffix",false)),
             ["network.adapter.guid"]=Fields(("interface-guid",true),("inventory",false),("buffer-status",false),("decode-status",false)),
             ["network.adapter.mac"]=Fields(("mac",true),("inventory",false),("buffer-status",false),("decode-status",false)),
             ["network.adapter.address"]=Fields(("unicast",true),("unicast-inventory",false),("inventory",false),("buffer-status",false),("decode-status",false)),
