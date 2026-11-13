@@ -177,31 +177,40 @@ internal sealed record OfflineConsoleNetworkSurvey(int SchemaVersion,string Sess
         void AddRead(OfflineConsoleNetworkSurvey actor,string receipt,bool hostReference,int index)
         {
             var read=actor.Network.Reads[index];
-            var target=index switch {0=>"network.adapters",1=>"network.tcp.v4",_=>"network.tcp.v6"};
+            var target=index switch {0=>"network.adapter.metadata",1=>"network.tcp.v4",_=>"network.tcp.v6"};
             var sourceFamily=index==0?"iphelper-adapters":"iphelper-tcp";
             var sourceId=index switch {0=>"GetAdaptersAddresses",1=>"GetExtendedTcpTable-v4",_=>"GetExtendedTcpTable-v6"};
             var readTime=DateTimeOffset.FromFileTime(actor.Network.FinishedFileTime);
             void Add(string field,string value,string rowId,string claim="",string key="",string? targetOverride=null,
                 bool p0=true,bool sensitive=true)
             {
-                if(value.Length==0)return;
-                evidence.Add(Create(targetOverride??target,field,value,rowId,sourceFamily,claim,key,hostReference,p0,sensitive,
-                    HostPrivacyEvidenceOutcome.ContentRead,true,null,receipt,readTime));
+                evidence.Add(Create(targetOverride??target,field,value,rowId,sourceFamily,claim,key,hostReference,p0,
+                    sensitive && value.Length>0,HostPrivacyEvidenceOutcome.ContentRead,true,null,receipt,readTime));
             }
             if(read.Content.Length==0)
             {
                 if(hostReference)return;
                 var denied=read.ErrorKind is null && (read.SizeStatus==5 && read.ReadStatus is null || read.ReadStatus==5);
-                evidence.Add(Create(target,"buffer-status","",sourceId,sourceFamily,"","",false,true,false,
-                    denied?HostPrivacyEvidenceOutcome.AccessDenied:HostPrivacyEvidenceOutcome.Unknown,
-                    false,denied?5:null,receipt,readTime));
+                var affected=index==0?new[]{"network.adapter.guid","network.adapter.mac","network.adapter.address",
+                    "network.adapter.dns","network.adapter.gateway"}:new[]{target};
+                foreach(var affectedTarget in affected)
+                    evidence.Add(Create(affectedTarget,"buffer-status","",sourceId,sourceFamily,"","",false,true,false,
+                        denied?HostPrivacyEvidenceOutcome.AccessDenied:HostPrivacyEvidenceOutcome.Unknown,
+                        false,denied?5:null,receipt,readTime));
                 return;
             }
             if(index==0)
             {
                 var rows=Decode(read,item=>NetworkContentSnapshot.DecodeAdapters(item.Content,item.NativeBase,8));
                 if(rows is null){AddUnknown(target,sourceId,sourceFamily,receipt,readTime,hostReference);return;}
-                if(rows.Length==0){Add("inventory","[]",sourceId,targetOverride:"network.adapter.metadata",p0:false,sensitive:false);return;}
+                if(rows.Length==0)
+                {
+                    foreach(var affectedTarget in new[]{"network.adapter.guid","network.adapter.mac","network.adapter.address",
+                        "network.adapter.dns","network.adapter.gateway"})
+                        evidence.Add(Create(affectedTarget,"inventory","[]",sourceId,sourceFamily,"","",hostReference,true,false,
+                            HostPrivacyEvidenceOutcome.ContentRead,true,null,receipt,readTime));
+                    return;
+                }
                 foreach(var row in rows)
                 {
                     var rowId=sourceId+":"+row.IfIndex;
@@ -210,16 +219,19 @@ internal sealed record OfflineConsoleNetworkSurvey(int SchemaVersion,string Sess
                     Add("description",row.Description,rowId,targetOverride:"network.adapter.metadata",p0:false,sensitive:false);
                     Add("friendly-name",row.FriendlyName,rowId,targetOverride:"network.adapter.metadata",p0:false,sensitive:false);
                     Add("dns-suffix",row.DnsSuffix,rowId,targetOverride:"network.adapter.metadata",p0:false,sensitive:false);
-                    for(var n=0;n<row.Unicast.Length;n++)Add("unicast",row.Unicast[n].Value,rowId+":u"+n,"network.ip.address",row.Unicast[n].Value,"network.adapter.address");
-                    for(var n=0;n<row.Dns.Length;n++)Add("dns",row.Dns[n].Value,rowId+":d"+n,"network.dns.address",row.Dns[n].Value,"network.adapter.dns");
-                    for(var n=0;n<row.Gateways.Length;n++)Add("gateway",row.Gateways[n].Value,rowId+":g"+n,"network.gateway.address",row.Gateways[n].Value,"network.adapter.gateway");
+                    if(row.Unicast.Length==0)Add("unicast-inventory","[]",rowId+":u-empty",targetOverride:"network.adapter.address",sensitive:false);
+                    else for(var n=0;n<row.Unicast.Length;n++)Add("unicast",row.Unicast[n].Value,rowId+":u"+n,"network.ip.address",row.Unicast[n].Value,"network.adapter.address");
+                    if(row.Dns.Length==0)Add("dns-inventory","[]",rowId+":d-empty",targetOverride:"network.adapter.dns",sensitive:false);
+                    else for(var n=0;n<row.Dns.Length;n++)Add("dns",row.Dns[n].Value,rowId+":d"+n,"network.dns.address",row.Dns[n].Value,"network.adapter.dns");
+                    if(row.Gateways.Length==0)Add("gateway-inventory","[]",rowId+":g-empty",targetOverride:"network.adapter.gateway",sensitive:false);
+                    else for(var n=0;n<row.Gateways.Length;n++)Add("gateway",row.Gateways[n].Value,rowId+":g"+n,"network.gateway.address",row.Gateways[n].Value,"network.adapter.gateway");
                 }
                 return;
             }
             var family=index==1?2u:23u;
             var tcp=Decode(read,item=>NetworkContentSnapshot.DecodeTcp(item.Content,family));
             if(tcp is null){AddUnknown(target,sourceId,sourceFamily,receipt,readTime,hostReference);return;}
-            if(tcp.Length==0){Add("inventory","[]",sourceId);return;}
+            if(tcp.Length==0){Add("inventory","[]",sourceId,sensitive:false);return;}
             for(var n=0;n<tcp.Length;n++)
             {
                 var row=tcp[n];var rowId=sourceId+":"+n;
@@ -263,6 +275,14 @@ internal sealed record OfflineConsoleNetworkSurvey(int SchemaVersion,string Sess
         void AddUnknown(string target,string sourceId,string sourceFamily,string receipt,DateTimeOffset readTime,bool hostReference)
         {
             if(hostReference)return;
+            if(target=="network.adapter.metadata")
+            {
+                foreach(var affectedTarget in new[]{"network.adapter.guid","network.adapter.mac","network.adapter.address",
+                    "network.adapter.dns","network.adapter.gateway"})
+                    evidence.Add(Create(affectedTarget,"decode-status","",sourceId,sourceFamily,"","",false,true,false,
+                        HostPrivacyEvidenceOutcome.Unknown,false,null,receipt,readTime));
+                return;
+            }
             evidence.Add(Create(target,"decode-status","",sourceId,sourceFamily,"","",false,true,false,
                 HostPrivacyEvidenceOutcome.Unknown,false,null,receipt,readTime));
         }
