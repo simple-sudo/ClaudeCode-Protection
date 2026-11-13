@@ -48,7 +48,7 @@ scripts/Build.ps1：
 - 通过 Invoke-ProjectSecurityMonitoredProcess 启动固定 dotnet.exe 构建。
 - 只执行 dotnet build，不再使用 dotnet publish。
 - 使用 --no-restore，不触发依赖恢复或下载。
-- 输出日志放在 %LOCALAPPDATA%\ClaudeCode-Protection\security-stage\。
+- stdout/stderr 与 JSONL 卡巴斯基监控证据均放在 %LOCALAPPDATA%\ClaudeCode-Protection\security-stage\，并使用同一轮次 ID 前缀关联。
 - 构建退出码非零、监控异常或 AV 新事件均为失败；不自动重试。
 - 产物只留在 bin/current，本阶段不启动、不安装、不签名、不发布。
 
