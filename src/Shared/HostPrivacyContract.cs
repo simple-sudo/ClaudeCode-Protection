@@ -60,6 +60,10 @@ internal static class HostPrivacyContract
         new("protection-runtime-write-dacl", "file-write-dacl-open", HostPrivacyTarget.RuntimeImage, HostPrivacyTargetKind.ControlFile, 0x40000),
         new("protection-runtime-write-owner", "file-write-owner-open", HostPrivacyTarget.RuntimeImage, HostPrivacyTargetKind.ControlFile, 0x80000),
     });
+    internal const int MaximumHostFileContentBytes=256*1024;
+    internal const string ContentEvidenceScope="FIXED_HOST_FILE_BYTES_ONLY;REGISTRY_VALUES_AND_PROCESS_MEMORY_NOT_READ";
+    internal static IReadOnlyList<HostPrivacyCheck> HostFileChecks {get;}=Array.AsReadOnly(
+        Checks.Where(check=>check.TargetKind==HostPrivacyTargetKind.HostFile).ToArray());
     internal static IReadOnlyList<HostPrivacyCheck> CompilerChecks {get;}=Array.AsReadOnly(
         Checks.Where(check=>check.TargetKind is HostPrivacyTargetKind.OwnerProcess or HostPrivacyTargetKind.ControlFile)
             .Concat(Checks.Where(check=>check.TargetKind==HostPrivacyTargetKind.OwnerProcess).Select(check=>check with {
@@ -67,9 +71,9 @@ internal static class HostPrivacyContract
                 Target=HostPrivacyTarget.RootProcess,TargetKind=HostPrivacyTargetKind.RootProcess
             })).ToArray());
 
-    // Keep the v5 identity byte-for-byte compatible with existing summaries.
+    // V7 adds bounded actual host-file content reads; registry values and process memory remain open-only.
     internal static string PolicySHA256 {get;}=Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(
-        "CPC-HOST-PRIVACY-SEPARATE-PROBE-V6\nROOT_AND_FIXED_PROBE=33;PROBE_EXIT_ZERO_AND_PLAN_WITHDRAWN_BEFORE_COMPILER;COMPILER=19_OWNER_CONTROL_FILE_PLUS_9_ROOT_PROCESS;NO_PRIVATE_PLAN_IN_COMPILER\nOPTIONAL_RESET_SETTINGS=7;OWNER_METADATA_ABSENCE_BOUND_TO_PLAN;RECHECK_BEFORE_CODE_AND_AFTER_JOB;ABSENCE_IS_NOT_DENIAL;ABSENCE_NATIVE_ERRORS=2,3_ONLY\nFILE_READ_DATA=1;FILE_WRITE_DATA=2;WRITE_DAC=262144;WRITE_OWNER=524288;OVERLAPPED;SHARE=7;REG_QUERY_VALUE=1;VIEW64;PROCESS_VM_READ=16;NO_CONTENT_READ;NO_FILE_OR_PROCESS_OPERATION\n"+
+        "CPC-HOST-PRIVACY-SEPARATE-PROBE-V7\nROOT_AND_FIXED_PROBE=33;PROBE_EXIT_ZERO_AND_PLAN_WITHDRAWN_BEFORE_COMPILER;COMPILER=19_OWNER_CONTROL_FILE_PLUS_9_ROOT_PROCESS;NO_PRIVATE_PLAN_IN_COMPILER\nOPTIONAL_RESET_SETTINGS=7;OWNER_METADATA_ABSENCE_BOUND_TO_PLAN;RECHECK_BEFORE_CODE_AND_AFTER_JOB;ABSENCE_IS_NOT_DENIAL;ABSENCE_NATIVE_ERRORS=2,3_ONLY\nFILE_READ_DATA=1;FILE_WRITE_DATA=2;WRITE_DAC=262144;WRITE_OWNER=524288;OVERLAPPED;SHARE=7;REG_QUERY_VALUE=1;VIEW64;PROCESS_VM_READ=16;BOUNDED_FILE_READ=262144;NO_REGISTRY_VALUE_OR_PROCESS_MEMORY_READ;NO_FILE_OR_PROCESS_OPERATION\nHOST_FILE_CONTENT_READ=9;OWNER_REFERENCE_PLUS_ROOT_AND_PROBE;PROTECTED_STATE_SEAL;TRUNCATED_CONTENT_IS_NOT_COMPLETE\n"+
         RightsText(HostPrivacyTargetKind.OwnerProcess)+"\n"+
         RightsText(HostPrivacyTargetKind.ControlFile)+"\n"+
         string.Join("\n",Checks.Select(check=>check.Role+"|"+check.Kind)))));
@@ -80,6 +84,57 @@ internal static class HostPrivacyContract
         =>ValidateInventory(cases,Checks,allowEmpty);
     internal static void ValidateCompilerCases(HostPrivacyCase[] cases,bool allowEmpty=false)
         =>ValidateInventory(cases,CompilerChecks,allowEmpty);
+    internal static void ValidateContentReads(HostPrivacyContentRead[] reads)
+    {
+        if(reads is null || reads.Length!=HostFileChecks.Count)throw new InvalidDataException("Host file content inventory differs");
+        for(var i=0;i<reads.Length;i++)
+        {
+            var item=reads[i];var check=HostFileChecks[i];
+            if(item is null || item.Role!=check.Role || item.Error is <0 or >65535 ||
+                item.Length is <0 or >MaximumHostFileContentBytes ||
+                (item.Content is null)!=(item.Length==0 && item.SHA256 is null))
+                throw new InvalidDataException("Host file content evidence shape differs");
+            if(item.Content is not null &&
+                (item.Content.Length!=item.Length || !WorkspaceBundle.IsHash(item.SHA256) ||
+                 WorkspaceBundle.Hash(item.Content)!=item.SHA256))
+                throw new InvalidDataException("Host file content digest or length differs");
+            if(item.Content is null && (item.Length!=0 || item.SHA256 is not null))
+                throw new InvalidDataException("Absent host content must not carry bytes or digest");
+            var valid=item.Status switch {
+                "CONTENT_READ"=>item.Error==0 && item.Content is not null,
+                "TRUNCATED"=>item.Error==122 && item.Content?.Length==MaximumHostFileContentBytes,
+                "ACCESS_DENIED"=>item.Error==5 && item.Content is null,
+                "TARGET_ABSENT"=>item.Error is 2 or 3 && item.Content is null,
+                "UNKNOWN"=>item.Error!=0 && item.Content is null,
+                _=>false
+            };
+            if(!valid)throw new InvalidDataException("Host file content status contradicts its read evidence");
+        }
+    }
+    internal static void ValidateContentBundle(HostPrivacyContentBundle bundle,string session,string planHash)
+    {
+        if(bundle is null || bundle.SchemaVersion!=1 || bundle.SessionId!=session || bundle.PlanSHA256!=planHash ||
+            bundle.Scope!=ContentEvidenceScope || bundle.Items is null ||
+            bundle.Items.Length is <18 or >27)
+            throw new InvalidDataException("Host privacy content bundle binding or bounds differ");
+        foreach(var actor in new[]{"owner","root","probe"})
+        {
+            var items=bundle.Items.Where(item=>item.Actor==actor).ToArray();
+            if(actor=="probe" && items.Length==0)continue;
+            if(items.Length!=HostFileChecks.Count ||
+                !items.Select(item=>item.Role).SequenceEqual(HostFileChecks.Select(check=>check.Role),StringComparer.Ordinal))
+                throw new InvalidDataException("Host privacy content actor inventory differs");
+            foreach(var item in items)
+            {
+                if(item is null)throw new InvalidDataException("Host privacy content item missing");
+                ValidateContentReads(new[]{new HostPrivacyContentRead(item.Role,item.Status,item.Error,item.Length,item.SHA256,item.Content)});
+            }
+            if(actor=="owner" && items.Any(item=>item.Status is not ("CONTENT_READ" or "TRUNCATED" or "TARGET_ABSENT")))
+                throw new InvalidDataException("Owner host-file reference was not captured");
+        }
+        if(bundle.Items.Any(item=>item.Actor is not ("owner" or "root" or "probe")))
+            throw new InvalidDataException("Unknown host privacy content actor");
+    }
     private static void ValidateInventory(HostPrivacyCase[] cases,IReadOnlyList<HostPrivacyCheck> checks,bool allowEmpty)
     {
         if(cases is null || cases.Length!=checks.Count && !(allowEmpty && cases.Length==0))
@@ -114,6 +169,11 @@ internal static class HostPrivacyContract
     internal static void Validate(HostPrivacySummary summary,string session,bool requireSatisfied)
     {
         if(summary.RootCases is null || summary.ToolCases is null || summary.ProbeCases is null)throw new InvalidDataException("Host privacy cases missing");
+        if(summary.ContentEvidenceCount is <0 or >27 ||
+            (summary.ContentEvidenceSHA256 is null)!=(summary.ContentEvidenceCount==0) ||
+            summary.ContentEvidenceSHA256 is not null && !WorkspaceBundle.IsHash(summary.ContentEvidenceSHA256) ||
+            requireSatisfied && (summary.ContentEvidenceSHA256 is null || summary.ContentEvidenceCount!=27))
+            throw new InvalidDataException("Host privacy content evidence receipt missing or inconsistent");
         if(summary.PolicySHA256!=PolicySHA256 || summary.SessionId!=session || !WorkspaceBundle.IsHash(summary.PlanSHA256) ||
             summary.RootPid<=0 || summary.ToolPid is <=0 || summary.ToolPid==summary.RootPid ||
             summary.ProbePid is <=0 || summary.ProbePid==summary.RootPid || summary.ProbePid==summary.ToolPid && summary.ProbePid is not null ||
@@ -124,7 +184,7 @@ internal static class HostPrivacyContract
     }
     internal static HostPrivacySummary Parse(JsonElement value,string session,bool requireSatisfied)
     {
-        Fields(value,"PolicySHA256","PlanSHA256","SessionId","RootPid","ToolPid","RootCases","ToolCases","ProbePid","ProbeCases");
+        Fields(value,"PolicySHA256","PlanSHA256","SessionId","RootPid","ToolPid","RootCases","ToolCases","ProbePid","ProbeCases","ContentEvidenceSHA256","ContentEvidenceCount");
         foreach(var name in new[]{"RootCases","ToolCases","ProbeCases"})
         {
             var array=value.GetProperty(name);
