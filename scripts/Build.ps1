@@ -148,18 +148,18 @@ try{
  $taskFactories=[Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
  function Add-TaskAssemblyByLeaf([string]$Leaf){
   if([string]::IsNullOrWhiteSpace($Leaf) -or $Leaf -match '\$\('){throw ('Unresolvable MSBuild task assembly leaf: '+$Leaf)}
-  $matches=[Collections.Generic.List[string]]::new()
+  $resolvedTaskAssemblies=[Collections.Generic.List[string]]::new()
   foreach($searchRoot in @($sdkRoot,(Join-Path $dotnetRoot 'shared'))){
    if(Test-Path -LiteralPath $searchRoot -PathType Container){
     foreach($match in @(Get-ChildItem -LiteralPath $searchRoot -Filter $Leaf -Recurse -File -ErrorAction Stop)){
      $full=[IO.Path]::GetFullPath($match.FullName)
      if(-not $full.StartsWith($dotnetRoot+'\',[StringComparison]::OrdinalIgnoreCase)){throw ('Task assembly escapes .NET root: '+$full)}
-     $matches.Add($full)
+     $resolvedTaskAssemblies.Add($full)
     }
    }
   }
-  if($matches.Count -eq 0){throw ('MSBuild task assembly could not be resolved under the pinned .NET installation: '+$Leaf)}
-  foreach($match in $matches){[void]$taskAssemblyPaths.Add($match)}
+  if($resolvedTaskAssemblies.Count -eq 0){throw ('MSBuild task assembly could not be resolved under the pinned .NET installation: '+$Leaf)}
+  foreach($match in $resolvedTaskAssemblies){[void]$taskAssemblyPaths.Add($match)}
  }
  foreach($task in $importedUsingTasks){
   $assemblyFile=[string]$task.AssemblyFile
