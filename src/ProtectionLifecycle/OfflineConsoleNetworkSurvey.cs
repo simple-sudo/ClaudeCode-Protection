@@ -22,11 +22,11 @@ internal sealed record OfflineConsoleNetworkSurvey(int SchemaVersion,string Sess
         int RestrictedProcessQueryError,int RestrictedNamedProcesses,int MatchingProxyProcesses,int MatchingRemoteProcesses,
         int MatchingProxyTcpRows,int MatchingRemoteTcpRows)
     {
-        internal string? ProfileReceiptSHA256 {get;init;}
-        internal bool ProfileP0Exposure {get;init;}
-        internal bool ProfileP0Unknown {get;init;}
-        internal int ProfileDirectEvidenceCount {get;init;}
-        internal int ProfileInferredClaimCount {get;init;}
+        public string? ProfileReceiptSHA256 {get;init;}
+        public bool ProfileP0Exposure {get;init;}
+        public bool ProfileP0Unknown {get;init;}
+        public int ProfileDirectEvidenceCount {get;init;}
+        public int ProfileInferredClaimCount {get;init;}
         internal bool ConfirmedForFixedReads=>new[]{Adapters,TcpV4,TcpV6}.All(read=>read is {Status:"DENIED",TrustedRows:>0}) &&
             RestrictedProcessQueryError==5 && TrustedStableProxyProcesses>0 && TrustedStableRemoteProcesses>0;
     }
