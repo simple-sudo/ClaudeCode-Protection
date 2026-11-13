@@ -270,7 +270,9 @@ internal static class OfflineConsoleNativeCases
         var after=Call(type.GetMethod("CaptureProcesses",Static)!,null)!;
         var comparison=Call(type.GetMethod("Compare",Instance)!,native,captured,after,new string('A',64))!;
         var receiptsType=type.GetNestedType("ActorReceipts",BindingFlags.NonPublic)!;
-        var receiptsCtor=receiptsType.GetConstructors(BindingFlags.Instance|BindingFlags.Public|BindingFlags.NonPublic).Single();
+        var receiptsCtor=receiptsType.GetConstructors(BindingFlags.Instance|BindingFlags.Public|BindingFlags.NonPublic)
+            .Single(ctor=>ctor.GetParameters().Length==2 && ctor.GetParameters()[0].ParameterType==typeof(string[]) &&
+                ctor.GetParameters()[1].ParameterType==typeof(string));
         var readReceipts=Enumerable.Repeat(new string('A',64),3).ToArray();
         var actorReceipts=receiptsCtor.Invoke(new object[]{readReceipts,new string('B',64)});
         var profile=Call(type.GetMethod("BuildEvidenceProfile",Instance)!,native,session,actorReceipts,actorReceipts,captured,after)!;
