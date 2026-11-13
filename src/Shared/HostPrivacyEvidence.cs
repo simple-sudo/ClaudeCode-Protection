@@ -38,7 +38,6 @@ internal static class HostPrivacyEvidenceRules
         var records=evidence.ToArray();
         if(records.Length>4096)throw new InvalidDataException("Host privacy evidence count exceeds limit");
         var ids=new HashSet<string>(StringComparer.Ordinal);
-        var sourceObservations=new HashSet<string>(StringComparer.Ordinal);
         var assessments=new List<HostPrivacyEvidenceAssessment>();
         var inferenceInputs=new List<HostPrivacyEvidenceRecord>();
         foreach(var item in records)
@@ -53,8 +52,6 @@ internal static class HostPrivacyEvidenceRules
                     item.RequiredP0,item.SensitiveContent,item.SourceId,item.SourceFamily,null));
                 continue;
             }
-            var sourceKey=string.Join("\u001f",item.ActorId,item.SourceFamily,item.SourceId,item.Field);
-            if(!sourceObservations.Add(sourceKey))continue;
             var classification=Classify(item,now);
             assessments.Add(new(item.EvidenceId,item.Target,item.Field,classification,item.RequiredP0,item.SensitiveContent,
                 item.SourceId,item.SourceFamily,classification==HostPrivacyEvidenceClass.ConfirmedDirect?item.Value:null));
