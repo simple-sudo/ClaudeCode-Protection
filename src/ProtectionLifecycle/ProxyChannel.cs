@@ -27,8 +27,9 @@ internal sealed class ProxyChannelLease : IDisposable
     private readonly uint pid;
     private bool disposed;
     internal object Evidence {get;}
-    private ProxyChannelLease(SafeProcessHandle process,PathLease directory,FileStream image,uint pid,object evidence)
-    {this.process=process;this.directory=directory;this.image=image;this.pid=pid;Evidence=evidence;}
+    private readonly ProxyProcessIdentity identity;
+    private ProxyChannelLease(SafeProcessHandle process,PathLease directory,FileStream image,ProxyProcessIdentity identity,object evidence)
+    {this.process=process;this.directory=directory;this.image=image;this.identity=identity;pid=identity.Pid;Evidence=evidence;}
     internal static ProxyChannelLease Open(ProtectedState state)
     {
         ProtectedState.RequireAdministrator();state.AssertHeld();var pid=ListenerOwner();
@@ -44,9 +45,10 @@ internal sealed class ProxyChannelLease : IDisposable
             var file=WindowsPathSeal.Open(ExpectedImage,false,true);image=new(file,FileAccess.Read,65536,false);
             if(image.Length is <1 or >128*1024*1024)throw WfpNative.Contract("ProxyImageSizeRefused");
             var hash=Convert.ToHexString(SHA256.HashData(image));
+            var identity=new ProxyProcessIdentity(pid,created,hash,WindowsPathSeal.Identity(image.SafeFileHandle));
             var evidence=new {Pid=pid,ImagePath=ExpectedImage,CreatedUtc=DateTime.FromFileTimeUtc(created).ToString("o"),DiskImageSHA256=hash,
-                FileIdentity=WindowsPathSeal.Identity(image.SafeFileHandle),MappedImageBytesQualified=false,Endpoint="127.0.0.1:7890"};
-            var lease=new ProxyChannelLease(process,directory,image,pid,evidence);lease.AssertHealthy();
+                identity.FileIdentity,MappedImageBytesQualified=false,Endpoint="127.0.0.1:7890"};
+            var lease=new ProxyChannelLease(process,directory,image,identity,evidence);lease.AssertHealthy();
             state.WriteNew("proxy-observed-"+Guid.NewGuid().ToString("N")+".json",JsonSerializer.SerializeToUtf8Bytes(evidence));return lease;
         }
         catch{image?.Dispose();directory?.Dispose();process.Dispose();throw;}
@@ -56,6 +58,11 @@ internal sealed class ProxyChannelLease : IDisposable
         if(disposed || process.IsClosed || image.SafeFileHandle.IsClosed)throw new ObjectDisposedException(nameof(ProxyChannelLease));
         directory.AssertHeld();WindowsPathSeal.VerifyObject(image.SafeFileHandle,ExpectedImage,false);
         if(WaitForSingleObject(process,0)!=0x102 || ListenerOwner()!=pid)throw WfpNative.Contract("ProxyProcessOrListenerIdentityDrift");
+    }
+    internal ProxyProcessIdentity ObserveIdentity()
+    {
+        AssertControllerListener();
+        return identity;
     }
     // Pin the accepted server-side socket, not just whichever process happens
     // to own the listener when checked. No CONNECT data may precede this check.

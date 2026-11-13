@@ -14,6 +14,7 @@
     <Compile Include="WfpObjectContract.cs;MachineEgressProbePolicy.cs;MachineEgressProbeTransaction.cs;MachineEgressDeliveryEvidence.cs;MachineEgressDeliveryRun.cs;MachineEgressRecoveryState.cs;MachineEgressProbeLease.cs;MachineEgressSender.cs" />
     <Compile Include="MachineEgressSocketTrial.cs;MachineEgressRoute.cs;MachineEgressRouteWatch.cs" />
     <Compile Include="MachineEgressQuarantinePolicy.cs;MachineEgressQuarantineReadback.cs;MachineEgressQuarantineIntent.cs;MachineEgressQuarantineLease.cs" />
+    <Compile Include="MachineProxyEndpointLease.cs" />
     <Compile Include="SessionZeroCreatorChannel.cs;SessionZeroCreatorClient.cs;SessionZeroCreatorProfile.cs;SessionZeroCreatorTerminal.cs;SessionZeroCreatorService.cs;SessionZeroCreatorRegistration.cs;SessionZeroOfflineWorkspace.cs;SessionZeroCreatorRecovery.cs" />
     <Compile Include="SessionZeroClosedCreatorRecovery.cs;CreatorProfileLineage.cs" />
     <Compile Include="../Shared/DirectoryNamePage.cs;../Shared/PackageAssetCatalog.cs" />
