@@ -23,6 +23,7 @@ internal sealed record OfflineConsoleNetworkSurvey(int SchemaVersion,string Sess
         int MatchingProxyTcpRows,int MatchingRemoteTcpRows)
     {
         public string? ProfileReceiptSHA256 {get;init;}
+        public string? OwnerIdentityReceiptSHA256 {get;init;}
         public bool ProfileP0Exposure {get;init;}
         public bool ProfileP0Unknown {get;init;}
         public int ProfileDirectEvidenceCount {get;init;}
@@ -113,9 +114,10 @@ internal sealed record OfflineConsoleNetworkSurvey(int SchemaVersion,string Sess
         if(length is <1 or >MaximumBytes)throw WfpNative.Contract("OfflineNetworkSurveySize");
     }
 
-    internal Summary Seal(ProtectedState state,VerifiedVersion version,string jobId,OfflineConsoleNetworkSurvey host,ProcessView hostAfter)
+    internal Summary Seal(ProtectedState state,VerifiedVersion version,string jobId,OfflineConsoleNetworkSurvey host,ProcessView hostAfter,
+        string ownerIdentityReceiptSHA256)
     {
-        if(SessionId!=jobId || host.SessionId!=jobId || Network.Pid==host.Network.Pid ||
+        if(!WorkspaceBundle.IsHash(ownerIdentityReceiptSHA256) || SessionId!=jobId || host.SessionId!=jobId || Network.Pid==host.Network.Pid ||
             host.Network.FinishedFileTime>Network.StartedFileTime)
             throw WfpNative.Contract("OfflineNetworkSurveyReferenceMismatch");
         var restrictedReceipts=SealActor(this,"restricted");
@@ -125,14 +127,17 @@ internal sealed record OfflineConsoleNetworkSurvey(int SchemaVersion,string Sess
                 version.Package.ManifestHash,Actor="trusted-after",hostAfter}));
         var hash=state.WriteNew("offline-console-network-"+jobId+".json",JsonSerializer.SerializeToUtf8Bytes(new {
             SchemaVersion=2,state.InstallationId,JobId=jobId,version.Package.Release,version.Package.ManifestHash,
+            OwnerIdentityReceiptSHA256=ownerIdentityReceiptSHA256,
             Restricted=SealActorSummary(this,restrictedReceipts),Trusted=SealActorSummary(host,trustedReceipts),
             TrustedProcessesAfterSHA256=trustedAfterReceipt
         }));
-        var profile=BuildEvidenceProfile(jobId,restrictedReceipts,trustedReceipts,host,hostAfter);
+        var profile=BuildEvidenceProfile(jobId,restrictedReceipts,trustedReceipts,host,hostAfter,
+            ownerIdentityReceiptSHA256,hash);
         var profileHash=state.WriteNew("host-privacy-network-profile-"+jobId+".json",JsonSerializer.SerializeToUtf8Bytes(profile));
         var summary=Compare(host,hostAfter,hash);
         return summary with {
             ProfileReceiptSHA256=profileHash,
+            OwnerIdentityReceiptSHA256=ownerIdentityReceiptSHA256,
             ProfileP0Exposure=profile.P0Exposure,
             ProfileP0Unknown=profile.P0Unknown,
             ProfileDirectEvidenceCount=profile.Assessments.Count(item=>item.Classification==HostPrivacyEvidenceClass.ConfirmedDirect),
@@ -158,7 +163,8 @@ internal sealed record OfflineConsoleNetworkSurvey(int SchemaVersion,string Sess
     }
 
     private HostPrivacyEvidenceProfile BuildEvidenceProfile(string jobId,ActorReceipts restrictedReceipts,
-        ActorReceipts trustedReceipts,OfflineConsoleNetworkSurvey trusted,ProcessView trustedAfter)
+        ActorReceipts trustedReceipts,OfflineConsoleNetworkSurvey trusted,ProcessView trustedAfter,
+        string ownerIdentityReceiptSHA256,string networkSurveyReceiptSHA256)
     {
         var evidence=new List<HostPrivacyEvidenceRecord>();
         var now=DateTimeOffset.UtcNow;
@@ -174,7 +180,9 @@ internal sealed record OfflineConsoleNetworkSurvey(int SchemaVersion,string Sess
             .Where(row=>row.CreatedFileTime is not null).ToArray();
         AddProcesses(this.Processes,restrictedReceipts.Processes,false,stable);
         AddProcesses(trusted.Processes,trustedReceipts.Processes,true,stable);
-        return HostPrivacyEvidenceRules.Evaluate(jobId,actorId,evidence,now,required);
+        var evaluated=HostPrivacyEvidenceRules.Evaluate(jobId,actorId,evidence,now,required);
+        return evaluated with {ActorId=actorId,OwnerIdentityReceiptSHA256=ownerIdentityReceiptSHA256,
+            NetworkSurveyReceiptSHA256=networkSurveyReceiptSHA256};
 
         void AddRead(OfflineConsoleNetworkSurvey actor,string receipt,bool hostReference,int index)
         {
