@@ -7,7 +7,7 @@ internal sealed record MachineEgressTrialEndpoint(IPAddress Source, IPAddress Re
     ushort TcpPort, ushort UdpPort);
 
 internal sealed record MachineEgressTransmission(MachineEgressDeliveryPhase Phase, MachineEgressFlow Flow,
-    Guid Marker, uint InterfaceIndex, IPEndPoint Source, IPEndPoint Destination, MachineEgressPolicyObservation PolicyBefore);
+    Guid Marker, MachineEgressRoute Route, IPEndPoint Source, IPEndPoint Destination, MachineEgressPolicyObservation PolicyBefore);
 
 internal interface IMachineEgressCollectors
 {
@@ -23,6 +23,7 @@ internal sealed class MachineEgressSocketTrial : IMachineEgressDeliveryTrial, ID
     private readonly MachineEgressTrialEndpoint v4, v6;
     private readonly IMachineEgressCollectors collectors;
     private readonly Dictionary<MachineEgressFlow, MachineEgressSender> baseline = new();
+    private MachineEgressRoute? baselineV4, baselineV6;
     private int nextPhase;
     private bool disposed;
 
@@ -49,6 +50,11 @@ internal sealed class MachineEgressSocketTrial : IMachineEgressDeliveryTrial, ID
         if ((int)phase != nextPhase || nextPhase >= 3)
             throw new InvalidOperationException("MachineEgressSocketTrialPhaseOutOfOrder");
         nextPhase++;
+        if (phase == MachineEgressDeliveryPhase.Baseline)
+        {
+            baselineV4 = MachineEgressRouteReader.Read(v4);
+            baselineV6 = MachineEgressRouteReader.Read(v6);
+        }
         var samples = new List<MachineEgressDeliverySample>();
         // Keep the other sockets bound until the phase ends so a later probe
         // in the phase cannot reuse their local ports.
@@ -59,6 +65,8 @@ internal sealed class MachineEgressSocketTrial : IMachineEgressDeliveryTrial, ID
             {
                 cancellation.ThrowIfCancellationRequested();
                 var endpoint = flow.Family == AddressFamily.InterNetwork ? v4 : v6;
+                var route = flow.Family == AddressFamily.InterNetwork ? baselineV4! : baselineV6!;
+                AssertRoute(endpoint, route);
                 var port = flow.Protocol == ProtocolType.Tcp ? endpoint.TcpPort : endpoint.UdpPort;
                 var destination = new IPEndPoint(endpoint.Receiver, port);
                 MachineEgressSender sender;
@@ -74,10 +82,15 @@ internal sealed class MachineEgressSocketTrial : IMachineEgressDeliveryTrial, ID
                 }
 
                 var marker = Guid.NewGuid();
-                collectors.Expect(new(phase, flow, marker, endpoint.InterfaceIndex, sender.Local,
+                collectors.Expect(new(phase, flow, marker, route with
+                {
+                    Source = Copy(route.Source), Prefix = Copy(route.Prefix), NextHop = Copy(route.NextHop)
+                }, sender.Local,
                     new IPEndPoint(new IPAddress(endpoint.Receiver.GetAddressBytes()), port), before), cancellation);
+                AssertRoute(endpoint, route);
                 var sent = sender.SendAsync(marker, cancellation).GetAwaiter().GetResult();
                 var observed = collectors.Read(marker, sent, cancellation);
+                AssertRoute(endpoint, route);
                 samples.Add(new(flow, sent.Attempt, observed));
                 if (phase == MachineEgressDeliveryPhase.Baseline && (sent.Error.HasValue || sent.TimedOut))
                     throw new IOException("MachineEgressBaselineSocketCallFailed");
@@ -90,6 +103,21 @@ internal sealed class MachineEgressSocketTrial : IMachineEgressDeliveryTrial, ID
             if (phase == MachineEgressDeliveryPhase.Enforced) StopSending();
         }
     }
+
+    internal void AssertBaselineRoutes()
+    {
+        AssertRoute(v4, baselineV4 ?? throw new InvalidOperationException("MachineEgressBaselineV4Missing"));
+        AssertRoute(v6, baselineV6 ?? throw new InvalidOperationException("MachineEgressBaselineV6Missing"));
+    }
+
+    private static void AssertRoute(MachineEgressTrialEndpoint endpoint, MachineEgressRoute baseline)
+    {
+        if (MachineEgressRouteReader.Read(endpoint) != baseline)
+            throw new InvalidDataException("MachineEgressTrialRouteChanged");
+    }
+
+    private static IPAddress Copy(IPAddress address) => address.AddressFamily == AddressFamily.InterNetwork
+        ? new(address.GetAddressBytes()) : new(address.GetAddressBytes(), address.ScopeId);
 
     public IReadOnlyList<MachineEgressPacketEvidence> Finish(CancellationToken cancellation)
     {

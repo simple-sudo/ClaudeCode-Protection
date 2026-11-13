@@ -16,7 +16,13 @@ internal static class MachineEgressProbeLease
         trial.AssertPlan(intent);
         using (trial)
             return MachineEgressDeliveryRun.Execute(intent.SubLayerKey, trial,
-                () => Observe(state, version, intent), () => Apply(state, version, intent), Restore, cancellation);
+                () => Observe(state, version, intent), ApplyWithRouteCheck, Restore, cancellation);
+
+        void ApplyWithRouteCheck()
+        {
+            trial.AssertBaselineRoutes();
+            Apply(state, version, intent);
+        }
 
         void Restore()
         {

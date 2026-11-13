@@ -64,6 +64,8 @@
 
 三阶段资格执行器现持有真实发送端。每次发送前向采集端交付独立标记、预绑定五元组、接口和发送前规则观察。资格入口核对双栈接收地址及接口与 WFP 计划相同。恢复前关闭基准和执行阶段的试验套接字，TCP 使用中止式关闭以丢弃排队数据。实际 Windows 回环收齐 24 条独立回执，物理采集和 Broker 入口仍待接入。
 
+原生路由预检通过 `GetUnicastIpAddressEntry` 验证源地址分配及接口 LUID，再用该接口和源地址查询 `GetBestRoute2`。快照包含接口索引、LUID、源地址、目的前缀、下一跳和跃点开销。施加前及发包与采集前后要求与基准一致，采集端收到同一快照。已实测双栈回环及错误接口、未分配源地址拒绝。快照是路由控制面证据，物理组件、实际发送方向和投递仍须独立观测。 [Windows 源地址查询](https://learn.microsoft.com/en-us/windows/win32/api/netioapi/nf-netioapi-getunicastipaddressentry) · [Windows 路由查询](https://learn.microsoft.com/en-us/windows/win32/api/netioapi/nf-netioapi-getbestroute2)
+
 恢复在同一写事务中确认三项对象全部缺席，或全部与原规则、owner/DACL 摘要及提交前对象 ID 记录匹配。部分残留、替换或 ID 漂移保留现场。仅按原键删除两个过滤器和所属子层，提交后再确认缺席并写入闭合回执。已有闭合回执的重放只复核缺席。微软将过滤器 ID 定义为运行时标识。BFE 重启后 ID 稳定性仍未知，ID 变化时该资格路径会拒绝自动删除。当前系统测试门仍阻止此路径运行，Broker 尚未提供命令，原生提交、回滚、进程中断与重启恢复均为 NOT_RUN。 [WFP 过滤器运行时标识](https://learn.microsoft.com/windows/win32/api/fwpmu/nf-fwpmu-fwpmfiltergetbyid0)
 
 ## 历史实现证据（2026-11-06：最小能力与实际内容比较切片，受限实测 NOT_RUN）

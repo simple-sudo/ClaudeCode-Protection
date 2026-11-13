@@ -11,6 +11,25 @@ internal static class MachineEgressSocketTrialCases
         using var receivers = new LoopbackCollectors();
         var v4 = receivers.Endpoint(IPAddress.Loopback, (uint)NetworkInterface.LoopbackInterfaceIndex);
         var v6 = receivers.Endpoint(IPAddress.IPv6Loopback, (uint)NetworkInterface.IPv6LoopbackInterfaceIndex);
+        foreach (var endpoint in new[] { v4, v6 })
+        {
+            var route = MachineEgressRouteReader.Read(endpoint);
+            Require(route.InterfaceIndex == endpoint.InterfaceIndex && route.InterfaceLuid != 0 &&
+                route.Source.Equals(endpoint.Source) && route.Prefix.Equals(endpoint.Receiver) &&
+                route.PrefixLength == (endpoint.Source.AddressFamily == AddressFamily.InterNetwork ? 32 : 128));
+            try
+            {
+                _ = MachineEgressRouteReader.Read(endpoint with { InterfaceIndex = uint.MaxValue });
+                throw new Exception("Unknown interface accepted");
+            }
+            catch (System.ComponentModel.Win32Exception) { }
+        }
+        try
+        {
+            _ = MachineEgressRouteReader.Read(v4 with { Source = IPAddress.Parse("192.0.2.5") });
+            throw new Exception("Unassigned source accepted");
+        }
+        catch (System.ComponentModel.Win32Exception) { }
         using var trial = new MachineEgressSocketTrial(v4, v6, receivers);
         var intent = new MachineEgressProbeIntent(1, Guid.NewGuid(), Guid.NewGuid(), new string('A', 64),
             Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), v4.InterfaceIndex, v4.Receiver.ToString(),
@@ -71,7 +90,8 @@ internal static class MachineEgressSocketTrialCases
 
         public void Expect(MachineEgressTransmission transmission, CancellationToken cancellation)
         {
-            Require(expected is null && transmission.Source.Port > 0);
+            Require(expected is null && transmission.Source.Port > 0 && transmission.Route.InterfaceLuid != 0 &&
+                transmission.Route.Source.Equals(transmission.Source.Address));
             expected = transmission;
         }
 
