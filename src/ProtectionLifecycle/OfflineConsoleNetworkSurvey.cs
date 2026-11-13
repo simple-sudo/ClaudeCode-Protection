@@ -115,9 +115,11 @@ internal sealed record OfflineConsoleNetworkSurvey(int SchemaVersion,string Sess
     }
 
     internal Summary Seal(ProtectedState state,VerifiedVersion version,string jobId,OfflineConsoleNetworkSurvey host,ProcessView hostAfter,
-        string ownerIdentityReceiptSHA256)
+        OfflineConsoleHostIdentitySummary ownerIdentity)
     {
-        if(!WorkspaceBundle.IsHash(ownerIdentityReceiptSHA256) || SessionId!=jobId || host.SessionId!=jobId || Network.Pid==host.Network.Pid ||
+        if(ownerIdentity is null || !WorkspaceBundle.IsHash(ownerIdentity.ReceiptSHA256) ||
+            ownerIdentity.ActorSessionId!=SessionId || ownerIdentity.ActorPid<=0 || (uint)ownerIdentity.ActorPid!=Network.Pid ||
+            SessionId!=jobId || host.SessionId!=jobId || Network.Pid==host.Network.Pid ||
             host.Network.FinishedFileTime>Network.StartedFileTime)
             throw WfpNative.Contract("OfflineNetworkSurveyReferenceMismatch");
         var restrictedReceipts=SealActor(this,"restricted");
@@ -127,12 +129,12 @@ internal sealed record OfflineConsoleNetworkSurvey(int SchemaVersion,string Sess
                 version.Package.ManifestHash,Actor="trusted-after",hostAfter}));
         var hash=state.WriteNew("offline-console-network-"+jobId+".json",JsonSerializer.SerializeToUtf8Bytes(new {
             SchemaVersion=2,state.InstallationId,JobId=jobId,version.Package.Release,version.Package.ManifestHash,
-            OwnerIdentityReceiptSHA256=ownerIdentityReceiptSHA256,
+            OwnerIdentityReceiptSHA256=ownerIdentity.ReceiptSHA256,
             Restricted=SealActorSummary(this,restrictedReceipts),Trusted=SealActorSummary(host,trustedReceipts),
             TrustedProcessesAfterSHA256=trustedAfterReceipt
         }));
         var profile=BuildEvidenceProfile(jobId,restrictedReceipts,trustedReceipts,host,hostAfter,
-            ownerIdentityReceiptSHA256,hash);
+            ownerIdentity.ReceiptSHA256,hash);
         var profileHash=state.WriteNew("host-privacy-network-profile-"+jobId+".json",JsonSerializer.SerializeToUtf8Bytes(profile));
         var summary=Compare(host,hostAfter,hash);
         return summary with {
