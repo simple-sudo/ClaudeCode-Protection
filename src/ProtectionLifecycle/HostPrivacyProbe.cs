@@ -37,7 +37,7 @@ internal sealed partial class HostPrivacyProbe : IDisposable
         // trusted owner needs them; the fixed probe requests one minimal open.
         var targets=plan.Targets.Select(target=>new RestrictedTarget(target.Check.Role,target.Check.Kind,
             target.Check.TargetKind==HostPrivacyTargetKind.HostProcess?"":target.Path,target.Pid,target.MissingParentDepth!=0)).ToArray();
-        bytes=JsonSerializer.SerializeToUtf8Bytes(new RestrictedPlan(3,plan.SessionId,plan.InstallationId,plan.Release,targets));
+        bytes=JsonSerializer.SerializeToUtf8Bytes(new RestrictedPlan(4,plan.SessionId,plan.InstallationId,plan.Release,targets));
         if(bytes.Length>16384)throw WfpNative.Contract("HostPrivacyPlanBounds");
         execution=new(plan.SessionId,SHA256,plan.Targets.Single(target=>target.Check.AllowsOwnerObservedAbsence).MissingParentDepth!=0);
     }

@@ -28,7 +28,7 @@ internal sealed partial class HostPrivacyProbe
         HostPrivacyContract.Fields(root,"SchemaVersion","SessionId","InstallationId","Release","Targets");
         foreach(var t in root.GetProperty("Targets").EnumerateArray())HostPrivacyContract.Fields(t,"Role","Kind","Path","Pid","OwnerObservedAbsent");
         var plan=JsonSerializer.Deserialize<RestrictedPlan>(bytes)??throw WfpNative.Contract("HostPrivacyPlanMissing");
-        if(plan.SchemaVersion!=3 || plan.SessionId!=resource.Nonce || plan.InstallationId!=resource.InstallationId || plan.Release!=resource.Release || plan.Targets?.Length!=HostPrivacyContract.Checks.Count)
+        if(plan.SchemaVersion!=4 || plan.SessionId!=resource.Nonce || plan.InstallationId!=resource.InstallationId || plan.Release!=resource.Release || plan.Targets?.Length!=HostPrivacyContract.Checks.Count)
             throw WfpNative.Contract("HostPrivacyPlanContextDiffers");
         var observations=plan.Targets.Select((target,i)=>
         {

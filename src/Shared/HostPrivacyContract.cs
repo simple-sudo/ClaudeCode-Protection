@@ -11,8 +11,9 @@ internal sealed record HostPrivacyCheck(string Role,string Kind,HostPrivacyTarge
     {
         if(ownerObservedAbsent && !AllowsOwnerObservedAbsence)
             throw new InvalidDataException("Optional reset target differs");
-        var status=ownerObservedAbsent && error is 2 or 3 or 5?HostPrivacyContract.OwnerObservedAbsent:
-            error==5?"ACCESS_DENIED":error==0?"OPENED":"UNKNOWN";
+        var status=ownerObservedAbsent
+            ?error is 2 or 3?HostPrivacyContract.OwnerObservedAbsent:error==0?"OPENED":"UNKNOWN"
+            :error==5?"ACCESS_DENIED":error==0?"OPENED":"UNKNOWN";
         return new(Role,Kind,status,error);
     }
 }
@@ -68,7 +69,7 @@ internal static class HostPrivacyContract
 
     // Keep the v5 identity byte-for-byte compatible with existing summaries.
     internal static string PolicySHA256 {get;}=Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(
-        "CPC-HOST-PRIVACY-SEPARATE-PROBE-V5\nROOT_AND_FIXED_PROBE=33;PROBE_EXIT_ZERO_AND_PLAN_WITHDRAWN_BEFORE_COMPILER;COMPILER=19_OWNER_CONTROL_FILE_PLUS_9_ROOT_PROCESS;NO_PRIVATE_PLAN_IN_COMPILER\nOPTIONAL_RESET_SETTINGS=7;OWNER_METADATA_ABSENCE_BOUND_TO_PLAN;RECHECK_BEFORE_CODE_AND_AFTER_JOB;ABSENCE_IS_NOT_DENIAL\nFILE_READ_DATA=1;FILE_WRITE_DATA=2;WRITE_DAC=262144;WRITE_OWNER=524288;OVERLAPPED;SHARE=7;REG_QUERY_VALUE=1;VIEW64;PROCESS_VM_READ=16;NO_CONTENT_READ;NO_FILE_OR_PROCESS_OPERATION\n"+
+        "CPC-HOST-PRIVACY-SEPARATE-PROBE-V6\nROOT_AND_FIXED_PROBE=33;PROBE_EXIT_ZERO_AND_PLAN_WITHDRAWN_BEFORE_COMPILER;COMPILER=19_OWNER_CONTROL_FILE_PLUS_9_ROOT_PROCESS;NO_PRIVATE_PLAN_IN_COMPILER\nOPTIONAL_RESET_SETTINGS=7;OWNER_METADATA_ABSENCE_BOUND_TO_PLAN;RECHECK_BEFORE_CODE_AND_AFTER_JOB;ABSENCE_IS_NOT_DENIAL;ABSENCE_NATIVE_ERRORS=2,3_ONLY\nFILE_READ_DATA=1;FILE_WRITE_DATA=2;WRITE_DAC=262144;WRITE_OWNER=524288;OVERLAPPED;SHARE=7;REG_QUERY_VALUE=1;VIEW64;PROCESS_VM_READ=16;NO_CONTENT_READ;NO_FILE_OR_PROCESS_OPERATION\n"+
         RightsText(HostPrivacyTargetKind.OwnerProcess)+"\n"+
         RightsText(HostPrivacyTargetKind.ControlFile)+"\n"+
         string.Join("\n",Checks.Select(check=>check.Role+"|"+check.Kind)))));
@@ -87,8 +88,9 @@ internal static class HostPrivacyContract
         {
             var c=cases[i];var check=checks[i];
             if(c is null || c.Role!=check.Role || c.Kind!=check.Kind || c.Error is <0 or >65535 ||
-                (c.Status switch {"ACCESS_DENIED"=>c.Error!=5,"OPENED"=>c.Error!=0,"UNKNOWN"=>c.Error is 0 or 5,
-                    OwnerObservedAbsent=>!check.AllowsOwnerObservedAbsence || c.Error is not (2 or 3 or 5),_=>true}))
+                (c.Status switch {"ACCESS_DENIED"=>c.Error!=5,"OPENED"=>c.Error!=0,
+                    "UNKNOWN"=>c.Error==0 || c.Error==5 && !check.AllowsOwnerObservedAbsence,
+                    OwnerObservedAbsent=>!check.AllowsOwnerObservedAbsence || c.Error is not (2 or 3),_=>true}))
                 throw new InvalidDataException("Host privacy observation differs");
         }
     }
@@ -98,7 +100,7 @@ internal static class HostPrivacyContract
     {
         ValidateCases(cases);
         return cases.Select((c,i)=>Checks[i].AllowsOwnerObservedAbsence && resetSettingsAbsent
-            ? c.Status==OwnerObservedAbsent && c.Error is 2 or 3 or 5
+            ? c.Status==OwnerObservedAbsent && c.Error is 2 or 3
             : c.Status=="ACCESS_DENIED" && c.Error==5).All(value=>value);
     }
     internal static bool Satisfied(HostPrivacySummary summary)
