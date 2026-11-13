@@ -106,6 +106,7 @@ Require ($dailyBuild -match "Assert-ProjectSecurityClearance\.ps1'\) -Stage Dail
 Require ($dailyBuild -match 'Invoke-ProjectSecurityMonitoredProcess') 'daily build is not continuously AV-monitored'
 Require ($dailyBuild -match "'--no-restore'") 'daily build must not fetch or restore dependencies during the first stage'
 Require ($dailyBuild -match '\$script:ProjectSecurityRunId') 'build stdout/stderr logs are not correlated with the AV monitor evidence run ID'
+Require ($dailyBuild -match 'did not provide a monitor run ID') 'daily build must fail closed if monitor/build log correlation is unavailable'
 
 $expectedStages=@{
     'Build-Engineering.ps1'='EngineeringBuild'
