@@ -20,7 +20,12 @@ internal sealed record HostPrivacyInference(
 
 internal sealed record HostPrivacyEvidenceProfile(
     string SessionId,DateTimeOffset EvaluatedAtUtc,HostPrivacyEvidenceAssessment[] Assessments,
-    HostPrivacyInference[] Inferences,bool P0Exposure,bool P0Unknown);
+    HostPrivacyInference[] Inferences,bool P0Exposure,bool P0Unknown)
+{
+    public string? ActorId {get;init;}
+    public string? OwnerIdentityReceiptSHA256 {get;init;}
+    public string? NetworkSurveyReceiptSHA256 {get;init;}
+}
 
 internal static class HostPrivacyEvidenceRules
 {
