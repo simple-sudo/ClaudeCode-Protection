@@ -154,7 +154,11 @@ internal static class HostPrivacyEvidenceRules
             expiry<=item.ObservedAtUtc || expiry-item.ObservedAtUtc>MaximumEvidenceLifetime ||
             item.NativeError is <0 || !IsHex(item.ArtifactSHA256,64) ||
             !Enum.IsDefined(item.Visibility) || !Enum.IsDefined(item.Outcome))
-            throw new InvalidDataException("Host privacy evidence shape or provenance differs");
+        {
+            var detail=item is null?"null":FormattableString.Invariant(
+                $"target={item.Target};field={item.Field};source={item.SourceId};observedOffsetMinutes={item.ObservedAtUtc.Offset.TotalMinutes};expiresOffsetMinutes={item.ExpiresAtUtc?.Offset.TotalMinutes};lifetimeSeconds={(item.ExpiresAtUtc-item.ObservedAtUtc)?.TotalSeconds};nowOffsetMinutes={now.Offset.TotalMinutes};nativeError={item.NativeError};visibility={item.Visibility};outcome={item.Outcome}");
+            throw new InvalidDataException("Host privacy evidence shape or provenance differs: "+detail);
+        }
 
         if(item.RequiredP0!=requiredSet.Contains(item.Target))
             throw new InvalidDataException("Evidence P0 severity differs from immutable target matrix");
