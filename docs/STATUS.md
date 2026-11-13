@@ -12,7 +12,7 @@
 SOURCE：
 - `Assert-ProjectSecurityClearance.ps1` 由无条件 throw 改为显式 Stage。当前仅 DailyBuild 可进入；EngineeringBuild、CenterBuild、NativeBuild、IsolationProbe、WfpMutation 全部关闭。
 - `Build.ps1` 限定 Release `dotnet build --no-restore`，不 publish、不安装、不启动产品。
-- 卡巴斯基服务、Security Center 注册/状态与 Application 事件观察接入门禁；新事件、状态异常或监控失败触发停止及进程树终止。
+- 卡巴斯基服务、Security Center 注册/状态与 Application 事件观察接入门禁；JSONL 持久记录健康快照、进程生命周期、告警和停止结果；新事件、状态异常或监控失败触发停止及进程树终止。
 - `Test-ProductBuildBoundary.ps1` 更新为检查分阶段策略和关闭状态；后续静态断言/CI 以最新 PR head 的 Actions 为准。
 - `docs/KASPERSKY-STAGED-QUALIFICATION-20261113.md` 记录策略、阶段、监控局限和后续验证顺序。
 
