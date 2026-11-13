@@ -3,7 +3,7 @@
 状态：**PARTIAL_SOURCE_IMPLEMENTATION / PR #4 Draft**。本文件记录网页端独立开发分支的实现事实；不覆盖 Codex 网络主线的 CURRENT-STATE，也不表示整个 P0-ASSURANCE、P0-HOST 或产品已经交付。
 
 - 开发分支：`chatgpt/p0-assurance-host-20261113`
-- 当前分支 HEAD：`b7e9c080cfbb50f048a1fce820cfae3ee23c3d71`；最近完成代码验证的 HEAD：`f819ddfd05ac3e2c9ce22770c3347c93e3c94812`
+- 最近完成代码验证的 HEAD：`f819ddfd05ac3e2c9ce22770c3347c93e3c94812`；当前分支 HEAD、PR 状态及最新 CI 以 GitHub PR #4 实时记录为准（文档同步提交不改变上述代码验证范围）。
 - PR：[ #4 — owner-attested host evidence contract ](https://github.com/simple-sudo/ClaudeCode-Protection/pull/4)，Draft，目标为 `codex/integrate-privacy-admission-20261027`
 - 基线：从实时核实的 Codex HEAD `bdbd667545519952e5f4bb8464fd782364d18f8c` 创建；不修改 Codex 分支。
 - 本分支没有修改 WFP 策略、FlClash/全机网络资源 owner、Bootstrap、Manifest、安装协议或 GPU 能力。
@@ -100,7 +100,7 @@ ProcessView 已增加独立 CapturedFileTime 并将 OfflineConsoleNetworkSurvey 
 
 ## 5. 下一步验收
 
-1. `f819ddf` 的 Hosted Windows compile 与 Safe managed policy smoke 已 PASS；Offline workspace Git workflow 尚在运行。文档同步 HEAD `b7e9c08` 的 CI 需继续核对，不能把旧 SHA 的 PASS 视为当前 HEAD 全绿。
+1. `f819ddf` 的 Hosted Windows compile、Safe managed policy smoke、Offline workspace Git workflow 均 PASS；其离线 workflow 日志明确显示 focused ordinary Windows network-profile mapping PASS（NOT LPAC/L3）。后续文档同步 HEAD 的三组 CI 也已全部 PASS。
 2. 在用户 Windows 11 上，用当前独立分支构建的工件走现有安装/版本/Owner 链，执行一次固定 OfflineConsoleNetworkSurvey schema 2 的真实 LPAC 对照；不关闭 GPU，不修改全机代理/WFP。
 3. 由可信 Owner 核验真实 host references、restricted raw bytes、process receipt、Profile receipt 的文件身份/哈希/权限和实际内容；保存桌面日志并回传。不能只看退出码或摘要。
 4. 对本次实际读取结果逐字段分类：CONFIRMED_DIRECT、DENIED_CONFIRMED、UNKNOWN、NOT_RUN；若任何 P0 内容真实可读，保留原值与证据并记录 FAIL，再修复复验。
