@@ -12,7 +12,7 @@
   <ItemGroup>
     <Compile Include="PackagePolicy.cs;FixedLayout.cs;WindowsPathSeal.cs;ProtectedState.cs;MaintenanceIdentity.cs;Lifecycle.cs;BrokerProtocol.cs;VersionStore.cs;LifecycleRecovery.cs;ExactUninstall.cs;RemovalPolicy.cs;CreationIdentity.cs;PendingFileAuthority.cs;CompletionRecovery.cs;KernelJobSeal.cs;OwnedJobIntent.cs;SafeJobHandle.cs;JobSnapshot.cs;UnadmittedJobRetirement.cs;OwnedJobs.cs;OwnedKernelJob.Admission.cs;OwnedKernelJob.Creation.cs;OwnedKernelJob.Observation.cs;OwnedKernelJob.NativeMethods.cs;RegisteredJobSet.cs;PrivateJobNamespace.cs;WfpFailure.cs;SafeWfpEngine.cs;InstallationPackageSid.cs;WfpNative.cs;FencePlan.cs;FenceObservation.cs;PersistentFence.cs;PersistentFence.Readback.cs;PersistentFence.NativeDefinitions.cs;InstalledBroker.cs;BootstrapInstaller.cs" />
     <Compile Include="WfpObjectContract.cs;MachineEgressProbePolicy.cs;MachineEgressProbeTransaction.cs;MachineEgressDeliveryEvidence.cs;MachineEgressDeliveryRun.cs;MachineEgressRecoveryState.cs;MachineEgressProbeLease.cs;MachineEgressSender.cs" />
-    <Compile Include="MachineEgressSocketTrial.cs;MachineEgressRoute.cs" />
+    <Compile Include="MachineEgressSocketTrial.cs;MachineEgressRoute.cs;MachineEgressRouteWatch.cs" />
     <Compile Include="SessionZeroCreatorChannel.cs;SessionZeroCreatorClient.cs;SessionZeroCreatorProfile.cs;SessionZeroCreatorTerminal.cs;SessionZeroCreatorService.cs;SessionZeroCreatorRegistration.cs;SessionZeroOfflineWorkspace.cs;SessionZeroCreatorRecovery.cs" />
     <Compile Include="SessionZeroClosedCreatorRecovery.cs;CreatorProfileLineage.cs" />
     <Compile Include="../Shared/DirectoryNamePage.cs;../Shared/PackageAssetCatalog.cs" />

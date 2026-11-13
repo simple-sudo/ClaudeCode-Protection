@@ -24,6 +24,7 @@ internal sealed class MachineEgressSocketTrial : IMachineEgressDeliveryTrial, ID
     private readonly IMachineEgressCollectors collectors;
     private readonly Dictionary<MachineEgressFlow, MachineEgressSender> baseline = new();
     private MachineEgressRoute? baselineV4, baselineV6;
+    private MachineEgressRouteWatch? routeWatch;
     private int nextPhase;
     private bool disposed;
 
@@ -52,6 +53,7 @@ internal sealed class MachineEgressSocketTrial : IMachineEgressDeliveryTrial, ID
         nextPhase++;
         if (phase == MachineEgressDeliveryPhase.Baseline)
         {
+            routeWatch = new MachineEgressRouteWatch();
             baselineV4 = MachineEgressRouteReader.Read(v4);
             baselineV6 = MachineEgressRouteReader.Read(v6);
         }
@@ -110,10 +112,12 @@ internal sealed class MachineEgressSocketTrial : IMachineEgressDeliveryTrial, ID
         AssertRoute(v6, baselineV6 ?? throw new InvalidOperationException("MachineEgressBaselineV6Missing"));
     }
 
-    private static void AssertRoute(MachineEgressTrialEndpoint endpoint, MachineEgressRoute baseline)
+    private void AssertRoute(MachineEgressTrialEndpoint endpoint, MachineEgressRoute baseline)
     {
+        routeWatch!.AssertUnchanged();
         if (MachineEgressRouteReader.Read(endpoint) != baseline)
             throw new InvalidDataException("MachineEgressTrialRouteChanged");
+        routeWatch.AssertUnchanged();
     }
 
     private static IPAddress Copy(IPAddress address) => address.AddressFamily == AddressFamily.InterNetwork
@@ -124,13 +128,17 @@ internal sealed class MachineEgressSocketTrial : IMachineEgressDeliveryTrial, ID
         ObjectDisposedException.ThrowIf(disposed, this);
         if (nextPhase != 3) throw new InvalidOperationException("MachineEgressSocketTrialIncomplete");
         nextPhase++;
-        return collectors.Finish(cancellation);
+        var evidence = collectors.Finish(cancellation);
+        AssertBaselineRoutes();
+        routeWatch!.Complete();
+        return evidence;
     }
 
     public void Dispose()
     {
         disposed = true;
-        StopSending();
+        try { StopSending(); }
+        finally { routeWatch?.Dispose(); }
     }
 
     internal void StopSending()

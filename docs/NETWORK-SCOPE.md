@@ -66,6 +66,8 @@
 
 原生路由预检通过 `GetUnicastIpAddressEntry` 验证源地址分配及接口 LUID，再用该接口和源地址查询 `GetBestRoute2`。快照包含接口索引、LUID、源地址、目的前缀、下一跳和跃点开销。施加前及发包与采集前后要求与基准一致，采集端收到同一快照。已实测双栈回环及错误接口、未分配源地址拒绝。快照是路由控制面证据，物理组件、实际发送方向和投递仍须独立观测。 [Windows 源地址查询](https://learn.microsoft.com/en-us/windows/win32/api/netioapi/nf-netioapi-getunicastipaddressentry) · [Windows 路由查询](https://learn.microsoft.com/en-us/windows/win32/api/netioapi/nf-netioapi-getbestroute2)
 
+定向试验在基准查询前订阅双栈路由、单播地址和 IP 接口变化。收到三个订阅各自的就绪回调后才采基准。试验期间收到任何变更就停止接受该轮证据，即使后续快照回到原值。订阅在最终采集后取消，并再次检查已收到的通知。普通 Windows 回环已验证原生注册、就绪和取消。主动变更注入、通知延迟及丢失边界仍待实测。 [路由通知](https://learn.microsoft.com/en-us/windows/win32/api/netioapi/nf-netioapi-notifyroutechange2) · [取消通知](https://learn.microsoft.com/en-us/windows/win32/api/netioapi/nf-netioapi-cancelmibchangenotify2)
+
 恢复在同一写事务中确认三项对象全部缺席，或全部与原规则、owner/DACL 摘要及提交前对象 ID 记录匹配。部分残留、替换或 ID 漂移保留现场。仅按原键删除两个过滤器和所属子层，提交后再确认缺席并写入闭合回执。已有闭合回执的重放只复核缺席。微软将过滤器 ID 定义为运行时标识。BFE 重启后 ID 稳定性仍未知，ID 变化时该资格路径会拒绝自动删除。当前系统测试门仍阻止此路径运行，Broker 尚未提供命令，原生提交、回滚、进程中断与重启恢复均为 NOT_RUN。 [WFP 过滤器运行时标识](https://learn.microsoft.com/windows/win32/api/fwpmu/nf-fwpmu-fwpmfiltergetbyid0)
 
 ## 历史实现证据（2026-11-06：最小能力与实际内容比较切片，受限实测 NOT_RUN）
