@@ -2,7 +2,7 @@
 param([switch]$Apply)
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
-if ($Apply) { . (Join-Path $PSScriptRoot 'Assert-ProjectSecurityClearance.ps1') }
+if ($Apply) { . (Join-Path $PSScriptRoot 'Assert-ProjectSecurityClearance.ps1') -Stage WfpMutation }
 $program = Join-Path $root 'bin\engineering\ClaudeProtectionProbe.exe'
 $source = Join-Path $root 'bin\engineering\ClaudeProtection.exe'
 $ranges = @{
