@@ -48,7 +48,7 @@ internal static class HostPrivacyEvidenceRules
             if(!ids.Add(item.EvidenceId))throw new InvalidDataException("Duplicate host privacy evidence id");
             if(item.Visibility==HostPrivacyEvidenceVisibility.HostReferenceOnly)
             {
-                assessments.Add(new(item.EvidenceId,item.Target,item.Field,HostPrivacyEvidenceClass.HostReferenceOnly,
+                assessments.Add(new(item.EvidenceId,item.Target,item.Field,Classify(item,now),
                     item.RequiredP0,item.SensitiveContent,item.SourceId,item.SourceFamily,null));
                 continue;
             }
