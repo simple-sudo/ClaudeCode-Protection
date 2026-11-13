@@ -95,7 +95,7 @@ d7507e5 之后的 16 个提交继续在现有 ProtectionLifecycle / WFP 方向�
 
 - 当前仅 `DailyBuild` 阶段开放：固定日常 `ClaudeProtection.csproj`、Release、`dotnet build --no-restore`；不 publish、不安装、不执行生成的产品程序。
 - `EngineeringBuild`、`CenterBuild`、`NativeBuild`、`IsolationProbe`、`WfpMutation` 均仍 BLOCKED。
-- 运行前检查 Kaspersky 服务 `AVP21.26`、Windows Security Center Kaspersky 注册及既有 productState `266240`；构建期间约每 750ms 检查相关 Application 事件、每 3 秒重查服务和产品状态。新相关事件、状态变化或监控失败会终止被监控的构建进程树。
+- 运行前检查 Kaspersky 服务 `AVP21.26`、Windows Security Center Kaspersky 注册及既有 productState `266240`；构建期间约每 750ms 检查相关 Application 事件、每 3 秒重查服务和产品状态；JSONL 记录预检/周期快照、进程生命周期、告警和停止结果，并与 stdout/stderr 使用同一轮次 ID。新相关事件、状态变化或监控失败会终止被监控的构建进程树。
 - 该观察不是完整 Kaspersky 厂商遥测，`FullVendorAlertVisibility=UNKNOWN`；本机执行阶段仍要求设备所有者同时观察卡巴斯基界面。不得关闭 AV、增加排除项、恢复隔离对象或规避检测。
 - **当前门禁源码尚未在用户本机执行；DailyBuild 也尚未运行。** 现阶段仅为 SOURCE，不能标记 BUILD、AV 兼容 VERIFIED 或产品交付。完整范围见 [KASPERSKY-STAGED-QUALIFICATION-20261113](KASPERSKY-STAGED-QUALIFICATION-20261113.md)。
 
