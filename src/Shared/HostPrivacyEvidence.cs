@@ -34,6 +34,7 @@ internal static class HostPrivacyEvidenceRules
         if(requiredTargets.Length is <1 or >1024 || requiredTargets.Any(target=>string.IsNullOrWhiteSpace(target) || target.Length>256) ||
             requiredTargets.Distinct(StringComparer.Ordinal).Count()!=requiredTargets.Length)
             throw new InvalidDataException("Required P0 target matrix differs");
+        var requiredSet=requiredTargets.ToHashSet(StringComparer.Ordinal);
         var records=evidence.ToArray();
         if(records.Length>4096)throw new InvalidDataException("Host privacy evidence count exceeds limit");
         var ids=new HashSet<string>(StringComparer.Ordinal);
@@ -43,6 +44,8 @@ internal static class HostPrivacyEvidenceRules
         foreach(var item in records)
         {
             Validate(item,session,actor,now);
+            if(item.RequiredP0!=requiredSet.Contains(item.Target))
+                throw new InvalidDataException("Evidence P0 severity differs from trusted target matrix");
             if(!ids.Add(item.EvidenceId))throw new InvalidDataException("Duplicate host privacy evidence id");
             if(item.Visibility==HostPrivacyEvidenceVisibility.HostReferenceOnly)
             {
