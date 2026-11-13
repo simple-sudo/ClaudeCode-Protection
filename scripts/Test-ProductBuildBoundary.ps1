@@ -109,15 +109,18 @@ Require ($dailyBuild -match '\$script:ProjectSecurityRunId') 'build stdout/stder
 Require ($dailyBuild -match 'did not provide a monitor run ID') 'daily build must fail closed if monitor/build log correlation is unavailable'
 
 $expectedStages=@{
+    'Build.ps1'='DailyBuild'
     'Build-Engineering.ps1'='EngineeringBuild'
     'Build-Center.ps1'='CenterBuild'
     'Build-NativeFence.ps1'='NativeBuild'
 }
-$buildEntrypoints=@('Build.ps1')+@($expectedStages.Keys)
-Require ($buildEntrypoints.Count -eq 4) 'expected four conventional build entrypoints'
+$buildEntrypoints=@(Get-ChildItem -LiteralPath (Join-Path $root 'scripts') -Filter 'Build*.ps1' -File | ForEach-Object { $_.Name } | Sort-Object)
+$expectedBuildEntrypoints=@($expectedStages.Keys | Sort-Object)
+$entrypointDrift=@(Compare-Object -ReferenceObject $expectedBuildEntrypoints -DifferenceObject $buildEntrypoints)
+Require ($entrypointDrift.Count -eq 0) ('conventional Build entrypoint inventory changed: '+($entrypointDrift | Out-String))
 foreach($name in $expectedStages.Keys){
     $text=Read-Text ('scripts/'+$name)
-    Require ($text.Contains("Assert-ProjectSecurityClearance.ps1') -Stage "+$expectedStages[$name])) "$name does not request its own closed stage"
+    Require ($text.Contains("Assert-ProjectSecurityClearance.ps1') -Stage "+$expectedStages[$name])) "$name does not request its explicit stage"
 }
 $probe=Read-Text 'scripts/Invoke-IsolationProbe.ps1'
 Require ($probe.Contains("Assert-ProjectSecurityClearance.ps1') -Stage IsolationProbe")) 'isolation probe does not remain behind its own closed stage'
