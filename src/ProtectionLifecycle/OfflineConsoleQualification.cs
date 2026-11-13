@@ -686,7 +686,7 @@ internal static class OfflineConsoleQualification
                             workspace.AssertHeld();
                             networkContent=OfflineConsoleNetworkSurvey.Read(workspace.Path,job.JobId,child.Pid,childCreated)
                                 .Seal(state,version,job.JobId,hostNetwork!,OfflineConsoleNetworkSurvey.CaptureProcesses(),
-                                    hostIdentity?.ReceiptSHA256??throw WfpNative.Contract("OfflineNetworkProfileOwnerIdentityReceiptMissing"));
+                                    hostIdentity??throw WfpNative.Contract("OfflineNetworkProfileOwnerIdentityReceiptMissing"));
                         }
                         catch(Exception error)when(error is not OutOfMemoryException){networkEvidenceFailure=error;}
                 }
