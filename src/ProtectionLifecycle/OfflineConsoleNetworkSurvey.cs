@@ -274,7 +274,7 @@ internal sealed record OfflineConsoleNetworkSurvey(int SchemaVersion,string Sess
                     false,denied?5:view.Error,receipt,readTime));
                 return;
             }
-            var rows=hostReference?stableRows:view.Rows;
+            var rows=view.Rows;
             var networkCutoff=hostReference?trusted.Network.FinishedFileTime:Network.FinishedFileTime;
             if(rows.Length==0)
             {
@@ -286,7 +286,9 @@ internal sealed record OfflineConsoleNetworkSurvey(int SchemaVersion,string Sess
             {
                 var key=row.Pid.ToString(System.Globalization.CultureInfo.InvariantCulture);
                 var value=$"{row.Name}|{row.Pid}|{row.CreatedFileTime}";
-                var stableAtNetworkSnapshot=row.CreatedFileTime is long created && created<=networkCutoff;
+                var stableAtNetworkSnapshot=hostReference
+                    ?stableRows.Any(stable=>stable.Pid==row.Pid && stable.Name==row.Name && stable.CreatedFileTime==row.CreatedFileTime)
+                    :row.CreatedFileTime is long created && created<=networkCutoff;
                 evidence.Add(Create("network.processes","process",value,"process-enumeration:"+key,
                     "process-inventory",stableAtNetworkSnapshot?"network.process-owner":"",
                     stableAtNetworkSnapshot?key:"",hostReference,true,true,
@@ -334,8 +336,8 @@ internal sealed record OfflineConsoleNetworkSurvey(int SchemaVersion,string Sess
                     join trusted in ByUniqueGuid(trustedAdapters) on restricted.Key equals trusted.Key
                     select (restricted:restricted.Value,trusted:trusted.Value)).ToArray();
         var stable=host.Processes.Rows.Intersect(hostAfter.Rows).Where(row=>row.CreatedFileTime is not null).ToArray();
-        var observed=Processes.Rows.Where(read=>stable.Any(reference=>read.Pid==reference.Pid && read.Name==reference.Name &&
-            (read.CreatedFileTime is null || read.CreatedFileTime==reference.CreatedFileTime))).ToArray();
+        var observed=Processes.Rows.Where(read=>read.CreatedFileTime is long created &&
+            stable.Any(reference=>read.Pid==reference.Pid && read.Name==reference.Name && created==reference.CreatedFileTime)).ToArray();
         var tcpV4=CompareTcp(1,2);
         var tcpV6=CompareTcp(2,23);
         var stableProxy=stable.Where(IsProxy).ToArray();

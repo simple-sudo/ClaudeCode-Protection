@@ -6,13 +6,14 @@ using System.Security.Principal;
 using System.Text.Json;
 using ClaudeCodeProtection.Workspaces;
 
+// Pure evidence-policy tests do not touch host resources and may run on elevated CI agents.
+if(args.Length==1 && args[0]=="privacy-evidence"){ProtectionLifecycle.HostPrivacyEvidenceCases.Run();return 0;}
 WorkspaceFiles.RequireOrdinaryUser();
 if(args.Length!=1 || args[0] is not ("worker-feedback" or "frames" or "local-pipe" or "output" or "snapshot" or "token-membership" or "reply" or "project-contract" or "privacy-contract" or "privacy-execution-gate" or "privacy-evidence" or "caller-csharp" or "caller-data" or "project-failure"))return 125;
 if(args[0]=="worker-feedback"){ProjectWorkerFeedbackCases.Run();return 0;}
 if(args[0]=="project-failure"){ProjectFailureCases.Run();return 0;}
 if(args[0]=="caller-data"){CallerDataCases.Run();return 0;}
 if(args[0]=="privacy-execution-gate"){ProtectionLifecycle.HostPrivacyExecutionGateCases.Run();ProtectionLifecycle.HostPrivacyEvidenceCases.Run();return 0;}
-if(args[0]=="privacy-evidence"){ProtectionLifecycle.HostPrivacyEvidenceCases.Run();return 0;}
 if(args[0]=="caller-csharp"){CallerCSharpCases.Run();return 0;}
 static void Require(bool condition,string reason){if(!condition)throw new Exception("WorkspacePipe: "+reason);}
 static async Task Refuse(Func<Task> operation,string reason)

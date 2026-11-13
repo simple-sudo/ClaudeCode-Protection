@@ -61,6 +61,11 @@ internal static class HostPrivacyEvidenceCases
         var direct=Record("network.adapter.mac","mac","AA-BB","iphelper-1","iphelper-adapters",
             claim:"device.network.identity",key:"AA-BB");
         var hostMac=Host("network.adapter.mac","mac");
+        var metadata=Record("network.adapter.metadata","description","Wireless adapter","host-metadata","iphelper-adapters");
+        var metadataProfile=Evaluate(new[]{metadata});
+        Require(metadataProfile.Assessments.Single().Classification==HostPrivacyEvidenceClass.ConfirmedDirect &&
+            !metadataProfile.P0Exposure && metadataProfile.P0Unknown,
+            "non-P0 adapter metadata remains auditable without being mislabeled as sensitive P0 content");
         var profile=Evaluate(CompleteCoverage().Append(direct));
         Require(profile.Assessments.Single(item=>item.EvidenceId==direct.EvidenceId).Classification==HostPrivacyEvidenceClass.ConfirmedDirect &&
             profile.P0Exposure && !profile.P0Unknown,
@@ -134,6 +139,7 @@ internal static class HostPrivacyEvidenceCases
         Reject(new[]{direct with {SessionId=new string('b',32)}},"foreign session");
         Reject(new[]{direct,direct},"duplicate evidence identifier");
         Reject(new[]{direct with {SensitiveContent=false}},"sensitive MAC field cannot be downgraded");
+        Reject(new[]{direct with {Field="unreviewed-field"}},"unknown field cannot enter the trusted evidence profile");
         Reject(new[]{direct with {ExpiresAtUtc=now.AddMinutes(-2)}},"evidence expiry cannot predate observation");
         Reject(new[]{direct with {ExpiresAtUtc=null}},"evidence cannot have an unbounded lifetime");
         Reject(new[]{direct with {Outcome=HostPrivacyEvidenceOutcome.AccessDenied,NativeError=5,Value="secret"}},"denial carrying content");
