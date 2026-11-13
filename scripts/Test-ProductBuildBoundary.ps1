@@ -115,7 +115,7 @@ Require ($dailyBuild -match 'Invoke-ProjectSecurityMonitoredProcess') 'daily bui
 Require ($dailyBuild -match "'--no-restore'") 'daily build must not fetch or restore dependencies during the first stage'
 Require ($dailyBuild -match 'ExpectedCommit') 'daily build must require a fixed expected Git SHA'
 Require ($dailyBuild -match 'project.assets.json') 'daily build must inspect the existing no-restore assets graph'
-Require ($dailyBuild -match 'RunAnalyzers=false') 'daily build must disable analyzer/source-generator execution'
+Require ($gateText -match 'RunAnalyzers=false') 'daily build gate must disable analyzer/source-generator execution'
 Require ($dailyBuild -match 'preprocess') 'daily build must inventory the evaluated MSBuild import graph'
 Require ($dailyBuild -match 'noAutoResponse') 'daily build must refuse implicit MSBuild response-file injection'
 Require ($dailyBuild -match 'daily-build-inputs.json') 'daily build must persist input SHA-256 evidence'
@@ -170,7 +170,7 @@ Write-Output 'PASS daily explicit source inventory excludes historical SelfTests
 Write-Output 'PASS engineering-only process/job/sandbox source remains separately compiled and unshipped'
 Write-Output 'PASS approved package inventory excludes engineering, selftest, sandbox and native-fence assets'
 Write-Output 'PASS staged gate opens only the monitored daily build and keeps engineering, legacy offline builds, probes and WFP mutation closed'
-Write-Output 'PASS legacy offline build scripts and both WFP mutation modes fail closed before side effects'
+
 
 $probeEntryPoints=@(
     'tests/SessionZeroStartupWitness/Test-OrdinaryStartupWitness.ps1',
@@ -181,7 +181,15 @@ foreach($relative in $probeEntryPoints){
     $source=Read-Text $relative
     $gatePosition=$source.IndexOf("Assert-ProjectSecurityClearance.ps1') -Stage IsolationProbe",[StringComparison]::Ordinal)
     Require ($gatePosition -ge 0) "$relative is not behind the closed IsolationProbe stage"
+    $actionMarker=switch($relative){
+        'tests/SessionZeroStartupWitness/Test-OrdinaryStartupWitness.ps1' {'ProcessStartInfo'}
+        'tests/SessionZeroStartupWitness/Test-OrdinaryBranchTrace.ps1' {'Assembly]::LoadFrom'}
+        'tests/GpuCallProgress/Test-NativeWin32k.ps1' {'New-Item -ItemType Directory'}
+    }
+    $actionPosition=$source.IndexOf($actionMarker,[StringComparison]::Ordinal)
+    Require ($actionPosition -gt $gatePosition) "$relative performs a compile/load/execute action before its stage gate"
 }
+Write-Output 'PASS legacy offline build scripts and both WFP mutation modes fail closed before side effects'
 
 Write-Output 'PASS DailyBuild source project contains no custom Target, UsingTask, Exec, package, analyzer, generator or explicit import nodes'
 Write-Output 'PASS native Win32k and SessionZero executable witness tests are behind the closed IsolationProbe stage'
