@@ -8,7 +8,7 @@ $logRoot=Join-Path $env:LOCALAPPDATA 'ClaudeCode-Protection\security-stage'
 $run=[DateTime]::UtcNow.ToString('yyyyMMddTHHmmssfffZ')
 $stdout=Join-Path $logRoot ($run+'-daily-build.stdout.log')
 $stderr=Join-Path $logRoot ($run+'-daily-build.stderr.log')
-$arguments=@('publish',$project,'--configuration','Release','--output',(Join-Path $root 'bin\current'),'--nologo','--no-restore')
+$arguments=@('build',$project,'--configuration','Release','--output',(Join-Path $root 'bin\current'),'--nologo','--no-restore')
 $exitCode=Invoke-ProjectSecurityMonitoredProcess -FilePath $dotnet -ArgumentList $arguments -WorkingDirectory $root -StandardOutputPath $stdout -StandardErrorPath $stderr
 if($exitCode -ne 0){throw "Daily build failed with exit code $exitCode. Logs: $stdout ; $stderr"}
 Write-Output "DAILY_BUILD_PASS: $run; stdout=$stdout; stderr=$stderr"
