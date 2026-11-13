@@ -80,7 +80,7 @@ internal static class ProjectFlowCases
         Require(session.DescribePrivacy(response).Contains("94") && !session.DescribePrivacy(response).Contains("缺失"),"all-present success describes actual denial count");
         var presentPrivacy=privacy;
         var absentRoot=Cases();var absentTool=Cases();
-        absentRoot[7]=HostPrivacyContract.Checks[7].Observe(2,true);absentTool[7]=HostPrivacyContract.Checks[7].Observe(5,true);
+        absentRoot[7]=HostPrivacyContract.Checks[7].Observe(2,true);absentTool[7]=HostPrivacyContract.Checks[7].Observe(2,true);
         privacy=privacy with {RootCases=absentRoot,ProbeCases=absentTool};
         var resetResponse=new BackendResult(0,Reply(),"");_=session.AcceptResult(run,resetResponse);checks++;
         var resetText=session.DescribePrivacy(resetResponse);
