@@ -26,9 +26,9 @@ internal static GitToolchainReport RunChild(ResourceProbePlan plan,string worksp
             }
             var selectedProject=WorkspaceBundle.Parse(plan.ProjectBundle);
             if(selectedProject.GitPlan is { } workflow)return RunWorkflowChild(plan,workspace,selectedProject,workflow);
-            AssertGitControlReady(workspace,false);
+            GitWorkspacePolicy.AssertGitControlReady(workspace,false);
             stage="HASH_INPUT_WITH_INSPECTED_GIT";
-            using(var process=AtomicChild.StartInheritedTool(Start(workspace,plan.GitDirectory,"hash-object","--stdin")))
+            using(var process=AtomicChild.StartInheritedTool(GitWorkspacePolicy.Start(workspace,plan.GitDirectory,"hash-object","--stdin")))
             {
                 var stdout=ResourceChildRunner.ReadBounded(process.StandardOutput);var stderr=ResourceChildRunner.ReadBounded(process.StandardError);
                 Signal(workspace,"git-ready",plan.Nonce);
@@ -46,7 +46,7 @@ internal static GitToolchainReport RunChild(ResourceProbePlan plan,string worksp
                 if(!hashMatched)throw WfpNative.Contract("GitInputHashMismatch");
             }
             var repo=WindowsPathSeal.Child(workspace,"git-project");
-            var template=GitControlPath(workspace,"empty-git-template");
+            var template=GitWorkspacePolicy.GitControlPath(workspace,"empty-git-template");
             var project=WorkspaceBundle.Parse(plan.ProjectBundle);
             foreach(var file in project.Files)
                 if(!File.ReadAllBytes(WindowsPathSeal.Child(repo,file.Path)).AsSpan().SequenceEqual(file.Content))throw WfpNative.Contract("GitProjectInputChanged");
@@ -84,10 +84,10 @@ internal static GitToolchainReport RunChild(ResourceProbePlan plan,string worksp
         int? denialExit=null,allPackagesExit=null;var stage="VERIFY_GIT_WORKFLOW_INPUT";
         try
         {
-            AssertGitControlReady(workspace,true);
-            var commands=WorkflowCommands(plan,workspace,workflow);
+            GitWorkspacePolicy.AssertGitControlReady(workspace,true);
+            var commands=GitWorkspacePolicy.WorkflowCommands(plan,workspace,workflow);
             stage="HASH_INPUT_WITH_INSPECTED_GIT";
-            using(var process=AtomicChild.StartInheritedTool(StartWorkflow(workspace,plan.GitDirectory,workflow,commands[0])))
+            using(var process=AtomicChild.StartInheritedTool(GitWorkspacePolicy.StartWorkflow(workspace,plan.GitDirectory,workflow,commands[0])))
             {
                 var stdout=ReadBounded(process.StandardOutput,4096);var stderr=ReadBounded(process.StandardError,4096);
                 Signal(workspace,"git-ready",plan.Nonce);var clock=Stopwatch.StartNew();
@@ -106,7 +106,7 @@ internal static GitToolchainReport RunChild(ResourceProbePlan plan,string worksp
             foreach(var file in project.Files)
                 if(!File.ReadAllBytes(WindowsPathSeal.Child(repo,file.Path)).AsSpan().SequenceEqual(file.Content))
                     throw WfpNative.Contract("GitProjectInputChanged");
-            if(!SelectedPathspecMatches(workspace,project))throw WfpNative.Contract("GitPathspecInputMismatch");
+            if(!GitWorkspacePolicy.SelectedPathspecMatches(workspace,project))throw WfpNative.Contract("GitPathspecInputMismatch");
             stage="GIT_INIT";RequireWorkflow(RunWorkflow(workspace,plan.GitDirectory,workflow,commands[1]));
             stage="GIT_PREPARE_ATTRIBUTES";
             var info=WindowsPathSeal.Child(repo,".git/info");Directory.CreateDirectory(info);
@@ -172,7 +172,7 @@ internal static GitToolchainReport RunChild(ResourceProbePlan plan,string worksp
     }
     private static (int Exit,string Out,string Error) RunWorkflow(string workspace,string directory,WorkspaceGitPlan workflow,params string[] args)
     {
-        using var process=AtomicChild.StartInheritedTool(StartWorkflow(workspace,directory,workflow,args));process.StandardInput.Close();
+        using var process=AtomicChild.StartInheritedTool(GitWorkspacePolicy.StartWorkflow(workspace,directory,workflow,args));process.StandardInput.Close();
         var result=Finish(process,ReadBounded(process.StandardOutput,256*1024),ReadBounded(process.StandardError,64*1024));
         RecordResult(workspace,result);return result;
     }
@@ -194,34 +194,5 @@ internal static GitToolchainReport RunChild(ResourceProbePlan plan,string worksp
         File.WriteAllText(WindowsPathSeal.Child(workspace,stem+".txt"),nonce,new UTF8Encoding(false));
         File.WriteAllText(WindowsPathSeal.Child(workspace,stem+".signal"),"");
     }
-    internal static ProcessStartInfo Start(string workspace,string directory,params string[] arguments)
-    {
-        var start=new ProcessStartInfo(WindowsPathSeal.Child(directory,"git.exe")){UseShellExecute=false,CreateNoWindow=true,WorkingDirectory=workspace,
-            RedirectStandardInput=true,RedirectStandardOutput=true,RedirectStandardError=true,StandardInputEncoding=new UTF8Encoding(false),StandardOutputEncoding=new UTF8Encoding(false),StandardErrorEncoding=new UTF8Encoding(false)};
-        start.Environment.Clear();
-        foreach(var name in new[]{"SystemRoot","windir","SystemDrive","PROCESSOR_ARCHITECTURE"})
-        {var value=Environment.GetEnvironmentVariable(name);if(value is not null)start.Environment[name]=value;}
-        foreach(var name in new[]{"TEMP","TMP","HOME","USERPROFILE","LOCALAPPDATA","XDG_CONFIG_HOME"})start.Environment[name]=workspace;
-        start.Environment["PATH"]=directory+";"+Environment.SystemDirectory;
-        start.Environment["GIT_EXEC_PATH"]=directory;start.Environment["GIT_CONFIG_NOSYSTEM"]="1";start.Environment["GIT_ATTR_NOSYSTEM"]="1";
-        start.Environment["GIT_CONFIG_GLOBAL"]=GitControlPath(workspace,"empty-git-config");start.Environment["GIT_CONFIG_COUNT"]="0";
-        start.Environment["GIT_CEILING_DIRECTORIES"]=workspace;start.Environment["GIT_DISCOVERY_ACROSS_FILESYSTEM"]="0";
-        start.Environment["GIT_TERMINAL_PROMPT"]="0";start.Environment["GCM_INTERACTIVE"]="never";start.Environment["GIT_NO_LAZY_FETCH"]="1";
-        foreach(var name in new[]{"GIT_AUTHOR_NAME","GIT_COMMITTER_NAME"})start.Environment[name]="CPC Qualification";
-        foreach(var name in new[]{"GIT_AUTHOR_EMAIL","GIT_COMMITTER_EMAIL"})start.Environment[name]="offline@invalid.example";
-        foreach(var name in new[]{"GIT_AUTHOR_DATE","GIT_COMMITTER_DATE"})start.Environment[name]="2026-10-28T00:00:00+00:00";
-        start.Environment["LC_ALL"]="C";start.Environment["LANG"]="C";
-        foreach(var arg in new[]{"--no-pager","-c","credential.helper=","-c","protocol.allow=never","-c","core.autocrlf=false","-c","core.whitespace=cr-at-eol","-c","core.filemode=false",
-            "-c","core.fsmonitor=false","-c","maintenance.auto=false","-c","gc.auto=0","-c","commit.gpgsign=false","-c","i18n.commitEncoding=UTF-8",
-            "-c","core.hooksPath="+GitControlPath(workspace,"empty-git-hooks"),"-c","safe.directory="+WindowsPathSeal.Child(workspace,"git-project")}.Concat(arguments))start.ArgumentList.Add(arg);
-        return start;
-    }
-    internal static ProcessStartInfo StartWorkflow(string workspace,string directory,WorkspaceGitPlan workflow,params string[] arguments)
-    {
-        workflow.Validate();var start=Start(workspace,directory,arguments);
-        foreach(var name in new[]{"GIT_AUTHOR_NAME","GIT_COMMITTER_NAME"})start.Environment[name]=WorkspaceGitPlan.AuthorName;
-        foreach(var name in new[]{"GIT_AUTHOR_EMAIL","GIT_COMMITTER_EMAIL"})start.Environment[name]=WorkspaceGitPlan.AuthorEmail;
-        foreach(var name in new[]{"GIT_AUTHOR_DATE","GIT_COMMITTER_DATE"})start.Environment[name]=workflow.CommitDateUtc;
-        return start;
-    }
+
 }

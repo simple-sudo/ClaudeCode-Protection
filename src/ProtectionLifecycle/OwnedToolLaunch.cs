@@ -47,7 +47,7 @@ internal sealed class OwnedToolLaunch
             request.RootPid!=root.Pid || request.Sequence!=next || next>64)throw WfpNative.Contract("OwnedToolRequestBindingRefused");
         if(request.Kind is "project" or "project-probe" && (request.Arguments.Length!=3 ||
             request.Arguments[2]!=root.Pid.ToString(System.Globalization.CultureInfo.InvariantCulture)))throw WfpNative.Contract("OwnedProjectRootBindingRefused");
-        if(request.Kind=="git" && !SessionGitToolchain.WorkflowSequenceMatches(resources.Plan,resources.Workspace,request.Sequence,request.Arguments))
+        if(request.Kind=="git" && !GitWorkspacePolicy.WorkflowSequenceMatches(resources.Plan,resources.Workspace,request.Sequence,request.Arguments))
             throw WfpNative.Contract("OwnedGitWorkflowSequenceRefused");
         var start=ValidateStart(resources.Plan,resources.Workspace,request.Kind,request.Arguments,request.StartSHA256);next++;
         resources.AssertHeld();permit.AuthorizeToolCreation(root,job);resources.BeforeOwnedToolCreation(request.Kind);
@@ -91,25 +91,25 @@ internal sealed class OwnedToolLaunch
             var project=WorkspaceBundle.Parse(plan.ProjectBundle);
             if(project.GitPlan is { } workflow)
             {
-                var prefix=SessionGitToolchain.StartWorkflow(workspace,plan.GitDirectory,workflow).ArgumentList.ToArray();
+                var prefix=GitWorkspacePolicy.StartWorkflow(workspace,plan.GitDirectory,workflow).ArgumentList.ToArray();
                 if(arguments.Length<prefix.Length || !arguments.Take(prefix.Length).SequenceEqual(prefix))throw WfpNative.Contract("OwnedGitConfigurationRequired");
                 var tail=arguments.Skip(prefix.Length).ToArray();
-                if(!SessionGitToolchain.WorkflowCommandAllowed(plan,workspace,tail))throw WfpNative.Contract("OwnedGitWorkflowCommandRefused");
-                start=SessionGitToolchain.StartWorkflow(workspace,plan.GitDirectory,workflow,tail);
+                if(!GitWorkspacePolicy.WorkflowCommandAllowed(plan,workspace,tail))throw WfpNative.Contract("OwnedGitWorkflowCommandRefused");
+                start=GitWorkspacePolicy.StartWorkflow(workspace,plan.GitDirectory,workflow,tail);
             }
             else
             {
-                var prefix=SessionGitToolchain.Start(workspace,plan.GitDirectory).ArgumentList.ToArray();
+                var prefix=GitWorkspacePolicy.Start(workspace,plan.GitDirectory).ArgumentList.ToArray();
                 if(arguments.Length<prefix.Length || !arguments.Take(prefix.Length).SequenceEqual(prefix))throw WfpNative.Contract("OwnedGitConfigurationRequired");
                 var tail=arguments.Skip(prefix.Length).ToArray();var repo=WindowsPathSeal.Child(workspace,"git-project");
                 var allowed=new[]{new[]{"hash-object","--stdin"},
-                    new[]{"init","--quiet","--initial-branch=qualification","--template="+SessionGitToolchain.GitControlPath(workspace,"empty-git-template"),repo},
+                    new[]{"init","--quiet","--initial-branch=qualification","--template="+GitWorkspacePolicy.GitControlPath(workspace,"empty-git-template"),repo},
                     new[]{"--literal-pathspecs","-C",repo,"add","--force","--pathspec-from-file="+WindowsPathSeal.Child(WindowsPathSeal.Child(repo,".git"),"cpc-selected-paths.bin"),"--pathspec-file-nul"},
                     new[]{"-C",repo,"commit","--quiet","--no-gpg-sign","-m","Controlled offline qualification"},
                     new[]{"-C",repo,"rev-parse","--verify","HEAD"},new[]{"hash-object","--",plan.Fixture},
                     new[]{"hash-object","--",WindowsPathSeal.Child(workspace,"all-packages-only.json")}};
                 if(!allowed.Any(a=>a.SequenceEqual(tail)))throw WfpNative.Contract("OwnedGitCompiledOperationRequired");
-                start=SessionGitToolchain.Start(workspace,plan.GitDirectory,tail);
+                start=GitWorkspacePolicy.Start(workspace,plan.GitDirectory,tail);
             }
         }
         else throw WfpNative.Contract("OwnedToolKindRefused");

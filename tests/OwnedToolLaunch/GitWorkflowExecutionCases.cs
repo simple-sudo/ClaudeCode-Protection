@@ -76,6 +76,8 @@ internal static class GitWorkflowExecutionCases
 
             var bundleType=library.GetType("ClaudeCodeProtection.Workspaces.WorkspaceBundle",true)!;
             var gitType=library.GetType("ProtectionLifecycle.SessionGitToolchain",true)!;
+            var policyType=library.GetType("ProtectionLifecycle.GitWorkspacePolicy",true)!;
+            VerifyGitWorkspacePolicyBoundary(library);
             var protectedSessionType=library.GetType("ProtectionLifecycle.ProtectedSession",true)!;
             var atomicChildType=library.GetType("ProtectionLifecycle.AtomicChild",true)!;
             var gitWorkflowTimeout=(int)GetStatic(protectedSessionType,"GitWorkflowTimeoutMs")!;
@@ -125,7 +127,7 @@ internal static class GitWorkflowExecutionCases
             Directory.CreateDirectory(workspace);
             ProcessStartInfo StartRunnerWorkflow(string[] command)
             {
-                var start=StartWorkflow(gitType,workspace,plan,workflow,command);
+                var start=StartWorkflow(policyType,workspace,plan,workflow,command);
                 // Execute the original in-place image: moving Git for Windows
                 // changes its loader-relative layout and can break DLL binding.
                 start.FileName=sourceGitExecutable;
@@ -148,8 +150,8 @@ internal static class GitWorkflowExecutionCases
             var pathspec=Path.Combine(control,"git-selected-paths.bin");
             File.WriteAllBytes(pathspec,Encoding.ASCII.GetBytes(string.Join('\0',selectedPaths)+"\0"));
             VerifyGitWorkspaceBoundary(library,owner);
-            InvokeStatic(gitType,"AssertGitControlReady",workspace,true);
-            VerifyGitControlMutationGuards(gitType,workspace);
+            InvokeStatic(policyType,"AssertGitControlReady",workspace,true);
+            VerifyGitControlMutationGuards(policyType,workspace);
             foreach(var file in projectFiles)
             {
                 var relative=(string)Get(file,"Path")!;
@@ -158,7 +160,7 @@ internal static class GitWorkflowExecutionCases
                 File.WriteAllBytes(destination,(byte[])Get(file,"Content")!);
             }
             var repository=Path.Combine(workspace,"git-project");
-            Require((bool)InvokeStatic(gitType,"SelectedPathspecMatches",workspace,project)!,"owner pathspec exactly matches selected files");
+            Require((bool)InvokeStatic(policyType,"SelectedPathspecMatches",workspace,project)!,"owner pathspec exactly matches selected files");
 
             var fixtureDirectory=Path.Combine(root,"ClaudeCodeProtection-State");
             Directory.CreateDirectory(fixtureDirectory);
@@ -166,7 +168,7 @@ internal static class GitWorkflowExecutionCases
             allPackagesFixture=Path.Combine(workspace,"all-packages-only.json");
             File.WriteAllText(privateFixture,"PRIVATE NON-SECRET DENIAL FIXTURE",new UTF8Encoding(false));
             File.WriteAllText(allPackagesFixture,"ALL-PACKAGES NON-SECRET DENIAL FIXTURE",new UTF8Encoding(false));
-            var commands=(string[][])InvokeStatic(gitType,"WorkflowCommands",plan,workspace,workflow)!;
+            var commands=(string[][])InvokeStatic(policyType,"WorkflowCommands",plan,workspace,workflow)!;
             Require(commands.Length==11,"fixed bounded 11-command workflow");
 
             // Exercise the exact Broker-side sequence gate for every one of
@@ -174,32 +176,32 @@ internal static class GitWorkflowExecutionCases
             // the command semantics; this separately tests the request
             // contract consumed by OwnedToolLaunch.ProcessPending.
             var ownedToolType=library.GetType("ProtectionLifecycle.OwnedToolLaunch",true)!;
-            var commandPrefix=StartWorkflow(gitType,workspace,plan,workflow,Array.Empty<string>()).ArgumentList.ToArray();
+            var commandPrefix=StartWorkflow(policyType,workspace,plan,workflow,Array.Empty<string>()).ArgumentList.ToArray();
             for(var index=0;index<commands.Length;index++)
             {
                 var sequence=index+1;
                 var arguments=commandPrefix.Concat(commands[index]).ToArray();
-                Require((bool)InvokeStatic(gitType,"WorkflowSequenceMatches",plan,workspace,sequence,arguments)!,
+                Require((bool)InvokeStatic(policyType,"WorkflowSequenceMatches",plan,workspace,sequence,arguments)!,
                     "Broker accepts only the exact fixed Git command at sequence "+sequence);
-                var start=StartWorkflow(gitType,workspace,plan,workflow,commands[index]);
+                var start=StartWorkflow(policyType,workspace,plan,workflow,commands[index]);
                 var digest=(string)InvokeStatic(ownedToolType,"StartHash",start)!;
                 var validated=(ProcessStartInfo)InvokeStatic(ownedToolType,"ValidateStart",plan,workspace,"git",arguments,digest)!;
                 Require(validated.ArgumentList.SequenceEqual(arguments),
                     "Broker reconstructs exact fixed image/arguments/environment at sequence "+sequence);
             }
-            Require(!(bool)InvokeStatic(gitType,"WorkflowSequenceMatches",plan,workspace,2,commandPrefix.Concat(commands[0]).ToArray())!,
+            Require(!(bool)InvokeStatic(policyType,"WorkflowSequenceMatches",plan,workspace,2,commandPrefix.Concat(commands[0]).ToArray())!,
                 "Broker refuses a valid Git command replayed at the wrong sequence");
-            Require(!(bool)InvokeStatic(gitType,"WorkflowSequenceMatches",plan,workspace,0,commandPrefix.Concat(commands[0]).ToArray())!,
+            Require(!(bool)InvokeStatic(policyType,"WorkflowSequenceMatches",plan,workspace,0,commandPrefix.Concat(commands[0]).ToArray())!,
                 "Broker refuses sequence zero");
-            Require(!(bool)InvokeStatic(gitType,"WorkflowSequenceMatches",plan,workspace,12,commandPrefix.Concat(commands[10]).ToArray())!,
+            Require(!(bool)InvokeStatic(policyType,"WorkflowSequenceMatches",plan,workspace,12,commandPrefix.Concat(commands[10]).ToArray())!,
                 "Broker refuses commands beyond the fixed eleven-command sequence");
-            Require(!(bool)InvokeStatic(gitType,"WorkflowSequenceMatches",plan,workspace,1,commandPrefix.Concat(commands[0]).Append("--unexpected").ToArray())!,
+            Require(!(bool)InvokeStatic(policyType,"WorkflowSequenceMatches",plan,workspace,1,commandPrefix.Concat(commands[0]).Append("--unexpected").ToArray())!,
                 "Broker refuses appended command arguments");
             var alteredPrefix=commandPrefix.ToArray();alteredPrefix[0]="--pager";
-            Require(!(bool)InvokeStatic(gitType,"WorkflowSequenceMatches",plan,workspace,1,alteredPrefix.Concat(commands[0]).ToArray())!,
+            Require(!(bool)InvokeStatic(policyType,"WorkflowSequenceMatches",plan,workspace,1,alteredPrefix.Concat(commands[0]).ToArray())!,
                 "Broker refuses caller-modified fixed Git configuration prefix");
 
-            var alteredEnvironmentStart=StartWorkflow(gitType,workspace,plan,workflow,commands[0]);
+            var alteredEnvironmentStart=StartWorkflow(policyType,workspace,plan,workflow,commands[0]);
             alteredEnvironmentStart.Environment["PATH"]=(alteredEnvironmentStart.Environment["PATH"]??"")+";CPC-UNTRUSTED";
             var alteredEnvironmentDigest=(string)InvokeStatic(ownedToolType,"StartHash",alteredEnvironmentStart)!;
             var environmentRefused=false;
@@ -214,12 +216,12 @@ internal static class GitWorkflowExecutionCases
             try
             {
                 File.WriteAllBytes(pathspec,originalPathspec.Concat(new byte[]{0}).ToArray());
-                Require(!(bool)InvokeStatic(gitType,"WorkflowSequenceMatches",plan,workspace,3,commandPrefix.Concat(commands[2]).ToArray())!,
+                Require(!(bool)InvokeStatic(policyType,"WorkflowSequenceMatches",plan,workspace,3,commandPrefix.Concat(commands[2]).ToArray())!,
                     "Broker refuses Git add after owner-held NUL pathspec bytes change");
                 var pathspecRefused=false;
                 try
                 {
-                    var addStart=StartWorkflow(gitType,workspace,plan,workflow,commands[2]);
+                    var addStart=StartWorkflow(policyType,workspace,plan,workflow,commands[2]);
                     _=InvokeStatic(ownedToolType,"ValidateStart",plan,workspace,"git",commandPrefix.Concat(commands[2]).ToArray(),
                         InvokeStatic(ownedToolType,"StartHash",addStart));
                 }
@@ -227,7 +229,7 @@ internal static class GitWorkflowExecutionCases
                 Require(pathspecRefused,"Broker-side launch validator rejects a changed selected-path inventory");
             }
             finally{File.WriteAllBytes(pathspec,originalPathspec);}
-            Require((bool)InvokeStatic(gitType,"WorkflowSequenceMatches",plan,workspace,3,commandPrefix.Concat(commands[2]).ToArray())!,
+            Require((bool)InvokeStatic(policyType,"WorkflowSequenceMatches",plan,workspace,3,commandPrefix.Concat(commands[2]).ToArray())!,
                 "restored owner pathspec requalifies only after exact byte restoration");
 
             var input=(byte[])Get(plan,"Input")!;
@@ -625,6 +627,22 @@ internal static class GitWorkflowExecutionCases
         Console.WriteLine("PASS ResourceChildRunner boundary: child execution, fixed PowerShell launch and report qualification are separate from resource coordination");
     }
 
+    private static void VerifyGitWorkspacePolicyBoundary(Assembly library)
+    {
+        var owner=library.GetType("ProtectionLifecycle.SessionGitToolchain",true)!;
+        var policy=library.GetType("ProtectionLifecycle.GitWorkspacePolicy",true)!;
+        Require(policy.IsAbstract && policy.IsSealed && policy.GetFields(InstanceFlags).Length==0 &&
+            !typeof(IDisposable).IsAssignableFrom(policy),
+            "GitWorkspacePolicy is stateless and owns no Git asset or process lifetime");
+        foreach(var method in new[]{"GitControlDirectory","GitControlPath","AssertGitControlReady","WorkflowCommands",
+            "SelectedPathspecMatches","WorkflowCommandAllowed","WorkflowSequenceMatches","Start","StartWorkflow"})
+        {
+            Require(policy.GetMethod(method,StaticFlags) is not null,"GitWorkspacePolicy owns "+method);
+            Require(owner.GetMethod(method,StaticFlags) is null,"SessionGitToolchain no longer owns "+method);
+        }
+        Console.WriteLine("PASS GitWorkspacePolicy boundary: fixed command/environment policy and workspace-control qualification are separate from Git asset lease ownership");
+    }
+
     private static void VerifyGitWorkspaceBoundary(Assembly library,SecurityIdentifier owner)
     {
         var descriptorType=library.GetType("ProtectionLifecycle.GitWorkspaceDescriptor",true)!;
@@ -681,7 +699,7 @@ internal static class GitWorkflowExecutionCases
             "private Git directories carry an inherited low-integrity no-write-up mandatory label ("+labelSummary+")");
     }
 
-    private static void VerifyGitControlMutationGuards(Type gitType,string workspace)
+    private static void VerifyGitControlMutationGuards(Type policyType,string workspace)
     {
         var hooks=Path.Combine(workspace,"git-control","empty-git-hooks");
         var config=Path.Combine(workspace,"git-control","empty-git-config");
@@ -689,23 +707,23 @@ internal static class GitWorkflowExecutionCases
         var hook=Path.Combine(hooks,"pre-commit");
         File.WriteAllText(hook,"#!/bin/sh\nexit 0\n");
         var hookRefused=false;
-        try{InvokeStatic(gitType,"AssertGitControlReady",workspace,true);}
+        try{InvokeStatic(policyType,"AssertGitControlReady",workspace,true);}
         catch(InvalidDataException){hookRefused=true;}
         finally{File.Delete(hook);}
         Require(hookRefused,"non-empty hooks directory fails closed");
         File.WriteAllText(config,"[filter \"attack\"]\nclean = cmd.exe /c whoami\n");
         var configRefused=false;
-        try{InvokeStatic(gitType,"AssertGitControlReady",workspace,true);}
+        try{InvokeStatic(policyType,"AssertGitControlReady",workspace,true);}
         catch(InvalidDataException){configRefused=true;}
         finally{File.WriteAllBytes(config,Array.Empty<byte>());}
         Require(configRefused,"non-empty global Git config fails closed");
         File.WriteAllText(extra,"unexpected");
         var extraRefused=false;
-        try{InvokeStatic(gitType,"AssertGitControlReady",workspace,true);}
+        try{InvokeStatic(policyType,"AssertGitControlReady",workspace,true);}
         catch(InvalidDataException){extraRefused=true;}
         finally{File.Delete(extra);}
         Require(extraRefused,"unexpected Git control entry fails closed");
-        InvokeStatic(gitType,"AssertGitControlReady",workspace,true);
+        InvokeStatic(policyType,"AssertGitControlReady",workspace,true);
     }
 
     private static string FindGitRoot()
@@ -733,8 +751,8 @@ internal static class GitWorkflowExecutionCases
         throw new FileNotFoundException("Git for Windows root was not found under Program Files\\Git or any PATH entry containing git.exe");
     }
 
-    private static ProcessStartInfo StartWorkflow(Type gitType,string workspace,object plan,object workflow,string[] command)
-        =>(ProcessStartInfo)InvokeStatic(gitType,"StartWorkflow",workspace,(string)Get(plan,"GitDirectory")!,workflow,command)!;
+    private static ProcessStartInfo StartWorkflow(Type policyType,string workspace,object plan,object workflow,string[] command)
+        =>(ProcessStartInfo)InvokeStatic(policyType,"StartWorkflow",workspace,(string)Get(plan,"GitDirectory")!,workflow,command)!;
 
     private static CommandResult Run(ProcessStartInfo start,byte[]? input=null)
     {

@@ -12,10 +12,10 @@ namespace ProtectionLifecycle;
 internal sealed partial class SessionGitToolchain
 {
 internal static ProcessStartInfo StartIndependentInit(string workspace) =>
-        Start(workspace,DirectoryPath,"init","--quiet","--template=","--initial-branch=cpc-offline","git-project");
+        GitWorkspacePolicy.Start(workspace,DirectoryPath,"init","--quiet","--template=","--initial-branch=cpc-offline","git-project");
 
     internal static ProcessStartInfo StartIndependentCommit(string workspace) =>
-        Start(workspace,DirectoryPath,"-C",WindowsPathSeal.Child(workspace,"git-project"),"commit","--quiet","--no-gpg-sign","-a","-m",CommitMessage);
+        GitWorkspacePolicy.Start(workspace,DirectoryPath,"-C",WindowsPathSeal.Child(workspace,"git-project"),"commit","--quiet","--no-gpg-sign","-a","-m",CommitMessage);
 
     private static WorkspaceBundle IndependentCommitFiles()=>WorkspaceBundle.Create(new (string,byte[])[]{
         ("note.txt","edited by the fixed qualification fixture\n"u8.ToArray()),
@@ -107,7 +107,7 @@ internal static ProcessStartInfo StartIndependentInit(string workspace) =>
     }
     private static (int Exit,string Out,string Error) Run(string workspace,string directory,params string[] args)
     {
-        using var process=AtomicChild.StartInheritedTool(Start(workspace,directory,args));process.StandardInput.Close();
+        using var process=AtomicChild.StartInheritedTool(GitWorkspacePolicy.Start(workspace,directory,args));process.StandardInput.Close();
         var result=Finish(process,ResourceChildRunner.ReadBounded(process.StandardOutput),ResourceChildRunner.ReadBounded(process.StandardError));
         RecordResult(workspace,result);return result;
     }

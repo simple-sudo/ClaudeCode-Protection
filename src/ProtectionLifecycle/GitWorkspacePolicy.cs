@@ -1,17 +1,12 @@
-using System.Buffers.Binary;
 using System.Diagnostics;
-using System.IO.Compression;
-using System.Security.Cryptography;
 using System.Text;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 using ClaudeCodeProtection.Workspaces;
 
 namespace ProtectionLifecycle;
 
-internal sealed partial class SessionGitToolchain
+internal static class GitWorkspacePolicy
 {
-internal static string GitControlDirectory(string workspace)=>WindowsPathSeal.Child(workspace,"git-control");
+    internal static string GitControlDirectory(string workspace)=>WindowsPathSeal.Child(workspace,"git-control");
     internal static string GitControlPath(string workspace,string leaf)
     {
         if(leaf is not ("empty-git-config" or "empty-git-hooks" or "empty-git-template" or "git-selected-paths.bin"))
@@ -91,5 +86,36 @@ internal static string GitControlDirectory(string workspace)=>WindowsPathSeal.Ch
         var tail=arguments.Skip(prefix.Length).ToArray();var commands=WorkflowCommands(plan,workspace,workflow);
         return sequence>=1 && sequence<=commands.Length && commands[sequence-1].SequenceEqual(tail) &&
             WorkflowCommandAllowed(plan,workspace,tail);
+    }
+    
+    internal static ProcessStartInfo Start(string workspace,string directory,params string[] arguments)
+    {
+        var start=new ProcessStartInfo(WindowsPathSeal.Child(directory,"git.exe")){UseShellExecute=false,CreateNoWindow=true,WorkingDirectory=workspace,
+            RedirectStandardInput=true,RedirectStandardOutput=true,RedirectStandardError=true,StandardInputEncoding=new UTF8Encoding(false),StandardOutputEncoding=new UTF8Encoding(false),StandardErrorEncoding=new UTF8Encoding(false)};
+        start.Environment.Clear();
+        foreach(var name in new[]{"SystemRoot","windir","SystemDrive","PROCESSOR_ARCHITECTURE"})
+        {var value=Environment.GetEnvironmentVariable(name);if(value is not null)start.Environment[name]=value;}
+        foreach(var name in new[]{"TEMP","TMP","HOME","USERPROFILE","LOCALAPPDATA","XDG_CONFIG_HOME"})start.Environment[name]=workspace;
+        start.Environment["PATH"]=directory+";"+Environment.SystemDirectory;
+        start.Environment["GIT_EXEC_PATH"]=directory;start.Environment["GIT_CONFIG_NOSYSTEM"]="1";start.Environment["GIT_ATTR_NOSYSTEM"]="1";
+        start.Environment["GIT_CONFIG_GLOBAL"]=GitControlPath(workspace,"empty-git-config");start.Environment["GIT_CONFIG_COUNT"]="0";
+        start.Environment["GIT_CEILING_DIRECTORIES"]=workspace;start.Environment["GIT_DISCOVERY_ACROSS_FILESYSTEM"]="0";
+        start.Environment["GIT_TERMINAL_PROMPT"]="0";start.Environment["GCM_INTERACTIVE"]="never";start.Environment["GIT_NO_LAZY_FETCH"]="1";
+        foreach(var name in new[]{"GIT_AUTHOR_NAME","GIT_COMMITTER_NAME"})start.Environment[name]="CPC Qualification";
+        foreach(var name in new[]{"GIT_AUTHOR_EMAIL","GIT_COMMITTER_EMAIL"})start.Environment[name]="offline@invalid.example";
+        foreach(var name in new[]{"GIT_AUTHOR_DATE","GIT_COMMITTER_DATE"})start.Environment[name]="2026-10-28T00:00:00+00:00";
+        start.Environment["LC_ALL"]="C";start.Environment["LANG"]="C";
+        foreach(var arg in new[]{"--no-pager","-c","credential.helper=","-c","protocol.allow=never","-c","core.autocrlf=false","-c","core.whitespace=cr-at-eol","-c","core.filemode=false",
+            "-c","core.fsmonitor=false","-c","maintenance.auto=false","-c","gc.auto=0","-c","commit.gpgsign=false","-c","i18n.commitEncoding=UTF-8",
+            "-c","core.hooksPath="+GitControlPath(workspace,"empty-git-hooks"),"-c","safe.directory="+WindowsPathSeal.Child(workspace,"git-project")}.Concat(arguments))start.ArgumentList.Add(arg);
+        return start;
+    }
+    internal static ProcessStartInfo StartWorkflow(string workspace,string directory,WorkspaceGitPlan workflow,params string[] arguments)
+    {
+        workflow.Validate();var start=Start(workspace,directory,arguments);
+        foreach(var name in new[]{"GIT_AUTHOR_NAME","GIT_COMMITTER_NAME"})start.Environment[name]=WorkspaceGitPlan.AuthorName;
+        foreach(var name in new[]{"GIT_AUTHOR_EMAIL","GIT_COMMITTER_EMAIL"})start.Environment[name]=WorkspaceGitPlan.AuthorEmail;
+        foreach(var name in new[]{"GIT_AUTHOR_DATE","GIT_COMMITTER_DATE"})start.Environment[name]=workflow.CommitDateUtc;
+        return start;
     }
 }

@@ -170,14 +170,14 @@ internal sealed class SessionWorkspaceLease : IDisposable
             gitProjectDirectory.AssertHeld();gitControlDirectory!.AssertHeld();
             GitWorkspaceDescriptor.AssertPath(gitProjectDirectory.Path,gitPackageSid!,true);
             GitWorkspaceDescriptor.AssertPath(gitControlDirectory.Path,gitPackageSid!,false);
-            SessionGitToolchain.AssertGitControlReady(Workspace,gitPathspec is not null);
+            GitWorkspacePolicy.AssertGitControlReady(Workspace,gitPathspec is not null);
         }
         if((workspaceBundle?.GitPlan is not null)!=(gitPathspec is not null))throw WfpNative.Contract("GitPathspecLeasePresenceMismatch");
         if(gitPathspec is not null)
         {
             if(gitPathspec.SafeFileHandle.IsClosed)throw WfpNative.Contract("GitPathspecLeaseLost");
-            WindowsPathSeal.VerifyObject(gitPathspec.SafeFileHandle,SessionGitToolchain.GitControlPath(Workspace,"git-selected-paths.bin"),false);
-            if(!SessionGitToolchain.SelectedPathspecMatches(Workspace,workspaceBundle!))
+            WindowsPathSeal.VerifyObject(gitPathspec.SafeFileHandle,GitWorkspacePolicy.GitControlPath(Workspace,"git-selected-paths.bin"),false);
+            if(!GitWorkspacePolicy.SelectedPathspecMatches(Workspace,workspaceBundle!))
                 throw WfpNative.Contract("GitPathspecLeaseContentMismatch");
         }
         var fixture=allPackagesFixture??throw WfpNative.Contract("AllPackagesFixtureLeaseLost");
