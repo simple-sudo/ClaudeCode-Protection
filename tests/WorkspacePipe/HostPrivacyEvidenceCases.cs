@@ -66,7 +66,7 @@ internal static class HostPrivacyEvidenceCases
         Require(metadataProfile.Assessments.Single().Classification==HostPrivacyEvidenceClass.ConfirmedDirect &&
             !metadataProfile.P0Exposure && metadataProfile.P0Unknown,
             "non-P0 adapter metadata remains auditable without being mislabeled as sensitive P0 content");
-        var profile=Evaluate(CompleteCoverage().Append(direct));
+        var profile=Evaluate(CompleteCoverage().Append(hostMac).Append(direct));
         Require(profile.Assessments.Single(item=>item.EvidenceId==direct.EvidenceId).Classification==HostPrivacyEvidenceClass.ConfirmedDirect &&
             profile.P0Exposure && !profile.P0Unknown,
             "one confirmed P0 content read blocks even when all required targets are covered");
