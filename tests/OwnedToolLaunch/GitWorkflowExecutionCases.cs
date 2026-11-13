@@ -584,6 +584,13 @@ internal static class GitWorkflowExecutionCases
             "SessionWorkspaceLease is the unique owner of workspace paths, file handles and Git lease");
         Require(lease.IsSealed && typeof(IDisposable).IsAssignableFrom(lease),
             "SessionWorkspaceLease has one explicit disposable lifetime");
+        var constructors=lease.GetConstructors(InstanceFlags);
+        Require(constructors.Length==1 && constructors[0].IsPrivate,
+            "SessionWorkspaceLease construction is private and cannot accept externally owned handles");
+        Require(lease.GetMethod("Begin",StaticFlags) is not null &&
+            lease.GetMethod("Prepare",InstanceFlags) is not null &&
+            lease.GetMethod("Populate",InstanceFlags) is not null,
+            "SessionWorkspaceLease acquires and owns resources incrementally before coordinator publication");
         Console.WriteLine("PASS SessionWorkspaceLease ownership boundary: workspace paths/files/Git lease have one owner; SessionResources only composes leases");
     }
 
