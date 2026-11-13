@@ -139,6 +139,7 @@ internal static class HostPrivacyEvidenceCases
         Reject(new[]{direct with {SessionId=new string('b',32)}},"foreign session");
         Reject(new[]{direct,direct},"duplicate evidence identifier");
         Reject(new[]{direct with {SensitiveContent=false}},"sensitive MAC field cannot be downgraded");
+        Reject(new[]{direct with {Value="",SensitiveContent=false}},"empty field cannot retain a correlation claim");
         Reject(new[]{direct with {Field="unreviewed-field"}},"unknown field cannot enter the trusted evidence profile");
         Reject(new[]{direct with {ExpiresAtUtc=now.AddMinutes(-2)}},"evidence expiry cannot predate observation");
         Reject(new[]{direct with {ExpiresAtUtc=null}},"evidence cannot have an unbounded lifetime");
@@ -148,7 +149,7 @@ internal static class HostPrivacyEvidenceCases
         Reject(new[]{direct with {Outcome=HostPrivacyEvidenceOutcome.AccessDenied,NativeError=5,Value="secret"}},"denial carrying content");
         Reject(new[]{direct with {Outcome=HostPrivacyEvidenceOutcome.ContentRead,NativeError=5}},"content read carrying native failure");
         Reject(new[]{direct with {Outcome=HostPrivacyEvidenceOutcome.Unknown,Value="secret",ContentVerified=false}},"unknown outcome carrying unverified raw content");
-        var emptyMac=direct with {Value="",SensitiveContent=false};
+        var emptyMac=direct with {Value="",SensitiveContent=false,Claim="",CorrelationKey=""};
         var emptyMacProfile=Evaluate(new[]{emptyMac});
         Require(emptyMacProfile.Assessments.Single().Classification==HostPrivacyEvidenceClass.ConfirmedDirect &&
             !emptyMacProfile.P0Exposure && emptyMacProfile.P0Unknown,

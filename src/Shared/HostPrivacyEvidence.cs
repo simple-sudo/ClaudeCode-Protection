@@ -149,6 +149,7 @@ internal static class HostPrivacyEvidenceRules
             item.Claim.Length>256 || item.Claim.Contains('\u001f') ||
             item.CorrelationKey.Length>1024 || item.CorrelationKey.Contains('\u001f') ||
             (item.Claim.Length==0)!=(item.CorrelationKey.Length==0) ||
+            item.Value.Length==0 && item.Claim.Length>0 ||
             item.ObservedAtUtc.Offset!=TimeSpan.Zero || item.ObservedAtUtc<=DateTimeOffset.UnixEpoch ||
             item.ObservedAtUtc>now || item.ExpiresAtUtc is not { } expiry || expiry.Offset!=TimeSpan.Zero ||
             expiry<=item.ObservedAtUtc || expiry-item.ObservedAtUtc>MaximumEvidenceLifetime ||

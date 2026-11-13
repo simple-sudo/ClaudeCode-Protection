@@ -202,6 +202,7 @@ internal sealed record OfflineConsoleNetworkSurvey(int SchemaVersion,string Sess
             void Add(string field,string value,string rowId,string claim="",string key="",string? targetOverride=null,
                 bool p0=true,bool sensitive=true)
             {
+                if(value.Length==0){claim="";key="";}
                 evidence.Add(Create(targetOverride??target,field,value,rowId,sourceFamily,claim,key,hostReference,p0,
                     sensitive && value.Length>0,HostPrivacyEvidenceOutcome.ContentRead,true,null,receipt,readTime));
             }
