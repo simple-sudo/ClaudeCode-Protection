@@ -3,7 +3,7 @@
 状态：**PARTIAL_SOURCE_IMPLEMENTATION / PR #4 Draft**。本文件记录网页端独立开发分支的实现事实；不覆盖 Codex 网络主线的 CURRENT-STATE，也不表示整个 P0-ASSURANCE、P0-HOST 或产品已经交付。
 
 - 开发分支：`chatgpt/p0-assurance-host-20261113`
-- 本记录编写时 HEAD：`ac250803baf0795455551895bde978ce9bfe19be`
+- 当前修复后 HEAD：`f819ddfd05ac3e2c9ce22770c3347c93e3c94812`（本文件后续同步提交会推进 HEAD）
 - PR：[ #4 — owner-attested host evidence contract ](https://github.com/simple-sudo/ClaudeCode-Protection/pull/4)，Draft，目标为 `codex/integrate-privacy-admission-20261027`
 - 基线：从实时核实的 Codex HEAD `bdbd667545519952e5f4bb8464fd782364d18f8c` 创建；不修改 Codex 分支。
 - 本分支没有修改 WFP 策略、FlClash/全机网络资源 owner、Bootstrap、Manifest、安装协议或 GPU 能力。
@@ -56,7 +56,7 @@
 
 1. 可信侧先捕获宿主参考；受限 worker 在原 LPAC/Job 创建链内通过真实 Windows API 尝试读取内容。
 2. Owner 按实际 child PID、创建时间、Session 和网络采样时间读取受限输出并严格解析；宿主前后进程快照用于稳定性核验。
-3. Owner 将宿主与受限的原始网络缓冲、进程清单及宿主后置快照分别写入 ProtectedState，并回读校验 SHA-256。
+3. 受限 HostIdentity receipt 先由 Owner 封存；网络 Seal 必须核对该 receipt SHA-256、Session 与受限 PID，并将其 SHA 同时绑定进 network survey 与 profile。Owner 再将宿主与受限的原始网络缓冲、进程清单及宿主后置快照分别写入 ProtectedState，并回读校验 SHA-256。
 4. 确定性画像只使用通过来源/身份/时间/内容验证的记录；宿主原值只作为参考，不会被当成受限 Actor 已读取。
 5. Profile 原值和关联证据写入受保护状态文件 `host-privacy-network-profile-<job>.json`；普通报告只输出 profile receipt SHA-256、直接观察数、推断数、P0Exposure 和 P0Unknown，不把原始值注入 Claude 工作区或普通工具上下文。
 6. OfflineConsoleQualification 的限定完成条件要求原固定网络读取资格通过、Profile receipt 存在、P0Exposure=false 且 P0Unknown=false。此条件只属于该限定资格报告，不是正式 Claude 准入许可。
