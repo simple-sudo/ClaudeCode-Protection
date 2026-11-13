@@ -128,7 +128,7 @@ internal static class HostPrivacyEvidenceRules
         else if(item.Visibility==HostPrivacyEvidenceVisibility.HostReferenceOnly)
         {
             if(item.ActorId.Length!=0 || item.Outcome!=HostPrivacyEvidenceOutcome.ContentRead ||
-                !item.OwnerSealed || !item.ContentVerified || item.Value.Length==0)
+                !item.OwnerSealed || !item.ContentVerified || item.SensitiveContent && item.Value.Length==0)
                 throw new InvalidDataException("Host reference evidence shape differs");
         }
         else throw new InvalidDataException("Unknown host privacy evidence visibility");
